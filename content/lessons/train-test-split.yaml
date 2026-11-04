@@ -16,6 +16,8 @@ blocks:
       **Leakage** is any path by which information from the evaluation data reaches training: duplicate rows, averages computed from the full table before splitting, or copies of the same sale landing in both splits.
   - kind: example
     md: |
+      This example shows why duplicate sales must stay together when splitting data.
+
       A table has 100 house sales, but some rows are copies of the same sale. If a copy appears in both the training and test sets, the test can look better than it should because the model has already seen that sale. Keep copies of one sale together in the same split.
   - kind: math
     md: |

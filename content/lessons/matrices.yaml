@@ -14,6 +14,8 @@ blocks:
       Shapes tell us how many numbers are in each direction. If the rows of $X \in \mathbb{R}^{n \times d}$ hold $n$ sets of measurements and $W \in \mathbb{R}^{d \times k}$, then $XW$ gives $k$ output numbers for each row.
   - kind: example
     md: |
+      This example shows a matrix transforming a vector by taking one dot product per row.
+
       $$A = \begin{pmatrix}1 & 2\\ 0 & 1\end{pmatrix},\quad x = \begin{pmatrix}3\\1\end{pmatrix},\quad Ax = \begin{pmatrix}1\cdot3 + 2\cdot1\\ 0\cdot3 + 1\cdot1\end{pmatrix} = \begin{pmatrix}5\\1\end{pmatrix}.$$
       Row 1 dotted with $x$ gives 5, and row 2 dotted with $x$ gives 1. Geometrically, $A$ is a shear: it slides points sideways in proportion to their height.
   - kind: math
@@ -28,6 +30,8 @@ blocks:
       - $I x = x$.
   - kind: worked
     md: |
+      This worked example shows that multiplying matrices in opposite orders can give different results.
+
       $$\begin{pmatrix}1&2\\3&4\end{pmatrix}\begin{pmatrix}0&1\\1&0\end{pmatrix} = \begin{pmatrix}1\cdot0+2\cdot1 & 1\cdot1+2\cdot0\\ 3\cdot0+4\cdot1 & 3\cdot1+4\cdot0\end{pmatrix} = \begin{pmatrix}2&1\\4&3\end{pmatrix}.$$
       Multiplying on the right by this permutation matrix swaps the **columns**. Multiplying on the left would swap the rows instead, which shows directly that $AB \neq BA$.
 

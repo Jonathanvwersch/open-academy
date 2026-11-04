@@ -12,6 +12,8 @@ blocks:
       Each weight $w_j$ says how much the prediction changes when feature $j$ increases by one unit and all other features stay fixed. This simple model makes it clear how inputs, weights, predictions and errors fit together.
   - kind: example
     md: |
+      This example uses a linear model to turn house measurements into a predicted price.
+
       House price (in thousands) $= 3\cdot\text{area} + 10\cdot\text{bedrooms} + 50$. A 100 m², 2-bedroom house: $300 + 20 + 50 = 370$. One extra m² adds 3 (thousand); one extra bedroom *at the same area* adds 10.
   - kind: math
     md: |
@@ -20,6 +22,8 @@ blocks:
       A common trick is to append a constant-1 feature to every row, so the bias becomes just another weight.
   - kind: worked
     md: |
+      This worked example uses matrix multiplication to make predictions for several houses at once.
+
       ```python
       import numpy as np
       X = np.array([[100., 2.], [80., 1.], [150., 4.]])  # area, bedrooms

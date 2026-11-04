@@ -12,6 +12,8 @@ blocks:
       Picture standing on a hilly landscape. The gradient points uphill, in the steepest direction, and its length says how steep the slope is. To go downhill fastest, step along $-\nabla f$.
   - kind: example
     md: |
+      This example uses gradient components to compare rates of change along two axes.
+
       $f(x, y) = x^2 + 3y^2$. Then $\nabla f = (2x, 6y)$. At $(1, 1)$, $\nabla f = (2, 6)$: the function rises 3 times faster in $y$ than in $x$, so the steepest-descent direction is $(-2, -6)$.
   - kind: math
     md: |
@@ -20,6 +22,8 @@ blocks:
       Among all steps of a fixed length, $\nabla f \cdot \delta = \|\nabla f\|\|\delta\|\cos\theta$ is most negative when $\theta = 180^\circ$, i.e. when $\delta$ points along $-\nabla f$. That is why the negative gradient is the direction of **steepest descent**. At a minimum (or any flat point) $\nabla f = 0$.
   - kind: worked
     md: |
+      This worked example calculates both partial derivatives to find the gradient at a point.
+
       **Gradient of $f(w_1, w_2) = w_1^2 w_2 + \sin w_2$ at $(2, 0)$.**
 
       1. $\partial f/\partial w_1 = 2w_1 w_2$, which is $0$ at $(2,0)$.

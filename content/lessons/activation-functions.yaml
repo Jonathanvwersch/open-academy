@@ -12,6 +12,8 @@ blocks:
       Their **derivatives** tell us how much the output changes when the input changes. A sigmoid's derivative is at most 0.25 and nearly 0 for large $|z|$, so its output changes very little there. ReLU's derivative is exactly 1 for $z > 0$, so in that range the output changes by the same amount as its input.
   - kind: example
     md: |
+      This example compares how three activation functions transform the same inputs.
+
       $z = (-2, 0.5, 3)$:
 
       - ReLU gives $(0, 0.5, 3)$.

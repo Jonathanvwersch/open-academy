@@ -12,6 +12,8 @@ blocks:
       For a function controlled by a number, the derivative tells you how its output changes when you nudge that number.
   - kind: example
     md: |
+      This example estimates an instantaneous rate of change by comparing nearby function values.
+
       $f(x) = x^2$. At $x = 3$, nudge to $3.01$: $f$ goes from $9$ to $9.0601$, a change of $0.0601$ for a nudge of $0.01$. The ratio is $\approx 6.01$, and the derivative $f'(x) = 2x$ gives exactly $6$ at $x = 3$.
   - kind: math
     md: |
@@ -28,6 +30,8 @@ blocks:
       | $g/h$ | $(g'h - gh')/h^2$ (quotient rule) |
   - kind: worked
     md: |
+      This worked example combines the power, constant-multiple, logarithm, and product rules.
+
       **Differentiate $f(x) = 3x^4 - 2x + \ln x$.**
 
       1. $3x^4 \to 12x^3$ (power rule times a constant).

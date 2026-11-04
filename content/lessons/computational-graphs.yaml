@@ -12,6 +12,8 @@ blocks:
       Each operation has a **local derivative** that tells how its output changes when one of its inputs changes. The chain rule combines these local changes to show how an input affects the final result.
   - kind: example
     md: |
+      This example shows how local derivatives in an operation graph give an output's derivative with respect to an input.
+
       $f(x, y, z) = (x + y)\cdot z$ with $x=-2,\ y=5,\ z=-4$.
 
       - Node $q = x + y = 3$, with local derivatives $\partial q/\partial x = 1$ and $\partial q/\partial y = 1$.
