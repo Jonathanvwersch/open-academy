@@ -36,10 +36,10 @@ tasks:
     md: "Implement `train_val_split(X, y, val_frac, seed)` with a seeded shuffle. Fit on train only; report validation MSE."
   - id: t-plot
     title: Diagnostic plot
-    md: "Run `uv run linreg-numpy/work/plot.py` to save `work/loss.png` (loss vs step, log scale) and `work/params.png` (trajectory of the two weights). Look at them before answering the reflection questions."
+    md: "Run `python work/plot.py` to save `work/loss.png` (loss vs step, log scale) and `work/params.png` (trajectory of the two weights). Look at them before answering the reflection questions."
   - id: t-lr
     title: Learning-rate experiment
-    md: "Train with lr = 0.001, 0.01, 0.1 and 0.5 on the provided data. Note which converge, which are slow, and which diverge. You will be asked to predict and explain this."
+    md: "Train with lr = 0.01, 0.1 and 1.0 on the provided data. Note which converge, which are slow, and which diverge. You will be asked to predict and explain this."
 acceptance:
   - "All public tests pass."
   - "Analytic gradients match finite differences to 1e-5 relative error."

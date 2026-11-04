@@ -5,6 +5,14 @@ export const Route = createFileRoute('/progress')({
   component: ProgressPage,
 });
 
+const masteryStateLabels: Record<string, string> = {
+  not_assessed: 'Not assessed',
+  introduced: 'Introduced',
+  assisted: 'Assisted',
+  independent: 'Independent',
+  retained: 'Retained',
+};
+
 function ProgressPage() {
   const query = useQuery({
     queryKey: ['progress'],
@@ -62,11 +70,15 @@ function ProgressPage() {
         {data.domains.map((domain) => (
           <div className="mt-4 border-t pt-3" key={domain.id}>
             <h3 className="font-medium">{domain.title}</h3>
-            <p className="text-sm text-neutral-600">
-              {Object.entries(domain.counts)
-                .map(([state, count]) => `${state}: ${count}`)
-                .join(' · ')}
-            </p>
+            {Object.values(domain.counts).every((count) => count === 0) ? (
+              <p className="text-sm text-neutral-600">No lessons authored yet</p>
+            ) : (
+              <p className="text-sm text-neutral-600">
+                {Object.entries(domain.counts)
+                  .map(([state, count]) => `${masteryStateLabels[state] ?? state}: ${count}`)
+                  .join(' · ')}
+              </p>
+            )}
           </div>
         ))}
       </section>
