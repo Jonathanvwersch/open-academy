@@ -14,6 +14,7 @@
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "db:reset": "tsx scripts/db-reset.ts",
     "content:check": "tsx src/server/content/check.ts",
     "test": "docker compose up -d && node scripts/wait-for-db.mjs && vitest run --config vitest.config.ts",
     "test:e2e": "playwright test",
