@@ -153,13 +153,13 @@ export function TutorContextProvider({
         >
           <header className="flex items-center gap-2 border-b border-neutral-200 p-4">
             <h2 className="mr-auto font-semibold">Tutor</h2>
-            <div className="relative">
+            <div className="relative min-w-0 shrink">
               <button
                 type="button"
                 aria-label="Tutor conversation"
                 aria-expanded={dropdownOpen}
                 onClick={() => setDropdownOpen((shown) => !shown)}
-                className="max-w-48 truncate rounded border border-neutral-300 px-2 py-1 text-left text-sm"
+                className="min-w-0 max-w-48 truncate rounded border border-neutral-300 px-2 py-1 text-left text-sm"
               >
                 {selectedThread
                   ? `${selectedThread.conceptTitle ?? 'General'} · ${selectedThread.title.split(' · ').at(-1)}`
@@ -203,7 +203,7 @@ export function TutorContextProvider({
             </div>
             <button
               type="button"
-              className="rounded px-2 py-1 text-sm hover:bg-neutral-100"
+              className="shrink-0 whitespace-nowrap rounded px-2 py-1 text-sm hover:bg-neutral-100"
               onClick={() => {
                 setNewChatSelected(true);
                 setSelectedId('');

@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import { instantiateExercise, isTemplate } from '../content/templates.js';
@@ -38,32 +38,34 @@ export function registerTutorThreadRoutes(
   const { db } = deps;
   api.get('/tutor/threads', async (c) => {
     const rows = await db
-      .select()
+      .select({
+        id: tutorThreads.id,
+        conceptId: tutorThreads.conceptId,
+        title: tutorThreads.title,
+        updatedAt: tutorThreads.updatedAt,
+        messageCount: sql<number>`count(${tutorMessages.id})::int`,
+        lastMessagePreview: sql<
+          string | null
+        >`(array_agg(${tutorMessages.content} order by ${tutorMessages.seq}) filter (where ${tutorMessages.role} = 'user'))[1]`,
+      })
       .from(tutorThreads)
+      .leftJoin(tutorMessages, eq(tutorMessages.threadId, tutorThreads.id))
       .where(eq(tutorThreads.userId, c.get('userId')))
+      .groupBy(tutorThreads.id)
       .orderBy(desc(tutorThreads.updatedAt), desc(tutorThreads.createdAt));
     const index = await deps.content();
     return c.json(
-      await Promise.all(
-        rows.map(async (thread) => {
-          const messages = await db
-            .select()
-            .from(tutorMessages)
-            .where(eq(tutorMessages.threadId, thread.id))
-            .orderBy(desc(tutorMessages.createdAt));
-          return {
-            id: thread.id,
-            conceptId: thread.conceptId,
-            conceptTitle: thread.conceptId
-              ? (index.conceptsById.get(thread.conceptId)?.title ?? thread.conceptId)
-              : null,
-            title: thread.title,
-            updatedAt: thread.updatedAt,
-            messageCount: messages.length,
-            lastMessagePreview: messages[0]?.content.slice(0, 140) ?? '',
-          };
-        }),
-      ),
+      rows.map((thread) => ({
+        id: thread.id,
+        conceptId: thread.conceptId,
+        conceptTitle: thread.conceptId
+          ? (index.conceptsById.get(thread.conceptId)?.title ?? thread.conceptId)
+          : null,
+        title: thread.title,
+        updatedAt: thread.updatedAt,
+        messageCount: thread.messageCount,
+        lastMessagePreview: thread.lastMessagePreview?.slice(0, 140) ?? '',
+      })),
     );
   });
   api.get('/tutor/threads/:id', async (c) => {
@@ -82,7 +84,7 @@ export function registerTutorThreadRoutes(
       })
       .from(tutorMessages)
       .where(eq(tutorMessages.threadId, thread.id))
-      .orderBy(tutorMessages.createdAt, tutorMessages.id);
+      .orderBy(tutorMessages.seq);
     return c.json({ thread, messages });
   });
   const send = async (c: Ctx, requestedThreadId?: string) => {
@@ -104,7 +106,7 @@ export function registerTutorThreadRoutes(
           .select()
           .from(tutorMessages)
           .where(eq(tutorMessages.threadId, thread.id))
-          .orderBy(desc(tutorMessages.createdAt), desc(tutorMessages.id))
+          .orderBy(desc(tutorMessages.seq))
           .limit(12)
       : [];
     const history = historyRows.reverse().map((m) => ({
@@ -285,6 +287,7 @@ export function registerTutorThreadRoutes(
           },
         ])
         .returning({
+          seq: tutorMessages.seq,
           id: tutorMessages.id,
           role: tutorMessages.role,
           content: tutorMessages.content,
@@ -294,7 +297,17 @@ export function registerTutorThreadRoutes(
         .update(tutorThreads)
         .set({ updatedAt: tutorMessageAt })
         .where(eq(tutorThreads.id, target.id));
-      return { thread: { ...target, updatedAt: tutorMessageAt }, messages: inserted };
+      return {
+        thread: { ...target, updatedAt: tutorMessageAt },
+        messages: inserted
+          .sort((a, b) => a.seq - b.seq)
+          .map(({ id, role, content, createdAt }) => ({
+            id,
+            role,
+            content,
+            createdAt,
+          })),
+      };
     });
     return c.json(saved);
   };

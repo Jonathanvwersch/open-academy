@@ -81,21 +81,40 @@ test('create-on-first-send persists messages and list/detail preserve newest-fir
   expect(firstPayload.messages).toHaveLength(2);
   const second = await send('second', firstPayload.thread.id);
   expect(second.status).toBe(200);
+  const third = await send('third', firstPayload.thread.id);
+  expect(third.status).toBe(200);
+  expect(captured.at(-1)?.history.map((message) => message.content)).toEqual([
+    'first',
+    'Tutor reply to: first',
+    'second',
+    'Tutor reply to: second',
+  ]);
   const listed = await (await app.request('/api/tutor/threads', { headers })).json();
   expect(listed).toHaveLength(1);
   expect(listed[0]).toMatchObject({
     conceptId: 'supervised-learning',
     conceptTitle: 'Supervised learning setup',
-    messageCount: 4,
+    messageCount: 6,
+    lastMessagePreview: 'first',
   });
   const detail = await (
     await app.request(`/api/tutor/threads/${firstPayload.thread.id}`, { headers })
   ).json();
+  expect(detail.messages.map((message: { role: string }) => message.role)).toEqual([
+    'user',
+    'assistant',
+    'user',
+    'assistant',
+    'user',
+    'assistant',
+  ]);
   expect(detail.messages.map((message: { content: string }) => message.content)).toEqual([
     'first',
     'Tutor reply to: first',
     'second',
     'Tutor reply to: second',
+    'third',
+    'Tutor reply to: third',
   ]);
   expect(detail.thread.title).toBe('Supervised learning setup · 4 Jan');
   const general = await (await send('general question')).json();

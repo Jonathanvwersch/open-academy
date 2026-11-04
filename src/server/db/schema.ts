@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -414,6 +415,7 @@ export const tutorThreads = pgTable(
 );
 
 export const tutorMessages = pgTable('tutor_messages', {
+  seq: bigint('seq', { mode: 'number' }).generatedAlwaysAsIdentity(),
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
     .notNull()
