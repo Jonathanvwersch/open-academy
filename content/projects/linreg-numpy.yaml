@@ -11,12 +11,12 @@ background: |
 
   **Setup**
   ```bash
-  cd labs
-  uv run setup.py linreg-numpy      # copies starter/ to linreg-numpy/work/
-  # edit labs/linreg-numpy/work/linreg.py
-  uv run verify.py linreg-numpy     # runs tests + metrics, writes work/results.json
+  cd labs/linreg-numpy
+  python setup.py
+  # edit work/linreg.py
+  python verify.py
   ```
-  Upload `labs/linreg-numpy/work/results.json` on this page when you are done (you can upload as many times as you like; the latest counts).
+  Upload `work/results.json` on this page when you are done.
 prereqs: [linear-regression, loss-functions, gradient-descent, train-test-split]
 tasks:
   - id: t-predict
@@ -59,6 +59,8 @@ tests:
       concepts: [train-test-split],
       dimension: implementation,
     }
+  - { id: test_lr_0_1_converges, concepts: [gradient-descent], dimension: implementation }
+  - { id: test_lr_1_diverges, concepts: [gradient-descent], dimension: implementation }
   - {
       id: test_recovers_true_weights,
       concepts: [linear-regression, gradient-descent],
