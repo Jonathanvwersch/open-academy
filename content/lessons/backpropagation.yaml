@@ -15,6 +15,8 @@ blocks:
       Local derivatives need forward values (a multiply node needs the other input; ReLU needs to know whether its input was positive). That is why frameworks keep activations in memory during training.
   - kind: example
     md: |
+      This example traces a prediction error backward through a two-layer network.
+
       $y = w_2\,\mathrm{ReLU}(w_1 x)$, $L = (y - t)^2$, with $x = 1$, $w_1 = 2$, $w_2 = 3$, $t = 4$.
 
       Forward: $z = 2$, $h = 2$, $y = 6$, $L = 4$.
@@ -32,6 +34,8 @@ blocks:
       For a batch $X \in \mathbb R^{B\times d}$ in row convention ($Z = XW + b$): $\partial L/\partial W = X^\top G_Z$ and $\partial L/\partial b = \sum_\text{rows} G_Z$. Shape check: a gradient always has the same shape as the thing it is the gradient of.
   - kind: worked
     md: |
+      This worked example implements forward and backward calculations for a small network.
+
       ```python
       # forward
       z1 = X @ W1 + b1          # (B, H)

@@ -34,7 +34,7 @@
     "drizzle-orm": "0.45.4",
     "highlight.js": "11.12.0",
     "hono": "4.13.16",
-    "katex": "0.19.1",
+    "katex": "0.16.47",
     "mathjs": "15.2.0",
     "openai": "7.47.0",
     "postgres": "4.0.0",

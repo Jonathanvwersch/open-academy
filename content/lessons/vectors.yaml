@@ -15,6 +15,8 @@ blocks:
       A data row can also be stored as a vector: for example, a house described by its area, bedroom count and age. The same vector arithmetic works for coordinates and measurements.
   - kind: example
     md: |
+      This example demonstrates vector addition, scaling, and length using concrete coordinates.
+
       Take $a = (1, 2)$ and $b = (3, -1)$.
 
       - Addition is componentwise: $a + b = (1+3,\ 2-1) = (4, 1)$.
@@ -31,6 +33,8 @@ blocks:
       Another norm you will meet is the L1 norm, $\|x\|_1 = \sum_i |x_i|$, which reappears in L1 regularisation and mean absolute error.
   - kind: worked
     md: |
+      This worked example calculates distance between measurement vectors and shows why units matter.
+
       **Distance between two examples.** Houses $p = (2, 5, 1)$ and $q = (4, 1, 1)$, with measurements (rooms, km to centre, floors).
 
       1. Difference: $p - q = (-2, 4, 0)$.

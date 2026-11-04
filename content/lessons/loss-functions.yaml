@@ -13,6 +13,8 @@ blocks:
       - **MAE** uses absolute errors, so every unit of error costs the same and outliers pull on the model less.
   - kind: example
     md: |
+      This example compares how mean squared error and mean absolute error treat one large error.
+
       Errors $(1, 1, 1, 9)$: MSE $= (1 + 1 + 1 + 81)/4 = 21$, while MAE $= (1+1+1+9)/4 = 3$. The single 9 contributes 81 of MSE's 84 total.
   - kind: math
     md: |
@@ -22,6 +24,8 @@ blocks:
       For a fixed set of target values, the prediction that minimises squared errors is their mean; the one that minimises absolute errors is their median.
   - kind: worked
     md: |
+      This worked example calculates both error measures from three predictions and targets.
+
       Predictions $(2.5, 0, 2)$ and targets $(3, -0.5, 2)$:
 
       1. Errors: $(-0.5, 0.5, 0)$.

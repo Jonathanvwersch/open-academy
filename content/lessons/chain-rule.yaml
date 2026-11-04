@@ -12,6 +12,8 @@ blocks:
       This rule lets us differentiate a nested formula one step at a time.
   - kind: example
     md: |
+      This example applies the chain rule to a square built from an inner linear expression.
+
       $y = (3x + 1)^2$. Let $u = 3x + 1$, so $y = u^2$. Then $dy/du = 2u$ and $du/dx = 3$, giving $dy/dx = 2(3x+1)\cdot 3 = 6(3x+1)$.
   - kind: math
     md: |
@@ -21,6 +23,8 @@ blocks:
       $$\frac{\partial L}{\partial x} = \sum_{j} \frac{\partial L}{\partial u_j}\frac{\partial u_j}{\partial x}.$$
   - kind: worked
     md: |
+      This worked example differentiates a nested expression and adds contributions from two paths.
+
       **Square of a linear expression.** Let $u = 2x - 1$ and $y = u^2$.
 
       1. Inner: $du/dx = 2$.

@@ -12,6 +12,8 @@ blocks:
       The learning rate $\eta$ is the step size. If it is too small, you crawl. If it is too large, you overshoot the valley floor, land higher on the other side, and the loss explodes. This update can reduce any function when we can calculate its gradient.
   - kind: example
     md: |
+      This example shows gradient descent approaching a function's minimum through repeated updates.
+
       $L(w) = (w - 3)^2$, so $L'(w) = 2(w - 3)$. Start at $w_0 = 0$ with $\eta = 0.25$:
 
       - $w_1 = 0 - 0.25\cdot(-6) = 1.5$
@@ -30,6 +32,8 @@ blocks:
       With many parameters, the steepest direction limits how large a safe step can be, while gentler directions may take longer to improve.
   - kind: worked
     md: |
+      This worked example takes one gradient step to fit a line to two data points.
+
       **Linear regression, one step by hand.** Data: $(x, y) = (1, 2), (2, 4)$. Model $\hat y = wx$ (no bias), MSE loss, $w_0 = 0$, $\eta = 0.1$.
 
       1. Predictions: $(0, 0)$. Residuals $\hat y - y = (-2, -4)$.

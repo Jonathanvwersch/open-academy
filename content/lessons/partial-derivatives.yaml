@@ -10,6 +10,8 @@ blocks:
       A function can depend on several variables at once. A **partial derivative** asks: *if I nudge only one variable and freeze all the others, how does the output change?* You differentiate with respect to that variable and treat every other variable as a constant.
   - kind: example
     md: |
+      This example shows each partial derivative varying one variable while holding the other fixed.
+
       $f(w, b) = w^2 b + 3b$.
 
       - $\partial f/\partial w$: treat $b$ as a constant, so $2wb$.
@@ -20,6 +22,8 @@ blocks:
       Every single-variable rule still applies; the other variables simply behave like numbers.
   - kind: worked
     md: |
+      This worked example applies the partial-derivative rules to a function of two variables.
+
       **A function of two variables.** $f(w, b) = (wx + b)^2$, where $x$ is held fixed.
 
       Let $q = wx + b$. Then:
