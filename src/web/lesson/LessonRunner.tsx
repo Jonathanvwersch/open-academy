@@ -185,7 +185,7 @@ export function LessonRunner({
       ) : state.status === 'needs_retry' ? (
         <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-5">
           <h2 className="text-xl font-semibold">Try again later</h2>
-          <p>You’ll get fresh problems on this step next time.</p>
+          <p>This step comes back in your next session.</p>
           {state.lastAnsweredProblem ? (
             <>
               <div
