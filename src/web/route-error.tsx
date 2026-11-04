@@ -1,4 +1,5 @@
 import { useRouter } from '@tanstack/react-router';
+import { Button } from './ui/button.js';
 
 export function RouteLoadError({
   message,
@@ -15,13 +16,9 @@ export function RouteLoadError({
       <p className={className} role={role}>
         {message}
       </p>
-      <button
-        type="button"
-        onClick={() => void router.invalidate()}
-        className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm"
-      >
+      <Button variant="outline" size="sm" type="button" onClick={() => void router.invalidate()}>
         Retry
-      </button>
+      </Button>
     </div>
   );
 }

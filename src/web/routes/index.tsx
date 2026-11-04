@@ -1,12 +1,14 @@
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
+import { Button } from '@/ui/button.js';
+import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
 import { todayQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
 
 export const Route = createFileRoute('/')({
   loader: ({ context }) => context.queryClient.ensureQueryData(todayQueryOptions()),
   errorComponent: () => (
-    <RouteLoadError message="Your plan is unavailable." className="text-sm text-red-700" />
+    <RouteLoadError message="Your plan is unavailable." className="text-sm text-destructive" />
   ),
   component: TodayPage,
 });
@@ -38,22 +40,27 @@ function TodayPage() {
           <p className="text-sm text-neutral-500">Week {plan.week}</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Today</h1>
         </div>
-        <div className="rounded-xl border border-neutral-200 bg-white p-6">
-          <h2 className="text-lg font-semibold">Welcome to Academy</h2>
-          <p className="mt-2 max-w-[70ch] text-sm leading-6 text-neutral-600">
-            Begin with a short diagnostic so your first sessions start at the right level.
-          </p>
-          <a
-            href={
-              plan.diagnosticActive && plan.diagnosticRunId
-                ? `/diagnostic?runId=${plan.diagnosticRunId}`
-                : '/diagnostic'
-            }
-            className="mt-4 inline-flex rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white"
-          >
-            {plan.diagnosticActive ? 'Resume diagnostic' : 'Start diagnostic'}
-          </a>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Welcome to Academy</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="max-w-[70ch] text-sm leading-6 text-muted-foreground">
+              Begin with a short diagnostic so your first sessions start at the right level.
+            </p>
+            <Button asChild>
+              <a
+                href={
+                  plan.diagnosticActive && plan.diagnosticRunId
+                    ? `/diagnostic?runId=${plan.diagnosticRunId}`
+                    : '/diagnostic'
+                }
+              >
+                {plan.diagnosticActive ? 'Resume diagnostic' : 'Start diagnostic'}
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
       </section>
     );
   }
@@ -70,77 +77,75 @@ function TodayPage() {
           {plan.dueReviews} review{plan.dueReviews === 1 ? '' : 's'} due
         </p>
       </div>
-      <div className="rounded-xl border border-neutral-200 bg-white p-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-          Current week
-        </p>
-        <p className="mt-2 max-w-[70ch] text-base leading-7">{plan.objective}</p>
-      </div>
       {plan.dueReviews > 0 ? (
-        <div className="rounded-xl border border-neutral-200 bg-white p-5">
-          <h2 className="font-semibold">Reviews due</h2>
-          <ul className="mt-2 space-y-1 text-sm text-neutral-600">
-            {plan.plan.activities
-              .filter((activity) => activity.kind === 'review')
-              .map((activity) => (
-                <li
-                  key={`${activity.kind}-${activity.conceptId ?? 'review'}-${activity.reason.summary}`}
-                >
-                  Review · {activity.conceptTitle ?? activity.conceptId ?? 'saved material'} ·{' '}
-                  {activity.plannedMinutes} min
+        <Card>
+          <CardHeader>
+            <CardTitle>Reviews due</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              {plan.plan.activities
+                .filter((activity) => activity.kind === 'review')
+                .map((activity) => (
+                  <li
+                    key={`${activity.kind}-${activity.conceptId ?? 'review'}-${activity.reason.summary}`}
+                  >
+                    Review · {activity.conceptTitle ?? activity.conceptId ?? 'saved material'} ·{' '}
+                    {activity.plannedMinutes} min
+                  </li>
+                ))}
+              {!plan.plan.activities.some((activity) => activity.kind === 'review') ? (
+                <li>
+                  {plan.dueReviews} review{plan.dueReviews === 1 ? '' : 's'} ready to schedule.
                 </li>
-              ))}
-            {!plan.plan.activities.some((activity) => activity.kind === 'review') ? (
-              <li>
-                {plan.dueReviews} review{plan.dueReviews === 1 ? '' : 's'} ready to schedule.
-              </li>
-            ) : null}
-          </ul>
-        </div>
+              ) : null}
+            </ul>
+          </CardContent>
+        </Card>
       ) : null}
       {plan.activeSessionId ? (
-        <a
-          href={`/session/${plan.activeSessionId}`}
-          className="inline-flex rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white"
-        >
-          Resume session
-        </a>
+        <Button asChild>
+          <a href={`/session/${plan.activeSessionId}`}>Resume session</a>
+        </Button>
       ) : (
         <div className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold">
               Planned session · {plan.budgetMinutes} minutes
             </h2>
-            <ul className="mt-3 divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white">
-              {plan.plan.activities.map((activity, index) => (
-                <li
-                  key={`${activity.kind}-${activity.conceptId ?? index}`}
-                  className="flex items-start justify-between gap-4 p-4"
-                >
-                  <div>
-                    <p className="font-medium capitalize">
-                      {activity.kind.replace('_', ' ')}
-                      {activity.conceptId
-                        ? ` · ${activity.conceptTitle ?? activity.conceptId}`
-                        : ''}
-                    </p>
-                    <p className="mt-1 text-sm text-neutral-600">{activity.reason.summary}</p>
-                  </div>
-                  <span className="shrink-0 text-sm text-neutral-500">
-                    {activity.plannedMinutes} min
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <Card className="mt-3 p-0">
+              <ul className="divide-y">
+                {plan.plan.activities.map((activity, index) => (
+                  <li
+                    key={`${activity.kind}-${activity.conceptId ?? index}`}
+                    className="flex items-start justify-between gap-4 p-4"
+                  >
+                    <div>
+                      <p className="font-medium capitalize">
+                        {activity.kind.replace('_', ' ')}
+                        {activity.conceptId
+                          ? ` · ${activity.conceptTitle ?? activity.conceptId}`
+                          : ''}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {activity.reason.summary}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm text-muted-foreground">
+                      {activity.plannedMinutes} min
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
           </div>
-          <button
+          <Button
             type="button"
             onClick={() => startSession.mutate()}
             disabled={startSession.isPending}
-            className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
             {startSession.isPending ? 'Starting…' : 'Start session'}
-          </button>
+          </Button>
         </div>
       )}
     </section>

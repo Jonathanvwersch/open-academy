@@ -1,10 +1,12 @@
+import { mkdirSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 import { createDb } from '../../src/server/db/client.js';
 import { users } from '../../src/server/db/schema.js';
 import { env } from '../../src/server/env.js';
 
 const conceptId = 'supervised-learning';
-const screenshotDir = '/home/ubuntu/screenshots/lesson-runner';
+const screenshotDir = '/home/ubuntu/screenshots/shadcn';
+mkdirSync(screenshotDir, { recursive: true });
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -34,6 +36,7 @@ async function createSession(page: Page, focusConcept = true) {
   expect(session.status).toBe(201);
   await page.goto(`/session/${session.session.id}`);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  await expect(page.getByText(/^Learn · \d+ of \d+ today$/)).toBeVisible();
   await expect.poll(async () => (await currentRun(page))?.pendingProblem?.id).toBeTruthy();
   return session.session.id as string;
 }
@@ -70,7 +73,8 @@ async function answerAndReload(page: Page, correct: boolean) {
     const inputs = exercise.multi ? page.getByRole('checkbox') : page.getByRole('radio');
     for (const id of ids) {
       const index = exercise.options.findIndex((option: { id: string }) => option.id === id);
-      await inputs.nth(index).check();
+      await inputs.nth(index).click();
+      await expect(inputs.nth(index)).toHaveAttribute('aria-checked', 'true');
     }
   } else {
     await page.getByLabel('Your answer').fill(String(answer));

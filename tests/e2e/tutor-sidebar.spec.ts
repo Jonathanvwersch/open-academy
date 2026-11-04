@@ -1,3 +1,4 @@
+import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { createDb } from '../../src/server/db/client.js';
 import { sessionActivities, studySessions, users } from '../../src/server/db/schema.js';
@@ -9,7 +10,8 @@ declare global {
   }
 }
 
-const screenshotDir = '/home/ubuntu/screenshots/tutor-sidebar';
+const screenshotDir = '/home/ubuntu/screenshots/shadcn';
+mkdirSync(screenshotDir, { recursive: true });
 let sessionId = '';
 
 test.beforeEach(async () => {
@@ -63,13 +65,14 @@ test('tutor sidebar saves threads, restores after reload, switches chats, hides 
   await page.goto(`/session/${sessionId}`);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Ask the tutor' })).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/closed-button.png`, fullPage: true });
+  await page.screenshot({ path: `${screenshotDir}/closed-button.png` });
 
   await page.evaluate(() => {
     window.__layoutShifts = [];
   });
   await page.getByRole('button', { name: 'Ask the tutor' }).click();
-  await expect(page.getByRole('complementary', { name: 'Tutor sidebar' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Tutor' })).toBeVisible();
+  await expect(page.locator('[data-slot="sheet-overlay"]')).toHaveCount(0);
   await page.getByLabel('Ask the tutor').fill('Explain the first step');
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.getByText('Tutor reply to: Explain the first step')).toBeVisible();
@@ -77,26 +80,26 @@ test('tutor sidebar saves threads, restores after reload, switches chats, hides 
     window.__layoutShifts.reduce((total, value) => total + value, 0),
   );
   expect(cls, 'opening the tutor sidebar CLS').toBeLessThan(0.02);
-  await page.screenshot({ path: `${screenshotDir}/open-conversation.png`, fullPage: true });
+  await page.screenshot({ path: `${screenshotDir}/open-conversation.png` });
 
   await page.reload();
-  await expect(page.getByRole('complementary', { name: 'Tutor sidebar' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Tutor' })).toBeVisible();
   await expect(page.getByText('Tutor reply to: Explain the first step')).toBeVisible();
   await expect(page.getByText('Problem 1 · up to 5')).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/after-reload.png`, fullPage: true });
+  await page.screenshot({ path: `${screenshotDir}/after-reload.png` });
 
   await page.getByRole('button', { name: 'New chat' }).click();
   await page.getByLabel('Ask the tutor').fill('Why are targets useful?');
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.getByText('Tutor reply to: Why are targets useful?')).toBeVisible();
-  await page.getByRole('button', { name: 'Tutor conversation' }).click();
+  await page.getByRole('combobox', { name: 'Tutor conversation' }).click();
   await expect(page.getByRole('listbox', { name: 'Saved tutor conversations' })).toBeVisible();
   await expect(page.getByRole('option').filter({ hasText: 'Supervised learning' })).toHaveCount(2);
-  await page.screenshot({ path: `${screenshotDir}/thread-dropdown.png`, fullPage: true });
+  await page.screenshot({ path: `${screenshotDir}/thread-dropdown.png` });
   await page.getByRole('option').filter({ hasText: 'Explain the first step' }).click();
   await expect(page.getByText('Tutor reply to: Explain the first step')).toBeVisible();
 
   await page.goto('/diagnostic');
   await expect(page.getByRole('button', { name: 'Open tutor' })).toHaveCount(0);
-  await expect(page.getByRole('complementary', { name: 'Tutor sidebar' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Tutor' })).toHaveCount(0);
 });

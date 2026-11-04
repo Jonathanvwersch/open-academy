@@ -11,6 +11,7 @@ export default defineConfig({
   ],
   use: {
     baseURL: 'http://127.0.0.1:5174',
+    viewport: { width: 1280, height: 900 },
   },
   webServer: {
     command: 'pnpm dev',

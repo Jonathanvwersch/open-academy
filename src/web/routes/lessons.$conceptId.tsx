@@ -1,6 +1,8 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
+import { Button } from '@/ui/button.js';
+import { Card, CardContent } from '@/ui/card.js';
 import { LessonBlock, Markdown } from '../components.js';
 import { exerciseQueryOptions, lessonReviewQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
@@ -22,7 +24,10 @@ export const Route = createFileRoute('/lessons/$conceptId')({
     );
   },
   errorComponent: () => (
-    <RouteLoadError message="This lesson could not be loaded." className="text-sm text-red-700" />
+    <RouteLoadError
+      message="This lesson could not be loaded."
+      className="text-sm text-destructive"
+    />
   ),
   component: LessonReviewPage,
 });
@@ -35,31 +40,25 @@ function LessonReviewPage() {
   return (
     <section className="mx-auto max-w-3xl space-y-6">
       {from ? (
-        <a
-          href={`/session/${encodeURIComponent(from)}`}
-          className="inline-block text-sm font-medium text-blue-700 underline"
-        >
-          ← Back to session
-        </a>
+        <Button asChild variant="link" className="px-0">
+          <a href={`/session/${encodeURIComponent(from)}`}>← Back to session</a>
+        </Button>
       ) : null}
       <h1 className="text-3xl font-semibold">{conceptTitle}</h1>
       {lesson.knowledge_points?.length ? (
         <div className="space-y-5">
           {lesson.knowledge_points.map((point, index) => (
-            <article
-              key={point.id}
-              className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5"
-            >
+            <article key={point.id} className="space-y-4">
               <h2 className="text-xl font-semibold">
                 {index + 1}. {point.title}
               </h2>
               <Markdown>{point.explain}</Markdown>
-              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                  Worked example
-                </p>
-                <Markdown>{point.worked}</Markdown>
-              </div>
+              <Card className="bg-muted/50">
+                <CardContent className="space-y-2 p-4">
+                  <h3 className="font-medium">Worked example</h3>
+                  <Markdown>{point.worked}</Markdown>
+                </CardContent>
+              </Card>
             </article>
           ))}
         </div>
@@ -92,13 +91,14 @@ function ReadOnlyCheck({ exerciseId, answer }: { exerciseId: string; answer: str
   return (
     <div className="space-y-3">
       <Markdown>{exercise.prompt}</Markdown>
-      <button
+      <Button
         type="button"
-        className="text-sm font-medium text-blue-700 underline"
+        variant="link"
+        className="px-0"
         onClick={() => setOpen((value) => !value)}
       >
         {open ? 'Hide answer' : 'Show answer'}
-      </button>
+      </Button>
       {open ? (
         answer ? (
           <Markdown>{answer}</Markdown>

@@ -3,6 +3,10 @@ import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { Background, Controls, type Edge, type Node, ReactFlow } from '@xyflow/react';
 import { useEffect, useMemo, useState } from 'react';
+import { Badge } from '@/ui/badge.js';
+import { Button } from '@/ui/button.js';
+import { Card, CardContent } from '@/ui/card.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/select.js';
 import { conceptQueryOptions, mapQueryOptions } from '../queries.js';
 import '@xyflow/react/dist/style.css';
 
@@ -144,35 +148,41 @@ function MapPage() {
           <p className="text-sm text-neutral-500">Prerequisites and mastery</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Knowledge map</h1>
         </div>
-        <label className="text-sm text-neutral-600">
-          Domain
-          <select
-            value={selectedDomain}
-            onChange={(event) => setDomain(event.target.value)}
-            className="ml-2 rounded-md border border-neutral-300 bg-white px-3 py-2"
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Domain</span>
+          <Select
+            value={selectedDomain || 'all'}
+            onValueChange={(value) => setDomain(value === 'all' ? null : value)}
           >
-            <option value="">All domains</option>
-            {mapQuery.data.domains.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.title}
-              </option>
-            ))}
-          </select>
-        </label>
+            <SelectTrigger aria-label="Domain">
+              <SelectValue placeholder="All domains" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All domains</SelectItem>
+              {mapQuery.data.domains.map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-      <div className="h-[560px] rounded-xl border border-neutral-200 bg-white">
-        <ReactFlow
-          nodes={graph.nodes}
-          edges={graph.edges}
-          fitView
-          fitViewOptions={{ padding: 0.18 }}
-          minZoom={0.35}
-          onNodeClick={openConcept}
-        >
-          <Background color="#e5e5e5" />
-          <Controls />
-        </ReactFlow>
-      </div>
+      <Card className="h-[560px] p-0">
+        <div className="h-full w-full">
+          <ReactFlow
+            nodes={graph.nodes}
+            edges={graph.edges}
+            fitView
+            fitViewOptions={{ padding: 0.18 }}
+            minZoom={0.35}
+            onNodeClick={openConcept}
+          >
+            <Background color="#e5e5e5" />
+            <Controls />
+          </ReactFlow>
+        </div>
+      </Card>
       <ul aria-label="Mastery legend" className="flex flex-wrap gap-3 text-xs text-neutral-700">
         {[
           { color: '#f5f5f5', label: 'Not assessed / introduced' },
@@ -196,84 +206,78 @@ function MapPage() {
         ))}
       </ul>
       {concept ? (
-        <aside
-          className="rounded-xl border border-neutral-200 bg-white p-6"
-          aria-label={`${concept.title} details`}
-        >
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold">{concept.title}</h2>
-              <p className="mt-1 max-w-[70ch] text-sm text-neutral-600">{concept.description}</p>
-              {concept.status === 'stub' ? (
-                <p className="mt-2 text-sm font-medium text-neutral-500">Not yet authored</p>
-              ) : null}
-            </div>
-            <div className="flex gap-2">
-              {concept.id && hasLesson ? (
-                <a
-                  href={`/lessons/${encodeURIComponent(concept.id)}`}
-                  className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium"
-                >
-                  View lesson
-                </a>
-              ) : null}
-              {concept.status !== 'stub' ? (
-                <button
+        <Card aria-label={`${concept.title} details`}>
+          <CardContent className="space-y-4 p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold">{concept.title}</h2>
+                <p className="mt-1 max-w-[70ch] text-sm text-neutral-600">{concept.description}</p>
+                {concept.status === 'stub' ? (
+                  <p className="mt-2 text-sm font-medium text-neutral-500">Not yet authored</p>
+                ) : null}
+              </div>
+              <div className="flex gap-2">
+                {concept.id && hasLesson ? (
+                  <Button asChild variant="outline" size="sm">
+                    <a href={`/lessons/${encodeURIComponent(concept.id)}`}>View lesson</a>
+                  </Button>
+                ) : null}
+                {concept.status !== 'stub' ? (
+                  <Button type="button" onClick={studyNow}>
+                    Study this now
+                  </Button>
+                ) : null}
+                <Button
                   type="button"
-                  onClick={studyNow}
-                  className="rounded-md bg-blue-700 px-3 py-2 text-sm font-medium text-white"
+                  variant="outline"
+                  onClick={() => {
+                    setSelected(null);
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('concept');
+                    window.history.replaceState({}, '', url);
+                  }}
                 >
-                  Study this now
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => {
-                  setSelected(null);
-                  const url = new URL(window.location.href);
-                  url.searchParams.delete('concept');
-                  window.history.replaceState({}, '', url);
-                }}
-                className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
-              >
-                Close
-              </button>
+                  Close
+                </Button>
+              </div>
             </div>
-          </div>
-          <h3 className="mt-5 text-sm font-semibold">Mastery by dimension</h3>
-          <ul className="mt-2 flex flex-wrap gap-2">
-            {(mastery ?? []).map((record) => (
-              <li key={record.dimension} className="rounded-full bg-neutral-100 px-3 py-1 text-sm">
-                {record.dimension}: {record.inferred ? 'inferred' : record.state}
-              </li>
-            ))}
-          </ul>
-          <h3 className="mt-5 text-sm font-semibold">Mastery history</h3>
-          <ul className="mt-2 space-y-2 text-sm text-neutral-600">
-            {(mastery ?? []).flatMap((record) =>
-              (record.attempts ?? []).map((attempt) => (
-                <li key={`${record.dimension}-${attempt.exerciseId}-${attempt.createdAt}`}>
-                  {record.dimension}: {attempt.exerciseId} · {attempt.correct} correct ·{' '}
-                  {attempt.credit} credit · {attempt.hintsUsed} hints · {attempt.mode} ·{' '}
-                  {new Date(attempt.createdAt).toLocaleDateString()}
+            <h3 className="mt-5 text-sm font-semibold">Mastery by dimension</h3>
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {(mastery ?? []).map((record) => (
+                <li key={record.dimension}>
+                  <Badge variant="secondary">
+                    {record.dimension}: {record.inferred ? 'inferred' : record.state}
+                  </Badge>
                 </li>
-              )),
-            )}
-            {!mastery?.some((record) => record.attempts?.length) ? (
-              <li>No attempt evidence recorded yet.</li>
-            ) : null}
-          </ul>
-          <h3 className="mt-5 text-sm font-semibold">Mastery events</h3>
-          <ul className="mt-2 space-y-2 text-sm text-neutral-600">
-            {(events ?? []).map((event) => (
-              <li key={`${event.dimension}-${event.createdAt}-${event.rule}`}>
-                {event.dimension}: {event.fromState} → {event.toState} · {event.rule} ·{' '}
-                {new Date(event.createdAt).toLocaleDateString()}
-              </li>
-            ))}
-            {!events?.length ? <li>No recorded mastery events yet.</li> : null}
-          </ul>
-        </aside>
+              ))}
+            </ul>
+            <h3 className="mt-5 text-sm font-semibold">Mastery history</h3>
+            <ul className="mt-2 space-y-2 text-sm text-neutral-600">
+              {(mastery ?? []).flatMap((record) =>
+                (record.attempts ?? []).map((attempt) => (
+                  <li key={`${record.dimension}-${attempt.exerciseId}-${attempt.createdAt}`}>
+                    {record.dimension}: {attempt.exerciseId} · {attempt.correct} correct ·{' '}
+                    {attempt.credit} credit · {attempt.hintsUsed} hints · {attempt.mode} ·{' '}
+                    {new Date(attempt.createdAt).toLocaleDateString()}
+                  </li>
+                )),
+              )}
+              {!mastery?.some((record) => record.attempts?.length) ? (
+                <li>No attempt evidence recorded yet.</li>
+              ) : null}
+            </ul>
+            <h3 className="mt-5 text-sm font-semibold">Mastery events</h3>
+            <ul className="mt-2 space-y-2 text-sm text-neutral-600">
+              {(events ?? []).map((event) => (
+                <li key={`${event.dimension}-${event.createdAt}-${event.rule}`}>
+                  {event.dimension}: {event.fromState} → {event.toState} · {event.rule} ·{' '}
+                  {new Date(event.createdAt).toLocaleDateString()}
+                </li>
+              ))}
+              {!events?.length ? <li>No recorded mastery events yet.</li> : null}
+            </ul>
+          </CardContent>
+        </Card>
       ) : null}
     </section>
   );

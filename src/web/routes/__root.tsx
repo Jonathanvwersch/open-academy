@@ -1,5 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { Button } from '@/ui/button.js';
+import { TooltipProvider } from '@/ui/tooltip.js';
 import { TutorContextProvider } from '../tutor/TutorSidebar.js';
 
 interface RouterContext {
@@ -17,34 +19,40 @@ const navigation = [
 function RootLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900">
-      <header className="border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-5">
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="border-b bg-background">
+        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-4 px-5">
           <Link to="/" className="text-sm font-semibold tracking-tight">
             Academy
           </Link>
           <nav aria-label="Main navigation" className="flex items-center gap-1">
             {navigation.map((item) => (
-              <Link
+              <Button
                 key={item.to}
-                to={item.to}
-                activeProps={{ className: 'bg-neutral-100 text-neutral-900' }}
-                className="rounded-md px-3 py-2 text-sm text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                asChild
+                size="sm"
+                variant={
+                  pathname === item.to || (item.to !== '/' && pathname.startsWith(item.to))
+                    ? 'secondary'
+                    : 'ghost'
+                }
               >
-                {item.label}
-              </Link>
+                <Link to={item.to}>{item.label}</Link>
+              </Button>
             ))}
           </nav>
         </div>
       </header>
-      <TutorContextProvider
-        routeAllowed={!pathname.startsWith('/diagnostic')}
-        sessionRoute={pathname.startsWith('/session/')}
-      >
-        <main className="mx-auto max-w-5xl px-5 py-10">
-          <Outlet />
-        </main>
-      </TutorContextProvider>
+      <TooltipProvider>
+        <TutorContextProvider
+          routeAllowed={!pathname.startsWith('/diagnostic')}
+          sessionRoute={pathname.startsWith('/session/')}
+        >
+          <main className="mx-auto max-w-3xl px-5 py-8">
+            <Outlet />
+          </main>
+        </TutorContextProvider>
+      </TooltipProvider>
     </div>
   );
 }

@@ -1,6 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Outlet, useRouterState } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/ui/button.js';
+import { Card, CardContent } from '@/ui/card.js';
+import { Skeleton } from '@/ui/skeleton.js';
 import { ExerciseForm, Markdown, ModeBadge } from '../components';
 
 interface DiagnosticItem {
@@ -118,29 +121,39 @@ function DiagnosticPage() {
         </p>
       </div>
       {exercise ? (
-        <article className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            {domainTitle}
-          </p>
-          <ModeBadge mode="assessment" />
-          <Markdown>{exercise.prompt}</Markdown>
-          <ExerciseForm key={`${runId}:${exercise.id}`} exercise={exercise} onSubmit={submit} />
-          {feedback ? (
-            <div role="status" className="text-sm text-neutral-600">
-              <Markdown>{feedback}</Markdown>
-            </div>
-          ) : null}
-          <button
-            type="button"
-            disabled={busy}
-            onClick={skip}
-            className="text-sm text-neutral-600 underline underline-offset-4"
-          >
-            I haven’t studied this domain
-          </button>
-        </article>
+        <Card>
+          <CardContent className="space-y-5 p-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              {domainTitle}
+            </p>
+            <ModeBadge mode="assessment" />
+            <Markdown>{exercise.prompt}</Markdown>
+            <ExerciseForm key={`${runId}:${exercise.id}`} exercise={exercise} onSubmit={submit} />
+            {feedback ? (
+              <div role="status" className="text-sm text-neutral-600">
+                <Markdown>{feedback}</Markdown>
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={skip}
+              variant="link"
+              className="px-0 text-muted-foreground"
+            >
+              I haven’t studied this domain
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <p className="text-sm text-neutral-600">Preparing your diagnostic…</p>
+        <Card aria-busy="true" aria-label="Preparing diagnostic">
+          <CardContent className="space-y-5 p-6">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-10 w-32" />
+          </CardContent>
+        </Card>
       )}
     </section>
   );

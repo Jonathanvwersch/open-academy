@@ -4,6 +4,10 @@ import { ExerciseForm, FeedbackPanel, Markdown } from '../components.js';
 import { type LessonRunPayload, lessonQueryOptions, lessonRunQueryOptions } from '../queries.js';
 import { SessionActivityHeader } from '../session/SessionActivityHeader.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
+import { Alert, AlertDescription } from '../ui/alert.js';
+import { Badge } from '../ui/badge.js';
+import { Button } from '../ui/button.js';
+import { Card, CardContent } from '../ui/card.js';
 
 export function LessonRunner({
   conceptId,
@@ -175,168 +179,171 @@ export function LessonRunner({
       />
       <ol aria-label="Lesson steps" className="flex flex-wrap gap-2">
         {state.points.map((item, index) => (
-          <li
-            key={item.id}
-            className={`rounded-full border px-3 py-1 text-sm ${
-              item.status === 'passed'
-                ? 'border-green-300 bg-green-50 text-green-900'
-                : item.status === 'failed'
-                  ? 'border-red-300 bg-red-50 text-red-900'
-                  : item.id === state.currentPointId
-                    ? 'border-blue-300 bg-blue-50 text-blue-900'
-                    : 'border-neutral-200 text-neutral-600'
-            }`}
-          >
-            {item.status === 'passed' ? '✓ ' : item.status === 'failed' ? '! ' : ''}
-            Step {index + 1} of {state.points.length}
+          <li key={item.id}>
+            <Badge
+              variant="outline"
+              className={`${
+                item.status === 'passed'
+                  ? 'border-green-300 bg-green-50 text-green-900'
+                  : item.status === 'failed'
+                    ? 'border-red-300 bg-red-50 text-red-900'
+                    : item.id === state.currentPointId
+                      ? 'border-primary bg-muted text-foreground'
+                      : 'border-neutral-200 text-neutral-600'
+              }`}
+            >
+              {item.status === 'passed' ? '✓ ' : item.status === 'failed' ? '! ' : ''}
+              Step {index + 1} of {state.points.length}
+            </Badge>
           </li>
         ))}
       </ol>
 
       {state.status === 'completed' ? (
-        <div className="space-y-3 rounded-xl border border-green-300 bg-green-50 p-5">
-          <h2 className="text-xl font-semibold">Lesson complete · +{state.xpEarned} XP</h2>
-          <p>Your progress and experience points have been saved.</p>
-          {state.lastAnsweredProblem ? (
-            <>
-              <div
-                data-testid="lesson-problem"
-                data-problem-id={state.lastAnsweredProblem.id}
-                className="rounded-lg border border-green-200 bg-white p-4"
-              >
-                <p className="mb-2 text-sm font-medium">
-                  Problem {state.lastAnsweredProblem.position} · up to 5
-                </p>
-                <div data-testid="lesson-problem-prompt">
-                  <Markdown>{state.lastAnsweredProblem.exercise.prompt}</Markdown>
+        <Card className="border-green-300 bg-green-50">
+          <CardContent className="space-y-3 p-5 text-green-950">
+            <h2 className="text-xl font-semibold">Lesson complete · +{state.xpEarned} XP</h2>
+            <p>Your progress and experience points have been saved.</p>
+            {state.lastAnsweredProblem ? (
+              <>
+                <div
+                  data-testid="lesson-problem"
+                  data-problem-id={state.lastAnsweredProblem.id}
+                  className="rounded-lg border border-green-200 bg-background p-4"
+                >
+                  <p className="mb-2 text-sm font-medium">
+                    Problem {state.lastAnsweredProblem.position} · up to 5
+                  </p>
+                  <div data-testid="lesson-problem-prompt">
+                    <Markdown>{state.lastAnsweredProblem.exercise.prompt}</Markdown>
+                  </div>
                 </div>
-              </div>
-              <FeedbackPanel result={state.lastAnsweredProblem.result} />
-            </>
-          ) : null}
-        </div>
+                <FeedbackPanel result={state.lastAnsweredProblem.result} />
+              </>
+            ) : null}
+          </CardContent>
+        </Card>
       ) : state.status === 'needs_retry' ? (
-        <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-5">
-          <h2 className="text-xl font-semibold">Try again later</h2>
-          <p>This step comes back in your next session.</p>
-          {state.lastAnsweredProblem ? (
-            <>
-              <div
-                data-testid="lesson-problem"
-                data-problem-id={state.lastAnsweredProblem.id}
-                className="rounded-lg border border-amber-200 bg-white p-4"
-              >
-                <p className="mb-2 text-sm font-medium">
-                  Problem {state.lastAnsweredProblem.position} · up to 5
-                </p>
-                <div data-testid="lesson-problem-prompt">
-                  <Markdown>{state.lastAnsweredProblem.exercise.prompt}</Markdown>
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="space-y-2 p-5 text-amber-950">
+            <h2 className="text-xl font-semibold">Try again later</h2>
+            <p>This step comes back in your next session.</p>
+            {state.lastAnsweredProblem ? (
+              <>
+                <div
+                  data-testid="lesson-problem"
+                  data-problem-id={state.lastAnsweredProblem.id}
+                  className="rounded-lg border border-amber-200 bg-background p-4"
+                >
+                  <p className="mb-2 text-sm font-medium">
+                    Problem {state.lastAnsweredProblem.position} · up to 5
+                  </p>
+                  <div data-testid="lesson-problem-prompt">
+                    <Markdown>{state.lastAnsweredProblem.exercise.prompt}</Markdown>
+                  </div>
                 </div>
-              </div>
-              <FeedbackPanel result={state.lastAnsweredProblem.result} />
-            </>
-          ) : null}
-        </div>
+                <FeedbackPanel result={state.lastAnsweredProblem.result} />
+              </>
+            ) : null}
+          </CardContent>
+        </Card>
       ) : (
         <>
           {point ? (
-            <section className="space-y-4 rounded-xl border border-neutral-200 bg-white p-5">
+            <section className="space-y-4">
               <h2 className="text-xl font-semibold">{point.title}</h2>
               <Markdown>{point.explain}</Markdown>
-              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-neutral-500">
-                  Worked example
-                </p>
-                <Markdown>{point.worked}</Markdown>
-              </div>
+              <Card className="bg-muted/50">
+                <CardContent className="space-y-2 p-4">
+                  <h3 className="font-medium">Worked example</h3>
+                  <Markdown>{point.worked}</Markdown>
+                </CardContent>
+              </Card>
             </section>
           ) : null}
           {shownProblem ? (
-            <article
-              className="space-y-5 rounded-xl border border-neutral-200 bg-white p-5"
+            <Card
+              className="space-y-5"
               data-testid="lesson-problem"
               data-problem-id={shownProblem.id}
             >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="font-semibold">Problem {shownProblem.position} · up to 5</h3>
-                <p className="text-sm text-neutral-600">2 in a row to move on</p>
-              </div>
-              <div
-                role="img"
-                aria-label={`${pointStatus?.streak ?? 0} correct in a row`}
-                className="flex gap-2"
-              >
-                {[0, 1].map((index) => (
-                  <span
-                    key={index}
-                    className={`h-3 w-3 rounded-full border ${
-                      index < (pointStatus?.streak ?? 0)
-                        ? 'border-green-600 bg-green-500'
-                        : 'border-neutral-300 bg-white'
-                    }`}
-                  />
-                ))}
-              </div>
-              <div data-testid="lesson-problem-prompt">
-                <Markdown>{shownProblem.exercise.prompt}</Markdown>
-              </div>
-              {showingAnswer && state.lastAnsweredProblem ? (
-                <>
-                  <FeedbackPanel result={state.lastAnsweredProblem.result} />
-                  {pointStatus?.status === 'passed' ? (
-                    <p className="font-semibold text-green-800">+{pointStatus.xpEarned} XP</p>
-                  ) : null}
-                  {tutorEnabled ? (
-                    <TutorLauncher
-                      context={{
-                        conceptId,
-                        activityId,
-                        lessonProblemId: state.lastAnsweredProblem.id,
-                        allowed: true,
-                        enabled: tutorEnabled,
-                      }}
-                    >
-                      Ask the tutor about this
-                    </TutorLauncher>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <ExerciseForm
-                    exercise={shownProblem.exercise}
-                    onSubmit={submit}
-                    disabled={busy}
-                    submitLabel={busy ? 'Saving…' : 'Submit answer'}
-                  />
-                  {tutorEnabled && state.pendingProblem ? (
-                    <TutorLauncher
-                      context={{
-                        conceptId,
-                        activityId,
-                        lessonProblemId: state.pendingProblem.id,
-                        allowed: true,
-                        enabled: tutorEnabled,
-                      }}
+              <CardContent className="space-y-5 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="font-semibold">Problem {shownProblem.position} · up to 5</h3>
+                  <p className="text-sm text-neutral-600">2 in a row to move on</p>
+                </div>
+                <div
+                  role="img"
+                  aria-label={`${pointStatus?.streak ?? 0} correct in a row`}
+                  className="flex gap-2"
+                >
+                  {[0, 1].map((index) => (
+                    <span
+                      key={index}
+                      className={`h-3 w-3 rounded-full border ${
+                        index < (pointStatus?.streak ?? 0)
+                          ? 'border-green-600 bg-green-500'
+                          : 'border-neutral-300 bg-white'
+                      }`}
                     />
-                  ) : null}
-                </>
-              )}
-            </article>
+                  ))}
+                </div>
+                <div data-testid="lesson-problem-prompt">
+                  <Markdown>{shownProblem.exercise.prompt}</Markdown>
+                </div>
+                {showingAnswer && state.lastAnsweredProblem ? (
+                  <>
+                    <FeedbackPanel result={state.lastAnsweredProblem.result} />
+                    {pointStatus?.status === 'passed' ? (
+                      <p className="font-semibold text-green-800">+{pointStatus.xpEarned} XP</p>
+                    ) : null}
+                    {tutorEnabled ? (
+                      <TutorLauncher
+                        context={{
+                          conceptId,
+                          activityId,
+                          lessonProblemId: state.lastAnsweredProblem.id,
+                          allowed: true,
+                          enabled: tutorEnabled,
+                        }}
+                      >
+                        Ask the tutor about this
+                      </TutorLauncher>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <ExerciseForm
+                      exercise={shownProblem.exercise}
+                      onSubmit={submit}
+                      disabled={busy}
+                      submitLabel={busy ? 'Saving…' : 'Submit answer'}
+                    />
+                    {tutorEnabled && state.pendingProblem ? (
+                      <TutorLauncher
+                        context={{
+                          conceptId,
+                          activityId,
+                          lessonProblemId: state.pendingProblem.id,
+                          allowed: true,
+                          enabled: tutorEnabled,
+                        }}
+                      />
+                    ) : null}
+                  </>
+                )}
+              </CardContent>
+            </Card>
           ) : null}
         </>
       )}
       {error ? (
-        <p role="alert" className="text-sm text-red-700">
-          {error}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
       {!state.pendingProblem ? (
-        <button
-          type="button"
-          onClick={() => void next()}
-          disabled={busy}
-          className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <Button type="button" onClick={() => void next()} disabled={busy}>
           {busy
             ? 'Saving…'
             : state.status === 'completed'
@@ -346,7 +353,7 @@ export function LessonRunner({
                 : pointStatus?.status === 'passed'
                   ? 'Next step'
                   : 'Next problem'}
-        </button>
+        </Button>
       ) : null}
     </section>
   );

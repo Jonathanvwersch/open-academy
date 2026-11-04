@@ -1,10 +1,12 @@
+import { mkdirSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 import { createDb } from '../../src/server/db/client.js';
 import { sessionActivities, studySessions, users } from '../../src/server/db/schema.js';
 import { env } from '../../src/server/env.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
-const screenshotDir = '/home/ubuntu/screenshots/session-cleanup';
+const screenshotDir = '/home/ubuntu/screenshots/shadcn';
+mkdirSync(screenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async () => {
@@ -72,12 +74,16 @@ test('legacy session header links to a read-only lesson and returns with the res
   await expect(page.getByText(/About \d+ minutes remaining/)).toHaveCount(0);
   await expect(page.getByText('Review', { exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'View lesson' })).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/legacy-practice-header.png`, fullPage: true });
+  await page.screenshot({
+    path: `${screenshotDir}/legacy-practice-header.png`,
+    fullPage: true,
+  });
 
   await page.getByLabel('Your answer').fill('0');
   await page.getByRole('button', { name: 'Submit answer' }).click();
   await expect(page.getByText('Not quite', { exact: true })).toBeVisible();
-  const questionText = (await page.locator('article').last().textContent()) ?? '';
+  const questionText = (await page.getByTestId('exercise-prompt').textContent()) ?? '';
+  expect(questionText.trim()).not.toBe('');
   await page.getByRole('link', { name: 'View lesson' }).click();
   await expect(page).toHaveURL(new RegExp(`/lessons/vectors\\?from=${sessionId}`));
   await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
@@ -86,7 +92,7 @@ test('legacy session header links to a read-only lesson and returns with the res
   await page.getByRole('link', { name: '← Back to session' }).click();
   await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
   await expect(page.getByText('Not quite', { exact: true })).toBeVisible();
-  await expect(page.locator('article').last()).toContainText(questionText.split('\n')[0] ?? '');
+  await expect(page.getByTestId('exercise-prompt')).toContainText(questionText);
 });
 
 test('wrong numeric answers offer one persisted retry', async ({ page }) => {
@@ -187,8 +193,12 @@ test('fallback explain flow reveals the model answer before the self-check step'
   await expect(page.getByText('Which of these did your answer include?')).toBeVisible();
   await expect(page.getByText('key point', { exact: true })).toHaveCount(2);
   await expect(page.getByRole('checkbox')).toHaveCount(3);
-  await page.screenshot({ path: `${screenshotDir}/explain-fallback-step-2.png`, fullPage: true });
-  await page.getByRole('checkbox').nth(1).check();
+  await page.screenshot({
+    path: `${screenshotDir}/explain-fallback-step-2.png`,
+    fullPage: true,
+  });
+  await page.getByRole('checkbox').nth(1).click();
+  await expect(page.getByRole('checkbox').nth(1)).toHaveAttribute('aria-checked', 'true');
   await page.getByRole('button', { name: 'Submit self-check' }).click();
   await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
