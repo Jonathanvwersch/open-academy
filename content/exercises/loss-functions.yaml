@@ -81,10 +81,10 @@ exercises:
         }
       - {
           id: c,
-          text: "The model's weights are too large",
+          text: "The model needs more training steps",
           correct: false,
           category: misapplied_technique,
-          feedback: "The loss choice does not set the update size; the large residual still dominates MSE.",
+          feedback: "More steps only get closer to the same MSE minimum, and the few large residuals still pull that minimum toward them.",
         }
     solution: "MSE's gradient grows with the error, so outliers pull hard. MAE or Huber caps that influence."
   - id: loss-review-grad

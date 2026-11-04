@@ -84,7 +84,7 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 3
-    prompt: "A loss is $L(w_1, w_2) = w_1^2 + 100\\,w_2^2$. You start at $(1, 1)$ and take one step of size 0.1 along $-\\nabla L$. Which statement best describes the update?"
+    prompt: "A loss is $L(w_1, w_2) = w_1^2 + 100\\,w_2^2$. You start at $(1, 1)$ and step along $-\\nabla L$, multiplying the gradient by one shared number $s$ for both weights. Which statement best describes the trade-off?"
     options:
       - {
           id: a,
@@ -105,7 +105,7 @@ exercises:
           category: math_error,
         }
     hints: ["Compute $\\nabla L(1,1)$ and compare the two components."]
-    solution: "$\\nabla L(1,1) = (2, 200)$. A step small enough for $w_2$ must be less than 0.01, and at that size $w_1$ shrinks by only 2% per step. This mismatch motivates rescaling features and using methods that adjust the step size."
+    solution: "$\\nabla L(1,1) = (2, 200)$. Each step multiplies $w_2$ by $1 - 200s$, so $w_2$ only shrinks if $s < 0.01$. At $s = 0.01$, each step multiplies $w_1$ by $1 - 2s = 0.98$, so it shrinks by only 2% per step. This mismatch motivates rescaling features and using methods that adjust the step size."
   - id: grad-explain
     dimension: conceptual
     type: explain

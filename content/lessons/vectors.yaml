@@ -29,7 +29,7 @@ blocks:
 
       $$x + y = (x_1 + y_1, \dots, x_n + y_n), \qquad c\,x = (c x_1, \dots, c x_n)$$
 
-      The symbol $\sum_{i=1}^n$ means "add these values for $i=1,2,\dots,n".
+      The symbol $\sum_{i=1}^n$ means "add these values for $i = 1, 2, \dots, n$".
       $$\|x\|_2 = \sqrt{\textstyle\sum_{i=1}^n x_i^2}, \qquad \text{dist}(x, y) = \|x - y\|_2$$
   - kind: worked
     md: |
