@@ -4,7 +4,7 @@ domains:
   - { id: ml, title: Machine learning, description: "Models, losses, and optimization." }
 weeks:
   - week: 1
-    title: Foundations
+    title: ML fundamentals
     concepts: [vectors, derivatives, linear-algebra, linear-models]
     project: linreg-numpy
     saturday: Build a simple model.

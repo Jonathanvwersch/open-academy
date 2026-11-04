@@ -251,6 +251,16 @@ export class LearnerRepository {
     return run;
   }
 
+  async latestCompletedDiagnosticRun() {
+    const [run] = await this.db
+      .select()
+      .from(diagnosticRuns)
+      .where(and(eq(diagnosticRuns.userId, this.userId), eq(diagnosticRuns.status, 'completed')))
+      .orderBy(desc(diagnosticRuns.startedAt))
+      .limit(1);
+    return run;
+  }
+
   async logs(cardId: string) {
     return this.db.select().from(reviewLogs).where(eq(reviewLogs.cardId, cardId));
   }

@@ -32,7 +32,7 @@ function DiagnosticPage() {
     setFeedback('');
     if (data.complete) {
       window.sessionStorage.setItem('diagnosticRunId', id);
-      window.location.href = '/diagnostic/results';
+      window.location.href = `/diagnostic/results?id=${encodeURIComponent(id)}`;
       return;
     }
     setDomain(data.domainId ?? data.domain ?? '');
@@ -90,7 +90,7 @@ function DiagnosticPage() {
     const result = await response.json();
     if (result.complete) {
       window.sessionStorage.setItem('diagnosticRunId', runId);
-      window.location.href = '/diagnostic/results';
+      window.location.href = `/diagnostic/results?id=${encodeURIComponent(runId)}`;
     } else {
       await loadNext(runId);
     }

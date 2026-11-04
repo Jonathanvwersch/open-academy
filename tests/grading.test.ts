@@ -29,6 +29,28 @@ test('multiple choice requires an exact option set and returns option feedback',
   });
 });
 
+test('multiple choice explains selected wrong options and counts missed selections', async () => {
+  const source = required(content.exercisesById.get('dx-vectors'), 'multiple choice exercise');
+  if (source.type !== 'mc') throw new Error('Expected multiple choice exercise');
+  const correct = source.options.find((option) => option.correct);
+  const wrong = source.options.find((option) => !option.correct);
+  if (!correct || !wrong) throw new Error('Missing correct and wrong options');
+  const exercise = {
+    ...source,
+    multi: true,
+    options: [
+      { ...correct, id: 'correct-a', correct: true },
+      { ...correct, id: 'correct-b', correct: true, feedback: undefined },
+      { ...wrong, id: 'wrong-a', correct: false, feedback: 'First wrong-option feedback.' },
+      { ...wrong, id: 'wrong-b', correct: false, feedback: 'Second wrong-option feedback.' },
+    ],
+  };
+  const result = await gradeExercise(exercise, ['wrong-a', 'wrong-b']);
+  expect(result.feedback).toContain('First wrong-option feedback.');
+  expect(result.feedback).toContain('Second wrong-option feedback.');
+  expect(result.feedback).toContain('You missed 2 correct options.');
+});
+
 test('numeric accepts fractions, scientific notation, tolerance, and common wrong answers', async () => {
   const exercise = required(content.exercisesById.get('vectors-magnitude'), 'numeric exercise');
   expect(await gradeExercise(exercise, '10/2')).toMatchObject({ correct: 1 });

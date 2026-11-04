@@ -61,6 +61,9 @@ test('mastery credit follows hint, retry, LLM, and self caps', () => {
   expect(
     calculateCredit({ correct: 1, hintsUsed: 2, attemptNo: 2, gradedBy: 'deterministic' }),
   ).toBe(0.25);
+  expect(
+    calculateCredit({ correct: 1, hintsUsed: 5, attemptNo: 1, gradedBy: 'deterministic' }),
+  ).toBe(0.1);
   expect(calculateCredit({ correct: 1, hintsUsed: 0, attemptNo: 1, gradedBy: 'llm' })).toBe(0.5);
   expect(calculateCredit({ correct: 1, hintsUsed: 0, attemptNo: 1, gradedBy: 'self' })).toBe(0.5);
 });
@@ -289,7 +292,7 @@ test('diagnostic ladders interleave domains and move up or down one rung', () =>
   const second = recordDiagnosticAnswer(first.state, next, false, content, now);
   expect(second.state.domains.ml?.position).toBe(0);
   const skipped = markDiagnosticUnassessed(second.state, 'math', now, content);
-  expect(skipped.domains.math?.status).toBe('unassessed');
+  expect(skipped.domains.math?.status).toBe('partially_assessed');
   expect(diagnosticComplete(skipped)).toBe(false);
 });
 
@@ -301,6 +304,19 @@ test('skipping a diagnostic domain advances in curriculum ladder order', () => {
   };
   const skipped = markDiagnosticUnassessed(reordered, 'math', now, content);
   expect(nextDiagnosticExercise(skipped, content)?.id).toBe('dx-loss-functions');
+});
+
+test('skipping a diagnostic domain after an answer preserves partial evidence', () => {
+  const state = createDiagnosticState(content);
+  const exercise = required(nextDiagnosticExercise(state, content), 'math diagnostic exercise');
+  const answered = recordDiagnosticAnswer(state, exercise, true, content, now).state;
+  const skipped = markDiagnosticUnassessed(answered, 'math', now, content);
+
+  expect(skipped.domains.math).toMatchObject({
+    answers: 1,
+    status: 'partially_assessed',
+    correctConceptIds: [exercise.concept],
+  });
 });
 
 test('learning debt derives implementation gaps, demotions, hints, and open flags', () => {
@@ -414,6 +430,7 @@ test('quick checks are limited to diagnostic-provisional prerequisites of planne
       (activity) => activity.conceptId !== undefined && prerequisites.has(activity.conceptId),
     ),
   ).toBe(true);
+  expect(quickChecks.every((activity) => activity.reason.summary.includes('before'))).toBe(true);
   expect(quickChecks.some((activity) => activity.conceptId === 'linear-algebra')).toBe(false);
 });
 
@@ -514,9 +531,12 @@ test('Overdue reviews are scheduled', () => {
       retrievability: 0.7,
     },
   ];
-  expect(
-    planSession(state, content, now, 60).activities.some((activity) => activity.kind === 'review'),
-  ).toBe(true);
+  const review = planSession(state, content, now, 60).activities.find(
+    (activity) => activity.kind === 'review',
+  );
+  expect(review).toBeDefined();
+  expect(review?.reason.summary).toContain('Due since 13 Jan 2026');
+  expect(review?.reason.summary).toContain('~70% recall');
 });
 
 test('Project prerequisites receive a priority term', () => {
@@ -529,6 +549,40 @@ test('Project prerequisites receive a priority term', () => {
   const plan = planSession(state, content, new Date('2026-01-06T12:00:00.000Z'), 60);
   const prerequisite = plan.activities.find((activity) => activity.conceptId === 'linear-models');
   expect(prerequisite?.reason.terms.project).toBe(3);
+  expect(prerequisite?.reason.summary).toContain('needed for the Saturday lab');
+  if (prerequisite?.reason.terms.week_fit) {
+    expect(prerequisite.reason.summary).toContain('Week 1 focus');
+  }
+  if (prerequisite?.reason.terms.unlock) {
+    expect(prerequisite.reason.summary).toContain('unlocks');
+  }
+});
+
+test('weekday plan fills at least 80 percent with unseen practice when exercises are eligible', () => {
+  const state = emptyState();
+  state.mastery = ['vectors', 'linear-algebra'].flatMap((conceptId) => {
+    const concept = content.conceptsById.get(conceptId);
+    return (concept?.dimensions ?? []).map((dimension) => ({
+      ...initialMastery(conceptId, dimension),
+      state: 'independent' as const,
+      provisional: true,
+    }));
+  });
+  const plan = planSession(state, content, now, 60);
+  const plannedMinutes = plan.activities.reduce(
+    (sum, activity) => sum + activity.plannedMinutes,
+    0,
+  );
+
+  expect(
+    plan.activities.filter((activity) => activity.kind === 'learn').length,
+  ).toBeLessThanOrEqual(2);
+  expect(plan.activities.some((activity) => activity.kind === 'learn')).toBe(true);
+  expect(plan.activities.some((activity) => activity.kind === 'practice')).toBe(true);
+  expect(plannedMinutes).toBeGreaterThanOrEqual(48);
+  const practice = plan.activities.find((activity) => activity.kind === 'practice');
+  expect(practice?.exerciseIds.length).toBeGreaterThan(0);
+  expect(practice?.plannedMinutes).toBeGreaterThan(0);
 });
 
 test('Time budget is respected', () => {

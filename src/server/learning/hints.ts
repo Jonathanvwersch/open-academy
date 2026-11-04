@@ -5,7 +5,9 @@ export interface HintAttemptBoundary {
   createdAt: Date;
 }
 
-export interface HintEventBoundary extends HintAttemptBoundary {}
+export interface HintEventBoundary extends HintAttemptBoundary {
+  level?: number;
+}
 
 export function countHintsSincePreviousAttempt(input: {
   userId: string;
@@ -21,9 +23,10 @@ export function countHintsSincePreviousAttempt(input: {
   const previousAttempt = input.attempts
     .filter(matchesScope)
     .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0];
-  return input.hints.filter(
+  const hintsSinceAttempt = input.hints.filter(
     (hint) =>
       matchesScope(hint) &&
       (!previousAttempt || hint.createdAt.getTime() > previousAttempt.createdAt.getTime()),
-  ).length;
+  );
+  return hintsSinceAttempt.some((hint) => hint.level === 5) ? 5 : hintsSinceAttempt.length;
 }

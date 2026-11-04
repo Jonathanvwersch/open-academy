@@ -33,6 +33,8 @@ function stripPrivateFields(value: unknown, omitWeight = false): unknown {
 
 export function serializeExercise(exercise: IndexedExercise, userId = ''): Record<string, unknown> {
   const serialized = stripPrivateFields(exercise) as Record<string, unknown>;
+  serialized.hintCount = exercise.hints.length;
+  serialized.hintCount = exercise.hints.length;
   const options = serialized.options;
   if (Array.isArray(options)) {
     serialized.options = [...options].sort(

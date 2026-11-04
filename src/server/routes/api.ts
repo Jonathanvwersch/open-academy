@@ -367,7 +367,12 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
       lesson && priorEvidence
         ? {
             ...lesson,
-            blocks: lesson.blocks.filter((block) => !lesson.fast_path.includes(block.kind)),
+            blocks: lesson.blocks.filter(
+              (block) =>
+                block.kind === 'objective' ||
+                block.kind === 'summary' ||
+                !lesson.fast_path.includes(block.kind),
+            ),
           }
         : lesson;
     return presentedLesson
@@ -382,6 +387,7 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
         activityId: z.string().uuid().optional(),
         mode: z.enum(['practice', 'review', 'assessment', 'diagnostic']).default('practice'),
         stuck: z.boolean().default(false),
+        revealSolution: z.boolean().default(false),
       })
       .safeParse(await context.req.json().catch(() => ({})));
     if (!body.success) {
@@ -432,15 +438,29 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
       exercise.id,
       body.data.activityId,
     );
-    const level = hintsUsed + 1;
-    if (level > 5) {
-      return context.json({ error: 'The solution has already been revealed.' }, 409);
-    }
     const hints = (exercise as IndexedExercise & { hints?: string[] }).hints ?? [];
-    const text =
-      level === 5
-        ? exercise.solution
-        : (hints[level - 1] ?? 'No further authored hint is available at this level.');
+    if (body.data.revealSolution) {
+      if (hintsUsed >= 5)
+        return context.json({ error: 'The solution has already been revealed.' }, 409);
+      const [event] = await withRepo(context).saveHintEvent({
+        activityId: body.data.activityId,
+        exerciseId: exercise.id,
+        level: 5,
+        text: exercise.solution,
+        createdAt: requestNow(context),
+      });
+      return context.json({
+        level: 5,
+        text: exercise.solution,
+        revealedSolution: true,
+        hintEventId: event?.id,
+      });
+    }
+    const level = hintsUsed + 1;
+    const text = hints[level - 1];
+    if (!text || level > hints.length) {
+      return context.json({ level, hasMore: false, revealedSolution: false });
+    }
     const [event] = await withRepo(context).saveHintEvent({
       activityId: body.data.activityId,
       exerciseId: exercise.id,
@@ -448,7 +468,13 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
       text,
       createdAt: requestNow(context),
     });
-    return context.json({ level, text, revealedSolution: level === 5, hintEventId: event?.id });
+    return context.json({
+      level,
+      text,
+      hasMore: level < hints.length,
+      revealedSolution: false,
+      hintEventId: event?.id,
+    });
   });
 
   api.post('/attempts', async (context) => {
@@ -482,7 +508,13 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
     if (activityRow && !activity) {
       return context.json({ error: 'Activity not found' }, 404);
     }
-    if (activity && !activity.exerciseIds.includes(exercise.id)) {
+    const inlineLessonExercise =
+      activity?.kind === 'learn' &&
+      typeof activity.conceptId === 'string' &&
+      index.lessonsByConcept
+        .get(activity.conceptId)
+        ?.blocks.some((block) => 'exercise' in block && block.exercise === exercise.id);
+    if (activity && !activity.exerciseIds.includes(exercise.id) && !inlineLessonExercise) {
       return context.json({ error: 'Exercise is not part of this activity.' }, 400);
     }
     if (
@@ -612,7 +644,7 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
       }
     }
     const retryAllowed = body.data.mode === 'practice' && result.correct === 0 && attemptNo < 2;
-    const revealSolution = body.data.mode === 'practice' && result.correct === 0 && attemptNo >= 2;
+    const revealSolution = result.correct === 0 && !retryAllowed;
     if (activityRow && activity && (result.correct > 0 || !retryAllowed)) {
       const progress = activity.progress as {
         completedExerciseIds?: string[];
@@ -867,6 +899,13 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
     });
   });
 
+  api.get('/diagnostic/latest', async (context) => {
+    const run = await withRepo(context).latestCompletedDiagnosticRun();
+    return run
+      ? context.json({ id: run.id })
+      : context.json({ error: 'No completed diagnostic' }, 404);
+  });
+
   api.get('/diagnostic/:id/results', async (context) => {
     const repo = withRepo(context);
     const run = await repo.diagnosticRun(context.req.param('id'));
@@ -907,7 +946,12 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
             return {
               id: domain.id,
               title: domain.title,
-              outcome: progress?.status === 'unassessed' ? 'unassessed' : 'assessed',
+              outcome:
+                progress?.status === 'unassessed'
+                  ? 'unassessed'
+                  : progress?.status === 'partially_assessed'
+                    ? 'partially assessed'
+                    : 'assessed',
               answers: progress?.answers ?? 0,
               knownConcepts: [...new Set(progress?.correctConceptIds ?? [])].map(titleFor),
               gaps: [...new Set(progress?.gapConceptIds ?? [])].map(titleFor),
@@ -1205,6 +1249,7 @@ async function hintsSincePreviousAttempt(
         exerciseId: hintEvents.exerciseId,
         activityId: hintEvents.activityId,
         createdAt: hintEvents.createdAt,
+        level: hintEvents.level,
       })
       .from(hintEvents)
       .where(and(eq(hintEvents.userId, userId), eq(hintEvents.exerciseId, exerciseId), hintScope)),

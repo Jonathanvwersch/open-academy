@@ -35,6 +35,7 @@ function SessionPage() {
     revealedSolution: boolean;
   } | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [completedLessonChecks, setCompletedLessonChecks] = useState<Set<string>>(new Set());
   const hintButton = useRef<HTMLButtonElement>(null);
   const [timeAnchor, setTimeAnchor] = useState<{ serverTime: number; clientTime: number } | null>(
     null,
@@ -227,29 +228,38 @@ function SessionPage() {
       : activity.kind === 'quick_check' || activity.kind === 'diagnostic'
         ? 'assessment'
         : 'practice';
-  const currentServerTime = timeAnchor
-    ? timeAnchor.serverTime + (clock - timeAnchor.clientTime)
-    : clock;
-  const elapsedInActivity = activity.startedAt
-    ? Math.max(0, Math.floor((currentServerTime - Date.parse(activity.startedAt)) / 60_000))
-    : 0;
   const remainingPlannedMinutes = activities
     .filter((item) => item.status !== 'completed')
     .reduce((sum, item) => sum + item.plannedMinutes, 0);
-  const remainingMinutes = Math.max(0, remainingPlannedMinutes - elapsedInActivity);
+  const remainingMinutes = remainingPlannedMinutes;
   const lesson = lessonQuery.data;
   if (activity.kind === 'learn' && !activity.progress?.lessonViewed && lesson?.blocks.length) {
+    const lessonExercises = lesson.blocks.filter((block) => block.exercise);
+    const orderedBlocks = [
+      ...lesson.blocks.filter((block) => block.kind === 'objective'),
+      ...lesson.blocks.filter((block) => block.kind !== 'objective' && block.kind !== 'summary'),
+      ...lesson.blocks.filter((block) => block.kind === 'summary'),
+    ];
     return (
       <section className="mx-auto max-w-3xl space-y-6">
         <p className="text-sm text-neutral-500">
           Lesson · {activity.conceptTitle ?? activity.conceptId}
         </p>
         <div className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
-          {lesson.blocks.map((block) => (
+          {orderedBlocks.map((block) => (
             <div key={`${block.kind}-${block.md ?? block.exercise ?? 'block'}`}>
               {block.md ? <Markdown>{block.md}</Markdown> : null}
               {block.exercise ? (
-                <p className="text-sm text-neutral-500">Practice check: {block.exercise}</p>
+                <InlineLessonCheck
+                  key={`${activity.id}:${block.exercise}`}
+                  exerciseId={block.exercise}
+                  activityId={activity.id}
+                  onDone={() =>
+                    setCompletedLessonChecks((current) =>
+                      new Set(current).add(block.exercise ?? ''),
+                    )
+                  }
+                />
               ) : null}
             </div>
           ))}
@@ -257,6 +267,9 @@ function SessionPage() {
         <button
           type="button"
           onClick={markLessonViewed}
+          disabled={lessonExercises.some(
+            (block) => block.exercise && !completedLessonChecks.has(block.exercise),
+          )}
           className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white"
         >
           Continue to practice
@@ -268,7 +281,7 @@ function SessionPage() {
     <section className="mx-auto max-w-3xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm capitalize text-neutral-500">
+          <p className="text-sm text-neutral-500">
             {activity.kind.replace('_', ' ')}
             {activity.conceptId ? ` · ${activity.conceptTitle ?? activity.conceptId}` : ''}
           </p>
@@ -320,7 +333,9 @@ function SessionPage() {
           ) : null}
           {hint ? (
             <div className="rounded-lg bg-neutral-100 p-4 text-sm">
-              <p className="font-medium">Hint {hint.level}</p>
+              <p className="font-medium">
+                {hint.revealedSolution ? 'Solution' : `Hint ${hint.level}`}
+              </p>
               <Markdown>{hint.text}</Markdown>
             </div>
           ) : null}
@@ -346,6 +361,7 @@ function SessionPage() {
             <HintLadder
               exerciseId={exerciseId ?? ''}
               activityId={activity.id}
+              hintCount={exerciseQuery.data.hintCount}
               onHint={setHint}
               mode={mode === 'review' ? 'review' : 'practice'}
               buttonRef={hintButton}
@@ -378,5 +394,57 @@ function SessionPage() {
         <p className="text-sm text-neutral-600">Loading exercise…</p>
       )}
     </section>
+  );
+}
+
+function InlineLessonCheck({
+  exerciseId,
+  activityId,
+  onDone,
+}: {
+  exerciseId: string;
+  activityId: string;
+  onDone: () => void;
+}) {
+  const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const exerciseQuery = useQuery({
+    queryKey: ['exercise', activityId, exerciseId],
+    queryFn: async () => {
+      const response = await fetch(`/api/exercises/${exerciseId}`);
+      if (!response.ok) throw new Error('Exercise not found');
+      return response.json();
+    },
+  });
+  const submit = async (answer: unknown) => {
+    const response = await fetch('/api/attempts', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ exerciseId, activityId, answer, mode: 'practice' }),
+    });
+    const data = await response.json();
+    setResult(data);
+    if (response.ok && data.status !== 'invalid') onDone();
+  };
+  return (
+    <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+      {exerciseQuery.data ? (
+        <>
+          <Markdown>{exerciseQuery.data.prompt}</Markdown>
+          {result ? <FeedbackPanel result={result} /> : null}
+          {!result || result.status === 'invalid' || result.retryAllowed ? (
+            <ExerciseForm
+              key={`${activityId}:${exerciseId}`}
+              exercise={exerciseQuery.data}
+              onSubmit={submit}
+            />
+          ) : null}
+        </>
+      ) : (
+        <p className="text-sm text-neutral-600">Loading practice check…</p>
+      )}
+      <button type="button" className="text-sm underline" onClick={onDone}>
+        Skip this check
+      </button>
+    </div>
   );
 }

@@ -52,13 +52,27 @@ test('diagnostic to hinted practice updates the map and schedules a review', asy
   await expect(page.getByRole('heading', { name: 'Your starting point' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Your plan' })).toBeVisible();
   await expect(page.getByText('90-day path')).toBeVisible();
-  await expect(page.getByText('assessed', { exact: false }).first()).toBeVisible();
+  const runId = await page.evaluate(() => window.sessionStorage.getItem('diagnosticRunId'));
+  expect(runId).toBeTruthy();
+  await page.evaluate(() => window.sessionStorage.clear());
+  await page.goto(`/diagnostic/results?id=${runId}`);
+  await expect(page.getByText('unassessed · 0 answers', { exact: false }).first()).toBeVisible();
+  await expect(page.getByText('First week: ML fundamentals')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'First session' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'First session' }).locator('..').locator('li').first(),
+  ).toBeVisible();
+  await page.evaluate(() => window.sessionStorage.clear());
+  await page.goto('/diagnostic/results');
+  await expect(page.getByText('First week: ML fundamentals')).toBeVisible();
 
   await page.getByRole('link', { name: 'View Today' }).click();
   await page.getByRole('button', { name: 'Start session' }).click();
   await expect(
     page.getByText('A vector is an ordered list of coordinates in a shared space.'),
   ).toBeVisible();
+  await expect(page.getByText('Practice check: vectors-magnitude')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Skip this check' }).click();
   await expect(page.getByRole('button', { name: 'Continue to practice' })).toBeVisible();
   await page.getByRole('button', { name: 'Continue to practice' }).click();
   await expect(page.getByRole('button', { name: 'Hint' })).toBeVisible();
@@ -83,6 +97,7 @@ test('diagnostic to hinted practice updates the map and schedules a review', asy
   expect(today.plan.activities.length).toBeLessThanOrEqual(6);
 
   await page.goto('/map');
+  await expect(page.getByText('Prerequisites not met')).toBeVisible();
   await page.getByText('Vectors', { exact: true }).first().click();
   await expect(page.getByText('Mastery by dimension')).toBeVisible();
   await expect(page.getByText('math: assisted')).toBeVisible();
@@ -129,6 +144,7 @@ test('a final wrong practice answer reveals the worked solution', async ({ page 
   await expect(page.getByRole('heading', { name: 'Your starting point' })).toBeVisible();
   await page.getByRole('link', { name: 'View Today' }).click();
   await page.getByRole('button', { name: 'Start session' }).click();
+  await page.getByRole('button', { name: 'Skip this check' }).click();
   await page.getByRole('button', { name: 'Continue to practice' }).click();
   await page.getByLabel('Your answer').fill('0');
   await page.getByRole('button', { name: 'Submit answer' }).click();

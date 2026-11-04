@@ -34,40 +34,60 @@ function MapPage() {
       }>;
     },
   });
+  useEffect(() => {
+    if (domain === null && mapQuery.data?.currentWeekDomain) {
+      setDomain(mapQuery.data.currentWeekDomain);
+    }
+  }, [domain, mapQuery.data?.currentWeekDomain]);
   const graph = useMemo(() => {
     const data = mapQuery.data;
     if (!data) return { nodes: [] as Node[], edges: [] as Edge[] };
     const layout = new dagre.graphlib.Graph();
     layout.setGraph({ rankdir: 'TB', nodesep: 36, ranksep: 70 });
     layout.setDefaultEdgeLabel(() => ({}));
-    for (const node of data.nodes) layout.setNode(node.id, { width: 190, height: 64 });
+    for (const node of data.nodes) layout.setNode(node.id, { width: 190, height: 76 });
     for (const edge of data.edges) layout.setEdge(edge.prerequisiteId, edge.conceptId);
     dagre.layout(layout);
     const visible = data.nodes;
     const visibleIds = new Set(visible.map((node) => node.id));
+    const domainTitles = new Map(data.domains.map((item) => [item.id, item.title]));
     const nodes = visible.map((node) => {
       const position = layout.node(node.id);
       const states = Object.values(node.dimensions).map((item) => item.state);
+      const unavailable = !node.available && node.status !== 'stub';
       const color =
         node.status === 'stub'
           ? '#e5e5e5'
-          : states.includes('retained')
-            ? '#dcfce7'
-            : states.includes('independent')
-              ? '#e0f2fe'
-              : states.includes('assisted')
-                ? '#fef3c7'
-                : '#f5f5f5';
+          : unavailable
+            ? '#ede9fe'
+            : states.includes('retained')
+              ? '#dcfce7'
+              : states.includes('independent')
+                ? '#e0f2fe'
+                : states.includes('assisted')
+                  ? '#fef3c7'
+                  : '#f5f5f5';
       return {
         id: node.id,
-        position: { x: position.x - 95, y: position.y - 32 },
-        data: { label: node.status === 'stub' ? `${node.title} · Not yet authored` : node.title },
+        position: { x: position.x - 95, y: position.y - 38 },
+        data: {
+          label: (
+            <div className="leading-5">
+              <div>{node.status === 'stub' ? `${node.title} · Not yet authored` : node.title}</div>
+              {(!domain || node.domain !== domain) && (
+                <span className="text-[10px] text-neutral-500">
+                  {domainTitles.get(node.domain) ?? node.domain}
+                </span>
+              )}
+            </div>
+          ),
+        },
         style: {
           width: 190,
           borderRadius: 10,
-          border: node.available ? '1px solid #a3a3a3' : '1px dashed #a3a3a3',
+          border: unavailable ? '2px dashed #7c3aed' : '1px solid #a3a3a3',
           background: color,
-          opacity: node.available ? 1 : 0.62,
+          opacity: node.available || node.status === 'stub' ? 1 : 0.9,
           padding: 10,
         },
       };
@@ -81,7 +101,7 @@ function MapPage() {
         type: 'smoothstep',
       }));
     return { nodes, edges };
-  }, [mapQuery.data]);
+  }, [domain, mapQuery.data]);
   const openConcept = async (_event: unknown, node: Node) => {
     const response = await fetch(`/api/concepts/${node.id}`);
     if (response.ok) {
@@ -176,16 +196,21 @@ function MapPage() {
       </div>
       <ul aria-label="Mastery legend" className="flex flex-wrap gap-3 text-xs text-neutral-700">
         {[
-          ['#f5f5f5', 'Not assessed / introduced'],
-          ['#fef3c7', 'Assisted'],
-          ['#e0f2fe', 'Independent'],
-          ['#dcfce7', 'Retained'],
-          ['#e5e5e5', 'Not yet authored'],
-        ].map(([color, label]) => (
+          { color: '#f5f5f5', label: 'Not assessed / introduced' },
+          { color: '#fef3c7', label: 'Assisted' },
+          { color: '#e0f2fe', label: 'Independent' },
+          { color: '#dcfce7', label: 'Retained' },
+          { color: '#e5e5e5', label: 'Not yet authored' },
+          {
+            color: '#ede9fe',
+            label: 'Prerequisites not met',
+            border: '2px dashed #7c3aed',
+          },
+        ].map(({ color, label, border }) => (
           <li key={label} className="flex items-center gap-2">
             <span
               className="h-4 w-4 rounded border border-neutral-300"
-              style={{ background: color }}
+              style={{ background: color, ...(border ? { border } : {}) }}
             />
             {label}
           </li>

@@ -1,6 +1,6 @@
 import type { ContentIndex, IndexedExercise } from '../content/types.js';
 
-export type DiagnosticDomainStatus = 'active' | 'completed' | 'unassessed';
+export type DiagnosticDomainStatus = 'active' | 'completed' | 'partially_assessed' | 'unassessed';
 
 export interface DiagnosticDomainProgress {
   position: number;
@@ -154,7 +154,11 @@ export function markDiagnosticUnassessed(
     cursor: ladders.length > 0 ? (index + 1) % ladders.length : 0,
     domains: {
       ...state.domains,
-      [domain]: { ...previous, status: 'unassessed', endedAt: now.toISOString() },
+      [domain]: {
+        ...previous,
+        status: previous.answers > 0 ? 'partially_assessed' : 'unassessed',
+        endedAt: now.toISOString(),
+      },
     },
   };
 }

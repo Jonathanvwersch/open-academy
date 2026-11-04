@@ -241,7 +241,26 @@ function packWeekday(
         Boolean(entry.activity.conceptId && prerequisiteIds.has(entry.activity.conceptId)),
     )
     .sort((left, right) => right.score - left.score)) {
-    add(candidate);
+    const dependent = [...learnTargets]
+      .map((id) => content.conceptsById.get(id))
+      .find((concept) =>
+        concept?.prereqs.some((prerequisite) => prerequisite.id === candidate.activity.conceptId),
+      );
+    if (dependent) {
+      candidate.activity.reason.summary = `Confirm diagnostic result before ${dependent.title}.`;
+    }
+    if (selected.length < SCHEDULER_CONFIG.weekday.maxActivities - 1) add(candidate);
+  }
+
+  const practice = buildPracticeBlock(state, content, selected, budget - usedMinutes);
+  if (practice) {
+    selected.push({
+      activity: practice,
+      score: 0,
+      adjustedMinutes: practice.plannedMinutes,
+      newConcept: false,
+    });
+    usedMinutes += practice.plannedMinutes;
   }
 
   const otherCandidates = candidates
@@ -252,42 +271,88 @@ function packWeekday(
     .sort((left, right) => right.score - left.score);
   for (const candidate of otherCandidates) add(candidate);
 
-  const practiceTarget =
-    selected.find((candidate) => candidate.activity.kind === 'learn') ??
-    selected.find((candidate) => candidate.activity.kind === 'practice');
-  const targetConcept = practiceTarget?.activity.conceptId
-    ? content.conceptsById.get(practiceTarget.activity.conceptId)
-    : undefined;
-  const ratio = Math.min(2, Math.max(0.5, state.actualEstimateRatio ?? 1));
-  while (practiceTarget && targetConcept) {
-    const exercise = chooseExercise(
-      {
-        ...state,
-        usedExerciseIds: [
-          ...(state.usedExerciseIds ?? []),
-          ...state.recentAttempts
-            .filter(
-              (attempt) => daysSince(attempt.createdAt, now) < SCHEDULER_CONFIG.repeatWindowDays,
-            )
-            .map((attempt) => attempt.exerciseId),
-          ...selected.flatMap((candidate) => candidate.activity.exerciseIds),
-        ],
-      },
-      content,
-      targetConcept,
-      undefined,
-      ['core', 'check'],
-      now,
-    );
-    if (!exercise) break;
-    const minutes = Math.max(1, Math.ceil(exercise.est_minutes * ratio));
-    if (usedMinutes + minutes > budget) break;
-    practiceTarget.activity.exerciseIds.push(exercise.id);
-    practiceTarget.activity.plannedMinutes += minutes;
-    practiceTarget.adjustedMinutes += minutes;
-    usedMinutes += minutes;
-  }
   return toPlan(selected);
+}
+
+function buildPracticeBlock(
+  state: SchedulerState,
+  content: ContentIndex,
+  selected: Candidate[],
+  remainingMinutes: number,
+): PlannedActivity | undefined {
+  if (remainingMinutes <= 0 || selected.length >= SCHEDULER_CONFIG.weekday.maxActivities) {
+    return undefined;
+  }
+  const learned = selected
+    .filter((candidate) => candidate.activity.kind === 'learn')
+    .map((candidate) => candidate.activity.conceptId)
+    .filter((id): id is string => Boolean(id));
+  const learnedSet = new Set(learned);
+  const earlier = [
+    ...new Set(
+      state.mastery
+        .filter((record) => record.provisional || record.state === 'assisted' || record.inferred)
+        .map((record) => record.conceptId)
+        .filter((id) => !learnedSet.has(id) && content.conceptsById.get(id)?.status !== 'stub'),
+    ),
+  ];
+  const orderedConceptIds: string[] = [];
+  for (let index = 0; index < Math.max(learned.length, earlier.length); index += 1) {
+    if (learned[index]) orderedConceptIds.push(learned[index]);
+    if (earlier[index]) orderedConceptIds.push(earlier[index]);
+  }
+  if (orderedConceptIds.length === 0) return undefined;
+  const excluded = new Set([
+    ...(state.usedExerciseIds ?? []),
+    ...state.recentAttempts.map((attempt) => attempt.exerciseId),
+    ...selected.flatMap((candidate) => candidate.activity.exerciseIds),
+  ]);
+  const exerciseIds: string[] = [];
+  const ratio = Math.min(2, Math.max(0.5, state.actualEstimateRatio ?? 1));
+  let minutes = 0;
+  const pools = new Map(
+    orderedConceptIds.map((conceptId) => [
+      conceptId,
+      (content.exercisesByConcept.get(conceptId) ?? [])
+        .filter(
+          (item) => (item.role === 'core' || item.role === 'review') && !excluded.has(item.id),
+        )
+        .sort((left, right) => left.est_minutes - right.est_minutes),
+    ]),
+  );
+  const poolCursors = new Map<string, number>();
+  let conceptCursor = 0;
+  while (minutes < remainingMinutes) {
+    let added = false;
+    for (let scanned = 0; scanned < orderedConceptIds.length; scanned += 1) {
+      const conceptId = orderedConceptIds[conceptCursor % orderedConceptIds.length];
+      conceptCursor = (conceptCursor + 1) % orderedConceptIds.length;
+      if (!conceptId) continue;
+      const pool = pools.get(conceptId) ?? [];
+      const cursor = poolCursors.get(conceptId) ?? 0;
+      const exercise = pool[cursor];
+      if (!exercise) continue;
+      poolCursors.set(conceptId, cursor + 1);
+      const itemMinutes = Math.max(1, Math.ceil(exercise.est_minutes * ratio));
+      if (minutes + itemMinutes > remainingMinutes) continue;
+      exerciseIds.push(exercise.id);
+      excluded.add(exercise.id);
+      minutes += itemMinutes;
+      added = true;
+      break;
+    }
+    if (!added) break;
+  }
+  if (exerciseIds.length === 0) return undefined;
+  return {
+    kind: 'practice',
+    exerciseIds,
+    plannedMinutes: minutes,
+    reason: {
+      terms: { ...noTerms(), cost: -minutes / 10 },
+      summary: `Practice unseen core and review items from today's learning and earlier known concepts.`,
+    },
+  };
 }
 
 function generateCandidates(state: SchedulerState, content: ContentIndex, now: Date): Candidate[] {
@@ -539,7 +604,13 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     const candidate = makeCandidate(state, content, concept, 'review', [exercise], week, project);
     candidate.activity.reason.terms.review = terms.review;
     candidate.score = scoreTerms(candidate.activity.reason.terms, candidate.adjustedMinutes);
-    candidate.activity.reason.summary = `Review ${concept.title}; forgetting risk and overdue time shape its priority.`;
+    const dueDate = new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date(card.dueAt));
+    candidate.activity.reason.summary = `Due since ${dueDate} · ~${Math.round((card.retrievability ?? 0.9) * 100)}% recall.`;
     candidates.push(candidate);
   }
   return candidates;
@@ -581,9 +652,7 @@ function makeCandidate(
   terms.cost = -adjustedMinutes / 10;
   const reason: ActivityReason = {
     terms,
-    summary:
-      summary ??
-      `${kind === 'learn' ? 'Learn' : kind === 'practice' ? 'Continue' : 'Check'} ${concept.title}.`,
+    summary: summary ?? candidateSummary(kind, concept, terms, week, project, content),
   };
   const activity: PlannedActivity = {
     kind,
@@ -598,6 +667,32 @@ function makeCandidate(
     newConcept,
     score: scoreTerms(terms, adjustedMinutes),
   };
+}
+
+function candidateSummary(
+  kind: ActivityKind,
+  concept: IndexedConcept,
+  terms: PriorityTerms,
+  week: number,
+  project: { id: string; prereqs: string[] } | undefined,
+  content: ContentIndex,
+): string {
+  if (kind === 'quick_check') return `Confirm the diagnostic result for ${concept.title}.`;
+  const parts: string[] = [];
+  if (terms.week_fit > 0 && concept.week === week) parts.push(`Week ${week} focus`);
+  if (terms.unlock > 0) {
+    const unlocked = goalWeightedUnlockTitles(concept.id, content);
+    if (unlocked.length) parts.push(`unlocks ${unlocked.join(', ')}`);
+  }
+  if (terms.project > 0 && project) {
+    const projectTitle = content.projectsById.get(project.id)?.title ?? project.id;
+    parts.push(`needed for the Saturday lab (${projectTitle})`);
+  }
+  if (terms.goal > 0 && parts.length === 0) parts.push('supports your learning goal');
+  if (terms.gap > 0) parts.push('addresses a learning gap');
+  return parts.length
+    ? parts.join(' · ')
+    : `${kind === 'learn' ? 'Learn' : 'Practice'} ${concept.title}.`;
 }
 
 function chooseExercise(
@@ -811,6 +906,32 @@ function scoreTerms(terms: PriorityTerms, minutes: number): number {
     0,
   );
   return weighted / Math.sqrt(Math.max(1, minutes));
+}
+
+function goalWeightedUnlockTitles(conceptId: string, content: ContentIndex): string[] {
+  const unlocked = new Set<string>();
+  const frontier = [conceptId];
+  while (frontier.length > 0) {
+    const current = frontier.shift();
+    if (!current) continue;
+    for (const concept of content.concepts) {
+      if (
+        concept.prereqs.some(
+          (prerequisite) => prerequisite.strength === 'hard' && prerequisite.id === current,
+        ) &&
+        !unlocked.has(concept.id)
+      ) {
+        unlocked.add(concept.id);
+        frontier.push(concept.id);
+      }
+    }
+  }
+  return [...unlocked]
+    .map((id) => content.conceptsById.get(id))
+    .filter((concept): concept is IndexedConcept => Boolean(concept?.goal_weight))
+    .sort((left, right) => right.goal_weight - left.goal_weight)
+    .slice(0, 2)
+    .map((concept) => concept.title);
 }
 
 function goalWeightedUnlocks(conceptId: string, content: ContentIndex): number {

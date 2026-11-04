@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { createApp } from '../src/server/app.js';
 import { loadContent } from '../src/server/content/load.js';
+import type { ContentIndex } from '../src/server/content/types.js';
 import { createDb } from '../src/server/db/client.js';
 import { users } from '../src/server/db/schema.js';
 import { env } from '../src/server/env.js';
@@ -10,9 +11,10 @@ const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000001';
 const now = '2026-01-01T12:00:00.000Z';
 let app: ReturnType<typeof createApp>;
+let content: ContentIndex;
 
 beforeAll(async () => {
-  const content = await loadContent('tests/fixtures/content');
+  content = await loadContent('tests/fixtures/content');
   app = createApp({ db, content });
   await db.delete(users);
   await db
@@ -110,4 +112,40 @@ test('unscoped hints lower credit and restart after the previous attempt', async
   });
   expect(nextHint.status).toBe(200);
   expect(await nextHint.json()).toMatchObject({ level: 1 });
+});
+
+test('missing authored hints do not reduce credit; explicit solution reveal does', async () => {
+  const fixture = await loadContent('tests/fixtures/content');
+  const exercise = fixture.exercisesById.get('vectors-magnitude');
+  if (exercise?.type !== 'numeric') throw new Error('Missing hint-free numeric item');
+  const appExercise = content.exercisesById.get(exercise.id);
+  if (appExercise?.type !== 'numeric') throw new Error('Missing app numeric item');
+  content.exercisesById.set(exercise.id, { ...appExercise, hints: [] });
+
+  const unavailable = await app.request('/api/hints', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': '2026-01-03T12:00:00.000Z' },
+    body: JSON.stringify({ exerciseId: exercise.id }),
+  });
+  expect(await unavailable.json()).toMatchObject({ hasMore: false });
+
+  const unassisted = await app.request('/api/attempts', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': '2026-01-03T12:01:00.000Z' },
+    body: JSON.stringify({ exerciseId: exercise.id, answer: exercise.answer, mode: 'practice' }),
+  });
+  expect(await unassisted.json()).toMatchObject({ hintsUsed: 0, credit: 1 });
+
+  const solution = await app.request('/api/hints', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': '2026-01-04T12:00:00.000Z' },
+    body: JSON.stringify({ exerciseId: exercise.id, revealSolution: true }),
+  });
+  expect(await solution.json()).toMatchObject({ level: 5, revealedSolution: true });
+  const assisted = await app.request('/api/attempts', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': '2026-01-04T12:01:00.000Z' },
+    body: JSON.stringify({ exerciseId: exercise.id, answer: exercise.answer, mode: 'practice' }),
+  });
+  expect(await assisted.json()).toMatchObject({ hintsUsed: 5, credit: 0.1 });
 });

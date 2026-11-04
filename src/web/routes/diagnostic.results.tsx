@@ -30,11 +30,23 @@ interface DiagnosticResults {
 function DiagnosticResultsPage() {
   const [result, setResult] = useState<DiagnosticResults | null>(null);
   useEffect(() => {
-    const id = window.sessionStorage.getItem('diagnosticRunId');
-    if (!id) return;
-    void fetch(`/api/diagnostic/${id}/results`)
-      .then((response) => response.json())
-      .then(setResult);
+    let active = true;
+    void (async () => {
+      let id: string | null =
+        new URLSearchParams(window.location.search).get('id') ??
+        window.sessionStorage.getItem('diagnosticRunId');
+      if (!id) {
+        const latest = await fetch('/api/diagnostic/latest');
+        if (!latest.ok) return;
+        id = ((await latest.json()) as { id?: string }).id ?? null;
+      }
+      if (!id) return;
+      const response = await fetch(`/api/diagnostic/${encodeURIComponent(id)}/results`);
+      if (response.ok && active) setResult(await response.json());
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
   return (
     <section className="mx-auto max-w-3xl space-y-6">

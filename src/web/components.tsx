@@ -11,6 +11,7 @@ export interface ClientExercise {
   id: string;
   type: string;
   multi?: boolean;
+  hintCount?: number;
   prompt: string;
   options?: Array<{ id: string; text: string }>;
   code?: string;
@@ -239,30 +240,48 @@ export function ExerciseForm({
 export function HintLadder({
   exerciseId,
   activityId,
+  hintCount = 0,
   onHint,
   mode = 'practice',
   buttonRef,
 }: {
   exerciseId: string;
   activityId?: string;
+  hintCount?: number;
   onHint: (result: { level: number; text: string; revealedSolution: boolean }) => void;
   mode?: 'practice' | 'review';
   buttonRef?: RefObject<HTMLButtonElement | null>;
 }) {
   const [loading, setLoading] = useState(false);
+  const [level, setLevel] = useState(0);
+  const [solutionShown, setSolutionShown] = useState(false);
+  const showSolution = level >= hintCount;
   const requestHint = async () => {
     setLoading(true);
     const response = await fetch('/api/hints', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ exerciseId, activityId, mode, stuck: mode === 'review' }),
+      body: JSON.stringify({
+        exerciseId,
+        activityId,
+        mode,
+        stuck: mode === 'review',
+        revealSolution: showSolution,
+      }),
     });
     const data = await response.json();
     if (response.ok) {
-      onHint(data);
+      if (typeof data.text === 'string') {
+        onHint(data);
+        if (data.revealedSolution) setSolutionShown(true);
+        else setLevel(data.level);
+      } else {
+        setLevel(hintCount);
+      }
     }
     setLoading(false);
   };
+  if (solutionShown) return null;
   return (
     <button
       ref={buttonRef}
@@ -271,7 +290,13 @@ export function HintLadder({
       onClick={requestHint}
       className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
     >
-      {loading ? 'Loading hint…' : mode === 'review' ? "I'm stuck — show a hint" : 'Hint'}
+      {loading
+        ? 'Loading…'
+        : showSolution
+          ? 'Show solution'
+          : mode === 'review'
+            ? "I'm stuck — show a hint"
+            : 'Hint'}
     </button>
   );
 }

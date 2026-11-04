@@ -16,20 +16,29 @@ export function gradeMultipleChoice(
   const isCorrect =
     selectedIds.length === correctIds.length &&
     selectedIds.every((optionId, index) => optionId === correctIds[index]);
-  const feedback = selectedIds
-    .map((optionId) => exercise.options.find((option) => option.id === optionId)?.feedback)
-    .filter((entry): entry is string => Boolean(entry));
   if (isCorrect) {
+    const feedback = selectedIds
+      .map((optionId) => exercise.options.find((option) => option.id === optionId)?.feedback)
+      .filter((entry): entry is string => Boolean(entry));
     return graded(1, feedback.join(' ') || 'Correct.');
   }
   const selectedWrong = selectedIds
     .map((optionId) => exercise.options.find((option) => option.id === optionId))
-    .find((option) => option && !option.correct);
+    .filter((option) => option && !option.correct);
+  const feedback = selectedWrong
+    .map((option) => option?.feedback)
+    .filter((entry): entry is string => Boolean(entry));
+  if (exercise.multi) {
+    const missedCount = correctIds.filter((id) => !selectedIds.includes(id)).length;
+    if (missedCount > 0) {
+      feedback.push(`You missed ${missedCount} correct option${missedCount === 1 ? '' : 's'}.`);
+    }
+  }
   return graded(
     0,
     feedback.join(' ') || 'Select the option or set of options that answers the prompt.',
     {
-      mistake_category: selectedWrong?.category,
+      mistake_category: selectedWrong[0]?.category,
     },
   );
 }
