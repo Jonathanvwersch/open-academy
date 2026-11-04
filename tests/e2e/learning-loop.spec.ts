@@ -99,6 +99,8 @@ test('diagnostic to hinted practice updates the map and schedules a review', asy
 
   await page.getByRole('link', { name: 'View Today' }).click();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await expect(page.getByText('Week 1 · ML fundamentals')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Current week' })).toHaveCount(0);
   await page.screenshot({ path: `${screenshotDir}/today-plan.png`, fullPage: true });
   await page.getByRole('button', { name: 'Start session' }).click();
   await expect(
@@ -254,9 +256,11 @@ test('progress displays mastery, goal progress, study time, and evidence section
   await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '90-day goals' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Mastery by domain' })).toBeVisible();
+  await expect(page.getByText('Mathematics', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Learning debt' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Study time' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Recent evidence' })).toBeVisible();
+  await expect(page.getByText('No answers yet.')).toBeVisible();
 });
 
 test('progress loader failure restores the unavailable message', async ({ page }) => {

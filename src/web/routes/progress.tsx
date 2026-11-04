@@ -47,8 +47,8 @@ function ProgressPage() {
           <CardTitle>Mastery by domain</CardTitle>
         </CardHeader>
         <CardContent>
-          {data.domains.map((domain) => (
-            <div className="mt-4 border-t pt-3" key={domain.id}>
+          {data.domains.map((domain, index) => (
+            <div className={index === 0 ? '' : 'mt-4 border-t pt-3'} key={domain.id}>
               <h3 className="font-medium">{domain.title}</h3>
               {Object.values(domain.counts).every((count) => count === 0) ? (
                 <p className="text-sm text-muted-foreground">No lessons authored yet</p>
@@ -101,15 +101,19 @@ function ProgressPage() {
           <CardTitle>Recent evidence</CardTitle>
         </CardHeader>
         <CardContent>
-          <ul className="space-y-2 text-sm">
-            {data.evidence.map((item) => (
-              <li key={item.id}>
-                Attempt {item.exerciseId} ({item.conceptTitle}) → {item.correct} credit ·{' '}
-                {new Date(item.createdAt).toLocaleDateString()} ·{' '}
-                {item.event ?? 'no mastery-state change'}
-              </li>
-            ))}
-          </ul>
+          {data.evidence.length ? (
+            <ul className="space-y-2 text-sm">
+              {data.evidence.map((item) => (
+                <li key={item.id}>
+                  Attempt {item.exerciseId} ({item.conceptTitle}) → {item.correct} credit ·{' '}
+                  {new Date(item.createdAt).toLocaleDateString()} ·{' '}
+                  {item.event ?? 'no mastery-state change'}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">No answers yet.</p>
+          )}
         </CardContent>
       </Card>
     </section>

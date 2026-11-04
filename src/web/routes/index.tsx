@@ -77,14 +77,6 @@ function TodayPage() {
           {plan.dueReviews} review{plan.dueReviews === 1 ? '' : 's'} due
         </p>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Current week</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="max-w-[70ch] leading-7">{plan.objective}</p>
-        </CardContent>
-      </Card>
       {plan.dueReviews > 0 ? (
         <Card>
           <CardHeader>

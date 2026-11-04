@@ -278,11 +278,10 @@ export function ExerciseForm({
                   <Label
                     key={option.id}
                     htmlFor={optionId}
-                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3"
+                    className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card p-3"
                   >
                     <Checkbox
                       id={optionId}
-                      className="mt-1"
                       checked={selected.includes(option.id)}
                       onCheckedChange={(checked) =>
                         setSelected((current) =>
@@ -309,9 +308,9 @@ export function ExerciseForm({
                   <Label
                     key={option.id}
                     htmlFor={optionId}
-                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3"
+                    className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card p-3"
                   >
-                    <RadioGroupItem id={optionId} value={option.id} className="mt-1" />
+                    <RadioGroupItem id={optionId} value={option.id} />
                     <Markdown>{option.text}</Markdown>
                   </Label>
                 );
