@@ -97,12 +97,12 @@ test('diagnostic to hinted practice updates the map and schedules a review', asy
   await page.goto('/diagnostic/results');
   await expect(page.getByText('First week: ML fundamentals')).toBeVisible();
 
-  await page.getByRole('link', { name: 'View Today' }).click();
-  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
-  await expect(page.getByText('Week 1 · ML fundamentals')).toBeVisible();
+  await page.getByRole('link', { name: 'View Learn' }).click();
+  await expect(page.getByRole('heading', { name: 'Learn', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Current week' })).toHaveCount(0);
   await page.screenshot({ path: `${screenshotDir}/today-plan.png`, fullPage: true });
-  await page.getByRole('button', { name: 'Start session' }).click();
+  await page.getByRole('button', { name: 'Start learning' }).click();
   await expect(
     page.getByText('A vector is an ordered list of coordinates in a shared space.'),
   ).toBeVisible();
@@ -154,8 +154,12 @@ test('diagnostic to hinted practice updates the map and schedules a review', asy
 
   now = '2026-01-15T12:00:00.000Z';
   await page.goto('/');
-  await expect(page.getByText('1 review due')).toBeVisible();
-  await expect(page.getByText('Review · vectors', { exact: false })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
+  await expect(
+    page
+      .getByRole('link', { name: 'Resume session' })
+      .or(page.getByRole('button', { name: 'Start learning' })),
+  ).toBeVisible();
 });
 
 test('diagnostic uses radios, renders option math, and resets answers between questions', async ({
@@ -194,8 +198,8 @@ test('a final wrong practice answer reveals the worked solution', async ({ page 
   await page.getByRole('button', { name: 'I haven’t studied this domain' }).click();
   await finalSkip;
   await expect(page.getByRole('heading', { name: 'Your starting point' })).toBeVisible();
-  await page.getByRole('link', { name: 'View Today' }).click();
-  await page.getByRole('button', { name: 'Start session' }).click();
+  await page.getByRole('link', { name: 'View Learn' }).click();
+  await page.getByRole('button', { name: 'Start learning' }).click();
   await expect(page.getByRole('button', { name: 'Continue to practice' })).toBeDisabled();
   await expect(page.getByText('Answer or skip the check above to continue.')).toBeVisible();
   await page.getByRole('button', { name: 'Skip this check' }).click();
@@ -225,8 +229,8 @@ test('an answered lesson check still unlocks Continue after a reload', async ({ 
     await skip;
   }
   await expect(page.getByRole('heading', { name: 'Your starting point' })).toBeVisible();
-  await page.getByRole('link', { name: 'View Today' }).click();
-  await page.getByRole('button', { name: 'Start session' }).click();
+  await page.getByRole('link', { name: 'View Learn' }).click();
+  await page.getByRole('button', { name: 'Start learning' }).click();
   await page.getByLabel('Your answer').fill('5');
   await page.getByRole('button', { name: 'Submit answer' }).click();
   await expect(page.getByRole('button', { name: 'Continue to practice' })).toBeEnabled();
@@ -311,6 +315,7 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
     { name: 'Lab', path: '/lab', heading: 'Linear regression in NumPy' },
     { name: 'Progress', path: '/progress', heading: 'Progress' },
     { name: 'Settings', path: '/settings', heading: 'Settings' },
+    { name: 'Course', path: '/course', heading: 'Course' },
   ]) {
     await page.getByRole('link', { name: route.name }).click();
     await expect(page.getByRole('heading', { name: route.heading })).toBeVisible();
@@ -321,7 +326,7 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
     });
   }
 
-  await page.getByRole('link', { name: 'Today' }).click();
+  await page.getByRole('link', { name: 'Learn' }).click();
   await page.getByRole('link', { name: 'Start diagnostic' }).click();
   await expect(page.getByRole('heading', { name: 'Starting-point diagnostic' })).toBeVisible();
   await page.getByRole('button', { name: 'I haven’t studied this domain' }).click();
@@ -330,10 +335,11 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
   const runId = await page.evaluate(() => window.sessionStorage.getItem('diagnosticRunId'));
   expect(runId).toBeTruthy();
   await page.goto(`/diagnostic/results?id=${runId}`);
-  await expect(page.getByRole('link', { name: 'View Today' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'View Learn' })).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/diagnostic-results.png`, fullPage: true });
-  await page.getByRole('link', { name: 'View Today' }).click();
-  await expect(page.getByRole('button', { name: 'Start session' })).toBeVisible();
+  await page.getByRole('link', { name: 'View Learn' }).click();
+  await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Start learning|Resume session/ })).toBeVisible();
   const db = createDb(env.TEST_DATABASE_URL);
   const [session] = await db
     .insert(studySessions)

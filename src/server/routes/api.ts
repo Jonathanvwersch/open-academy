@@ -59,6 +59,7 @@ import { initialMastery, masteryRank } from '../learning/types.js';
 import { createTutorProvider, E2ETutorProvider, type TutorProvider } from '../tutor/provider.js';
 import { scoreRubric } from '../tutor/scoring.js';
 import { TutorService } from '../tutor/service.js';
+import { registerLearnCourseRoutes } from './learn-course.js';
 import { registerLessonRunRoutes } from './lesson-runs.js';
 import { registerTutorThreadRoutes } from './tutor-threads.js';
 
@@ -121,6 +122,7 @@ export function createApiRoutes(deps: {
     requestNow,
     applyMastery,
   });
+  registerLearnCourseRoutes(api, { db, content, withRepo, requestNow });
   registerTutorThreadRoutes(api, { db, content, tutor, requestNow });
 
   api.get('/today', async (context) => {
@@ -975,6 +977,13 @@ export function createApiRoutes(deps: {
         session,
         exerciseIds,
         progress: { ...progress, completedExerciseIds, outcomes },
+        userId: context.get('userId'),
+        timeZone: context.get('timeZone'),
+        knowledgePointActivity: Boolean(
+          activity.kind === 'learn' &&
+            activity.conceptId &&
+            index.lessonsByConcept.get(activity.conceptId)?.knowledge_points?.length,
+        ),
       });
     }
     return context.json({

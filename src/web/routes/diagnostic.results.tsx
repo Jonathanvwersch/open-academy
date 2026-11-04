@@ -103,7 +103,7 @@ function DiagnosticResultsPage() {
         </CardContent>
       </Card>
       <Button asChild>
-        <a href="/">View Today</a>
+        <a href="/">View Learn</a>
       </Button>
     </section>
   );
