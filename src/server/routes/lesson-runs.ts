@@ -2,7 +2,7 @@ import { and, eq, like } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import { serializeExercise } from '../content/serialize.js';
-import { instantiateExercise, isTemplate } from '../content/templates.js';
+import { formatTemplateNumber, instantiateExercise, isTemplate } from '../content/templates.js';
 import type { ContentIndex, IndexedExercise, IndexedLesson } from '../content/types.js';
 import type { Database } from '../db/client.js';
 import { LearnerRepository } from '../db/repository.js';
@@ -18,6 +18,51 @@ import { calculateCredit } from '../learning/mastery.js';
 import type { ApiEnv } from './api.js';
 
 type LessonContext = Context<ApiEnv>;
+
+function answerText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return formatTemplateNumber(value);
+  if (Array.isArray(value)) return value.map(answerText).join(', ');
+  if (value && typeof value === 'object') return JSON.stringify(value);
+  return '';
+}
+
+function answerDisplay(exercise: IndexedExercise, answer: unknown): string {
+  if (exercise.type === 'mc') {
+    const ids = Array.isArray(answer) ? answer : [answer];
+    return ids
+      .map((id) => exercise.options.find((option) => option.id === id)?.text ?? answerText(id))
+      .join('\n');
+  }
+  if (exercise.type === 'numeric') {
+    const numeric = typeof answer === 'number' ? answer : Number(answer);
+    return Number.isFinite(numeric) ? formatTemplateNumber(numeric) : answerText(answer);
+  }
+  return answerText(answer);
+}
+
+function correctAnswerDisplay(exercise: IndexedExercise): string {
+  if (exercise.type === 'mc') {
+    return exercise.options
+      .filter((option) => option.correct)
+      .map((option) => option.text)
+      .join('\n');
+  }
+  if (exercise.type === 'numeric') {
+    return 'answer' in exercise ? formatTemplateNumber(exercise.answer) : '';
+  }
+  if ('answer' in exercise) return answerText(exercise.answer);
+  if ('accept' in exercise) return exercise.accept.join(', ');
+  if (exercise.type === 'explain') return exercise.exemplar;
+  if (exercise.type === 'debug') {
+    return exercise.fix_options
+      .filter((option) => option.correct)
+      .map((option) => option.text)
+      .join('\n');
+  }
+  return '';
+}
+
 type MasteryApplier = (input: {
   repo: LearnerRepository;
   userId: string;
@@ -84,6 +129,12 @@ export function registerLessonRunRoutes(
     const [lastAttempt] = lastRow?.attemptId
       ? await deps.db.select().from(attempts).where(eq(attempts.id, lastRow.attemptId)).limit(1)
       : [];
+    const attemptFeedback = (lastAttempt?.feedback as { message?: string } | null)?.message;
+    const feedback =
+      lastInstance?.type === 'mc' &&
+      attemptFeedback === 'Select the option or set of options that answers the prompt.'
+        ? ''
+        : (attemptFeedback ?? (lastRow?.correct === 1 ? 'Correct.' : 'Not quite.'));
     const earnedEvents = await deps.db
       .select({ amount: xpEvents.amount })
       .from(xpEvents)
@@ -113,10 +164,10 @@ export function registerLessonRunRoutes(
               exercise: serializeExercise(lastInstance, userId),
               result: {
                 correct: lastRow.correct,
-                feedback:
-                  (lastAttempt?.feedback as { message?: string } | null)?.message ??
-                  (lastRow.correct === 1 ? 'Correct.' : 'Not quite.'),
+                feedback,
                 solution: lastInstance.solution,
+                yourAnswer: answerDisplay(lastInstance, lastAttempt?.answer),
+                correctAnswer: correctAnswerDisplay(lastInstance),
               },
             }
           : undefined,

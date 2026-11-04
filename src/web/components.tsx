@@ -127,6 +127,18 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
           <Markdown>{feedback}</Markdown>
         </div>
       ) : null}
+      {typeof result.yourAnswer === 'string' ? (
+        <div className="mt-3 space-y-2 text-sm">
+          <div>
+            <p className="font-medium">Your answer:</p>
+            <Markdown>{result.yourAnswer}</Markdown>
+          </div>
+          <div>
+            <p className="font-medium">Correct answer:</p>
+            <Markdown>{String(result.correctAnswer ?? '')}</Markdown>
+          </div>
+        </div>
+      ) : null}
       {typeof result.solution === 'string' ? (
         <div className="mt-3 border-t border-neutral-200 pt-3 text-sm">
           <Markdown>{result.solution}</Markdown>
@@ -139,9 +151,13 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
 export function ExerciseForm({
   exercise,
   onSubmit,
+  disabled = false,
+  submitLabel = 'Submit answer',
 }: {
   exercise: ClientExercise;
   onSubmit: (answer: unknown) => void;
+  disabled?: boolean;
+  submitLabel?: string;
 }) {
   const [value, setValue] = useState('');
   const [line, setLine] = useState('');
@@ -305,9 +321,10 @@ export function ExerciseForm({
       ) : null}
       <button
         type="submit"
-        className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
+        disabled={disabled}
+        className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Submit answer
+        {submitLabel}
       </button>
     </form>
   );

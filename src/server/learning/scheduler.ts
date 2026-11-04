@@ -102,6 +102,10 @@ export interface SchedulerState {
   inProgressConceptId?: string;
   actualEstimateRatio?: number;
   usedExerciseIds?: string[];
+  lessonRuns?: Array<{
+    conceptId: string;
+    status: 'in_progress' | 'needs_retry' | 'completed';
+  }>;
 }
 
 export interface SessionPlan {
@@ -184,6 +188,7 @@ function packWeekday(
   const candidates = generateCandidates(state, content, now);
   const selected: Candidate[] = [];
   let usedMinutes = 0;
+  let newConceptCount = 0;
   const selectedConcepts = new Set<string>();
   const canAdd = (candidate: Candidate, limit = budget) =>
     selected.length < SCHEDULER_CONFIG.weekday.maxActivities &&
@@ -197,6 +202,25 @@ function packWeekday(
     if (candidate.activity.conceptId) selectedConcepts.add(candidate.activity.conceptId);
     return true;
   };
+  const unfinishedLessonConcepts = new Set(
+    (state.lessonRuns ?? [])
+      .filter((run) => run.status === 'in_progress' || run.status === 'needs_retry')
+      .filter(
+        (run) => (content.lessonsByConcept.get(run.conceptId)?.knowledge_points?.length ?? 0) > 0,
+      )
+      .map((run) => run.conceptId),
+  );
+  for (const candidate of candidates
+    .filter(
+      (entry) =>
+        entry.activity.kind === 'learn' &&
+        entry.activity.conceptId &&
+        unfinishedLessonConcepts.has(entry.activity.conceptId),
+    )
+    .sort((left, right) => right.score - left.score)) {
+    if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
+    if (add(candidate)) newConceptCount += 1;
+  }
   const reviewCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'review')
     .sort((left, right) => right.score - left.score);
@@ -231,7 +255,6 @@ function packWeekday(
       if (right.activity.conceptId === state.inProgressConceptId) return 1;
       return right.score - left.score;
     });
-  let newConceptCount = 0;
   for (const candidate of learnCandidates) {
     if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
     if (add(candidate)) newConceptCount += 1;
@@ -414,7 +437,39 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     const isContinuing = states.some(
       (record) => record?.state === 'introduced' || record?.state === 'assisted',
     );
-    if (isNew || isContinuing) {
+    const hasKnowledgePointLesson =
+      (content.lessonsByConcept.get(concept.id)?.knowledge_points?.length ?? 0) > 0;
+    const lessonRunStatus = state.lessonRuns?.find((run) => run.conceptId === concept.id)?.status;
+    const shouldResumeLesson =
+      hasKnowledgePointLesson &&
+      prereqsReady &&
+      (lessonRunStatus === 'in_progress' || lessonRunStatus === 'needs_retry');
+    const completedKnowledgePointLesson =
+      hasKnowledgePointLesson && lessonRunStatus === 'completed';
+    if (shouldResumeLesson) {
+      const exercise = chooseExercise(
+        state,
+        content,
+        concept,
+        undefined,
+        ['core', 'check'],
+        now,
+        recentIds,
+      );
+      candidates.push(
+        makeCandidate(
+          state,
+          content,
+          concept,
+          'learn',
+          exercise ? [exercise] : [],
+          week,
+          project,
+          true,
+          100,
+        ),
+      );
+    } else if (!completedKnowledgePointLesson && (isNew || isContinuing)) {
       const dimension = concept.dimensions.find((candidate) => {
         const state = masteryByKey.get(masteryKey(concept.id, candidate))?.state ?? 'not_assessed';
         const hasCoreItem = (content.exercisesByConcept.get(concept.id) ?? []).some(

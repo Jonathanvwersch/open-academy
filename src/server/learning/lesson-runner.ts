@@ -116,9 +116,17 @@ export function deriveLessonState<Row extends LessonProblemRow>(
           ),
         )
       : [];
+  const pointOrder = new Map(knowledgePoints.map((point, index) => [point.id, index]));
   const lastAnswered = [...currentProblems]
     .filter((problem) => problem.answeredAt !== null)
-    .sort((left, right) => right.servedAt.getTime() - left.servedAt.getTime())[0];
+    .sort(
+      (left, right) =>
+        (right.answeredAt?.getTime() ?? 0) - (left.answeredAt?.getTime() ?? 0) ||
+        (pointOrder.get(right.knowledgePointId) ?? -1) -
+          (pointOrder.get(left.knowledgePointId) ?? -1) ||
+        right.round - left.round ||
+        right.position - left.position,
+    )[0];
   const pending = currentRows.find((problem) => problem.answeredAt === null);
   const allPassed = pointStates.every((point) => point.status === 'passed');
   return {

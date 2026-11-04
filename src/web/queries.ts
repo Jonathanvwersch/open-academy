@@ -109,7 +109,13 @@ export interface LessonRunPayload {
       position: number;
       activityId?: string | null;
       exercise: ClientExercise;
-      result: { correct: number | null; feedback: string; solution: string };
+      result: {
+        correct: number | null;
+        feedback: string;
+        solution: string;
+        yourAnswer: string;
+        correctAnswer: string;
+      };
     };
     xpEarned: number;
   };

@@ -185,7 +185,13 @@ test('two correct answers pass a point and award exactly one ten-point event', a
       correctAnswer(pending.exerciseId, pending.seed),
     );
     expect(response.status).toBe(200);
-    run = (await response.json()).state;
+    const body = await response.json();
+    run = body.state;
+    expect(run.lastAnsweredProblem.id).toBe(pending.id);
+    expect(run.lastAnsweredProblem.result).toMatchObject({
+      yourAnswer: expect.any(String),
+      correctAnswer: expect.any(String),
+    });
     if (count === 0) run = (await (await startRun()).json()).run;
   }
   expect(run.points[0]).toMatchObject({ id: 'sl-inputs-targets', status: 'passed', answered: 2 });
@@ -199,7 +205,9 @@ test('double-submit returns 409 and records just one attempt', async () => {
   const run = (await (await startRun()).json()).run;
   const pending = run.pending;
   const answer = correctAnswer(pending.exerciseId, pending.seed);
-  expect((await answerProblem(pending.id, answer)).status).toBe(200);
+  const firstResponse = await answerProblem(pending.id, answer);
+  expect(firstResponse.status).toBe(200);
+  expect((await firstResponse.json()).state.lastAnsweredProblem.id).toBe(pending.id);
   expect((await answerProblem(pending.id, answer)).status).toBe(409);
   expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(1);
 });
@@ -259,7 +267,9 @@ test('failed round completes its activity, starts the next, and resumes at round
       activities.learn.id,
     );
     expect(result.status).toBe(200);
-    run = (await result.json()).state;
+    const body = await result.json();
+    run = body.state;
+    expect(run.lastAnsweredProblem.id).toBe(pending.id);
     if (count < 3) run = (await (await startRun(activities.learn.id)).json()).run;
   }
   expect(run.status).toBe('needs_retry');
@@ -296,7 +306,9 @@ test('finishing all points awards the XP sum and GET matches each POST state', a
         correctAnswer(pending.exerciseId, pending.seed),
       );
       expect(response.status).toBe(200);
-      run = (await response.json()).state;
+      const body = await response.json();
+      run = body.state;
+      expect(run.lastAnsweredProblem.id).toBe(pending.id);
     }
     reload = await getCurrentRun();
     expect(reload).toEqual(run);

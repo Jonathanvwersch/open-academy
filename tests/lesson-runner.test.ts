@@ -69,6 +69,29 @@ test('only a score of exactly one contributes to the streak', () => {
   expect(state.points[0]).toMatchObject({ status: 'active', answered: 2, streak: 0 });
 });
 
+test('last answered uses answer time, then authored point order, round and position', () => {
+  const tiedAt = new Date('2026-01-01T12:00:00.000Z');
+  const tiedRow = (knowledgePointId: string, round: number, position: number) => ({
+    ...row(position, 1, knowledgePointId, round),
+    servedAt: tiedAt,
+    answeredAt: tiedAt,
+  });
+  const state = deriveLessonState(
+    { knowledge_points: [point('first', ['a']), point('second', ['b'])] },
+    [
+      tiedRow('first', 9, 99),
+      tiedRow('second', 1, 1),
+      tiedRow('second', 2, 1),
+      tiedRow('second', 2, 2),
+    ],
+  );
+  expect(state.lastAnswered).toMatchObject({
+    knowledgePointId: 'second',
+    round: 2,
+    position: 2,
+  });
+});
+
 test('problem selection prefers unserved fixed items, cycles templates with supplied seeds, and caps at five', () => {
   const fixed = (id: string) =>
     ExerciseSchema.parse({

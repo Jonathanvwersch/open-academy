@@ -165,7 +165,21 @@ export function LessonRunner({
           <h2 className="text-xl font-semibold">Lesson complete · +{state.xpEarned} XP</h2>
           <p>Your progress and experience points have been saved.</p>
           {state.lastAnsweredProblem ? (
-            <FeedbackPanel result={state.lastAnsweredProblem.result} />
+            <>
+              <div
+                data-testid="lesson-problem"
+                data-problem-id={state.lastAnsweredProblem.id}
+                className="rounded-lg border border-green-200 bg-white p-4"
+              >
+                <p className="mb-2 text-sm font-medium">
+                  Problem {state.lastAnsweredProblem.position} · up to 5
+                </p>
+                <div data-testid="lesson-problem-prompt">
+                  <Markdown>{state.lastAnsweredProblem.exercise.prompt}</Markdown>
+                </div>
+              </div>
+              <FeedbackPanel result={state.lastAnsweredProblem.result} />
+            </>
           ) : null}
         </div>
       ) : state.status === 'needs_retry' ? (
@@ -173,7 +187,21 @@ export function LessonRunner({
           <h2 className="text-xl font-semibold">Try again later</h2>
           <p>You’ll get fresh problems on this step next time.</p>
           {state.lastAnsweredProblem ? (
-            <FeedbackPanel result={state.lastAnsweredProblem.result} />
+            <>
+              <div
+                data-testid="lesson-problem"
+                data-problem-id={state.lastAnsweredProblem.id}
+                className="rounded-lg border border-amber-200 bg-white p-4"
+              >
+                <p className="mb-2 text-sm font-medium">
+                  Problem {state.lastAnsweredProblem.position} · up to 5
+                </p>
+                <div data-testid="lesson-problem-prompt">
+                  <Markdown>{state.lastAnsweredProblem.exercise.prompt}</Markdown>
+                </div>
+              </div>
+              <FeedbackPanel result={state.lastAnsweredProblem.result} />
+            </>
           ) : null}
         </div>
       ) : (
@@ -191,7 +219,11 @@ export function LessonRunner({
             </section>
           ) : null}
           {shownProblem ? (
-            <article className="space-y-5 rounded-xl border border-neutral-200 bg-white p-5">
+            <article
+              className="space-y-5 rounded-xl border border-neutral-200 bg-white p-5"
+              data-testid="lesson-problem"
+              data-problem-id={shownProblem.id}
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="font-semibold">Problem {shownProblem.position} · up to 5</h3>
                 <p className="text-sm text-neutral-600">2 in a row to move on</p>
@@ -212,7 +244,9 @@ export function LessonRunner({
                   />
                 ))}
               </div>
-              <Markdown>{shownProblem.exercise.prompt}</Markdown>
+              <div data-testid="lesson-problem-prompt">
+                <Markdown>{shownProblem.exercise.prompt}</Markdown>
+              </div>
               {showingAnswer && state.lastAnsweredProblem ? (
                 <>
                   <FeedbackPanel result={state.lastAnsweredProblem.result} />
@@ -233,7 +267,12 @@ export function LessonRunner({
                   ) : null}
                 </>
               ) : (
-                <ExerciseForm exercise={shownProblem.exercise} onSubmit={submit} />
+                <ExerciseForm
+                  exercise={shownProblem.exercise}
+                  onSubmit={submit}
+                  disabled={busy}
+                  submitLabel={busy ? 'Saving…' : 'Submit answer'}
+                />
               )}
             </article>
           ) : null}
@@ -251,16 +290,17 @@ export function LessonRunner({
           disabled={busy}
           className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {state.status === 'completed'
-            ? 'Continue'
-            : state.status === 'needs_retry'
+          {busy
+            ? 'Saving…'
+            : state.status === 'completed'
               ? 'Continue'
-              : pointStatus?.status === 'passed'
-                ? 'Next step'
-                : 'Next problem'}
+              : state.status === 'needs_retry'
+                ? 'Continue'
+                : pointStatus?.status === 'passed'
+                  ? 'Next step'
+                  : 'Next problem'}
         </button>
       ) : null}
-      {busy ? <p className="text-sm text-neutral-600">Saving your progress…</p> : null}
     </section>
   );
 }

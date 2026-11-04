@@ -86,7 +86,10 @@ async function answerAndReload(page: Page, correct: boolean) {
   expect(response.status()).toBe(200);
   await page.reload();
   await expect(page.getByRole('status')).toContainText(correct ? 'Correct' : 'Not quite');
+  await expect(page.getByTestId('lesson-problem')).toHaveAttribute('data-problem-id', problem.id);
+  await expect(page.getByTestId('lesson-problem-prompt')).toBeVisible();
   expect(await currentRun(page)).toEqual(body.state);
+  expect(body.state.lastAnsweredProblem.id).toBe(problem.id);
   return body.state;
 }
 
@@ -136,6 +139,9 @@ test('passes every knowledge point and restores the exact problem and result aft
       }
       if (pointIndex === 0 && run.points[0].status === 'passed') {
         await expect(page.getByText('+10 XP')).toBeVisible();
+        await expect(page.getByText('Problem 2 · up to 5')).toBeVisible();
+        await expect(page.getByText('Your answer:')).toBeVisible();
+        await expect(page.getByText('Correct answer:')).toBeVisible();
         await page.screenshot({
           path: `${screenshotDir}/knowledge-point-passed.png`,
           fullPage: true,
@@ -163,6 +169,11 @@ test('a failed knowledge point shows the retry screen and resumes at round two i
   const firstProblemId = run.pendingProblem.id;
   for (let answerIndex = 0; answerIndex < 4; answerIndex += 1) {
     run = await answerAndReload(page, false);
+    if (answerIndex === 0) {
+      await expect(page.getByText('Your answer:')).toBeVisible();
+      await expect(page.getByText('Correct answer:')).toBeVisible();
+      await page.screenshot({ path: `${screenshotDir}/wrong-answer.png`, fullPage: true });
+    }
     if (answerIndex < 3) run = await nextProblemAndReload(page);
   }
   expect(run.status).toBe('needs_retry');
@@ -183,10 +194,7 @@ test('a failed knowledge point shows the retry screen and resumes at round two i
     (activity: { conceptId?: string; kind: string }) =>
       activity.conceptId === conceptId && activity.kind === 'learn',
   );
-  test.skip(
-    !reoffered,
-    'The scheduler did not re-offer supervised-learning after the failed step.',
-  );
+  expect(reoffered).toBeTruthy();
   await page.goto(`/session/${session.id}`);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
   await expect.poll(async () => (await currentRun(page))?.pendingProblem?.round).toBe(2);
@@ -194,4 +202,6 @@ test('a failed knowledge point shows the retry screen and resumes at round two i
   expect(resumed.currentPointId).toBe('sl-inputs-targets');
   expect(resumed.points[0]).toMatchObject({ status: 'active', round: 2, answered: 0 });
   expect(resumed.pendingProblem.id).not.toBe(firstProblemId);
+  await expect(page.getByText('Problem 1 · up to 5')).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/round-two-retry.png`, fullPage: true });
 });
