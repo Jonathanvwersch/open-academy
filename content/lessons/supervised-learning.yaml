@@ -31,9 +31,24 @@ blocks:
       A robot learning from demonstrations uses the same five ingredients: the input is what its camera sees, and the target is the action the human took.
   - kind: math
     md: |
-      Average training loss:
-      $$\theta^\star = \arg\min_\theta \frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(x_i), y_i\big).$$
-      **Regression** means $y$ is real-valued; **classification** means $y$ is a category.
+      Here's how "make the average loss small" becomes one formula. We'll build it in three steps with the house example.
+
+      **1. The loss on one house.** For house number $i$, the model predicts $f_\theta(x_i)$ and the true price is $y_i$. The loss $L\big(f_\theta(x_i), y_i\big)$ is a single number saying how wrong that one prediction is. With squared error it is $\big(f_\theta(x_i) - y_i\big)^2$.
+
+      **2. The average over all houses.** Add up the loss for every house and divide by the number of houses $n$:
+
+      $$\frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(x_i), y_i\big)$$
+
+      The symbol $\sum_{i=1}^{n}$ just means "add this up for $i = 1, 2, \dots, n$". For the 1,000 past sales, $n = 1000$.
+
+      **3. Pick the best parameters.** Different parameters $\theta$ (here $w_1, w_2, b$) give different average losses. Training looks for the $\theta$ that makes the average as small as possible:
+
+      $$\theta^\star = \arg\min_\theta \frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(x_i), y_i\big)$$
+
+      Read $\arg\min_\theta$ as "the value of $\theta$ that gives the smallest result", and $\theta^\star$ as "the best parameters". The gradient descent lesson shows how training actually finds them.
+  - kind: intuition
+    md: |
+      **Two kinds of target.** When the target $y$ is a number, like a sale price or tomorrow's electricity demand, the problem is called **regression**. When $y$ is a category, like "spam" or "not spam", it is called **classification**. The five ingredients are the same either way. Only the kind of target changes, and with it the choice of loss.
   - kind: check
     exercise: sl-check-target
   - kind: summary
