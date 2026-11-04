@@ -16,10 +16,10 @@ export default defineConfig({
   ],
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: Number(process.env.VITE_PORT ?? '5173'),
     strictPort: true,
     proxy: {
-      '/api': 'http://127.0.0.1:3001',
+      '/api': `http://127.0.0.1:${process.env.PORT ?? '3001'}`,
     },
   },
   build: {

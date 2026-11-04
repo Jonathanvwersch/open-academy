@@ -1,0 +1,17 @@
+id: linreg-numpy
+title: Linear regression in NumPy
+week: 1
+status: authored
+est_hours: 4
+objective: Implement a small linear regression model.
+background: Use a local Python environment to build and test the model.
+prereqs: [linear-models, gradients]
+tasks:
+  - { id: implement-predict, title: Implement prediction, md: Compute a weighted sum and bias. }
+acceptance: [Predictions match the reference calculation.]
+tests:
+  - { id: test-predict, concepts: [linear-models], dimension: implementation }
+metrics:
+  - { id: validation-mse, label: Validation MSE, threshold: 0.3, direction: below }
+reflection: [gradient-descent-transfer]
+follow_up: [Explain what changes when the learning rate is larger.]

@@ -1,0 +1,8 @@
+concept: gradient-descent
+version: 1
+blocks:
+  - { kind: objective, md: "Update a parameter in the negative gradient direction." }
+  - { kind: worked, md: "With $w=1$, $\\eta=0.1$, and gradient $2$, the update is $0.8$." }
+  - { kind: check, exercise: gradient-descent-step }
+  - { kind: summary, md: "The learning rate controls the size of each update." }
+fast_path: [objective, summary]

@@ -1,0 +1,8 @@
+concept: gradients
+version: 1
+blocks:
+  - { kind: objective, md: "Interpret a gradient as a vector of partial derivatives." }
+  - { kind: math, md: "For $f(x,y)=x^2+y^2$, $\\nabla f=(2x,2y)$." }
+  - { kind: check, exercise: gradients-code-read }
+  - { kind: summary, md: "The gradient points toward steepest increase." }
+fast_path: [objective, summary]

@@ -1,0 +1,7 @@
+domains:
+  - domain: math
+    ladder: [dx-vectors, dx-derivatives, dx-gradients, dx-linear-algebra]
+    start: 2
+  - domain: ml
+    ladder: [dx-linear-models, dx-loss-functions, dx-gradient-descent]
+    start: 2

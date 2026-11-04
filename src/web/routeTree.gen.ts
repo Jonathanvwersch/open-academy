@@ -10,13 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DiagnosticRouteImport } from './routes/diagnostic'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as ProgressRouteImport } from './routes/progress'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as DiagnosticResultsRouteImport } from './routes/diagnostic.results'
+import { Route as SessionIdRouteImport } from './routes/session.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiagnosticRoute = DiagnosticRouteImport.update({
+  id: '/diagnostic',
+  path: '/diagnostic',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LabRoute = LabRouteImport.update({
@@ -34,39 +43,94 @@ const ProgressRoute = ProgressRouteImport.update({
   path: '/progress',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiagnosticResultsRoute = DiagnosticResultsRouteImport.update({
+  id: '/results',
+  path: '/results',
+  getParentRoute: () => DiagnosticRoute,
+} as any)
+const SessionIdRoute = SessionIdRouteImport.update({
+  id: '/session/$id',
+  path: '/session/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
   '/map': typeof MapRoute
   '/progress': typeof ProgressRoute
+  '/settings': typeof SettingsRoute
+  '/diagnostic/results': typeof DiagnosticResultsRoute
+  '/session/$id': typeof SessionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
   '/map': typeof MapRoute
   '/progress': typeof ProgressRoute
+  '/settings': typeof SettingsRoute
+  '/diagnostic/results': typeof DiagnosticResultsRoute
+  '/session/$id': typeof SessionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
   '/map': typeof MapRoute
   '/progress': typeof ProgressRoute
+  '/settings': typeof SettingsRoute
+  '/diagnostic/results': typeof DiagnosticResultsRoute
+  '/session/$id': typeof SessionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/lab' | '/map' | '/progress'
+  fullPaths:
+    | '/'
+    | '/diagnostic'
+    | '/lab'
+    | '/map'
+    | '/progress'
+    | '/settings'
+    | '/diagnostic/results'
+    | '/session/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/lab' | '/map' | '/progress'
-  id: '__root__' | '/' | '/lab' | '/map' | '/progress'
+  to:
+    | '/'
+    | '/diagnostic'
+    | '/lab'
+    | '/map'
+    | '/progress'
+    | '/settings'
+    | '/diagnostic/results'
+    | '/session/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/diagnostic'
+    | '/lab'
+    | '/map'
+    | '/progress'
+    | '/settings'
+    | '/diagnostic/results'
+    | '/session/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DiagnosticRoute: typeof DiagnosticRouteWithChildren
   LabRoute: typeof LabRoute
   MapRoute: typeof MapRoute
   ProgressRoute: typeof ProgressRoute
+  SettingsRoute: typeof SettingsRoute
+  SessionIdRoute: typeof SessionIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -76,6 +140,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/diagnostic': {
+      id: '/diagnostic'
+      path: '/diagnostic'
+      fullPath: '/diagnostic'
+      preLoaderRoute: typeof DiagnosticRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lab': {
@@ -99,14 +170,50 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProgressRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/diagnostic/results': {
+      id: '/diagnostic/results'
+      path: '/results'
+      fullPath: '/diagnostic/results'
+      preLoaderRoute: typeof DiagnosticResultsRouteImport
+      parentRoute: typeof DiagnosticRoute
+    }
+    '/session/$id': {
+      id: '/session/$id'
+      path: '/session/$id'
+      fullPath: '/session/$id'
+      preLoaderRoute: typeof SessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface DiagnosticRouteChildren {
+  DiagnosticResultsRoute: typeof DiagnosticResultsRoute
+}
+
+const DiagnosticRouteChildren: DiagnosticRouteChildren = {
+  DiagnosticResultsRoute: DiagnosticResultsRoute,
+}
+
+const DiagnosticRouteWithChildren = DiagnosticRoute._addFileChildren(
+  DiagnosticRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DiagnosticRoute: DiagnosticRouteWithChildren,
   LabRoute: LabRoute,
   MapRoute: MapRoute,
   ProgressRoute: ProgressRoute,
+  SettingsRoute: SettingsRoute,
+  SessionIdRoute: SessionIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

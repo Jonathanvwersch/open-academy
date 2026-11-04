@@ -261,7 +261,8 @@ Keyboard: Enter submit, `h` hint, `n`/→ next, `1–9` choose MC option, `?` sh
 
 ## 15. Content authoring pipeline
 
-- Author YAML in `content/`; `pnpm content:check` validates (zod schemas): duplicate IDs, unknown concept/exercise/project references, prerequisite cycles (DFS), missing prereqs, missing answer keys, missing objectives, unsupported exercise types, lesson `check` blocks pointing at missing exercises, MC with no correct option, expression keys that don't parse, numeric tolerance missing, authored concepts with < 3 exercises or no review-eligible item, diagnostic ladders referencing stubs.
+- Author YAML in `content/`; `pnpm content:check` validates (zod schemas): duplicate IDs, unknown concept/exercise/project references, prerequisite cycles (DFS), missing prereqs, missing answer keys, missing objectives, unsupported exercise types, lesson `check` blocks pointing at missing exercises, MC with no correct option, expression keys that don't parse, numeric tolerance missing, authored concepts with < 3 exercises or no review-eligible item, and that stub concepts have no lesson and only diagnostic exercises.
+- Diagnostic ladders may probe stub concepts; their evidence updates mastery normally, but the scheduler never assigns stub concepts for lessons or practice.
 - `pnpm content:verify-py` runs `content/checks/*.py` — Python recomputation of numeric answers (e.g. gradient values) and execution of code_read snippets to confirm expected outputs.
 - Content version = hash of item YAML; stored on every attempt.
 - Both run in `pnpm test` and CI.

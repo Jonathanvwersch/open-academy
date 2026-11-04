@@ -1,0 +1,8 @@
+concept: vectors
+version: 1
+blocks:
+  - { kind: objective, md: "Compute vector magnitudes and explain dot products." }
+  - { kind: intuition, md: "A vector is an ordered list of coordinates in a shared space." }
+  - { kind: check, exercise: vectors-magnitude }
+  - { kind: summary, md: "Magnitude summarizes size; the dot product compares alignment." }
+fast_path: [objective, summary]

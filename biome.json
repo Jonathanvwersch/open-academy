@@ -2,7 +2,16 @@
   "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!dist", "!playwright-report", "!test-results", "!src/web/routeTree.gen.ts"]
+    "includes": [
+      "**",
+      "!dist",
+      "!playwright-report",
+      "!test-results",
+      "!docs",
+      "!drizzle/meta",
+      "!src/server/tutor/prompts",
+      "!src/web/routeTree.gen.ts"
+    ]
   },
   "formatter": {
     "indentStyle": "space",

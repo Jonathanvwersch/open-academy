@@ -1,0 +1,8 @@
+concept: linear-models
+version: 1
+blocks:
+  - { kind: objective, md: "Predict a target with a weighted sum of inputs." }
+  - { kind: example, md: "A one-feature model predicts $wx+b$." }
+  - { kind: check, exercise: linear-models-predict }
+  - { kind: summary, md: "Weights scale features and the bias shifts predictions." }
+fast_path: [objective, summary]

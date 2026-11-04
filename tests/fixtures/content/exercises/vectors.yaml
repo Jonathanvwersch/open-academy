@@ -1,0 +1,51 @@
+concept: vectors
+exercises:
+  - id: dx-vectors
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Which quantity describes a vector's length?"
+    hints: []
+    solution: "The Euclidean norm describes vector length."
+    options:
+      - { id: euclidean-norm, text: Euclidean norm, correct: true }
+      - {
+          id: coordinate-count,
+          text: Number of coordinates,
+          correct: false,
+          category: misunderstood_definition,
+        }
+  - id: vectors-magnitude
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 1
+    est_minutes: 3
+    prompt: "Find the magnitude of $(3,4)$."
+    hints: ["Use the Pythagorean theorem."]
+    solution: "The magnitude is $\\sqrt{3^2+4^2}=5$."
+    answer: 5
+    tolerance: { abs: 0.000001 }
+  - id: vectors-component-sum
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What is the sum of the coordinates in $(2,3)$?"
+    hints: []
+    solution: "The coordinates sum to 5."
+    answer: 5
+    tolerance: { abs: 0.000001 }
+  - id: vectors-dot-product
+    dimension: conceptual
+    type: text
+    role: review
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What does a dot product of zero indicate for two nonzero vectors?"
+    hints: []
+    solution: "The vectors are orthogonal."
+    accept: ["orthogonal", "perpendicular"]

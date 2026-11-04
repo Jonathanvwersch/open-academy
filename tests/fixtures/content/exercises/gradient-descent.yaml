@@ -1,0 +1,38 @@
+concept: gradient-descent
+exercises:
+  - id: dx-gradient-descent
+    dimension: implementation
+    type: debug
+    role: diagnostic
+    difficulty: 3
+    est_minutes: 4
+    prompt: "Find the incorrect update line and choose the fix."
+    code: "w = 1.0\\neta = 0.1\\ngradient = 2.0\\nw = w + eta * gradient"
+    hints: []
+    solution: "Line 4 should subtract the gradient."
+    buggy_line: 4
+    fix_options:
+      - { id: subtract-gradient, text: "w = w - eta * gradient", correct: true }
+      - { id: multiply-by-gradient, text: "w = w * eta * gradient", correct: false }
+  - id: gradient-descent-step
+    dimension: math
+    type: expression
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: "Write the updated weight after one gradient step."
+    hints: ["Move opposite the gradient."]
+    solution: "The update is $w-\\eta g$."
+    answer: "w-eta*g"
+    variables: { w: [-3, 3], eta: [0.01, 1], g: [-3, 3] }
+  - id: gradient-descent-transfer
+    dimension: transfer
+    type: code_complete
+    role: transfer
+    difficulty: 4
+    est_minutes: 4
+    prompt: "Complete a gradient update."
+    code: "weight = weight ____ learning_rate * gradient"
+    hints: []
+    solution: "Subtract the gradient-scaled learning rate."
+    accept: ["-"]

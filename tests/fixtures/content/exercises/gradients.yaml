@@ -1,0 +1,36 @@
+concept: gradients
+exercises:
+  - id: dx-gradients
+    dimension: math
+    type: numeric
+    role: diagnostic
+    difficulty: 3
+    est_minutes: 3
+    prompt: "For $f(x,y)=x^2+y^2$, what is the first component of the gradient at $(2,1)$?"
+    hints: []
+    solution: "The first component is $2x=4$."
+    answer: 4
+    tolerance: { abs: 0.000001 }
+  - id: gradients-code-read
+    dimension: implementation
+    type: code_read
+    role: core
+    difficulty: 3
+    est_minutes: 3
+    prompt: "What value does `gx` hold?"
+    code: "x = 2\\ny = 1\\ngx = 2 * x"
+    hints: ["Substitute the value of x."]
+    solution: "`gx` is 4."
+    answer: 4
+    tolerance: { abs: 0.000001 }
+  - id: gradients-chain-transfer
+    dimension: transfer
+    type: expression
+    role: transfer
+    difficulty: 4
+    est_minutes: 4
+    prompt: "Differentiate $f(x)=3x^2+1$."
+    hints: []
+    solution: "The derivative is $6x$."
+    answer: "6*x"
+    variables: { x: [-2, 2] }
