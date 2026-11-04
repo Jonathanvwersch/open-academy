@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { loadContent } from '../content/load.js';
 import { serializeConcept, serializeExercise, serializeLesson } from '../content/serialize.js';
-import { instantiateExercise, isTemplate } from '../content/templates.js';
+import { isTemplate } from '../content/templates.js';
 import type { ContentIndex, IndexedExercise } from '../content/types.js';
 import type { Database } from '../db/client.js';
 import { LearnerRepository } from '../db/repository.js';
@@ -12,8 +12,6 @@ import {
   attempts,
   diagnosticRuns,
   hintEvents,
-  lessonProblems,
-  lessonRuns,
   masteryEvents,
   projectProgress,
   projectSubmissions,
@@ -22,7 +20,6 @@ import {
   reviewLogs,
   sessionActivities,
   studySessions,
-  tutorMessages,
   users,
 } from '../db/schema.js';
 import { env } from '../env.js';
@@ -59,10 +56,11 @@ import {
 } from '../learning/scheduler.js';
 import type { LearningMode, MasteryRecord } from '../learning/types.js';
 import { initialMastery, masteryRank } from '../learning/types.js';
-import { createTutorProvider, type TutorProvider } from '../tutor/provider.js';
+import { createTutorProvider, E2ETutorProvider, type TutorProvider } from '../tutor/provider.js';
 import { scoreRubric } from '../tutor/scoring.js';
 import { TutorService } from '../tutor/service.js';
 import { registerLessonRunRoutes } from './lesson-runs.js';
+import { registerTutorThreadRoutes } from './tutor-threads.js';
 
 export type ApiEnv = { Variables: { userId: string; timeZone: string } };
 type TutorGradeResult = {
@@ -83,7 +81,9 @@ export function createApiRoutes(deps: {
   const db = deps.db;
   const tutorProvider =
     deps.tutorProvider === undefined
-      ? createTutorProvider({ apiKey: env.OPENAI_API_KEY, model: env.OPENAI_MODEL })
+      ? process.env.ACADEMY_E2E === '1'
+        ? new E2ETutorProvider()
+        : createTutorProvider({ apiKey: env.OPENAI_API_KEY, model: env.OPENAI_MODEL })
       : deps.tutorProvider;
 
   api.use('*', async (context, next) => {
@@ -115,6 +115,7 @@ export function createApiRoutes(deps: {
     requestNow,
     applyMastery,
   });
+  registerTutorThreadRoutes(api, { db, content, tutor, requestNow });
 
   api.get('/today', async (context) => {
     const [index, repo] = [await content(), withRepo(context)];
@@ -583,6 +584,8 @@ export function createApiRoutes(deps: {
           authoredHints: hints,
           solution: exercise.solution,
           recentMistakes,
+          history: [],
+          problem_status: priorAttempt ? 'answered' : 'unanswered',
         },
         level === 1 ? 'nudge' : level === 2 ? 'hint' : 'worked_step',
       );
@@ -623,135 +626,6 @@ export function createApiRoutes(deps: {
       revealedSolution: false,
       hintEventId: event?.id,
     });
-  });
-
-  api.post('/tutor/chat', async (context) => {
-    if (!tutorProvider) {
-      return context.json({ error: 'Tutor is unavailable; use authored hints.' }, 503);
-    }
-    const body = z
-      .object({
-        question: z.string().trim().min(1).max(2000),
-        exerciseId: z.string().optional(),
-        activityId: z.string().uuid().optional(),
-        lessonProblemId: z.string().uuid().optional(),
-        mode: z.literal('practice'),
-      })
-      .refine((value) => (value.lessonProblemId ? true : !!value.exerciseId && !!value.activityId))
-      .safeParse(await context.req.json().catch(() => ({})));
-    if (!body.success) return context.json({ error: 'Invalid tutor request' }, 400);
-    const index = await content();
-    let lessonProblem: (typeof lessonProblems.$inferSelect & { userId: string }) | undefined;
-    if (body.data.lessonProblemId) {
-      const [owned] = await db
-        .select({ problem: lessonProblems, userId: lessonRuns.userId })
-        .from(lessonProblems)
-        .innerJoin(lessonRuns, eq(lessonProblems.runId, lessonRuns.id))
-        .where(eq(lessonProblems.id, body.data.lessonProblemId))
-        .limit(1);
-      if (!owned || owned.userId !== context.get('userId') || !owned.problem.answeredAt) {
-        return context.json({ error: 'Lesson problem is not available to the tutor.' }, 403);
-      }
-      lessonProblem = { ...owned.problem, userId: owned.userId };
-    }
-    const exerciseId = lessonProblem?.exerciseId ?? body.data.exerciseId;
-    let exercise = exerciseId ? index.exercisesById.get(exerciseId) : undefined;
-    if (
-      lessonProblem &&
-      body.data.exerciseId &&
-      body.data.exerciseId !== lessonProblem.exerciseId
-    ) {
-      return context.json({ error: 'Lesson problem does not match the exercise.' }, 403);
-    }
-    if (lessonProblem && exercise && isTemplate(exercise)) {
-      const template = exercise;
-      const instance = instantiateExercise(template, lessonProblem.seed ?? 0).exercise;
-      exercise = {
-        ...instance,
-        concept: template.concept,
-        contentVersion: template.contentVersion,
-      };
-    }
-    if (!exercise) return context.json({ error: 'Exercise not found' }, 404);
-    if (isTemplate(exercise) && !lessonProblem) {
-      return context.json({ error: 'Template exercises require an answered lesson problem.' }, 400);
-    }
-    if (exercise.role === 'diagnostic') {
-      return context.json({ error: 'Tutor chat is only available in practice.' }, 403);
-    }
-    let activity: { kind: string } | undefined;
-    if (body.data.activityId) {
-      [activity] = await db
-        .select({
-          kind: sessionActivities.kind,
-        })
-        .from(sessionActivities)
-        .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
-        .where(
-          and(
-            eq(sessionActivities.id, body.data.activityId),
-            eq(studySessions.userId, context.get('userId')),
-          ),
-        )
-        .limit(1);
-      if (
-        !activity ||
-        !['learn', 'practice', 'remediate', 'transfer', 'teachback'].includes(activity.kind)
-      ) {
-        return context.json({ error: 'Tutor chat is only available in practice.' }, 403);
-      }
-    }
-    const concept = index.conceptsById.get(exercise.concept);
-    const lesson = index.lessonsByConcept.get(exercise.concept);
-    const recentMistakes = (await withRepo(context).recentAttempts(100))
-      .filter((attempt) => attempt.conceptId === exercise.concept && attempt.mistakeCategory)
-      .slice(0, 5)
-      .map((attempt) => attempt.mistakeCategory ?? '');
-    const tutorService = tutor(context);
-    if (!tutorService) {
-      return context.json({ error: 'Tutor is unavailable; use authored hints.' }, 503);
-    }
-    const result = await tutorService.respond(
-      {
-        conceptTitle: concept?.title ?? exercise.concept,
-        objectives: concept?.objectives.map((objective) => objective.text) ?? [],
-        lessonSummary:
-          lesson?.blocks
-            .filter((block) => block.kind === 'summary')
-            .map((block) => block.md)
-            .join('\n') ?? '',
-        exercisePrompt: exercise.prompt,
-        learnerAnswer: body.data.question,
-        graderVerdict: 'Practice conversation; no answer was graded.',
-        hintLevel: 0,
-        authoredHints: exercise.hints,
-        solution: exercise.solution,
-        recentMistakes,
-        question: body.data.question,
-        mode: 'practice',
-      },
-      'nudge',
-    );
-    if (result.status !== 'ok' || !result.value) {
-      return context.json({ error: 'Tutor is unavailable; use authored hints.' }, 503);
-    }
-    await db.insert(tutorMessages).values([
-      {
-        userId: context.get('userId'),
-        activityId: body.data.activityId ?? null,
-        exerciseId: exercise.id,
-        role: 'user',
-        content: body.data.question,
-      },
-      {
-        userId: context.get('userId'),
-        activityId: body.data.activityId ?? null,
-        exerciseId: exercise.id,
-        role: 'assistant',
-        content: result.value.message_md,
-      },
-    ]);
-    return context.json({ message: result.value.message_md });
   });
 
   api.post('/attempts', async (context) => {

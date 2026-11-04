@@ -29,6 +29,20 @@
       "when": 1793819247683,
       "tag": "0003_massive_goliath",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793821807117,
+      "tag": "0004_glossy_wolverine",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793822873191,
+      "tag": "0005_outgoing_serpent_society",
+      "breakpoints": true
     }
   ]
 }

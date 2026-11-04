@@ -1,8 +1,8 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ExerciseForm, FeedbackPanel, Markdown } from '../components.js';
 import { type LessonRunPayload, lessonQueryOptions, lessonRunQueryOptions } from '../queries.js';
+import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
 
 export function LessonRunner({
   conceptId,
@@ -10,7 +10,6 @@ export function LessonRunner({
   title,
   tutorEnabled,
   resumeRetry,
-  onTutor,
   onContinue,
 }: {
   conceptId: string;
@@ -18,18 +17,38 @@ export function LessonRunner({
   title: string;
   tutorEnabled: boolean;
   resumeRetry: boolean;
-  onTutor: (lessonProblemId: string) => ReactNode;
   onContinue: () => void;
 }) {
   const queryClient = useQueryClient();
+  const tutorSidebar = useTutorSidebar();
   const queryOptions = lessonRunQueryOptions(conceptId);
   const query = useSuspenseQuery(queryOptions);
   const lesson = useSuspenseQuery(lessonQueryOptions(conceptId)).data;
   const starting = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [showTutor, setShowTutor] = useState(false);
   const state = query.data.run;
+  const contextProblem = state?.pendingProblem ?? state?.lastAnsweredProblem;
+
+  useEffect(() => {
+    tutorSidebar.setContext({
+      conceptId,
+      conceptTitle: title,
+      activityId,
+      exerciseId: contextProblem?.exerciseId,
+      lessonProblemId: contextProblem?.id,
+      allowed: true,
+      enabled: tutorEnabled,
+    });
+  }, [
+    activityId,
+    conceptId,
+    contextProblem?.exerciseId,
+    contextProblem?.id,
+    title,
+    tutorEnabled,
+    tutorSidebar,
+  ]);
 
   const updateState = useCallback(
     async (run: NonNullable<LessonRunPayload['run']>) => {
@@ -103,7 +122,6 @@ export function LessonRunner({
       });
       const data = (await response.json()) as LessonRunPayload;
       if (!response.ok || !data.run) throw new Error('Could not load the next problem.');
-      setShowTutor(false);
       await updateState(data.run);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load the next problem.');
@@ -254,25 +272,39 @@ export function LessonRunner({
                     <p className="font-semibold text-green-800">+{pointStatus.xpEarned} XP</p>
                   ) : null}
                   {tutorEnabled ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setShowTutor((open) => !open)}
-                        className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium"
-                      >
-                        Ask the tutor about this
-                      </button>
-                      {showTutor ? onTutor(state.lastAnsweredProblem.id) : null}
-                    </>
+                    <TutorLauncher
+                      context={{
+                        conceptId,
+                        activityId,
+                        lessonProblemId: state.lastAnsweredProblem.id,
+                        allowed: true,
+                        enabled: tutorEnabled,
+                      }}
+                    >
+                      Ask the tutor about this
+                    </TutorLauncher>
                   ) : null}
                 </>
               ) : (
-                <ExerciseForm
-                  exercise={shownProblem.exercise}
-                  onSubmit={submit}
-                  disabled={busy}
-                  submitLabel={busy ? 'Saving…' : 'Submit answer'}
-                />
+                <>
+                  <ExerciseForm
+                    exercise={shownProblem.exercise}
+                    onSubmit={submit}
+                    disabled={busy}
+                    submitLabel={busy ? 'Saving…' : 'Submit answer'}
+                  />
+                  {tutorEnabled && state.pendingProblem ? (
+                    <TutorLauncher
+                      context={{
+                        conceptId,
+                        activityId,
+                        lessonProblemId: state.pendingProblem.id,
+                        allowed: true,
+                        enabled: tutorEnabled,
+                      }}
+                    />
+                  ) : null}
+                </>
               )}
             </article>
           ) : null}

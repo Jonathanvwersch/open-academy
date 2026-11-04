@@ -20,6 +20,8 @@ describe('live OpenAI tutor smoke', () => {
           authoredHints: ['Compare output changes.'],
           solution: 'The slope is the predicted change per unit.',
           recentMistakes: [],
+          history: [],
+          problem_status: 'unanswered',
         },
         'nudge',
       );

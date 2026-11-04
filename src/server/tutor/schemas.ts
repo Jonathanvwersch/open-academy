@@ -42,6 +42,8 @@ export interface TutorContext {
   recentMistakes: string[];
   question?: string;
   mode?: 'practice';
+  history: Array<{ role: 'learner' | 'tutor'; content: string }>;
+  problem_status: 'unanswered' | 'answered' | 'none';
 }
 
 export interface ExplanationContext {

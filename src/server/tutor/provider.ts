@@ -64,7 +64,7 @@ export class OpenAIProvider implements TutorProvider {
         { role: 'user', content: JSON.stringify({ ...ctx, requested_help_level: level }) },
       ],
       text: { format: zodTextFormat(TutorReplySchema, 'tutor_reply') },
-      max_output_tokens: 600,
+      max_output_tokens: 900,
     });
     return {
       value: TutorReplySchema.parse(response.output_parsed),
@@ -123,6 +123,25 @@ export class FakeProvider implements TutorProvider {
   async gradeExplanation(_ctx: ExplanationContext): Promise<TutorResult<RubricJudgement>> {
     if (this.failure) throw this.failure;
     return { value: RubricJudgementSchema.parse(this.judgement), usage: null };
+  }
+}
+
+export class E2ETutorProvider implements TutorProvider {
+  readonly model = 'academy-e2e';
+
+  async respond(ctx: TutorContext): Promise<TutorResult<TutorReply>> {
+    return {
+      value: TutorReplySchema.parse({
+        message_md: `Tutor reply to: ${ctx.question ?? ''}`,
+        misconception: null,
+        suggests_review_of: [],
+      }),
+      usage: null,
+    };
+  }
+
+  async gradeExplanation(): Promise<TutorResult<RubricJudgement>> {
+    return { value: RubricJudgementSchema.parse({ criteria: [], feedback_md: '' }), usage: null };
   }
 }
 

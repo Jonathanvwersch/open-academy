@@ -325,7 +325,7 @@ test('finishing all points awards the XP sum and GET matches each POST state', a
   expect(run.xpEarned).toBeGreaterThan(0);
 });
 
-test('template guards and tutor lessonProblemId reject unanswered content', async () => {
+test('template guards and tutor threads safely support unanswered lesson problems', async () => {
   const template = content.exercises.find((exercise) => isTemplate(exercise));
   if (!template) throw new Error('Expected a template exercise');
   const getTemplate = await app.request(`/api/exercises/${template.id}`, { headers });
@@ -337,16 +337,15 @@ test('template guards and tutor lessonProblemId reject unanswered content', asyn
   });
   expect(attemptTemplate.status).toBe(400);
   const run = (await (await startRun()).json()).run;
-  const chat = await app.request('/api/tutor/chat', {
+  const chat = await app.request('/api/tutor/threads', {
     method: 'POST',
     headers,
     body: JSON.stringify({
       question: 'Can you help?',
       lessonProblemId: run.pending.id,
-      mode: 'practice',
     }),
   });
-  expect(chat.status).toBe(403);
+  expect(chat.status).toBe(200);
 });
 
 test('test answer endpoint is absent unless ACADEMY_E2E is enabled', async () => {
