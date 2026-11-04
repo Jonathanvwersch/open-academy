@@ -223,6 +223,9 @@ importers:
       ts-fsrs:
         specifier: 6.0.0
         version: 6.0.0
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
       yaml:
         specifier: 2.9.1
         version: 2.9.1
@@ -260,9 +263,6 @@ importers:
       tailwindcss:
         specifier: 4.3.4
         version: 4.3.4
-      tsx:
-        specifier: 4.23.15
-        version: 4.23.15
       typescript:
         specifier: 7.0.2
         version: 7.0.2
