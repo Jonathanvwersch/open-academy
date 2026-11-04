@@ -72,12 +72,6 @@ knowledge_points:
       $$\theta^\star = \arg\min_\theta \frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(x_i), y_i\big)$$
 
       Read $\arg\min_\theta$ as "the $\theta$ that makes what follows as small as possible", and $\theta^\star$ ("theta star") as "the best parameters". The gradient descent lesson shows how training searches through all of them automatically.
-
-      **The real goal is new houses.** A low average loss on past sales is only a means to an end. What you actually want is good prices for houses the model has never seen. A model can fit its training sales well and still price new houses badly, so we always test it on sales it didn't train on. The train/validation/test lesson covers how.
-
-      **Two kinds of target.** When the target $y$ is a number, like a price, the problem is called **regression**. When $y$ is a category, like "spam" or "not spam", it is called **classification**. The five ingredients are the same either way. What changes is the loss, because "how wrong" means something different for a category than for a number.
-
-      Robots use the same setup. In learning from demonstrations, the input is what the robot's camera sees and the target is the action a human took.
     worked: |
       This worked example compares two settings by their average squared error.
 
@@ -89,8 +83,27 @@ knowledge_points:
       | **average** | **200** | | **2300** |
 
       Setting A averages 200 and Setting B averages 2300, so Setting A fits these sales much better.
+    problems: [slp-average-mse, slp-argmin, slp-best-setting]
+  - id: sl-new-data-targets
+    title: New houses and two kinds of target
+    explain: |
+      **The real goal is new houses.** A low average loss on past sales is only a means to an end. What you actually want is good prices for houses the model has never seen. A model can fit its training sales well and still price new houses badly, so we always test it on sales it didn't train on. The train/validation/test lesson covers how.
+
+      **Two kinds of target.** When the target $y$ is a number, like a price, the problem is called **regression**. When $y$ is a category, like "spam" or "not spam", it is called **classification**. The five ingredients are the same either way. What changes is the loss, because "how wrong" means something different for a category than for a number.
+
+      Robots use the same setup. In learning from demonstrations, the input is what the robot's camera sees and the target is the action a human took.
+    worked: |
+      A house's sale price is a number, so predicting it is regression.
+
+      A parcel's delivery status—today or tomorrow—is a category, so predicting it is classification.
+
+      A robot's action—"grasp" or "release"—is also a category, so predicting it is classification.
     problems:
-      [slp-average-mse, slp-argmin, slp-best-setting, slp-new-houses, slp-regression-classification]
+      - slp-new-houses
+      - slp-regression-classification
+      - slp-target-type-travel
+      - slp-target-type-parcel
+      - slp-low-training-loss
 summary: |
   - Five ingredients: inputs $x$, target $y$, a model $f_\theta$ with parameters $\theta$, a loss $L$, and a dataset of $(x, y)$ pairs.
   - The loss turns "how wrong" into a number. Squaring stops errors that are too high and too low from cancelling out.

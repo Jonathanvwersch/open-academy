@@ -512,6 +512,87 @@ test('template validation reports unsatisfied constraints, unresolved text, cons
   );
 });
 
+test('template validator rejects answers that are not accepted when displayed', async () => {
+  const data = await notationFixture();
+  const exercise = ExerciseSchema.parse({
+    id: 'template-rounded-answer',
+    dimension: 'math',
+    type: 'numeric',
+    role: 'practice',
+    difficulty: 1,
+    est_minutes: 1,
+    prompt: 'Compute {{=x}} divided by 3.',
+    hints: [],
+    solution: 'The result is {{=x/3}}.',
+    answer_expr: 'x / 3',
+    params: { x: { min: 10, max: 12 } },
+    tolerance: { abs: 0.000001 },
+  });
+  data.exercises.push({
+    value: exercise,
+    concept: 'vectors',
+    file: 'exercises/vectors.yaml',
+  });
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'template-rounded-answer',
+        message: expect.stringContaining('answer shown as 3.33333 is not accepted'),
+      }),
+    ]),
+  );
+});
+
+test('template validator rejects adjacent negative signs but allows parenthesised negatives', async () => {
+  const data = await notationFixture();
+  const template = (id: string, solution: string) =>
+    ExerciseSchema.parse({
+      id,
+      dimension: 'math',
+      type: 'numeric',
+      role: 'practice',
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: 'Compute {{=x}}.',
+      hints: [],
+      solution,
+      answer_expr: 'x',
+      params: { x: { min: 1, max: 3 } },
+      tolerance: { abs: 0.000001 },
+    });
+  const placeholder = '{{=x}}';
+  data.exercises.push(
+    {
+      value: template('template-adjacent-signs', `Compute $${placeholder} + -${placeholder}$.`),
+      concept: 'vectors',
+      file: 'exercises/vectors.yaml',
+    },
+    {
+      value: template('template-parenthesised-negative', `The value is $(-${placeholder})$.`),
+      concept: 'vectors',
+      file: 'exercises/vectors.yaml',
+    },
+  );
+
+  const issues = validateContent(data);
+  expect(issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'template-adjacent-signs',
+        message: expect.stringContaining('instantiated text contains adjacent signs'),
+      }),
+    ]),
+  );
+  expect(
+    issues.some(
+      (issue) =>
+        issue.id === 'template-parenthesised-negative' &&
+        issue.message.includes('instantiated text contains adjacent signs'),
+    ),
+  ).toBe(false);
+});
+
 async function notationFixture(): Promise<ContentSourceData> {
   const content = await loadContent('tests/fixtures/content');
   return sourceDataFromIndex(content);

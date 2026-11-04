@@ -1,5 +1,6 @@
 import { parse as parseExpression } from 'mathjs';
-import { instantiateExercise, isTemplate } from './templates.js';
+import { gradeNumeric } from '../grading/numeric.js';
+import { formatTemplateNumber, instantiateExercise, isTemplate } from './templates.js';
 import type { ContentIssue, ContentSourceData } from './types.js';
 
 function addIssue(issues: ContentIssue[], file: string, id: string, message: string) {
@@ -486,6 +487,14 @@ function validateTemplate(
       if (stringValues(instance.exercise).some((text) => text.includes('{{='))) {
         throw new Error('unresolved {{= placeholder remains after instantiation');
       }
+      for (const text of stringValues(instance.exercise)) {
+        const adjacentSign = /[+-]\s*-\d/g;
+        for (const match of text.matchAll(adjacentSign)) {
+          if (match.index !== undefined && text[match.index - 1] !== '(') {
+            throw new Error(`instantiated text contains adjacent signs near "${match[0]}"`);
+          }
+        }
+      }
       for (const wrong of instance.exercise.common_wrong ?? []) {
         if (!('answer' in wrong) || typeof wrong.answer !== 'number') continue;
         const tolerance = wrong.tolerance ?? instance.exercise.tolerance;
@@ -497,6 +506,11 @@ function validateTemplate(
         if (Math.abs(wrong.answer - instance.exercise.answer) <= threshold) {
           throw new Error('common-wrong answer is within tolerance of the correct answer');
         }
+      }
+      const shownAnswer = formatTemplateNumber(instance.exercise.answer);
+      const grade = gradeNumeric(instance.exercise, shownAnswer);
+      if (grade.status !== 'graded' || grade.correct !== 1) {
+        throw new Error(`answer shown as ${shownAnswer} is not accepted`);
       }
     } catch (error) {
       if (!reportedFailure) {

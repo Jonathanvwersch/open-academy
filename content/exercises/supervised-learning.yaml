@@ -221,6 +221,7 @@ exercises:
     params:
       prediction: { min: 10, max: 120, step: 10 }
       target: { min: 0, max: 100, step: 10 }
+    constraints: ["prediction != target"]
     tolerance: { abs: 0.000001 }
   - id: slp-error-sum
     dimension: math
@@ -228,15 +229,15 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Three signed prediction errors are ${{=e1}}$, ${{=e2}}$, and ${{=e3}}$. What is the difference between the square of their signed sum and the sum of their squared errors?"
+    prompt: "Three signed prediction errors are $({{=e1}})$, $({{=e2}})$, and $({{=e3}})$. Their signed sum is 0. What is the sum of their squared errors?"
     hints: ["First add the signed errors. Then square each error and add those squares."]
-    solution: "The signed sum is ${{=e1}}+{{=e2}}+{{=e3}}=0$, so its square is 0. The sum of squared errors is ${{=e1^2+e2^2+e3^2}}$. The requested difference is $0-{{=e1^2+e2^2+e3^2}}={{=(e1+e2+e3)^2-(e1^2+e2^2+e3^2)}}$."
-    answer_expr: "(e1 + e2 + e3)^2 - (e1^2 + e2^2 + e3^2)"
+    solution: "The errors are $({{=e1}})$, $({{=e2}})$, and $({{=e3}})$. Their squares are $({{=e1}})^2={{=e1^2}}$, $({{=e2}})^2={{=e2^2}}$, and $({{=e3}})^2={{=e3^2}}$. Their sum is ${{=e1^2+e2^2+e3^2}}$. Squaring keeps positive and negative errors from cancelling."
+    answer_expr: "e1^2 + e2^2 + e3^2"
     params:
       e1: { min: -20, max: 20, step: 5 }
       e2: { min: -20, max: 20, step: 5 }
       e3: { min: -20, max: 20, step: 5 }
-    constraints: ["e1 + e2 + e3 == 0"]
+    constraints: ["e1 + e2 + e3 == 0", "e1 != 0"]
     tolerance: { abs: 0.000001 }
   - id: slp-why-square
     dimension: conceptual
@@ -278,7 +279,7 @@ exercises:
     est_minutes: 2
     prompt: "For three houses, the prediction/target pairs are ${{=p1}}/{{=y1}}$, ${{=p2}}/{{=y2}}$, and ${{=p3}}/{{=y3}}$ thousand. What is the mean squared error?"
     hints: ["Square each prediction error, add the three results, and divide by 3."]
-    solution: "The squared errors are $({{=p1}}-{{=y1}})^2$, $({{=p2}}-{{=y2}})^2$, and $({{=p3}}-{{=y3}})^2$. Their average is ${{=((p1-y1)^2+(p2-y2)^2+(p3-y3)^2)/3}}$."
+    solution: "The squared errors are $({{=p1-y1}})^2={{=(p1-y1)^2}}$, $({{=p2-y2}})^2={{=(p2-y2)^2}}$, and $({{=p3-y3}})^2={{=(p3-y3)^2}}$. Their sum is ${{=(p1-y1)^2+(p2-y2)^2+(p3-y3)^2}}$. Divide by 3: ${{=(p1-y1)^2+(p2-y2)^2+(p3-y3)^2}}\\div3={{=((p1-y1)^2+(p2-y2)^2+(p3-y3)^2)/3}}$."
     answer_expr: "((p1-y1)^2 + (p2-y2)^2 + (p3-y3)^2) / 3"
     params:
       p1: { min: 0, max: 100, step: 10 }
@@ -287,6 +288,7 @@ exercises:
       y2: { min: 0, max: 100, step: 10 }
       p3: { min: 0, max: 100, step: 10 }
       y3: { min: 0, max: 100, step: 10 }
+    constraints: ["mod((p1-y1)^2 + (p2-y2)^2 + (p3-y3)^2, 3) == 0"]
     tolerance: { abs: 0.000001 }
   - id: slp-argmin
     dimension: conceptual
@@ -403,3 +405,87 @@ exercises:
           category: misunderstood_definition,
         }
     solution: "Regression predicts a number such as a sale price. Classification predicts a category or label."
+  - id: slp-target-type-travel
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A travel app predicts how many minutes a journey will take. Is this regression or classification?"
+    options:
+      - { id: a, text: "Regression, because the target is a number", correct: true }
+      - {
+          id: b,
+          text: "Classification, because journey times are categories",
+          correct: false,
+          category: misunderstood_definition,
+        }
+      - {
+          id: c,
+          text: "Classification, because the app uses inputs",
+          correct: false,
+          category: misunderstood_definition,
+        }
+      - {
+          id: d,
+          text: "Neither, because the target is not a house price",
+          correct: false,
+          category: misunderstood_definition,
+        }
+    solution: "The target is a number of minutes, so this is regression."
+  - id: slp-target-type-parcel
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A delivery service predicts whether a parcel will arrive today or tomorrow. What kind of task is this?"
+    options:
+      - { id: a, text: "Classification, because the target is a category", correct: true }
+      - {
+          id: b,
+          text: "Regression, because the target is a number",
+          correct: false,
+          category: misunderstood_definition,
+        }
+      - {
+          id: c,
+          text: "Regression, because there are two possible answers",
+          correct: false,
+          category: misunderstood_definition,
+        }
+      - {
+          id: d,
+          text: "Neither, because delivery status cannot be predicted",
+          correct: false,
+          category: misunderstood_definition,
+        }
+    solution: "Today and tomorrow are categories, so predicting which one applies is classification."
+  - id: slp-low-training-loss
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A model has a small average loss on the houses used to train it. Why does that alone not show that it is good?"
+    options:
+      - { id: a, text: "It may still predict poorly for houses it has not seen", correct: true }
+      - {
+          id: b,
+          text: "A small average loss means the target was a category",
+          correct: false,
+          category: misunderstood_definition,
+        }
+      - {
+          id: c,
+          text: "The training loss must always be larger than the loss on new houses",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: d,
+          text: "A small loss means the model did not use its inputs",
+          correct: false,
+          category: misunderstood_definition,
+        }
+    solution: "A model can fit its training houses well but still predict new houses badly, so we test it on houses it did not train on."
