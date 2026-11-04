@@ -19,16 +19,18 @@ interface MapNode {
 }
 
 function MapPage() {
-  const [domain, setDomain] = useState('');
+  const [domain, setDomain] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, unknown> | null>(null);
   const mapQuery = useQuery({
     queryKey: ['map', domain],
     queryFn: async () => {
-      const response = await fetch(`/api/map${domain ? `?domain=${domain}` : ''}`);
+      const filter = domain === null ? '' : `?domain=${domain || 'all'}`;
+      const response = await fetch(`/api/map${filter}`);
       return response.json() as Promise<{
         nodes: MapNode[];
         edges: Array<{ conceptId: string; prerequisiteId: string }>;
-        domains: string[];
+        domains: Array<{ id: string; title: string }>;
+        currentWeekDomain: string;
       }>;
     },
   });
@@ -41,18 +43,21 @@ function MapPage() {
     for (const node of data.nodes) layout.setNode(node.id, { width: 190, height: 64 });
     for (const edge of data.edges) layout.setEdge(edge.prerequisiteId, edge.conceptId);
     dagre.layout(layout);
-    const visible = data.nodes.slice(0, 40);
+    const visible = data.nodes;
     const visibleIds = new Set(visible.map((node) => node.id));
     const nodes = visible.map((node) => {
       const position = layout.node(node.id);
       const states = Object.values(node.dimensions).map((item) => item.state);
-      const color = states.includes('retained')
-        ? '#dcfce7'
-        : states.includes('independent')
-          ? '#e0f2fe'
-          : states.includes('assisted')
-            ? '#fef3c7'
-            : '#f5f5f5';
+      const color =
+        node.status === 'stub'
+          ? '#e5e5e5'
+          : states.includes('retained')
+            ? '#dcfce7'
+            : states.includes('independent')
+              ? '#e0f2fe'
+              : states.includes('assisted')
+                ? '#fef3c7'
+                : '#f5f5f5';
       return {
         id: node.id,
         position: { x: position.x - 95, y: position.y - 32 },
@@ -132,6 +137,7 @@ function MapPage() {
         createdAt: string;
       }>
     | undefined;
+  const selectedDomain = domain ?? mapQuery.data?.currentWeekDomain ?? '';
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -142,25 +148,49 @@ function MapPage() {
         <label className="text-sm text-neutral-600">
           Domain
           <select
-            value={domain}
+            value={selectedDomain}
             onChange={(event) => setDomain(event.target.value)}
             className="ml-2 rounded-md border border-neutral-300 bg-white px-3 py-2"
           >
             <option value="">All domains</option>
             {(mapQuery.data?.domains ?? []).map((item) => (
-              <option key={item} value={item}>
-                {item}
+              <option key={item.id} value={item.id}>
+                {item.title}
               </option>
             ))}
           </select>
         </label>
       </div>
       <div className="h-[560px] rounded-xl border border-neutral-200 bg-white">
-        <ReactFlow nodes={graph.nodes} edges={graph.edges} fitView onNodeClick={openConcept}>
+        <ReactFlow
+          nodes={graph.nodes}
+          edges={graph.edges}
+          fitView
+          fitViewOptions={{ padding: 0.18 }}
+          minZoom={0.35}
+          onNodeClick={openConcept}
+        >
           <Background color="#e5e5e5" />
           <Controls />
         </ReactFlow>
       </div>
+      <ul aria-label="Mastery legend" className="flex flex-wrap gap-3 text-xs text-neutral-700">
+        {[
+          ['#f5f5f5', 'Not assessed / introduced'],
+          ['#fef3c7', 'Assisted'],
+          ['#e0f2fe', 'Independent'],
+          ['#dcfce7', 'Retained'],
+          ['#e5e5e5', 'Not yet authored'],
+        ].map(([color, label]) => (
+          <li key={label} className="flex items-center gap-2">
+            <span
+              className="h-4 w-4 rounded border border-neutral-300"
+              style={{ background: color }}
+            />
+            {label}
+          </li>
+        ))}
+      </ul>
       {concept ? (
         <aside
           className="rounded-xl border border-neutral-200 bg-white p-6"

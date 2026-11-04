@@ -13,7 +13,7 @@ exercises:
       - { id: euclidean-norm, text: Euclidean norm, correct: true }
       - {
           id: coordinate-count,
-          text: Number of coordinates,
+          text: "A product like $32 \\times 10$",
           correct: false,
           category: misunderstood_definition,
         }

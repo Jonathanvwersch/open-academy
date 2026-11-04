@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, useRouterState } from '@tanstack/react-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ExerciseForm, Markdown, ModeBadge } from '../components';
 
 interface DiagnosticItem {
@@ -8,6 +8,7 @@ interface DiagnosticItem {
   prompt: string;
   concept: string;
   code?: string;
+  multi?: boolean;
   options?: Array<{ id: string; text: string }>;
 }
 
@@ -19,9 +20,11 @@ function DiagnosticPage() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [runId, setRunId] = useState('');
   const [domain, setDomain] = useState('');
+  const [domainTitle, setDomainTitle] = useState('');
   const [exercise, setExercise] = useState<DiagnosticItem | null>(null);
   const [feedback, setFeedback] = useState('');
   const [busy, setBusy] = useState(false);
+  const runPromise = useRef<Promise<{ id: string }> | null>(null);
 
   const loadNext = useCallback(async (id: string) => {
     const response = await fetch(`/api/diagnostic/${id}/next`);
@@ -32,24 +35,30 @@ function DiagnosticPage() {
       window.location.href = '/diagnostic/results';
       return;
     }
-    setDomain(data.domain ?? '');
+    setDomain(data.domainId ?? data.domain ?? '');
+    setDomainTitle(data.domainTitle ?? data.domain ?? '');
     setExercise(data.exercise);
   }, []);
 
   useEffect(() => {
+    if (pathname !== '/diagnostic') return;
     let active = true;
-    void fetch('/api/diagnostic', { method: 'POST' })
-      .then((response) => response.json())
-      .then((run) => {
-        if (active) {
-          setRunId(run.id);
-          void loadNext(run.id);
-        }
-      });
+    const activeRunId = new URLSearchParams(window.location.search).get('runId');
+    if (!runPromise.current) {
+      runPromise.current = activeRunId
+        ? Promise.resolve({ id: activeRunId })
+        : fetch('/api/diagnostic', { method: 'POST' }).then((response) => response.json());
+    }
+    void runPromise.current.then((run) => {
+      if (active) {
+        setRunId(run.id);
+        void loadNext(run.id);
+      }
+    });
     return () => {
       active = false;
     };
-  }, [loadNext]);
+  }, [loadNext, pathname]);
 
   const submit = async (answer: unknown) => {
     if (!exercise || !runId) return;
@@ -103,14 +112,16 @@ function DiagnosticPage() {
       </div>
       {exercise ? (
         <article className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{domain}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+            {domainTitle}
+          </p>
           <ModeBadge mode="assessment" />
           <Markdown>{exercise.prompt}</Markdown>
-          <ExerciseForm exercise={exercise} onSubmit={submit} />
+          <ExerciseForm key={`${runId}:${exercise.id}`} exercise={exercise} onSubmit={submit} />
           {feedback ? (
-            <p role="status" className="text-sm text-neutral-600">
-              {feedback}
-            </p>
+            <div role="status" className="text-sm text-neutral-600">
+              <Markdown>{feedback}</Markdown>
+            </div>
           ) : null}
           <button
             type="button"

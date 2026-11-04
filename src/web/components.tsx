@@ -10,6 +10,7 @@ import 'highlight.js/styles/github.css';
 export interface ClientExercise {
   id: string;
   type: string;
+  multi?: boolean;
   prompt: string;
   options?: Array<{ id: string; text: string }>;
   code?: string;
@@ -26,10 +27,10 @@ export function Markdown({ children }: { children: string }) {
   );
 }
 
-export function ModeBadge({ mode }: { mode: 'practice' | 'assessment' }) {
+export function ModeBadge({ mode }: { mode: 'practice' | 'assessment' | 'review' }) {
   return (
     <span className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700">
-      {mode === 'practice' ? 'Practice' : 'Assessment — no help'}
+      {mode === 'review' ? 'Review' : mode === 'practice' ? 'Practice' : 'Assessment — no help'}
     </span>
   );
 }
@@ -45,7 +46,9 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
             : 'Not quite'}
       </p>
       {typeof result.feedback === 'string' ? (
-        <p className="mt-1 text-sm text-neutral-600">{result.feedback}</p>
+        <div className="mt-1 text-sm text-neutral-600">
+          <Markdown>{result.feedback}</Markdown>
+        </div>
       ) : null}
       {typeof result.solution === 'string' ? (
         <div className="mt-3 border-t border-neutral-200 pt-3 text-sm">
@@ -119,17 +122,22 @@ export function ExerciseForm({
               className="flex cursor-pointer items-start gap-3 rounded-lg border border-neutral-200 bg-white p-3"
             >
               <input
-                type="checkbox"
+                type={exercise.multi ? 'checkbox' : 'radio'}
+                name={`answer-${exercise.id}`}
                 checked={selected.includes(option.id)}
-                onChange={(event) =>
+                onChange={(event) => {
+                  if (!exercise.multi) {
+                    setSelected(event.target.checked ? [option.id] : []);
+                    return;
+                  }
                   setSelected((current) =>
                     event.target.checked
                       ? [...current, option.id]
                       : current.filter((id) => id !== option.id),
-                  )
-                }
+                  );
+                }}
               />
-              <span>{option.text}</span>
+              <Markdown>{option.text}</Markdown>
             </label>
           ))}
         </fieldset>

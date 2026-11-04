@@ -7,7 +7,10 @@ export const Route = createFileRoute('/')({
 
 interface TodayPayload {
   needsDiagnostic: boolean;
+  diagnosticActive: boolean;
+  diagnosticRunId: string | null;
   objective: string;
+  weekTitle: string;
   week: number;
   dueReviews: number;
   budgetMinutes: number;
@@ -16,6 +19,7 @@ interface TodayPayload {
     activities: Array<{
       kind: string;
       conceptId?: string;
+      conceptTitle?: string;
       plannedMinutes: number;
       reason: { summary: string };
     }>;
@@ -62,10 +66,14 @@ function TodayPage() {
             Begin with a short diagnostic so your first sessions start at the right level.
           </p>
           <a
-            href="/diagnostic"
+            href={
+              plan.diagnosticActive && plan.diagnosticRunId
+                ? `/diagnostic?runId=${plan.diagnosticRunId}`
+                : '/diagnostic'
+            }
             className="mt-4 inline-flex rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white"
           >
-            Start diagnostic
+            {plan.diagnosticActive ? 'Resume diagnostic' : 'Start diagnostic'}
           </a>
         </div>
       </section>
@@ -75,7 +83,9 @@ function TodayPage() {
     <section className="mx-auto max-w-3xl space-y-8">
       <div className="flex items-end justify-between">
         <div>
-          <p className="text-sm text-neutral-500">Week {plan.week}</p>
+          <p className="text-sm text-neutral-500">
+            Week {plan.week} · {plan.weekTitle}
+          </p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">Today</h1>
         </div>
         <p className="text-sm text-neutral-600">
@@ -84,7 +94,7 @@ function TodayPage() {
       </div>
       <div className="rounded-xl border border-neutral-200 bg-white p-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-          Current objective
+          Current week
         </p>
         <p className="mt-2 max-w-[70ch] text-base leading-7">{plan.objective}</p>
       </div>
@@ -98,7 +108,8 @@ function TodayPage() {
                 <li
                   key={`${activity.kind}-${activity.conceptId ?? 'review'}-${activity.reason.summary}`}
                 >
-                  Review · {activity.conceptId ?? 'saved material'} · {activity.plannedMinutes} min
+                  Review · {activity.conceptTitle ?? activity.conceptId ?? 'saved material'} ·{' '}
+                  {activity.plannedMinutes} min
                 </li>
               ))}
             {!plan.plan.activities.some((activity) => activity.kind === 'review') ? (
@@ -131,7 +142,9 @@ function TodayPage() {
                   <div>
                     <p className="font-medium capitalize">
                       {activity.kind.replace('_', ' ')}
-                      {activity.conceptId ? ` · ${activity.conceptId}` : ''}
+                      {activity.conceptId
+                        ? ` · ${activity.conceptTitle ?? activity.conceptId}`
+                        : ''}
                     </p>
                     <p className="mt-1 text-sm text-neutral-600">{activity.reason.summary}</p>
                   </div>

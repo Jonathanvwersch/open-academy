@@ -12,11 +12,17 @@ interface SessionActivity {
   idx: number;
   kind: string;
   conceptId?: string;
+  conceptTitle?: string;
   projectId?: string;
   exerciseIds: string[];
   plannedMinutes: number;
   status: string;
-  progress: { lessonViewed?: boolean; completedExerciseIds?: string[] };
+  startedAt?: string;
+  progress: {
+    lessonViewed?: boolean;
+    completedExerciseIds?: string[];
+    outcomes?: Record<string, 'correct' | 'incorrect'>;
+  };
 }
 
 function SessionPage() {
@@ -216,24 +222,28 @@ function SessionPage() {
     );
   }
   const mode =
-    activity.kind === 'quick_check' || activity.kind === 'diagnostic' ? 'assessment' : 'practice';
-  const elapsed = Math.max(
-    0,
-    timeAnchor
-      ? Math.floor(
-          (timeAnchor.serverTime -
-            Date.parse(sessionQuery.data.startedAt ?? new Date(clock).toISOString()) +
-            (clock - timeAnchor.clientTime)) /
-            60_000,
-        )
-      : 0,
-  );
-  const remainingMinutes = Math.max(0, sessionQuery.data.plannedMinutes - elapsed);
+    activity.kind === 'review'
+      ? 'review'
+      : activity.kind === 'quick_check' || activity.kind === 'diagnostic'
+        ? 'assessment'
+        : 'practice';
+  const currentServerTime = timeAnchor
+    ? timeAnchor.serverTime + (clock - timeAnchor.clientTime)
+    : clock;
+  const elapsedInActivity = activity.startedAt
+    ? Math.max(0, Math.floor((currentServerTime - Date.parse(activity.startedAt)) / 60_000))
+    : 0;
+  const remainingPlannedMinutes = activities
+    .filter((item) => item.status !== 'completed')
+    .reduce((sum, item) => sum + item.plannedMinutes, 0);
+  const remainingMinutes = Math.max(0, remainingPlannedMinutes - elapsedInActivity);
   const lesson = lessonQuery.data;
   if (activity.kind === 'learn' && !activity.progress?.lessonViewed && lesson?.blocks.length) {
     return (
       <section className="mx-auto max-w-3xl space-y-6">
-        <p className="text-sm text-neutral-500">Lesson · {activity.conceptId}</p>
+        <p className="text-sm text-neutral-500">
+          Lesson · {activity.conceptTitle ?? activity.conceptId}
+        </p>
         <div className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
           {lesson.blocks.map((block) => (
             <div key={`${block.kind}-${block.md ?? block.exercise ?? 'block'}`}>
@@ -260,7 +270,7 @@ function SessionPage() {
         <div>
           <p className="text-sm capitalize text-neutral-500">
             {activity.kind.replace('_', ' ')}
-            {activity.conceptId ? ` · ${activity.conceptId}` : ''}
+            {activity.conceptId ? ` · ${activity.conceptTitle ?? activity.conceptId}` : ''}
           </p>
           <h1 className="mt-1 text-2xl font-semibold">Session</h1>
         </div>
@@ -275,9 +285,20 @@ function SessionPage() {
           {activities.map((item) => (
             <li
               key={item.id}
-              className={`rounded-full border px-3 py-1 text-xs ${item.status === 'completed' ? 'border-green-300 bg-green-50 text-green-900' : item.status === 'in_progress' ? 'border-blue-300 bg-blue-50 text-blue-900' : 'border-neutral-200 text-neutral-600'}`}
+              className={`rounded-full border px-3 py-1 text-xs ${
+                Object.values(item.progress?.outcomes ?? {}).includes('incorrect')
+                  ? 'border-red-300 bg-red-50 text-red-900'
+                  : Object.values(item.progress?.outcomes ?? {}).includes('correct')
+                    ? 'border-green-300 bg-green-50 text-green-900'
+                    : item.status === 'completed'
+                      ? 'border-neutral-300 bg-neutral-100 text-neutral-700'
+                      : item.status === 'in_progress'
+                        ? 'border-blue-300 bg-blue-50 text-blue-900'
+                        : 'border-neutral-200 text-neutral-600'
+              }`}
             >
-              {item.kind.replace('_', ' ')} · {item.plannedMinutes} min
+              {item.kind.replace('_', ' ')} · {item.conceptTitle ?? item.conceptId ?? 'activity'} ·{' '}
+              {item.plannedMinutes} min
             </li>
           ))}
         </ol>
@@ -306,7 +327,11 @@ function SessionPage() {
           {!result ||
           result.status === 'invalid' ||
           (Number(result.correct) === 0 && result.retryAllowed) ? (
-            <ExerciseForm key={exerciseId} exercise={exerciseQuery.data} onSubmit={submitAnswer} />
+            <ExerciseForm
+              key={`${activity.id}:${exerciseId}`}
+              exercise={exerciseQuery.data}
+              onSubmit={submitAnswer}
+            />
           ) : (
             <button
               type="button"
@@ -316,13 +341,13 @@ function SessionPage() {
               Next
             </button>
           )}
-          {mode === 'practice' &&
+          {mode !== 'assessment' &&
           (!result || result.status === 'invalid' || result.retryAllowed) ? (
             <HintLadder
               exerciseId={exerciseId ?? ''}
               activityId={activity.id}
               onHint={setHint}
-              mode={activity.kind === 'review' ? 'review' : 'practice'}
+              mode={mode === 'review' ? 'review' : 'practice'}
               buttonRef={hintButton}
             />
           ) : null}
