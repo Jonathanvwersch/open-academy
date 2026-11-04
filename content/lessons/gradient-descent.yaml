@@ -8,8 +8,9 @@ blocks:
   - kind: intuition
     md: |
       You are on a foggy hillside and can only feel the slope under your feet. Gradient descent repeats one move: **take a step downhill, in proportion to the slope.**
+      The Greek letter $\eta$ ("eta") is the learning rate, or step size.
       $$\theta \leftarrow \theta - \eta\,\nabla L(\theta).$$
-      The learning rate $\eta$ is the step size. If it is too small, you crawl. If it is too large, you overshoot the valley floor, land higher on the other side, and the loss explodes. This update can reduce any function when we can calculate its gradient.
+      Read $\leftarrow$ as "replace $\theta$ with". If the step is too small, you crawl. If it is too large, you overshoot the valley floor, land higher on the other side, and the loss explodes. This update can reduce any function when we can calculate its gradient.
   - kind: example
     md: |
       This example shows gradient descent approaching a function's minimum through repeated updates.
@@ -23,11 +24,13 @@ blocks:
       Each step halves the distance to 3.
   - kind: math
     md: |
-      For the quadratic $L(w) = a(w - w^\star)^2$, one step gives
-      $$w_{t+1} - w^\star = (1 - 2a\eta)\,(w_t - w^\star).$$
+      For the quadratic $L(w) = a(w - w^\star)^2$, $w^\star$ ("w star") is the best $w$, where the loss is smallest. Its derivative is $L'(w)=2a(w-w^\star)$, so one update is $w_{t+1}=w_t-2a\eta(w_t-w^\star)$.
+      Subtracting $w^\star$ gives $w_{t+1} - w^\star = (1 - 2a\eta)\,(w_t - w^\star)$.
+
+      The successive values $w_0,w_1,\dots$ are called iterates. They approach $w^\star$ monotonically when each step stays on the same side and gets closer. If they diverge, they move farther away instead.
       - $0 < \eta < 1/(2a)$: the iterates approach $w^\star$ monotonically.
-      - $1/(2a) < \eta < 1/a$: they oscillate around $w^\star$ but still converge.
-      - $\eta > 1/a$: $|1 - 2a\eta| > 1$, so they **diverge**.
+      - $1/(2a) < \eta < 1/a$: they cross from side to side but still get closer.
+      - $\eta > 1/a$: $|1 - 2a\eta| > 1$, so they move farther away.
 
       With many parameters, the steepest direction limits how large a safe step can be, while gentler directions may take longer to improve.
   - kind: worked
@@ -37,9 +40,11 @@ blocks:
       **Linear regression, one step by hand.** Data: $(x, y) = (1, 2), (2, 4)$. Model $\hat y = wx$ (no bias), MSE loss, $w_0 = 0$, $\eta = 0.1$.
 
       1. Predictions: $(0, 0)$. Residuals $\hat y - y = (-2, -4)$.
-      2. $\partial L/\partial w = \frac{2}{n}\sum_i(\hat y_i - y_i)x_i = \frac{2}{2}((-2)(1) + (-4)(2)) = -10$.
-      3. $w_1 = 0 - 0.1\cdot(-10) = 1.0$.
+      2. For one example, let $q=wx-y$. The squared error is $q^2$, and since $dq/dw=x$, its derivative is $2qx$.
+      3. Averaging the two derivatives gives $\partial L/\partial w = \frac{2}{2}((-2)(1) + (-4)(2)) = -10$.
+      4. $w_1 = 0 - 0.1\cdot(-10) = 1.0$.
 
+      In `X.T @ r`, for each weight, add up residual times that feature.
       ```python
       for step in range(steps):
           y_hat = X @ w + b
@@ -58,5 +63,5 @@ blocks:
   - kind: summary
     md: |
       - Update rule: $\theta \leftarrow \theta - \eta\nabla L$.
-      - If $\eta$ is too small, progress is slow. If it is too big, the iterates oscillate or diverge, and the loss can grow or become NaN.
-      - Reading loss curves is a core debugging skill: watch for smooth decrease, a plateau, oscillation, or an explosion.
+      - If $\eta$ is too small, progress is slow. If it is too big, steps can move farther away and the loss may grow or become NaN (not a number).
+      - A smooth decrease means progress; a plateau is little change; oscillation crosses the minimum; an explosion means errors grow.

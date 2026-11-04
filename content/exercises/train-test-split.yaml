@@ -6,7 +6,7 @@ exercises:
     role: check
     difficulty: 1
     est_minutes: 1
-    prompt: "You try 20 learning rates and keep the one with the best score. Which split should that score come from?"
+    prompt: "You try 20 hyperparameter settings and keep the one with the best score. Which split should that score come from?"
     options:
       - { id: a, text: "Validation", correct: true }
       - {
@@ -21,7 +21,7 @@ exercises:
           text: "Train",
           correct: false,
           category: misunderstood_definition,
-          feedback: "Training loss rewards overfitting; it cannot tell you what generalises.",
+          feedback: "Training loss rewards memorising the training data; it cannot tell you how well the model handles new data.",
         }
     solution: "Hyperparameter selection uses validation data."
   - id: dx-ml-3

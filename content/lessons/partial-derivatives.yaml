@@ -7,6 +7,7 @@ blocks:
       **Goal:** compute partial derivatives of functions of several variables.
   - kind: intuition
     md: |
+      The symbol $\partial$ is read "partial". Read $\partial f/\partial w$ as "the partial derivative of f with respect to w".
       A function can depend on several variables at once. A **partial derivative** asks: *if I nudge only one variable and freeze all the others, how does the output change?* You differentiate with respect to that variable and treat every other variable as a constant.
   - kind: example
     md: |
@@ -19,6 +20,7 @@ blocks:
   - kind: math
     md: |
       $$\frac{\partial f}{\partial x_i}(x) = \lim_{h\to0}\frac{f(x_1,\dots,x_i + h,\dots,x_n) - f(x)}{h}$$
+      Read the limit as: nudge only $x_i$ by $h$, make $h$ smaller and smaller, and see what the ratio approaches.
       Every single-variable rule still applies; the other variables simply behave like numbers.
   - kind: worked
     md: |

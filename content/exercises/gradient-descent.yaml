@@ -112,10 +112,10 @@ exercises:
         }
       - {
           id: c,
-          text: "Overfitting; add regularisation",
+          text: "The loss is improving slowly; increase the step size",
           correct: false,
           category: misapplied_technique,
-          feedback: "Overfitting shows as *validation* loss rising while training loss falls. Here the training loss itself explodes.",
+          feedback: "The loss first decreases, then grows rapidly, so the steps are too large rather than too small.",
         }
       - {
           id: d,
@@ -267,10 +267,10 @@ exercises:
         }
       - {
           id: b,
-          text: "The model is badly overfitting",
+          text: "The prediction error on new examples is far above the noise level",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "Both values are near the irreducible noise of 0.25; overfitting would show a much lower train error and a clearly higher validation error.",
+          feedback: "The validation error is 0.27, close to the noise level of 0.25 rather than far above it.",
         }
       - {
           id: c,

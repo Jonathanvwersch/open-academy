@@ -7,7 +7,7 @@ blocks:
       **Goal:** write the linear model in vector form, interpret its weights, and compute vectorised predictions in NumPy.
   - kind: intuition
     md: |
-      Linear regression predicts a number as a weighted sum of features plus a bias:
+      Linear regression predicts a number as a weighted sum of features plus an offset $b$, also called the bias:
       $$\hat y = w \cdot x + b.$$
       Each weight $w_j$ says how much the prediction changes when feature $j$ increases by one unit and all other features stay fixed. This simple model makes it clear how inputs, weights, predictions and errors fit together.
   - kind: example
@@ -17,7 +17,7 @@ blocks:
       House price (in thousands) $= 3\cdot\text{area} + 10\cdot\text{bedrooms} + 50$. A 100 m², 2-bedroom house: $300 + 20 + 50 = 370$. One extra m² adds 3 (thousand); one extra bedroom *at the same area* adds 10.
   - kind: math
     md: |
-      For a batch $X \in \mathbb R^{n\times d}$ (one example per row):
+      For a batch $X \in \mathbb R^{n\times d}$, there are $n$ rows (examples) and $d$ columns (features). The ones vector $\mathbf 1$ is a list of $n$ ones.
       $$\hat y = Xw + b\mathbf 1 \in \mathbb{R}^n.$$
       A common trick is to append a constant-1 feature to every row, so the bias becomes just another weight.
   - kind: worked

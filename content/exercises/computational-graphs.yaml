@@ -46,7 +46,7 @@ exercises:
       - {
           answer: 3,
           category: misunderstood_definition,
-          feedback: "The ReLU input is $-3 < 0$, so the ReLU node's local derivative is 0 and blocks the gradient.",
+          feedback: "The input is $-3 < 0$, so $\\max(0, wx)$ has local derivative 0 there.",
         }
     solution: "The inside value is $-3$, so $\\max(0, wx)$ is 0 there and $\\partial f/\\partial w = 0 \\cdot x = 0$."
   - id: cg-explain

@@ -123,6 +123,23 @@ export const ConceptFileSchema = z
   })
   .strict();
 
+export const NotationSchema = z
+  .object({
+    terms: z
+      .array(
+        z
+          .object({
+            id: IdSchema,
+            label: z.string().min(1),
+            match: z.array(z.string().min(1)).min(1),
+            introduced_by: z.array(IdSchema).min(1),
+          })
+          .strict(),
+      )
+      .default([]),
+  })
+  .strict();
+
 const BlockMarkdownSchema = z
   .object({
     kind: z.enum(['objective', 'intuition', 'example', 'math', 'worked', 'summary']),
@@ -373,6 +390,7 @@ export const ProjectSchema = z
 
 export type Curriculum = z.infer<typeof CurriculumSchema>;
 export type Concept = z.infer<typeof ConceptSchema>;
+export type NotationRegistry = z.infer<typeof NotationSchema>;
 export type Lesson = z.infer<typeof LessonSchema>;
 export type Exercise = z.infer<typeof ExerciseSchema>;
 export type Diagnostic = z.infer<typeof DiagnosticSchema>;

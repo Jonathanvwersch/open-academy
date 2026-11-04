@@ -9,9 +9,11 @@ blocks:
     md: |
       A matrix is a grid of numbers. Multiplying a matrix by a vector dots **each row** with the vector, producing one output number per row.
 
-      The same operation can be read geometrically: a matrix is a **linear transformation** that rotates, scales or shears space. Composing two transformations means multiplying their matrices, and order matters.
+      A linear transformation is a rule that maps vectors to vectors while preserving addition and scaling. A matrix can rotate, scale or shear space; a shear slides points sideways in proportion to their height. Composing two transformations means multiplying their matrices, and order matters.
 
-      Shapes tell us how many numbers are in each direction. If the rows of $X \in \mathbb{R}^{n \times d}$ hold $n$ sets of measurements and $W \in \mathbb{R}^{d \times k}$, then $XW$ gives $k$ output numbers for each row.
+      $\mathbb R^{m\times n}$ means a matrix with $m$ rows and $n$ columns. If $X \in \mathbb{R}^{n \times d}$ holds $n$ rows of measurements and $W \in \mathbb{R}^{d \times k}$, then $XW$ gives $k$ output numbers for each row.
+
+      In NumPy, `@` means matrix multiplication. Broadcasting lets NumPy reuse one value, such as a bias, for every row.
   - kind: example
     md: |
       This example shows a matrix transforming a vector by taking one dot product per row.
@@ -20,20 +22,22 @@ blocks:
       Row 1 dotted with $x$ gives 5, and row 2 dotted with $x$ gives 1. Geometrically, $A$ is a shear: it slides points sideways in proportion to their height.
   - kind: math
     md: |
+      The entry $A_{ik}$ is in row $i$, column $k$.
       For $A \in \mathbb{R}^{m\times n}$ and $B \in \mathbb{R}^{n\times p}$:
       $$(AB)_{ij} = \sum_{k=1}^{n} A_{ik}B_{kj}, \qquad AB \in \mathbb{R}^{m\times p}.$$
       The inner dimensions must match: $(m\times \mathbf{n})(\mathbf{n}\times p)$.
 
       Useful facts:
       - In general $AB \ne BA$.
+      - The transpose $A^\top$ ("A transpose") swaps rows and columns. For example, $\begin{pmatrix}1&2&3\\4&5&6\end{pmatrix}^\top = \begin{pmatrix}1&4\\2&5\\3&6\end{pmatrix}$.
       - $(AB)^\top = B^\top A^\top$.
-      - $I x = x$.
+      - The identity matrix $I$ has ones on its diagonal and zeros elsewhere; $Ix=x$.
   - kind: worked
     md: |
       This worked example shows that multiplying matrices in opposite orders can give different results.
 
       $$\begin{pmatrix}1&2\\3&4\end{pmatrix}\begin{pmatrix}0&1\\1&0\end{pmatrix} = \begin{pmatrix}1\cdot0+2\cdot1 & 1\cdot1+2\cdot0\\ 3\cdot0+4\cdot1 & 3\cdot1+4\cdot0\end{pmatrix} = \begin{pmatrix}2&1\\4&3\end{pmatrix}.$$
-      Multiplying on the right by this permutation matrix swaps the **columns**. Multiplying on the left would swap the rows instead, which shows directly that $AB \neq BA$.
+      A permutation matrix reorders rows or columns when multiplied. Multiplying on the right by this one swaps the **columns**; multiplying on the left swaps the rows instead, which shows directly that $AB \neq BA$.
 
       In NumPy: `A @ B`. For a batch, `X @ W + b` broadcasts the bias over all rows.
   - kind: check

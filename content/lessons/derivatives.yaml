@@ -7,9 +7,9 @@ blocks:
       **Goal:** differentiate polynomials, exponentials, logs, products and quotients, and read a derivative as the sensitivity of the output to the input.
   - kind: intuition
     md: |
-      The derivative $f'(x)$ answers one question: *if I nudge $x$ a little, how much does $f(x)$ change, per unit of nudge?*
+      Suppose a model's loss is the square of one parameter. When the parameter is 3, the loss is 9; when it is 3.01, the loss is 9.0601. A nudge of 0.01 changes the loss by 0.0601, or about 6.01 per unit of nudge.
 
-      For a function controlled by a number, the derivative tells you how its output changes when you nudge that number.
+      The derivative $f'(x)$ answers: if I nudge $x$ a little, how much does $f(x)$ change per unit of nudge? For a model, it tells how changing a parameter changes its loss.
   - kind: example
     md: |
       This example estimates an instantaneous rate of change by comparing nearby function values.
@@ -18,12 +18,17 @@ blocks:
   - kind: math
     md: |
       $$f'(x) = \lim_{h\to0}\frac{f(x+h) - f(x)}{h}$$
+      Read the limit as: make the nudge $h$ smaller and smaller and see what the ratio approaches.
 
+      The number $e$ is about 2.718. The natural logarithm $\ln x$ asks which power of $e$ gives $x$.
+      This table is a lookup of results that follow from the definition above.
       | $f(x)$ | $f'(x)$ |
       |---|---|
       | $x^n$ | $n x^{n-1}$ |
       | $e^x$ | $e^x$ |
       | $\ln x$ | $1/x$ |
+      | $\sin x$ | $\cos x$ |
+      | $\cos x$ | $-\sin x$ |
       | $c\,g(x)$ | $c\,g'(x)$ |
       | $g + h$ | $g' + h'$ |
       | $g\,h$ | $g'h + gh'$ (product rule) |

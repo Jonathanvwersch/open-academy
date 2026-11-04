@@ -81,10 +81,10 @@ exercises:
         }
       - {
           id: c,
-          text: "The learning rate is too high",
+          text: "The model's weights are too large",
           correct: false,
           category: misapplied_technique,
-          feedback: "The learning rate affects how you reach the minimum, not where the MSE minimum is.",
+          feedback: "The loss choice does not set the update size; the large residual still dominates MSE.",
         }
     solution: "MSE's gradient grows with the error, so outliers pull hard. MAE or Huber caps that influence."
   - id: loss-review-grad

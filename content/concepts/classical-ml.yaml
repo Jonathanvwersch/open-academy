@@ -23,7 +23,7 @@ concepts:
     week: 1
     goal_weight: 3
     dimensions: [conceptual, math, implementation]
-    prereqs: [{ id: supervised-learning }, { id: dot-product }, { id: matrices, strength: soft }]
+    prereqs: [{ id: supervised-learning }, { id: dot-product }, { id: matrices }]
     objectives:
       - { text: "Write the linear model in vector form", dimension: math }
       - { text: "Implement vectorised predictions in NumPy", dimension: implementation }
@@ -38,7 +38,7 @@ concepts:
     week: 1
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
-    prereqs: [{ id: supervised-learning }]
+    prereqs: [{ id: supervised-learning }, { id: derivatives }]
     objectives:
       - { text: "Compute MSE and MAE for a set of predictions", dimension: math }
       - { text: "Explain how MSE's squaring treats outliers", dimension: conceptual }
@@ -52,7 +52,7 @@ concepts:
     week: 1
     goal_weight: 3
     dimensions: [conceptual, math, implementation, transfer]
-    prereqs: [{ id: gradients }, { id: loss-functions }]
+    prereqs: [{ id: gradients }, { id: loss-functions }, { id: linear-regression }]
     objectives:
       - { text: "Perform gradient-descent updates by hand", dimension: math }
       - { text: "Explain the effect of the learning rate", dimension: conceptual }

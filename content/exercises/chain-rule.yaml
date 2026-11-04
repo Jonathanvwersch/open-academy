@@ -63,7 +63,7 @@ exercises:
           answer: 0.25,
           tolerance: { abs: 0.001 },
           category: math_error,
-          feedback: "That is $\\sigma'(0)$. You still need the inner derivative $\\partial z/\\partial w = x = 4$.",
+          feedback: "That is just the outer rate $g'(0)$. You still need the inner derivative $\\partial z/\\partial w = x = 4$.",
         }
     hints:
       [

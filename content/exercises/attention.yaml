@@ -36,4 +36,4 @@ exercises:
         "Compute each score $q\\cdot k_i/\\sqrt{2}$ first.",
         "Scores are $\\sqrt2 \\approx 1.414$ and $0$; apply softmax to them.",
       ]
-    solution: "Scores: $2/\\sqrt2 = 1.414$ and $0$. Softmax weights: $e^{1.414}/(e^{1.414}+1) = 4.113/5.113 = 0.804$ and $0.196$. Output $= 0.804 \\times 10 + 0.196 \\times 0 \\approx 8.04$."
+    solution: "Scores: $2/\\sqrt2 = 1.414$ and $0$. Raising 2.718 to each score gives 4.113 and 1, so the weights are $4.113/(4.113+1)=0.804$ and $0.196$. Output $=0.804\\times10+0.196\\times0\\approx8.04$."

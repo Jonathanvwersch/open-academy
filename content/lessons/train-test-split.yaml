@@ -13,6 +13,8 @@ blocks:
       - **Validation:** choose settings and decide when to stop. You look at it many times, so it slowly becomes optimistic.
       - **Test:** touched once at the end, for an honest estimate.
 
+      A **hyperparameter** is a setting you choose yourself rather than training, such as how many features to use.
+
       **Leakage** is any path by which information from the evaluation data reaches training: duplicate rows, averages computed from the full table before splitting, or copies of the same sale landing in both splits.
   - kind: example
     md: |

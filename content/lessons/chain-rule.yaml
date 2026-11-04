@@ -17,10 +17,11 @@ blocks:
       $y = (3x + 1)^2$. Let $u = 3x + 1$, so $y = u^2$. Then $dy/du = 2u$ and $du/dx = 3$, giving $dy/dx = 2(3x+1)\cdot 3 = 6(3x+1)$.
   - kind: math
     md: |
+      Read $f\circ g$ as "f applied after g".
       Single variable: $(f\circ g)'(x) = f'(g(x))\,g'(x)$.
 
-      Multivariable: if $L$ depends on $x$ through several intermediate variables $u_1,\dots,u_k$, **sum over the paths**:
-      $$\frac{\partial L}{\partial x} = \sum_{j} \frac{\partial L}{\partial u_j}\frac{\partial u_j}{\partial x}.$$
+      Multivariable: if $L$ depends on $x$ through several intermediate variables, multiply the two rates along each route and add the results. For two routes:
+      $$\frac{\partial L}{\partial x} = \frac{\partial L}{\partial u_1}\frac{\partial u_1}{\partial x} + \frac{\partial L}{\partial u_2}\frac{\partial u_2}{\partial x}.$$
   - kind: worked
     md: |
       This worked example differentiates a nested expression and adds contributions from two paths.

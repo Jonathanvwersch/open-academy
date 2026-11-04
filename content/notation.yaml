@@ -1,0 +1,117 @@
+# Symbols and terms that must be taught before a lesson or exercise uses them.
+# A concept may use a term only if it is one of `introduced_by`, or one of them is a
+# hard prerequisite ancestor. `match` entries are JavaScript regexes (case-insensitive)
+# applied to lesson Markdown and to all exercise text.
+terms:
+  - { id: real-space, label: "ℝⁿ notation", match: ['\\mathbb\s*\{?R'], introduced_by: [vectors] }
+  - {
+      id: sum,
+      label: "Σ summation",
+      match: ['\\sum'],
+      introduced_by: [vectors, supervised-learning],
+    }
+  - {
+      id: transpose,
+      label: "transpose ⊤ / .T",
+      match: ['\\top', '\.T\b'],
+      introduced_by: [matrices],
+    }
+  - {
+      id: matrix,
+      label: "matrix notation",
+      match: ['\\begin\{[pb]matrix\}'],
+      introduced_by: [matrices],
+    }
+  - {
+      id: numpy-matmul,
+      label: "NumPy @ / broadcasting",
+      match: ['\s@\s', "broadcast"],
+      introduced_by: [matrices],
+    }
+  - {
+      id: ones-vector,
+      label: "ones vector 𝟏",
+      match: ['\\mathbf\s*\{?1'],
+      introduced_by: [linear-regression],
+    }
+  - { id: limit, label: "limit notation", match: ['\\lim'], introduced_by: [derivatives] }
+  - { id: exp-log, label: "e and ln", match: ['\\ln\b', '\be\^'], introduced_by: [derivatives] }
+  - {
+      id: partial,
+      label: "∂ partial derivative",
+      match: ['\\partial'],
+      introduced_by: [partial-derivatives],
+    }
+  - { id: nabla, label: "∇ gradient", match: ['\\nabla'], introduced_by: [gradients] }
+  - {
+      id: composition,
+      label: "∘ composition",
+      match: ['(?<!\^)(?<!\^\{)\\circ'],
+      introduced_by: [chain-rule],
+    }
+  - { id: argmin, label: "argmin", match: ['\\arg\s*\\?min'], introduced_by: [supervised-learning] }
+  - {
+      id: mse,
+      label: "MSE",
+      match: ['\bMSE\b', "mean squared error"],
+      introduced_by: [supervised-learning, loss-functions],
+    }
+  - {
+      id: mae,
+      label: "MAE",
+      match: ['\bMAE\b', "mean absolute error"],
+      introduced_by: [loss-functions],
+    }
+  - {
+      id: learning-rate,
+      label: "learning rate η",
+      match: ["learning rate", '\\eta'],
+      introduced_by: [gradient-descent],
+    }
+  - { id: phi, label: "φ activation", match: ['\\phi', '\\varphi'], introduced_by: [perceptron] }
+  - { id: hyperplane, label: "hyperplane", match: ["hyperplane"], introduced_by: [perceptron] }
+  - {
+      id: sigmoid,
+      label: "sigmoid σ",
+      match: ['\\sigma', "sigmoid"],
+      introduced_by: [activation-functions],
+    }
+  - { id: relu, label: "ReLU", match: ["ReLU"], introduced_by: [activation-functions] }
+  - {
+      id: hadamard,
+      label: "⊙ elementwise product",
+      match: ['\\odot'],
+      introduced_by: [backpropagation],
+    }
+  - {
+      id: indicator,
+      label: "𝟙[·] indicator",
+      match: ['\\mathbb\s*\{?1'],
+      introduced_by: [backpropagation],
+    }
+  - {
+      id: hyperparameter,
+      label: "hyperparameter",
+      match: ["hyperparameter"],
+      introduced_by: [train-test-split],
+    }
+  - { id: overfitting, label: "overfitting", match: ["overfit"], introduced_by: [overfitting] }
+  - {
+      id: regularization,
+      label: "regularisation",
+      match: ["regulari[sz]"],
+      introduced_by: [regularization],
+    }
+  - { id: softmax, label: "softmax", match: ["softmax"], introduced_by: [classification-softmax] }
+  - {
+      id: cross-entropy,
+      label: "cross-entropy",
+      match: ["cross-entropy"],
+      introduced_by: [logistic-regression],
+    }
+  - {
+      id: cnn,
+      label: "CNN / convolution",
+      match: ['\bCNN\b', "convolution"],
+      introduced_by: [convolutions],
+    }

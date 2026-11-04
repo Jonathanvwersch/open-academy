@@ -56,6 +56,7 @@ blocks:
       | **average** | **200** | | **2300** |
 
       **Average over the houses.** One house can be lucky or unlucky, so we judge a setting by its average loss over all the sales. Setting A averages 200 and Setting B averages 2300, so Setting A fits these sales much better.
+      The average squared error is called **mean squared error (MSE)**.
   - kind: math
     md: |
       The worked example is exactly what the standard formula says. Here it is, one piece at a time.

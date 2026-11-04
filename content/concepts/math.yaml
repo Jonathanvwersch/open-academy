@@ -74,7 +74,7 @@ concepts:
     week: 1
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
-    prereqs: [{ id: partial-derivatives }, { id: vectors }]
+    prereqs: [{ id: partial-derivatives }, { id: vectors }, { id: dot-product }]
     objectives:
       - { text: "Compute the gradient of a scalar function", dimension: math }
       - {
@@ -90,7 +90,7 @@ concepts:
     week: 2
     goal_weight: 3
     dimensions: [conceptual, math]
-    prereqs: [{ id: derivatives }, { id: partial-derivatives, strength: soft }]
+    prereqs: [{ id: derivatives }, { id: partial-derivatives }]
     objectives:
       - { text: "Differentiate compositions with the chain rule", dimension: math }
       - { text: "Explain the chain rule as multiplying local sensitivities", dimension: conceptual }
