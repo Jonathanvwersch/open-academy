@@ -1,57 +1,89 @@
 concept: supervised-learning
-version: 1
+version: 2
 fast_path: [objective, summary]
 blocks:
   - kind: objective
     md: |
-      **Goal:** identify the inputs, targets, model family, loss and training data in any supervised problem.
+      **Goal:** identify the inputs, targets, model, loss and training data in any supervised problem, and explain why training means making the average loss small.
   - kind: intuition
     md: |
-      Supervised learning means learning a function from examples of inputs paired with correct outputs. There are always five ingredients:
+      Supervised learning means learning to predict an answer from examples where the answer is already known. Say you want to guess what a house will sell for. You don't write the rule yourself. You collect past sales, each with the house's details and the price it actually sold for, and let the computer find a rule that fits them.
 
-      1. **Inputs** $x$ are the measured values used to make a prediction.
-      2. **Targets** $y$ are the known answers, such as a sale price or category.
-      3. A **model family** $f_\theta$ is a rule with adjustable parameters $\theta$, such as a line.
-      4. A **loss** $L(f_\theta(x), y)$ measuring how wrong a prediction is.
-      5. A **dataset** of $(x, y)$ pairs.
+      Every supervised problem has the same five ingredients:
 
-      Training searches for parameters that make the average loss small. The real goal is to make accurate predictions on new examples.
+      1. **Inputs** $x$: what you know when you make the prediction (the house's size and number of bedrooms).
+      2. **Target** $y$: the answer you want to predict (the sale price).
+      3. **Model** $f_\theta$: a rule that turns inputs into a prediction. It has adjustable settings called **parameters**, written $\theta$ ("theta").
+      4. **Loss** $L$: a number that says how wrong a prediction is.
+      5. **Dataset**: the past examples, each one an $(x, y)$ pair.
+
+      The rest of this lesson goes through them in order, using house prices.
   - kind: example
     md: |
-      Here are the five ingredients for predicting a house's sale price:
+      This example shows that a model is a rule with adjustable settings, and different settings give different predictions.
 
-      1. **Inputs** $x$: the size in m² and the number of bedrooms.
-      2. **Target** $y$: the sale price.
-      3. **Model**: a line, $\hat y = w_1 x_1 + w_2 x_2 + b$. The weights $w_1, w_2$ and the offset $b$ are the adjustable parameters $\theta$.
-      4. **Loss**: the squared error $(\hat y - y)^2$, averaged over all the houses.
-      5. **Dataset**: 1,000 past sales, each one a pair of (size and bedrooms, price).
+      A simple model for house prices (in thousands) is a line:
 
-      Training picks $w_1, w_2, b$ so the average squared error on those 1,000 sales is small. The real test is how well the line prices houses it hasn't seen.
+      $$\hat y = w_1 \cdot \text{size} + w_2 \cdot \text{bedrooms} + b$$
 
-      A robot learning from demonstrations uses the same five ingredients: the input is what its camera sees, and the target is the action the human took.
+      The hat on $\hat y$ means "predicted price", to tell it apart from the true price $y$. The numbers $w_1$, $w_2$ and $b$ are the parameters $\theta$. Changing them changes every prediction:
+
+      - **Setting A:** $w_1 = 3,\ w_2 = 10,\ b = 50$. A 100 m², 2-bedroom house gets $3\cdot100 + 10\cdot2 + 50 = 370$.
+      - **Setting B:** $w_1 = 2,\ w_2 = 20,\ b = 100$. The same house gets $2\cdot100 + 20\cdot2 + 100 = 340$.
+
+      Training means choosing the setting. To choose, we need a way to say which one is better.
+  - kind: worked
+    md: |
+      This worked example shows why we need a loss, and how it lets us compare the two settings on real sales.
+
+      Three past sales:
+
+      | house | size (m²) | bedrooms | sold for $y$ | Setting A predicts | error |
+      |---|---|---|---|---|---|
+      | 1 | 100 | 2 | 360 | 370 | +10 |
+      | 2 | 80 | 1 | 290 | 300 | +10 |
+      | 3 | 150 | 4 | 560 | 540 | −20 |
+
+      **Why not just average the errors?** They add up to $10 + 10 - 20 = 0$, which makes Setting A look perfect even though it gets every house wrong. Errors that are too high and too low cancel each other out.
+
+      **Square each error instead.** Squares are never negative, so nothing cancels, and big misses count more than small ones. This is the **squared-error loss**: $(\hat y - y)^2$.
+
+      | house | Setting A: squared error | Setting B predicts | Setting B: squared error |
+      |---|---|---|---|
+      | 1 | $10^2 = 100$ | 340 | $(-20)^2 = 400$ |
+      | 2 | $10^2 = 100$ | 280 | $(-10)^2 = 100$ |
+      | 3 | $(-20)^2 = 400$ | 480 | $(-80)^2 = 6400$ |
+      | **average** | **200** | | **2300** |
+
+      **Average over the houses.** One house can be lucky or unlucky, so we judge a setting by its average loss over all the sales. Setting A averages 200 and Setting B averages 2300, so Setting A fits these sales much better.
   - kind: math
     md: |
-      Here's how "make the average loss small" becomes one formula. We'll build it in three steps with the house example.
+      The worked example is exactly what the standard formula says. Here it is, one piece at a time.
 
-      **1. The loss on one house.** For house number $i$, the model predicts $f_\theta(x_i)$ and the true price is $y_i$. The loss $L\big(f_\theta(x_i), y_i\big)$ is a single number saying how wrong that one prediction is. With squared error it is $\big(f_\theta(x_i) - y_i\big)^2$.
+      **The loss on one house.** House number $i$ has inputs $x_i$ and true price $y_i$. The model predicts $f_\theta(x_i)$, and the loss $L\big(f_\theta(x_i), y_i\big)$ says how wrong that is. With squared error it is $\big(f_\theta(x_i) - y_i\big)^2$.
 
-      **2. The average over all houses.** Add up the loss for every house and divide by the number of houses $n$:
+      **The average loss.** Add up the loss for all $n$ houses and divide by $n$:
 
       $$\frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(x_i), y_i\big)$$
 
-      The symbol $\sum_{i=1}^{n}$ just means "add this up for $i = 1, 2, \dots, n$". For the 1,000 past sales, $n = 1000$.
+      The symbol $\sum_{i=1}^{n}$ means "add this up for $i = 1, 2, \dots, n$". In the worked example $n = 3$, and this gave 200 for Setting A.
 
-      **3. Pick the best parameters.** Different parameters $\theta$ (here $w_1, w_2, b$) give different average losses. Training looks for the $\theta$ that makes the average as small as possible:
+      **The best parameters.** Training searches for the $\theta$ with the smallest average loss:
 
       $$\theta^\star = \arg\min_\theta \frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(x_i), y_i\big)$$
 
-      Read $\arg\min_\theta$ as "the value of $\theta$ that gives the smallest result", and $\theta^\star$ as "the best parameters". The gradient descent lesson shows how training actually finds them.
+      Read $\arg\min_\theta$ as "the $\theta$ that makes what follows as small as possible", and $\theta^\star$ ("theta star") as "the best parameters". We compared two settings by hand. The gradient descent lesson shows how training searches through all of them automatically.
   - kind: intuition
     md: |
-      **Two kinds of target.** When the target $y$ is a number, like a sale price or tomorrow's electricity demand, the problem is called **regression**. When $y$ is a category, like "spam" or "not spam", it is called **classification**. The five ingredients are the same either way. Only the kind of target changes, and with it the choice of loss.
+      **The real goal is new houses.** A low average loss on past sales is only a means to an end. What you actually want is good prices for houses the model has never seen. A model can fit its training sales well and still price new houses badly, so we always test it on sales it didn't train on. The train/validation/test lesson covers how.
+
+      **Two kinds of target.** When the target $y$ is a number, like a price, the problem is called **regression**. When $y$ is a category, like "spam" or "not spam", it is called **classification**. The five ingredients are the same either way. What changes is the loss, because "how wrong" means something different for a category than for a number.
+
+      Robots use the same setup. In learning from demonstrations, the input is what the robot's camera sees and the target is the action a human took.
   - kind: check
     exercise: sl-check-target
   - kind: summary
     md: |
-      - The five ingredients are inputs, targets, model, loss and data.
-      - Training minimises the average loss on the training set, but what matters is performance on unseen data.
+      - Five ingredients: inputs $x$, target $y$, a model $f_\theta$ with parameters $\theta$, a loss $L$, and a dataset of $(x, y)$ pairs.
+      - The loss turns "how wrong" into a number. Squaring stops errors that are too high and too low from cancelling out.
+      - Training picks the parameters with the smallest average loss on the training data, but what matters is performance on new data.
