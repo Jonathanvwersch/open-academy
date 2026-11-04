@@ -2,12 +2,18 @@ import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ExerciseForm, FeedbackPanel, Markdown } from '../components.js';
 import { type LessonRunPayload, lessonQueryOptions, lessonRunQueryOptions } from '../queries.js';
+import { SessionActivityHeader } from '../session/SessionActivityHeader.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
 
 export function LessonRunner({
   conceptId,
   activityId,
   title,
+  activityLabel,
+  activityPosition,
+  activityCount,
+  lessonHref,
+  mode,
   tutorEnabled,
   resumeRetry,
   onContinue,
@@ -15,6 +21,11 @@ export function LessonRunner({
   conceptId: string;
   activityId: string;
   title: string;
+  activityLabel: string;
+  activityPosition: number;
+  activityCount: number;
+  lessonHref?: string;
+  mode: 'practice' | 'assessment' | 'review';
   tutorEnabled: boolean;
   resumeRetry: boolean;
   onContinue: () => void;
@@ -154,10 +165,14 @@ export function LessonRunner({
 
   return (
     <section className="mx-auto max-w-3xl space-y-6">
-      <header>
-        <p className="text-sm text-neutral-500">Lesson</p>
-        <h1 className="mt-1 text-2xl font-semibold">{title}</h1>
-      </header>
+      <SessionActivityHeader
+        title={title}
+        label={activityLabel}
+        position={activityPosition}
+        total={activityCount}
+        mode={mode}
+        lessonHref={lessonHref}
+      />
       <ol aria-label="Lesson steps" className="flex flex-wrap gap-2">
         {state.points.map((item, index) => (
           <li

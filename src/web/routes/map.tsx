@@ -111,6 +111,7 @@ function MapPage() {
   const concept = selected?.concept as
     | { id?: string; title?: string; description?: string; status?: string }
     | undefined;
+  const hasLesson = selected?.lessonAvailable === true;
   const mastery = selected?.mastery as
     | Array<{
         dimension: string;
@@ -208,6 +209,14 @@ function MapPage() {
               ) : null}
             </div>
             <div className="flex gap-2">
+              {concept.id && hasLesson ? (
+                <a
+                  href={`/lessons/${encodeURIComponent(concept.id)}`}
+                  className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium"
+                >
+                  View lesson
+                </a>
+              ) : null}
               {concept.status !== 'stub' ? (
                 <button
                   type="button"

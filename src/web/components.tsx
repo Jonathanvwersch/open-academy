@@ -112,20 +112,39 @@ export function ModeBadge({ mode }: { mode: 'practice' | 'assessment' | 'review'
 
 export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
   const title =
-    Number(result.correct) >= 1
-      ? 'Correct'
-      : Number(result.correct) > 0
-        ? 'Partly correct'
-        : 'Not quite';
+    result.status === 'self_check_required'
+      ? ''
+      : Number(result.correct) >= 1
+        ? 'Correct'
+        : Number(result.correct) > 0
+          ? 'Partly correct'
+          : 'Not quite';
   const feedback = typeof result.feedback === 'string' ? result.feedback.trim() : '';
   const repeatsTitle = feedback.replace(/\.$/, '') === title;
+  const rubric = Array.isArray(result.rubric)
+    ? (result.rubric as Array<{ id?: string; criterion?: string; judgement?: string }>)
+    : [];
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-4" role="status">
-      <p className="font-medium">{title}</p>
+      {title ? <p className="font-medium">{title}</p> : null}
       {feedback && !repeatsTitle ? (
         <div className="mt-1 text-sm text-neutral-600">
           <Markdown>{feedback}</Markdown>
         </div>
+      ) : null}
+      {rubric.some((item) => item.judgement) ? (
+        <ul className="mt-3 space-y-2 text-sm">
+          {rubric.map((item) => {
+            const symbol =
+              item.judgement === 'met' ? '✓' : item.judgement === 'partial' ? '½' : '✗';
+            return (
+              <li key={item.id ?? item.criterion} className="flex gap-2">
+                <span aria-hidden="true">{symbol}</span>
+                <span>{item.criterion}</span>
+              </li>
+            );
+          })}
+        </ul>
       ) : null}
       {typeof result.yourAnswer === 'string' ? (
         <div className="mt-3 space-y-2 text-sm">
@@ -139,8 +158,15 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
           </div>
         </div>
       ) : null}
+      {typeof result.exemplar === 'string' ? (
+        <div className="mt-3 border-t border-neutral-200 pt-3 text-sm">
+          <p className="mb-1 font-medium">Model answer</p>
+          <Markdown>{result.exemplar}</Markdown>
+        </div>
+      ) : null}
       {typeof result.solution === 'string' ? (
         <div className="mt-3 border-t border-neutral-200 pt-3 text-sm">
+          <p className="mb-1 font-medium">Solution</p>
           <Markdown>{result.solution}</Markdown>
         </div>
       ) : null}
@@ -153,11 +179,13 @@ export function ExerciseForm({
   onSubmit,
   disabled = false,
   submitLabel = 'Submit answer',
+  explainStep = 'answer',
 }: {
   exercise: ClientExercise;
   onSubmit: (answer: unknown) => void;
   disabled?: boolean;
   submitLabel?: string;
+  explainStep?: 'answer' | 'self-check';
 }) {
   const [value, setValue] = useState('');
   const [line, setLine] = useState('');
@@ -170,7 +198,7 @@ export function ExerciseForm({
     } else if (exercise.type === 'mc') {
       onSubmit(selected.length === 1 ? selected[0] : selected);
     } else if (exercise.type === 'explain') {
-      onSubmit({ text: value, metCriteria: criteria });
+      onSubmit({ text: value, ...(explainStep === 'self-check' ? { metCriteria: criteria } : {}) });
     } else if (exercise.type === 'numeric') {
       onSubmit(value.trim());
     } else if (exercise.type === 'code_read') {
@@ -274,11 +302,9 @@ export function ExerciseForm({
           </label>
         </div>
       ) : null}
-      {exercise.type === 'explain' ? (
+      {exercise.type === 'explain' && explainStep === 'self-check' ? (
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">
-            Self-check: which criteria does your answer meet?
-          </legend>
+          <legend className="text-sm font-medium">Which of these did your answer include?</legend>
           {(exercise.rubric ?? []).map((item) => (
             <label key={item.id} className="flex gap-2 text-sm text-neutral-700">
               <input
@@ -293,7 +319,11 @@ export function ExerciseForm({
                 }
               />
               {item.criterion}
-              {item.required ? ' (required)' : ''}
+              {item.required ? (
+                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">
+                  key point
+                </span>
+              ) : null}
             </label>
           ))}
         </fieldset>
@@ -309,12 +339,16 @@ export function ExerciseForm({
           />
         ) : (
           <textarea
-            className="min-h-28 w-full rounded-md border border-neutral-300 bg-white p-3 font-mono text-sm"
+            className={`min-h-28 w-full rounded-md border border-neutral-300 bg-white p-3 text-sm ${exercise.type === 'explain' ? '' : 'font-mono'}`}
             aria-label="Your answer"
             value={value}
             onChange={(event) => setValue(event.target.value)}
             placeholder={
-              exercise.type === 'code_complete' ? 'Enter code for the blank' : 'Type your answer'
+              exercise.type === 'explain'
+                ? 'Write your explanation'
+                : exercise.type === 'code_complete'
+                  ? 'Enter code for the blank'
+                  : 'Type your answer'
             }
           />
         )

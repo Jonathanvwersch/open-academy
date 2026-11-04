@@ -1,0 +1,178 @@
+import { expect, type Page, test } from '@playwright/test';
+import { createDb } from '../../src/server/db/client.js';
+import { sessionActivities, studySessions, users } from '../../src/server/db/schema.js';
+import { env } from '../../src/server/env.js';
+
+const db = createDb(env.TEST_DATABASE_URL);
+const screenshotDir = '/home/ubuntu/screenshots/session-cleanup';
+let userId = '';
+
+test.beforeEach(async () => {
+  await db.delete(users);
+  const [user] = await db
+    .insert(users)
+    .values({
+      displayName: 'Session cleanup E2E learner',
+      timezone: 'UTC',
+      startDate: '2026-01-01',
+      prefs: { scheduleMinutes: 60 },
+    })
+    .returning();
+  if (!user) throw new Error('Could not create E2E learner');
+  userId = user.id;
+});
+
+test.afterAll(async () => {
+  await db.$client.end();
+});
+
+async function createActivity(
+  conceptId: string,
+  exerciseId: string,
+  kind: 'practice' | 'learn' = 'practice',
+) {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 20,
+      status: 'active',
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create E2E session');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind,
+    conceptId,
+    exerciseIds: [exerciseId],
+    plannedMinutes: 10,
+    status: 'in_progress',
+  });
+  return session.id;
+}
+
+async function openExplainActivity(page: Page) {
+  const sessionId = await createActivity('supervised-learning', 'sl-explain-setup');
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  return sessionId;
+}
+
+test('legacy session header links to a read-only lesson and returns with the result intact', async ({
+  page,
+}) => {
+  const sessionId = await createActivity('vectors', 'vectors-magnitude');
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
+  await expect(page.getByText('Practice · 1 of 1 today')).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Session timeline' })).toHaveCount(0);
+  await expect(page.getByText(/About \d+ minutes remaining/)).toHaveCount(0);
+  await expect(page.getByText('Review', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'View lesson' })).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/legacy-practice-header.png`, fullPage: true });
+
+  await page.getByLabel('Your answer').fill('0');
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByText('Not quite', { exact: true })).toBeVisible();
+  const questionText = (await page.locator('article').last().textContent()) ?? '';
+  await page.getByRole('link', { name: 'View lesson' }).click();
+  await expect(page).toHaveURL(new RegExp(`/lessons/vectors\\?from=${sessionId}`));
+  await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show answer' }).first()).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/legacy-lesson.png`, fullPage: true });
+  await page.getByRole('link', { name: '← Back to session' }).click();
+  await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
+  await expect(page.getByText('Not quite', { exact: true })).toBeVisible();
+  await expect(page.locator('article').last()).toContainText(questionText.split('\n')[0] ?? '');
+});
+
+test('knowledge-point lesson review shows explanations and worked examples without problems', async ({
+  page,
+}) => {
+  await page.goto('/lessons/supervised-learning');
+  await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  await expect(page.getByText('Worked example').first()).toBeVisible();
+  await expect(page.getByTestId('lesson-problem')).toHaveCount(0);
+  await page.screenshot({ path: `${screenshotDir}/knowledge-point-lesson.png`, fullPage: true });
+});
+
+test('Map concept details link to the lesson', async ({ page }) => {
+  await page.goto('/map');
+  await page.getByText('Vectors', { exact: true }).first().click();
+  await expect(page.getByRole('heading', { name: 'Mastery by dimension' })).toBeVisible();
+  await page.getByRole('link', { name: 'View lesson' }).click();
+  await expect(page).toHaveURL(/\/lessons\/vectors$/);
+  await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
+});
+
+test('explain tutor feedback shows rubric and model answer, and survives reload', async ({
+  page,
+}) => {
+  await openExplainActivity(page);
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+  await expect(page.getByLabel('Your answer')).toBeVisible();
+  await page.getByLabel('Your answer').fill('Inputs go in and a target comes out.');
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByText('Rubric', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
+  await expect(page.getByText('Predict delivery time in minutes', { exact: false })).toBeVisible();
+  await expect(
+    page.getByText('Inputs and targets are clearly identified', { exact: false }),
+  ).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/explain-rubric-feedback.png`, fullPage: true });
+  await page.reload();
+  await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Inputs and targets are clearly identified', { exact: false }),
+  ).toBeVisible();
+});
+
+test('fallback explain flow reveals the model answer before the self-check step', async ({
+  page,
+}) => {
+  await openExplainActivity(page);
+  let submissions = 0;
+  await page.route('**/api/attempts', async (route) => {
+    submissions += 1;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(
+        submissions === 1
+          ? {
+              status: 'self_check_required',
+              graded_by: 'self',
+              feedback: 'Read the model answer, then review your response.',
+              rubric: [
+                { id: 'r1', criterion: 'A key idea is named.', required: true },
+                { id: 'r2', criterion: 'A second idea is named.', required: false },
+              ],
+              exemplar: 'A model maps inputs to a target.',
+              solution: 'See the model answer.',
+            }
+          : {
+              status: 'graded',
+              correct: 0.5,
+              credit: 0.5,
+              graded_by: 'self',
+              feedback: 'Compare your explanation with the criteria.',
+              exemplar: 'A model maps inputs to a target.',
+              solution: 'See the model answer.',
+            },
+      ),
+    });
+  });
+  await page.getByLabel('Your answer').fill('A model predicts an answer.');
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
+  await expect(page.getByText('Which of these did your answer include?')).toBeVisible();
+  await expect(page.getByText('key point', { exact: true })).toHaveCount(2);
+  await expect(page.getByRole('checkbox')).toHaveCount(3);
+  await page.screenshot({ path: `${screenshotDir}/explain-fallback-step-2.png`, fullPage: true });
+  await page.getByRole('checkbox').nth(1).check();
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
+});
