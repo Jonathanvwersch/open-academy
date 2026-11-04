@@ -104,6 +104,7 @@ export interface LessonRunPayload {
     lastAnsweredProblem?: {
       id: string;
       knowledgePointId: string;
+      exerciseId: string;
       correct: number | null;
       round: number;
       position: number;
@@ -197,6 +198,21 @@ export interface DiagnosticResultsPayload {
     }>;
     ninetyDayPath: Array<{ week: number; title: string }>;
   };
+}
+
+export interface TutorThreadSummary {
+  id: string;
+  conceptId: string | null;
+  conceptTitle: string | null;
+  title: string;
+  updatedAt: string;
+  messageCount: number;
+  lastMessagePreview: string;
+}
+
+export interface TutorThreadDetail {
+  thread: TutorThreadSummary;
+  messages: Array<{ id: string; role: string; content: string; createdAt: string }>;
 }
 
 async function getJson<T>(url: string, message: string): Promise<T> {
@@ -305,5 +321,22 @@ export const diagnosticResultsQueryOptions = (id: string) =>
       getJson<DiagnosticResultsPayload>(
         `/api/diagnostic/${encodeURIComponent(id)}/results`,
         'Could not load diagnostic results',
+      ),
+  });
+
+export const tutorThreadsQueryOptions = () =>
+  queryOptions({
+    queryKey: ['tutor', 'threads'] as const,
+    queryFn: () =>
+      getJson<TutorThreadSummary[]>('/api/tutor/threads', 'Tutor conversations unavailable'),
+  });
+
+export const tutorThreadQueryOptions = (id: string) =>
+  queryOptions({
+    queryKey: ['tutor', 'thread', id] as const,
+    queryFn: () =>
+      getJson<TutorThreadDetail>(
+        `/api/tutor/threads/${encodeURIComponent(id)}`,
+        'Tutor conversation unavailable',
       ),
   });

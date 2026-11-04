@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router';
+import { createRootRouteWithContext, Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { TutorContextProvider } from '../tutor/TutorSidebar.js';
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -14,6 +15,7 @@ const navigation = [
 ] as const;
 
 function RootLayout() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
     <div className="min-h-screen bg-neutral-50 text-neutral-900">
       <header className="border-b border-neutral-200 bg-white">
@@ -35,9 +37,14 @@ function RootLayout() {
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-5 py-10">
-        <Outlet />
-      </main>
+      <TutorContextProvider
+        routeAllowed={!pathname.startsWith('/diagnostic')}
+        sessionRoute={pathname.startsWith('/session/')}
+      >
+        <main className="mx-auto max-w-5xl px-5 py-10">
+          <Outlet />
+        </main>
+      </TutorContextProvider>
     </div>
   );
 }

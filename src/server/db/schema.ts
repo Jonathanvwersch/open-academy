@@ -398,13 +398,30 @@ export const projectSubmissions = pgTable('project_submissions', {
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 });
 
+export const tutorThreads = pgTable(
+  'tutor_threads',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    conceptId: text('concept_id'),
+    title: text('title').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [index('tutor_threads_user_updated_idx').on(table.userId, table.updatedAt)],
+);
+
 export const tutorMessages = pgTable('tutor_messages', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   activityId: uuid('activity_id').references(() => sessionActivities.id, { onDelete: 'set null' }),
+  threadId: uuid('thread_id').references(() => tutorThreads.id, { onDelete: 'cascade' }),
   exerciseId: text('exercise_id'),
+  lessonProblemId: uuid('lesson_problem_id'),
   role: text('role').notNull(),
   content: text('content').notNull(),
   llmCallId: uuid('llm_call_id'),

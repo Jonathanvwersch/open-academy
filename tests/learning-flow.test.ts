@@ -176,10 +176,10 @@ test('null tutor keeps authored hints, disables chat, and reports tutor availabi
     hasMore: exercise.hints.length > 1,
   });
 
-  const chat = await noTutorApp.request('/api/tutor/chat', {
+  const chat = await noTutorApp.request('/api/tutor/threads', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ question: 'Can you explain this?' }),
   });
   expect(chat.status).toBe(503);
 });

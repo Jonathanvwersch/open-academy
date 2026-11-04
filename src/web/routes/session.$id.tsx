@@ -1,6 +1,5 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
   ExerciseForm,
@@ -19,6 +18,7 @@ import {
   sessionQueryOptions,
 } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
+import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
 
 export const Route = createFileRoute('/session/$id')({
   loader: async ({ context, params }) => {
@@ -60,6 +60,7 @@ export const Route = createFileRoute('/session/$id')({
 function SessionPage() {
   const { id } = Route.useParams();
   const queryClient = useQueryClient();
+  const tutorSidebar = useTutorSidebar();
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [hint, setHint] = useState<{
     level: number;
@@ -104,6 +105,20 @@ function SessionPage() {
     return run?.status === 'needs_retry' || run?.status === 'completed';
   });
   const activity = completedLesson ?? activeActivity;
+  useEffect(() => {
+    const allowed =
+      !!activity && !['diagnostic', 'review', 'quick_check', 'assessment'].includes(activity.kind);
+    tutorSidebar.setContext({
+      conceptId: activity?.conceptId,
+      conceptTitle: activity?.conceptTitle,
+      activityId: activity?.id,
+      exerciseId: activity?.exerciseIds.find(
+        (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
+      ),
+      allowed,
+      enabled: sessionQuery.data.tutorEnabled,
+    });
+  }, [activity, sessionQuery.data.tutorEnabled, tutorSidebar]);
   const exerciseId = activity?.exerciseIds.find(
     (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
   );
@@ -275,7 +290,6 @@ function SessionPage() {
         title={activity.conceptTitle ?? activity.conceptId}
         tutorEnabled={sessionQuery.data.tutorEnabled}
         resumeRetry={activity.status !== 'completed'}
-        onTutor={(lessonProblemId) => <TutorChat lessonProblemId={lessonProblemId} />}
         onContinue={() => void continueLessonRunner()}
       />
     );
@@ -429,7 +443,16 @@ function SessionPage() {
             />
           ) : null}
           {mode === 'practice' && exerciseId && sessionQuery.data.tutorEnabled ? (
-            <TutorChat activityId={activity.id} exerciseId={exerciseId} />
+            <TutorLauncher
+              context={{
+                conceptId: activity.conceptId,
+                conceptTitle: activity.conceptTitle,
+                activityId: activity.id,
+                exerciseId,
+                allowed: true,
+                enabled: sessionQuery.data.tutorEnabled,
+              }}
+            />
           ) : null}
         </article>
       ) : !exerciseId ? (
@@ -499,77 +522,5 @@ function InlineLessonCheck({
         </button>
       ) : null}
     </div>
-  );
-}
-
-function TutorChat({
-  activityId,
-  exerciseId,
-  lessonProblemId,
-}: {
-  activityId?: string;
-  exerciseId?: string;
-  lessonProblemId?: string;
-}) {
-  const [question, setQuestion] = useState('');
-  const [reply, setReply] = useState('');
-  const [error, setError] = useState('');
-  const [pending, setPending] = useState(false);
-
-  const ask = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!question.trim() || pending) return;
-    setPending(true);
-    setError('');
-    try {
-      const response = await fetch('/api/tutor/chat', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          question,
-          exerciseId,
-          activityId,
-          lessonProblemId,
-          mode: 'practice',
-        }),
-      });
-      const result = (await response.json()) as { message?: string; error?: string };
-      if (!response.ok) throw new Error(result.error ?? 'Tutor is unavailable.');
-      setReply(result.message ?? '');
-      setQuestion('');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Tutor is unavailable.');
-    } finally {
-      setPending(false);
-    }
-  };
-
-  return (
-    <section className="space-y-3 border-t border-neutral-200 pt-4">
-      <h2 className="font-medium">Ask the tutor</h2>
-      {reply ? <Markdown>{reply}</Markdown> : null}
-      {error ? (
-        <p role="alert" className="text-sm text-red-700">
-          {error}
-        </p>
-      ) : null}
-      <form onSubmit={ask} className="space-y-2">
-        <label className="block text-sm">
-          Question
-          <textarea
-            className="mt-1 min-h-20 w-full rounded-md border border-neutral-300 p-2"
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={pending || !question.trim()}
-          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm disabled:opacity-50"
-        >
-          {pending ? 'Asking…' : 'Ask tutor'}
-        </button>
-      </form>
-    </section>
   );
 }
