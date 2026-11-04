@@ -3,6 +3,7 @@ import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
+import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import { normalizeDisplayMath } from '../shared/markdown';
 import 'katex/dist/katex.min.css';
@@ -22,7 +23,10 @@ export interface ClientExercise {
 export function Markdown({ children }: { children: string }) {
   return (
     <div className="markdown max-w-[70ch] leading-7 text-neutral-800">
-      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex, rehypeHighlight]}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex, rehypeHighlight]}
+      >
         {normalizeDisplayMath(children)}
       </ReactMarkdown>
     </div>

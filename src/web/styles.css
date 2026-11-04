@@ -41,6 +41,25 @@ body {
   list-style: decimal;
 }
 
+.markdown table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.markdown th,
+.markdown td {
+  border-bottom: 1px solid #e5e5e5;
+  padding: 0.375rem 0.75rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.markdown th {
+  font-weight: 600;
+}
+
 .markdown pre {
   overflow-x: auto;
   border-radius: 0.5rem;
