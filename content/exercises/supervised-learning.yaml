@@ -112,10 +112,10 @@ exercises:
         }
       - {
           id: r2,
-          criterion: "Loss matches the target type (e.g. MSE for real values, cross-entropy for classes)",
+          criterion: "Loss matches the target type (e.g. squared error for a numeric target)",
           weight: 2,
           required: true,
         }
       - { id: r3, criterion: "Names a plausible model family and data source", weight: 1 }
-    exemplar: "Predict whether a grasp will succeed. Inputs: wrist-camera image and proposed gripper pose; target: success (0/1) recorded after the attempt. Model: a small CNN with a sigmoid output; loss: binary cross-entropy. Data: logged grasp attempts from the robot running a heuristic grasp planner."
+    exemplar: "Predict delivery time in minutes from distance and time of day. Inputs: distance and time of day; target: delivery time. Model: a line that combines the two inputs. Loss: squared error. Data: 5,000 past deliveries."
     solution: "See the exemplar."

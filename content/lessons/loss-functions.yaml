@@ -19,9 +19,9 @@ blocks:
   - kind: math
     md: |
       $$\text{MSE} = \frac1n\sum_{i}(\hat y_i - y_i)^2, \qquad \text{MAE} = \frac1n\sum_i|\hat y_i - y_i|.$$
-      Derivative of one squared error with respect to its prediction: $2(\hat y_i - y_i)$, which is proportional to the error. For MAE the derivative is $\text{sign}(\hat y_i - y_i)$, with constant magnitude. Using the **mean** rather than the sum keeps the loss scale (and therefore a good learning rate) independent of dataset size.
+      The function $\text{sign}(r)$ is $+1$ when $r>0$, 0 when $r=0$, and $-1$ when $r<0$. For one squared error, the derivative with respect to its prediction is $2(\hat y_i-y_i)$: it is twice how far the prediction is above or below the target. For MAE, the derivative is $\text{sign}(\hat y_i-y_i)$, with constant magnitude. Using the **mean** rather than the sum keeps the loss on the same scale whatever the dataset size.
 
-      For a fixed set of target values, the prediction that minimises squared errors is their mean; the one that minimises absolute errors is their median.
+      If one number must predict targets 1, 2 and 100, their mean $103/3\approx34.33$ minimises squared error, while their median 2 minimises absolute error.
   - kind: worked
     md: |
       This worked example calculates both error measures from three predictions and targets.

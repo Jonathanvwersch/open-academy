@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import { loadContent } from '../src/server/content/load.js';
 import { serializeExercise } from '../src/server/content/serialize.js';
+import type { ContentIndex, ContentSourceData } from '../src/server/content/types.js';
 import { validateContent } from '../src/server/content/validate.js';
 
 function required<T>(value: T | undefined, label: string): T {
@@ -108,3 +109,130 @@ test('lessons start with an objective and end with a summary', () => {
     ]),
   );
 });
+
+test('notation used without an introducing hard prerequisite is an issue', async () => {
+  const data = await notationFixture();
+  addNotationTerm(data);
+  const derivatives = data.concepts.find(({ value }) => value.id === 'derivatives');
+  if (!derivatives) throw new Error('Missing fixture derivatives concept');
+  derivatives.value.prereqs = [];
+  addOwnedText(data, 'derivatives', 'needle');
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'dx-derivatives',
+        message: expect.stringContaining(
+          'uses needle notation but none of vectors is a hard prerequisite',
+        ),
+      }),
+    ]),
+  );
+});
+
+test('notation from a hard prerequisite is allowed', async () => {
+  const data = await notationFixture();
+  addNotationTerm(data);
+  addOwnedText(data, 'linear-models', 'needle');
+
+  expect(validateContent(data)).not.toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        message: expect.stringContaining('uses needle notation'),
+      }),
+    ]),
+  );
+});
+
+test('a soft prerequisite does not allow notation use', async () => {
+  const data = await notationFixture();
+  addNotationTerm(data);
+  const linearModels = data.concepts.find(({ value }) => value.id === 'linear-models');
+  if (!linearModels) throw new Error('Missing fixture linear-models concept');
+  linearModels.value.prereqs = [{ id: 'vectors', strength: 'soft' }];
+  addOwnedText(data, 'linear-models', 'needle');
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'dx-linear-models',
+        message: expect.stringContaining(
+          'uses needle notation but none of vectors is a hard prerequisite',
+        ),
+      }),
+    ]),
+  );
+});
+
+test('an authored introducer lesson must teach its notation term', async () => {
+  const data = await notationFixture();
+  addNotationTerm(data, false);
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        file: 'lessons/vectors.yaml',
+        id: 'vectors',
+        message: 'introducing lesson does not teach needle notation',
+      }),
+    ]),
+  );
+});
+
+async function notationFixture(): Promise<ContentSourceData> {
+  const content = await loadContent('tests/fixtures/content');
+  return sourceDataFromIndex(content);
+}
+
+function sourceDataFromIndex(content: ContentIndex): ContentSourceData {
+  return {
+    concepts: content.concepts.map(({ domain, contentVersion, ...value }) => ({
+      value,
+      domain,
+      file: 'concepts/fixture.yaml',
+    })),
+    lessons: content.lessons.map(({ contentVersion, ...value }) => ({
+      value,
+      file: `lessons/${value.concept}.yaml`,
+    })),
+    exercises: content.exercises.map(({ concept, contentVersion, ...value }) => ({
+      value,
+      concept,
+      file: `exercises/${concept}.yaml`,
+    })),
+    projects: content.projects.map(({ contentVersion, ...value }) => ({
+      value,
+      file: `projects/${value.id}.yaml`,
+    })),
+  };
+}
+
+function addNotationTerm(data: ContentSourceData, teachIntro = true) {
+  if (teachIntro) {
+    const vectorLesson = data.lessons.find(({ value }) => value.concept === 'vectors');
+    const firstBlock = vectorLesson?.value.blocks.find((block) => 'md' in block);
+    if (!firstBlock || !('md' in firstBlock)) {
+      throw new Error('Missing vectors lesson Markdown');
+    }
+    firstBlock.md = `${firstBlock.md}\nThe notation needle marks this term.`;
+  }
+  data.notation = {
+    file: 'notation.yaml',
+    value: {
+      terms: [
+        {
+          id: 'needle',
+          label: 'needle notation',
+          match: ['needle'],
+          introduced_by: ['vectors'],
+        },
+      ],
+    },
+  };
+}
+
+function addOwnedText(data: ContentSourceData, concept: string, text: string) {
+  const exercise = data.exercises.find((entry) => entry.concept === concept);
+  if (!exercise) throw new Error(`Missing fixture exercise for ${concept}`);
+  exercise.value.prompt = `A prompt mentions ${text}.`;
+}

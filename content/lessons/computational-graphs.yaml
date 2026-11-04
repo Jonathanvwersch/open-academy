@@ -32,7 +32,7 @@ blocks:
       | subtract | $a - b$ | $1$, $-1$ |
       | square | $a^2$ | $2a$ |
 
-      Add nodes **copy** the incoming gradient to every input, and multiply nodes **swap** in the other input's value.
+      At an add node, changing either input by one changes the output by one. At a multiply node, the rate of change with respect to one input is the value of the other input.
   - kind: check
     exercise: cg-check-1
   - kind: summary

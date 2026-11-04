@@ -28,7 +28,7 @@ exercises:
         }
       - {
           id: d,
-          text: "The learning rate was too low",
+          text: "The update step was too small",
           correct: false,
           category: incorrect_reasoning,
         }

@@ -10,9 +10,9 @@ blocks:
       To train, we need $\partial L/\partial\theta$ for **every** parameter, and there may be millions of them. Perturbing each parameter one at a time would take millions of forward passes. Backpropagation gets all of them in roughly the cost of **one forward plus one backward pass**:
 
       1. **Forward:** compute and cache every intermediate value.
-      2. **Backward:** start from $\partial L/\partial L = 1$ and walk the graph in reverse. At each node, multiply the incoming gradient (the "upstream" gradient) by the local derivative and pass the result to the node's inputs, summing where branches merge.
+      2. **Backward:** start from $\partial L/\partial L = 1$ and walk the graph in reverse. This derivative is 1 because a quantity changes one-for-one with itself. At each node, multiply the incoming gradient (the "upstream" gradient) by the local derivative and pass the result to the node's inputs, summing where branches merge.
 
-      Local derivatives need forward values (a multiply node needs the other input; ReLU needs to know whether its input was positive). That is why frameworks keep activations in memory during training.
+      Local derivatives need forward values (a multiply node needs the other input; ReLU needs to know whether its input was positive). The indicator $\mathbb{1}[z>0]$ means 1 when $z>0$ and 0 otherwise. That is why frameworks keep activations in memory during training.
   - kind: example
     md: |
       This example traces a prediction error backward through a two-layer network.
@@ -29,9 +29,12 @@ blocks:
       - $\partial L/\partial w_1 = 12 \cdot x = 12$
   - kind: math
     md: |
-      For a layer $z = Wx + b$, $h = \phi(z)$, with upstream gradient $g_h = \partial L/\partial h$:
+      For a layer $z = Wx + b$, $h = \phi(z)$, write $g_h$ for the rate at which loss $L$ changes with $h$, and $g_z$ for how it changes with $z$.
+
+      The symbol $\odot$ means multiply matching entries: for example, $(2, 3)\odot(4, 5)=(8, 15)$. For upstream gradient $g_h$:
       $$g_z = g_h \odot \phi'(z), \qquad \frac{\partial L}{\partial W} = g_z\,x^\top, \qquad \frac{\partial L}{\partial b} = g_z, \qquad \frac{\partial L}{\partial x} = W^\top g_z.$$
-      For a batch $X \in \mathbb R^{B\times d}$ in row convention ($Z = XW + b$): $\partial L/\partial W = X^\top G_Z$ and $\partial L/\partial b = \sum_\text{rows} G_Z$. Shape check: a gradient always has the same shape as the thing it is the gradient of.
+
+      For a batch, we store each input as a row so each output also has one row. This is called row convention. If $X$ has $B$ rows and $d$ columns and $Z=XW+b$, then $\partial L/\partial W = X^\top G_Z$ and $\partial L/\partial b = \sum_\text{rows} G_Z$. Shape check: a gradient always has the same shape as the thing it is the gradient of.
   - kind: worked
     md: |
       This worked example implements forward and backward calculations for a small network.

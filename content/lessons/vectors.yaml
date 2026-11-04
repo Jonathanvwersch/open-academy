@@ -24,13 +24,13 @@ blocks:
       - Length (the L2 norm) is Pythagoras: $\|b\| = \sqrt{3^2 + (-1)^2} = \sqrt{10} \approx 3.16$.
   - kind: math
     md: |
+      $\mathbb R^n$ means a list of $n$ real numbers. The subscript $x_i$ means "entry number $i$".
       For $x, y \in \mathbb{R}^n$ and a scalar $c$:
 
       $$x + y = (x_1 + y_1, \dots, x_n + y_n), \qquad c\,x = (c x_1, \dots, c x_n)$$
 
+      The symbol $\sum_{i=1}^n$ means "add these values for $i = 1, 2, \dots, n$".
       $$\|x\|_2 = \sqrt{\textstyle\sum_{i=1}^n x_i^2}, \qquad \text{dist}(x, y) = \|x - y\|_2$$
-
-      Another norm you will meet is the L1 norm, $\|x\|_1 = \sum_i |x_i|$, which reappears in L1 regularisation and mean absolute error.
   - kind: worked
     md: |
       This worked example calculates distance between measurement vectors and shows why units matter.
@@ -48,4 +48,4 @@ blocks:
     md: |
       - Vectors are added and scaled componentwise.
       - $\|x\|_2 = \sqrt{\sum x_i^2}$, and distance is the norm of the difference.
-      - Feature scale changes distances, so features in very different units should be standardised.
+      - Feature scale changes distances, so features in very different units should be rescaled to similar ranges.

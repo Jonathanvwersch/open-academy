@@ -7,7 +7,7 @@ blocks:
       **Goal:** evaluate and differentiate ReLU, sigmoid and tanh, and explain why networks need nonlinear activations.
   - kind: intuition
     md: |
-      Stack two linear layers and you get $W_2(W_1x + b_1) + b_2 = (W_2W_1)x + (W_2b_1 + b_2)$, which is **still linear**. Adding an activation between them lets the combined function bend, so it can represent curves and corners.
+      Stack two linear rules and the result is still a line: $2(3x + 1) + 5 = 6x + 7$. Adding an activation between them lets the combined function bend, so it can represent curves and corners.
 
       Their **derivatives** tell us how much the output changes when the input changes. A sigmoid's derivative is at most 0.25 and nearly 0 for large $|z|$, so its output changes very little there. ReLU's derivative is exactly 1 for $z > 0$, so in that range the output changes by the same amount as its input.
   - kind: example
@@ -21,13 +21,14 @@ blocks:
       - tanh gives $\approx(-0.964, 0.462, 0.995)$.
   - kind: math
     md: |
+      The sigmoid function is written $\sigma$ ("sigma").
       | | $\phi(z)$ | $\phi'(z)$ |
       |---|---|---|
       | ReLU | $\max(0, z)$ | $1$ if $z>0$, else $0$ |
       | sigmoid | $\sigma(z) = \frac{1}{1+e^{-z}}$ | $\sigma(z)(1-\sigma(z))$ |
       | tanh | $\tanh z$ | $1 - \tanh^2 z$ |
 
-      Sigmoid outputs lie in $(0,1)$, which suits probabilities. tanh lies in $(-1,1)$ and is zero-centred. ReLU is unbounded above and cheap to compute; units stuck at $z<0$ for every input are called "dead".
+      Sigmoid outputs lie in $(0,1)$, which suits probabilities. tanh lies in $(-1,1)$ and is centred on zero, with values above and below it. ReLU is unbounded above and cheap to compute; units stuck at $z<0$ for every input are called "dead".
   - kind: check
     exercise: act-check-relu
   - kind: summary

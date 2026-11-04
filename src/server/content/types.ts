@@ -6,6 +6,7 @@ import type {
   Exercise,
   ExerciseRole,
   Lesson,
+  NotationRegistry,
   Project,
 } from './schemas.js';
 
@@ -20,6 +21,7 @@ export interface ContentSourceData {
   concepts: Array<{ value: Concept; domain: string; file: string }>;
   lessons: Array<{ value: Lesson; file: string }>;
   exercises: Array<{ value: Exercise; concept: string; file: string }>;
+  notation?: { value: NotationRegistry; file: string };
   diagnostic?: { value: Diagnostic; file: string };
   projects: Array<{ value: Project; file: string }>;
 }

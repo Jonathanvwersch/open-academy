@@ -90,7 +90,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "Its score triples, so it can win the softmax because of its length rather than its relevance",
+          text: "Its score triples, so it can rank higher because of its length rather than its relevance",
           correct: true,
         }
       - {

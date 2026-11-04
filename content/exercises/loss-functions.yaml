@@ -81,10 +81,10 @@ exercises:
         }
       - {
           id: c,
-          text: "The learning rate is too high",
+          text: "The model needs more training steps",
           correct: false,
           category: misapplied_technique,
-          feedback: "The learning rate affects how you reach the minimum, not where the MSE minimum is.",
+          feedback: "More steps only get closer to the same MSE minimum, and the few large residuals still pull that minimum toward them.",
         }
     solution: "MSE's gradient grows with the error, so outliers pull hard. MAE or Huber caps that influence."
   - id: loss-review-grad

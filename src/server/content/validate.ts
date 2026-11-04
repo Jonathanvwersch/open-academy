@@ -355,8 +355,145 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
     }
   }
 
+  validateNotationUsage(data, issues);
   findCycles(data, issues);
   return issues;
+}
+
+function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) {
+  const notation = data.notation;
+  if (!notation) return;
+  const concepts = new Map(data.concepts.map(({ value, file }) => [value.id, { value, file }]));
+  const lessons = new Map(data.lessons.map(({ value, file }) => [value.concept, { value, file }]));
+  const seenTerms = new Set<string>();
+
+  for (const term of notation.value.terms) {
+    if (seenTerms.has(term.id)) {
+      addIssue(issues, notation.file, term.id, 'duplicate notation term id');
+    }
+    seenTerms.add(term.id);
+
+    const introducedBy = new Set(term.introduced_by);
+    for (const conceptId of introducedBy) {
+      const concept = concepts.get(conceptId);
+      if (!concept) {
+        addIssue(
+          issues,
+          notation.file,
+          term.id,
+          `introducer references unknown concept "${conceptId}"`,
+        );
+        continue;
+      }
+      const lesson = lessons.get(conceptId);
+      if (concept.value.status === 'authored' && lesson) {
+        const lessonText = lesson.value.blocks
+          .map((block) => ('md' in block ? (block.md ?? '') : ''))
+          .join('\n');
+        const teachesTerm = term.match.some((source) => {
+          try {
+            return new RegExp(source, 'i').test(lessonText);
+          } catch {
+            return false;
+          }
+        });
+        if (!teachesTerm) {
+          addIssue(
+            issues,
+            lesson.file,
+            conceptId,
+            `introducing lesson does not teach ${term.label}`,
+          );
+        }
+      }
+    }
+
+    const patterns: Array<{ source: string; regex: RegExp }> = [];
+    for (const source of term.match) {
+      try {
+        patterns.push({ source, regex: new RegExp(source, 'i') });
+      } catch (error) {
+        addIssue(
+          issues,
+          notation.file,
+          term.id,
+          `invalid match regex "${source}": ${messageOf(error)}`,
+        );
+      }
+    }
+
+    for (const { value: concept, file } of data.concepts) {
+      const ancestors = hardAncestors(concept.id, concepts);
+      if (introducedBy.has(concept.id) || [...introducedBy].some((id) => ancestors.has(id))) {
+        continue;
+      }
+      const ownedText: Array<{ file: string; id: string; text: string }> = [];
+      const lesson = lessons.get(concept.id);
+      for (const block of lesson?.value.blocks ?? []) {
+        if ('md' in block && block.md) {
+          ownedText.push({ file: lesson?.file ?? file, id: concept.id, text: block.md });
+        }
+      }
+      for (const exercise of data.exercises) {
+        if (exercise.concept === concept.id) {
+          for (const text of stringValues(exercise.value)) {
+            ownedText.push({ file: exercise.file, id: exercise.value.id, text });
+          }
+        }
+      }
+      const match = ownedText.flatMap((entry) =>
+        patterns.flatMap(({ regex }) => {
+          const found = regex.exec(entry.text);
+          return found?.index === undefined ? [] : [{ ...entry, found }];
+        }),
+      )[0];
+      if (match?.found.index !== undefined) {
+        const snippet = snippetAround(match.text, match.found.index, match.found[0].length);
+        addIssue(
+          issues,
+          match.file,
+          match.id,
+          `uses ${term.label} but none of ${term.introduced_by.join(', ')} is a hard prerequisite; near "${snippet}"`,
+        );
+      }
+    }
+  }
+}
+
+function hardAncestors(
+  id: string,
+  concepts: Map<string, { value: ContentSourceData['concepts'][number]['value']; file: string }>,
+): Set<string> {
+  const ancestors = new Set<string>();
+  const visit = (conceptId: string) => {
+    const concept = concepts.get(conceptId);
+    for (const prerequisite of concept?.value.prereqs ?? []) {
+      if (prerequisite.strength !== 'hard' || ancestors.has(prerequisite.id)) continue;
+      ancestors.add(prerequisite.id);
+      visit(prerequisite.id);
+    }
+  };
+  visit(id);
+  return ancestors;
+}
+
+function stringValues(value: unknown): string[] {
+  if (typeof value === 'string') return [value];
+  if (Array.isArray(value)) return value.flatMap(stringValues);
+  if (typeof value === 'object' && value !== null) {
+    const metadata = new Set(['id', 'type', 'role', 'dimension', 'category']);
+    return Object.entries(value)
+      .filter(([key]) => !metadata.has(key))
+      .flatMap(([, child]) => stringValues(child));
+  }
+  return [];
+}
+
+function snippetAround(text: string, index: number, length: number): string {
+  const start = Math.max(0, index - 20);
+  const end = Math.min(text.length, index + length + 20);
+  const snippet = text.slice(start, end).replace(/\s+/g, ' ').trim();
+  return `${start > 0 ? '…' : ''}${snippet}${end < text.length ? '…' : ''}`;
 }
 
 function valueDomain(concept: { id: string }, data: ContentSourceData): string {

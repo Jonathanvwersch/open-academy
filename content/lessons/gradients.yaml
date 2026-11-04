@@ -4,9 +4,10 @@ fast_path: [objective, summary]
 blocks:
   - kind: objective
     md: |
-      **Goal:** compute the gradient of a scalar function, and explain why $-\nabla f$ is the direction of steepest descent.
+      **Goal:** compute the gradient of a scalar function and explain which direction decreases it fastest.
   - kind: intuition
     md: |
+      The symbol $\nabla$ is read "nabla".
       Stack all the partial derivatives into one vector and you get the **gradient**:
       $$\nabla f = \left(\frac{\partial f}{\partial x_1}, \dots, \frac{\partial f}{\partial x_n}\right).$$
       Picture standing on a hilly landscape. The gradient points uphill, in the steepest direction, and its length says how steep the slope is. To go downhill fastest, step along $-\nabla f$.
@@ -17,7 +18,7 @@ blocks:
       $f(x, y) = x^2 + 3y^2$. Then $\nabla f = (2x, 6y)$. At $(1, 1)$, $\nabla f = (2, 6)$: the function rises 3 times faster in $y$ than in $x$, so the steepest-descent direction is $(-2, -6)$.
   - kind: math
     md: |
-      For a small step $\delta$, the first-order change is
+      A small step $\delta$ is a small change to the inputs. The symbol $\approx$ means "approximately equal". A first-order change is an estimate using the local slope, before accounting for curvature.
       $$f(x + \delta) \approx f(x) + \nabla f(x)\cdot\delta.$$
       Among all steps of a fixed length, $\nabla f \cdot \delta = \|\nabla f\|\|\delta\|\cos\theta$ is most negative when $\theta = 180^\circ$, i.e. when $\delta$ points along $-\nabla f$. That is why the negative gradient is the direction of **steepest descent**. At a minimum (or any flat point) $\nabla f = 0$.
   - kind: worked

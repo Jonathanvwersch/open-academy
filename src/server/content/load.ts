@@ -10,6 +10,7 @@ import {
   ExerciseSchema,
   IdSchema,
   LessonSchema,
+  NotationSchema,
   ProjectSchema,
 } from './schemas.js';
 import type { ContentIndex, ContentIssue, ContentSourceData } from './types.js';
@@ -140,6 +141,22 @@ export async function loadContent(
       } else {
         addZodIssues(issues, displayFile, item, parsed.error, index, 'exercises');
       }
+    });
+  }
+
+  const notationRaw = await readYaml(join(root, 'notation.yaml'), 'notation.yaml', issues);
+  if (notationRaw !== undefined) {
+    const parsed = NotationSchema.safeParse(notationRaw);
+    if (parsed.success) {
+      data.notation = { value: parsed.data, file: 'notation.yaml' };
+    } else {
+      addZodIssues(issues, 'notation.yaml', notationRaw, parsed.error);
+    }
+  } else if (data.concepts.length > 0) {
+    issues.push({
+      file: 'notation.yaml',
+      id: '<file>',
+      message: 'notation registry is required',
     });
   }
 
