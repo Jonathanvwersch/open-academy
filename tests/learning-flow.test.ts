@@ -250,14 +250,15 @@ test('explain attempts return and persist tutor rubric judgements and the exempl
     ],
     exemplar: exercise.exemplar,
   });
+  expect(body).not.toHaveProperty('solution');
   const reloaded = await gradedApp.request(`/api/sessions/${session.id}`);
   const sessionBody = await reloaded.json();
   expect(sessionBody.activities[0].lastAttempt).toMatchObject({
     exerciseId: exercise.id,
     rubric: body.rubric,
     exemplar: exercise.exemplar,
-    solution: exercise.solution,
   });
+  expect(sessionBody.activities[0].lastAttempt).not.toHaveProperty('solution');
 });
 
 test('no-tutor explain flow returns model answer before the capped self-check result', async () => {
@@ -274,11 +275,13 @@ test('no-tutor explain flow returns model answer before the capped self-check re
     }),
   });
   expect(first.status).toBe(200);
-  expect(await first.json()).toMatchObject({
+  const firstBody = await first.json();
+  expect(firstBody).toMatchObject({
     status: 'self_check_required',
     exemplar: exercise.exemplar,
-    solution: exercise.solution,
+    yourAnswer: 'A model maps inputs to a target.',
   });
+  expect(firstBody).not.toHaveProperty('solution');
 
   const second = await noTutorApp.request('/api/attempts', {
     method: 'POST',
@@ -295,8 +298,8 @@ test('no-tutor explain flow returns model answer before the capped self-check re
     status: 'graded',
     graded_by: 'self',
     exemplar: exercise.exemplar,
-    solution: exercise.solution,
   });
+  expect(body).not.toHaveProperty('solution');
   expect(body.credit).toBeLessThanOrEqual(0.5);
 });
 

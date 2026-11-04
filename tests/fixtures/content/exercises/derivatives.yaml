@@ -30,7 +30,6 @@ exercises:
     est_minutes: 4
     prompt: "Explain what the derivative tells you at a point."
     hints: []
-    solution: "It gives the local rate of change, or tangent slope."
     rubric:
       - { id: local-rate, criterion: Names the local rate of change, weight: 0.6, required: true }
       - { id: tangent-slope, criterion: Connects it to tangent slope, weight: 0.4 }

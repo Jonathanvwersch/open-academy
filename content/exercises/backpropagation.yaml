@@ -218,4 +218,3 @@ exercises:
           weight: 1,
         }
     exemplar: "Gradient descent needs ∂L/∂θ for every parameter. Backprop runs the network forward once, caching every intermediate value, then walks the computation graph backwards from the loss: each node multiplies the gradient arriving from above by its local derivative and passes the result to its inputs, adding where branches merge. Because each intermediate gradient is computed once and reused, you get every parameter's gradient for roughly the cost of one more forward pass, instead of one forward pass per parameter as with finite differences. The price is memory for the cached activations, and hand-written versions should be checked numerically."
-    solution: "See the exemplar."

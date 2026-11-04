@@ -250,6 +250,45 @@ test('legacy exercise context is unanswered until an attempt exists for that act
   expect(captured.at(-1)?.solution).toBe(exercise.solution);
 });
 
+test('explain tutor context accepts an omitted solution', async () => {
+  const exercise = content.exercisesById.get('sl-explain-setup');
+  if (exercise?.type !== 'explain' || exercise.solution) {
+    throw new Error('Expected explain exercise without a separate solution');
+  }
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      plannedMinutes: 10,
+      startedAt: new Date(headers['X-Now']),
+      status: 'active',
+    })
+    .returning();
+  if (!session) throw new Error('Expected a study session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'practice',
+      conceptId: exercise.concept,
+      exerciseIds: [exercise.id],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Expected an activity');
+  expect(
+    (
+      await send('help before answering', undefined, {
+        exerciseId: exercise.id,
+        activityId: activity.id,
+      })
+    ).status,
+  ).toBe(200);
+  expect(captured.at(-1)).toMatchObject({ solution: '', problem_status: 'unanswered' });
+});
+
 test('provider failure stores no thread or messages; another user cannot read a thread', async () => {
   const llmCallsBefore = await db.select().from(llmCalls);
   failing = true;

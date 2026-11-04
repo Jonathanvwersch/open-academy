@@ -75,4 +75,3 @@ exercises:
           weight: 1,
         }
     exemplar: "Breaking the computation into primitive nodes means each node only has to know a trivial local derivative (add passes gradients through, multiply swaps in the other input). The chain rule then composes these along every path from the loss back to each parameter, summing where paths merge. Because the rules are local, a framework can do this automatically for any model you write."
-    solution: "See the exemplar."

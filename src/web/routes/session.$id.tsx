@@ -300,6 +300,19 @@ function SessionPage() {
     activity.conceptId && activity.lessonAvailable
       ? `/lessons/${encodeURIComponent(activity.conceptId)}?from=${encodeURIComponent(id)}`
       : undefined;
+  const canSubmitAnswer =
+    !result ||
+    result.status === 'invalid' ||
+    result.status === 'self_check_required' ||
+    (Number(result?.correct) === 0 && result?.retryAllowed === true);
+  const canAskForHelp = !result || result.status === 'invalid' || result.retryAllowed === true;
+  const triesLeft = Math.max(0, 2 - Number(result?.attemptNo ?? 1));
+  const submitLabel =
+    result?.status === 'self_check_required'
+      ? 'Submit self-check'
+      : Number(result?.correct) === 0 && result?.retryAllowed === true
+        ? `Try again · ${triesLeft} ${triesLeft === 1 ? 'try' : 'tries'} left`
+        : 'Submit answer';
   if (activity.kind === 'learn' && activity.conceptId && lesson?.knowledge_points?.length) {
     return (
       <LessonRunner
@@ -412,15 +425,16 @@ function SessionPage() {
           {hint?.tutorUnavailable ? (
             <p className="text-xs text-neutral-500">Tutor unavailable right now.</p>
           ) : null}
-          {!result ||
-          result.status === 'invalid' ||
-          result.status === 'self_check_required' ||
-          (Number(result.correct) === 0 && result.retryAllowed) ? (
+          {canSubmitAnswer ? (
             <ExerciseForm
               key={`${activity.id}:${exerciseId}`}
               exercise={exerciseQuery.data}
               onSubmit={submitAnswer}
               explainStep={result?.status === 'self_check_required' ? 'self-check' : 'answer'}
+              readOnlyAnswer={
+                typeof result?.yourAnswer === 'string' ? result.yourAnswer : undefined
+              }
+              submitLabel={submitLabel}
             />
           ) : (
             <button
@@ -428,32 +442,35 @@ function SessionPage() {
               onClick={continueNext}
               className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white"
             >
-              Next
+              Continue
             </button>
           )}
-          {mode !== 'assessment' &&
-          (!result || result.status === 'invalid' || result.retryAllowed) ? (
-            <HintLadder
-              exerciseId={exerciseId ?? ''}
-              activityId={activity.id}
-              hintCount={exerciseQuery.data.hintCount}
-              tutorEnabled={sessionQuery.data.tutorEnabled}
-              onHint={setHint}
-              mode={mode === 'review' ? 'review' : 'practice'}
-              buttonRef={hintButton}
-            />
-          ) : null}
-          {mode === 'practice' && exerciseId && sessionQuery.data.tutorEnabled ? (
-            <TutorLauncher
-              context={{
-                conceptId: activity.conceptId,
-                conceptTitle: activity.conceptTitle,
-                activityId: activity.id,
-                exerciseId,
-                allowed: true,
-                enabled: sessionQuery.data.tutorEnabled,
-              }}
-            />
+          {canAskForHelp ? (
+            <div className="flex flex-wrap gap-2">
+              {mode !== 'assessment' ? (
+                <HintLadder
+                  exerciseId={exerciseId ?? ''}
+                  activityId={activity.id}
+                  hintCount={exerciseQuery.data.hintCount}
+                  tutorEnabled={sessionQuery.data.tutorEnabled}
+                  onHint={setHint}
+                  mode={mode === 'review' ? 'review' : 'practice'}
+                  buttonRef={hintButton}
+                />
+              ) : null}
+              {mode === 'practice' && exerciseId && sessionQuery.data.tutorEnabled ? (
+                <TutorLauncher
+                  context={{
+                    conceptId: activity.conceptId,
+                    conceptTitle: activity.conceptTitle,
+                    activityId: activity.id,
+                    exerciseId,
+                    allowed: true,
+                    enabled: sessionQuery.data.tutorEnabled,
+                  }}
+                />
+              ) : null}
+            </div>
           ) : null}
         </article>
       ) : !exerciseId ? (

@@ -89,6 +89,18 @@ test('legacy session header links to a read-only lesson and returns with the res
   await expect(page.locator('article').last()).toContainText(questionText.split('\n')[0] ?? '');
 });
 
+test('wrong numeric answers offer one persisted retry', async ({ page }) => {
+  const sessionId = await createActivity('vectors', 'vectors-magnitude');
+  await page.goto(`/session/${sessionId}`);
+  await page.getByLabel('Your answer').fill('0');
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByText('Not quite', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Try again · 1 try left' })).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/wrong-numeric-retry.png`, fullPage: true });
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Try again · 1 try left' })).toBeVisible();
+});
+
 test('knowledge-point lesson review shows explanations and worked examples without problems', async ({
   page,
 }) => {
@@ -146,12 +158,12 @@ test('fallback explain flow reveals the model answer before the self-check step'
               status: 'self_check_required',
               graded_by: 'self',
               feedback: 'Read the model answer, then review your response.',
+              yourAnswer: 'A model predicts an answer.',
               rubric: [
                 { id: 'r1', criterion: 'A key idea is named.', required: true },
                 { id: 'r2', criterion: 'A second idea is named.', required: false },
               ],
               exemplar: 'A model maps inputs to a target.',
-              solution: 'See the model answer.',
             }
           : {
               status: 'graded',
@@ -160,7 +172,6 @@ test('fallback explain flow reveals the model answer before the self-check step'
               graded_by: 'self',
               feedback: 'Compare your explanation with the criteria.',
               exemplar: 'A model maps inputs to a target.',
-              solution: 'See the model answer.',
             },
       ),
     });
@@ -168,11 +179,17 @@ test('fallback explain flow reveals the model answer before the self-check step'
   await page.getByLabel('Your answer').fill('A model predicts an answer.');
   await page.getByRole('button', { name: 'Submit answer' }).click();
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
+  await expect(page.getByText('Your answer:', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('status').getByText('A model predicts an answer.', { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel('Your answer')).toHaveCount(0);
   await expect(page.getByText('Which of these did your answer include?')).toBeVisible();
   await expect(page.getByText('key point', { exact: true })).toHaveCount(2);
   await expect(page.getByRole('checkbox')).toHaveCount(3);
   await page.screenshot({ path: `${screenshotDir}/explain-fallback-step-2.png`, fullPage: true });
   await page.getByRole('checkbox').nth(1).check();
-  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await page.getByRole('button', { name: 'Submit self-check' }).click();
   await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
 });

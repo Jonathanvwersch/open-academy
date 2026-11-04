@@ -184,8 +184,9 @@ test('a final wrong practice answer reveals the worked solution', async ({ page 
   await page.getByLabel('Your answer').fill('0');
   await page.getByRole('button', { name: 'Submit answer' }).click();
   await expect(page.getByText('Not quite', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Try again · 1 try left' })).toBeVisible();
   await page.getByLabel('Your answer').fill('1');
-  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await page.getByRole('button', { name: 'Try again · 1 try left' }).click();
   await expect(page.getByText('The magnitude is', { exact: false })).toBeVisible();
 });
 

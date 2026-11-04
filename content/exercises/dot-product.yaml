@@ -136,4 +136,3 @@ exercises:
           weight: 1,
         }
     exemplar: "Since a·b = |a||b|cosθ, the dot product is biggest when the vectors point in the same direction, zero when orthogonal and negative when opposite, so it behaves like a similarity. But it also scales with the lengths, so a long vector can out-score a better-aligned short one. Cosine similarity divides out the lengths to compare direction only."
-    solution: "See the exemplar."

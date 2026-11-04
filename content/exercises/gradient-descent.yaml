@@ -202,7 +202,6 @@ exercises:
           weight: 1,
         }
     exemplar: "The learning rate is the multiplier on the gradient step. Too small and the loss falls smoothly but painfully slowly; too large and each step overshoots the minimum, so the loss oscillates or explodes, often to NaN. The steepest direction of the loss sets the stability limit, so the right value depends on the problem and the feature scaling."
-    solution: "See the exemplar."
   - id: lab-linreg-lr-predict
     dimension: transfer
     type: mc
@@ -251,7 +250,6 @@ exercises:
           weight: 1,
         }
     exemplar: "At lr=0.5 the loss dropped once and then grew every step until it hit inf, and the weight trajectory zig-zagged across the minimum with growing amplitude. Each step moves by η times the gradient; when η is too large relative to the curvature, the step jumps past the minimum to a point where the error (and so the gradient) is larger, so the next jump is bigger again — the factor |1−2aη| exceeds 1."
-    solution: "See the exemplar."
   - id: lab-linreg-val-vs-train
     dimension: conceptual
     type: mc

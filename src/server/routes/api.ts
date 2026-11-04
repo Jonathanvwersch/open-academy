@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -89,7 +89,11 @@ export function createApiRoutes(deps: {
       : deps.tutorProvider;
 
   api.use('*', async (context, next) => {
-    const [user] = await db.select().from(users).limit(1);
+    const [user] = await db
+      .select()
+      .from(users)
+      .orderBy(asc(users.createdAt), asc(users.id))
+      .limit(1);
     if (!user) {
       return context.json({ error: 'Seed the default learner before using the API.' }, 503);
     }
@@ -548,6 +552,7 @@ export function createApiRoutes(deps: {
     if (!exercise) {
       return context.json({ error: 'Exercise not found' }, 404);
     }
+    const solution = exercise.solution ?? (exercise.type === 'explain' ? exercise.exemplar : '');
     if (exercise.role === 'diagnostic') {
       return context.json({ error: 'Diagnostic exercises do not allow hints.' }, 403);
     }
@@ -588,12 +593,12 @@ export function createApiRoutes(deps: {
         activityId: body.data.activityId,
         exerciseId: exercise.id,
         level: 5,
-        text: exercise.solution,
+        text: solution,
         createdAt: requestNow(context),
       });
       return context.json({
         level: 5,
-        text: exercise.solution,
+        text: solution,
         revealedSolution: true,
         hintEventId: event?.id,
       });
@@ -635,7 +640,7 @@ export function createApiRoutes(deps: {
             : 'No prior answer.',
           hintLevel: level,
           authoredHints: hints,
-          solution: exercise.solution,
+          solution: exercise.solution ?? '',
           recentMistakes,
           history: [],
           problem_status: priorAttempt ? 'answered' : 'unanswered',
@@ -754,7 +759,15 @@ export function createApiRoutes(deps: {
       ? await repo.attemptsForActivity(body.data.activityId, exercise.id)
       : [];
     if (body.data.mode === 'practice' && previousAttempts.length >= 2) {
-      return context.json({ error: 'No retries remain.', solution: exercise.solution }, 409);
+      return context.json(
+        {
+          error: 'No retries remain.',
+          ...(exercise.type === 'explain'
+            ? { exemplar: exercise.exemplar }
+            : { solution: exercise.solution }),
+        },
+        409,
+      );
     }
     if (body.data.mode !== 'practice' && previousAttempts.length >= 1) {
       return context.json({ error: 'This activity allows one attempt.' }, 409);
@@ -803,7 +816,17 @@ export function createApiRoutes(deps: {
     if (result.status !== 'graded') {
       return context.json(
         exercise.type === 'explain' && result.status === 'self_check_required'
-          ? { ...result, exemplar: exercise.exemplar, solution: exercise.solution }
+          ? {
+              ...result,
+              ...(typeof body.data.answer === 'object' &&
+              body.data.answer !== null &&
+              'text' in body.data.answer &&
+              typeof body.data.answer.text === 'string'
+                ? { yourAnswer: body.data.answer.text }
+                : {}),
+              exemplar: exercise.exemplar,
+              ...(exercise.solution ? { solution: exercise.solution } : {}),
+            }
           : result,
         result.status === 'invalid' ? 422 : 200,
       );
@@ -844,7 +867,10 @@ export function createApiRoutes(deps: {
         message: result.feedback,
         ...('rubric' in result ? { rubric: result.rubric } : {}),
         ...(exercise.type === 'explain'
-          ? { exemplar: exercise.exemplar, solution: exercise.solution }
+          ? {
+              exemplar: exercise.exemplar,
+              ...(exercise.solution ? { solution: exercise.solution } : {}),
+            }
           : {}),
       },
       mistakeCategory: result.mistake_category,
@@ -960,12 +986,14 @@ export function createApiRoutes(deps: {
       mastery: masteryResult,
       retryAllowed,
       ...(result.correct === 0 && (body.data.mode !== 'practice' || revealSolution)
-        ? { solution: exercise.solution }
+        ? exercise.type === 'explain'
+          ? {}
+          : { solution: exercise.solution }
         : {}),
       ...(exercise.type === 'explain'
         ? {
             exemplar: exercise.exemplar,
-            solution: exercise.solution,
+            ...(exercise.solution ? { solution: exercise.solution } : {}),
             ...('rubric' in result ? { rubric: result.rubric } : {}),
           }
         : {}),

@@ -152,10 +152,12 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
             <p className="font-medium">Your answer:</p>
             <Markdown>{result.yourAnswer}</Markdown>
           </div>
-          <div>
-            <p className="font-medium">Correct answer:</p>
-            <Markdown>{String(result.correctAnswer ?? '')}</Markdown>
-          </div>
+          {typeof result.correctAnswer === 'string' ? (
+            <div>
+              <p className="font-medium">Correct answer:</p>
+              <Markdown>{result.correctAnswer}</Markdown>
+            </div>
+          ) : null}
         </div>
       ) : null}
       {typeof result.exemplar === 'string' ? (
@@ -164,7 +166,7 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
           <Markdown>{result.exemplar}</Markdown>
         </div>
       ) : null}
-      {typeof result.solution === 'string' ? (
+      {typeof result.solution === 'string' && result.solution.trim() ? (
         <div className="mt-3 border-t border-neutral-200 pt-3 text-sm">
           <p className="mb-1 font-medium">Solution</p>
           <Markdown>{result.solution}</Markdown>
@@ -180,12 +182,14 @@ export function ExerciseForm({
   disabled = false,
   submitLabel = 'Submit answer',
   explainStep = 'answer',
+  readOnlyAnswer,
 }: {
   exercise: ClientExercise;
   onSubmit: (answer: unknown) => void;
   disabled?: boolean;
   submitLabel?: string;
   explainStep?: 'answer' | 'self-check';
+  readOnlyAnswer?: string;
 }) {
   const [value, setValue] = useState('');
   const [line, setLine] = useState('');
@@ -198,7 +202,10 @@ export function ExerciseForm({
     } else if (exercise.type === 'mc') {
       onSubmit(selected.length === 1 ? selected[0] : selected);
     } else if (exercise.type === 'explain') {
-      onSubmit({ text: value, ...(explainStep === 'self-check' ? { metCriteria: criteria } : {}) });
+      onSubmit({
+        text: explainStep === 'self-check' ? (readOnlyAnswer ?? value) : value,
+        ...(explainStep === 'self-check' ? { metCriteria: criteria } : {}),
+      });
     } else if (exercise.type === 'numeric') {
       onSubmit(value.trim());
     } else if (exercise.type === 'code_read') {
@@ -320,7 +327,7 @@ export function ExerciseForm({
               />
               {item.criterion}
               {item.required ? (
-                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">
+                <span className="shrink-0 whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">
                   key point
                 </span>
               ) : null}
@@ -328,7 +335,9 @@ export function ExerciseForm({
           ))}
         </fieldset>
       ) : null}
-      {exercise.type !== 'mc' && exercise.type !== 'debug' ? (
+      {exercise.type !== 'mc' &&
+      exercise.type !== 'debug' &&
+      !(exercise.type === 'explain' && explainStep === 'self-check') ? (
         exercise.type === 'numeric' || exercise.type === 'code_read' || exercise.type === 'text' ? (
           <input
             className="w-full rounded-md border border-neutral-300 bg-white p-3 text-sm"
