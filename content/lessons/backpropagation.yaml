@@ -1,0 +1,62 @@
+concept: backpropagation
+version: 1
+fast_path: [objective, summary]
+blocks:
+  - kind: objective
+    md: |
+      **Goal:** explain why we need gradients and why the backward pass reuses values from the forward pass, compute gradients through a small network by hand, implement a backward pass, and diagnose common gradient bugs.
+  - kind: intuition
+    md: |
+      To train, we need $\partial L/\partial\theta$ for **every** parameter, and there may be millions of them. Perturbing each parameter one at a time would take millions of forward passes. Backpropagation gets all of them in roughly the cost of **one forward plus one backward pass**:
+
+      1. **Forward:** compute and cache every intermediate value.
+      2. **Backward:** start from $\partial L/\partial L = 1$ and walk the graph in reverse. At each node, multiply the incoming gradient (the "upstream" gradient) by the local derivative and pass the result to the node's inputs, summing where branches merge.
+
+      Local derivatives need forward values (a multiply node needs the other input; ReLU needs to know whether its input was positive). That is why frameworks keep activations in memory during training.
+  - kind: example
+    md: |
+      $y = w_2\,\mathrm{ReLU}(w_1 x)$, $L = (y - t)^2$, with $x = 1$, $w_1 = 2$, $w_2 = 3$, $t = 4$.
+
+      Forward: $z = 2$, $h = 2$, $y = 6$, $L = 4$.
+
+      Backward:
+      - $\partial L/\partial y = 2(y - t) = 4$
+      - $\partial L/\partial w_2 = 4\cdot h = 8$
+      - $\partial L/\partial h = 4 \cdot w_2 = 12$
+      - $\partial L/\partial z = 12\cdot \mathbb{1}[z>0] = 12$
+      - $\partial L/\partial w_1 = 12 \cdot x = 12$
+  - kind: check
+    exercise: bp-check-1
+  - kind: math
+    md: |
+      For a layer $z = Wx + b$, $h = \phi(z)$, with upstream gradient $g_h = \partial L/\partial h$:
+      $$g_z = g_h \odot \phi'(z), \qquad \frac{\partial L}{\partial W} = g_z\,x^\top, \qquad \frac{\partial L}{\partial b} = g_z, \qquad \frac{\partial L}{\partial x} = W^\top g_z.$$
+      For a batch $X \in \mathbb R^{B\times d}$ in row convention ($Z = XW + b$): $\partial L/\partial W = X^\top G_Z$ and $\partial L/\partial b = \sum_\text{rows} G_Z$. Shape check: a gradient always has the same shape as the thing it is the gradient of.
+  - kind: worked
+    md: |
+      ```python
+      # forward
+      z1 = X @ W1 + b1          # (B, H)
+      h1 = np.maximum(0, z1)    # (B, H)
+      y_hat = h1 @ W2 + b2      # (B, 1)
+      loss = ((y_hat - y) ** 2).mean()
+
+      # backward
+      g_y = 2 * (y_hat - y) / len(y)   # (B, 1)
+      dW2 = h1.T @ g_y                 # (H, 1)
+      db2 = g_y.sum(axis=0)            # (1,)
+      g_h1 = g_y @ W2.T                # (B, H)
+      g_z1 = g_h1 * (z1 > 0)           # (B, H)  ReLU gate uses the cached z1
+      dW1 = X.T @ g_z1                 # (d, H)
+      db1 = g_z1.sum(axis=0)           # (H,)
+      ```
+      Always verify a hand-written backward pass with a **finite-difference gradient check**: $(L(\theta + \epsilon) - L(\theta - \epsilon))/2\epsilon$ for a few parameters.
+  - kind: faded
+    md: |
+      **Partly done.** Same scalar network, but now $t = 10$. Forward: $z = 2,\ h = 2,\ y = 6$. Backward: $\partial L/\partial y = 2(6 - 10) = -8$, so $\partial L/\partial h = -8\cdot w_2 = \;?$ and $\partial L/\partial w_1 = \;?$
+    exercise: bp-faded-1
+  - kind: summary
+    md: |
+      - Backprop applies the chain rule in reverse topological order and reuses cached forward values.
+      - One backward pass costs about as much as a forward pass and gives every gradient.
+      - Gradients have the same shape as their parameters. Check them with finite differences.

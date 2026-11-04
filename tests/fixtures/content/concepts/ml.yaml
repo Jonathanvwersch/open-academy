@@ -1,0 +1,50 @@
+domain: ml
+concepts:
+  - id: linear-models
+    title: Linear models
+    description: Predict a target as a weighted combination of inputs.
+    difficulty: 1
+    est_minutes: 25
+    week: 1
+    goal_weight: 3
+    dimensions: [conceptual, math, implementation, transfer]
+    prereqs: [{ id: vectors }]
+    related: [loss-functions]
+    objectives:
+      - { text: Make a prediction with a linear model, dimension: math }
+      - { text: Interpret a model coefficient, dimension: conceptual }
+    projects: [linreg-numpy]
+    sources: []
+    status: authored
+  - id: loss-functions
+    title: Loss functions
+    description: Measure prediction error with an explicit objective.
+    difficulty: 2
+    est_minutes: 25
+    week: 2
+    goal_weight: 3
+    dimensions: [conceptual, math]
+    prereqs: [{ id: linear-models }]
+    related: [gradient-descent]
+    objectives:
+      - { text: Calculate mean squared error, dimension: math }
+      - { text: Explain what a loss measures, dimension: conceptual }
+    projects: [linreg-numpy]
+    sources: []
+    status: authored
+  - id: gradient-descent
+    title: Gradient descent
+    description: Update parameters in a direction that reduces loss.
+    difficulty: 3
+    est_minutes: 35
+    week: 2
+    goal_weight: 3
+    dimensions: [conceptual, math, implementation, transfer]
+    prereqs: [{ id: gradients }, { id: loss-functions }]
+    related: []
+    objectives:
+      - { text: Compute one parameter update, dimension: math }
+      - { text: Select an update from a debugging trace, dimension: implementation }
+    projects: [linreg-numpy]
+    sources: []
+    status: authored

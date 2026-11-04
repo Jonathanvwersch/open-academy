@@ -1,0 +1,8 @@
+concept: loss-functions
+version: 1
+blocks:
+  - { kind: objective, md: "Calculate and interpret a loss value." }
+  - { kind: intuition, md: "A loss compresses prediction errors into a quantity to minimize." }
+  - { kind: check, exercise: loss-functions-mse }
+  - { kind: summary, md: "Mean squared error averages squared residuals." }
+fast_path: [objective, summary]

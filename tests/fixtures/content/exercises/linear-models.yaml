@@ -1,0 +1,37 @@
+concept: linear-models
+exercises:
+  - id: dx-linear-models
+    dimension: implementation
+    type: code_read
+    role: diagnostic
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What prediction is produced?"
+    code: "weight = 2\\nbias = 1\\nx = 3\\nprediction = weight * x + bias"
+    hints: []
+    solution: "The prediction is 7."
+    answer: 7
+    tolerance: { abs: 0.000001 }
+  - id: linear-models-predict
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 1
+    est_minutes: 3
+    prompt: "For $w=2$, $x=3$, and $b=1$, calculate $wx+b$."
+    hints: ["Multiply the feature by its weight, then add the bias."]
+    solution: "$2\\cdot3+1=7$."
+    answer: 7
+    tolerance: { abs: 0.000001 }
+  - id: linear-models-slope
+    dimension: conceptual
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "In $y=wx+b$, what does $w$ control?"
+    hints: []
+    solution: "The weight controls how strongly the feature changes the prediction."
+    options:
+      - { id: feature-effect, text: The feature's effect on the prediction, correct: true }
+      - { id: input-count, text: The number of input examples, correct: false }

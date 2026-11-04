@@ -1,0 +1,32 @@
+concept: supervised-learning
+version: 1
+fast_path: [objective, summary]
+blocks:
+  - kind: objective
+    md: |
+      **Goal:** identify the inputs, targets, model family, loss and training data in any supervised problem.
+  - kind: intuition
+    md: |
+      Supervised learning means learning a function from examples of inputs paired with correct outputs. There are always five ingredients:
+
+      1. **Inputs** $x$ (features: pixels, sensor readings, tokens).
+      2. **Targets** $y$ (labels: price, class, the expert's action).
+      3. A **model family** $f_\theta$ with parameters $\theta$ (a line, a neural network).
+      4. A **loss** $L(f_\theta(x), y)$ measuring how wrong a prediction is.
+      5. A **dataset** of $(x, y)$ pairs.
+
+      Training searches for the $\theta$ that makes the average loss small, and the real goal is low loss on *new* data. Behavioral cloning for robots is exactly this setup: observation in, expert action out.
+  - kind: example
+    md: |
+      **Predicting a robot's grasp success.** Input: a depth image plus a proposed gripper pose. Target: 1 if the grasp succeeded, otherwise 0. Model: a CNN that outputs a probability. Loss: binary cross-entropy. Data: 50,000 logged grasp attempts.
+  - kind: check
+    exercise: sl-check-target
+  - kind: math
+    md: |
+      Empirical risk minimisation:
+      $$\theta^\star = \arg\min_\theta \frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(x_i), y_i\big).$$
+      **Regression** means $y$ is real-valued; **classification** means $y$ is a category.
+  - kind: summary
+    md: |
+      - The five ingredients are inputs, targets, model, loss and data.
+      - Training minimises the average loss on the training set, but what matters is performance on unseen data.

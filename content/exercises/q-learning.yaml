@@ -1,0 +1,19 @@
+concept: q-learning
+exercises:
+  - id: dx-rl-3
+    dimension: math
+    type: numeric
+    role: diagnostic
+    difficulty: 3
+    est_minutes: 3
+    prompt: "Q-learning update with $\\alpha = 0.5$, $\\gamma = 0.9$. Currently $Q(s, a) = 2$. Taking $a$ in $s$ gives reward $r = 1$ and next state $s'$ with $\\max_{a'} Q(s', a') = 5$. What is the new $Q(s, a)$?"
+    answer: 3.75
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 5.5,
+          tolerance: { abs: 0.005 },
+          category: misunderstood_definition,
+          feedback: "5.5 is the TD target. The update only moves $Q$ a fraction $\\alpha$ of the way toward it.",
+        }
+    solution: "Target $= r + \\gamma \\max Q(s',\\cdot) = 1 + 4.5 = 5.5$. $Q \\leftarrow 2 + 0.5\\,(5.5 - 2) = 3.75$."

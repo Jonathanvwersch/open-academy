@@ -1,0 +1,115 @@
+concept: linear-regression
+exercises:
+  - id: lr-check-predict
+    dimension: math
+    type: numeric
+    role: check
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Using price $= 3\\cdot\\text{area} + 10\\cdot\\text{bedrooms} + 50$, what is the predicted price of a 120 m², 3-bedroom house?"
+    answer: 440
+    tolerance: { abs: 0.01 }
+    solution: "$360 + 30 + 50 = 440$."
+  - id: dx-ml-5
+    dimension: implementation
+    type: code_read
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 2
+    prompt: "What number does this print?"
+    code: |
+      import numpy as np
+      X = np.array([[1., 2.], [3., 4.]])
+      w = np.array([0.5, -1.0])
+      b = 2.0
+      y_hat = X @ w + b
+      print(y_hat.sum())
+    answer: 0
+    tolerance: { abs: 0.001 }
+    solution: "Row 1: $0.5 - 2 + 2 = 0.5$. Row 2: $1.5 - 4 + 2 = -0.5$. The sum is $0.0$."
+  - id: lr-weight-meaning
+    dimension: conceptual
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A model predicts fuel use as $\\hat y = 0.08\\cdot\\text{distance\\_km} + 1.5\\cdot\\text{load\\_tonnes} + 2$. What does the weight $1.5$ mean?"
+    options:
+      - {
+          id: a,
+          text: "Holding distance fixed, each extra tonne of load adds 1.5 units of predicted fuel",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Load is 1.5 times as important as distance",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Weights depend on units. Distance in metres would have a 1000× smaller weight without being any less important.",
+        }
+      - {
+          id: c,
+          text: "Fuel use is 1.5 when load is 1",
+          correct: false,
+          category: misunderstood_definition,
+        }
+    solution: "A weight is a partial effect in the feature's own units. Comparing raw weights across features with different units is meaningless."
+  - id: lr-code-complete
+    dimension: implementation
+    type: code_complete
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "`X` has shape `(n, d)`. Complete `predict` so that it returns an array of shape `(n,)`, without loops."
+    code: |
+      def predict(X, w, b):
+          return ____
+    accept: ["X @ w + b", "np.dot(X, w) + b", "X.dot(w) + b", "np.matmul(X, w) + b", "b + X @ w"]
+    solution: "`return X @ w + b`."
+  - id: lr-bias-trick
+    dimension: math
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "You append a column of ones to $X$ (new shape $n\\times(d+1)$) and drop the separate bias. What must the weight vector look like for the predictions to be unchanged?"
+    options:
+      - {
+          id: a,
+          text: "$(w_1, \\dots, w_d, b)$, i.e. the bias becomes the weight on the constant feature",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "$(w_1, \\dots, w_d, 1)$",
+          correct: false,
+          category: math_error,
+          feedback: "That adds exactly 1 to every prediction, which is not $b$.",
+        }
+      - {
+          id: c,
+          text: "$(w_1, \\dots, w_d)$, unchanged",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Shapes no longer match: $X$ now has $d+1$ columns.",
+        }
+    solution: "$[X, \\mathbf 1]\\,[w; b] = Xw + b$."
+  - id: lr-review-shape
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "`X.shape == (200, 5)` and `w.shape == (5,)`. What is `(X @ w + 0.3).shape`?"
+    options:
+      - { id: a, text: "`(200,)`", correct: true }
+      - { id: b, text: "`(5,)`", correct: false, category: misunderstood_definition }
+      - { id: c, text: "`(200, 5)`", correct: false, category: misunderstood_definition }
+      - {
+          id: d,
+          text: "`(200, 1)`",
+          correct: false,
+          category: implementation_error,
+          feedback: "A 1-D `w` gives a 1-D result. `(200, 1)` would need `w` of shape `(5, 1)`.",
+        }
+    solution: "One prediction per row: `(200,)`."

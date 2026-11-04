@@ -1,0 +1,36 @@
+concept: loss-functions
+version: 1
+fast_path: [objective, summary]
+blocks:
+  - kind: objective
+    md: |
+      **Goal:** compute MSE and MAE, and explain how squaring changes the way errors and outliers are weighted.
+  - kind: intuition
+    md: |
+      A loss turns "how wrong is the model?" into one number that optimisation can push down. The choice of loss is a statement about which mistakes matter:
+
+      - **MSE** squares every error, so one large error costs far more than several small ones.
+      - **MAE** uses absolute errors, so every unit of error costs the same and outliers pull on the model less.
+  - kind: example
+    md: |
+      Errors $(1, 1, 1, 9)$: MSE $= (1 + 1 + 1 + 81)/4 = 21$, while MAE $= (1+1+1+9)/4 = 3$. The single 9 contributes 81 of MSE's 84 total.
+  - kind: check
+    exercise: loss-check-mse
+  - kind: math
+    md: |
+      $$\text{MSE} = \frac1n\sum_{i}(\hat y_i - y_i)^2, \qquad \text{MAE} = \frac1n\sum_i|\hat y_i - y_i|.$$
+      Derivative of one squared error with respect to its prediction: $2(\hat y_i - y_i)$, which is proportional to the error. For MAE the derivative is $\text{sign}(\hat y_i - y_i)$, with constant magnitude. Using the **mean** rather than the sum keeps the loss scale (and therefore a good learning rate) independent of dataset size.
+
+      Minimising MSE predicts the conditional **mean**; minimising MAE predicts the conditional **median**.
+  - kind: worked
+    md: |
+      Predictions $(2.5, 0, 2)$ and targets $(3, -0.5, 2)$:
+
+      1. Errors: $(-0.5, 0.5, 0)$.
+      2. MSE $= (0.25 + 0.25 + 0)/3 = 0.1667$.
+      3. MAE $= (0.5 + 0.5 + 0)/3 = 0.3333$.
+  - kind: summary
+    md: |
+      - MSE squares errors, so it is sensitive to outliers. Its gradient is proportional to the error.
+      - MAE treats all errors linearly, so it is more robust. Its gradient has constant magnitude.
+      - Use the mean, not the sum.

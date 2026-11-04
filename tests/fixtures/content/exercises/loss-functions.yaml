@@ -1,0 +1,34 @@
+concept: loss-functions
+exercises:
+  - id: dx-loss-functions
+    dimension: math
+    type: expression
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 3
+    prompt: "For one prediction, write squared error when the target is y."
+    hints: []
+    solution: "Squared error is $(p-y)^2$."
+    answer: "(p-y)^2"
+    variables: { p: [-3, 3], y: [-3, 3] }
+  - id: loss-functions-mse
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt: "For errors $1$ and $3$, what is the mean squared error?"
+    hints: ["Square each error, then average."]
+    solution: "The mean is $(1+9)/2=5$."
+    answer: 5
+    tolerance: { abs: 0.000001 }
+  - id: loss-functions-text
+    dimension: conceptual
+    type: text
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "What does a loss function quantify?"
+    hints: []
+    solution: "It quantifies how poorly model predictions match targets."
+    accept: ["prediction error", "how wrong predictions are"]

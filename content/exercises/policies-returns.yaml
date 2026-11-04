@@ -1,0 +1,24 @@
+concept: policies-returns
+exercises:
+  - id: dx-rl-2
+    dimension: math
+    type: numeric
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 2
+    prompt: "An episode yields rewards $r_0 = 1$, $r_1 = 0$, $r_2 = 2$ and then ends. With discount $\\gamma = 0.9$, what is the return $G_0 = \\sum_t \\gamma^t r_t$?"
+    answer: 2.62
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 3,
+          category: misunderstood_definition,
+          feedback: "That is the undiscounted sum. Each reward is multiplied by $\\gamma^t$.",
+        }
+      - {
+          answer: 2.8,
+          tolerance: { abs: 0.005 },
+          category: math_error,
+          feedback: "$r_2$ is discounted by $\\gamma^2 = 0.81$, not $\\gamma = 0.9$.",
+        }
+    solution: "$G_0 = 1 + 0.9\\cdot 0 + 0.81 \\cdot 2 = 2.62$."

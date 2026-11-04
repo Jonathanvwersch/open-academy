@@ -1,0 +1,50 @@
+concept: derivatives
+version: 1
+fast_path: [objective, summary]
+blocks:
+  - kind: objective
+    md: |
+      **Goal:** differentiate polynomials, exponentials, logs, products and quotients, and read a derivative as the sensitivity of the output to the input.
+  - kind: intuition
+    md: |
+      The derivative $f'(x)$ answers one question: *if I nudge $x$ a little, how much does $f(x)$ change, per unit of nudge?*
+
+      Training a model is entirely about this question. "If I nudge this weight, how does the loss change?" The derivative tells you both the direction to move and roughly how sensitive the loss is.
+  - kind: example
+    md: |
+      $f(x) = x^2$. At $x = 3$, nudge to $3.01$: $f$ goes from $9$ to $9.0601$, a change of $0.0601$ for a nudge of $0.01$. The ratio is $\approx 6.01$, and the derivative $f'(x) = 2x$ gives exactly $6$ at $x = 3$.
+  - kind: check
+    exercise: der-check-power
+  - kind: math
+    md: |
+      $$f'(x) = \lim_{h\to0}\frac{f(x+h) - f(x)}{h}$$
+
+      | $f(x)$ | $f'(x)$ |
+      |---|---|
+      | $x^n$ | $n x^{n-1}$ |
+      | $e^x$ | $e^x$ |
+      | $\ln x$ | $1/x$ |
+      | $c\,g(x)$ | $c\,g'(x)$ |
+      | $g + h$ | $g' + h'$ |
+      | $g\,h$ | $g'h + gh'$ (product rule) |
+      | $g/h$ | $(g'h - gh')/h^2$ (quotient rule) |
+  - kind: worked
+    md: |
+      **Differentiate $f(x) = 3x^4 - 2x + \ln x$.**
+
+      1. $3x^4 \to 12x^3$ (power rule times a constant).
+      2. $-2x \to -2$.
+      3. $\ln x \to 1/x$.
+
+      So $f'(x) = 12x^3 - 2 + 1/x$. At $x = 1$: $12 - 2 + 1 = 11$.
+
+      **Product rule: $g(x) = x^2 e^x$.** Then $g' = 2x\,e^x + x^2 e^x = e^x(x^2 + 2x)$.
+  - kind: faded
+    md: |
+      **Partly done.** $f(x) = x^3 \ln x$. With the product rule, $u = x^3,\ u' = 3x^2,\ v = \ln x,\ v' = \;?$, so $f'(x) = u'v + uv' = \;?$
+    exercise: der-faded-product
+  - kind: summary
+    md: |
+      - $f'(x)$ is a local slope: the change in output per unit change in input.
+      - Know the core rules: power, exp, log, sum, product and quotient.
+      - In ML, the derivative of the loss with respect to a parameter says which way to move that parameter.

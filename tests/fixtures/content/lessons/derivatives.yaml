@@ -1,0 +1,8 @@
+concept: derivatives
+version: 1
+blocks:
+  - { kind: objective, md: "Differentiate a simple power function." }
+  - { kind: example, md: "For $f(x)=x^2$, the derivative is $2x$." }
+  - { kind: check, exercise: derivatives-power-rule }
+  - { kind: summary, md: "A derivative gives the local rate of change." }
+fast_path: [objective, summary]

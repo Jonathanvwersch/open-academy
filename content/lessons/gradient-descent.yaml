@@ -1,0 +1,58 @@
+concept: gradient-descent
+version: 1
+fast_path: [objective, summary]
+blocks:
+  - kind: objective
+    md: |
+      **Goal:** perform gradient-descent updates by hand, explain the effect of the learning rate, implement the loop, and diagnose divergence and slow convergence from loss curves.
+  - kind: intuition
+    md: |
+      You are on a foggy hillside and can only feel the slope under your feet. Gradient descent repeats one move: **take a step downhill, in proportion to the slope.**
+      $$\theta \leftarrow \theta - \eta\,\nabla L(\theta).$$
+      The learning rate $\eta$ is the step size. If it is too small, you crawl. If it is too large, you overshoot the valley floor, land higher on the other side, and the loss explodes. Every neural network, transformer and robot policy you will train uses a variant of this loop.
+  - kind: example
+    md: |
+      $L(w) = (w - 3)^2$, so $L'(w) = 2(w - 3)$. Start at $w_0 = 0$ with $\eta = 0.25$:
+
+      - $w_1 = 0 - 0.25\cdot(-6) = 1.5$
+      - $w_2 = 1.5 - 0.25\cdot(-3) = 2.25$
+      - $w_3 = 2.625$
+
+      Each step halves the distance to 3.
+  - kind: check
+    exercise: gd-check-step
+  - kind: math
+    md: |
+      For the quadratic $L(w) = a(w - w^\star)^2$, one step gives
+      $$w_{t+1} - w^\star = (1 - 2a\eta)\,(w_t - w^\star).$$
+      - $0 < \eta < 1/(2a)$: the iterates approach $w^\star$ monotonically.
+      - $1/(2a) < \eta < 1/a$: they oscillate around $w^\star$ but still converge.
+      - $\eta > 1/a$: $|1 - 2a\eta| > 1$, so they **diverge**.
+
+      In many dimensions the steepest direction (largest curvature) sets the stability limit, while the flattest direction sets the speed.
+  - kind: worked
+    md: |
+      **Linear regression, one step by hand.** Data: $(x, y) = (1, 2), (2, 4)$. Model $\hat y = wx$ (no bias), MSE loss, $w_0 = 0$, $\eta = 0.1$.
+
+      1. Predictions: $(0, 0)$. Residuals $\hat y - y = (-2, -4)$.
+      2. $\partial L/\partial w = \frac{2}{n}\sum_i(\hat y_i - y_i)x_i = \frac{2}{2}((-2)(1) + (-4)(2)) = -10$.
+      3. $w_1 = 0 - 0.1\cdot(-10) = 1.0$.
+
+      ```python
+      for step in range(steps):
+          y_hat = X @ w + b
+          r = y_hat - y
+          dw = 2 * X.T @ r / len(y)
+          db = 2 * r.mean()
+          w -= lr * dw
+          b -= lr * db
+      ```
+  - kind: faded
+    md: |
+      **Partly done.** Same data and model. Now start at $w_0 = 1$: the residuals are $(1\cdot1 - 2,\ 1\cdot2 - 4) = (-1, -2)$, so $\partial L/\partial w = \;?$ and $w_1 = \;?$
+    exercise: gd-faded-step
+  - kind: summary
+    md: |
+      - Update rule: $\theta \leftarrow \theta - \eta\nabla L$.
+      - If $\eta$ is too small, progress is slow. If it is too big, the iterates oscillate or diverge, and the loss can grow or become NaN.
+      - Reading loss curves is a core debugging skill: watch for smooth decrease, a plateau, oscillation, or an explosion.

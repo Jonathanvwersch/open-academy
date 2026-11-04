@@ -1,0 +1,43 @@
+concept: debugging-training
+exercises:
+  - id: dx-dl-5
+    dimension: transfer
+    type: debug
+    role: diagnostic
+    difficulty: 3
+    est_minutes: 3
+    prompt: "This PyTorch training loop runs without errors, but the loss never improves from the first batch onward. Which line is wrong, and what is the fix?"
+    code: |
+      for xb, yb in loader:
+          optimizer.zero_grad()
+          pred = model(xb)
+          loss = loss_fn(pred, yb)
+          optimizer.step()
+          loss.backward()
+    buggy_line: 5
+    fix_options:
+      - {
+          id: a,
+          text: "Swap lines 5 and 6: call loss.backward() before optimizer.step()",
+          correct: true,
+          feedback: "step() uses the gradients currently stored in .grad. Here they were just zeroed, so every step is a no-op; backward() then fills .grad, only for zero_grad() to clear it next iteration.",
+        }
+      - {
+          id: b,
+          text: "Move optimizer.zero_grad() after optimizer.step()",
+          correct: false,
+          feedback: "Zeroing after the step is fine in general, but the step would still run before backward(), on stale or zero gradients.",
+        }
+      - {
+          id: c,
+          text: "Call loss.detach() before loss.backward()",
+          correct: false,
+          feedback: "Detaching cuts the graph, so no gradients would reach the parameters at all.",
+        }
+      - {
+          id: d,
+          text: "Lower the learning rate",
+          correct: false,
+          feedback: "With zero gradients at step time the learning rate is irrelevant: the update is lr × 0.",
+        }
+    solution: "`optimizer.step()` reads `.grad`. Because `zero_grad()` ran first and `backward()` runs after the step, `.grad` is always zero at step time, so parameters never change. Order must be: zero_grad → forward → loss → backward → step."

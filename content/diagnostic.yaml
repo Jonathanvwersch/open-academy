@@ -1,0 +1,8 @@
+domains:
+  - { domain: math, ladder: [dx-math-1, dx-math-2, dx-math-3, dx-math-4, dx-math-5], start: 2 }
+  - { domain: classical-ml, ladder: [dx-ml-1, dx-ml-2, dx-ml-3, dx-ml-4, dx-ml-5], start: 2 }
+  - { domain: deep-learning, ladder: [dx-dl-1, dx-dl-2, dx-dl-3, dx-dl-4, dx-dl-5], start: 1 }
+  - { domain: transformers, ladder: [dx-tf-1, dx-tf-2, dx-tf-3, dx-tf-4], start: 1 }
+  - { domain: robotics, ladder: [dx-rb-1, dx-rb-2, dx-rb-3, dx-rb-4], start: 1 }
+  - { domain: rl, ladder: [dx-rl-1, dx-rl-2, dx-rl-3, dx-rl-4], start: 1 }
+  - { domain: imitation, ladder: [dx-il-1, dx-il-2, dx-il-3, dx-il-4], start: 1 }

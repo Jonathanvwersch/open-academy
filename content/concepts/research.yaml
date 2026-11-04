@@ -1,0 +1,69 @@
+domain: research
+concepts:
+  - {
+      id: experimental-design,
+      title: Experimental design,
+      description: "Baselines, ablations, controlling variables, seeds.",
+      difficulty: 2,
+      est_minutes: 25,
+      week: 11,
+      goal_weight: 3,
+      dimensions: [conceptual, transfer],
+      prereqs: [{ id: train-test-split }],
+      objectives: [{ text: "Design an ablation", dimension: transfer }],
+      status: stub,
+    }
+  - {
+      id: statistical-evaluation,
+      title: Statistical evaluation,
+      description: "Variance across seeds, confidence intervals, small-sample success rates.",
+      difficulty: 3,
+      est_minutes: 25,
+      week: 11,
+      goal_weight: 2,
+      dimensions: [conceptual, math],
+      prereqs: [{ id: experimental-design }, { id: probability-basics }],
+      objectives: [{ text: "Compute a confidence interval on a success rate", dimension: math }],
+      status: stub,
+    }
+  - {
+      id: reading-papers,
+      title: Reading ML papers,
+      description: "Finding the claim, method, evidence and limitations quickly.",
+      difficulty: 2,
+      est_minutes: 30,
+      week: 12,
+      goal_weight: 3,
+      dimensions: [conceptual, transfer],
+      prereqs: [{ id: experimental-design }],
+      objectives:
+        [{ text: "Summarise a paper's contribution and limitations", dimension: transfer }],
+      status: stub,
+    }
+  - {
+      id: critical-evaluation,
+      title: Critical evaluation of models,
+      description: "Spotting confounds, leakage, cherry-picking and weak baselines.",
+      difficulty: 3,
+      est_minutes: 25,
+      week: 12,
+      goal_weight: 3,
+      dimensions: [transfer],
+      prereqs: [{ id: reading-papers }, { id: statistical-evaluation }],
+      objectives: [{ text: "Critique an evaluation claim", dimension: transfer }],
+      status: stub,
+    }
+  - {
+      id: system-design-ml,
+      title: End-to-end ML system design,
+      description: "From data to deployed policy: components, interfaces, bottlenecks.",
+      difficulty: 3,
+      est_minutes: 30,
+      week: 12,
+      goal_weight: 3,
+      dimensions: [transfer],
+      prereqs: [{ id: data-pipelines-robotics }, { id: experimental-design }],
+      objectives: [{ text: "Design an end-to-end robot-learning system", dimension: transfer }],
+      projects: [capstone],
+      status: stub,
+    }

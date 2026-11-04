@@ -1,0 +1,129 @@
+concept: loss-functions
+exercises:
+  - id: loss-check-mse
+    dimension: math
+    type: numeric
+    role: check
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Predictions $(1, 3, 5)$, targets $(2, 3, 3)$. Compute the MSE."
+    answer: 1.6667
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 5,
+          category: misunderstood_definition,
+          feedback: "That is the *sum* of squared errors. Divide by $n = 3$.",
+        }
+      - {
+          answer: 1,
+          category: misunderstood_definition,
+          feedback: "That is the MAE. MSE squares the errors.",
+        }
+    hints: ["Errors are $(-1, 0, 2)$."]
+    solution: "$(1 + 0 + 4)/3 \\approx 1.667$."
+  - id: dx-ml-2
+    dimension: math
+    type: numeric
+    role: diagnostic
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Predictions $(2, 4, 6)$, targets $(1, 4, 8)$. What is the mean squared error? (2 decimal places)"
+    answer: 1.6667
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - {
+          answer: 5,
+          category: misunderstood_definition,
+          feedback: "That is the sum of squared errors, not the mean.",
+        }
+      - {
+          answer: 1,
+          category: misunderstood_definition,
+          feedback: "That is the mean *absolute* error.",
+        }
+    solution: "Errors $(1, 0, -2)$, squared $(1, 0, 4)$, mean $5/3 \\approx 1.67$."
+  - id: loss-mae
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Predictions $(10, 12, 9, 20)$, targets $(11, 12, 7, 14)$. Compute the MAE."
+    answer: 2.25
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 10.25,
+          tolerance: { abs: 0.005 },
+          category: misunderstood_definition,
+          feedback: "That is the MSE.",
+        }
+    solution: "$|−1| + 0 + 2 + 6 = 9$, and $9/4 = 2.25$."
+  - id: loss-outlier
+    dimension: conceptual
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Your training labels contain a few wildly wrong values (sensor glitches). You fit a linear model with MSE and the fit is pulled noticeably toward those points. What is the best explanation and the simplest fix?"
+    options:
+      - {
+          id: a,
+          text: "Squaring makes those few large residuals dominate the loss and its gradient; use MAE or a Huber loss, or clean the labels",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "MSE ignores large errors; switch to a loss that squares them",
+          correct: false,
+          category: misunderstood_definition,
+        }
+      - {
+          id: c,
+          text: "The learning rate is too high",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "The learning rate affects how you reach the minimum, not where the MSE minimum is.",
+        }
+    solution: "MSE's gradient grows with the error, so outliers pull hard. MAE or Huber caps that influence."
+  - id: loss-review-grad
+    dimension: math
+    type: expression
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For one example, $\\ell(\\hat y) = (\\hat y - y)^2$. Give $d\\ell/d\\hat y$ in terms of `yhat` and `y`."
+    answer: "2*(yhat - y)"
+    variables: { yhat: [-3, 3], y: [-3, 3] }
+    solution: "$2(\\hat y - y)$."
+  - id: loss-transfer-median
+    dimension: transfer
+    type: mc
+    role: transfer
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A delivery robot's travel times on one route are usually 10 min but occasionally 60 min (blocked doors). You must predict one number for that route. Which loss gives the 'typical' value, and which is pulled toward the rare long trips?"
+    options:
+      - {
+          id: a,
+          text: "MAE gives the median (≈10); MSE gives the mean, pulled toward 60",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "MSE gives the median; MAE gives the mean",
+          correct: false,
+          category: misunderstood_definition,
+        }
+      - {
+          id: c,
+          text: "Both give the same constant",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+    hints:
+      [
+        "What single number minimises the sum of squared deviations? The sum of absolute deviations?",
+      ]
+    solution: "The constant minimising MSE is the mean; the one minimising MAE is the median. A skewed distribution separates them."

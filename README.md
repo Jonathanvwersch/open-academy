@@ -16,6 +16,7 @@ Useful commands:
 pnpm db:generate
 pnpm db:migrate
 pnpm db:seed
+pnpm db:reset
 pnpm test
 pnpm test:e2e
 pnpm typecheck
@@ -25,3 +26,4 @@ pnpm build
 ```
 
 Vitest uses the separate `academy_test` database. `pnpm test:e2e` starts the local dev stack through Playwright's web server configuration.
+`pnpm db:reset` truncates learner state in the development database and reseeds the default learner.

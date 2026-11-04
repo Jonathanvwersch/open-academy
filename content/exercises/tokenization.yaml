@@ -1,0 +1,36 @@
+concept: tokenization
+exercises:
+  - id: dx-tf-1
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Why do most modern language models use subword tokenisation (e.g. BPE) rather than one token per whole word?"
+    options:
+      - {
+          id: a,
+          text: "It represents any string, including rare or unseen words, with a bounded vocabulary while keeping common words as single tokens",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "It makes every token correspond to exactly one character, which simplifies the model",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That describes character-level tokenisation. Subword vocabularies merge frequent character sequences into longer tokens.",
+        }
+      - {
+          id: c,
+          text: "It removes the need for an embedding layer",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Every token id still needs an embedding vector.",
+        }
+      - {
+          id: d,
+          text: "Words cannot be represented as integers",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+    solution: "Word-level vocabularies explode in size and still fail on unseen words; character-level sequences are very long. Subword schemes such as BPE start from bytes/characters and merge frequent pairs, so frequent words become single tokens and anything else decomposes into pieces."

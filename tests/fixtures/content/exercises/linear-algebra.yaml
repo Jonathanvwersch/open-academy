@@ -1,0 +1,43 @@
+concept: linear-algebra
+exercises:
+  - id: dx-linear-algebra
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 2
+    prompt: "What determines whether a matrix-vector product is defined?"
+    hints: []
+    solution: "The matrix column count must match the vector length."
+    options:
+      - { id: matching-inner-dimensions, text: Matching inner dimensions, correct: true }
+      - { id: same-number-rows, text: Same number of rows and columns, correct: false }
+  - id: linear-algebra-code-complete
+    dimension: implementation
+    type: code_complete
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt: "Complete the operation."
+    code: "prediction = weights ____ features"
+    hints: ["Use the operation that sums pairwise products."]
+    solution: "Use `@` for a matrix-vector product."
+    accept: ["@"]
+  - id: linear-algebra-debug
+    dimension: implementation
+    type: debug
+    role: review
+    difficulty: 3
+    est_minutes: 4
+    prompt: "Choose the incorrect line and its fix."
+    code: "weights = [1, 2]\\nfeatures = [3, 4]\\nprediction = weights + features"
+    hints: []
+    solution: "Line 3 should compute a dot product, not element-wise addition."
+    buggy_line: 3
+    fix_options:
+      - {
+          id: dot-product,
+          text: "prediction = sum(w * x for w, x in zip(weights, features))",
+          correct: true,
+        }
+      - { id: concatenate, text: "prediction = weights.extend(features)", correct: false }

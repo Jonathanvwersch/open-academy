@@ -1,0 +1,146 @@
+domain: transformers
+concepts:
+  - {
+      id: tokenization,
+      title: Tokenization,
+      description: "Turning text into integer tokens; BPE and vocabulary tradeoffs.",
+      difficulty: 2,
+      est_minutes: 25,
+      week: 4,
+      goal_weight: 2,
+      dimensions: [conceptual],
+      prereqs: [],
+      objectives: [{ text: "Explain how BPE builds a vocabulary", dimension: conceptual }],
+      status: stub,
+    }
+  - {
+      id: embeddings,
+      title: Embeddings,
+      description: "Learned lookup tables mapping tokens to vectors.",
+      difficulty: 2,
+      est_minutes: 20,
+      week: 4,
+      goal_weight: 3,
+      dimensions: [conceptual, math],
+      prereqs: [{ id: tokenization }, { id: matrices }],
+      objectives: [{ text: "Explain an embedding as a one-hot times a matrix", dimension: math }],
+      status: stub,
+    }
+  - {
+      id: attention,
+      title: Attention,
+      description: "Weighted mixing of values by query-key similarity; scaled dot-product attention.",
+      difficulty: 3,
+      est_minutes: 40,
+      week: 4,
+      goal_weight: 3,
+      dimensions: [conceptual, math, implementation],
+      prereqs: [{ id: embeddings }, { id: dot-product }, { id: classification-softmax }],
+      objectives:
+        [{ text: "Compute scaled dot-product attention for a tiny example", dimension: math }],
+      status: stub,
+    }
+  - {
+      id: multi-head-attention,
+      title: Multi-head attention,
+      description: "Parallel attention heads over projected subspaces.",
+      difficulty: 3,
+      est_minutes: 25,
+      week: 4,
+      goal_weight: 2,
+      dimensions: [conceptual, implementation],
+      prereqs: [{ id: attention }],
+      objectives:
+        [{ text: "Track shapes through multi-head attention", dimension: implementation }],
+      status: stub,
+    }
+  - {
+      id: positional-encoding,
+      title: Positional representations,
+      description: "Why attention needs position information; sinusoidal, learned and rotary encodings.",
+      difficulty: 3,
+      est_minutes: 20,
+      week: 4,
+      goal_weight: 2,
+      dimensions: [conceptual],
+      prereqs: [{ id: attention }],
+      objectives:
+        [{ text: "Explain why attention is permutation-equivariant", dimension: conceptual }],
+      status: stub,
+    }
+  - {
+      id: transformer-block,
+      title: Transformer blocks,
+      description: "Attention + MLP with residuals and normalization.",
+      difficulty: 3,
+      est_minutes: 30,
+      week: 4,
+      goal_weight: 3,
+      dimensions: [conceptual, implementation],
+      prereqs:
+        [
+          { id: multi-head-attention },
+          { id: positional-encoding },
+          { id: weight-init-normalization, strength: soft },
+          { id: mlp-forward-pass },
+        ],
+      objectives:
+        [{ text: "Draw and explain a pre-norm transformer block", dimension: conceptual }],
+      status: stub,
+    }
+  - {
+      id: causal-masking,
+      title: Causal masking,
+      description: "Preventing attention to future tokens for autoregressive training.",
+      difficulty: 3,
+      est_minutes: 20,
+      week: 4,
+      goal_weight: 3,
+      dimensions: [conceptual, implementation],
+      prereqs: [{ id: attention }],
+      objectives:
+        [{ text: "Build a causal mask and explain its effect", dimension: implementation }],
+      status: stub,
+    }
+  - {
+      id: autoregressive-lm,
+      title: Autoregressive language modelling,
+      description: "Next-token prediction, teacher forcing and sampling.",
+      difficulty: 3,
+      est_minutes: 30,
+      week: 4,
+      goal_weight: 3,
+      dimensions: [conceptual, implementation],
+      prereqs: [{ id: causal-masking }, { id: transformer-block }, { id: classification-softmax }],
+      objectives:
+        [{ text: "Explain how one sequence yields many training examples", dimension: conceptual }],
+      projects: [char-transformer],
+      status: stub,
+    }
+  - {
+      id: pretraining,
+      title: Pretraining at scale,
+      description: "Data, compute and scaling behaviour of LLM pretraining.",
+      difficulty: 3,
+      est_minutes: 25,
+      week: 4,
+      goal_weight: 2,
+      dimensions: [conceptual],
+      prereqs: [{ id: autoregressive-lm }],
+      objectives:
+        [{ text: "Describe the stages of an LLM training pipeline", dimension: conceptual }],
+      status: stub,
+    }
+  - {
+      id: post-training,
+      title: Fine-tuning and post-training,
+      description: "Supervised fine-tuning, preference optimisation, RLHF.",
+      difficulty: 3,
+      est_minutes: 25,
+      week: 9,
+      goal_weight: 2,
+      dimensions: [conceptual],
+      prereqs: [{ id: pretraining }, { id: policy-gradients, strength: soft }],
+      objectives: [{ text: "Contrast pretraining with SFT and RLHF", dimension: conceptual }],
+      status: stub,
+    }

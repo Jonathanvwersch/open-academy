@@ -1,0 +1,36 @@
+concept: dagger
+exercises:
+  - id: dx-il-3
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 3
+    est_minutes: 2
+    prompt: "How does DAgger address compounding errors in imitation learning?"
+    options:
+      - {
+          id: a,
+          text: "It runs the learned policy, asks the expert to label the states the policy actually visits, adds those to the dataset and retrains",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "It adds Gaussian noise to the expert's actions during data collection",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Noise injection (e.g. DART) is a related idea, but DAgger aggregates expert labels on the learner's own states.",
+        }
+      - {
+          id: c,
+          text: "It replaces the supervised loss with a reward signal",
+          correct: false,
+          category: misunderstood_definition,
+        }
+      - {
+          id: d,
+          text: "It trains on longer action sequences",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That describes action chunking.",
+        }
+    solution: "DAgger (Dataset Aggregation) iteratively collects data under the learner's state distribution, labels it with expert actions, and retrains on the aggregate, which closes the train/deploy distribution gap."

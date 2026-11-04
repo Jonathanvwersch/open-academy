@@ -1,0 +1,22 @@
+schedule: { mon: 45, tue: 45, wed: 45, thu: 45, fri: 45, sat: 120, sun: 60 }
+domains:
+  - { id: math, title: Mathematics, description: "Vectors, derivatives, and linear algebra." }
+  - { id: ml, title: Machine learning, description: "Models, losses, and optimization." }
+weeks:
+  - week: 1
+    title: ML fundamentals
+    concepts: [vectors, derivatives, linear-algebra, linear-models]
+    project: linreg-numpy
+    saturday: Build a simple model.
+    sunday: Review foundational ideas.
+  - week: 2
+    title: Optimization
+    concepts: [gradients, loss-functions, gradient-descent]
+    project: linreg-numpy
+goals:
+  - id: g-model-training
+    text: Explain how a simple model learns from data.
+    concepts: [linear-models, loss-functions, gradient-descent]
+  - id: g-mathematical-tools
+    text: Use vectors, derivatives, and gradients in ML.
+    concepts: [vectors, derivatives, gradients, linear-algebra]

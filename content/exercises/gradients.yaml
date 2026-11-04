@@ -1,0 +1,131 @@
+concept: gradients
+exercises:
+  - id: grad-check-1
+    dimension: math
+    type: text
+    role: check
+    difficulty: 1
+    est_minutes: 2
+    prompt: "For $f(x, y) = x^2 + 3y^2$, what is $\\nabla f$ at $(2, -1)$? Answer as `(a, b)`."
+    accept: ["(4,-6)", "(4, -6)", "4,-6", "4, -6", "[4,-6]", "[4, -6]"]
+    hints: ["$\\nabla f = (2x, 6y)$."]
+    solution: "$(2\\cdot2,\\ 6\\cdot(-1)) = (4, -6)$."
+  - id: dx-math-4
+    dimension: math
+    type: text
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 3
+    prompt: "For $f(w_1, w_2) = w_1^2 + 3w_1w_2$, compute $\\nabla f$ at $(w_1, w_2) = (1, 2)$. Answer as `(a, b)`."
+    accept: ["(8,3)", "(8, 3)", "8,3", "8, 3", "[8,3]", "[8, 3]"]
+    solution: "$\\partial f/\\partial w_1 = 2w_1 + 3w_2 = 8$ and $\\partial f/\\partial w_2 = 3w_1 = 3$, so $\\nabla f = (8, 3)$."
+  - id: grad-core-1
+    dimension: math
+    type: text
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt: "For $f(x, y) = x y^2 - 2x$, compute $\\nabla f(3, 1)$. Answer as `(a, b)`."
+    accept: ["(-1,6)", "(-1, 6)", "-1,6", "-1, 6", "[-1,6]", "[-1, 6]"]
+    hints: ["$\\partial f/\\partial x = y^2 - 2$.", "$\\partial f/\\partial y = 2xy$."]
+    solution: "$(1 - 2,\\ 2\\cdot3\\cdot1) = (-1, 6)$."
+  - id: grad-descent-direction
+    dimension: conceptual
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "At a point, $\\nabla L = (3, -4)$. Which unit-length step decreases $L$ fastest (to first order)?"
+    options:
+      - { id: a, text: "$(-0.6, 0.8)$", correct: true }
+      - {
+          id: b,
+          text: "$(0.6, -0.8)$",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "That is along $+\\nabla L$, the direction of steepest *ascent*.",
+        }
+      - {
+          id: c,
+          text: "$(0.8, 0.6)$",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "This is perpendicular to the gradient, so to first order $L$ does not change.",
+        }
+      - {
+          id: d,
+          text: "$(-1, 0)$",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "This does decrease $L$, but more slowly: $\\nabla L \\cdot \\delta = -3$ versus $-5$ for the best direction.",
+        }
+    hints: ["Steepest descent is $-\\nabla L / \\|\\nabla L\\|$."]
+    solution: "$-\\nabla L/\\|\\nabla L\\| = (-3, 4)/5 = (-0.6, 0.8)$, giving a first-order change of $-5$."
+  - id: grad-review-flat
+    dimension: conceptual
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is $\\nabla f$ at a local minimum of a smooth function?"
+    options:
+      - { id: a, text: "The zero vector", correct: true }
+      - {
+          id: b,
+          text: "A vector pointing toward the global minimum",
+          correct: false,
+          category: misunderstood_definition,
+        }
+      - { id: c, text: "A vector of all ones", correct: false, category: recall_failure }
+    solution: "At a local minimum every partial derivative is zero, otherwise you could step downhill."
+  - id: grad-transfer-scale
+    dimension: transfer
+    type: mc
+    role: transfer
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A loss is $L(w_1, w_2) = w_1^2 + 100\\,w_2^2$. You start at $(1, 1)$ and take one step of $-\\eta\\nabla L$. Which statement best describes what happens with one shared learning rate $\\eta$?"
+    options:
+      - {
+          id: a,
+          text: "A step size that is safe for $w_2$ makes progress in $w_1$ very slow, and a step that is fast for $w_1$ overshoots in $w_2$",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Both coordinates converge at the same rate because the gradient points at the minimum",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The gradient $(2, 200)$ points steeply along $w_2$, not at the minimum $(0, 0)$.",
+        }
+      - {
+          id: c,
+          text: "The gradient is zero, so nothing happens",
+          correct: false,
+          category: math_error,
+        }
+    hints: ["Compute $\\nabla L(1,1)$ and compare the two components."]
+    solution: "$\\nabla L(1,1) = (2, 200)$. Stability in $w_2$ needs $\\eta < 0.01$, and at that rate $w_1$ shrinks by only 2% per step. This poor conditioning motivates feature standardisation and adaptive optimisers such as Adam."
+  - id: grad-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain in 2–4 sentences why stepping along the negative gradient decreases a function fastest, for small steps."
+    rubric:
+      - {
+          id: r1,
+          criterion: "Uses the first-order approximation $f(x+\\delta) \\approx f(x) + \\nabla f\\cdot\\delta$ (or describes the change as a dot product with the gradient)",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "Argues the dot product is most negative when $\\delta$ points opposite to $\\nabla f$ (angle 180°)",
+          weight: 2,
+          required: true,
+        }
+      - { id: r3, criterion: "Notes that this only holds locally, for small steps", weight: 1 }
+    exemplar: "For a small step δ, the change in f is approximately ∇f·δ = |∇f||δ|cosθ. For a fixed step length this is most negative when cosθ = -1, i.e. δ points opposite the gradient. It is only a local, first-order statement, so big steps can overshoot."
+    solution: "See the exemplar."

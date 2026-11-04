@@ -1,0 +1,121 @@
+concept: supervised-learning
+exercises:
+  - id: sl-check-target
+    dimension: conceptual
+    type: mc
+    role: check
+    difficulty: 1
+    est_minutes: 1
+    prompt: "You train a model to predict tomorrow's electricity demand (in MW) from today's temperature, the day of week and today's demand. What is the **target**?"
+    options:
+      - { id: a, text: "Tomorrow's demand in MW", correct: true }
+      - {
+          id: b,
+          text: "Today's temperature",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That is an input feature.",
+        }
+      - {
+          id: c,
+          text: "The mean squared error",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That is the loss.",
+        }
+      - { id: d, text: "The model's weights", correct: false, category: misunderstood_definition }
+    solution: "The target is what we want to predict: tomorrow's demand. This is a regression problem."
+  - id: dx-ml-1
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A robot learns to imitate a human: it records camera images and the joint commands the human teleoperator sent, then trains a network to output the commands from the images. In supervised-learning terms, what are the joint commands?"
+    options:
+      - { id: a, text: "The targets (labels)", correct: true }
+      - { id: b, text: "The inputs", correct: false, category: misunderstood_definition }
+      - {
+          id: c,
+          text: "The reward",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "There is no reward here. This is supervised learning (behavioral cloning), not RL.",
+        }
+      - { id: d, text: "The model parameters", correct: false, category: misunderstood_definition }
+    solution: "Images are the inputs; the expert's joint commands are the targets."
+  - id: sl-classify-vs-regress
+    dimension: conceptual
+    type: mc
+    role: core
+    difficulty: 1
+    est_minutes: 1
+    multi: true
+    prompt: "Which of these are **classification** problems? (Select all that apply.)"
+    options:
+      - { id: a, text: "Deciding whether an email is spam", correct: true }
+      - {
+          id: b,
+          text: "Predicting a gripper's next x-position in metres",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A continuous target makes this regression.",
+        }
+      - { id: c, text: "Choosing which of 10 objects is in an image", correct: true }
+      - {
+          id: d,
+          text: "Predicting the remaining battery life in minutes",
+          correct: false,
+          category: misunderstood_definition,
+        }
+    solution: "Spam and object identity are categorical (classification); position and battery life are real-valued (regression)."
+  - id: sl-review-ingredients
+    dimension: conceptual
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does training choose in supervised learning?"
+    options:
+      - {
+          id: a,
+          text: "The model parameters that minimise the average loss on the training data",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "The targets that best fit the inputs",
+          correct: false,
+          category: misunderstood_definition,
+        }
+      - {
+          id: c,
+          text: "The loss function",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The loss is chosen by the engineer, not learned.",
+        }
+    solution: "Training finds $\\theta$ minimising $\\frac1n\\sum L(f_\\theta(x_i), y_i)$."
+  - id: sl-explain-setup
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Pick any real problem you care about (robotics is fine) and describe it as a supervised-learning problem: name the inputs, targets, a model family, a loss and where the data would come from."
+    rubric:
+      - {
+          id: r1,
+          criterion: "Inputs and targets are clearly identified and the target is something observable for training examples",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "Loss matches the target type (e.g. MSE for real values, cross-entropy for classes)",
+          weight: 2,
+          required: true,
+        }
+      - { id: r3, criterion: "Names a plausible model family and data source", weight: 1 }
+    exemplar: "Predict whether a grasp will succeed. Inputs: wrist-camera image and proposed gripper pose; target: success (0/1) recorded after the attempt. Model: a small CNN with a sigmoid output; loss: binary cross-entropy. Data: logged grasp attempts from the robot running a heuristic grasp planner."
+    solution: "See the exemplar."

@@ -1,0 +1,19 @@
+concept: embeddings
+exercises:
+  - id: dx-tf-2
+    dimension: math
+    type: numeric
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A model has a vocabulary of 50,000 tokens and an embedding dimension of 512. How many learnable parameters are in its token embedding table?"
+    answer: 25600000
+    tolerance: { abs: 0.5 }
+    common_wrong:
+      - {
+          answer: 50512,
+          category: misunderstood_definition,
+          feedback: "The table has one 512-dimensional vector *per token*, so the sizes multiply.",
+        }
+    hints: ["The embedding table is a matrix with one row per token."]
+    solution: "The table is a $50{,}000 \\times 512$ matrix: $25{,}600{,}000$ parameters. Looking up token $i$ is the same as multiplying a one-hot vector by this matrix."

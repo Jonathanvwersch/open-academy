@@ -1,0 +1,38 @@
+concept: chain-rule
+version: 1
+fast_path: [objective, summary]
+blocks:
+  - kind: objective
+    md: |
+      **Goal:** differentiate compositions with the chain rule, and explain it as multiplying local sensitivities.
+  - kind: intuition
+    md: |
+      If $y$ depends on $u$ and $u$ depends on $x$, a nudge in $x$ moves $u$, which then moves $y$. The total sensitivity is the product of the two local sensitivities:
+      $$\frac{dy}{dx} = \frac{dy}{du}\cdot\frac{du}{dx}.$$
+      A neural network is a long chain of compositions, and backpropagation is this rule applied over and over.
+  - kind: example
+    md: |
+      $y = (3x + 1)^2$. Let $u = 3x + 1$, so $y = u^2$. Then $dy/du = 2u$ and $du/dx = 3$, giving $dy/dx = 2(3x+1)\cdot 3 = 6(3x+1)$.
+  - kind: check
+    exercise: cr-check-1
+  - kind: math
+    md: |
+      Single variable: $(f\circ g)'(x) = f'(g(x))\,g'(x)$.
+
+      Multivariable: if $L$ depends on $x$ through several intermediate variables $u_1,\dots,u_k$, **sum over the paths**:
+      $$\frac{\partial L}{\partial x} = \sum_{j} \frac{\partial L}{\partial u_j}\frac{\partial u_j}{\partial x}.$$
+  - kind: worked
+    md: |
+      **Sigmoid of a linear function.** $s = \sigma(wx + b)$ with $\sigma(z) = 1/(1+e^{-z})$ and $\sigma'(z) = \sigma(z)(1-\sigma(z))$.
+
+      1. Inner: $z = wx + b$, so $\partial z/\partial w = x$.
+      2. Outer: $ds/dz = \sigma(z)(1 - \sigma(z))$.
+      3. Chain: $\partial s/\partial w = \sigma(z)(1-\sigma(z))\,x$.
+
+      With $w = 0$, $b = 0$, $x = 2$: $z = 0$, $\sigma = 0.5$, so $\partial s/\partial w = 0.25 \cdot 2 = 0.5$.
+
+      **Two paths.** $L = u v$ with $u = x^2$ and $v = 3x$. Summing the paths: $\partial L/\partial x = v\cdot 2x + u \cdot 3 = 6x^2 + 3x^2 = 9x^2$. This matches differentiating $3x^3$ directly.
+  - kind: summary
+    md: |
+      - Multiply local derivatives along a chain.
+      - When a variable affects the output along several paths, add the contributions of the paths.

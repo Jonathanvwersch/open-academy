@@ -1,0 +1,221 @@
+concept: backpropagation
+exercises:
+  - id: bp-check-1
+    dimension: math
+    type: numeric
+    role: check
+    difficulty: 2
+    est_minutes: 2
+    prompt: "In the example ($x=1, w_1=2, w_2=3, t=4$), suppose instead $x = 2$ (keep the others). What is $\\partial L/\\partial w_2$?"
+    answer: 64
+    tolerance: { abs: 0.001 }
+    hints:
+      [
+        "Redo the forward pass: $z = 4$, $h = 4$, $y = 12$.",
+        "$\\partial L/\\partial y = 2(12 - 4) = 16$; then multiply by $h$.",
+      ]
+    solution: "Forward: $z = 4$, $h = 4$, $y = 12$. $\\partial L/\\partial y = 16$, so $\\partial L/\\partial w_2 = 16 \\cdot 4 = 64$."
+  - id: bp-faded-1
+    dimension: math
+    type: numeric
+    role: check
+    difficulty: 2
+    est_minutes: 3
+    prompt: "With $x = 1$, $w_1 = 2$, $w_2 = 3$, $t = 10$: what is $\\partial L/\\partial w_1$?"
+    answer: -24
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 24,
+          category: math_error,
+          feedback: "Sign: $y < t$, so $\\partial L/\\partial y$ is negative.",
+        }
+      - {
+          answer: -8,
+          category: incomplete_explanation,
+          feedback: "That is $\\partial L/\\partial y$. Continue through $w_2$, the ReLU gate and $x$.",
+        }
+    hints:
+      [
+        "$\\partial L/\\partial h = -8 \\cdot 3 = -24$.",
+        "ReLU is active ($z = 2 > 0$) and $x = 1$.",
+      ]
+    solution: "$\\partial L/\\partial h = -24$, the ReLU gate is 1, and $\\cdot x = 1$, so $\\partial L/\\partial w_1 = -24$."
+  - id: dx-dl-4
+    dimension: math
+    type: numeric
+    role: diagnostic
+    difficulty: 3
+    est_minutes: 4
+    prompt: "$y = w_2\\,\\mathrm{ReLU}(w_1 x)$ and $L = (y - t)^2$, with $x = 2$, $w_1 = 1.5$, $w_2 = -1$, $t = 1$. Compute $\\partial L/\\partial w_1$."
+    answer: 16
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: -16,
+          category: math_error,
+          feedback: "Check the signs: $\\partial L/\\partial y = -8$ and $w_2 = -1$.",
+        }
+      - {
+          answer: 8,
+          category: incomplete_explanation,
+          feedback: "You stopped one step early: multiply by $\\partial z/\\partial w_1 = x = 2$.",
+        }
+    solution: "Forward: $z = 3$, $h = 3$, $y = -3$. $\\partial L/\\partial y = 2(-3 - 1) = -8$, $\\partial L/\\partial h = -8\\cdot(-1) = 8$, the ReLU gate is 1, and $\\partial L/\\partial w_1 = 8\\cdot x = 16$."
+  - id: bp-shapes
+    dimension: implementation
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "In row convention, `Z = X @ W` with `X.shape == (64, 100)` and `W.shape == (100, 32)`. You have `G = dL/dZ` with shape `(64, 32)`. Which expression gives `dL/dW`?"
+    options:
+      - { id: a, text: "`X.T @ G`", correct: true }
+      - {
+          id: b,
+          text: "`G @ X.T`",
+          correct: false,
+          category: implementation_error,
+          feedback: "Shapes don't work: (64,32)@(100,64) is undefined.",
+        }
+      - {
+          id: c,
+          text: "`G.T @ X`",
+          correct: false,
+          category: implementation_error,
+          feedback: "That gives shape (32, 100), the transpose of what you need.",
+        }
+      - {
+          id: d,
+          text: "`G @ W.T`",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That is `dL/dX`, the gradient passed to the previous layer.",
+        }
+    hints: ["The gradient must have the same shape as `W`: (100, 32)."]
+    solution: "`X.T @ G` has shape (100,64)@(64,32) = (100,32), matching `W`."
+  - id: bp-complete-relu
+    dimension: implementation
+    type: code_complete
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Complete the backward step through a ReLU. `z1` is the cached pre-activation and `g_h1` the upstream gradient (same shape)."
+    code: |
+      g_z1 = ____
+    accept:
+      [
+        "g_h1 * (z1 > 0)",
+        "(z1 > 0) * g_h1",
+        "g_h1 * (z1 > 0).astype(float)",
+        "np.where(z1 > 0, g_h1, 0)",
+        "np.where(z1 > 0, g_h1, 0.0)",
+        "g_h1 * (z1 >= 0)",
+      ]
+    solution: "`g_z1 = g_h1 * (z1 > 0)`: the gradient passes where the unit was active and is blocked elsewhere."
+  - id: bp-debug-bias
+    dimension: transfer
+    type: debug
+    role: transfer
+    difficulty: 3
+    est_minutes: 4
+    prompt: "A hand-written backward pass fails its gradient check, but **only for `b1`**: the numeric gradient is about 64× larger than the analytic one, and the batch size is 64. Which line is wrong, and what is the fix?"
+    code: |
+      g_y = 2 * (y_hat - y) / len(y)
+      dW2 = h1.T @ g_y
+      db2 = g_y.sum(axis=0)
+      g_h1 = g_y @ W2.T
+      g_z1 = g_h1 * (z1 > 0)
+      dW1 = X.T @ g_z1
+      db1 = g_z1.mean(axis=0)
+    buggy_line: 7
+    fix_options:
+      - {
+          id: a,
+          text: "`db1 = g_z1.sum(axis=0)`. The bias is shared by every row, so its gradient sums the per-example contributions",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "`db1 = g_z1.sum(axis=1)`",
+          correct: false,
+          feedback: "That sums over hidden units and gives shape `(B,)`, not `(H,)`.",
+        }
+      - {
+          id: c,
+          text: "`db1 = g_z1`",
+          correct: false,
+          feedback: "Shape `(B, H)` does not match `b1`'s shape `(H,)`.",
+        }
+      - {
+          id: d,
+          text: "Divide `g_y` by `len(y)` a second time",
+          correct: false,
+          feedback: "That would make every gradient smaller, not fix `b1`.",
+        }
+    hints:
+      [
+        "A gradient off by exactly the batch size points to a mean that should be a sum (or the reverse).",
+        "Compare how `db2` is computed.",
+      ]
+    solution: "The $1/B$ from the mean loss is already in `g_y`. Using `.mean` for `db1` divides by $B$ again. Shared parameters accumulate gradient over the batch, so use `.sum(axis=0)`, as `db2` does."
+  - id: bp-review-why-cache
+    dimension: conceptual
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Why does training use much more memory than inference for the same network?"
+    options:
+      - {
+          id: a,
+          text: "The backward pass needs intermediate activations from the forward pass, so they are cached until the gradients are computed",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Gradients are larger than parameters",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Each gradient has the same shape as its parameter.",
+        }
+      - {
+          id: c,
+          text: "Training uses double precision",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+    solution: "Local derivatives depend on forward values (inputs to multiply nodes, ReLU masks, and so on), so activations are stored for the whole batch until backward completes."
+  - id: bp-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: "Explain backpropagation to a software engineer who knows the chain rule: what problem it solves, how it works, and why it is efficient."
+    rubric:
+      - {
+          id: r1,
+          criterion: "Problem: need the gradient of the loss with respect to every parameter to do gradient descent",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "Mechanism: forward pass caches intermediates; backward pass goes in reverse order multiplying upstream gradient by local derivatives (chain rule), summing over branches",
+          weight: 3,
+          required: true,
+        }
+      - {
+          id: r3,
+          criterion: "Efficiency: all gradients in about the cost of one forward pass, versus one pass per parameter for finite differences",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r4,
+          criterion: "Mentions verifying with a numerical gradient check, or the memory cost of caching",
+          weight: 1,
+        }
+    exemplar: "Gradient descent needs ∂L/∂θ for every parameter. Backprop runs the network forward once, caching every intermediate value, then walks the computation graph backwards from the loss: each node multiplies the gradient arriving from above by its local derivative and passes the result to its inputs, adding where branches merge. Because each intermediate gradient is computed once and reused, you get every parameter's gradient for roughly the cost of one more forward pass, instead of one forward pass per parameter as with finite differences. The price is memory for the cached activations, and hand-written versions should be checked numerically."
+    solution: "See the exemplar."

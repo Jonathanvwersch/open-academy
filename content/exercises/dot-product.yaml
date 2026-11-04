@@ -1,0 +1,139 @@
+concept: dot-product
+exercises:
+  - id: dot-check-1
+    dimension: math
+    type: numeric
+    role: check
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Compute $(1, 2, 3) \\cdot (4, -5, 6)$."
+    answer: 12
+    tolerance: { abs: 0.001 }
+    hints: ["Multiply matching entries: $1\\cdot4$, $2\\cdot(-5)$, $3\\cdot6$."]
+    solution: "$4 - 10 + 18 = 12$."
+  - id: dot-faded-cos
+    dimension: math
+    type: numeric
+    role: check
+    difficulty: 1
+    est_minutes: 2
+    prompt: "For $a = (3, 4)$ and $b = (4, 3)$, what is the cosine similarity? (2 decimal places)"
+    answer: 0.96
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 24,
+          category: incomplete_explanation,
+          feedback: "24 is the dot product. Cosine similarity divides by $\\|a\\|\\|b\\| = 25$.",
+        }
+    hints: ["$a \\cdot b = 24$.", "Divide by $\\|a\\|\\|b\\| = 5 \\cdot 5$."]
+    solution: "$24 / 25 = 0.96$: almost the same direction."
+  - id: dot-cos-core
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "What is the cosine similarity between $u = (1, 0, 1)$ and $v = (0, 1, 1)$?"
+    answer: 0.5
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 1,
+          category: incomplete_explanation,
+          feedback: "1 is the dot product. You still need to divide by both lengths ($\\sqrt2$ each).",
+        }
+    hints: ["$u \\cdot v = 1$.", "$\\|u\\| = \\|v\\| = \\sqrt2$."]
+    solution: "$\\frac{1}{\\sqrt2\\sqrt2} = 0.5$, an angle of $60^\\circ$."
+  - id: dot-review-zero
+    dimension: conceptual
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Two non-zero vectors have dot product $0$. What can you conclude?"
+    options:
+      - { id: a, text: "They are perpendicular (orthogonal)", correct: true }
+      - {
+          id: b,
+          text: "At least one of them is the zero vector",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The question says both are non-zero. $(1,0)\\cdot(0,1) = 0$.",
+        }
+      - {
+          id: c,
+          text: "They point in opposite directions",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Opposite directions give a *negative* dot product ($\\cos 180^\\circ = -1$).",
+        }
+      - { id: d, text: "They are identical", correct: false, category: misunderstood_definition }
+    solution: "$a\\cdot b = \\|a\\|\\|b\\|\\cos\\theta = 0$ with non-zero lengths means $\\cos\\theta = 0$, so $\\theta = 90^\\circ$."
+  - id: dot-review-weighted
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A linear score uses weights $w = (2, -1, 0.5)$. For input $x = (3, 4, 2)$, what is $w \\cdot x$?"
+    answer: 3
+    tolerance: { abs: 0.001 }
+    solution: "$6 - 4 + 1 = 3$."
+  - id: dot-transfer-attention
+    dimension: transfer
+    type: mc
+    role: transfer
+    difficulty: 2
+    est_minutes: 2
+    prompt: "In attention, a query $q$ scores each key with the raw dot product $q \\cdot k$. One key is accidentally multiplied by 3, without changing its direction. What happens to that key's score, and why might this be a problem?"
+    options:
+      - {
+          id: a,
+          text: "Its score triples, so it can win the softmax because of its length rather than its relevance",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Nothing changes: dot products depend only on direction",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Only cosine similarity is length-invariant. $q\\cdot(3k) = 3(q \\cdot k)$.",
+        }
+      - {
+          id: c,
+          text: "Its score becomes 9 times larger",
+          correct: false,
+          category: math_error,
+          feedback: "The dot product is linear in each argument, so scaling $k$ by 3 scales the score by 3.",
+        }
+      - { id: d, text: "Its score becomes negative", correct: false, category: incorrect_reasoning }
+    hints: ["Is the dot product linear in $k$?"]
+    solution: "$q \\cdot (3k) = 3\\,(q\\cdot k)$. Raw dot products reward length as well as alignment, which is one reason vector norms are controlled, e.g. by normalisation layers and the $1/\\sqrt d$ scaling."
+  - id: dot-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain in 2–4 sentences why a dot product can be read as a similarity score, and when that reading is misleading."
+    rubric:
+      - {
+          id: r1,
+          criterion: "States $a\\cdot b = \\|a\\|\\|b\\|\\cos\\theta$, or equivalently that it is large when the vectors point the same way",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "Notes that it also grows with vector length, so long vectors score high even if they are less aligned",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r3,
+          criterion: "Mentions cosine similarity or normalisation as the length-independent alternative",
+          weight: 1,
+        }
+    exemplar: "Since a·b = |a||b|cosθ, the dot product is biggest when the vectors point in the same direction, zero when orthogonal and negative when opposite, so it behaves like a similarity. But it also scales with the lengths, so a long vector can out-score a better-aligned short one. Cosine similarity divides out the lengths to compare direction only."
+    solution: "See the exemplar."

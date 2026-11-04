@@ -1,0 +1,37 @@
+concept: linear-regression
+version: 1
+fast_path: [objective, summary]
+blocks:
+  - kind: objective
+    md: |
+      **Goal:** write the linear model in vector form, interpret its weights, and compute vectorised predictions in NumPy.
+  - kind: intuition
+    md: |
+      Linear regression predicts a number as a weighted sum of features plus a bias:
+      $$\hat y = w \cdot x + b.$$
+      Each weight $w_j$ says how much the prediction changes when feature $j$ increases by one unit and all other features stay fixed. It is the simplest model that has every component of a real training system, which is why the Saturday lab builds it from scratch.
+  - kind: example
+    md: |
+      House price (in thousands) $= 3\cdot\text{area} + 10\cdot\text{bedrooms} + 50$. A 100 m², 2-bedroom house: $300 + 20 + 50 = 370$. One extra m² adds 3 (thousand); one extra bedroom *at the same area* adds 10.
+  - kind: check
+    exercise: lr-check-predict
+  - kind: math
+    md: |
+      For a batch $X \in \mathbb R^{n\times d}$ (one example per row):
+      $$\hat y = Xw + b\mathbf 1 \in \mathbb{R}^n.$$
+      A common trick is to append a constant-1 feature to every row, so the bias becomes just another weight.
+  - kind: worked
+    md: |
+      ```python
+      import numpy as np
+      X = np.array([[100., 2.], [80., 1.], [150., 4.]])  # area, bedrooms
+      w = np.array([3., 10.])
+      b = 50.
+      y_hat = X @ w + b      # array([370., 300., 540.])
+      ```
+      `X @ w` has shape `(3,)`; the scalar `b` broadcasts to every row. No Python loop is needed.
+  - kind: summary
+    md: |
+      - $\hat y = w\cdot x + b$, and for a batch, $\hat y = Xw + b$.
+      - $w_j$ is the change in prediction per unit of feature $j$, with the other features held fixed.
+      - Vectorise with `X @ w + b`.

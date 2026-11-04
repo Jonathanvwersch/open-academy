@@ -1,0 +1,20 @@
+concept: mdp
+exercises:
+  - id: dx-rl-1
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Which of these is **not** part of the definition of a Markov decision process?"
+    options:
+      - { id: a, text: "The agent's policy", correct: true }
+      - {
+          id: b,
+          text: "The transition probabilities $P(s' \\mid s, a)$",
+          correct: false,
+          category: misunderstood_definition,
+        }
+      - { id: c, text: "The reward function", correct: false, category: misunderstood_definition }
+      - { id: d, text: "The set of actions", correct: false, category: misunderstood_definition }
+    solution: "An MDP is $(S, A, P, R, \\gamma)$: it describes the environment. The policy is what the agent chooses in order to act within it."

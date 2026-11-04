@@ -30,8 +30,10 @@ concepts:
     objectives: [{ text: "...", dimension: math }]
     projects: [linreg-numpy]      # optional
     sources: [{ title: "...", url: "..." }]   # optional
-    status: authored | stub       # stub = graph node only, no lesson yet
+    status: authored | stub       # stub = graph node with diagnostic probes only; no lesson or practice
 ```
+
+Stub concepts may have exercises only when `role: diagnostic`, and must not have a lesson file. Diagnostic probes on stubs update mastery normally, but stubs are not scheduled for lessons or practice until authored.
 
 ## content/lessons/<concept-id>.yaml  (required iff status: authored)
 ```yaml

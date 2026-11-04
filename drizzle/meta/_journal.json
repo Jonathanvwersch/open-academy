@@ -8,6 +8,13 @@
       "when": 1793753887220,
       "tag": "0000_third_wiccan",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793754949860,
+      "tag": "0001_striped_bushwacker",
+      "breakpoints": true
     }
   ]
 }

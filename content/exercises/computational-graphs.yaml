@@ -1,0 +1,78 @@
+concept: computational-graphs
+exercises:
+  - id: cg-check-1
+    dimension: math
+    type: numeric
+    role: check
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the example $f = (x + y)\\cdot z$ with $x=-2, y=5, z=-4$, what is $\\partial f/\\partial z$?"
+    answer: 3
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: -4,
+          category: misunderstood_definition,
+          feedback: "For a multiply node, the derivative with respect to one input is the *other* input's value, here $q = 3$.",
+        }
+    solution: "$\\partial f/\\partial z = q = x + y = 3$."
+  - id: cg-mul-add
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt: "$f = a\\cdot b + c\\cdot b$ with $a = 2$, $b = -3$, $c = 4$. Using the graph (two multiply nodes feeding an add node, and $b$ used twice), what is $\\partial f/\\partial b$?"
+    answer: 6
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 2,
+          category: incomplete_explanation,
+          feedback: "$b$ feeds two nodes, so its gradient is the *sum* of both paths: $a + c$.",
+        }
+    hints: ["$b$ appears in two multiply nodes, so add both contributions."]
+    solution: "$\\partial f/\\partial b = a + c = 6$."
+  - id: cg-relu-node
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "$f = \\mathrm{ReLU}(w x)$ with $w = -1$, $x = 3$. What is $\\partial f/\\partial w$?"
+    answer: 0
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 3,
+          category: misunderstood_definition,
+          feedback: "The ReLU input is $-3 < 0$, so the ReLU node's local derivative is 0 and blocks the gradient.",
+        }
+    solution: "The pre-activation is $-3$. ReLU's local derivative there is 0, so $\\partial f/\\partial w = 0 \\cdot x = 0$."
+  - id: cg-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Why is it useful to represent a model's computation as a graph of primitive operations when computing gradients?"
+    rubric:
+      - {
+          id: r1,
+          criterion: "Each primitive node only needs its simple local derivative",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "The chain rule composes local derivatives along paths (summing over multiple paths) to get the gradient of the output with respect to any input/parameter",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r3,
+          criterion: "Mentions this lets frameworks automate differentiation for arbitrary models",
+          weight: 1,
+        }
+    exemplar: "Breaking the computation into primitive nodes means each node only has to know a trivial local derivative (add passes gradients through, multiply swaps in the other input). The chain rule then composes these along every path from the loss back to each parameter, summing where paths merge. Because the rules are local, a framework can do this automatically for any model you write."
+    solution: "See the exemplar."

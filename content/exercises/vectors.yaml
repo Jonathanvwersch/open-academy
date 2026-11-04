@@ -1,0 +1,157 @@
+concept: vectors
+exercises:
+  - id: vec-check-combo
+    dimension: math
+    type: text
+    role: check
+    difficulty: 1
+    est_minutes: 2
+    prompt: "With $a = (1, 2)$ and $b = (3, -1)$, compute $3a - b$. Answer as `(x, y)`."
+    accept: ["(0,7)", "(0, 7)", "0,7", "0, 7", "[0,7]", "[0, 7]"]
+    hints: ["Compute $3a$ first.", "$3a = (3, 6)$. Now subtract $b$ componentwise."]
+    solution: "$3a = (3, 6)$, and $(3, 6) - (3, -1) = (0, 7)$."
+  - id: dx-math-1
+    dimension: math
+    type: numeric
+    role: diagnostic
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is the L2 norm $\\|x\\|_2$ of $x = (3, 4, 12)$?"
+    answer: 13
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 19,
+          category: misunderstood_definition,
+          feedback: "That is the L1 norm (sum of absolute values). The L2 norm is the square root of the sum of squares.",
+        }
+      - { answer: 169, category: math_error, feedback: "You forgot the square root." }
+    solution: "$\\sqrt{9 + 16 + 144} = \\sqrt{169} = 13$."
+  - id: vec-norm-1
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Compute $\\|v\\|_2$ for $v = (1, -2, 2)$."
+    answer: 3
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 1,
+          category: misunderstood_definition,
+          feedback: "You summed the signed components. A norm squares them, so signs never cancel.",
+        }
+      - {
+          answer: 5,
+          category: misunderstood_definition,
+          feedback: "That is the L1 norm $\\sum|v_i|$. The L2 norm is $\\sqrt{\\sum v_i^2}$.",
+        }
+      - { answer: 9, category: math_error, feedback: "You forgot the square root." }
+    hints: ["Square each component.", "$1 + 4 + 4 = 9$. One step left."]
+    solution: "$\\sqrt{1 + 4 + 4} = \\sqrt{9} = 3$."
+  - id: vec-distance
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What is the Euclidean distance between the points $(1, 1)$ and $(4, 5)$?"
+    answer: 5
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 7,
+          category: misunderstood_definition,
+          feedback: "That is the L1 (Manhattan) distance $|3| + |4|$.",
+        }
+      - { answer: 25, category: math_error, feedback: "You forgot the square root." }
+    hints: ["Distance is the norm of the difference vector."]
+    solution: "The difference is $(3, 4)$, and $\\sqrt{9 + 16} = 5$."
+  - id: vec-scale-dominance
+    dimension: conceptual
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "You compare houses by Euclidean distance on two raw features: floor area in m² (range 40–300) and number of bedrooms (range 1–5). What happens?"
+    options:
+      - {
+          id: a,
+          text: "Area dominates the distance, so bedrooms barely affect which houses count as similar",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Both features contribute equally because distance treats each coordinate the same",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Each coordinate is treated the same *numerically*, but a 50 m² gap contributes $50^2 = 2500$ while a 2-bedroom gap contributes $4$.",
+        }
+      - {
+          id: c,
+          text: "Bedrooms dominate because they are integers",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: d,
+          text: "Distance is undefined for features with different units",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "It is defined, which is exactly the trap: it silently mixes units.",
+        }
+    hints: ["Compare the size of a typical difference in each feature, then square both."]
+    solution: "Squared differences in area are thousands of times larger than in bedrooms. Standardise each feature (subtract the mean, divide by the standard deviation) so they are comparable."
+  - id: vec-review-l1-l2
+    dimension: conceptual
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Which expression is the L2 norm of $x \\in \\mathbb{R}^n$?"
+    options:
+      - { id: a, text: "$\\sqrt{\\sum_i x_i^2}$", correct: true }
+      - {
+          id: b,
+          text: "$\\sum_i |x_i|$",
+          correct: false,
+          category: recall_failure,
+          feedback: "That is the L1 norm.",
+        }
+      - {
+          id: c,
+          text: "$\\max_i |x_i|$",
+          correct: false,
+          category: recall_failure,
+          feedback: "That is the L∞ (max) norm.",
+        }
+      - { id: d, text: "$\\sum_i x_i$", correct: false, category: recall_failure }
+    solution: "$\\|x\\|_2 = \\sqrt{\\sum_i x_i^2}$."
+  - id: vec-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "In 2–4 sentences: what does it mean to represent a data example as a vector, and why does the scale of each feature matter when you compare examples by distance?"
+    rubric:
+      - {
+          id: r1,
+          criterion: "Each feature becomes one coordinate, so an example is a point (or arrow) in feature space",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "Distance sums (squared) differences over coordinates, so features with large numeric ranges dominate",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r3,
+          criterion: "Mentions standardising or normalising features as the remedy",
+          weight: 1,
+        }
+    exemplar: "Each feature is one coordinate, so an example becomes a point in an n-dimensional space and similar examples are nearby points. Euclidean distance adds up squared differences per coordinate, so a feature measured in large units (say area in m²) swamps one in small units (bedrooms). Standardising each feature to zero mean and unit variance puts them on comparable scales."
+    solution: "See the exemplar. The key ideas are coordinates = features, and distance is sensitive to units/scale."

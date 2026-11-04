@@ -1,0 +1,40 @@
+concept: computational-graphs
+version: 1
+fast_path: [objective, summary]
+blocks:
+  - kind: objective
+    md: |
+      **Goal:** draw the computational graph of an expression and compute the local derivative at each node.
+  - kind: intuition
+    md: |
+      Any computation can be broken into primitive operations (add, multiply, exp, ReLU) connected in a directed acyclic graph. Inputs and parameters are the leaves, each node holds an intermediate value, and the loss sits at the end.
+
+      The point of the graph is that every node only needs to know its **local derivative**: how its output changes with each of its inputs. The chain rule then stitches those local pieces into whole-network gradients. That stitching is backpropagation, which comes next.
+  - kind: example
+    md: |
+      $f(x, y, z) = (x + y)\cdot z$ with $x=-2,\ y=5,\ z=-4$.
+
+      - Node $q = x + y = 3$, with local derivatives $\partial q/\partial x = 1$ and $\partial q/\partial y = 1$.
+      - Node $f = q\cdot z = -12$, with local derivatives $\partial f/\partial q = z = -4$ and $\partial f/\partial z = q = 3$.
+
+      Chaining them: $\partial f/\partial x = \partial f/\partial q\cdot\partial q/\partial x = -4$.
+  - kind: check
+    exercise: cg-check-1
+  - kind: math
+    md: |
+      Local derivatives of common nodes:
+
+      | node | output | local derivatives |
+      |---|---|---|
+      | add | $a + b$ | $1$, $1$ |
+      | multiply | $ab$ | $b$, $a$ |
+      | exp | $e^a$ | $e^a$ |
+      | ReLU | $\max(0,a)$ | $\mathbb 1[a > 0]$ |
+      | square | $a^2$ | $2a$ |
+
+      Add nodes **copy** the incoming gradient to every input, and multiply nodes **swap** in the other input's value.
+  - kind: summary
+    md: |
+      - A computation is a DAG of primitive operations.
+      - Each node knows only its local derivatives, and the chain rule composes them.
+      - add nodes distribute the gradient unchanged; multiply nodes scale it by the other input.

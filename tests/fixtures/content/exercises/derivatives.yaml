@@ -1,0 +1,37 @@
+concept: derivatives
+exercises:
+  - id: dx-derivatives
+    dimension: math
+    type: expression
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 3
+    prompt: "Differentiate $x^2$."
+    hints: []
+    solution: "The power rule gives $2x$."
+    answer: "2*x"
+    variables: { x: [-3, 3] }
+  - id: derivatives-power-rule
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt: "Evaluate $\\frac{d}{dx}x^3$ at $x=2$."
+    hints: ["Apply the power rule before substituting."]
+    solution: "The derivative is $3x^2$, which is $12$ at $x=2$."
+    answer: 12
+    tolerance: { abs: 0.000001 }
+  - id: derivatives-explain
+    dimension: conceptual
+    type: explain
+    role: review
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain what the derivative tells you at a point."
+    hints: []
+    solution: "It gives the local rate of change, or tangent slope."
+    rubric:
+      - { id: local-rate, criterion: Names the local rate of change, weight: 0.6, required: true }
+      - { id: tangent-slope, criterion: Connects it to tangent slope, weight: 0.4 }
+    exemplar: "The derivative is the local rate of change and equals the tangent slope."

@@ -1,0 +1,321 @@
+schedule: { mon: 60, tue: 60, wed: 60, thu: 60, fri: 60, sat: 300, sun: 60 }
+domains:
+  - {
+      id: math,
+      title: Mathematics for ML,
+      description: "Linear algebra, calculus and probability that ML actually uses.",
+    }
+  - {
+      id: classical-ml,
+      title: Classical machine learning,
+      description: "Supervised learning, losses, optimisation and evaluation.",
+    }
+  - {
+      id: deep-learning,
+      title: Deep learning,
+      description: "Neural networks, backpropagation and training practice.",
+    }
+  - {
+      id: transformers,
+      title: Transformers and LLMs,
+      description: "Tokens, attention, transformer blocks and language-model training.",
+    }
+  - {
+      id: vision,
+      title: Computer vision,
+      description: "Images, convolutions, vision encoders and vision-language models.",
+    }
+  - {
+      id: robotics,
+      title: Robotics foundations,
+      description: "Frames, transforms, kinematics, control and perception.",
+    }
+  - {
+      id: rl,
+      title: Reinforcement learning,
+      description: "MDPs, value functions, Q-learning and policy gradients.",
+    }
+  - {
+      id: imitation,
+      title: Imitation learning,
+      description: "Demonstrations, behavioral cloning, distribution shift and evaluation.",
+    }
+  - {
+      id: robot-learning,
+      title: Modern robot learning,
+      description: "Action chunking, diffusion policies, VLAs and robot data.",
+    }
+  - {
+      id: research,
+      title: Research and methodology,
+      description: "Experimental design, statistics and reading papers.",
+    }
+weeks:
+  - {
+      week: 1,
+      title: ML fundamentals,
+      project: linreg-numpy,
+      concepts:
+        [
+          vectors,
+          dot-product,
+          matrices,
+          derivatives,
+          partial-derivatives,
+          gradients,
+          probability-basics,
+          supervised-learning,
+          linear-regression,
+          loss-functions,
+          gradient-descent,
+          train-test-split,
+        ],
+    }
+  - {
+      week: 2,
+      title: Neural networks,
+      project: nn-from-scratch,
+      concepts:
+        [
+          perceptron,
+          activation-functions,
+          mlp-forward-pass,
+          chain-rule,
+          computational-graphs,
+          backpropagation,
+          autodiff,
+          pytorch-basics,
+          logistic-regression,
+        ],
+    }
+  - {
+      week: 3,
+      title: Deep learning practice,
+      project: image-classifier,
+      concepts:
+        [
+          sgd-minibatch,
+          momentum-adam,
+          overfitting,
+          regularization,
+          generalization,
+          evaluation-metrics,
+          classification-softmax,
+          weight-init-normalization,
+          debugging-training,
+          images-as-tensors,
+          convolutions,
+          gaussian-distribution,
+          maximum-likelihood,
+        ],
+    }
+  - {
+      week: 4,
+      title: Transformers and LLMs,
+      project: char-transformer,
+      concepts:
+        [
+          tokenization,
+          embeddings,
+          attention,
+          multi-head-attention,
+          positional-encoding,
+          transformer-block,
+          causal-masking,
+          autoregressive-lm,
+          pretraining,
+        ],
+    }
+  - {
+      week: 5,
+      title: Robotics foundations,
+      project: planar-arm,
+      concepts:
+        [
+          coordinate-frames,
+          rotation-matrices,
+          rigid-transforms,
+          homogeneous-transforms,
+          robot-joints,
+          forward-kinematics,
+          inverse-kinematics,
+          motion-planning-basics,
+        ],
+    }
+  - {
+      week: 6,
+      title: Robotics control and perception,
+      project: control-sim,
+      concepts:
+        [
+          robot-state-observation-action,
+          sensors,
+          camera-geometry,
+          pid-control,
+          dynamics-basics,
+          perception-pipelines,
+        ],
+    }
+  - {
+      week: 7,
+      title: Imitation learning,
+      project: bc-policy,
+      concepts:
+        [
+          demonstrations,
+          obs-action-datasets,
+          behavioral-cloning,
+          distribution-shift,
+          dagger,
+          policy-evaluation,
+        ],
+    }
+  - {
+      week: 8,
+      title: Reinforcement learning,
+      project: rl-sim,
+      concepts:
+        [
+          mdp,
+          policies-returns,
+          value-functions,
+          q-learning,
+          exploration,
+          policy-gradients,
+          ppo,
+          simulation-for-rl,
+          reward-design,
+          bc-vs-rl,
+        ],
+    }
+  - {
+      week: 9,
+      title: Modern multimodal AI,
+      project: vision-policy,
+      concepts:
+        [
+          vision-encoders,
+          image-text-alignment,
+          vision-language-models,
+          action-representations,
+          vision-conditioned-policies,
+          post-training,
+        ],
+    }
+  - {
+      week: 10,
+      title: Advanced robot learning,
+      project: chunking-policy,
+      concepts:
+        [
+          action-chunking,
+          diffusion-policies,
+          transformer-policies,
+          vla-models,
+          robot-foundation-models,
+          embodiment-gap,
+        ],
+    }
+  - {
+      week: 11,
+      title: End-to-end robot learning,
+      project: capstone,
+      concepts:
+        [
+          data-pipelines-robotics,
+          policy-evaluation,
+          failure-analysis,
+          experimental-design,
+          statistical-evaluation,
+        ],
+    }
+  - {
+      week: 12,
+      title: Capstone and final assessment,
+      project: capstone,
+      concepts: [system-design-ml, reading-papers, critical-evaluation],
+    }
+goals:
+  - {
+      id: g-training,
+      text: "Explain how modern ML models are trained",
+      concepts:
+        [supervised-learning, loss-functions, gradient-descent, sgd-minibatch, pytorch-basics],
+    }
+  - {
+      id: g-optimization,
+      text: "Understand loss functions, gradient descent, backpropagation and optimisation",
+      concepts: [loss-functions, gradient-descent, backpropagation, momentum-adam],
+    }
+  - {
+      id: g-architectures,
+      text: "Explain major deep learning architectures",
+      concepts: [mlp-forward-pass, convolutions, transformer-block],
+    }
+  - {
+      id: g-transformer,
+      text: "Understand transformers and implement a small one",
+      concepts:
+        [attention, multi-head-attention, transformer-block, causal-masking, autoregressive-lm],
+    }
+  - {
+      id: g-llm-pipeline,
+      text: "Understand the components of an LLM training pipeline",
+      concepts: [tokenization, pretraining, post-training],
+    }
+  - {
+      id: g-paradigms,
+      text: "Understand supervised, imitation and reinforcement learning",
+      concepts: [supervised-learning, behavioral-cloning, mdp, bc-vs-rl],
+    }
+  - {
+      id: g-robotics-core,
+      text: "Explain coordinate frames, kinematics, dynamics, control, observations and actions",
+      concepts:
+        [
+          coordinate-frames,
+          forward-kinematics,
+          inverse-kinematics,
+          dynamics-basics,
+          pid-control,
+          robot-state-observation-action,
+        ],
+    }
+  - {
+      id: g-vla,
+      text: "Understand modern vision-language-action models",
+      concepts: [vision-language-models, vla-models, robot-foundation-models],
+    }
+  - {
+      id: g-robot-policies,
+      text: "Understand behavioral cloning, action chunking, diffusion policies and demonstrations",
+      concepts:
+        [
+          demonstrations,
+          behavioral-cloning,
+          action-chunking,
+          diffusion-policies,
+          distribution-shift,
+        ],
+    }
+  - {
+      id: g-build-eval,
+      text: "Build and evaluate simple ML models",
+      concepts:
+        [linear-regression, train-test-split, evaluation-metrics, debugging-training, overfitting],
+    }
+  - {
+      id: g-sim-policy,
+      text: "Train a basic simulated robot policy",
+      concepts: [simulation-for-rl, ppo, behavioral-cloning, policy-evaluation],
+    }
+  - {
+      id: g-papers,
+      text: "Read a modern paper, identify its contributions and limitations",
+      concepts: [reading-papers, critical-evaluation, experimental-design],
+    }
+  - {
+      id: g-conversations,
+      text: "Hold technically informed conversations with ML and robotics researchers",
+      concepts: [embodiment-gap, data-pipelines-robotics, failure-analysis, system-design-ml],
+    }

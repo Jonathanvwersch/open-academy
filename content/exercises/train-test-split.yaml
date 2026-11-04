@@ -1,0 +1,127 @@
+concept: train-test-split
+exercises:
+  - id: tts-check-purpose
+    dimension: conceptual
+    type: mc
+    role: check
+    difficulty: 1
+    est_minutes: 1
+    prompt: "You try 20 learning rates and keep the one with the best score. Which split should that score come from?"
+    options:
+      - { id: a, text: "Validation", correct: true }
+      - {
+          id: b,
+          text: "Test",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Choosing based on test data makes the test estimate optimistic. Keep test untouched until the end.",
+        }
+      - {
+          id: c,
+          text: "Train",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Training loss rewards overfitting; it cannot tell you what generalises.",
+        }
+    solution: "Hyperparameter selection uses validation data."
+  - id: dx-ml-3
+    dimension: transfer
+    type: mc
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Before splitting, you standardise every feature using the mean and standard deviation of the **entire** dataset, then split 80/20 into train and test. What is wrong?"
+    options:
+      - {
+          id: a,
+          text: "Test-set statistics leaked into training preprocessing; fit the scaler on the training split only",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Nothing: standardisation does not use labels, so it cannot leak",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Leakage is any information from test data, labels or not.",
+        }
+      - {
+          id: c,
+          text: "Standardisation should be applied after training",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+      - { id: d, text: "The split should be 50/50", correct: false, category: incorrect_reasoning }
+    solution: "Preprocessing parameters are part of the model. Computing them on all data lets test information shape training, which makes the evaluation optimistic (often only slightly, but it is a classic bug)."
+  - id: tts-episodes
+    dimension: transfer
+    type: mc
+    role: transfer
+    difficulty: 2
+    est_minutes: 2
+    prompt: "You have 60 teleoperation episodes (300 frames each) for a pick-and-place policy. How should you build the held-out set?"
+    options:
+      - { id: a, text: "Hold out whole episodes (e.g. 12 of the 60)", correct: true }
+      - {
+          id: b,
+          text: "Hold out a random 20% of all frames",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "Neighbouring frames are near-duplicates, so a frame-level split leaks.",
+        }
+      - {
+          id: c,
+          text: "Hold out the last 20% of frames from every episode",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "This still shares scenes and objects with training, and tests a different phase of the task.",
+        }
+    solution: "Split at the unit that is independent at deployment: the episode (or even the scene/object, if you care about generalising to new scenes)."
+  - id: tts-review-test-use
+    dimension: conceptual
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why should the test set ideally be used only once?"
+    options:
+      - {
+          id: a,
+          text: "Every decision made by looking at it biases its estimate of performance on new data",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Evaluating many times is computationally expensive",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: c,
+          text: "The test set is smaller than the training set",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+    solution: "Repeated use turns the test set into a validation set, and its error becomes optimistic."
+  - id: tts-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain in 2–4 sentences why we need a validation set *and* a test set, rather than just one held-out set."
+    rubric:
+      - {
+          id: r1,
+          criterion: "Validation is used repeatedly for model/hyperparameter selection",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "Repeated selection makes validation performance optimistic, so an untouched test set is needed for an unbiased final estimate",
+          weight: 2,
+          required: true,
+        }
+      - { id: r3, criterion: "Mentions that test should be used once / at the end", weight: 1 }
+    exemplar: "We use the validation set over and over to pick hyperparameters and stopping points, so the chosen model is partly fitted to it and its validation score is optimistic. A separate test set that played no role in any decision gives an unbiased estimate of performance on new data, as long as we only use it at the end."
+    solution: "See the exemplar."

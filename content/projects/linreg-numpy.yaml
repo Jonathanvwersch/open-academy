@@ -1,0 +1,74 @@
+id: linreg-numpy
+title: Linear regression with NumPy, from scratch
+week: 1
+status: authored
+est_hours: 4
+objective: "Implement linear regression trained by batch gradient descent using only NumPy, verify your gradients numerically, evaluate on held-out data, and visualise how the loss and parameters evolve."
+background: |
+  You have seen linear regression, mean squared error and gradient descent as separate ideas this week. This lab puts them together into the smallest complete training system: a model, a loss, a gradient, an optimiser loop, a held-out evaluation and a diagnostic plot. Every later project (neural networks, transformers, robot policies) has exactly these parts, only bigger.
+
+  You will work in your own editor. The app only shows instructions and records results; your code never runs on the Academy server.
+
+  **Setup**
+  ```bash
+  cd labs
+  uv run setup.py linreg-numpy      # copies starter/ to linreg-numpy/work/
+  # edit labs/linreg-numpy/work/linreg.py
+  uv run verify.py linreg-numpy     # runs tests + metrics, writes work/results.json
+  ```
+  Upload `labs/linreg-numpy/work/results.json` on this page when you are done (you can upload as many times as you like; the latest counts).
+prereqs: [linear-regression, loss-functions, gradient-descent, train-test-split]
+tasks:
+  - id: t-predict
+    title: Vectorised predictions
+    md: "Implement `predict(X, w, b)` returning `X @ w + b` for `X` of shape `(n, d)`. No Python loops."
+  - id: t-mse
+    title: Mean squared error
+    md: "Implement `mse(y_hat, y)`. Make sure it is a *mean*, not a sum, so the learning rate does not depend on dataset size."
+  - id: t-grad
+    title: Analytic gradients
+    md: "Implement `gradients(X, y, w, b)` returning `(dw, db)` for the MSE loss. Derive them on paper first: $\\partial L/\\partial w = \\frac{2}{n} X^\\top(\\hat y - y)$ and $\\partial L/\\partial b = \\frac{2}{n}\\sum_i(\\hat y_i - y_i)$. The verifier checks them against finite differences."
+  - id: t-fit
+    title: Gradient-descent loop
+    md: "Implement `fit(X, y, lr, steps)` starting from zeros. Return the final `(w, b)` and a history list of `(loss, w.copy(), b)` per step."
+  - id: t-split
+    title: Train/validation split
+    md: "Implement `train_val_split(X, y, val_frac, seed)` with a seeded shuffle. Fit on train only; report validation MSE."
+  - id: t-plot
+    title: Diagnostic plot
+    md: "Run `uv run linreg-numpy/work/plot.py` to save `work/loss.png` (loss vs step, log scale) and `work/params.png` (trajectory of the two weights). Look at them before answering the reflection questions."
+  - id: t-lr
+    title: Learning-rate experiment
+    md: "Train with lr = 0.001, 0.01, 0.1 and 0.5 on the provided data. Note which converge, which are slow, and which diverge. You will be asked to predict and explain this."
+acceptance:
+  - "All public tests pass."
+  - "Analytic gradients match finite differences to 1e-5 relative error."
+  - "Validation MSE below 0.30 on the provided synthetic dataset (noise variance is 0.25, so ~0.25 is the floor)."
+  - "Recovered weights within 0.1 of the true generating weights."
+tests:
+  - { id: test_predict_shape_and_values, concepts: [linear-regression], dimension: implementation }
+  - { id: test_mse_is_mean, concepts: [loss-functions], dimension: implementation }
+  - {
+      id: test_gradients_match_finite_differences,
+      concepts: [gradient-descent],
+      dimension: implementation,
+    }
+  - { id: test_fit_decreases_loss, concepts: [gradient-descent], dimension: implementation }
+  - {
+      id: test_split_is_disjoint_and_seeded,
+      concepts: [train-test-split],
+      dimension: implementation,
+    }
+  - {
+      id: test_recovers_true_weights,
+      concepts: [linear-regression, gradient-descent],
+      dimension: implementation,
+    }
+metrics:
+  - { id: val_mse, label: "Validation MSE", threshold: 0.30, direction: below }
+  - { id: weight_error, label: "Max |w - w_true|", threshold: 0.10, direction: below }
+reflection: [lab-linreg-lr-predict, lab-linreg-explain-divergence, lab-linreg-val-vs-train]
+follow_up:
+  - "Replace batch gradient descent with minibatch SGD (batch size 16) and compare loss curves."
+  - "Add L2 regularisation and observe how the weights shrink."
+  - "Fit the same data with the closed-form normal equations and compare to your GD solution."
