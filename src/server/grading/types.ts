@@ -33,7 +33,7 @@ export type ExplainExercise = Extract<
 >;
 export type NumericExercise = Extract<
   import('../content/schemas.js').Exercise,
-  { type: 'numeric' }
+  { type: 'numeric'; answer: number }
 >;
 export type ExpressionExercise = Extract<
   import('../content/schemas.js').Exercise,

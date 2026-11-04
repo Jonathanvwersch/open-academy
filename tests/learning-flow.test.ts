@@ -120,9 +120,13 @@ test('unscoped hints lower credit and restart after the previous attempt', async
 test('tutor hints without authored hints reduce credit; explicit solution reveal is final', async () => {
   const fixture = await loadContent('tests/fixtures/content');
   const exercise = fixture.exercisesById.get('vectors-magnitude');
-  if (exercise?.type !== 'numeric') throw new Error('Missing hint-free numeric item');
+  if (exercise?.type !== 'numeric' || !('answer' in exercise)) {
+    throw new Error('Missing hint-free numeric item');
+  }
   const appExercise = content.exercisesById.get(exercise.id);
-  if (appExercise?.type !== 'numeric') throw new Error('Missing app numeric item');
+  if (appExercise?.type !== 'numeric' || !('answer' in appExercise)) {
+    throw new Error('Missing app numeric item');
+  }
   content.exercisesById.set(exercise.id, { ...appExercise, hints: [] });
 
   const unavailable = await app.request('/api/hints', {

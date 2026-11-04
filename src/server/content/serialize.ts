@@ -2,6 +2,9 @@ import type { IndexedConcept, IndexedExercise, IndexedLesson, IndexedProject } f
 
 const privateFields = new Set([
   'answer',
+  'answer_expr',
+  'params',
+  'constraints',
   'accept',
   'regex',
   'tolerance',

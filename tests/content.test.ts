@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import { loadContent } from '../src/server/content/load.js';
+import { ExerciseSchema, LessonSchema, normalizeLesson } from '../src/server/content/schemas.js';
 import { serializeExercise } from '../src/server/content/serialize.js';
 import type { ContentIndex, ContentSourceData } from '../src/server/content/types.js';
 import { validateContent } from '../src/server/content/validate.js';
@@ -66,6 +67,15 @@ test('client-safe exercise views omit keys, hints, and rubric weights', async ()
     { id: 'tangent-slope', criterion: 'Connects it to tangent slope', required: false },
   ]);
   expect(safeExplain).not.toHaveProperty('exemplar');
+});
+
+test('client-safe template views hide expressions and sampling ranges', async () => {
+  const content = await loadContent();
+  const template = required(content.exercisesById.get('slp-predict'), 'parameterised exercise');
+  const serialized = serializeExercise(template);
+  expect(serialized).not.toHaveProperty('answer_expr');
+  expect(serialized).not.toHaveProperty('params');
+  expect(serialized).not.toHaveProperty('constraints');
 });
 
 test('an empty content directory is valid', async () => {
@@ -174,6 +184,329 @@ test('an authored introducer lesson must teach its notation term', async () => {
         file: 'lessons/vectors.yaml',
         id: 'vectors',
         message: 'introducing lesson does not teach needle notation',
+      }),
+    ]),
+  );
+});
+
+test('knowledge-point Markdown participates in notation checks', async () => {
+  const data = await notationFixture();
+  addNotationTerm(data);
+  const concept = data.concepts.find(({ value }) => value.id === 'derivatives');
+  const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
+  if (!concept || !lesson) throw new Error('Missing derivatives fixture');
+  concept.value.prereqs = [];
+  lesson.value.knowledge_points = [
+    {
+      id: 'kp-needle-use',
+      title: 'Rates',
+      explain: 'This uses needle notation.',
+      worked: 'Work.',
+      problems: [],
+    },
+  ];
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'kp-needle-use',
+        message: expect.stringContaining('uses needle notation'),
+      }),
+    ]),
+  );
+});
+
+test('an introducing lesson may teach notation in a knowledge point', async () => {
+  const data = await notationFixture();
+  addNotationTerm(data, false);
+  const lesson = data.lessons.find(({ value }) => value.concept === 'vectors');
+  if (!lesson) throw new Error('Missing vectors fixture');
+  lesson.value.knowledge_points = [
+    {
+      id: 'kp-needle-intro',
+      title: 'Needle notation',
+      explain: 'A definition.',
+      worked: 'An example.',
+      problems: [],
+    },
+  ];
+  expect(validateContent(data)).not.toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'vectors',
+        message: 'introducing lesson does not teach needle notation',
+      }),
+    ]),
+  );
+});
+
+test('knowledge-point lessons derive the legacy block shape', () => {
+  const input = LessonSchema.parse({
+    concept: 'vectors',
+    version: 3,
+    objective: 'Learn the idea.',
+    knowledge_points: [
+      {
+        id: 'kp-one',
+        title: 'First',
+        explain: 'Explain.',
+        worked: 'Work.',
+        problems: ['template', 'fixed'],
+      },
+      { id: 'kp-two', title: 'Second', explain: 'Explain.', worked: 'Work.', problems: ['fixed'] },
+    ],
+    summary: 'Finish.',
+  });
+  const lesson = normalizeLesson(input, (id) => id === 'template');
+  expect(lesson.blocks).toEqual([
+    { kind: 'objective', md: 'Learn the idea.' },
+    { kind: 'intuition', md: '### First\n\nExplain.' },
+    { kind: 'worked', md: 'Work.' },
+    { kind: 'check', exercise: 'fixed' },
+    { kind: 'intuition', md: '### Second\n\nExplain.' },
+    { kind: 'worked', md: 'Work.' },
+    { kind: 'check', exercise: 'fixed' },
+    { kind: 'summary', md: 'Finish.' },
+  ]);
+  expect(lesson.fast_path).toEqual(['objective', 'summary']);
+  expect(lesson.knowledge_points).toHaveLength(2);
+});
+
+test('knowledge-point lesson schema requires between two and four points', () => {
+  const point = {
+    id: 'kp-one',
+    title: 'Title',
+    explain: 'Explain.',
+    worked: 'Work.',
+    problems: [],
+  };
+  const base = {
+    concept: 'vectors',
+    version: 3,
+    objective: 'Goal.',
+    summary: 'Summary.',
+  };
+  expect(LessonSchema.safeParse({ ...base, knowledge_points: [point] }).success).toBe(false);
+  expect(
+    LessonSchema.safeParse({
+      ...base,
+      knowledge_points: [
+        point,
+        { ...point, id: 'kp-two' },
+        { ...point, id: 'kp-three' },
+        { ...point, id: 'kp-four' },
+        { ...point, id: 'kp-five' },
+      ],
+    }).success,
+  ).toBe(false);
+});
+
+test('a valid knowledge-point lesson with a parameterised practice problem passes validation', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'vectors');
+  if (!lesson) throw new Error('Missing vectors lesson');
+  const fixedExercises = ['kp-fixed-one', 'kp-fixed-two', 'kp-fixed-three', 'kp-fixed-four'].map(
+    (id) =>
+      ExerciseSchema.parse({
+        id,
+        dimension: 'conceptual',
+        type: 'mc',
+        role: 'practice',
+        difficulty: 1,
+        est_minutes: 1,
+        prompt: 'Which answer is correct?',
+        hints: [],
+        solution: 'This answer matches the definition.',
+        options: [
+          { id: `${id}-yes`, text: 'Correct', correct: true },
+          { id: `${id}-no`, text: 'Incorrect', correct: false },
+        ],
+      }),
+  );
+  const template = (id: string) =>
+    ExerciseSchema.parse({
+      id,
+      dimension: 'math',
+      type: 'numeric',
+      role: 'practice',
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: 'Compute {{=x}}.',
+      hints: [],
+      solution: 'The answer is {{=x}}.',
+      answer_expr: 'x',
+      params: { x: { min: 1, max: 3 } },
+      tolerance: { abs: 0.000001 },
+    });
+  const templates = [template('kp-template-one'), template('kp-template-two')];
+  data.exercises.push(
+    ...[...fixedExercises, ...templates].map((value) => ({
+      value,
+      concept: 'vectors',
+      file: 'exercises/vectors.yaml',
+    })),
+  );
+  lesson.value.knowledge_points = [
+    {
+      id: 'kp-valid-one',
+      title: 'A valid point',
+      explain: 'A concise explanation.',
+      worked: 'A complete worked example.',
+      problems: ['kp-template-one', 'kp-fixed-one', 'kp-fixed-two'],
+    },
+    {
+      id: 'kp-valid-two',
+      title: 'Another valid point',
+      explain: 'A concise explanation.',
+      worked: 'A complete worked example.',
+      problems: ['kp-template-two', 'kp-fixed-three', 'kp-fixed-four'],
+    },
+  ];
+  expect(validateContent(data).filter((issue) => issue.id.startsWith('kp-'))).toEqual([]);
+});
+
+test('knowledge-point rules reject short, duplicate, missing, non-practice, and shared problems', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'vectors');
+  if (!lesson) throw new Error('Missing vectors lesson');
+  const fixed = (id: string) =>
+    ExerciseSchema.parse({
+      id,
+      dimension: 'conceptual',
+      type: 'mc',
+      role: 'practice',
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: 'Which is correct?',
+      hints: [],
+      solution: 'This option is correct because it matches the definition.',
+      options: [
+        { id: `${id}-yes`, text: 'Correct', correct: true },
+        { id: `${id}-no`, text: 'Incorrect', correct: false },
+      ],
+    });
+  data.exercises.push(
+    ...['practice-one', 'practice-two', 'practice-three'].map((id) => ({
+      value: fixed(id),
+      concept: 'vectors',
+      file: 'exercises/vectors.yaml',
+    })),
+    { value: fixed('orphaned-practice'), concept: 'vectors', file: 'exercises/vectors.yaml' },
+  );
+  lesson.value.knowledge_points = [
+    {
+      id: 'duplicate-id',
+      title: ' ',
+      explain: '',
+      worked: '',
+      problems: [
+        'practice-one',
+        'practice-one',
+        'missing',
+        'vectors-magnitude',
+        'derivatives-explain',
+      ],
+    },
+    {
+      id: 'second-point',
+      title: 'Second',
+      explain: 'Explain.',
+      worked: 'Work.',
+      problems: ['practice-two', 'practice-three'],
+    },
+    {
+      id: 'duplicate-id',
+      title: 'Third',
+      explain: 'Explain.',
+      worked: 'Work.',
+      problems: ['practice-one'],
+    },
+  ];
+  const issues = validateContent(data);
+  expect(issues.map((issue) => issue.message)).toEqual(
+    expect.arrayContaining([
+      'duplicate knowledge-point id',
+      'knowledge-point title must not be empty',
+      'knowledge-point explain must not be empty',
+      'knowledge-point worked must not be empty',
+      'knowledge point must reference at least 3 problems',
+      expect.stringContaining('problem "practice-one" is listed more than once'),
+      expect.stringContaining('references missing problem "missing"'),
+      expect.stringContaining('problem "vectors-magnitude" must have practice role'),
+      expect.stringContaining('problem "derivatives-explain" belongs to "derivatives"'),
+      expect.stringContaining(
+        'problem "practice-one" is listed more than once across knowledge points',
+      ),
+      expect.stringContaining('knowledge point needs 5 fixed problems or at least 1 template'),
+      'practice exercise is not referenced by a knowledge point',
+      expect.stringContaining(
+        'practice exercise must be referenced by exactly one knowledge point',
+      ),
+    ]),
+  );
+});
+
+test('template validation reports unsatisfied constraints, unresolved text, constant answers, collisions, and bad expressions', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'vectors');
+  if (!lesson) throw new Error('Missing vectors lesson');
+  const template = (id: string, changes: Record<string, unknown> = {}) =>
+    ExerciseSchema.parse({
+      id,
+      dimension: 'math',
+      type: 'numeric',
+      role: 'practice',
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: 'Compute {{=x}}.',
+      hints: [],
+      solution: 'The answer is {{=x}}.',
+      answer_expr: 'x',
+      params: { x: { min: 1, max: 3 } },
+      tolerance: { abs: 0.000001 },
+      ...changes,
+    });
+  const templates = [
+    template('template-role', { role: 'core' }),
+    template('template-unsat', { constraints: ['x > 10'] }),
+    template('template-leftover', { prompt: 'Unclosed placeholder {{=x' }),
+    template('template-constant', { answer_expr: '2' }),
+    template('template-collision', {
+      common_wrong: [{ answer_expr: 'x', category: 'math_error', feedback: 'Try again.' }],
+    }),
+    template('template-malformed', { answer_expr: 'x + unknown' }),
+  ];
+  data.exercises.push(
+    ...templates.map((value) => ({ value, concept: 'vectors', file: 'exercises/vectors.yaml' })),
+  );
+  lesson.value.knowledge_points = [
+    {
+      id: 'template-kp',
+      title: 'Templates',
+      explain: 'Explain.',
+      worked: 'Work.',
+      problems: templates.map(({ id }) => id),
+    },
+  ];
+  const issues = validateContent(data);
+  for (const [id, text] of [
+    ['template-role', 'templates must have practice role'],
+    ['template-unsat', 'could not satisfy constraints'],
+    ['template-leftover', 'unresolved {{= placeholder'],
+    ['template-constant', 'at least 3 distinct answers'],
+    ['template-collision', 'common-wrong answer is within tolerance'],
+    ['template-malformed', 'unknown identifier'],
+  ]) {
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id, message: expect.stringContaining(text) }),
+      ]),
+    );
+  }
+  expect(issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'template-kp',
+        message: 'knowledge point must include at least 1 fixed problem',
       }),
     ]),
   );

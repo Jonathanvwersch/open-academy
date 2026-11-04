@@ -1,4 +1,5 @@
 import { parse as parseExpression } from 'mathjs';
+import { instantiateExercise, isTemplate } from './templates.js';
 import type { ContentIssue, ContentSourceData } from './types.js';
 
 function addIssue(issues: ContentIssue[], file: string, id: string, message: string) {
@@ -355,9 +356,164 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
     }
   }
 
+  validateKnowledgePointContent(data, issues);
   validateNotationUsage(data, issues);
   findCycles(data, issues);
   return issues;
+}
+
+function validateKnowledgePointContent(data: ContentSourceData, issues: ContentIssue[]) {
+  const exercises = new Map(data.exercises.map((entry) => [entry.value.id, entry]));
+  const knowledgePointIds = new Set<string>();
+  const references = new Map<string, number>();
+
+  for (const { value: lesson, file } of data.lessons) {
+    if (
+      lesson.knowledge_points &&
+      (lesson.knowledge_points.length < 2 || lesson.knowledge_points.length > 4)
+    ) {
+      addIssue(
+        issues,
+        file,
+        lesson.concept,
+        'knowledge-point lessons must have 2–4 knowledge points',
+      );
+    }
+    for (const point of lesson.knowledge_points ?? []) {
+      if (knowledgePointIds.has(point.id)) {
+        addIssue(issues, file, point.id, 'duplicate knowledge-point id');
+      }
+      knowledgePointIds.add(point.id);
+      if (!point.title.trim())
+        addIssue(issues, file, point.id, 'knowledge-point title must not be empty');
+      if (!point.explain.trim())
+        addIssue(issues, file, point.id, 'knowledge-point explain must not be empty');
+      if (!point.worked.trim())
+        addIssue(issues, file, point.id, 'knowledge-point worked must not be empty');
+      if (point.problems.length < 3) {
+        addIssue(issues, file, point.id, 'knowledge point must reference at least 3 problems');
+      }
+      const fixedProblems = point.problems.filter((problemId) => {
+        const problem = exercises.get(problemId)?.value;
+        return problem !== undefined && !isTemplate(problem);
+      });
+      const hasTemplate = point.problems.some((problemId) => {
+        const problem = exercises.get(problemId)?.value;
+        return problem !== undefined && isTemplate(problem);
+      });
+      if (fixedProblems.length < 1) {
+        addIssue(issues, file, point.id, 'knowledge point must include at least 1 fixed problem');
+      }
+      if (fixedProblems.length < 5 && !hasTemplate) {
+        addIssue(
+          issues,
+          file,
+          point.id,
+          'knowledge point needs 5 fixed problems or at least 1 template',
+        );
+      }
+      const listed = new Set<string>();
+      for (const problemId of point.problems) {
+        if (references.has(problemId)) {
+          addIssue(
+            issues,
+            file,
+            point.id,
+            `problem "${problemId}" is listed more than once across knowledge points`,
+          );
+        }
+        references.set(problemId, (references.get(problemId) ?? 0) + 1);
+        if (listed.has(problemId)) {
+          addIssue(issues, file, point.id, `problem "${problemId}" is listed more than once`);
+        }
+        listed.add(problemId);
+        const problem = exercises.get(problemId);
+        if (!problem) {
+          addIssue(issues, file, point.id, `references missing problem "${problemId}"`);
+          continue;
+        }
+        if (problem.concept !== lesson.concept) {
+          addIssue(
+            issues,
+            file,
+            point.id,
+            `problem "${problemId}" belongs to "${problem.concept}"`,
+          );
+        }
+        if (problem.value.role !== 'practice') {
+          addIssue(issues, file, point.id, `problem "${problemId}" must have practice role`);
+        }
+      }
+    }
+  }
+
+  for (const { value: exercise, file } of data.exercises) {
+    if (exercise.role === 'practice' && references.get(exercise.id) !== 1) {
+      addIssue(
+        issues,
+        file,
+        exercise.id,
+        references.has(exercise.id)
+          ? 'practice exercise must be referenced by exactly one knowledge point'
+          : 'practice exercise is not referenced by a knowledge point',
+      );
+    }
+    if (isTemplate(exercise) && exercise.role !== 'practice') {
+      addIssue(issues, file, exercise.id, 'templates must have practice role');
+    }
+    if (isTemplate(exercise)) validateTemplate(exercise, file, issues);
+  }
+}
+
+function validateTemplate(
+  exercise: Extract<ContentSourceData['exercises'][number]['value'], { type: 'numeric' }>,
+  file: string,
+  issues: ContentIssue[],
+) {
+  if (!isTemplate(exercise)) return;
+  const answers = new Set<number>();
+  let reportedFailure = false;
+  for (let seed = 0; seed < 100; seed += 1) {
+    try {
+      const instance = instantiateExercise(exercise, seed);
+      if (instance.exercise.type !== 'numeric' || !('answer' in instance.exercise)) {
+        throw new Error('instantiation did not produce a concrete numeric exercise');
+      }
+      if (!Number.isFinite(instance.exercise.answer)) {
+        throw new Error('answer is not finite');
+      }
+      answers.add(instance.exercise.answer);
+      if (stringValues(instance.exercise).some((text) => text.includes('{{='))) {
+        throw new Error('unresolved {{= placeholder remains after instantiation');
+      }
+      for (const wrong of instance.exercise.common_wrong ?? []) {
+        if (!('answer' in wrong) || typeof wrong.answer !== 'number') continue;
+        const tolerance = wrong.tolerance ?? instance.exercise.tolerance;
+        const threshold = Math.max(
+          tolerance.abs ?? 1e-6,
+          (tolerance.rel ?? 0) *
+            Math.max(Math.abs(wrong.answer), Math.abs(instance.exercise.answer)),
+        );
+        if (Math.abs(wrong.answer - instance.exercise.answer) <= threshold) {
+          throw new Error('common-wrong answer is within tolerance of the correct answer');
+        }
+      }
+    } catch (error) {
+      if (!reportedFailure) {
+        addIssue(issues, file, exercise.id, `template seed ${seed}: ${messageOf(error)}`);
+        reportedFailure = true;
+      }
+      break;
+    }
+  }
+  if (!reportedFailure && answers.size < 3) {
+    addIssue(
+      issues,
+      file,
+      exercise.id,
+      'template must produce at least 3 distinct answers across seeds 0–99',
+    );
+  }
 }
 
 function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) {
@@ -387,9 +543,14 @@ function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) 
       }
       const lesson = lessons.get(conceptId);
       if (concept.value.status === 'authored' && lesson) {
-        const lessonText = lesson.value.blocks
-          .map((block) => ('md' in block ? (block.md ?? '') : ''))
-          .join('\n');
+        const lessonText = [
+          ...lesson.value.blocks.map((block) => ('md' in block ? (block.md ?? '') : '')),
+          ...(lesson.value.knowledge_points ?? []).flatMap((point) => [
+            point.title,
+            point.explain,
+            point.worked,
+          ]),
+        ].join('\n');
         const teachesTerm = term.match.some((source) => {
           try {
             return new RegExp(source, 'i').test(lessonText);
@@ -434,10 +595,19 @@ function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) 
           ownedText.push({ file: lesson?.file ?? file, id: concept.id, text: block.md });
         }
       }
+      for (const point of lesson?.value.knowledge_points ?? []) {
+        for (const text of [point.title, point.explain, point.worked]) {
+          ownedText.push({ file: lesson?.file ?? file, id: point.id, text });
+        }
+      }
       for (const exercise of data.exercises) {
         if (exercise.concept === concept.id) {
           for (const text of stringValues(exercise.value)) {
-            ownedText.push({ file: exercise.file, id: exercise.value.id, text });
+            ownedText.push({
+              file: exercise.file,
+              id: exercise.value.id,
+              text: text.replace(/\{\{=.*?\}\}/g, ''),
+            });
           }
         }
       }

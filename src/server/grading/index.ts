@@ -20,7 +20,13 @@ export async function gradeExercise(
     case 'mc':
       return gradeMultipleChoice(exercise, answer);
     case 'numeric':
-      return gradeNumeric(exercise, answer);
+      return 'answer' in exercise && typeof exercise.answer === 'number'
+        ? gradeNumeric(exercise, answer)
+        : {
+            status: 'invalid',
+            feedback: 'This problem must be instantiated before grading.',
+            graded_by: 'deterministic',
+          };
     case 'expression':
       return gradeExpression(exercise, answer, options);
     case 'text':
