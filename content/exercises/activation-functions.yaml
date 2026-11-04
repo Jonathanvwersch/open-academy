@@ -1,0 +1,113 @@
+concept: activation-functions
+exercises:
+  - id: act-check-relu
+    dimension: math
+    type: text
+    role: check
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Apply ReLU elementwise to $z = (-1.5, 0, 2)$. Answer as `(a, b, c)`."
+    accept: ["(0,0,2)", "(0, 0, 2)", "0,0,2", "0, 0, 2", "[0,0,2]", "[0, 0, 2]"]
+    solution: "$(0, 0, 2)$."
+  - id: dx-dl-2
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A network has three fully connected layers with **no** activation functions between them. What class of functions can it represent?"
+    options:
+      - {
+          id: a,
+          text: "Exactly the affine (linear + bias) functions, the same as a single layer",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Any continuous function, given enough units",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Universal approximation needs a nonlinearity. Composed affine maps are affine.",
+        }
+      - { id: c, text: "Polynomials of degree 3", correct: false, category: incorrect_reasoning }
+    solution: "$W_3(W_2(W_1x+b_1)+b_2)+b_3 = Wx + b$ for some $W, b$."
+  - id: act-sigmoid-deriv
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "What is the maximum possible value of the sigmoid's derivative $\\sigma'(z)$?"
+    answer: 0.25
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 0.5,
+          tolerance: { abs: 0.001 },
+          category: math_error,
+          feedback: "$\\sigma(0) = 0.5$, but $\\sigma'(0) = 0.5\\cdot0.5$.",
+        }
+      - {
+          answer: 1,
+          tolerance: { abs: 0.001 },
+          category: recall_failure,
+          feedback: "Review the relevant calculation.",
+        }
+    hints: ["$\\sigma'(z) = \\sigma(z)(1-\\sigma(z))$ is maximised where $\\sigma = 0.5$."]
+    solution: "At $z=0$: $0.5 \\times 0.5 = 0.25$."
+  - id: act-vanishing
+    dimension: transfer
+    type: numeric
+    role: transfer
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A gradient passes backward through 10 sigmoid activations, each in its best case ($\\sigma' = 0.25$), and all weights equal 1. By what factor is it multiplied overall? (scientific notation is fine, e.g. `9.5e-7`)"
+    answer: 9.5367e-7
+    tolerance: { rel: 0.01 }
+    hints: ["Multiply ten local derivatives together."]
+    solution: "$0.25^{10} \\approx 9.5\\times10^{-7}$. This is the vanishing-gradient problem, and one reason ReLU (derivative 1) and residual connections help."
+  - id: act-review-deriv
+    dimension: math
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is the derivative of ReLU at $z = 3$, and at $z = -3$?"
+    options:
+      - { id: a, text: "1 and 0", correct: true }
+      - {
+          id: b,
+          text: "3 and 0",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That is the output, not the derivative.",
+        }
+      - { id: c, text: "1 and -1", correct: false, category: recall_failure }
+    solution: "ReLU has slope 1 for $z>0$ and slope 0 for $z<0$."
+  - id: act-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain why neural networks need nonlinear activation functions, and why the choice of activation affects training, not just expressiveness."
+    rubric:
+      - {
+          id: r1,
+          criterion: "Composition of linear/affine layers is affine, so depth adds no expressive power without nonlinearity",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "Activation derivatives multiply gradients in backprop, so saturating activations (sigmoid/tanh) can shrink gradients",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r3,
+          criterion: "Mentions ReLU's derivative of 1 for positive inputs, or dead units",
+          weight: 1,
+        }
+    exemplar: "Stacking linear layers gives another linear layer, so without a nonlinearity a deep network is no more expressive than a single layer. During backprop each activation's derivative multiplies the gradient, and saturating functions such as sigmoid have derivatives at most 0.25, so gradients vanish over many layers. ReLU passes gradients with slope 1 when active, but units can die if they are always negative."
+    solution: "See the exemplar."

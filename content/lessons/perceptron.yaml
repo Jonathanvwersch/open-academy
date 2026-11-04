@@ -1,0 +1,25 @@
+concept: perceptron
+version: 1
+fast_path: [objective, summary]
+blocks:
+  - kind: objective
+    md: |
+      **Goal:** compute a neuron's output, and explain why one linear unit can only separate classes with a straight line (a hyperplane).
+  - kind: intuition
+    md: |
+      An artificial neuron is linear regression followed by a nonlinearity: $a = \phi(w\cdot x + b)$. The weighted sum scores the input, and $\phi$ (for example a step, a sigmoid or a ReLU) decides how that score becomes the output.
+
+      The set where $w\cdot x + b = 0$ is a line in 2D, a plane in 3D, and a hyperplane in general. A single neuron can only say "which side of this hyperplane are you on?" That is why XOR, whose classes cannot be split by a line, needs at least two layers.
+  - kind: example
+    md: |
+      $w = (1, 1)$, $b = -1.5$, step activation (output 1 if the score is $> 0$, else 0). Inputs $(0,0), (0,1), (1,0), (1,1)$ give scores $-1.5, -0.5, -0.5, 0.5$, so the outputs are $0, 0, 0, 1$. This neuron computes **AND**.
+  - kind: check
+    exercise: perc-check-1
+  - kind: math
+    md: |
+      $$z = w^\top x + b, \qquad a = \phi(z).$$
+      The decision boundary $\{x : w^\top x + b = 0\}$ is perpendicular to $w$; $b$ shifts it away from the origin.
+  - kind: summary
+    md: |
+      - A neuron computes a weighted sum, adds a bias, and applies an activation.
+      - A single linear unit has a hyperplane as its decision boundary, so it cannot represent XOR.

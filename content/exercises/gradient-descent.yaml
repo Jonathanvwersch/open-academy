@@ -1,0 +1,281 @@
+concept: gradient-descent
+exercises:
+  - id: gd-check-step
+    dimension: math
+    type: numeric
+    role: check
+    difficulty: 1
+    est_minutes: 2
+    prompt: "$L(w) = (w - 3)^2$, $w_0 = 3.5$, $\\eta = 0.25$. What is $w_1$?"
+    answer: 3.25
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 3.75,
+          tolerance: { abs: 0.001 },
+          category: incorrect_reasoning,
+          feedback: "You stepped *up* the slope. The update subtracts $\\eta L'(w)$.",
+        }
+    hints: ["$L'(3.5) = 2(0.5) = 1$."]
+    solution: "$w_1 = 3.5 - 0.25\\cdot 1 = 3.25$."
+  - id: gd-faded-step
+    dimension: math
+    type: numeric
+    role: check
+    difficulty: 2
+    est_minutes: 3
+    prompt: "Data $(1, 2), (2, 4)$; model $\\hat y = wx$; MSE; $\\eta = 0.1$; $w_0 = 1$. What is $w_1$?"
+    answer: 1.5
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 0.5,
+          tolerance: { abs: 0.001 },
+          category: incorrect_reasoning,
+          feedback: "Sign error: the gradient is negative, so $w$ should *increase*.",
+        }
+      - {
+          answer: 2,
+          tolerance: { abs: 0.001 },
+          category: math_error,
+          feedback: "Check the $\\frac{2}{n}$ factor: here it is $2/2 = 1$, which gives a gradient of $-5$.",
+        }
+    hints:
+      [
+        "Residuals are $(-1, -2)$.",
+        "$\\partial L/\\partial w = \\frac{2}{2}\\big((-1)(1) + (-2)(2)\\big) = -5$.",
+      ]
+    solution: "Gradient $-5$, so $w_1 = 1 + 0.5 = 1.5$."
+  - id: dx-ml-4
+    dimension: math
+    type: numeric
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 2
+    prompt: "One gradient-descent step on $L(w) = (w - 3)^2$ from $w_0 = 0$ with learning rate $\\eta = 0.1$. What is $w_1$?"
+    answer: 0.6
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: -0.6,
+          tolerance: { abs: 0.001 },
+          category: incorrect_reasoning,
+          feedback: "The update subtracts the gradient: $w - \\eta L'(w)$, and $L'(0) = -6$.",
+        }
+      - {
+          answer: 0.3,
+          tolerance: { abs: 0.001 },
+          category: math_error,
+          feedback: "$L'(w) = 2(w-3)$, so the factor 2 matters.",
+        }
+    solution: "$L'(0) = -6$, so $w_1 = 0 - 0.1\\cdot(-6) = 0.6$."
+  - id: gd-lr-regimes
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 3
+    est_minutes: 3
+    prompt: "For $L(w) = 4(w - 1)^2$, gradient descent converges only for learning rates below some threshold $\\eta_{\\max}$. What is $\\eta_{\\max}$?"
+    answer: 0.25
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 0.125,
+          tolerance: { abs: 0.001 },
+          category: misunderstood_definition,
+          feedback: "$1/(2a) = 0.125$ is where the iterates start to *oscillate*; they still converge until $1/a$.",
+        }
+    hints:
+      [
+        "Write the step as $w_{t+1} - 1 = (1 - 2a\\eta)(w_t - 1)$ with $a = 4$.",
+        "Convergence needs $|1 - 8\\eta| < 1$.",
+      ]
+    solution: "$|1 - 8\\eta| < 1 \\iff 0 < \\eta < 0.25$."
+  - id: gd-curve-diagnosis
+    dimension: transfer
+    type: mc
+    role: transfer
+    difficulty: 3
+    est_minutes: 3
+    prompt: "Training a small MLP, the loss goes 2.30 → 1.90 → 3.10 → 8.70 → 41.2 → nan over the first five steps. What is the most likely cause and first fix?"
+    options:
+      - {
+          id: a,
+          text: "The learning rate is too high and updates overshoot and diverge; reduce it (e.g. ×0.1)",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "The model is underfitting; add more layers",
+          correct: false,
+          category: misapplied_technique,
+        }
+      - {
+          id: c,
+          text: "Overfitting; add regularisation",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "Overfitting shows as *validation* loss rising while training loss falls. Here the training loss itself explodes.",
+        }
+      - {
+          id: d,
+          text: "The learning rate is too low",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "A low learning rate gives a slow, smooth decrease, not growth.",
+        }
+    solution: "A loss that decreases once and then grows geometrically is the signature of $|1 - 2a\\eta| > 1$ in the steepest direction. Lower the learning rate, and check the input scaling."
+  - id: gd-curve-slow
+    dimension: transfer
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A loss curve decreases smoothly but very slowly and almost linearly, still far from converged after 10,000 steps; doubling the learning rate makes it noticeably faster and still smooth. What is going on?"
+    options:
+      - {
+          id: a,
+          text: "The learning rate is too small; keep increasing it until just below where it becomes unstable",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "The learning rate is too large",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: c,
+          text: "The gradient computation is wrong",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "A wrong gradient usually fails to decrease the loss at all, or behaves erratically.",
+        }
+    solution: "Smooth and slow means you are far inside the stable region. Raise the learning rate."
+  - id: gd-code-complete
+    dimension: implementation
+    type: code_complete
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Complete the gradient for MSE with predictions `y_hat = X @ w` (`X`: `(n, d)`, `y`: `(n,)`)."
+    code: |
+      r = X @ w - y
+      dw = ____
+      w = w - lr * dw
+    accept:
+      [
+        "2 * X.T @ r / len(y)",
+        "2*X.T@r/len(y)",
+        "2 * X.T @ r / n",
+        "2 / len(y) * X.T @ r",
+        "2 * X.T.dot(r) / len(y)",
+        "(2 / len(y)) * X.T @ r",
+        "2 * X.T @ r / X.shape[0]",
+      ]
+    hints: ["$\\nabla_w \\frac1n\\|Xw - y\\|^2 = \\frac2n X^\\top(Xw - y)$."]
+    solution: "`dw = 2 * X.T @ r / len(y)`. The shape check: `X.T` is `(d, n)` and `r` is `(n,)`, so `dw` is `(d,)`."
+  - id: gd-explain-lr
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain to a colleague what the learning rate controls in gradient descent, what happens when it is too small or too large, and how you would tell from a loss curve."
+    rubric:
+      - {
+          id: r1,
+          criterion: "Learning rate scales the step taken along the negative gradient",
+          weight: 1,
+          required: true,
+        }
+      - { id: r2, criterion: "Too small: slow, smooth, steady decrease", weight: 2, required: true }
+      - {
+          id: r3,
+          criterion: "Too large: overshooting, oscillation or divergence (loss increases / NaN)",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r4,
+          criterion: "Mentions that the steepest-curvature direction limits stability (or that the safe range depends on the problem)",
+          weight: 1,
+        }
+    exemplar: "The learning rate is the multiplier on the gradient step. Too small and the loss falls smoothly but painfully slowly; too large and each step overshoots the minimum, so the loss oscillates or explodes, often to NaN. The steepest direction of the loss sets the stability limit, so the right value depends on the problem and the feature scaling."
+    solution: "See the exemplar."
+  - id: lab-linreg-lr-predict
+    dimension: transfer
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "In your lab, you trained with lr = 0.01 and it converged smoothly. **Before running it**, predict what happens with lr = 10× larger, then with lr = 100× larger (the lab data has feature variance ≈ 1)."
+    options:
+      - {
+          id: a,
+          text: "10×: converges faster, maybe with slight oscillation; 100×: likely diverges (loss grows, may become NaN)",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Both converge 10× and 100× faster",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "There is a stability limit: past it the error grows each step.",
+        }
+      - { id: c, text: "Both diverge", correct: false, category: incorrect_reasoning }
+    solution: "With unit-variance features, MSE curvature is about 2, so the stability limit is around $\\eta \\approx 1$. Then 0.1 is fast and safe, while 1.0 sits right at the edge and typically oscillates or diverges once noise and correlated features are included. Check this against your experiment."
+  - id: lab-linreg-explain-divergence
+    dimension: transfer
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: "Using your loss and parameter-trajectory plots, explain what you observed for the largest learning rate you tried, and *why* it happens in terms of the update rule."
+    rubric:
+      - {
+          id: r1,
+          criterion: "Accurately describes the observed curve (e.g. oscillating or exploding loss, zig-zagging parameters)",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "Explains overshoot: the step $\\eta\\nabla L$ jumps past the minimum to a point with larger error, which compounds",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r3,
+          criterion: "Connects to curvature/feature scale or the $|1-2a\\eta|>1$ condition",
+          weight: 1,
+        }
+    exemplar: "At lr=0.5 the loss dropped once and then grew every step until it hit inf, and the weight trajectory zig-zagged across the minimum with growing amplitude. Each step moves by η times the gradient; when η is too large relative to the curvature, the step jumps past the minimum to a point where the error (and so the gradient) is larger, so the next jump is bigger again — the factor |1−2aη| exceeds 1."
+    solution: "See the exemplar."
+  - id: lab-linreg-val-vs-train
+    dimension: conceptual
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "In the lab your train MSE is 0.24 and validation MSE is 0.27, with noise variance 0.25. What does this tell you?"
+    options:
+      - {
+          id: a,
+          text: "The model is close to the noise floor and generalises well; the small gap is normal sampling variation",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "The model is badly overfitting",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Both values are near the irreducible noise of 0.25; overfitting would show a much lower train error and a clearly higher validation error.",
+        }
+      - {
+          id: c,
+          text: "The model is underfitting and needs more features",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+    solution: "With noise variance 0.25, no model can do much better than MSE ≈ 0.25 on new data."

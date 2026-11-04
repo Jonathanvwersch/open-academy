@@ -1,0 +1,136 @@
+domain: classical-ml
+concepts:
+  - id: supervised-learning
+    title: Supervised learning setup
+    description: Inputs, targets, a model family, a loss, and learning from examples.
+    difficulty: 1
+    est_minutes: 15
+    week: 1
+    goal_weight: 3
+    dimensions: [conceptual]
+    prereqs: []
+    objectives:
+      - {
+          text: "Identify inputs, targets, model, loss and training data in a problem",
+          dimension: conceptual,
+        }
+    status: authored
+  - id: linear-regression
+    title: Linear regression
+    description: Predicting a real value as a weighted sum of features plus bias.
+    difficulty: 2
+    est_minutes: 30
+    week: 1
+    goal_weight: 3
+    dimensions: [conceptual, math, implementation]
+    prereqs: [{ id: supervised-learning }, { id: dot-product }, { id: matrices, strength: soft }]
+    objectives:
+      - { text: "Write the linear model in vector form", dimension: math }
+      - { text: "Implement vectorised predictions in NumPy", dimension: implementation }
+      - { text: "Explain what each weight means", dimension: conceptual }
+    projects: [linreg-numpy]
+    status: authored
+  - id: loss-functions
+    title: Loss functions (MSE, MAE)
+    description: Measuring prediction error; MSE vs MAE and their gradients.
+    difficulty: 2
+    est_minutes: 25
+    week: 1
+    goal_weight: 3
+    dimensions: [conceptual, math, transfer]
+    prereqs: [{ id: supervised-learning }]
+    objectives:
+      - { text: "Compute MSE and MAE for a set of predictions", dimension: math }
+      - { text: "Explain how MSE's squaring treats outliers", dimension: conceptual }
+    projects: [linreg-numpy]
+    status: authored
+  - id: gradient-descent
+    title: Gradient descent
+    description: Iteratively stepping parameters against the gradient of the loss; learning rate.
+    difficulty: 2
+    est_minutes: 35
+    week: 1
+    goal_weight: 3
+    dimensions: [conceptual, math, implementation, transfer]
+    prereqs: [{ id: gradients }, { id: loss-functions }]
+    objectives:
+      - { text: "Perform gradient-descent updates by hand", dimension: math }
+      - { text: "Explain the effect of the learning rate", dimension: conceptual }
+      - { text: "Implement a gradient-descent loop", dimension: implementation }
+      - { text: "Diagnose divergence or slow convergence from a loss curve", dimension: transfer }
+    projects: [linreg-numpy]
+    status: authored
+  - id: train-test-split
+    title: Training and evaluation splits
+    description: Train/validation/test sets; why we evaluate on held-out data.
+    difficulty: 1
+    est_minutes: 20
+    week: 1
+    goal_weight: 3
+    dimensions: [conceptual, transfer]
+    prereqs: [{ id: supervised-learning }]
+    objectives:
+      - { text: "Explain the purpose of each split", dimension: conceptual }
+      - { text: "Spot data leakage in an evaluation setup", dimension: transfer }
+    projects: [linreg-numpy]
+    status: authored
+  - id: logistic-regression
+    title: Logistic regression and cross-entropy
+    description: Binary classification with a sigmoid output and cross-entropy loss.
+    difficulty: 3
+    est_minutes: 35
+    week: 2
+    goal_weight: 2
+    dimensions: [conceptual, math, implementation]
+    prereqs: [{ id: linear-regression }, { id: probability-basics, strength: soft }]
+    objectives:
+      - { text: "Compute sigmoid outputs and binary cross-entropy", dimension: math }
+    status: stub
+  - id: overfitting
+    title: Overfitting and underfitting
+    description: Bias/variance intuition; diagnosing from train vs validation curves.
+    difficulty: 2
+    est_minutes: 25
+    week: 3
+    goal_weight: 3
+    dimensions: [conceptual, transfer]
+    prereqs: [{ id: train-test-split }]
+    objectives:
+      - { text: "Diagnose over/underfitting from learning curves", dimension: transfer }
+    status: stub
+  - id: regularization
+    title: Regularization
+    description: L2/L1 penalties, weight decay, dropout, early stopping.
+    difficulty: 3
+    est_minutes: 30
+    week: 3
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs: [{ id: overfitting }, { id: loss-functions }]
+    objectives:
+      - { text: "Explain how weight decay changes the update", dimension: math }
+    status: stub
+  - id: generalization
+    title: Generalization
+    description: What it means for a model to work on unseen data; distribution assumptions.
+    difficulty: 3
+    est_minutes: 20
+    week: 3
+    goal_weight: 3
+    dimensions: [conceptual, transfer]
+    prereqs: [{ id: overfitting }]
+    objectives:
+      - { text: "Explain i.i.d. assumptions and when they break", dimension: conceptual }
+    status: stub
+  - id: evaluation-metrics
+    title: Evaluation metrics
+    description: Accuracy, precision/recall, confusion matrices, regression metrics.
+    difficulty: 2
+    est_minutes: 25
+    week: 3
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs: [{ id: train-test-split }]
+    objectives:
+      - { text: "Compute precision and recall from a confusion matrix", dimension: math }
+    status: stub

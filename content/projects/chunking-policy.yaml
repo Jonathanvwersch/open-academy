@@ -1,0 +1,8 @@
+id: chunking-policy
+title: "Action-chunking policy"
+week: 10
+status: stub
+est_hours: 5
+objective: "Extend the BC policy to predict action chunks and compare compounding error against single-step prediction."
+background: ""
+prereqs: [action-chunking]

@@ -1,0 +1,80 @@
+concept: partial-derivatives
+exercises:
+  - id: pd-check-1
+    dimension: math
+    type: expression
+    role: check
+    difficulty: 1
+    est_minutes: 2
+    prompt: "For $f(x, y) = x^2 y + 4xy^3$, give $\\partial f / \\partial x$."
+    answer: "2*x*y + 4*y^3"
+    variables: { x: [-2, 2], y: [-2, 2] }
+    common_wrong:
+      - {
+          answer: "x^2 + 12*x*y^2",
+          category: misunderstood_definition,
+          feedback: "That is $\\partial f/\\partial y$. Here $y$ is the constant.",
+        }
+    hints: ["Treat $y$ as a constant number."]
+    solution: "$2xy + 4y^3$."
+  - id: pd-y
+    dimension: math
+    type: expression
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $f(x, y) = x^2 y + 4xy^3$, give $\\partial f / \\partial y$."
+    answer: "x^2 + 12*x*y^2"
+    variables: { x: [-2, 2], y: [-2, 2] }
+    solution: "$x^2 + 12xy^2$."
+  - id: pd-residual
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt: "$L(w, b) = (wx + b - y)^2$ with data $x = 3$, $y = 1$. At $w = 1$, $b = 1$, what is $\\partial L/\\partial w$?"
+    answer: 18
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 6,
+          category: math_error,
+          feedback: "You dropped the inner factor $x = 3$. By the chain rule, $\\partial L/\\partial w = 2r \\cdot x$.",
+        }
+      - { answer: 9, category: math_error, feedback: "Don't forget the factor 2 from the square." }
+    hints: ["Residual $r = wx + b - y$.", "$r = 3$; $\\partial L/\\partial w = 2 r x$."]
+    solution: "$r = 3 + 1 - 1 = 3$, so $\\partial L/\\partial w = 2 \\cdot 3 \\cdot 3 = 18$."
+  - id: pd-review-exp
+    dimension: math
+    type: expression
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $g(a, b) = e^{a} b^2 + a b$, give $\\partial g / \\partial b$ (write `exp(a)`)."
+    answer: "2*b*exp(a) + a"
+    variables: { a: [-1, 1], b: [-2, 2] }
+    solution: "$2b e^a + a$."
+  - id: pd-concept
+    dimension: conceptual
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "When computing $\\partial L/\\partial w_3$ for a loss over a dataset, which quantities are treated as constants?"
+    options:
+      - { id: a, text: "All data values and every parameter except $w_3$", correct: true }
+      - {
+          id: b,
+          text: "Only the data values",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The other parameters are held fixed too. That is what makes it *partial*.",
+        }
+      - {
+          id: c,
+          text: "Only the other parameters; the data change",
+          correct: false,
+          category: misunderstood_definition,
+        }
+    solution: "A partial derivative varies one variable; everything else, data and other parameters alike, is held fixed."

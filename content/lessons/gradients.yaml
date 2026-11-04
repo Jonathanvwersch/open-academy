@@ -1,0 +1,35 @@
+concept: gradients
+version: 1
+fast_path: [objective, summary]
+blocks:
+  - kind: objective
+    md: |
+      **Goal:** compute the gradient of a scalar function, and explain why $-\nabla f$ is the direction of steepest descent.
+  - kind: intuition
+    md: |
+      Stack all the partial derivatives into one vector and you get the **gradient**:
+      $$\nabla f = \left(\frac{\partial f}{\partial x_1}, \dots, \frac{\partial f}{\partial x_n}\right).$$
+      Picture standing on a hilly landscape. The gradient points uphill, in the steepest direction, and its length says how steep the slope is. To go downhill fastest, step along $-\nabla f$. That one idea is the engine of nearly all of deep learning.
+  - kind: example
+    md: |
+      $f(x, y) = x^2 + 3y^2$. Then $\nabla f = (2x, 6y)$. At $(1, 1)$, $\nabla f = (2, 6)$: the function rises 3 times faster in $y$ than in $x$, so the steepest-descent direction is $(-2, -6)$.
+  - kind: check
+    exercise: grad-check-1
+  - kind: math
+    md: |
+      For a small step $\delta$, the first-order change is
+      $$f(x + \delta) \approx f(x) + \nabla f(x)\cdot\delta.$$
+      Among all steps of a fixed length, $\nabla f \cdot \delta = \|\nabla f\|\|\delta\|\cos\theta$ is most negative when $\theta = 180^\circ$, i.e. when $\delta$ points along $-\nabla f$. That is why the negative gradient is the direction of **steepest descent**. At a minimum (or any flat point) $\nabla f = 0$.
+  - kind: worked
+    md: |
+      **Gradient of $f(w_1, w_2) = w_1^2 w_2 + \sin w_2$ at $(2, 0)$.**
+
+      1. $\partial f/\partial w_1 = 2w_1 w_2$, which is $0$ at $(2,0)$.
+      2. $\partial f/\partial w_2 = w_1^2 + \cos w_2$, which is $4 + 1 = 5$ at $(2,0)$.
+
+      So $\nabla f(2, 0) = (0, 5)$. Moving in $w_1$ alone changes nothing to first order; decreasing $w_2$ lowers $f$.
+  - kind: summary
+    md: |
+      - The gradient is the vector of all partial derivatives.
+      - It points in the direction of steepest ascent, and $-\nabla f$ in the direction of steepest descent.
+      - $f(x+\delta) \approx f(x) + \nabla f\cdot\delta$.

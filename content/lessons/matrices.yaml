@@ -1,0 +1,42 @@
+concept: matrices
+version: 1
+fast_path: [objective, summary]
+blocks:
+  - kind: objective
+    md: |
+      **Goal:** multiply matrices, predict result shapes, read a matrix as a linear map, and write batched products in NumPy.
+  - kind: intuition
+    md: |
+      A matrix is a grid of numbers. Multiplying a matrix by a vector dots **each row** with the vector, so an $m \times n$ matrix runs $m$ linear models at once on the same input.
+
+      The same operation can be read geometrically: a matrix is a **linear transformation** that rotates, scales or shears space. Composing two transformations means multiplying their matrices, and order matters.
+
+      In ML you will mostly care about **shapes**: a batch of $n$ examples with $d$ features is $X \in \mathbb{R}^{n \times d}$, and $XW$ with $W \in \mathbb{R}^{d \times k}$ gives $k$ outputs for every example in one operation.
+  - kind: example
+    md: |
+      $$A = \begin{pmatrix}1 & 2\\ 0 & 1\end{pmatrix},\quad x = \begin{pmatrix}3\\1\end{pmatrix},\quad Ax = \begin{pmatrix}1\cdot3 + 2\cdot1\\ 0\cdot3 + 1\cdot1\end{pmatrix} = \begin{pmatrix}5\\1\end{pmatrix}.$$
+      Row 1 dotted with $x$ gives 5, and row 2 dotted with $x$ gives 1. Geometrically, $A$ is a shear: it slides points sideways in proportion to their height.
+  - kind: check
+    exercise: mat-check-shape
+  - kind: math
+    md: |
+      For $A \in \mathbb{R}^{m\times n}$ and $B \in \mathbb{R}^{n\times p}$:
+      $$(AB)_{ij} = \sum_{k=1}^{n} A_{ik}B_{kj}, \qquad AB \in \mathbb{R}^{m\times p}.$$
+      The inner dimensions must match: $(m\times \mathbf{n})(\mathbf{n}\times p)$.
+
+      Useful facts:
+      - In general $AB \ne BA$.
+      - $(AB)^\top = B^\top A^\top$.
+      - $I x = x$.
+  - kind: worked
+    md: |
+      $$\begin{pmatrix}1&2\\3&4\end{pmatrix}\begin{pmatrix}0&1\\1&0\end{pmatrix} = \begin{pmatrix}1\cdot0+2\cdot1 & 1\cdot1+2\cdot0\\ 3\cdot0+4\cdot1 & 3\cdot1+4\cdot0\end{pmatrix} = \begin{pmatrix}2&1\\4&3\end{pmatrix}.$$
+      Multiplying on the right by this permutation matrix swaps the **columns**. Multiplying on the left would swap the rows instead, which shows directly that $AB \neq BA$.
+
+      In NumPy: `A @ B`. For a batch, `X @ W + b` broadcasts the bias over all rows.
+  - kind: summary
+    md: |
+      - $(m\times n)(n\times p) \to m\times p$. Check shapes first.
+      - Each output entry is a row of the left matrix dotted with a column of the right one.
+      - Matrices compose transformations, and order matters.
+      - `X @ W + b` computes a whole batch of linear outputs.

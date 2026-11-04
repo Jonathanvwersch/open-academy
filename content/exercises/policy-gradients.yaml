@@ -1,0 +1,35 @@
+concept: policy-gradients
+exercises:
+  - id: dx-rl-4
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 4
+    est_minutes: 3
+    prompt: "In REINFORCE, why is a baseline $b(s)$ subtracted from the return, giving $\\nabla_\\theta \\log \\pi_\\theta(a\\mid s)\\,(G - b(s))$?"
+    options:
+      - {
+          id: a,
+          text: "It reduces the variance of the gradient estimate without changing its expected value",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "It makes the gradient estimate unbiased, which it otherwise is not",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Plain REINFORCE is already unbiased. The baseline leaves the expectation unchanged because $\\mathbb E[\\nabla \\log \\pi] = 0$.",
+        }
+      - {
+          id: c,
+          text: "It turns the method into Q-learning",
+          correct: false,
+          category: misunderstood_definition,
+        }
+      - {
+          id: d,
+          text: "It guarantees that all returns are positive",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+    solution: "Because $\\mathbb E_{a\\sim\\pi}[\\nabla_\\theta \\log\\pi_\\theta(a\\mid s)] = 0$, subtracting any action-independent $b(s)$ keeps the estimator unbiased while centring the returns, which greatly reduces variance. Using $b(s) \\approx V(s)$ gives the advantage."

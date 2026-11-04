@@ -1,0 +1,25 @@
+concept: rotation-matrices
+exercises:
+  - id: dx-rb-2
+    dimension: math
+    type: numeric
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 3
+    prompt: "Rotate the point $p = (2, 0)$ by $30^\\circ$ counter-clockwise about the origin using $R(\\theta) = \\begin{pmatrix}\\cos\\theta & -\\sin\\theta\\\\ \\sin\\theta & \\cos\\theta\\end{pmatrix}$. What is the **y**-coordinate of the result?"
+    answer: 1
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - {
+          answer: 1.732,
+          tolerance: { abs: 0.01 },
+          category: math_error,
+          feedback: "That is the x-coordinate, $2\\cos 30^\\circ$. The y-coordinate is $2 \\sin 30^\\circ$.",
+        }
+      - {
+          answer: -1,
+          tolerance: { abs: 0.01 },
+          category: math_error,
+          feedback: "Counter-clockwise rotation of a point on the positive x-axis moves it *up*.",
+        }
+    solution: "$Rp = (2\\cos30^\\circ, 2\\sin30^\\circ) = (1.732, 1)$, so $y = 1$."

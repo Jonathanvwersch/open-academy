@@ -1,0 +1,32 @@
+concept: causal-masking
+exercises:
+  - id: dx-tf-4
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 3
+    est_minutes: 2
+    prompt: "In a decoder-only language model with a causal attention mask, which positions can the token at position 3 (1-indexed) attend to during training?"
+    options:
+      - { id: a, text: "Positions 1, 2 and 3", correct: true }
+      - {
+          id: b,
+          text: "Positions 1 and 2 only",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The causal mask blocks *future* positions; a token can attend to itself.",
+        }
+      - {
+          id: c,
+          text: "All positions in the sequence",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That is an encoder (bidirectional) attention pattern. It would let the model see the token it is trying to predict.",
+        }
+      - {
+          id: d,
+          text: "Only position 4, the token it predicts",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+    solution: "The mask sets scores for $j > i$ to $-\\infty$ before the softmax, so position 3 mixes information from positions 1–3. Its output is used to predict token 4."

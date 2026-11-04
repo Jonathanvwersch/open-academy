@@ -1,0 +1,8 @@
+id: nn-from-scratch
+title: "Neural network and backprop from scratch"
+week: 2
+status: stub
+est_hours: 5
+objective: "Implement a 2-layer MLP with a hand-written backward pass in NumPy, verify gradients numerically, and train it on a toy classification task."
+background: ""
+prereqs: [mlp-forward-pass, backpropagation]

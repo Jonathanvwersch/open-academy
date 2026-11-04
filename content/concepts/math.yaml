@@ -1,0 +1,150 @@
+domain: math
+concepts:
+  - id: vectors
+    title: Vectors and vector operations
+    description: Vectors as lists of numbers and as arrows; addition, scaling, norms.
+    difficulty: 1
+    est_minutes: 20
+    week: 1
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs: []
+    objectives:
+      - { text: "Add, scale and compute the L2 norm of vectors", dimension: math }
+      - { text: "Interpret a feature vector as a point in space", dimension: conceptual }
+    status: authored
+  - id: dot-product
+    title: Dot product and cosine similarity
+    description: Dot product as weighted sum and as projection; cosine similarity.
+    difficulty: 1
+    est_minutes: 20
+    week: 1
+    goal_weight: 3
+    dimensions: [conceptual, math, transfer]
+    prereqs: [{ id: vectors }]
+    objectives:
+      - { text: "Compute a dot product and cosine similarity", dimension: math }
+      - { text: "Explain a dot product as a similarity score", dimension: conceptual }
+      - { text: "Recognise dot products inside linear models and attention", dimension: transfer }
+    status: authored
+  - id: matrices
+    title: Matrices and matrix-vector multiplication
+    description: Matrices as linear maps; shapes; matrix-vector and matrix-matrix products.
+    difficulty: 2
+    est_minutes: 30
+    week: 1
+    goal_weight: 3
+    dimensions: [conceptual, math, implementation]
+    prereqs: [{ id: dot-product }]
+    objectives:
+      - { text: "Multiply matrices and predict result shapes", dimension: math }
+      - { text: "Explain a matrix as a linear transformation", dimension: conceptual }
+      - { text: "Write batched matrix products in NumPy", dimension: implementation }
+    status: authored
+  - id: derivatives
+    title: Derivatives
+    description: Derivative as local slope / rate of change; basic rules.
+    difficulty: 1
+    est_minutes: 20
+    week: 1
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs: []
+    objectives:
+      - { text: "Differentiate polynomials, exp and log", dimension: math }
+      - { text: "Interpret a derivative as sensitivity of output to input", dimension: conceptual }
+    status: authored
+  - id: partial-derivatives
+    title: Partial derivatives
+    description: Derivatives of multivariable functions with respect to one variable.
+    difficulty: 2
+    est_minutes: 20
+    week: 1
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs: [{ id: derivatives }]
+    objectives:
+      - { text: "Compute partial derivatives of multivariable functions", dimension: math }
+    status: authored
+  - id: gradients
+    title: Gradient vectors
+    description: The gradient as the vector of partials pointing in the direction of steepest ascent.
+    difficulty: 2
+    est_minutes: 25
+    week: 1
+    goal_weight: 3
+    dimensions: [conceptual, math, transfer]
+    prereqs: [{ id: partial-derivatives }, { id: vectors }]
+    objectives:
+      - { text: "Compute the gradient of a scalar function", dimension: math }
+      - {
+          text: "Explain why the negative gradient is the steepest-descent direction",
+          dimension: conceptual,
+        }
+    status: authored
+  - id: chain-rule
+    title: Chain rule
+    description: Derivative of composed functions, single and multivariable.
+    difficulty: 2
+    est_minutes: 25
+    week: 2
+    goal_weight: 3
+    dimensions: [conceptual, math]
+    prereqs: [{ id: derivatives }, { id: partial-derivatives, strength: soft }]
+    objectives:
+      - { text: "Differentiate compositions with the chain rule", dimension: math }
+      - { text: "Explain the chain rule as multiplying local sensitivities", dimension: conceptual }
+    status: authored
+  - id: probability-basics
+    title: Probability basics
+    description: Random variables, distributions, expectation, conditional probability.
+    difficulty: 2
+    est_minutes: 30
+    week: 1
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs: []
+    objectives:
+      - { text: "Compute expectations and conditional probabilities", dimension: math }
+    status: stub
+  - id: gaussian-distribution
+    title: Gaussian distribution
+    description: Mean, variance, the normal density and why it is everywhere.
+    difficulty: 2
+    est_minutes: 20
+    week: 3
+    goal_weight: 1
+    dimensions: [conceptual, math]
+    prereqs: [{ id: probability-basics }]
+    objectives:
+      - { text: "Relate mean and variance to the normal density", dimension: math }
+    status: stub
+  - id: maximum-likelihood
+    title: Maximum likelihood
+    description: Choosing parameters that make observed data most probable; link to MSE and cross-entropy.
+    difficulty: 3
+    est_minutes: 30
+    week: 3
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs:
+      [
+        { id: probability-basics },
+        { id: gaussian-distribution, strength: soft },
+        { id: derivatives },
+      ]
+    objectives:
+      - { text: "Derive MSE as Gaussian maximum likelihood", dimension: math }
+    status: stub
+  - id: rotation-matrices
+    title: Rotation matrices
+    description: 2D/3D rotations as orthonormal matrices; composition.
+    difficulty: 2
+    est_minutes: 30
+    week: 5
+    goal_weight: 2
+    dimensions: [conceptual, math, implementation]
+    prereqs: [{ id: matrices }]
+    objectives:
+      - { text: "Build and compose 2D rotation matrices", dimension: math }
+    status: stub

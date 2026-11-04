@@ -1,0 +1,34 @@
+concept: action-chunking
+exercises:
+  - id: dx-il-4
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 3
+    est_minutes: 2
+    prompt: "Policies such as ACT predict a chunk of the next $k$ actions at each step instead of a single action. What is the main benefit?"
+    options:
+      - {
+          id: a,
+          text: "It reduces the number of independent decisions over an episode, which limits compounding error and copes better with pauses and other non-Markovian behaviour in human demonstrations",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "It lets the model skip the observation encoder",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: c,
+          text: "It guarantees the policy never sees out-of-distribution states",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: d,
+          text: "It turns imitation learning into reinforcement learning",
+          correct: false,
+          category: misunderstood_definition,
+        }
+    solution: "Predicting $k$ actions at once shrinks the effective decision horizon by a factor of $k$, so errors have fewer opportunities to compound. Temporal ensembling of overlapping chunks smooths execution."

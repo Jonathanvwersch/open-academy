@@ -1,0 +1,172 @@
+domain: deep-learning
+concepts:
+  - id: perceptron
+    title: Neurons and perceptrons
+    description: A neuron as a weighted sum plus bias passed through a nonlinearity; linear decision boundaries.
+    difficulty: 1
+    est_minutes: 20
+    week: 2
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs: [{ id: dot-product }, { id: linear-regression, strength: soft }]
+    objectives:
+      - { text: "Compute a neuron's output for given weights and inputs", dimension: math }
+      - {
+          text: "Explain why a single linear unit can only draw a linear boundary",
+          dimension: conceptual,
+        }
+    status: authored
+  - id: activation-functions
+    title: Activation functions
+    description: ReLU, sigmoid, tanh; why nonlinearity matters; their derivatives.
+    difficulty: 2
+    est_minutes: 25
+    week: 2
+    goal_weight: 3
+    dimensions: [conceptual, math, transfer]
+    prereqs: [{ id: perceptron }, { id: derivatives }]
+    objectives:
+      - { text: "Evaluate and differentiate ReLU and sigmoid", dimension: math }
+      - {
+          text: "Explain why stacking linear layers without activations stays linear",
+          dimension: conceptual,
+        }
+    status: authored
+  - id: mlp-forward-pass
+    title: Layers and the forward pass
+    description: Stacking layers as matrix multiplies plus activations; shapes through a multilayer perceptron.
+    difficulty: 2
+    est_minutes: 30
+    week: 2
+    goal_weight: 3
+    dimensions: [conceptual, math, implementation]
+    prereqs: [{ id: activation-functions }, { id: matrices }]
+    objectives:
+      - { text: "Compute a 2-layer forward pass by hand", dimension: math }
+      - { text: "Track tensor shapes through each layer", dimension: implementation }
+    status: authored
+  - id: computational-graphs
+    title: Computational graphs
+    description: Representing a computation as a DAG of primitive operations.
+    difficulty: 2
+    est_minutes: 20
+    week: 2
+    goal_weight: 3
+    dimensions: [conceptual, math]
+    prereqs: [{ id: chain-rule }]
+    objectives:
+      - { text: "Draw the computational graph of an expression", dimension: conceptual }
+      - { text: "Compute local derivatives at each node", dimension: math }
+    status: authored
+  - id: backpropagation
+    title: Backpropagation
+    description: Reverse-mode application of the chain rule over a computational graph to get all parameter gradients.
+    difficulty: 3
+    est_minutes: 45
+    week: 2
+    goal_weight: 3
+    dimensions: [conceptual, math, implementation, transfer]
+    prereqs:
+      [
+        { id: computational-graphs },
+        { id: mlp-forward-pass },
+        { id: loss-functions },
+        { id: partial-derivatives },
+      ]
+    objectives:
+      - {
+          text: "Explain why gradients are needed and why backward reuses forward values",
+          dimension: conceptual,
+        }
+      - { text: "Calculate gradients through a small network by hand", dimension: math }
+      - { text: "Implement a backward pass", dimension: implementation }
+      - { text: "Diagnose common gradient errors", dimension: transfer }
+    projects: [nn-from-scratch]
+    status: authored
+  - id: autodiff
+    title: Automatic differentiation
+    description: How frameworks record operations and compute gradients; forward vs reverse mode.
+    difficulty: 3
+    est_minutes: 25
+    week: 2
+    goal_weight: 2
+    dimensions: [conceptual, implementation]
+    prereqs: [{ id: backpropagation }]
+    objectives:
+      - { text: "Explain what loss.backward() does", dimension: conceptual }
+    status: stub
+  - id: pytorch-basics
+    title: PyTorch fundamentals
+    description: Tensors, modules, optimizers, the standard training loop.
+    difficulty: 2
+    est_minutes: 40
+    week: 2
+    goal_weight: 3
+    dimensions: [implementation]
+    prereqs: [{ id: autodiff }, { id: gradient-descent }]
+    objectives:
+      - { text: "Write a PyTorch training loop from memory", dimension: implementation }
+    status: stub
+  - id: sgd-minibatch
+    title: Stochastic and minibatch gradient descent
+    description: Estimating gradients from batches; noise, epochs, batch size.
+    difficulty: 2
+    est_minutes: 25
+    week: 3
+    goal_weight: 3
+    dimensions: [conceptual, math]
+    prereqs: [{ id: gradient-descent }]
+    objectives:
+      - { text: "Explain the tradeoffs of batch size", dimension: conceptual }
+    status: stub
+  - id: momentum-adam
+    title: Momentum and Adam
+    description: Momentum, adaptive learning rates and the Adam update.
+    difficulty: 3
+    est_minutes: 30
+    week: 3
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs: [{ id: sgd-minibatch }]
+    objectives:
+      - { text: "Write the Adam update rule", dimension: math }
+    status: stub
+  - id: weight-init-normalization
+    title: Initialization and normalization
+    description: Why init scale matters; batch norm and layer norm.
+    difficulty: 3
+    est_minutes: 30
+    week: 3
+    goal_weight: 2
+    dimensions: [conceptual]
+    prereqs: [{ id: backpropagation }]
+    objectives:
+      - {
+          text: "Explain vanishing/exploding activations and what LayerNorm does",
+          dimension: conceptual,
+        }
+    status: stub
+  - id: debugging-training
+    title: Debugging training runs
+    description: Reading loss curves, overfitting a single batch, gradient checks, common bugs.
+    difficulty: 3
+    est_minutes: 30
+    week: 3
+    goal_weight: 3
+    dimensions: [transfer, implementation]
+    prereqs: [{ id: sgd-minibatch }, { id: overfitting }]
+    objectives:
+      - { text: "Diagnose a failing training run from its symptoms", dimension: transfer }
+    status: stub
+  - id: classification-softmax
+    title: Softmax and multiclass cross-entropy
+    description: Turning logits into probabilities; categorical cross-entropy.
+    difficulty: 2
+    est_minutes: 25
+    week: 3
+    goal_weight: 3
+    dimensions: [conceptual, math]
+    prereqs: [{ id: logistic-regression }]
+    objectives:
+      - { text: "Compute softmax and cross-entropy for a logit vector", dimension: math }
+    status: stub

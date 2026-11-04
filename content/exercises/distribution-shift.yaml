@@ -1,0 +1,35 @@
+concept: distribution-shift
+exercises:
+  - id: dx-il-2
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A behavioral-cloning policy has low validation loss on held-out expert data, yet in closed-loop rollouts it drifts and fails more and more as the episode goes on. What is the most likely explanation?"
+    options:
+      - {
+          id: a,
+          text: "Small errors take the robot into states unlike those in the demonstrations, where its predictions are worse, and the errors compound",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "The validation set was too large",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: c,
+          text: "The policy is overfitting the training set, which validation loss cannot detect",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "Validation loss would detect ordinary overfitting. The problem is that validation data comes from the *expert's* state distribution, not the policy's.",
+        }
+      - {
+          id: d,
+          text: "The learning rate was too low",
+          correct: false,
+          category: incorrect_reasoning,
+        }
+    solution: "Covariate shift: the training and validation states come from the expert's distribution. At deployment the policy's own mistakes change the distribution of visited states, and errors compound over the horizon."

@@ -1,0 +1,39 @@
+concept: attention
+exercises:
+  - id: dx-tf-3
+    dimension: math
+    type: numeric
+    role: diagnostic
+    difficulty: 3
+    est_minutes: 4
+    prompt: |
+      Scaled dot-product attention with a single query $q = (1, 0)$, two keys $k_1 = (2, 0)$, $k_2 = (0, 2)$ and scalar values $v_1 = 10$, $v_2 = 0$. The key dimension is $d = 2$.
+
+      Compute the attention output $\sum_i \mathrm{softmax}_i\!\left(\frac{q \cdot k_i}{\sqrt d}\right) v_i$. Give 2 decimal places.
+    answer: 8.0443
+    tolerance: { abs: 0.02 }
+    common_wrong:
+      - {
+          answer: 8.808,
+          tolerance: { abs: 0.02 },
+          category: misunderstood_definition,
+          feedback: "That is the result without the $1/\\sqrt d$ scaling (softmax of scores 2 and 0).",
+        }
+      - {
+          answer: 10,
+          tolerance: { abs: 0.01 },
+          category: misunderstood_definition,
+          feedback: "Attention takes a softmax-weighted average of all values, not the value of the best-matching key.",
+        }
+      - {
+          answer: 5,
+          tolerance: { abs: 0.01 },
+          category: math_error,
+          feedback: "Equal weights would only happen if both scores were equal. Here $q\\cdot k_1 = 2$ and $q \\cdot k_2 = 0$.",
+        }
+    hints:
+      [
+        "Compute each score $q\\cdot k_i/\\sqrt{2}$ first.",
+        "Scores are $\\sqrt2 \\approx 1.414$ and $0$; apply softmax to them.",
+      ]
+    solution: "Scores: $2/\\sqrt2 = 1.414$ and $0$. Softmax weights: $e^{1.414}/(e^{1.414}+1) = 4.113/5.113 = 0.804$ and $0.196$. Output $= 0.804 \\times 10 + 0.196 \\times 0 \\approx 8.04$."

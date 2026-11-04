@@ -1,0 +1,11 @@
+concept: coordinate-frames
+exercises:
+  - id: dx-rb-1
+    dimension: math
+    type: text
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Frame B has the same orientation as the world frame W, and its origin is at $(2, 1)$ in W. A point has coordinates $(1, 1)$ in frame B. What are its coordinates in W? Answer as `(x, y)`."
+    accept: ["(3,2)", "(3, 2)", "3,2", "3, 2", "[3,2]", "[3, 2]"]
+    solution: "With no rotation, converting from B to W only adds B's origin: $p_W = p_B + o_B = (1,1) + (2,1) = (3,2)$."
