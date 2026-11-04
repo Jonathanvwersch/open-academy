@@ -55,7 +55,7 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 3
-    prompt: "$s = \\sigma(wx + b)$ with $\\sigma'(z) = \\sigma(z)(1-\\sigma(z))$. At $w = 0$, $b = 0$, $x = 4$, what is $\\partial s/\\partial w$?"
+    prompt: "Let $s = g(wx + b)$, where $g'(0) = 0.25$. At $w = 0$, $b = 0$, and $x = 4$, what is $\\partial s/\\partial w$?"
     answer: 1
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -67,8 +67,8 @@ exercises:
         }
     hints:
       [
-        "$z = 0$, so $\\sigma(z) = 0.5$.",
-        "$\\sigma'(0) = 0.25$; now multiply by $\\partial z/\\partial w$.",
+        "The input to $g$ is $z = wx + b = 0$.",
+        "Use $g'(0) = 0.25$, then multiply by $\\partial z/\\partial w$.",
       ]
     solution: "$0.25 \\cdot 4 = 1$."
   - id: cr-two-paths

@@ -33,7 +33,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 3
-    prompt: "$L(w, b) = (wx + b - y)^2$ with data $x = 3$, $y = 1$. At $w = 1$, $b = 1$, what is $\\partial L/\\partial w$?"
+    prompt: "Let $f(w, b) = (wx + b - y)^2$, where $x = 3$ and $y = 1$. At $w = 1$, $b = 1$, what is $\\partial f/\\partial w$?"
     answer: 18
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -43,8 +43,12 @@ exercises:
           feedback: "You dropped the inner factor $x = 3$. By the chain rule, $\\partial L/\\partial w = 2r \\cdot x$.",
         }
       - { answer: 9, category: math_error, feedback: "Don't forget the factor 2 from the square." }
-    hints: ["Residual $r = wx + b - y$.", "$r = 3$; $\\partial L/\\partial w = 2 r x$."]
-    solution: "$r = 3 + 1 - 1 = 3$, so $\\partial L/\\partial w = 2 \\cdot 3 \\cdot 3 = 18$."
+    hints:
+      [
+        "Let the inner difference be $r = wx + b - y$.",
+        "$r = 3$; $\\partial f/\\partial w = 2 r x$.",
+      ]
+    solution: "The inner difference is $3 + 1 - 1 = 3$, so $\\partial f/\\partial w = 2 \\cdot 3 \\cdot 3 = 18$."
   - id: pd-review-exp
     dimension: math
     type: expression
@@ -61,7 +65,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "When computing $\\partial L/\\partial w_3$ for a loss over a dataset, which quantities are treated as constants?"
+    prompt: "A function $L$ is calculated from many examples and depends on parameters $w_1, w_2, w_3$. When finding $\\partial L/\\partial w_3$, which quantities are treated as constants?"
     options:
       - { id: a, text: "All data values and every parameter except $w_3$", correct: true }
       - {

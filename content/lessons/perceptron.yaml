@@ -9,7 +9,7 @@ blocks:
     md: |
       A neuron adds a weighted sum of its inputs to a bias, then applies a step rule: output 1 when the score is positive, and 0 otherwise.
 
-      The set where $w\cdot x + b = 0$ is a line in 2D, a plane in 3D, and a hyperplane in higher dimensions. A single neuron marks one side of that boundary as 1 and the other as 0. It cannot mark opposite corners of a square as 1 and the other corners as 0, because one straight line cannot separate them.
+      The set where $w\cdot x + b = 0$ is a line in 2D, a plane in 3D, and a hyperplane in higher dimensions. A single neuron marks one side of that boundary as 1 and the other as 0. It cannot mark opposite corners of a square as 1 and the other corners as 0, because one straight line cannot separate them. This opposite-corners pattern is called **XOR**.
   - kind: example
     md: |
       $w = (1, 1)$, $b = -1.5$, step activation (output 1 if the score is $> 0$, else 0). Inputs $(0,0), (0,1), (1,0), (1,1)$ give scores $-1.5, -0.5, -0.5, 0.5$, so the outputs are $0, 0, 0, 1$. This neuron computes **AND**.

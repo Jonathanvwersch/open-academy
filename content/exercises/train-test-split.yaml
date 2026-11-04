@@ -58,7 +58,7 @@ exercises:
     role: transfer
     difficulty: 2
     est_minutes: 2
-    prompt: "You have 60 teleoperation episodes (300 frames each) for a pick-and-place policy. How should you build the held-out set?"
+    prompt: "You have 60 demonstrations (complete runs, or episodes) where a person remotely controls a robot to pick up and place an object; each demonstration contains 300 video frames. How should you choose demonstrations to hold out for a fair test on new demonstrations?"
     options:
       - { id: a, text: "Hold out whole episodes (e.g. 12 of the 60)", correct: true }
       - {

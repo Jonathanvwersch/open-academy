@@ -61,11 +61,11 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 3
-    prompt: "A gradient passes backward through 10 sigmoid activations, each in its best case ($\\sigma' = 0.25$), and all weights equal 1. By what factor is it multiplied overall? (scientific notation is fine, e.g. `9.5e-7`)"
+    prompt: "A change in a calculation is multiplied by 0.25 at each of 10 steps. By what factor does the original change become overall? (Scientific notation is fine, e.g. `9.5e-7`.)"
     answer: 9.5367e-7
     tolerance: { rel: 0.01 }
-    hints: ["Multiply ten local derivatives together."]
-    solution: "$0.25^{10} \\approx 9.5\\times10^{-7}$. This is the vanishing-gradient problem, and one reason ReLU (derivative 1) and residual connections help."
+    hints: ["Multiply the ten factors together."]
+    solution: "$0.25^{10} \\approx 9.5\\times10^{-7}$. Repeatedly multiplying by a number below 1 makes the result very small."
   - id: act-review-deriv
     dimension: math
     type: mc

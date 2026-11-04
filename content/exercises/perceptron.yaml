@@ -6,10 +6,10 @@ exercises:
     role: check
     difficulty: 1
     est_minutes: 1
-    prompt: "A neuron has $w = (0.5, -1, 2)$, $b = 0.5$ and a ReLU activation. What is its output for $x = (2, 1, 0.5)$?"
+    prompt: "A neuron outputs $\\max(0, w \\cdot x + b)$: it outputs 0 for a negative score and keeps a positive score unchanged. With $w = (0.5, -1, 2)$ and $b = 0.5$, what is its output for $x = (2, 1, 0.5)$?"
     answer: 1.5
     tolerance: { abs: 0.001 }
-    solution: "$z = 1 - 1 + 1 + 0.5 = 1.5$, and $\\mathrm{ReLU}(1.5) = 1.5$."
+    solution: "The score is $1 - 1 + 1 + 0.5 = 1.5$, so the neuron outputs $\\max(0, 1.5) = 1.5$."
   - id: dx-dl-1
     dimension: math
     type: numeric
