@@ -1,49 +1,26 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
+import { todayQueryOptions } from '../queries.js';
+import { RouteLoadError } from '../route-error.js';
 
 export const Route = createFileRoute('/')({
+  loader: ({ context }) => context.queryClient.ensureQueryData(todayQueryOptions()),
+  errorComponent: () => (
+    <RouteLoadError message="Your plan is unavailable." className="text-sm text-red-700" />
+  ),
   component: TodayPage,
 });
 
-interface TodayPayload {
-  needsDiagnostic: boolean;
-  diagnosticActive: boolean;
-  diagnosticRunId: string | null;
-  objective: string;
-  weekTitle: string;
-  week: number;
-  dueReviews: number;
-  budgetMinutes: number;
-  sessionKind: 'weekday' | 'saturday' | 'sunday';
-  activeSessionId: string | null;
-  plan: {
-    activities: Array<{
-      kind: string;
-      conceptId?: string;
-      conceptTitle?: string;
-      plannedMinutes: number;
-      reason: { summary: string };
-    }>;
-  };
-}
-
 function TodayPage() {
-  const today = useQuery({
-    queryKey: ['today'],
-    queryFn: async () => {
-      const response = await fetch('/api/today');
-      if (!response.ok) throw new Error('Could not load Today');
-      return (await response.json()) as TodayPayload;
-    },
-  });
+  const { data: plan } = useSuspenseQuery(todayQueryOptions());
   const startSession = useMutation({
     mutationFn: async () => {
       const response = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          budgetMinutes: today.data?.budgetMinutes ?? 60,
-          kind: today.data?.sessionKind ?? 'weekday',
+          budgetMinutes: plan.budgetMinutes,
+          kind: plan.sessionKind,
         }),
       });
       if (!response.ok) throw new Error('Could not start session');
@@ -54,9 +31,6 @@ function TodayPage() {
     },
   });
 
-  if (today.isPending) return <p className="text-sm text-neutral-600">Loading your plan…</p>;
-  if (today.isError) return <p className="text-sm text-red-700">Your plan is unavailable.</p>;
-  const plan = today.data;
   if (plan.needsDiagnostic) {
     return (
       <section className="mx-auto max-w-3xl space-y-8">

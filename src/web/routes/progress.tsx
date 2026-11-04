@@ -1,7 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
+import { progressQueryOptions } from '../queries.js';
+import { RouteLoadError } from '../route-error.js';
 
 export const Route = createFileRoute('/progress')({
+  loader: ({ context }) => context.queryClient.ensureQueryData(progressQueryOptions()),
+  errorComponent: () => <RouteLoadError message="Progress is unavailable." role="alert" />,
   component: ProgressPage,
 });
 
@@ -14,40 +18,7 @@ const masteryStateLabels: Record<string, string> = {
 };
 
 function ProgressPage() {
-  const query = useQuery({
-    queryKey: ['progress'],
-    queryFn: async () => {
-      const response = await fetch('/api/progress');
-      if (!response.ok) throw new Error('Unavailable');
-      return response.json() as Promise<{
-        domains: Array<{ id: string; title: string; counts: Record<string, number> }>;
-        goal: { mastered: number; total: number };
-        debt: Array<{
-          conceptId: string;
-          title: string;
-          dimension: string;
-          reason: string;
-          remediationAction: string;
-          studyUrl: string;
-        }>;
-        evidence: Array<{
-          id: string;
-          exerciseId: string;
-          conceptId: string;
-          conceptTitle: string;
-          correct: number;
-          createdAt: string;
-          event: string | null;
-        }>;
-        hours: number;
-        planHours: number;
-        streakDays: number;
-      }>;
-    },
-  });
-  if (query.isPending) return <p>Loading progress…</p>;
-  if (query.isError) return <p role="alert">Progress is unavailable.</p>;
-  const data = query.data;
+  const { data } = useSuspenseQuery(progressQueryOptions());
   return (
     <section className="mx-auto max-w-4xl space-y-6">
       <div>

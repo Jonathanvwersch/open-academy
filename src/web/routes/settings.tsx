@@ -1,40 +1,21 @@
-import { useQuery } from '@tanstack/react-query';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { settingsQueryOptions } from '../queries.js';
 
 export const Route = createFileRoute('/settings')({
+  loader: ({ context }) => context.queryClient.ensureQueryData(settingsQueryOptions()),
   component: SettingsPage,
 });
 
 function SettingsPage() {
-  const settingsQuery = useQuery({
-    queryKey: ['settings'],
-    queryFn: async () => {
-      const response = await fetch('/api/settings');
-      if (!response.ok) throw new Error('Could not load settings');
-      return response.json() as Promise<{
-        scheduleMinutes: number;
-        saturdayMinutes: number;
-        sundayMinutes: number;
-        startDate: string;
-      }>;
-    },
-  });
+  const { data: settings } = useSuspenseQuery(settingsQueryOptions());
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
-  const [draft, setDraft] = useState<{
-    scheduleMinutes: number;
-    saturdayMinutes: number;
-    sundayMinutes: number;
-    startDate: string;
-  } | null>(null);
-  useEffect(() => {
-    if (settingsQuery.data) setDraft(settingsQuery.data);
-  }, [settingsQuery.data]);
+  const [draft, setDraft] = useState(settings);
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!draft) return;
     setError('');
     const response = await fetch('/api/settings', {
       method: 'PUT',
@@ -47,7 +28,6 @@ function SettingsPage() {
     }
     setSaved(true);
   };
-  if (!draft) return <p className="text-sm text-neutral-600">Loading settings…</p>;
   return (
     <section className="mx-auto max-w-2xl space-y-6">
       <div>

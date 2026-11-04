@@ -1,9 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Markdown } from '../components.js';
+import { projectQueryOptions } from '../queries.js';
+import { RouteLoadError } from '../route-error.js';
 
 export const Route = createFileRoute('/lab')({
+  loader: ({ context }) => context.queryClient.ensureQueryData(projectQueryOptions('linreg-numpy')),
+  errorComponent: () => <RouteLoadError message="Lab is unavailable." role="alert" />,
   component: LabPage,
 });
 
@@ -11,22 +15,7 @@ function LabPage() {
   const [error, setError] = useState('');
   const [evidence, setEvidence] = useState('');
   const [reflection, setReflection] = useState<Array<{ id: string; prompt: string }>>([]);
-  const query = useQuery({
-    queryKey: ['project', 'linreg-numpy'],
-    queryFn: async () => {
-      const response = await fetch('/api/projects/linreg-numpy');
-      if (!response.ok) throw new Error('Lab unavailable');
-      return response.json() as Promise<{
-        project: {
-          title: string;
-          objective: string;
-          background: string;
-          tasks: Array<{ id: string; title: string; md: string }>;
-          acceptance: string[];
-        };
-      }>;
-    },
-  });
+  const { data } = useSuspenseQuery(projectQueryOptions('linreg-numpy'));
   async function upload(file?: File) {
     if (!file) return;
     try {
@@ -48,9 +37,7 @@ function LabPage() {
       setError(cause instanceof Error ? cause.message : 'Invalid results file');
     }
   }
-  if (query.isPending) return <p>Loading lab…</p>;
-  if (query.isError) return <p role="alert">Lab is unavailable.</p>;
-  const project = query.data.project;
+  const project = data.project;
   return (
     <section className="mx-auto max-w-3xl space-y-6">
       <div>
