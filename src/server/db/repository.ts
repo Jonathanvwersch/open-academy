@@ -216,6 +216,7 @@ export class LearnerRepository {
     exerciseId: string;
     level: number;
     text: string;
+    source?: 'authored' | 'llm';
     createdAt: Date;
   }) {
     return this.db
@@ -225,7 +226,7 @@ export class LearnerRepository {
         activityId: input.activityId,
         exerciseId: input.exerciseId,
         level: input.level,
-        source: 'authored',
+        source: input.source ?? 'authored',
         text: input.text,
         createdAt: input.createdAt,
       })

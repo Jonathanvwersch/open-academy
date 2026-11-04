@@ -13,12 +13,22 @@ function SettingsPage() {
     queryFn: async () => {
       const response = await fetch('/api/settings');
       if (!response.ok) throw new Error('Could not load settings');
-      return response.json() as Promise<{ scheduleMinutes: number; startDate: string }>;
+      return response.json() as Promise<{
+        scheduleMinutes: number;
+        saturdayMinutes: number;
+        sundayMinutes: number;
+        startDate: string;
+      }>;
     },
   });
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
-  const [draft, setDraft] = useState<{ scheduleMinutes: number; startDate: string } | null>(null);
+  const [draft, setDraft] = useState<{
+    scheduleMinutes: number;
+    saturdayMinutes: number;
+    sundayMinutes: number;
+    startDate: string;
+  } | null>(null);
   useEffect(() => {
     if (settingsQuery.data) setDraft(settingsQuery.data);
   }, [settingsQuery.data]);
@@ -62,6 +72,23 @@ function SettingsPage() {
             <span className="text-neutral-600">minutes</span>
           </div>
         </label>
+        {(['saturdayMinutes', 'sundayMinutes'] as const).map((key) => (
+          <label key={key} className="block text-sm font-medium">
+            {key === 'saturdayMinutes' ? 'Saturday study time' : 'Sunday study time'}
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="number"
+                min={5}
+                max={600}
+                step={5}
+                value={draft[key]}
+                onChange={(event) => setDraft({ ...draft, [key]: Number(event.target.value) })}
+                className="w-28 rounded-md border border-neutral-300 px-3 py-2"
+              />
+              <span className="text-neutral-600">minutes</span>
+            </div>
+          </label>
+        ))}
         <label className="block text-sm font-medium">
           Learning start date
           <input

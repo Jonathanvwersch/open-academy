@@ -4,8 +4,13 @@ import { HealthResponseSchema } from '../shared/health.js';
 import type { ContentIndex } from './content/types.js';
 import type { Database } from './db/client.js';
 import { createApiRoutes } from './routes/api.js';
+import type { TutorProvider } from './tutor/provider.js';
 
-export function createApp(deps: { db: Database; content?: ContentIndex }) {
+export function createApp(deps: {
+  db: Database;
+  content?: ContentIndex;
+  tutorProvider?: TutorProvider | null;
+}) {
   const app = new Hono();
 
   app.get('/api/health', async (context) => {

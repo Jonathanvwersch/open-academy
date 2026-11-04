@@ -6,3 +6,6 @@ coverage/
 playwright-report/
 test-results/
 *.tsbuildinfo
+__pycache__/
+*.py[cod]
+labs/*/work/

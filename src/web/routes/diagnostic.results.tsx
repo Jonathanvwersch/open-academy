@@ -29,6 +29,7 @@ interface DiagnosticResults {
 
 function DiagnosticResultsPage() {
   const [result, setResult] = useState<DiagnosticResults | null>(null);
+  const [loadError, setLoadError] = useState(false);
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -40,10 +41,22 @@ function DiagnosticResultsPage() {
         if (!latest.ok) return;
         id = ((await latest.json()) as { id?: string }).id ?? null;
       }
-      if (!id) return;
-      const response = await fetch(`/api/diagnostic/${encodeURIComponent(id)}/results`);
-      if (response.ok && active) setResult(await response.json());
-    })();
+      if (id) {
+        const response = await fetch(`/api/diagnostic/${encodeURIComponent(id)}/results`);
+        if (response.ok) {
+          if (active) setResult(await response.json());
+          return;
+        }
+      }
+      const latest = await fetch('/api/diagnostic/latest');
+      if (!latest.ok) throw new Error('No completed diagnostic');
+      const latestId = ((await latest.json()) as { id: string }).id;
+      const response = await fetch(`/api/diagnostic/${encodeURIComponent(latestId)}/results`);
+      if (!response.ok) throw new Error('Could not load diagnostic results');
+      if (active) setResult(await response.json());
+    })().catch(() => {
+      if (active) setLoadError(true);
+    });
     return () => {
       active = false;
     };
@@ -54,6 +67,7 @@ function DiagnosticResultsPage() {
         <p className="text-sm text-neutral-500">Diagnostic complete</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">Your starting point</h1>
       </div>
+      {loadError ? <p role="alert">Diagnostic results are unavailable.</p> : null}
       <div className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
         <p className="text-sm leading-6 text-neutral-700">
           Results are provisional; independent practice will refine your mastery.

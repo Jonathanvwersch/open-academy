@@ -651,3 +651,37 @@ test('Exercise assignment avoids items seen within seven days', () => {
   );
   expect(vectors?.exerciseIds).not.toContain('vectors-magnitude');
 });
+
+test('Saturday allocates a 300-minute lab with a capped review warm-up and reflection', () => {
+  const plan = planSession(emptyState(), content, now, 300, 'saturday');
+  expect(plan.activities.reduce((sum, activity) => sum + activity.plannedMinutes, 0)).toBe(300);
+  expect(
+    plan.activities.find((activity) => activity.kind === 'review')?.plannedMinutes ?? 0,
+  ).toBeLessThanOrEqual(20);
+  expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(true);
+  expect(plan.activities.some((activity) => activity.kind === 'reflect')).toBe(true);
+});
+
+test('Saturday plans an extension after a project is complete', () => {
+  const state = emptyState();
+  state.projectProgress = [{ projectId: 'linreg-numpy', status: 'completed' }];
+  const plan = planSession(state, content, now, 300, 'saturday');
+  expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(false);
+  expect(
+    plan.activities.some(
+      (activity) => activity.kind === 'practice' || activity.kind === 'remediate',
+    ),
+  ).toBe(true);
+});
+
+test('Sunday creates a full cumulative assessment plan with interleaved no-hint items', () => {
+  const state = emptyState();
+  state.mastery = [
+    { ...initialMastery('vectors', 'math'), state: 'independent' },
+    { ...initialMastery('linear-models', 'conceptual'), state: 'independent' },
+  ];
+  const plan = planSession(state, content, now, 60, 'sunday');
+  const assessment = plan.activities.find((activity) => activity.kind === 'quick_check');
+  expect(assessment?.exerciseIds.length).toBeGreaterThan(0);
+  expect(plan.activities.reduce((sum, activity) => sum + activity.plannedMinutes, 0)).toBe(60);
+});

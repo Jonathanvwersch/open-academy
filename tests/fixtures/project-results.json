@@ -1,0 +1,15 @@
+{
+  "project": "linreg-numpy",
+  "version": 1,
+  "tests": [
+    {
+      "id": "test-predict",
+      "passed": true,
+      "message": "Predictions match the expected values."
+    }
+  ],
+  "metrics": {
+    "validation-mse": 0.22
+  },
+  "generated_at": "2026-01-01T12:00:00.000Z"
+}

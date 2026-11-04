@@ -333,17 +333,22 @@ export const tutorMessages = pgTable('tutor_messages', {
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 });
 
-export const llmCalls = pgTable('llm_calls', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  promptId: text('prompt_id').notNull(),
-  promptVersion: text('prompt_version').notNull(),
-  provider: text('provider').notNull(),
-  model: text('model').notNull(),
-  inputTokens: integer('input_tokens'),
-  outputTokens: integer('output_tokens'),
-  costUsd: real('cost_usd'),
-  latencyMs: integer('latency_ms'),
-  status: text('status').notNull(),
-  error: text('error'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
-});
+export const llmCalls = pgTable(
+  'llm_calls',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    promptId: text('prompt_id').notNull(),
+    promptVersion: text('prompt_version').notNull(),
+    provider: text('provider').notNull(),
+    model: text('model').notNull(),
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+    costUsd: real('cost_usd'),
+    latencyMs: integer('latency_ms'),
+    status: text('status').notNull(),
+    error: text('error'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [index('llm_calls_user_created_idx').on(table.userId, table.createdAt)],
+);

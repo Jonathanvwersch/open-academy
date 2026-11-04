@@ -241,6 +241,7 @@ export function HintLadder({
   exerciseId,
   activityId,
   hintCount = 0,
+  tutorEnabled = false,
   onHint,
   mode = 'practice',
   buttonRef,
@@ -248,14 +249,22 @@ export function HintLadder({
   exerciseId: string;
   activityId?: string;
   hintCount?: number;
-  onHint: (result: { level: number; text: string; revealedSolution: boolean }) => void;
+  tutorEnabled?: boolean;
+  onHint: (result: {
+    level: number;
+    text: string;
+    revealedSolution: boolean;
+    tutorUnavailable?: boolean;
+  }) => void;
   mode?: 'practice' | 'review';
   buttonRef?: RefObject<HTMLButtonElement | null>;
 }) {
   const [loading, setLoading] = useState(false);
   const [level, setLevel] = useState(0);
   const [solutionShown, setSolutionShown] = useState(false);
-  const showSolution = level >= hintCount;
+  const [hasMore, setHasMore] = useState(tutorEnabled);
+  const canRequestHint = level < hintCount || (tutorEnabled && hasMore);
+  const showSolution = !canRequestHint;
   const requestHint = async () => {
     setLoading(true);
     const response = await fetch('/api/hints', {
@@ -271,12 +280,16 @@ export function HintLadder({
     });
     const data = await response.json();
     if (response.ok) {
-      if (typeof data.text === 'string') {
+      if (data.revealedSolution) {
         onHint(data);
-        if (data.revealedSolution) setSolutionShown(true);
-        else setLevel(data.level);
+        setSolutionShown(true);
+      } else if (typeof data.text === 'string' || data.tutorUnavailable) {
+        onHint({ ...data, text: data.text ?? '' });
+        setLevel(data.level ?? hintCount);
+        setHasMore(Boolean(data.hasMore));
       } else {
         setLevel(hintCount);
+        setHasMore(false);
       }
     }
     setLoading(false);

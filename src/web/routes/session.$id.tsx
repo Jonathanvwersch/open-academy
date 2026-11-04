@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
+import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { ExerciseForm, FeedbackPanel, HintLadder, Markdown, ModeBadge } from '../components';
 
@@ -33,6 +34,7 @@ function SessionPage() {
     level: number;
     text: string;
     revealedSolution: boolean;
+    tutorUnavailable?: boolean;
   } | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [completedLessonChecks, setCompletedLessonChecks] = useState<Set<string>>(new Set());
@@ -50,6 +52,7 @@ function SessionPage() {
         plannedMinutes: number;
         startedAt?: string;
         serverNow?: string;
+        tutorEnabled: boolean;
       }>;
     },
   });
@@ -331,13 +334,16 @@ function SessionPage() {
               {String(result.feedback)}
             </p>
           ) : null}
-          {hint ? (
+          {hint?.text ? (
             <div className="rounded-lg bg-neutral-100 p-4 text-sm">
               <p className="font-medium">
                 {hint.revealedSolution ? 'Solution' : `Hint ${hint.level}`}
               </p>
               <Markdown>{hint.text}</Markdown>
             </div>
+          ) : null}
+          {hint?.tutorUnavailable ? (
+            <p className="text-xs text-neutral-500">Tutor unavailable right now.</p>
           ) : null}
           {!result ||
           result.status === 'invalid' ||
@@ -362,10 +368,14 @@ function SessionPage() {
               exerciseId={exerciseId ?? ''}
               activityId={activity.id}
               hintCount={exerciseQuery.data.hintCount}
+              tutorEnabled={sessionQuery.data.tutorEnabled}
               onHint={setHint}
               mode={mode === 'review' ? 'review' : 'practice'}
               buttonRef={hintButton}
             />
+          ) : null}
+          {mode === 'practice' && exerciseId && sessionQuery.data.tutorEnabled ? (
+            <TutorChat activityId={activity.id} exerciseId={exerciseId} />
           ) : null}
         </article>
       ) : activity.kind === 'learn' && lessonQuery.isPending ? (
@@ -446,5 +456,63 @@ function InlineLessonCheck({
         Skip this check
       </button>
     </div>
+  );
+}
+
+function TutorChat({ activityId, exerciseId }: { activityId: string; exerciseId: string }) {
+  const [question, setQuestion] = useState('');
+  const [reply, setReply] = useState('');
+  const [error, setError] = useState('');
+  const [pending, setPending] = useState(false);
+
+  const ask = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!question.trim() || pending) return;
+    setPending(true);
+    setError('');
+    try {
+      const response = await fetch('/api/tutor/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ question, exerciseId, activityId, mode: 'practice' }),
+      });
+      const result = (await response.json()) as { message?: string; error?: string };
+      if (!response.ok) throw new Error(result.error ?? 'Tutor is unavailable.');
+      setReply(result.message ?? '');
+      setQuestion('');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Tutor is unavailable.');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <section className="space-y-3 border-t border-neutral-200 pt-4">
+      <h2 className="font-medium">Ask the tutor</h2>
+      {reply ? <Markdown>{reply}</Markdown> : null}
+      {error ? (
+        <p role="alert" className="text-sm text-red-700">
+          {error}
+        </p>
+      ) : null}
+      <form onSubmit={ask} className="space-y-2">
+        <label className="block text-sm">
+          Question
+          <textarea
+            className="mt-1 min-h-20 w-full rounded-md border border-neutral-300 p-2"
+            value={question}
+            onChange={(event) => setQuestion(event.target.value)}
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={pending || !question.trim()}
+          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm disabled:opacity-50"
+        >
+          {pending ? 'Asking…' : 'Ask tutor'}
+        </button>
+      </form>
+    </section>
   );
 }
