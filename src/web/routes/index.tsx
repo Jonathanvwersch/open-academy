@@ -14,6 +14,7 @@ interface TodayPayload {
   week: number;
   dueReviews: number;
   budgetMinutes: number;
+  sessionKind: 'weekday' | 'saturday' | 'sunday';
   activeSessionId: string | null;
   plan: {
     activities: Array<{
@@ -40,7 +41,10 @@ function TodayPage() {
       const response = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ budgetMinutes: today.data?.budgetMinutes ?? 60 }),
+        body: JSON.stringify({
+          budgetMinutes: today.data?.budgetMinutes ?? 60,
+          kind: today.data?.sessionKind ?? 'weekday',
+        }),
       });
       if (!response.ok) throw new Error('Could not start session');
       return response.json() as Promise<{ id: string }>;

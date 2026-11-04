@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { createDb } from '../../src/server/db/client.js';
 import { users } from '../../src/server/db/schema.js';
@@ -152,4 +153,29 @@ test('a final wrong practice answer reveals the worked solution', async ({ page 
   await page.getByLabel('Your answer').fill('1');
   await page.getByRole('button', { name: 'Submit answer' }).click();
   await expect(page.getByText('The magnitude is', { exact: false })).toBeVisible();
+});
+
+test('lab uploads fixture results, records evidence, and reveals reflection', async ({ page }) => {
+  await page.goto('/lab');
+  await expect(page.getByRole('heading', { name: 'Linear regression in NumPy' })).toBeVisible();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'results.json',
+    mimeType: 'application/json',
+    buffer: readFileSync(new URL('../fixtures/project-results.json', import.meta.url)),
+  });
+  await expect(page.getByText('1/1 checks passed')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Reflection questions' })).toBeVisible();
+  await expect(page.getByText('Complete a gradient update.')).toBeVisible();
+});
+
+test('progress displays mastery, goal progress, study time, and evidence sections', async ({
+  page,
+}) => {
+  await page.goto('/progress');
+  await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '90-day goals' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mastery by domain' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Learning debt' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Study time' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Recent evidence' })).toBeVisible();
 });

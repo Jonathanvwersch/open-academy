@@ -8,6 +8,8 @@ interface RouterContext {
 const navigation = [
   { label: 'Today', to: '/' },
   { label: 'Map', to: '/map' },
+  { label: 'Lab', to: '/lab' },
+  { label: 'Progress', to: '/progress' },
   { label: 'Settings', to: '/settings' },
 ] as const;
 
