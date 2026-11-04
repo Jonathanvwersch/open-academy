@@ -52,6 +52,26 @@ fast_path: [objective, summary]   # kinds shown to learners with prior evidence 
 ```
 After the blocks, the runner serves independent `core` exercises for the concept not already used in the lesson.
 
+New lessons may use knowledge points instead of authored blocks:
+```yaml
+concept: supervised-learning
+version: 3
+objective: "What the learner will be able to do."
+knowledge_points:
+  - id: sl-inputs-targets
+    title: Inputs, targets and the model
+    explain: "A short explanation."
+    worked: "A worked example with the steps shown."
+    problems: [slp-predict, slp-input-target, slp-parameters]
+  - id: sl-measuring-error
+    title: Measuring error
+    explain: "..."
+    worked: "..."
+    problems: [slp-squared-error, slp-error-sum, slp-why-square]
+summary: "..."
+```
+Knowledge-point IDs are globally unique. Each point needs 3 or more practice problems, at least one fixed problem, and either 5 fixed problems or a parameterised template. The loader derives legacy-compatible objective, intuition, worked, check, and summary blocks; each check uses the point's first fixed problem.
+
 ## content/exercises/<concept-id>.yaml
 ```yaml
 concept: gradient-descent
@@ -59,7 +79,7 @@ exercises:
   - id: gd-step-numeric           # globally unique
     dimension: math               # conceptual | math | implementation | transfer
     type: numeric                 # see below
-    role: core                    # core | transfer | review | diagnostic | check
+    role: core                    # core | transfer | review | diagnostic | check | practice
     difficulty: 2
     est_minutes: 3
     prompt: "..."
@@ -70,6 +90,17 @@ exercises:
 Type-specific fields:
 - `mc`: `options: [{ id, text, correct: bool, feedback?, category? }]`, `multi?: bool` (default single).
 - `numeric`: `answer: number`, `tolerance: { abs?: number, rel?: number }` (default abs 1e-6), `common_wrong?: [{ answer, tolerance?, category, feedback }]`.
+- Numeric practice exercises may be parameterised. A template has parameter ranges, optional constraints, and an `answer_expr` instead of `answer`:
+  ```yaml
+  params:
+    w: { min: 1, max: 5, step: 1 } # step defaults to 1
+    x: { min: 50, max: 150, step: 10 }
+  constraints: ["w * x != 100"]    # mathjs boolean expressions over the parameters
+  answer_expr: "w * x + 20"
+  common_wrong:
+    - { answer_expr: "w * x", category: math_error, feedback: "..." }
+  ```
+  Exactly one of `answer` and `answer_expr` is required; `answer_expr` requires `params`. Text fields may use `{{= expression }}` to show a sampled calculation. Templates must have role `practice` and be referenced by one knowledge point.
 - `expression`: `answer: "2*w*x - 2*x*y"` (mathjs syntax), `variables: { w: [-3, 3], x: [-3, 3] }` (sample ranges), `common_wrong?: [{ answer, category, feedback }]`. Learner may type `^`, `*`, implicit multiplication is allowed by mathjs.
 - `text`: `accept: ["..."]` (compared case/whitespace-normalized), `regex?: "..."`.
 - `code_read`: `code: "..."` (python), plus either numeric fields (`answer`, `tolerance`) or text fields (`accept`).

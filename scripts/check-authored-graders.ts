@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path';
 import { parse } from 'yaml';
 import type { Exercise } from '../src/server/content/schemas.js';
 import { ExerciseSchema } from '../src/server/content/schemas.js';
+import { instantiateExercise, isTemplate } from '../src/server/content/templates.js';
 import { gradeExercise } from '../src/server/grading/index.js';
 
 const directory = resolve('content/exercises');
@@ -23,7 +24,10 @@ for (const file of files) {
       failures.push(`${file}: invalid exercise structure`);
       continue;
     }
-    const exercise = parsed.data;
+    const authoredExercise = parsed.data;
+    const exercise = isTemplate(authoredExercise)
+      ? instantiateExercise(authoredExercise, 0).exercise
+      : authoredExercise;
     const label = `${file} [${exercise.id}]`;
     const answer = authoredAnswer(exercise);
     if (answer === undefined) {
@@ -42,6 +46,7 @@ for (const file of files) {
       (exercise.type === 'code_read' && 'answer' in exercise)
     ) {
       for (const wrong of exercise.common_wrong ?? []) {
+        if (!('answer' in wrong)) continue;
         const wrongResult = await gradeExercise(exercise, wrong.answer, { random: () => 0.371 });
         commonWrongCount += 1;
         if (wrongResult.status !== 'graded' || wrongResult.mistake_category !== wrong.category) {
@@ -68,7 +73,7 @@ function authoredAnswer(exercise: Exercise): unknown {
       return exercise.options.filter((option) => option.correct).map((option) => option.id);
     case 'numeric':
     case 'expression':
-      return exercise.answer;
+      return exercise.type === 'numeric' && !('answer' in exercise) ? undefined : exercise.answer;
     case 'text':
     case 'code_complete':
       return exercise.accept[0];

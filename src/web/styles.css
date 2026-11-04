@@ -28,6 +28,13 @@ body {
   margin-top: 0.8rem;
 }
 
+.markdown h3 {
+  margin-block: 1.25rem 0.4rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .markdown ul,
 .markdown ol {
   padding-left: 1.5rem;

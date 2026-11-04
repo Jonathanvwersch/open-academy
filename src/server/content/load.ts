@@ -3,6 +3,7 @@ import { join, relative, resolve } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
 import { buildContentIndex } from './index.js';
+import type { LessonInput } from './schemas.js';
 import {
   ConceptSchema,
   CurriculumSchema,
@@ -11,6 +12,7 @@ import {
   IdSchema,
   LessonSchema,
   NotationSchema,
+  normalizeLesson,
   ProjectSchema,
 } from './schemas.js';
 import type { ContentIndex, ContentIssue, ContentSourceData } from './types.js';
@@ -59,6 +61,7 @@ export async function loadContent(
   const root = resolveContentDirectory(directory);
   const data: ContentSourceData = { concepts: [], lessons: [], exercises: [], projects: [] };
   const issues: ContentIssue[] = [];
+  const lessonInputs: Array<{ value: LessonInput; file: string }> = [];
 
   const curriculumRaw = await readYaml(join(root, 'curriculum.yaml'), 'curriculum.yaml', issues);
   if (curriculumRaw !== undefined) {
@@ -101,7 +104,7 @@ export async function loadContent(
     const raw = await readYaml(file, displayFile, issues);
     const parsed = LessonSchema.safeParse(raw);
     if (parsed.success) {
-      data.lessons.push({ value: parsed.data, file: displayFile });
+      lessonInputs.push({ value: parsed.data, file: displayFile });
     } else {
       addZodIssues(issues, displayFile, raw, parsed.error);
     }
@@ -141,6 +144,17 @@ export async function loadContent(
       } else {
         addZodIssues(issues, displayFile, item, parsed.error, index, 'exercises');
       }
+    });
+  }
+
+  const exercisesById = new Map(data.exercises.map(({ value }) => [value.id, value]));
+  for (const lesson of lessonInputs) {
+    data.lessons.push({
+      value: normalizeLesson(lesson.value, (exerciseId) => {
+        const exercise = exercisesById.get(exerciseId);
+        return exercise?.type === 'numeric' && 'answer_expr' in exercise;
+      }),
+      file: lesson.file,
     });
   }
 

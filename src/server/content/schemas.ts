@@ -4,7 +4,14 @@ export const IdSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 const ProjectEvidenceIdSchema = z.string().regex(/^[a-z0-9]+(?:[_-][a-z0-9]+)*$/);
 
 export const DimensionSchema = z.enum(['conceptual', 'math', 'implementation', 'transfer']);
-export const ExerciseRoleSchema = z.enum(['core', 'transfer', 'review', 'diagnostic', 'check']);
+export const ExerciseRoleSchema = z.enum([
+  'core',
+  'transfer',
+  'review',
+  'diagnostic',
+  'check',
+  'practice',
+]);
 export const MistakeCategorySchema = z.enum([
   'missing_prerequisite',
   'misunderstood_definition',
@@ -155,27 +162,69 @@ const BlockExerciseSchema = z
   })
   .strict();
 
-export const LessonSchema = z
+const LessonBlockSchema = z.union([BlockMarkdownSchema, BlockExerciseSchema]);
+
+const LessonFieldsSchema = z.object({
+  concept: IdSchema,
+  version: z.number().int().positive(),
+});
+
+const LegacyLessonSchema = LessonFieldsSchema.extend({
+  blocks: z.array(LessonBlockSchema).min(1),
+  fast_path: z
+    .array(
+      z.enum(['objective', 'intuition', 'example', 'check', 'math', 'worked', 'faded', 'summary']),
+    )
+    .default([]),
+}).strict();
+
+const KnowledgePointSchema = z
   .object({
-    concept: IdSchema,
-    version: z.number().int().positive(),
-    blocks: z.array(z.union([BlockMarkdownSchema, BlockExerciseSchema])).min(1),
-    fast_path: z
-      .array(
-        z.enum([
-          'objective',
-          'intuition',
-          'example',
-          'check',
-          'math',
-          'worked',
-          'faded',
-          'summary',
-        ]),
-      )
-      .default([]),
+    id: IdSchema,
+    title: z.string(),
+    explain: z.string(),
+    worked: z.string(),
+    problems: z.array(IdSchema),
   })
   .strict();
+
+const KnowledgePointLessonSchema = LessonFieldsSchema.extend({
+  objective: z.string().min(1),
+  knowledge_points: z.array(KnowledgePointSchema).min(2).max(4),
+  summary: z.string().min(1),
+}).strict();
+
+export const LessonSchema = z.union([LegacyLessonSchema, KnowledgePointLessonSchema]);
+
+export type LessonBlock = z.infer<typeof LessonBlockSchema>;
+export type KnowledgePoint = z.infer<typeof KnowledgePointSchema>;
+export type LessonInput = z.infer<typeof LessonSchema>;
+export type Lesson = Omit<z.infer<typeof LegacyLessonSchema>, 'fast_path'> & {
+  fast_path: z.infer<typeof LegacyLessonSchema>['fast_path'];
+  knowledge_points?: KnowledgePoint[];
+};
+
+export function normalizeLesson(
+  lesson: LessonInput,
+  isTemplateProblem: (exerciseId: string) => boolean,
+): Lesson {
+  if ('blocks' in lesson) return lesson;
+  const blocks: LessonBlock[] = [{ kind: 'objective', md: lesson.objective }];
+  for (const point of lesson.knowledge_points) {
+    blocks.push({ kind: 'intuition', md: `### ${point.title}\n\n${point.explain}` });
+    blocks.push({ kind: 'worked', md: point.worked });
+    const fixedProblem = point.problems.find((problemId) => !isTemplateProblem(problemId));
+    if (fixedProblem) blocks.push({ kind: 'check', exercise: fixedProblem });
+  }
+  blocks.push({ kind: 'summary', md: lesson.summary });
+  return {
+    concept: lesson.concept,
+    version: lesson.version,
+    knowledge_points: lesson.knowledge_points,
+    blocks,
+    fast_path: ['objective', 'summary'],
+  };
+}
 
 const CommonExerciseSchema = z.object({
   id: IdSchema,
@@ -215,7 +264,7 @@ const NumericToleranceSchema = z
   })
   .strict();
 
-const CommonWrongNumericSchema = z
+const CommonWrongNumericFixedSchema = z
   .object({
     answer: z.number(),
     tolerance: NumericToleranceSchema.optional(),
@@ -223,6 +272,20 @@ const CommonWrongNumericSchema = z
     feedback: z.string().min(1),
   })
   .strict();
+
+const CommonWrongNumericTemplateSchema = z
+  .object({
+    answer_expr: z.string().min(1),
+    tolerance: NumericToleranceSchema.optional(),
+    category: MistakeCategorySchema,
+    feedback: z.string().min(1),
+  })
+  .strict();
+
+const CommonWrongNumericSchema = z.union([
+  CommonWrongNumericFixedSchema,
+  CommonWrongNumericTemplateSchema,
+]);
 
 const CommonWrongExpressionSchema = z
   .object({
@@ -238,12 +301,39 @@ const MultipleChoiceExerciseSchema = CommonExerciseSchema.extend({
   multi: z.boolean().default(false),
 }).strict();
 
-const NumericExerciseSchema = CommonExerciseSchema.extend({
+const NumericExerciseBaseSchema = CommonExerciseSchema.extend({
   type: z.literal('numeric'),
-  answer: z.number(),
   tolerance: NumericToleranceSchema,
-  common_wrong: z.array(CommonWrongNumericSchema).optional(),
-}).strict();
+});
+
+const NumericExerciseSchema = z.union([
+  NumericExerciseBaseSchema.extend({
+    answer: z.number(),
+    common_wrong: z.array(CommonWrongNumericFixedSchema).optional(),
+  }).strict(),
+  NumericExerciseBaseSchema.extend({
+    answer_expr: z.string().min(1),
+    params: z
+      .record(
+        z.string().min(1),
+        z
+          .object({
+            min: z.number().finite(),
+            max: z.number().finite(),
+            step: z.number().finite().positive().default(1),
+          })
+          .strict()
+          .refine((range) => range.min <= range.max, {
+            message: 'parameter min must be no greater than max',
+          }),
+      )
+      .refine((params) => Object.keys(params).length > 0, {
+        message: 'a template must define at least one parameter',
+      }),
+    constraints: z.array(z.string().min(1)).optional(),
+    common_wrong: z.array(CommonWrongNumericSchema).optional(),
+  }).strict(),
+]);
 
 const ExpressionExerciseSchema = CommonExerciseSchema.extend({
   type: z.literal('expression'),
@@ -263,7 +353,7 @@ const CodeReadNumericExerciseSchema = CommonExerciseSchema.extend({
   code: z.string().min(1),
   answer: z.number(),
   tolerance: NumericToleranceSchema,
-  common_wrong: z.array(CommonWrongNumericSchema).optional(),
+  common_wrong: z.array(CommonWrongNumericFixedSchema).optional(),
 }).strict();
 
 const CodeReadTextExerciseSchema = CommonExerciseSchema.extend({
@@ -391,7 +481,6 @@ export const ProjectSchema = z
 export type Curriculum = z.infer<typeof CurriculumSchema>;
 export type Concept = z.infer<typeof ConceptSchema>;
 export type NotationRegistry = z.infer<typeof NotationSchema>;
-export type Lesson = z.infer<typeof LessonSchema>;
 export type Exercise = z.infer<typeof ExerciseSchema>;
 export type Diagnostic = z.infer<typeof DiagnosticSchema>;
 export type Project = z.infer<typeof ProjectSchema>;
