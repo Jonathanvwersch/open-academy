@@ -1,5 +1,10 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
   "files": {
     "ignoreUnknown": true,
     "includes": [
@@ -11,6 +16,7 @@
       "!docs",
       "!drizzle/meta",
       "!src/server/tutor/prompts",
+      "!src/web/ui",
       "!src/web/routeTree.gen.ts"
     ]
   },

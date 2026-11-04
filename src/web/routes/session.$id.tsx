@@ -1,6 +1,9 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+import { Alert, AlertDescription } from '@/ui/alert.js';
+import { Button } from '@/ui/button.js';
+import { Card, CardContent } from '@/ui/card.js';
 import { ExerciseForm, FeedbackPanel, HintLadder, LessonBlock, Markdown } from '../components';
 import { LessonRunner } from '../lesson/LessonRunner.js';
 import {
@@ -48,7 +51,10 @@ export const Route = createFileRoute('/session/$id')({
     );
   },
   errorComponent: () => (
-    <RouteLoadError message="This session could not be resumed." className="text-sm text-red-700" />
+    <RouteLoadError
+      message="This session could not be resumed."
+      className="text-sm text-destructive"
+    />
   ),
   component: SessionPage,
 });
@@ -169,7 +175,8 @@ function SessionPage() {
       if (
         event.key !== '?' &&
         target instanceof HTMLElement &&
-        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+        (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+          ['radio', 'checkbox', 'combobox'].includes(target.getAttribute('role') ?? ''))
       ) {
         return;
       }
@@ -268,13 +275,9 @@ function SessionPage() {
       <section className="mx-auto max-w-3xl space-y-4">
         <h1 className="text-3xl font-semibold">Session complete</h1>
         <p className="text-neutral-600">Your progress has been saved.</p>
-        <button
-          type="button"
-          onClick={endSession}
-          className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white"
-        >
+        <Button type="button" onClick={endSession}>
           Finish session
-        </button>
+        </Button>
       </section>
     );
   }
@@ -375,14 +378,9 @@ function SessionPage() {
             </LessonBlock>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={markLessonViewed}
-          disabled={checksPending}
-          className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <Button type="button" onClick={markLessonViewed} disabled={checksPending}>
           Continue to practice
-        </button>
+        </Button>
         {checksPending ? (
           <p className="text-sm text-neutral-500">Answer or skip the check above to continue.</p>
         ) : null}
@@ -400,99 +398,97 @@ function SessionPage() {
         lessonHref={lessonHref}
       />
       {exerciseQuery.data ? (
-        <article className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
-          <Markdown>{exerciseQuery.data.prompt}</Markdown>
-          {shortcutsOpen ? (
-            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-700">
-              Enter submits · h requests a hint · n or → continues · 1–9 selects an option · ? hides
-              shortcuts
+        <Card data-testid="session-exercise">
+          <CardContent className="space-y-5 p-6">
+            <div data-testid="exercise-prompt">
+              <Markdown>{exerciseQuery.data.prompt}</Markdown>
             </div>
-          ) : null}
-          {result && result.status !== 'invalid' ? <FeedbackPanel result={result} /> : null}
-          {result?.status === 'invalid' ? (
-            <p role="alert" className="text-sm text-red-700">
-              {String(result.feedback)}
-            </p>
-          ) : null}
-          {hint?.text ? (
-            <div className="rounded-lg bg-neutral-100 p-4 text-sm">
-              <p className="font-medium">
-                {hint.revealedSolution ? 'Solution' : `Hint ${hint.level}`}
-              </p>
-              <Markdown>{hint.text}</Markdown>
-            </div>
-          ) : null}
-          {hint?.tutorUnavailable ? (
-            <p className="text-xs text-neutral-500">Tutor unavailable right now.</p>
-          ) : null}
-          {canSubmitAnswer ? (
-            <ExerciseForm
-              key={`${activity.id}:${exerciseId}`}
-              exercise={exerciseQuery.data}
-              onSubmit={submitAnswer}
-              explainStep={result?.status === 'self_check_required' ? 'self-check' : 'answer'}
-              readOnlyAnswer={
-                typeof result?.yourAnswer === 'string' ? result.yourAnswer : undefined
-              }
-              submitLabel={submitLabel}
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={continueNext}
-              className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white"
-            >
-              Continue
-            </button>
-          )}
-          {canAskForHelp ? (
-            <div className="flex flex-wrap gap-2">
-              {mode !== 'assessment' ? (
-                <HintLadder
-                  exerciseId={exerciseId ?? ''}
-                  activityId={activity.id}
-                  hintCount={exerciseQuery.data.hintCount}
-                  tutorEnabled={sessionQuery.data.tutorEnabled}
-                  onHint={setHint}
-                  mode={mode === 'review' ? 'review' : 'practice'}
-                  buttonRef={hintButton}
-                />
-              ) : null}
-              {mode === 'practice' && exerciseId && sessionQuery.data.tutorEnabled ? (
-                <TutorLauncher
-                  context={{
-                    conceptId: activity.conceptId,
-                    conceptTitle: activity.conceptTitle,
-                    activityId: activity.id,
-                    exerciseId,
-                    allowed: true,
-                    enabled: sessionQuery.data.tutorEnabled,
-                  }}
-                />
-              ) : null}
-            </div>
-          ) : null}
-        </article>
+            {shortcutsOpen ? (
+              <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+                Enter submits · h requests a hint · n or → continues · 1–9 selects an option · ?
+                hides shortcuts
+              </div>
+            ) : null}
+            {result && result.status !== 'invalid' ? <FeedbackPanel result={result} /> : null}
+            {result?.status === 'invalid' ? (
+              <Alert variant="destructive">
+                <AlertDescription>{String(result.feedback)}</AlertDescription>
+              </Alert>
+            ) : null}
+            {hint?.text ? (
+              <div className="rounded-lg bg-neutral-100 p-4 text-sm">
+                <p className="font-medium">
+                  {hint.revealedSolution ? 'Solution' : `Hint ${hint.level}`}
+                </p>
+                <Markdown>{hint.text}</Markdown>
+              </div>
+            ) : null}
+            {hint?.tutorUnavailable ? (
+              <p className="text-xs text-neutral-500">Tutor unavailable right now.</p>
+            ) : null}
+            {canSubmitAnswer ? (
+              <ExerciseForm
+                key={`${activity.id}:${exerciseId}`}
+                exercise={exerciseQuery.data}
+                onSubmit={submitAnswer}
+                explainStep={result?.status === 'self_check_required' ? 'self-check' : 'answer'}
+                readOnlyAnswer={
+                  typeof result?.yourAnswer === 'string' ? result.yourAnswer : undefined
+                }
+                submitLabel={submitLabel}
+              />
+            ) : (
+              <Button type="button" onClick={continueNext}>
+                Continue
+              </Button>
+            )}
+            {canAskForHelp ? (
+              <div className="flex flex-wrap gap-2">
+                {mode !== 'assessment' ? (
+                  <HintLadder
+                    exerciseId={exerciseId ?? ''}
+                    activityId={activity.id}
+                    hintCount={exerciseQuery.data.hintCount}
+                    tutorEnabled={sessionQuery.data.tutorEnabled}
+                    onHint={setHint}
+                    mode={mode === 'review' ? 'review' : 'practice'}
+                    buttonRef={hintButton}
+                  />
+                ) : null}
+                {mode === 'practice' && exerciseId && sessionQuery.data.tutorEnabled ? (
+                  <TutorLauncher
+                    context={{
+                      conceptId: activity.conceptId,
+                      conceptTitle: activity.conceptTitle,
+                      activityId: activity.id,
+                      exerciseId,
+                      allowed: true,
+                      enabled: sessionQuery.data.tutorEnabled,
+                    }}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
       ) : !exerciseId ? (
-        <article className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
-          <h2 className="text-lg font-semibold capitalize">{activity.kind.replace('_', ' ')}</h2>
-          <p className="max-w-[70ch] text-sm leading-6 text-neutral-600">
-            {activity.kind === 'lab'
-              ? `Project ${activity.projectId ?? 'activity'} is ready to continue in your local workspace.`
-              : activity.kind === 'teachback'
-                ? 'Summarize the main idea from memory before continuing.'
-                : activity.kind === 'reflect'
-                  ? 'Take a moment to reflect on what you learned and what remains unclear.'
-                  : 'No eligible exercise is available for this activity yet.'}
-          </p>
-          <button
-            type="button"
-            onClick={completeActivity}
-            className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white"
-          >
-            Continue
-          </button>
-        </article>
+        <Card>
+          <CardContent className="space-y-4 p-6">
+            <h2 className="text-lg font-semibold capitalize">{activity.kind.replace('_', ' ')}</h2>
+            <p className="max-w-[70ch] text-sm leading-6 text-neutral-600">
+              {activity.kind === 'lab'
+                ? `Project ${activity.projectId ?? 'activity'} is ready to continue in your local workspace.`
+                : activity.kind === 'teachback'
+                  ? 'Summarize the main idea from memory before continuing.'
+                  : activity.kind === 'reflect'
+                    ? 'Take a moment to reflect on what you learned and what remains unclear.'
+                    : 'No eligible exercise is available for this activity yet.'}
+            </p>
+            <Button type="button" onClick={completeActivity}>
+              Continue
+            </Button>
+          </CardContent>
+        </Card>
       ) : null}
     </section>
   );
@@ -500,7 +496,7 @@ function SessionPage() {
 
 function sessionActivityLabel(kind: string) {
   const labels: Record<string, string> = {
-    learn: 'Lesson',
+    learn: 'Learn',
     practice: 'Practice',
     remediate: 'Remediation',
     transfer: 'Transfer',
@@ -537,25 +533,27 @@ function InlineLessonCheck({
     if (response.ok && data.status !== 'invalid') onDone();
   };
   return (
-    <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-      {exercise ? (
-        <>
-          <Markdown>{exercise.prompt}</Markdown>
-          {result ? <FeedbackPanel result={result} /> : null}
-          {!result || result.status === 'invalid' || result.retryAllowed ? (
-            <ExerciseForm
-              key={`${activityId}:${exerciseId}`}
-              exercise={exercise}
-              onSubmit={submit}
-            />
-          ) : null}
-        </>
-      ) : null}
-      {!result ? (
-        <button type="button" className="text-sm underline" onClick={onDone}>
-          Skip this check
-        </button>
-      ) : null}
-    </div>
+    <Card>
+      <CardContent className="space-y-3 p-4">
+        {exercise ? (
+          <>
+            <Markdown>{exercise.prompt}</Markdown>
+            {result ? <FeedbackPanel result={result} /> : null}
+            {!result || result.status === 'invalid' || result.retryAllowed ? (
+              <ExerciseForm
+                key={`${activityId}:${exerciseId}`}
+                exercise={exercise}
+                onSubmit={submit}
+              />
+            ) : null}
+          </>
+        ) : null}
+        {!result ? (
+          <Button type="button" variant="link" className="px-0" onClick={onDone}>
+            Skip this check
+          </Button>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }

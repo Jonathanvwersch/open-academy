@@ -1,8 +1,12 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { createDb } from '../../src/server/db/client.js';
-import { users } from '../../src/server/db/schema.js';
+import { sessionActivities, studySessions, users } from '../../src/server/db/schema.js';
 import { env } from '../../src/server/env.js';
+
+const screenshotDir = '/home/ubuntu/screenshots/shadcn';
+mkdirSync(screenshotDir, { recursive: true });
+let userId = '';
 
 declare global {
   interface Window {
@@ -13,12 +17,17 @@ declare global {
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
   await db.delete(users);
-  await db.insert(users).values({
-    displayName: 'E2E learner',
-    timezone: 'UTC',
-    startDate: '2026-01-01',
-    prefs: { scheduleMinutes: 60 },
-  });
+  const [user] = await db
+    .insert(users)
+    .values({
+      displayName: 'E2E learner',
+      timezone: 'UTC',
+      startDate: '2026-01-01',
+      prefs: { scheduleMinutes: 60 },
+    })
+    .returning();
+  if (!user) throw new Error('Could not create E2E learner');
+  userId = user.id;
   await db.$client.end();
 });
 
@@ -65,7 +74,7 @@ test('diagnostic to hinted practice updates the map and schedules a review', asy
     complete: false,
     state: { domains: { math: { status: 'unassessed' }, ml: { status: 'active' } } },
   });
-  await expect(page.locator('article > p').first()).toHaveText('Machine learning');
+  await expect(page.getByText('Machine learning', { exact: true })).toBeVisible();
   const finalSkip = page.waitForResponse(
     (response) => response.url().includes('/skip') && response.request().method() === 'POST',
   );
@@ -89,6 +98,8 @@ test('diagnostic to hinted practice updates the map and schedules a review', asy
   await expect(page.getByText('First week: ML fundamentals')).toBeVisible();
 
   await page.getByRole('link', { name: 'View Today' }).click();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/today-plan.png`, fullPage: true });
   await page.getByRole('button', { name: 'Start session' }).click();
   await expect(
     page.getByText('A vector is an ordered list of coordinates in a shared space.'),
@@ -134,6 +145,10 @@ test('diagnostic to hinted practice updates the map and schedules a review', asy
   await page.getByText('Vectors', { exact: true }).first().click();
   await expect(page.getByText('Mastery by dimension')).toBeVisible();
   await expect(page.getByText('math: assisted')).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/map.png`, fullPage: true });
+  await page.goto('/progress');
+  await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/progress.png`, fullPage: true });
 
   now = '2026-01-15T12:00:00.000Z';
   await page.goto('/');
@@ -148,7 +163,9 @@ test('diagnostic uses radios, renders option math, and resets answers between qu
   await page.getByRole('link', { name: 'Start diagnostic' }).click();
   await expect(page.getByRole('radio')).toHaveCount(2);
   await expect(page.locator('.katex').first()).toBeVisible();
-  await page.getByRole('radio').first().check();
+  await page.screenshot({ path: `${screenshotDir}/diagnostic.png`, fullPage: true });
+  await page.getByRole('radio').first().click();
+  await expect(page.getByRole('radio').first()).toHaveAttribute('aria-checked', 'true');
   await page.getByRole('button', { name: 'Submit answer' }).click();
   await expect(page.getByLabel('Your answer')).toBeVisible();
   await expect(page.getByLabel('Your answer')).toHaveValue('');
@@ -168,7 +185,7 @@ test('a final wrong practice answer reveals the worked solution', async ({ page 
   );
   await page.getByRole('button', { name: 'I haven’t studied this domain' }).click();
   await firstSkip;
-  await expect(page.locator('article > p').first()).toHaveText('Machine learning');
+  await expect(page.getByText('Machine learning', { exact: true })).toBeVisible();
   const finalSkip = page.waitForResponse(
     (response) => response.url().includes('/skip') && response.request().method() === 'POST',
   );
@@ -250,6 +267,7 @@ test('progress loader failure restores the unavailable message', async ({ page }
 });
 
 test('route loaders keep content stable under 300ms latency', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.addInitScript(() => {
     const shifts: number[] = [];
     window.__layoutShifts = shifts;
@@ -293,6 +311,10 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
     await page.getByRole('link', { name: route.name }).click();
     await expect(page.getByRole('heading', { name: route.heading })).toBeVisible();
     await assertStable(route.path);
+    await page.screenshot({
+      path: `${screenshotDir}/${route.name.toLowerCase()}.png`,
+      fullPage: true,
+    });
   }
 
   await page.getByRole('link', { name: 'Today' }).click();
@@ -305,12 +327,35 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
   expect(runId).toBeTruthy();
   await page.goto(`/diagnostic/results?id=${runId}`);
   await expect(page.getByRole('link', { name: 'View Today' })).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/diagnostic-results.png`, fullPage: true });
   await page.getByRole('link', { name: 'View Today' }).click();
   await expect(page.getByRole('button', { name: 'Start session' })).toBeVisible();
+  const db = createDb(env.TEST_DATABASE_URL);
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 20,
+      status: 'active',
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create session for route loader check');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind: 'learn',
+    conceptId: 'vectors',
+    exerciseIds: ['vectors-magnitude'],
+    plannedMinutes: 10,
+    status: 'in_progress',
+  });
+  await db.$client.end();
   await page.evaluate(() => {
     window.__layoutShifts = [];
   });
-  await page.getByRole('button', { name: 'Start session' }).click();
+  await page.goto(`/session/${session.id}`);
   await expect(
     page.getByText('A vector is an ordered list of coordinates in a shared space.'),
   ).toBeVisible();

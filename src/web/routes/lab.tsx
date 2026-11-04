@@ -1,6 +1,9 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
+import { Input } from '@/ui/input.js';
+import { Label } from '@/ui/label.js';
 import { Markdown } from '../components.js';
 import { projectQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
@@ -44,56 +47,62 @@ function LabPage() {
         <p className="text-sm text-neutral-500">Saturday lab</p>
         <h1 className="mt-1 text-3xl font-semibold">{project.title}</h1>
       </div>
-      <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
-        <p>{project.objective}</p>
-        <Markdown>{project.background}</Markdown>
-        <h2 className="text-lg font-semibold">Milestones</h2>
-        <ol className="list-decimal space-y-3 pl-5">
-          {project.tasks.map((task) => (
-            <li key={task.id}>
-              <strong>{task.title}</strong>
-              <Markdown>{task.md}</Markdown>
-            </li>
-          ))}
-        </ol>
-        <h2 className="text-lg font-semibold">Acceptance checks</h2>
-        <ul className="list-disc pl-5">
-          {project.acceptance.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-        <p className="text-sm text-neutral-600">
-          Run `python labs/linreg-numpy/verify.py` locally, then upload results.json. The server
-          validates data only and never runs uploaded code.
-        </p>
-        <label className="block text-sm font-medium">
-          Upload results.json
-          <input
-            className="mt-2 block text-sm"
-            type="file"
-            accept=".json,application/json"
-            onChange={(event) => void upload(event.target.files?.[0])}
-          />
-        </label>
-      </div>
+      <Card>
+        <CardContent className="space-y-4 p-6">
+          <p>{project.objective}</p>
+          <Markdown>{project.background}</Markdown>
+          <h2 className="text-lg font-semibold">Milestones</h2>
+          <ol className="list-decimal space-y-3 pl-5">
+            {project.tasks.map((task) => (
+              <li key={task.id}>
+                <strong>{task.title}</strong>
+                <Markdown>{task.md}</Markdown>
+              </li>
+            ))}
+          </ol>
+          <h2 className="text-lg font-semibold">Acceptance checks</h2>
+          <ul className="list-disc pl-5">
+            {project.acceptance.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <p className="text-sm text-neutral-600">
+            Run `python labs/linreg-numpy/verify.py` locally, then upload results.json. The server
+            validates data only and never runs uploaded code.
+          </p>
+          <Label className="block">
+            Upload results.json
+            <Input
+              className="mt-2"
+              type="file"
+              accept=".json,application/json"
+              onChange={(event) => void upload(event.target.files?.[0])}
+            />
+          </Label>
+        </CardContent>
+      </Card>
       {error ? (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       ) : null}
       {evidence ? (
-        <section className="rounded-xl border border-neutral-200 bg-white p-5">
-          <h2 className="font-semibold">Project evidence</h2>
-          <p>{evidence}</p>
-          <h3 className="mt-4 font-medium">Reflection questions</h3>
-          <div className="mt-3 space-y-4">
-            {reflection.map((exercise) => (
-              <div key={exercise.id}>
-                <Markdown>{exercise.prompt}</Markdown>
-              </div>
-            ))}
-          </div>
-        </section>
+        <Card>
+          <CardHeader>
+            <CardTitle>Project evidence</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>{evidence}</p>
+            <h3 className="mt-4 font-medium">Reflection questions</h3>
+            <div className="mt-3 space-y-4">
+              {reflection.map((exercise) => (
+                <div key={exercise.id}>
+                  <Markdown>{exercise.prompt}</Markdown>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       ) : null}
     </section>
   );

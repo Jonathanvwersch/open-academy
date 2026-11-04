@@ -7,6 +7,12 @@ import {
   tutorThreadQueryOptions,
   tutorThreadsQueryOptions,
 } from '../queries.js';
+import { Alert, AlertDescription } from '../ui/alert.js';
+import { Badge } from '../ui/badge.js';
+import { Button } from '../ui/button.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select.js';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet.js';
+import { Textarea } from '../ui/textarea.js';
 
 export interface TutorRequestContext {
   conceptId?: string;
@@ -52,7 +58,6 @@ export function TutorContextProvider({
   const [open, setOpen] = useState(() => localStorage.getItem(OPEN_KEY) === 'true');
   const [selectedId, setSelectedId] = useState(() => localStorage.getItem(THREAD_KEY) || '');
   const [newChatSelected, setNewChatSelected] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const tutorFlag = useQuery({
@@ -137,145 +142,143 @@ export function TutorContextProvider({
     <TutorContext.Provider value={value}>
       {children}
       {enabled && context.allowed && routeAllowed ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="fixed bottom-5 right-5 z-40 rounded-full bg-blue-700 px-5 py-3 font-medium text-white shadow-lg"
-          aria-label="Open tutor"
-        >
-          Tutor
-        </button>
-      ) : null}
-      {open && enabled && context.allowed && routeAllowed ? (
-        <aside
-          aria-label="Tutor sidebar"
-          className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[400px] flex-col border-l border-neutral-200 bg-white shadow-2xl"
-        >
-          <header className="flex items-center gap-2 border-b border-neutral-200 p-4">
-            <h2 className="mr-auto font-semibold">Tutor</h2>
-            <div className="relative min-w-0 shrink">
-              <button
-                type="button"
-                aria-label="Tutor conversation"
-                aria-expanded={dropdownOpen}
-                onClick={() => setDropdownOpen((shown) => !shown)}
-                className="min-w-0 max-w-48 truncate rounded border border-neutral-300 px-2 py-1 text-left text-sm"
-              >
-                {selectedThread
-                  ? `${selectedThread.conceptTitle ?? 'General'} · ${selectedThread.title.split(' · ').at(-1)}`
-                  : 'Choose chat'}
-              </button>
-              {dropdownOpen ? (
-                <div
-                  role="listbox"
-                  aria-label="Saved tutor conversations"
-                  className="absolute right-0 top-full z-10 mt-1 max-h-72 w-72 overflow-y-auto rounded-md border border-neutral-200 bg-white p-1 shadow-lg"
-                >
-                  {(threads.data ?? []).map((thread) => (
-                    <button
-                      key={thread.id}
-                      type="button"
-                      role="option"
-                      aria-selected={thread.id === selectedId}
-                      onClick={() => {
-                        setNewChatSelected(false);
-                        setSelectedId(thread.id);
-                        setDropdownOpen(false);
-                      }}
-                      className="flex w-full items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-neutral-100"
-                    >
-                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-800">
-                        {thread.conceptTitle ?? 'General'}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-xs text-neutral-600">
-                        {thread.lastMessagePreview}
-                      </span>
-                      <span className="ml-auto text-xs text-neutral-500">
-                        {thread.title.split(' · ').at(-1)}
-                      </span>
-                    </button>
-                  ))}
-                  {threads.data?.length === 0 ? (
-                    <p className="px-2 py-2 text-sm text-neutral-500">No saved conversations</p>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              className="shrink-0 whitespace-nowrap rounded px-2 py-1 text-sm hover:bg-neutral-100"
-              onClick={() => {
-                setNewChatSelected(true);
-                setSelectedId('');
-                setDropdownOpen(false);
-              }}
-            >
-              New chat
-            </button>
-            <button
-              type="button"
-              aria-label="Close tutor"
-              className="rounded px-2 py-1 text-lg hover:bg-neutral-100"
-              onClick={() => setOpen(false)}
-            >
-              ×
-            </button>
-          </header>
-          <div className="border-b border-neutral-100 px-4 py-2 text-xs text-neutral-500">
-            {context.conceptTitle ?? context.conceptId ?? 'General'}
-            {context.lessonProblemId || context.exerciseId ? ' · current problem' : ''}
-            {selectedThread ? ` · ${selectedThread.messageCount} messages` : ''}
-          </div>
-          <div className="flex-1 space-y-4 overflow-y-auto p-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={
-                  message.role === 'user'
-                    ? 'ml-8 rounded-lg bg-blue-50 p-3'
-                    : 'mr-4 rounded-lg bg-neutral-50 p-3'
-                }
-              >
-                <p className="mb-1 text-xs font-medium text-neutral-500">
-                  {message.role === 'user' ? 'You' : 'Tutor'}
-                </p>
-                <Markdown>{message.content}</Markdown>
-              </div>
-            ))}
-          </div>
-          <form
-            className="space-y-2 border-t border-neutral-200 p-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              send();
-            }}
+        <Sheet open={open} onOpenChange={setOpen} modal={false}>
+          <Button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="fixed bottom-5 right-5 z-40 rounded-full shadow-lg"
+            aria-label="Open tutor"
           >
-            {error ? (
-              <p role="alert" className="text-sm text-red-700">
-                {error}
-              </p>
-            ) : null}
-            <textarea
-              aria-label="Ask the tutor"
-              className="min-h-24 w-full rounded-md border border-neutral-300 p-2 text-sm"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault();
-                  send();
-                }
+            Tutor
+          </Button>
+          <SheetContent
+            aria-label="Tutor sidebar"
+            side="right"
+            showOverlay={false}
+            showCloseButton={false}
+            className="flex h-full w-[400px] max-w-[100vw] flex-col gap-0 p-0"
+          >
+            <SheetHeader className="gap-3 border-b p-4">
+              <div className="flex items-center justify-between">
+                <SheetTitle>Tutor</SheetTitle>
+                <Button
+                  type="button"
+                  aria-label="Close tutor"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setOpen(false)}
+                >
+                  ×
+                </Button>
+              </div>
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <Select
+                    value={selectedId}
+                    onValueChange={(threadId) => {
+                      setNewChatSelected(false);
+                      setSelectedId(threadId);
+                    }}
+                  >
+                    <SelectTrigger aria-label="Tutor conversation" className="w-full min-w-0">
+                      <SelectValue className="min-w-0 truncate" placeholder="Choose chat">
+                        {selectedThread ? (
+                          <span className="flex min-w-0 items-center gap-2">
+                            <Badge variant="secondary" className="max-w-[10rem] truncate">
+                              {selectedThread.conceptTitle ?? 'General'}
+                            </Badge>
+                            <span className="shrink-0 text-xs">
+                              {selectedThread.title.split(' · ').at(-1)}
+                            </span>
+                          </span>
+                        ) : undefined}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent aria-label="Saved tutor conversations">
+                      {(threads.data ?? []).map((thread) => (
+                        <SelectItem key={thread.id} value={thread.id}>
+                          <span className="flex min-w-0 items-center gap-2">
+                            <Badge variant="secondary" className="max-w-[10rem] truncate">
+                              {thread.conceptTitle ?? 'General'}
+                            </Badge>
+                            <span className="min-w-0 truncate text-xs">
+                              {thread.lastMessagePreview}
+                            </span>
+                            <span className="shrink-0 text-xs">
+                              {thread.title.split(' · ').at(-1)}
+                            </span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 whitespace-nowrap"
+                  onClick={() => {
+                    setNewChatSelected(true);
+                    setSelectedId('');
+                  }}
+                >
+                  New chat
+                </Button>
+              </div>
+            </SheetHeader>
+            <div className="border-b px-4 py-2 text-xs text-muted-foreground">
+              {context.conceptTitle ?? context.conceptId ?? 'General'}
+              {context.lessonProblemId || context.exerciseId ? ' · current problem' : ''}
+              {selectedThread ? ` · ${selectedThread.messageCount} messages` : ''}
+            </div>
+            <div className="flex-1 space-y-4 overflow-y-auto p-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={
+                    message.role === 'user'
+                      ? 'ml-8 rounded-lg bg-muted p-3'
+                      : 'mr-4 rounded-lg border p-3'
+                  }
+                >
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">
+                    {message.role === 'user' ? 'You' : 'Tutor'}
+                  </p>
+                  <Markdown>{message.content}</Markdown>
+                </div>
+              ))}
+            </div>
+            <form
+              className="space-y-2 border-t border-neutral-200 p-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                send();
               }}
-            />
-            <button
-              type="submit"
-              disabled={mutation.isPending || !draft.trim()}
-              className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {mutation.isPending ? 'Sending…' : 'Send'}
-            </button>
-          </form>
-        </aside>
+              {error ? (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              ) : null}
+              <Textarea
+                aria-label="Ask the tutor"
+                className="min-h-24 w-full"
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    send();
+                  }
+                }}
+              />
+              <Button type="submit" disabled={mutation.isPending || !draft.trim()}>
+                {mutation.isPending ? 'Sending…' : 'Send'}
+              </Button>
+            </form>
+          </SheetContent>
+        </Sheet>
       ) : null}
     </TutorContext.Provider>
   );
@@ -296,12 +299,8 @@ export function TutorLauncher({
 }) {
   const tutor = useTutorSidebar();
   return (
-    <button
-      type="button"
-      className="rounded-md border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50"
-      onClick={() => tutor.open(context)}
-    >
+    <Button type="button" variant="outline" size="sm" onClick={() => tutor.open(context)}>
       {children}
-    </button>
+    </Button>
   );
 }

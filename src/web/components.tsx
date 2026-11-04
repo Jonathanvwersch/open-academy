@@ -6,6 +6,16 @@ import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import { normalizeDisplayMath } from '../shared/markdown';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert.js';
+import { Badge } from './ui/badge.js';
+import { Button } from './ui/button.js';
+import { Card, CardContent, CardHeader } from './ui/card.js';
+import { Checkbox } from './ui/checkbox.js';
+import { Input } from './ui/input.js';
+import { Label } from './ui/label.js';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select.js';
+import { Textarea } from './ui/textarea.js';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/github.css';
 
@@ -22,7 +32,7 @@ export interface ClientExercise {
 
 export function Markdown({ children }: { children: string }) {
   return (
-    <div className="markdown max-w-[70ch] leading-7 text-neutral-800">
+    <div className="markdown max-w-[70ch] text-base leading-7 text-foreground">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex, rehypeHighlight]}
@@ -53,16 +63,6 @@ const lessonBlockLabels: Partial<Record<LessonBlockKind, string>> = {
   summary: 'Key takeaways',
 };
 
-const lessonBlockStyles: Partial<Record<LessonBlockKind, string>> = {
-  objective: 'border-blue-200 border-l-4 border-l-blue-700 bg-blue-50/50',
-  example: 'border-neutral-200 bg-amber-50/60',
-  math: 'border-neutral-200 bg-slate-50',
-  worked: 'border-neutral-200 bg-white',
-  check: 'border-blue-200 bg-blue-50/40',
-  faded: 'border-blue-200 bg-blue-50/40',
-  summary: 'border-neutral-200 bg-neutral-50',
-};
-
 export function LessonBlock({
   kind,
   md,
@@ -89,24 +89,32 @@ export function LessonBlock({
       </div>
     );
   }
-  return (
-    <section
-      className={`space-y-3 rounded-lg border p-4 ${lessonBlockStyles[kind] ?? 'border-neutral-200 bg-white'}`}
-    >
-      <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-        {lessonBlockLabels[kind]}
-      </p>
+  const blockContent = (
+    <>
+      <Badge variant="outline">{lessonBlockLabels[kind]}</Badge>
       {content ? <Markdown>{content}</Markdown> : null}
       {children}
-    </section>
+    </>
   );
+  if (kind === 'worked') {
+    return (
+      <Card className="bg-muted/50">
+        <CardHeader>{lessonBlockLabels[kind]}</CardHeader>
+        <CardContent className="space-y-3">
+          {content ? <Markdown>{content}</Markdown> : null}
+          {children}
+        </CardContent>
+      </Card>
+    );
+  }
+  return <section className="space-y-3">{blockContent}</section>;
 }
 
 export function ModeBadge({ mode }: { mode: 'practice' | 'assessment' | 'review' }) {
   return (
-    <span className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700">
-      {mode === 'review' ? 'Review' : mode === 'practice' ? 'Practice' : 'Assessment — no help'}
-    </span>
+    <Badge variant="outline">
+      {mode === 'assessment' ? 'Assessment — no help' : mode === 'review' ? 'Review' : 'Practice'}
+    </Badge>
   );
 }
 
@@ -124,16 +132,26 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
   const rubric = Array.isArray(result.rubric)
     ? (result.rubric as Array<{ id?: string; criterion?: string; judgement?: string }>)
     : [];
+  const correct = Number(result.correct) >= 1;
+  const partial = Number(result.correct) > 0 && !correct;
+  const statusClass =
+    result.status === 'self_check_required'
+      ? 'border-amber-300 bg-amber-50 text-amber-950'
+      : correct
+        ? 'border-green-300 bg-green-50 text-green-950'
+        : partial
+          ? 'border-amber-300 bg-amber-50 text-amber-950'
+          : 'border-red-300 bg-red-50 text-red-950';
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4" role="status">
-      {title ? <p className="font-medium">{title}</p> : null}
+    <Alert role="status" className={`${statusClass} text-base`}>
+      {title ? <AlertTitle>{title}</AlertTitle> : null}
       {feedback && !repeatsTitle ? (
-        <div className="mt-1 text-sm text-neutral-600">
+        <AlertDescription className="mt-1 text-base text-inherit">
           <Markdown>{feedback}</Markdown>
-        </div>
+        </AlertDescription>
       ) : null}
       {rubric.some((item) => item.judgement) ? (
-        <ul className="mt-3 space-y-2 text-sm">
+        <ul className="mt-3 space-y-2">
           {rubric.map((item) => {
             const symbol =
               item.judgement === 'met' ? '✓' : item.judgement === 'partial' ? '½' : '✗';
@@ -147,7 +165,7 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
         </ul>
       ) : null}
       {typeof result.yourAnswer === 'string' ? (
-        <div className="mt-3 space-y-2 text-sm">
+        <div className="mt-3 space-y-2">
           <div>
             <p className="font-medium">Your answer:</p>
             <Markdown>{result.yourAnswer}</Markdown>
@@ -161,18 +179,18 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
         </div>
       ) : null}
       {typeof result.exemplar === 'string' ? (
-        <div className="mt-3 border-t border-neutral-200 pt-3 text-sm">
+        <div className="mt-3 border-t border-current/15 pt-3">
           <p className="mb-1 font-medium">Model answer</p>
           <Markdown>{result.exemplar}</Markdown>
         </div>
       ) : null}
       {typeof result.solution === 'string' && result.solution.trim() ? (
-        <div className="mt-3 border-t border-neutral-200 pt-3 text-sm">
+        <div className="mt-3 border-t border-current/15 pt-3">
           <p className="mb-1 font-medium">Solution</p>
           <Markdown>{result.solution}</Markdown>
         </div>
       ) : null}
-    </div>
+    </Alert>
   );
 }
 
@@ -217,7 +235,11 @@ export function ExerciseForm({
     }
   };
   const handleKeyDown = (event: KeyboardEvent<HTMLFormElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (
+      event.key === 'Enter' &&
+      !event.shiftKey &&
+      (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
+    ) {
       event.preventDefault();
       event.currentTarget.requestSubmit();
       return;
@@ -226,11 +248,15 @@ export function ExerciseForm({
       const option = exercise.options?.[Number(event.key) - 1];
       if (option) {
         event.preventDefault();
-        setSelected((current) =>
-          current.includes(option.id)
-            ? current.filter((id) => id !== option.id)
-            : [...current, option.id],
-        );
+        if (exercise.multi) {
+          setSelected((current) =>
+            current.includes(option.id)
+              ? current.filter((id) => id !== option.id)
+              : [...current, option.id],
+          );
+        } else {
+          setSelected([option.id]);
+        }
       }
     }
   };
@@ -244,111 +270,141 @@ export function ExerciseForm({
       {exercise.type === 'mc' ? (
         <fieldset className="space-y-2">
           <legend className="sr-only">Choose an answer</legend>
-          {(exercise.options ?? []).map((option) => (
-            <label
-              key={option.id}
-              className="flex cursor-pointer items-start gap-3 rounded-lg border border-neutral-200 bg-white p-3"
+          {exercise.multi ? (
+            <div className="space-y-2">
+              {(exercise.options ?? []).map((option) => {
+                const optionId = `${exercise.id}-${option.id}`;
+                return (
+                  <Label
+                    key={option.id}
+                    htmlFor={optionId}
+                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3"
+                  >
+                    <Checkbox
+                      id={optionId}
+                      className="mt-1"
+                      checked={selected.includes(option.id)}
+                      onCheckedChange={(checked) =>
+                        setSelected((current) =>
+                          checked
+                            ? [...current, option.id]
+                            : current.filter((id) => id !== option.id),
+                        )
+                      }
+                    />
+                    <Markdown>{option.text}</Markdown>
+                  </Label>
+                );
+              })}
+            </div>
+          ) : (
+            <RadioGroup
+              aria-label="Choose an answer"
+              value={selected[0] ?? ''}
+              onValueChange={(next) => setSelected([next])}
             >
-              <input
-                type={exercise.multi ? 'checkbox' : 'radio'}
-                name={`answer-${exercise.id}`}
-                checked={selected.includes(option.id)}
-                onChange={(event) => {
-                  if (!exercise.multi) {
-                    setSelected(event.target.checked ? [option.id] : []);
-                    return;
-                  }
-                  setSelected((current) =>
-                    event.target.checked
-                      ? [...current, option.id]
-                      : current.filter((id) => id !== option.id),
-                  );
-                }}
-              />
-              <Markdown>{option.text}</Markdown>
-            </label>
-          ))}
+              {(exercise.options ?? []).map((option) => {
+                const optionId = `${exercise.id}-${option.id}`;
+                return (
+                  <Label
+                    key={option.id}
+                    htmlFor={optionId}
+                    className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3"
+                  >
+                    <RadioGroupItem id={optionId} value={option.id} className="mt-1" />
+                    <Markdown>{option.text}</Markdown>
+                  </Label>
+                );
+              })}
+            </RadioGroup>
+          )}
         </fieldset>
       ) : null}
       {exercise.type === 'debug' ? (
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="text-sm">
-            Buggy line
-            <select
-              className="mt-1 w-full rounded-md border border-neutral-300 bg-white p-2"
-              value={line}
-              onChange={(event) => setLine(event.target.value)}
-            >
-              <option value="">Choose a line</option>
-              {(exercise.code?.split(/\\n|\n/) ?? []).map((_, index) => {
-                const lineNumber = index + 1;
-                return (
-                  <option key={`line-${lineNumber}`} value={lineNumber}>
-                    Line {lineNumber}
-                  </option>
-                );
-              })}
-            </select>
-          </label>
-          <label className="text-sm">
-            Fix
-            <select
-              className="mt-1 w-full rounded-md border border-neutral-300 bg-white p-2"
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
-            >
-              <option value="">Choose a fix</option>
-              {(
-                exercise as ClientExercise & { fix_options?: Array<{ id: string; text: string }> }
-              ).fix_options?.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.text}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="space-y-2">
+            <Label htmlFor={`${exercise.id}-line`}>Buggy line</Label>
+            <Select value={line} onValueChange={setLine}>
+              <SelectTrigger id={`${exercise.id}-line`} className="w-full">
+                <SelectValue placeholder="Choose a line" />
+              </SelectTrigger>
+              <SelectContent>
+                {(exercise.code?.split(/\\n|\n/) ?? []).map((_, index) => {
+                  const lineNumber = index + 1;
+                  return (
+                    <SelectItem key={lineNumber} value={String(lineNumber)}>
+                      Line {lineNumber}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`${exercise.id}-fix`}>Fix</Label>
+            <Select value={value} onValueChange={setValue}>
+              <SelectTrigger id={`${exercise.id}-fix`} className="w-full">
+                <SelectValue placeholder="Choose a fix" />
+              </SelectTrigger>
+              <SelectContent>
+                {(
+                  exercise as ClientExercise & { fix_options?: Array<{ id: string; text: string }> }
+                ).fix_options?.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.text}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       ) : null}
       {exercise.type === 'explain' && explainStep === 'self-check' ? (
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Which of these did your answer include?</legend>
-          {(exercise.rubric ?? []).map((item) => (
-            <label key={item.id} className="flex gap-2 text-sm text-neutral-700">
-              <input
-                type="checkbox"
-                checked={criteria.includes(item.id)}
-                onChange={(event) =>
-                  setCriteria((current) =>
-                    event.target.checked
-                      ? [...current, item.id]
-                      : current.filter((id) => id !== item.id),
-                  )
-                }
-              />
-              {item.criterion}
-              {item.required ? (
-                <span className="shrink-0 whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-900">
-                  key point
-                </span>
-              ) : null}
-            </label>
-          ))}
+          <legend className="text-base font-medium">Which of these did your answer include?</legend>
+          {(exercise.rubric ?? []).map((item) => {
+            const itemId = `${exercise.id}-${item.id}`;
+            return (
+              <div key={item.id} className="flex items-center gap-2">
+                <Checkbox
+                  id={itemId}
+                  checked={criteria.includes(item.id)}
+                  onCheckedChange={(checked) =>
+                    setCriteria((current) =>
+                      checked ? [...current, item.id] : current.filter((id) => id !== item.id),
+                    )
+                  }
+                />
+                <Label htmlFor={itemId} className="flex items-center gap-2 text-base">
+                  {item.criterion}
+                  {item.required ? (
+                    <Badge
+                      variant="outline"
+                      className="shrink-0 whitespace-nowrap border-amber-300 bg-amber-50 text-amber-950"
+                    >
+                      key point
+                    </Badge>
+                  ) : null}
+                </Label>
+              </div>
+            );
+          })}
         </fieldset>
       ) : null}
       {exercise.type !== 'mc' &&
       exercise.type !== 'debug' &&
       !(exercise.type === 'explain' && explainStep === 'self-check') ? (
         exercise.type === 'numeric' || exercise.type === 'code_read' || exercise.type === 'text' ? (
-          <input
-            className="w-full rounded-md border border-neutral-300 bg-white p-3 text-sm"
+          <Input
+            className="w-full"
             aria-label="Your answer"
             value={value}
             onChange={(event) => setValue(event.target.value)}
             placeholder="Type your answer"
           />
         ) : (
-          <textarea
-            className={`min-h-28 w-full rounded-md border border-neutral-300 bg-white p-3 text-sm ${exercise.type === 'explain' ? '' : 'font-mono'}`}
+          <Textarea
+            className={`min-h-28 w-full ${exercise.type === 'explain' ? '' : 'font-mono'}`}
             aria-label="Your answer"
             value={value}
             onChange={(event) => setValue(event.target.value)}
@@ -362,13 +418,9 @@ export function ExerciseForm({
           />
         )
       ) : null}
-      <button
-        type="submit"
-        disabled={disabled}
-        className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
-      >
+      <Button type="submit" disabled={disabled}>
         {submitLabel}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -432,12 +484,13 @@ export function HintLadder({
   };
   if (solutionShown) return null;
   return (
-    <button
+    <Button
       ref={buttonRef}
       type="button"
       disabled={loading}
       onClick={requestHint}
-      className="rounded-md border border-neutral-300 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-100"
+      variant="outline"
+      size="sm"
     >
       {loading
         ? 'Loading…'
@@ -446,6 +499,6 @@ export function HintLadder({
           : mode === 'review'
             ? "I'm stuck — show a hint"
             : 'Hint'}
-    </button>
+    </Button>
   );
 }

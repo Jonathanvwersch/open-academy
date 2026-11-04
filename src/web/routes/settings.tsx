@@ -2,6 +2,11 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
+import { Alert, AlertDescription } from '@/ui/alert.js';
+import { Button } from '@/ui/button.js';
+import { Card, CardContent } from '@/ui/card.js';
+import { Input } from '@/ui/input.js';
+import { Label } from '@/ui/label.js';
 import { settingsQueryOptions } from '../queries.js';
 
 export const Route = createFileRoute('/settings')({
@@ -29,71 +34,69 @@ function SettingsPage() {
     setSaved(true);
   };
   return (
-    <section className="mx-auto max-w-2xl space-y-6">
+    <section className="mx-auto max-w-3xl space-y-6">
       <div>
         <p className="text-sm text-neutral-500">Preferences</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">Settings</h1>
       </div>
-      <form onSubmit={save} className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
-        <label className="block text-sm font-medium">
-          Daily study time
-          <div className="mt-2 flex items-center gap-2">
-            <input
-              type="number"
-              min={5}
-              max={600}
-              step={5}
-              value={draft.scheduleMinutes}
-              onChange={(event) =>
-                setDraft({ ...draft, scheduleMinutes: Number(event.target.value) })
-              }
-              className="w-28 rounded-md border border-neutral-300 px-3 py-2"
-            />
-            <span className="text-neutral-600">minutes</span>
-          </div>
-        </label>
-        {(['saturdayMinutes', 'sundayMinutes'] as const).map((key) => (
-          <label key={key} className="block text-sm font-medium">
-            {key === 'saturdayMinutes' ? 'Saturday study time' : 'Sunday study time'}
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                type="number"
-                min={5}
-                max={600}
-                step={5}
-                value={draft[key]}
-                onChange={(event) => setDraft({ ...draft, [key]: Number(event.target.value) })}
-                className="w-28 rounded-md border border-neutral-300 px-3 py-2"
+      <form onSubmit={save}>
+        <Card>
+          <CardContent className="space-y-5 p-6">
+            <Label className="block space-y-2">
+              Daily study time
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={5}
+                  max={600}
+                  step={5}
+                  value={draft.scheduleMinutes}
+                  onChange={(event) =>
+                    setDraft({ ...draft, scheduleMinutes: Number(event.target.value) })
+                  }
+                  className="w-28"
+                />
+                <span className="text-neutral-600">minutes</span>
+              </div>
+            </Label>
+            {(['saturdayMinutes', 'sundayMinutes'] as const).map((key) => (
+              <Label key={key} className="block space-y-2">
+                {key === 'saturdayMinutes' ? 'Saturday study time' : 'Sunday study time'}
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={5}
+                    max={600}
+                    step={5}
+                    value={draft[key]}
+                    onChange={(event) => setDraft({ ...draft, [key]: Number(event.target.value) })}
+                    className="w-28"
+                  />
+                  <span className="text-neutral-600">minutes</span>
+                </div>
+              </Label>
+            ))}
+            <Label className="block space-y-2">
+              Learning start date
+              <Input
+                type="date"
+                value={draft.startDate}
+                onChange={(event) => setDraft({ ...draft, startDate: event.target.value })}
               />
-              <span className="text-neutral-600">minutes</span>
-            </div>
-          </label>
-        ))}
-        <label className="block text-sm font-medium">
-          Learning start date
-          <input
-            type="date"
-            value={draft.startDate}
-            onChange={(event) => setDraft({ ...draft, startDate: event.target.value })}
-            className="mt-2 block rounded-md border border-neutral-300 px-3 py-2"
-          />
-        </label>
-        {error ? (
-          <p role="alert" className="text-sm text-red-700">
-            {error}
-          </p>
-        ) : null}
-        {saved ? (
-          <p role="status" className="text-sm text-green-800">
-            Settings saved.
-          </p>
-        ) : null}
-        <button
-          type="submit"
-          className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white"
-        >
-          Save settings
-        </button>
+            </Label>
+            {error ? (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : null}
+            {saved ? (
+              <Alert role="status" className="border-green-300 bg-green-50 text-green-950">
+                <AlertDescription className="text-inherit">Settings saved.</AlertDescription>
+              </Alert>
+            ) : null}
+            <Button type="submit">Save settings</Button>
+          </CardContent>
+        </Card>
       </form>
     </section>
   );
