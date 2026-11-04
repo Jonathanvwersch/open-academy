@@ -1,8 +1,7 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import type { LessonBlockKind } from '../components';
 import {
   ExerciseForm,
   FeedbackPanel,
@@ -11,28 +10,32 @@ import {
   Markdown,
   ModeBadge,
 } from '../components';
+import { exerciseQueryOptions, lessonQueryOptions, sessionQueryOptions } from '../queries.js';
 
 export const Route = createFileRoute('/session/$id')({
+  loader: async ({ context, params }) => {
+    const session = await context.queryClient.ensureQueryData(sessionQueryOptions(params.id));
+    const lessons = await Promise.all(
+      session.activities.map((activity) =>
+        activity.kind === 'learn' && activity.conceptId
+          ? context.queryClient.ensureQueryData(lessonQueryOptions(activity.conceptId))
+          : Promise.resolve(null),
+      ),
+    );
+    const exerciseIds = new Set(session.activities.flatMap((activity) => activity.exerciseIds));
+    for (const lesson of lessons) {
+      for (const block of lesson?.blocks ?? []) {
+        if (block.exercise) exerciseIds.add(block.exercise);
+      }
+    }
+    await Promise.all(
+      [...exerciseIds].map((exerciseId) =>
+        context.queryClient.ensureQueryData(exerciseQueryOptions(exerciseId)),
+      ),
+    );
+  },
   component: SessionPage,
 });
-
-interface SessionActivity {
-  id: string;
-  idx: number;
-  kind: string;
-  conceptId?: string;
-  conceptTitle?: string;
-  projectId?: string;
-  exerciseIds: string[];
-  plannedMinutes: number;
-  status: string;
-  startedAt?: string;
-  progress: {
-    lessonViewed?: boolean;
-    completedExerciseIds?: string[];
-    outcomes?: Record<string, 'correct' | 'incorrect'>;
-  };
-}
 
 function SessionPage() {
   const { id } = Route.useParams();
@@ -50,20 +53,7 @@ function SessionPage() {
   const [timeAnchor, setTimeAnchor] = useState<{ serverTime: number; clientTime: number } | null>(
     null,
   );
-  const sessionQuery = useQuery({
-    queryKey: ['session', id],
-    queryFn: async () => {
-      const response = await fetch(`/api/sessions/${id}`);
-      if (!response.ok) throw new Error('Session not found');
-      return response.json() as Promise<{
-        activities: SessionActivity[];
-        plannedMinutes: number;
-        startedAt?: string;
-        serverNow?: string;
-        tutorEnabled: boolean;
-      }>;
-    },
-  });
+  const sessionQuery = useSuspenseQuery(sessionQueryOptions(id));
   const [clock, setClock] = useState(Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setClock(Date.now()), 30_000);
@@ -77,22 +67,14 @@ function SessionPage() {
       });
     }
   }, [sessionQuery.data?.serverNow]);
-  const activities = sessionQuery.data?.activities ?? [];
+  const activities = sessionQuery.data.activities;
   const activity =
     activities.find((item) => item.status === 'in_progress') ??
     activities.find((item) => item.status === 'planned');
   const exerciseId = activity?.exerciseIds.find(
     (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
   );
-  const exerciseQuery = useQuery({
-    queryKey: ['exercise', exerciseId],
-    enabled: Boolean(exerciseId),
-    queryFn: async () => {
-      const response = await fetch(`/api/exercises/${exerciseId}`);
-      if (!response.ok) throw new Error('Exercise not found');
-      return response.json();
-    },
-  });
+  const exerciseQuery = useSuspenseQuery(exerciseQueryOptions(exerciseId ?? null));
   useEffect(() => {
     if (activity?.id && exerciseId) {
       setResult(null);
@@ -155,17 +137,9 @@ function SessionPage() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [id, queryClient, result]);
-  const lessonQuery = useQuery({
-    queryKey: ['lesson', activity?.conceptId],
-    enabled:
-      activity?.kind === 'learn' && !activity.progress?.lessonViewed && Boolean(activity.conceptId),
-    queryFn: async () => {
-      const response = await fetch(`/api/lessons/${activity?.conceptId}`);
-      return response.json() as Promise<{
-        blocks: Array<{ kind: LessonBlockKind; md?: string; exercise?: string }>;
-      }>;
-    },
-  });
+  const lessonQuery = useSuspenseQuery(
+    lessonQueryOptions(activity?.kind === 'learn' ? (activity.conceptId ?? null) : null),
+  );
 
   const markLessonViewed = async () => {
     if (!activity) return;
@@ -215,9 +189,6 @@ function SessionPage() {
     window.location.href = '/';
   };
 
-  if (sessionQuery.isPending) return <p className="text-sm text-neutral-600">Loading session…</p>;
-  if (sessionQuery.isError)
-    return <p className="text-sm text-red-700">This session could not be resumed.</p>;
   if (!activity) {
     return (
       <section className="mx-auto max-w-3xl space-y-4">
@@ -389,8 +360,6 @@ function SessionPage() {
             <TutorChat activityId={activity.id} exerciseId={exerciseId} />
           ) : null}
         </article>
-      ) : activity.kind === 'learn' && lessonQuery.isPending ? (
-        <p className="text-sm text-neutral-600">Loading lesson…</p>
       ) : !exerciseId ? (
         <article className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
           <h2 className="text-lg font-semibold capitalize">{activity.kind.replace('_', ' ')}</h2>
@@ -411,9 +380,7 @@ function SessionPage() {
             Continue
           </button>
         </article>
-      ) : (
-        <p className="text-sm text-neutral-600">Loading exercise…</p>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -428,14 +395,7 @@ function InlineLessonCheck({
   onDone: () => void;
 }) {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
-  const exerciseQuery = useQuery({
-    queryKey: ['exercise', activityId, exerciseId],
-    queryFn: async () => {
-      const response = await fetch(`/api/exercises/${exerciseId}`);
-      if (!response.ok) throw new Error('Exercise not found');
-      return response.json();
-    },
-  });
+  const { data: exercise } = useSuspenseQuery(exerciseQueryOptions(exerciseId));
   const submit = async (answer: unknown) => {
     const response = await fetch('/api/attempts', {
       method: 'POST',
@@ -448,21 +408,19 @@ function InlineLessonCheck({
   };
   return (
     <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-4">
-      {exerciseQuery.data ? (
+      {exercise ? (
         <>
-          <Markdown>{exerciseQuery.data.prompt}</Markdown>
+          <Markdown>{exercise.prompt}</Markdown>
           {result ? <FeedbackPanel result={result} /> : null}
           {!result || result.status === 'invalid' || result.retryAllowed ? (
             <ExerciseForm
               key={`${activityId}:${exerciseId}`}
-              exercise={exerciseQuery.data}
+              exercise={exercise}
               onSubmit={submit}
             />
           ) : null}
         </>
-      ) : (
-        <p className="text-sm text-neutral-600">Loading practice check…</p>
-      )}
+      ) : null}
       <button type="button" className="text-sm underline" onClick={onDone}>
         Skip this check
       </button>

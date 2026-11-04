@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Outlet, useRouterState } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ExerciseForm, Markdown, ModeBadge } from '../components';
@@ -17,6 +18,7 @@ export const Route = createFileRoute('/diagnostic')({
 });
 
 function DiagnosticPage() {
+  const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [runId, setRunId] = useState('');
   const [domain, setDomain] = useState('');
@@ -26,19 +28,23 @@ function DiagnosticPage() {
   const [busy, setBusy] = useState(false);
   const runPromise = useRef<Promise<{ id: string }> | null>(null);
 
-  const loadNext = useCallback(async (id: string) => {
-    const response = await fetch(`/api/diagnostic/${id}/next`);
-    const data = await response.json();
-    setFeedback('');
-    if (data.complete) {
-      window.sessionStorage.setItem('diagnosticRunId', id);
-      window.location.href = `/diagnostic/results?id=${encodeURIComponent(id)}`;
-      return;
-    }
-    setDomain(data.domainId ?? data.domain ?? '');
-    setDomainTitle(data.domainTitle ?? data.domain ?? '');
-    setExercise(data.exercise);
-  }, []);
+  const loadNext = useCallback(
+    async (id: string) => {
+      const response = await fetch(`/api/diagnostic/${id}/next`);
+      const data = await response.json();
+      setFeedback('');
+      if (data.complete) {
+        window.sessionStorage.setItem('diagnosticRunId', id);
+        queryClient.removeQueries({ queryKey: ['today'] });
+        window.location.href = `/diagnostic/results?id=${encodeURIComponent(id)}`;
+        return;
+      }
+      setDomain(data.domainId ?? data.domain ?? '');
+      setDomainTitle(data.domainTitle ?? data.domain ?? '');
+      setExercise(data.exercise);
+    },
+    [queryClient],
+  );
 
   useEffect(() => {
     if (pathname !== '/diagnostic') return;
@@ -90,6 +96,7 @@ function DiagnosticPage() {
     const result = await response.json();
     if (result.complete) {
       window.sessionStorage.setItem('diagnosticRunId', runId);
+      queryClient.removeQueries({ queryKey: ['today'] });
       window.location.href = `/diagnostic/results?id=${encodeURIComponent(runId)}`;
     } else {
       await loadNext(runId);

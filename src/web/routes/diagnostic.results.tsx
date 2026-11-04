@@ -1,78 +1,43 @@
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { diagnosticResultsQueryOptions, latestDiagnosticQueryOptions } from '../queries.js';
 
 export const Route = createFileRoute('/diagnostic/results')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    id: typeof search.id === 'string' ? search.id : undefined,
+  }),
+  loaderDeps: ({ search }) => ({ id: search.id }),
+  loader: async ({ context, deps }) => {
+    const candidateId = deps.id ?? window.sessionStorage.getItem('diagnosticRunId');
+    if (candidateId) {
+      try {
+        await context.queryClient.ensureQueryData(diagnosticResultsQueryOptions(candidateId));
+        return candidateId;
+      } catch {
+        // Resolve stale ids through the latest completed run.
+      }
+    }
+    const latest = await context.queryClient.ensureQueryData(latestDiagnosticQueryOptions());
+    await context.queryClient.ensureQueryData(diagnosticResultsQueryOptions(latest.id));
+    return latest.id;
+  },
   component: DiagnosticResultsPage,
 });
 
-interface DiagnosticResults {
-  domains: Array<{
-    id: string;
-    title: string;
-    outcome: string;
-    answers: number;
-    knownConcepts: string[];
-    gaps: string[];
-  }>;
-  plan: {
-    firstWeek: { title: string } | null;
-    firstWeekConcepts: string[];
-    firstSession: Array<{
-      kind: string;
-      conceptTitle?: string;
-      plannedMinutes: number;
-      reason: { summary: string };
-    }>;
-    ninetyDayPath: Array<{ week: number; title: string }>;
-  };
-}
-
 function DiagnosticResultsPage() {
-  const [result, setResult] = useState<DiagnosticResults | null>(null);
-  const [loadError, setLoadError] = useState(false);
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      let id: string | null =
-        new URLSearchParams(window.location.search).get('id') ??
-        window.sessionStorage.getItem('diagnosticRunId');
-      if (!id) {
-        const latest = await fetch('/api/diagnostic/latest');
-        if (!latest.ok) return;
-        id = ((await latest.json()) as { id?: string }).id ?? null;
-      }
-      if (id) {
-        const response = await fetch(`/api/diagnostic/${encodeURIComponent(id)}/results`);
-        if (response.ok) {
-          if (active) setResult(await response.json());
-          return;
-        }
-      }
-      const latest = await fetch('/api/diagnostic/latest');
-      if (!latest.ok) throw new Error('No completed diagnostic');
-      const latestId = ((await latest.json()) as { id: string }).id;
-      const response = await fetch(`/api/diagnostic/${encodeURIComponent(latestId)}/results`);
-      if (!response.ok) throw new Error('Could not load diagnostic results');
-      if (active) setResult(await response.json());
-    })().catch(() => {
-      if (active) setLoadError(true);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const id = Route.useLoaderData();
+  const { data: result } = useSuspenseQuery(diagnosticResultsQueryOptions(id));
   return (
     <section className="mx-auto max-w-3xl space-y-6">
       <div>
         <p className="text-sm text-neutral-500">Diagnostic complete</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">Your starting point</h1>
       </div>
-      {loadError ? <p role="alert">Diagnostic results are unavailable.</p> : null}
       <div className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
         <p className="text-sm leading-6 text-neutral-700">
           Results are provisional; independent practice will refine your mastery.
         </p>
-        {(result?.domains ?? []).map((domain) => (
+        {result.domains.map((domain) => (
           <article key={domain.id} className="border-t border-neutral-100 pt-4">
             <div className="flex justify-between gap-4">
               <h2 className="font-semibold">{domain.title}</h2>
@@ -94,15 +59,17 @@ function DiagnosticResultsPage() {
       <section className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
         <h2 className="text-xl font-semibold">Your plan</h2>
         <div>
-          <h3 className="font-medium">First week: {result?.plan.firstWeek?.title ?? 'Loading…'}</h3>
+          <h3 className="font-medium">
+            First week: {result.plan.firstWeek?.title ?? 'No plan available'}
+          </h3>
           <p className="mt-1 text-sm text-neutral-600">
-            Focus: {result?.plan.firstWeekConcepts.join(', ') ?? ''}
+            Focus: {result.plan.firstWeekConcepts.join(', ')}
           </p>
         </div>
         <div>
           <h3 className="font-medium">First session</h3>
           <ul className="mt-2 space-y-2 text-sm">
-            {(result?.plan.firstSession ?? []).map((activity) => (
+            {result.plan.firstSession.map((activity) => (
               <li key={`${activity.kind}-${activity.conceptTitle ?? activity.reason.summary}`}>
                 <strong>{activity.kind.replace('_', ' ')}</strong>
                 {activity.conceptTitle ? ` · ${activity.conceptTitle}` : ''} ·{' '}
@@ -115,7 +82,7 @@ function DiagnosticResultsPage() {
         <div>
           <h3 className="font-medium">90-day path</h3>
           <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-neutral-600">
-            {(result?.plan.ninetyDayPath ?? []).map((week) => (
+            {result.plan.ninetyDayPath.map((week) => (
               <li key={week.week}>
                 Week {week.week}: {week.title}
               </li>

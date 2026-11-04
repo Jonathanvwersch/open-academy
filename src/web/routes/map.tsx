@@ -1,39 +1,24 @@
 import dagre from '@dagrejs/dagre';
-import { useQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { Background, Controls, type Edge, type Node, ReactFlow } from '@xyflow/react';
 import { useEffect, useMemo, useState } from 'react';
+import { conceptQueryOptions, mapQueryOptions } from '../queries.js';
 import '@xyflow/react/dist/style.css';
 
 export const Route = createFileRoute('/map')({
+  loader: async ({ context }) => {
+    const map = await context.queryClient.ensureQueryData(mapQueryOptions(null));
+    await context.queryClient.ensureQueryData(mapQueryOptions(map.currentWeekDomain));
+  },
   component: MapPage,
 });
 
-interface MapNode {
-  id: string;
-  title: string;
-  domain: string;
-  status: string;
-  available: boolean;
-  dimensions: Record<string, { state: string; inferred?: boolean }>;
-}
-
 function MapPage() {
+  const queryClient = useQueryClient();
   const [domain, setDomain] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, unknown> | null>(null);
-  const mapQuery = useQuery({
-    queryKey: ['map', domain],
-    queryFn: async () => {
-      const filter = domain === null ? '' : `?domain=${domain || 'all'}`;
-      const response = await fetch(`/api/map${filter}`);
-      return response.json() as Promise<{
-        nodes: MapNode[];
-        edges: Array<{ conceptId: string; prerequisiteId: string }>;
-        domains: Array<{ id: string; title: string }>;
-        currentWeekDomain: string;
-      }>;
-    },
-  });
+  const mapQuery = useSuspenseQuery(mapQueryOptions(domain));
   useEffect(() => {
     if (domain === null && mapQuery.data?.currentWeekDomain) {
       setDomain(mapQuery.data.currentWeekDomain);
@@ -41,7 +26,6 @@ function MapPage() {
   }, [domain, mapQuery.data?.currentWeekDomain]);
   const graph = useMemo(() => {
     const data = mapQuery.data;
-    if (!data) return { nodes: [] as Node[], edges: [] as Edge[] };
     const layout = new dagre.graphlib.Graph();
     layout.setGraph({ rankdir: 'TB', nodesep: 36, ranksep: 70 });
     layout.setDefaultEdgeLabel(() => ({}));
@@ -103,23 +87,17 @@ function MapPage() {
     return { nodes, edges };
   }, [domain, mapQuery.data]);
   const openConcept = async (_event: unknown, node: Node) => {
-    const response = await fetch(`/api/concepts/${node.id}`);
-    if (response.ok) {
-      setSelected(await response.json());
-      const url = new URL(window.location.href);
-      url.searchParams.set('concept', node.id);
-      window.history.replaceState({}, '', url);
-    }
+    const concept = await queryClient.ensureQueryData(conceptQueryOptions(node.id));
+    setSelected(concept);
+    const url = new URL(window.location.href);
+    url.searchParams.set('concept', node.id);
+    window.history.replaceState({}, '', url);
   };
   useEffect(() => {
     const conceptId = new URLSearchParams(window.location.search).get('concept');
     if (!conceptId) return;
-    void fetch(`/api/concepts/${conceptId}`)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (data) setSelected(data);
-      });
-  }, []);
+    void queryClient.ensureQueryData(conceptQueryOptions(conceptId)).then(setSelected);
+  }, [queryClient]);
   const studyNow = async () => {
     const concept = selected?.concept as { id?: string } | undefined;
     const response = await fetch('/api/sessions', {
@@ -157,7 +135,7 @@ function MapPage() {
         createdAt: string;
       }>
     | undefined;
-  const selectedDomain = domain ?? mapQuery.data?.currentWeekDomain ?? '';
+  const selectedDomain = domain ?? mapQuery.data.currentWeekDomain;
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -173,7 +151,7 @@ function MapPage() {
             className="ml-2 rounded-md border border-neutral-300 bg-white px-3 py-2"
           >
             <option value="">All domains</option>
-            {(mapQuery.data?.domains ?? []).map((item) => (
+            {mapQuery.data.domains.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.title}
               </option>
