@@ -25,8 +25,6 @@ blocks:
       - $\partial L/\partial h = 4 \cdot w_2 = 12$
       - $\partial L/\partial z = 12\cdot \mathbb{1}[z>0] = 12$
       - $\partial L/\partial w_1 = 12 \cdot x = 12$
-  - kind: check
-    exercise: bp-check-1
   - kind: math
     md: |
       For a layer $z = Wx + b$, $h = \phi(z)$, with upstream gradient $g_h = \partial L/\partial h$:
@@ -55,8 +53,10 @@ blocks:
     md: |
       **Partly done.** Same scalar network, but now $t = 10$. Forward: $z = 2,\ h = 2,\ y = 6$. Backward: $\partial L/\partial y = 2(6 - 10) = -8$, so $\partial L/\partial h = -8\cdot w_2 = \;?$ and $\partial L/\partial w_1 = \;?$
     exercise: bp-faded-1
+  - kind: check
+    exercise: bp-check-1
   - kind: summary
     md: |
-      - Backprop applies the chain rule in reverse topological order and reuses cached forward values.
+      - Backprop applies the chain rule from the final result back through earlier steps, reusing saved values from the forward pass.
       - One backward pass costs about as much as a forward pass and gives every gradient.
       - Gradients have the same shape as their parameters. Check them with finite differences.

@@ -9,7 +9,7 @@ blocks:
     md: |
       You are on a foggy hillside and can only feel the slope under your feet. Gradient descent repeats one move: **take a step downhill, in proportion to the slope.**
       $$\theta \leftarrow \theta - \eta\,\nabla L(\theta).$$
-      The learning rate $\eta$ is the step size. If it is too small, you crawl. If it is too large, you overshoot the valley floor, land higher on the other side, and the loss explodes. Every neural network, transformer and robot policy you will train uses a variant of this loop.
+      The learning rate $\eta$ is the step size. If it is too small, you crawl. If it is too large, you overshoot the valley floor, land higher on the other side, and the loss explodes. This update can reduce any function when we can calculate its gradient.
   - kind: example
     md: |
       $L(w) = (w - 3)^2$, so $L'(w) = 2(w - 3)$. Start at $w_0 = 0$ with $\eta = 0.25$:
@@ -19,8 +19,6 @@ blocks:
       - $w_3 = 2.625$
 
       Each step halves the distance to 3.
-  - kind: check
-    exercise: gd-check-step
   - kind: math
     md: |
       For the quadratic $L(w) = a(w - w^\star)^2$, one step gives
@@ -29,7 +27,7 @@ blocks:
       - $1/(2a) < \eta < 1/a$: they oscillate around $w^\star$ but still converge.
       - $\eta > 1/a$: $|1 - 2a\eta| > 1$, so they **diverge**.
 
-      In many dimensions the steepest direction (largest curvature) sets the stability limit, while the flattest direction sets the speed.
+      With many parameters, the steepest direction limits how large a safe step can be, while gentler directions may take longer to improve.
   - kind: worked
     md: |
       **Linear regression, one step by hand.** Data: $(x, y) = (1, 2), (2, 4)$. Model $\hat y = wx$ (no bias), MSE loss, $w_0 = 0$, $\eta = 0.1$.
@@ -51,6 +49,8 @@ blocks:
     md: |
       **Partly done.** Same data and model. Now start at $w_0 = 1$: the residuals are $(1\cdot1 - 2,\ 1\cdot2 - 4) = (-1, -2)$, so $\partial L/\partial w = \;?$ and $w_1 = \;?$
     exercise: gd-faded-step
+  - kind: check
+    exercise: gd-check-step
   - kind: summary
     md: |
       - Update rule: $\theta \leftarrow \theta - \eta\nabla L$.

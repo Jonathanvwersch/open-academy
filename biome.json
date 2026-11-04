@@ -4,6 +4,7 @@
     "ignoreUnknown": true,
     "includes": [
       "**",
+      "!.ample",
       "!dist",
       "!playwright-report",
       "!test-results",

@@ -2,7 +2,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { ExerciseForm, FeedbackPanel, HintLadder, Markdown, ModeBadge } from '../components';
+import type { LessonBlockKind } from '../components';
+import {
+  ExerciseForm,
+  FeedbackPanel,
+  HintLadder,
+  LessonBlock,
+  Markdown,
+  ModeBadge,
+} from '../components';
 
 export const Route = createFileRoute('/session/$id')({
   component: SessionPage,
@@ -154,7 +162,7 @@ function SessionPage() {
     queryFn: async () => {
       const response = await fetch(`/api/lessons/${activity?.conceptId}`);
       return response.json() as Promise<{
-        blocks: Array<{ kind: string; md?: string; exercise?: string }>;
+        blocks: Array<{ kind: LessonBlockKind; md?: string; exercise?: string }>;
       }>;
     },
   });
@@ -248,10 +256,13 @@ function SessionPage() {
         <p className="text-sm text-neutral-500">
           Lesson · {activity.conceptTitle ?? activity.conceptId}
         </p>
-        <div className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
+        <div className="space-y-5">
           {orderedBlocks.map((block) => (
-            <div key={`${block.kind}-${block.md ?? block.exercise ?? 'block'}`}>
-              {block.md ? <Markdown>{block.md}</Markdown> : null}
+            <LessonBlock
+              key={`${block.kind}-${block.md ?? block.exercise ?? 'block'}`}
+              kind={block.kind}
+              md={block.md}
+            >
               {block.exercise ? (
                 <InlineLessonCheck
                   key={`${activity.id}:${block.exercise}`}
@@ -264,7 +275,7 @@ function SessionPage() {
                   }
                 />
               ) : null}
-            </div>
+            </LessonBlock>
           ))}
         </div>
         <button

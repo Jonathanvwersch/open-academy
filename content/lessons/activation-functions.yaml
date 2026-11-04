@@ -7,9 +7,9 @@ blocks:
       **Goal:** evaluate and differentiate ReLU, sigmoid and tanh, and explain why networks need nonlinear activations.
   - kind: intuition
     md: |
-      Stack two linear layers and you get $W_2(W_1x + b_1) + b_2 = (W_2W_1)x + (W_2b_1 + b_2)$, which is **still linear**. Depth buys nothing without a nonlinearity between the layers. Activations bend the function so that stacked layers can represent curves, corners and complex decision regions.
+      Stack two linear layers and you get $W_2(W_1x + b_1) + b_2 = (W_2W_1)x + (W_2b_1 + b_2)$, which is **still linear**. Adding an activation between them lets the combined function bend, so it can represent curves and corners.
 
-      Their **derivatives** matter just as much, because gradients flow through them. A sigmoid's derivative is at most 0.25 and nearly 0 for large $|z|$ (it saturates), so deep sigmoid stacks shrink gradients. ReLU's derivative is exactly 1 for $z > 0$, which is a big reason ReLU-style activations became the default.
+      Their **derivatives** tell us how much the output changes when the input changes. A sigmoid's derivative is at most 0.25 and nearly 0 for large $|z|$, so its output changes very little there. ReLU's derivative is exactly 1 for $z > 0$, so in that range the output changes by the same amount as its input.
   - kind: example
     md: |
       $z = (-2, 0.5, 3)$:
@@ -17,8 +17,6 @@ blocks:
       - ReLU gives $(0, 0.5, 3)$.
       - Sigmoid gives $\approx(0.119, 0.622, 0.953)$.
       - tanh gives $\approx(-0.964, 0.462, 0.995)$.
-  - kind: check
-    exercise: act-check-relu
   - kind: math
     md: |
       | | $\phi(z)$ | $\phi'(z)$ |
@@ -28,7 +26,9 @@ blocks:
       | tanh | $\tanh z$ | $1 - \tanh^2 z$ |
 
       Sigmoid outputs lie in $(0,1)$, which suits probabilities. tanh lies in $(-1,1)$ and is zero-centred. ReLU is unbounded above and cheap to compute; units stuck at $z<0$ for every input are called "dead".
+  - kind: check
+    exercise: act-check-relu
   - kind: summary
     md: |
       - Without nonlinearities, any depth collapses to a single linear map.
-      - Activation derivatives scale the backward signal: sigmoid saturates (maximum derivative 0.25), while ReLU passes gradients with factor 1 or 0.
+      - An activation's derivative describes how much its output changes with its input: sigmoid's maximum is 0.25, while ReLU's is 1 for positive inputs and 0 for negative inputs.

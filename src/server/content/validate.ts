@@ -198,6 +198,12 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
       addIssue(issues, file, value.concept, 'duplicate lesson for concept');
     }
     lessonsByConcept.set(value.concept, { file, value });
+    if (value.blocks[0]?.kind !== 'objective') {
+      addIssue(issues, file, value.concept, 'lesson must start with an objective block');
+    }
+    if (value.blocks[value.blocks.length - 1]?.kind !== 'summary') {
+      addIssue(issues, file, value.concept, 'lesson must end with a summary block');
+    }
     if (!concepts.has(value.concept)) {
       addIssue(issues, file, value.concept, 'lesson references an unknown concept');
     }

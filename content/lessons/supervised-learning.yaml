@@ -9,23 +9,25 @@ blocks:
     md: |
       Supervised learning means learning a function from examples of inputs paired with correct outputs. There are always five ingredients:
 
-      1. **Inputs** $x$ (features: pixels, sensor readings, tokens).
-      2. **Targets** $y$ (labels: price, class, the expert's action).
-      3. A **model family** $f_\theta$ with parameters $\theta$ (a line, a neural network).
+      1. **Inputs** $x$ are the measured values used to make a prediction.
+      2. **Targets** $y$ are the known answers, such as a sale price or category.
+      3. A **model family** $f_\theta$ is a rule with adjustable parameters $\theta$, such as a line.
       4. A **loss** $L(f_\theta(x), y)$ measuring how wrong a prediction is.
       5. A **dataset** of $(x, y)$ pairs.
 
-      Training searches for the $\theta$ that makes the average loss small, and the real goal is low loss on *new* data. Behavioral cloning for robots is exactly this setup: observation in, expert action out.
+      Training searches for parameters that make the average loss small. The real goal is to make accurate predictions on new examples.
   - kind: example
     md: |
-      **Predicting a robot's grasp success.** Input: a depth image plus a proposed gripper pose. Target: 1 if the grasp succeeded, otherwise 0. Model: a CNN that outputs a probability. Loss: binary cross-entropy. Data: 50,000 logged grasp attempts.
-  - kind: check
-    exercise: sl-check-target
+      Predicting a house's sale price. Input: size in m² and number of bedrooms. Target: sale price. Model: a line, $\hat y = w_1 x_1 + w_2 x_2 + b$. Loss: average squared error. Data: 1,000 past sales.
+
+      Robots learn from demonstrations the same way: what the camera sees in, the expert's action out.
   - kind: math
     md: |
-      Empirical risk minimisation:
+      Average training loss:
       $$\theta^\star = \arg\min_\theta \frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(x_i), y_i\big).$$
       **Regression** means $y$ is real-valued; **classification** means $y$ is a category.
+  - kind: check
+    exercise: sl-check-target
   - kind: summary
     md: |
       - The five ingredients are inputs, targets, model, loss and data.

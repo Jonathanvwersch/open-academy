@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import { loadContent } from '../src/server/content/load.js';
 import { serializeExercise } from '../src/server/content/serialize.js';
+import { validateContent } from '../src/server/content/validate.js';
 
 function required<T>(value: T | undefined, label: string): T {
   if (value === undefined) {
@@ -71,4 +72,39 @@ test('an empty content directory is valid', async () => {
   expect(content.concepts).toEqual([]);
   expect(content.exercises).toEqual([]);
   expect(content.conceptsById.size).toBe(0);
+});
+
+test('lessons start with an objective and end with a summary', () => {
+  const issues = validateContent({
+    concepts: [],
+    lessons: [
+      {
+        file: 'lessons/example.yaml',
+        value: {
+          concept: 'example',
+          version: 1,
+          blocks: [
+            { kind: 'summary', md: 'Takeaways.' },
+            { kind: 'objective', md: 'Goal.' },
+          ],
+          fast_path: [],
+        },
+      },
+    ],
+    exercises: [],
+    projects: [],
+  });
+
+  expect(issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'example',
+        message: 'lesson must start with an objective block',
+      }),
+      expect.objectContaining({
+        id: 'example',
+        message: 'lesson must end with a summary block',
+      }),
+    ]),
+  );
 });

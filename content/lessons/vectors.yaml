@@ -10,9 +10,9 @@ blocks:
       A vector is an ordered list of numbers. There are two useful ways to picture one:
 
       - **An arrow or point in space.** $(3, 4)$ is the point 3 right and 4 up, or the arrow from the origin to it.
-      - **A bundle of features.** A house can be $(\text{area}, \text{bedrooms}, \text{age}) = (120, 3, 15)$.
+      - **A list of measurements.** A house can be $(\text{area}, \text{bedrooms}, \text{age}) = (120, 3, 15)$.
 
-      In ML both views matter all the time. Each training example is a feature vector, the model's parameters are a vector, and "how similar are these two examples?" becomes "how far apart are these two points?"
+      A data row can also be stored as a vector: for example, a house described by its area, bedroom count and age. The same vector arithmetic works for coordinates and measurements.
   - kind: example
     md: |
       Take $a = (1, 2)$ and $b = (3, -1)$.
@@ -20,8 +20,6 @@ blocks:
       - Addition is componentwise: $a + b = (1+3,\ 2-1) = (4, 1)$.
       - Scaling multiplies every entry: $2a = (2, 4)$.
       - Length (the L2 norm) is Pythagoras: $\|b\| = \sqrt{3^2 + (-1)^2} = \sqrt{10} \approx 3.16$.
-  - kind: check
-    exercise: vec-check-combo
   - kind: math
     md: |
       For $x, y \in \mathbb{R}^n$ and a scalar $c$:
@@ -33,13 +31,15 @@ blocks:
       Another norm you will meet is the L1 norm, $\|x\|_1 = \sum_i |x_i|$, which reappears in L1 regularisation and mean absolute error.
   - kind: worked
     md: |
-      **Distance between two examples.** Houses $p = (2, 5, 1)$ and $q = (4, 1, 1)$, with features (rooms, km to centre, floors).
+      **Distance between two examples.** Houses $p = (2, 5, 1)$ and $q = (4, 1, 1)$, with measurements (rooms, km to centre, floors).
 
       1. Difference: $p - q = (-2, 4, 0)$.
       2. Square and sum: $4 + 16 + 0 = 20$.
       3. Square root: $\sqrt{20} \approx 4.47$.
 
-      Notice that the distance depends on the **units**. If "km to centre" were in metres, that one feature would dominate every distance. This is why features are usually standardised before methods that compare vectors by distance.
+      Notice that the distance depends on the **units**. If "km to centre" were in metres, that number would be about 1,000 times larger and could dominate the distance. Measurements in different units are often rescaled before comparing vectors.
+  - kind: check
+    exercise: vec-check-combo
   - kind: summary
     md: |
       - Vectors are added and scaled componentwise.

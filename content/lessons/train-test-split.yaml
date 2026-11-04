@@ -10,20 +10,20 @@ blocks:
       A model that has seen the answers will look better than it is. To estimate performance on new data, you must evaluate on data the model, *and your decisions about the model*, never touched.
 
       - **Train:** fit the parameters.
-      - **Validation:** choose hyperparameters and decide when to stop. You look at it many times, so it slowly becomes optimistic.
+      - **Validation:** choose settings and decide when to stop. You look at it many times, so it slowly becomes optimistic.
       - **Test:** touched once at the end, for an honest estimate.
 
-      **Leakage** is any path by which information from the evaluation data reaches training: duplicated examples, statistics computed on the full dataset, or frames from the same robot episode landing in both splits.
+      **Leakage** is any path by which information from the evaluation data reaches training: duplicate rows, averages computed from the full table before splitting, or copies of the same sale landing in both splits.
   - kind: example
     md: |
-      You have 100 robot demonstration episodes of 500 frames each. Splitting **frames** randomly puts nearly identical consecutive frames in both train and test, so test accuracy looks excellent and the deployed policy fails. Split by **episode** instead.
-  - kind: check
-    exercise: tts-check-purpose
+      A table has 100 house sales, but some rows are copies of the same sale. If a copy appears in both the training and test sets, the test can look better than it should because the model has already seen that sale. Keep copies of one sale together in the same split.
   - kind: math
     md: |
-      If the test set is drawn i.i.d. from the deployment distribution, the test error is an unbiased estimate of the expected error. Each time you choose something based on a set, that set's error becomes biased downward for the chosen model.
+      If the test set resembles the data the model will face later, its error gives a useful estimate of future error. Each time you use that set to choose something, the estimate becomes too optimistic for the chosen model.
+  - kind: check
+    exercise: tts-check-purpose
   - kind: summary
     md: |
       - Train to fit, validate to choose, test once to report.
-      - Fit preprocessing (means, scalers, vocabularies) on train only.
-      - Split by the unit that is independent in deployment: user, episode, scene.
+      - Calculate data summaries, such as means and scales, using the training set only.
+      - Keep related records together when splitting, such as multiple measurements of the same house.

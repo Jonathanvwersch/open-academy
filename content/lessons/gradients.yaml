@@ -9,12 +9,10 @@ blocks:
     md: |
       Stack all the partial derivatives into one vector and you get the **gradient**:
       $$\nabla f = \left(\frac{\partial f}{\partial x_1}, \dots, \frac{\partial f}{\partial x_n}\right).$$
-      Picture standing on a hilly landscape. The gradient points uphill, in the steepest direction, and its length says how steep the slope is. To go downhill fastest, step along $-\nabla f$. That one idea is the engine of nearly all of deep learning.
+      Picture standing on a hilly landscape. The gradient points uphill, in the steepest direction, and its length says how steep the slope is. To go downhill fastest, step along $-\nabla f$.
   - kind: example
     md: |
       $f(x, y) = x^2 + 3y^2$. Then $\nabla f = (2x, 6y)$. At $(1, 1)$, $\nabla f = (2, 6)$: the function rises 3 times faster in $y$ than in $x$, so the steepest-descent direction is $(-2, -6)$.
-  - kind: check
-    exercise: grad-check-1
   - kind: math
     md: |
       For a small step $\delta$, the first-order change is
@@ -28,6 +26,8 @@ blocks:
       2. $\partial f/\partial w_2 = w_1^2 + \cos w_2$, which is $4 + 1 = 5$ at $(2,0)$.
 
       So $\nabla f(2, 0) = (0, 5)$. Moving in $w_1$ alone changes nothing to first order; decreasing $w_2$ lowers $f$.
+  - kind: check
+    exercise: grad-check-1
   - kind: summary
     md: |
       - The gradient is the vector of all partial derivatives.

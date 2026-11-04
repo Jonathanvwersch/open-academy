@@ -7,18 +7,18 @@ blocks:
       **Goal:** compute a neuron's output, and explain why one linear unit can only separate classes with a straight line (a hyperplane).
   - kind: intuition
     md: |
-      An artificial neuron is linear regression followed by a nonlinearity: $a = \phi(w\cdot x + b)$. The weighted sum scores the input, and $\phi$ (for example a step, a sigmoid or a ReLU) decides how that score becomes the output.
+      A neuron adds a weighted sum of its inputs to a bias, then applies a step rule: output 1 when the score is positive, and 0 otherwise.
 
-      The set where $w\cdot x + b = 0$ is a line in 2D, a plane in 3D, and a hyperplane in general. A single neuron can only say "which side of this hyperplane are you on?" That is why XOR, whose classes cannot be split by a line, needs at least two layers.
+      The set where $w\cdot x + b = 0$ is a line in 2D, a plane in 3D, and a hyperplane in higher dimensions. A single neuron marks one side of that boundary as 1 and the other as 0. It cannot mark opposite corners of a square as 1 and the other corners as 0, because one straight line cannot separate them.
   - kind: example
     md: |
       $w = (1, 1)$, $b = -1.5$, step activation (output 1 if the score is $> 0$, else 0). Inputs $(0,0), (0,1), (1,0), (1,1)$ give scores $-1.5, -0.5, -0.5, 0.5$, so the outputs are $0, 0, 0, 1$. This neuron computes **AND**.
-  - kind: check
-    exercise: perc-check-1
   - kind: math
     md: |
       $$z = w^\top x + b, \qquad a = \phi(z).$$
       The decision boundary $\{x : w^\top x + b = 0\}$ is perpendicular to $w$; $b$ shifts it away from the origin.
+  - kind: check
+    exercise: perc-check-1
   - kind: summary
     md: |
       - A neuron computes a weighted sum, adds a bias, and applies an activation.
