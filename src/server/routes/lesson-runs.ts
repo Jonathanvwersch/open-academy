@@ -461,6 +461,7 @@ export function registerLessonRunRoutes(
           session: activity.session,
           exerciseIds: activity.activity.exerciseIds,
           progress: activity.activity.progress,
+          knowledgePointActivity: true,
         });
       }
       return {

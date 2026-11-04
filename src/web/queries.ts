@@ -23,6 +23,46 @@ export interface TodayPayload {
   };
 }
 
+export interface LearnPayload {
+  xp: {
+    total: number;
+    today: number;
+    goal: number;
+    week: Array<{ date: string; xp: number; goal: number }>;
+  };
+  course: {
+    percentComplete: number;
+    topicsDone: number;
+    topicsTotal: number;
+    estimatedFinish: string | null;
+  };
+  tasks: Array<{
+    activityKind: string;
+    label: 'Lesson' | 'Review' | 'Practice' | 'Project' | 'Quiz';
+    conceptId?: string;
+    title: string;
+    xp: number;
+    prerequisites: Array<{ id: string; title: string; done: boolean }>;
+  }>;
+  doneToday: Array<{ label: string; title: string; xp: number; completedAt: string }>;
+  activeSessionId: string | null;
+}
+
+export interface CoursePayload {
+  weeks: Array<{
+    week: number;
+    title: string;
+    topics: Array<{
+      number: string;
+      conceptId: string;
+      title: string;
+      hasLesson: boolean;
+      status: 'locked' | 'not_started' | 'in_progress' | 'complete';
+      mastery: 'Not started' | 'Attempted' | 'Familiar' | 'Proficient' | 'Mastered';
+    }>;
+  }>;
+}
+
 export interface SessionActivity {
   id: string;
   idx: number;
@@ -234,6 +274,18 @@ export const todayQueryOptions = () =>
   queryOptions({
     queryKey: ['today'] as const,
     queryFn: () => getJson<TodayPayload>('/api/today', 'Could not load Today'),
+  });
+
+export const learnQueryOptions = () =>
+  queryOptions({
+    queryKey: ['learn'] as const,
+    queryFn: () => getJson<LearnPayload>('/api/learn', 'Could not load Learn'),
+  });
+
+export const courseQueryOptions = () =>
+  queryOptions({
+    queryKey: ['course'] as const,
+    queryFn: () => getJson<CoursePayload>('/api/course', 'Could not load Course'),
   });
 
 export const sessionQueryOptions = (id: string) =>

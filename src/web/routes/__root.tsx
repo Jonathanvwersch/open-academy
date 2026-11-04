@@ -9,7 +9,8 @@ interface RouterContext {
 }
 
 const navigation = [
-  { label: 'Today', to: '/' },
+  { label: 'Learn', to: '/' },
+  { label: 'Course', to: '/course' },
   { label: 'Map', to: '/map' },
   { label: 'Lab', to: '/lab' },
   { label: 'Progress', to: '/progress' },

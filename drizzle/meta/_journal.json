@@ -43,6 +43,13 @@
       "when": 1793822873191,
       "tag": "0005_outgoing_serpent_society",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793828515022,
+      "tag": "0006_vengeful_vermin",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."xp_event_kind" ADD VALUE 'activity' BEFORE 'knowledge_point';

@@ -1,6 +1,7 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
-import { sessionActivities } from '../db/schema.js';
+import { attempts, sessionActivities, xpEvents } from '../db/schema.js';
+import { localDateKey } from './xp.js';
 
 interface SessionActivityList {
   activities: Array<{ id: string; idx: number; status: string }>;
@@ -15,6 +16,9 @@ export async function updateActivityAndAdvance(
     session?: SessionActivityList;
     exerciseIds?: string[];
     progress?: unknown;
+    userId?: string;
+    timeZone?: string;
+    knowledgePointActivity?: boolean;
   },
 ) {
   await db
@@ -27,6 +31,34 @@ export async function updateActivityAndAdvance(
     })
     .where(eq(sessionActivities.id, input.activityId));
   if (!input.completed) return;
+  if (!input.knowledgePointActivity && input.userId && input.timeZone) {
+    const [activity] = await db
+      .select()
+      .from(sessionActivities)
+      .where(eq(sessionActivities.id, input.activityId))
+      .limit(1);
+    const activityAttempts = await db
+      .select({ correct: attempts.correct })
+      .from(attempts)
+      .where(and(eq(attempts.activityId, input.activityId), eq(attempts.userId, input.userId)));
+    if (activity && activityAttempts.length > 0) {
+      const meanCorrectness =
+        activityAttempts.reduce((total, attempt) => total + attempt.correct, 0) /
+        activityAttempts.length;
+      await db
+        .insert(xpEvents)
+        .values({
+          userId: input.userId,
+          kind: 'activity',
+          sourceKey: `activity:${input.activityId}`,
+          conceptId: activity.conceptId,
+          amount: Math.round(activity.plannedMinutes * meanCorrectness),
+          earnedAt: input.now,
+          localDate: localDateKey(input.now, input.timeZone),
+        })
+        .onConflictDoNothing();
+    }
+  }
   const nextActivity = input.session?.activities
     .filter((activity) => activity.status === 'planned')
     .sort((left, right) => left.idx - right.idx)[0];

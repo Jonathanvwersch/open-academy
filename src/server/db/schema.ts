@@ -76,6 +76,7 @@ export const lessonRunStatusEnum = pgEnum('lesson_run_status', [
   'completed',
 ]);
 export const xpEventKindEnum = pgEnum('xp_event_kind', [
+  'activity',
   'knowledge_point',
   'review',
   'quiz',

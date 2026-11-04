@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CourseRouteImport } from './routes/course'
 import { Route as DiagnosticRouteImport } from './routes/diagnostic'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as MapRouteImport } from './routes/map'
@@ -22,6 +23,11 @@ import { Route as SessionIdRouteImport } from './routes/session.$id'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CourseRoute = CourseRouteImport.update({
+  id: '/course',
+  path: '/course',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DiagnosticRoute = DiagnosticRouteImport.update({
@@ -67,6 +73,7 @@ const SessionIdRoute = SessionIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/course': typeof CourseRoute
   '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
   '/map': typeof MapRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/course': typeof CourseRoute
   '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
   '/map': typeof MapRoute
@@ -90,6 +98,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/course': typeof CourseRoute
   '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
   '/map': typeof MapRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/course'
     | '/diagnostic'
     | '/lab'
     | '/map'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/course'
     | '/diagnostic'
     | '/lab'
     | '/map'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/course'
     | '/diagnostic'
     | '/lab'
     | '/map'
@@ -137,6 +149,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CourseRoute: typeof CourseRoute
   DiagnosticRoute: typeof DiagnosticRouteWithChildren
   LabRoute: typeof LabRoute
   MapRoute: typeof MapRoute
@@ -153,6 +166,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/course': {
+      id: '/course'
+      path: '/course'
+      fullPath: '/course'
+      preLoaderRoute: typeof CourseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/diagnostic': {
@@ -228,6 +248,7 @@ const DiagnosticRouteWithChildren = DiagnosticRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CourseRoute: CourseRoute,
   DiagnosticRoute: DiagnosticRouteWithChildren,
   LabRoute: LabRoute,
   MapRoute: MapRoute,
