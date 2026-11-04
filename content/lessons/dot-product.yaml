@@ -7,17 +7,15 @@ blocks:
       **Goal:** compute dot products and cosine similarity, and read a dot product both as a weighted sum and as a measure of alignment.
   - kind: intuition
     md: |
-      The dot product multiplies matching entries and adds the results. It is the most important operation in ML:
+      The dot product multiplies matching entries and adds the results. Two useful ways to read it are:
 
-      - **Weighted sum.** A linear model's prediction $w \cdot x$ weights each feature by how much it matters.
-      - **Alignment.** $a \cdot b$ is large and positive when the vectors point the same way, zero when they are perpendicular, and negative when they point in opposite directions. Attention in transformers scores "how relevant is token $j$ to token $i$" with exactly this operation.
+      - **Weighted total.** Pair each entry with a weight and add the products to get one score.
+      - **Alignment.** $a \cdot b$ is large and positive when the vectors point the same way, zero when they are perpendicular, and negative when they point in opposite directions.
   - kind: example
     md: |
       Weights $w = (0.5, 2)$, features $x = (4, 1)$:
       $$w \cdot x = 0.5 \cdot 4 + 2 \cdot 1 = 4.$$
       Increasing $x_2$ by 1 raises the score by $w_2 = 2$; increasing $x_1$ by 1 raises it by only $0.5$.
-  - kind: check
-    exercise: dot-check-1
   - kind: math
     md: |
       $$a \cdot b = \sum_{i=1}^n a_i b_i = \|a\|\,\|b\|\cos\theta$$
@@ -39,6 +37,8 @@ blocks:
       2. $\|a\| = \|b\| = 5$.
       3. $\cos\theta = \;?$
     exercise: dot-faded-cos
+  - kind: check
+    exercise: dot-check-1
   - kind: summary
     md: |
       - $a\cdot b = \sum_i a_i b_i = \|a\|\|b\|\cos\theta$.

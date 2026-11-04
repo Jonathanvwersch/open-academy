@@ -97,7 +97,7 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 3
-    prompt: "Training a small MLP, the loss goes 2.30 → 1.90 → 3.10 → 8.70 → 41.2 → nan over the first five steps. What is the most likely cause and first fix?"
+    prompt: "While training a small layered model, its error goes 2.30 → 1.90 → 3.10 → 8.70 → 41.2 → not a number over five steps. What is the most likely cause, and what is the first fix to try?"
     options:
       - {
           id: a,

@@ -7,28 +7,28 @@ blocks:
       **Goal:** compute partial derivatives of functions of several variables.
   - kind: intuition
     md: |
-      A loss depends on many parameters at once. A **partial derivative** asks: *if I nudge only this one parameter and freeze all the others, how does the output change?* You differentiate with respect to one variable and treat every other variable as a constant.
+      A function can depend on several variables at once. A **partial derivative** asks: *if I nudge only one variable and freeze all the others, how does the output change?* You differentiate with respect to that variable and treat every other variable as a constant.
   - kind: example
     md: |
       $f(w, b) = w^2 b + 3b$.
 
       - $\partial f/\partial w$: treat $b$ as a constant, so $2wb$.
       - $\partial f/\partial b$: treat $w$ as a constant, so $w^2 + 3$.
-  - kind: check
-    exercise: pd-check-1
   - kind: math
     md: |
       $$\frac{\partial f}{\partial x_i}(x) = \lim_{h\to0}\frac{f(x_1,\dots,x_i + h,\dots,x_n) - f(x)}{h}$$
       Every single-variable rule still applies; the other variables simply behave like numbers.
   - kind: worked
     md: |
-      **Squared error of one example.** $L(w, b) = (wx + b - y)^2$, where $x, y$ are data (constants).
+      **A function of two variables.** $f(w, b) = (wx + b)^2$, where $x$ is held fixed.
 
-      Let $r = wx + b - y$ (the residual). Then:
-      - $\partial L/\partial w = 2r \cdot x$
-      - $\partial L/\partial b = 2r \cdot 1$
+      Let $q = wx + b$. Then:
+      - $\partial f/\partial w = 2q \cdot x$
+      - $\partial f/\partial b = 2q$
 
-      With $x = 2$, $y = 5$, $w = 1$, $b = 0$: $r = -3$, so $\partial L/\partial w = -12$ and $\partial L/\partial b = -6$. Both are negative, so increasing $w$ or $b$ would reduce the loss.
+      With $x = 2$, $w = 1$, and $b = 0$, $q = 2$, so $\partial f/\partial w = 8$ and $\partial f/\partial b = 4$.
+  - kind: check
+    exercise: pd-check-1
   - kind: summary
     md: |
       - $\partial f/\partial x_i$: differentiate in $x_i$ and hold the other variables fixed.

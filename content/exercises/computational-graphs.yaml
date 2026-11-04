@@ -39,7 +39,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "$f = \\mathrm{ReLU}(w x)$ with $w = -1$, $x = 3$. What is $\\partial f/\\partial w$?"
+    prompt: "Let $f = \\max(0, wx)$, which is 0 when $wx$ is negative and $wx$ otherwise. For $w = -1$, $x = 3$, what is $\\partial f/\\partial w$?"
     answer: 0
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -48,14 +48,14 @@ exercises:
           category: misunderstood_definition,
           feedback: "The ReLU input is $-3 < 0$, so the ReLU node's local derivative is 0 and blocks the gradient.",
         }
-    solution: "The pre-activation is $-3$. ReLU's local derivative there is 0, so $\\partial f/\\partial w = 0 \\cdot x = 0$."
+    solution: "The inside value is $-3$, so $\\max(0, wx)$ is 0 there and $\\partial f/\\partial w = 0 \\cdot x = 0$."
   - id: cg-explain
     dimension: conceptual
     type: explain
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Why is it useful to represent a model's computation as a graph of primitive operations when computing gradients?"
+    prompt: "Why can it help to break a calculation into simple steps, such as adding and multiplying, when finding how its final result changes as an input changes?"
     rubric:
       - {
           id: r1,

@@ -9,12 +9,10 @@ blocks:
     md: |
       Linear regression predicts a number as a weighted sum of features plus a bias:
       $$\hat y = w \cdot x + b.$$
-      Each weight $w_j$ says how much the prediction changes when feature $j$ increases by one unit and all other features stay fixed. It is the simplest model that has every component of a real training system, which is why the Saturday lab builds it from scratch.
+      Each weight $w_j$ says how much the prediction changes when feature $j$ increases by one unit and all other features stay fixed. This simple model makes it clear how inputs, weights, predictions and errors fit together.
   - kind: example
     md: |
       House price (in thousands) $= 3\cdot\text{area} + 10\cdot\text{bedrooms} + 50$. A 100 m², 2-bedroom house: $300 + 20 + 50 = 370$. One extra m² adds 3 (thousand); one extra bedroom *at the same area* adds 10.
-  - kind: check
-    exercise: lr-check-predict
   - kind: math
     md: |
       For a batch $X \in \mathbb R^{n\times d}$ (one example per row):
@@ -30,6 +28,8 @@ blocks:
       y_hat = X @ w + b      # array([370., 300., 540.])
       ```
       `X @ w` has shape `(3,)`; the scalar `b` broadcasts to every row. No Python loop is needed.
+  - kind: check
+    exercise: lr-check-predict
   - kind: summary
     md: |
       - $\hat y = w\cdot x + b$, and for a batch, $\hat y = Xw + b$.

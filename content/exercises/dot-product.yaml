@@ -86,7 +86,7 @@ exercises:
     role: transfer
     difficulty: 2
     est_minutes: 2
-    prompt: "In attention, a query $q$ scores each key with the raw dot product $q \\cdot k$. One key is accidentally multiplied by 3, without changing its direction. What happens to that key's score, and why might this be a problem?"
+    prompt: "A text model scores how relevant each word is to another by taking the dot product of two lists of numbers, called a query and a key. It then converts those scores into relative attention weights. If one key is multiplied by 3 without changing its direction, what happens to its score, and why might that be a problem?"
     options:
       - {
           id: a,

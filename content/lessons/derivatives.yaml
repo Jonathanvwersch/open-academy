@@ -9,12 +9,10 @@ blocks:
     md: |
       The derivative $f'(x)$ answers one question: *if I nudge $x$ a little, how much does $f(x)$ change, per unit of nudge?*
 
-      Training a model is entirely about this question. "If I nudge this weight, how does the loss change?" The derivative tells you both the direction to move and roughly how sensitive the loss is.
+      For a function controlled by a number, the derivative tells you how its output changes when you nudge that number.
   - kind: example
     md: |
       $f(x) = x^2$. At $x = 3$, nudge to $3.01$: $f$ goes from $9$ to $9.0601$, a change of $0.0601$ for a nudge of $0.01$. The ratio is $\approx 6.01$, and the derivative $f'(x) = 2x$ gives exactly $6$ at $x = 3$.
-  - kind: check
-    exercise: der-check-power
   - kind: math
     md: |
       $$f'(x) = \lim_{h\to0}\frac{f(x+h) - f(x)}{h}$$
@@ -43,8 +41,10 @@ blocks:
     md: |
       **Partly done.** $f(x) = x^3 \ln x$. With the product rule, $u = x^3,\ u' = 3x^2,\ v = \ln x,\ v' = \;?$, so $f'(x) = u'v + uv' = \;?$
     exercise: der-faded-product
+  - kind: check
+    exercise: der-check-power
   - kind: summary
     md: |
       - $f'(x)$ is a local slope: the change in output per unit change in input.
       - Know the core rules: power, exp, log, sum, product and quotient.
-      - In ML, the derivative of the loss with respect to a parameter says which way to move that parameter.
+      - For a function that depends on a parameter, its derivative describes how the output changes as that parameter changes.

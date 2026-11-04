@@ -97,7 +97,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "A loss satisfies $L(5) = 2.0$ and $L'(5) = -0.4$. **Estimate** $L(5.1)$ using the derivative."
+    prompt: "A function satisfies $f(5) = 2.0$ and $f'(5) = -0.4$. **Estimate** $f(5.1)$ using the derivative."
     answer: 1.96
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -106,5 +106,5 @@ exercises:
           category: incorrect_reasoning,
           feedback: "A negative derivative means the loss *decreases* as $x$ increases.",
         }
-    hints: ["Linear approximation: $L(x + h) \\approx L(x) + L'(x)\\,h$."]
-    solution: "$L(5.1) \\approx 2.0 + (-0.4)(0.1) = 1.96$. This first-order picture is exactly what gradient descent relies on."
+    hints: ["Linear approximation: $f(x + h) \\approx f(x) + f'(x)\\,h$."]
+    solution: "$f(5.1) \\approx 2.0 + (-0.4)(0.1) = 1.96$. The slope at 5 helps estimate a nearby value."

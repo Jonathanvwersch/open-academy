@@ -1,9 +1,10 @@
-import type { FormEvent, KeyboardEvent, RefObject } from 'react';
+import type { FormEvent, KeyboardEvent, ReactNode, RefObject } from 'react';
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
+import { normalizeDisplayMath } from '../shared/markdown';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/github.css';
 
@@ -22,9 +23,78 @@ export function Markdown({ children }: { children: string }) {
   return (
     <div className="markdown max-w-[70ch] leading-7 text-neutral-800">
       <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex, rehypeHighlight]}>
-        {children}
+        {normalizeDisplayMath(children)}
       </ReactMarkdown>
     </div>
+  );
+}
+
+export type LessonBlockKind =
+  | 'objective'
+  | 'intuition'
+  | 'example'
+  | 'math'
+  | 'worked'
+  | 'check'
+  | 'faded'
+  | 'summary';
+
+const lessonBlockLabels: Partial<Record<LessonBlockKind, string>> = {
+  objective: 'Goal',
+  example: 'Example',
+  math: 'Key formula',
+  worked: 'Worked example',
+  check: 'Check yourself',
+  faded: 'Fill in the steps',
+  summary: 'Key takeaways',
+};
+
+const lessonBlockStyles: Partial<Record<LessonBlockKind, string>> = {
+  objective: 'border-blue-200 border-l-4 border-l-blue-700 bg-blue-50/50',
+  example: 'border-neutral-200 bg-amber-50/60',
+  math: 'border-neutral-200 bg-slate-50',
+  worked: 'border-neutral-200 bg-white',
+  check: 'border-blue-200 bg-blue-50/40',
+  faded: 'border-blue-200 bg-blue-50/40',
+  summary: 'border-neutral-200 bg-neutral-50',
+};
+
+export function LessonBlock({
+  kind,
+  md,
+  children,
+}: {
+  kind: LessonBlockKind;
+  md?: string;
+  children?: ReactNode;
+}) {
+  const content =
+    kind === 'objective'
+      ? md
+          ?.replace(/^\s*\*\*Goal:\*\*\s*/, '')
+          .replace(
+            /^(\s*)([a-z])/,
+            (_, space: string, letter: string) => space + letter.toUpperCase(),
+          )
+      : md;
+  if (kind === 'intuition') {
+    return (
+      <div className="py-1">
+        {content ? <Markdown>{content}</Markdown> : null}
+        {children}
+      </div>
+    );
+  }
+  return (
+    <section
+      className={`space-y-3 rounded-lg border p-4 ${lessonBlockStyles[kind] ?? 'border-neutral-200 bg-white'}`}
+    >
+      <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+        {lessonBlockLabels[kind]}
+      </p>
+      {content ? <Markdown>{content}</Markdown> : null}
+      {children}
+    </section>
   );
 }
 

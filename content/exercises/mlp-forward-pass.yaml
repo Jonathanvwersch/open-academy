@@ -33,7 +33,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "`x` has shape `(16, 3, 32, 32)` (a batch of RGB images). You do `x.view(16, -1)` and pass it to `nn.Linear(D, 128)`. What must `D` be?"
+    prompt: "Each example is an image with 3 color channels and 32 by 32 pixels. If each image is flattened into one long list of numbers before a layer receives it, how many numbers are in the list for one image?"
     options:
       - { id: a, text: "3072", correct: true }
       - {
@@ -58,7 +58,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "How many parameters does `Linear(512, 2048)` have?"
+    prompt: "A layer takes 512 inputs and produces 2,048 outputs, with one bias per output. How many adjustable weights and biases does it have?"
     answer: 1050624
     tolerance: { abs: 0.5 }
     common_wrong:

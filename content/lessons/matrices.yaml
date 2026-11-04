@@ -7,17 +7,15 @@ blocks:
       **Goal:** multiply matrices, predict result shapes, read a matrix as a linear map, and write batched products in NumPy.
   - kind: intuition
     md: |
-      A matrix is a grid of numbers. Multiplying a matrix by a vector dots **each row** with the vector, so an $m \times n$ matrix runs $m$ linear models at once on the same input.
+      A matrix is a grid of numbers. Multiplying a matrix by a vector dots **each row** with the vector, producing one output number per row.
 
       The same operation can be read geometrically: a matrix is a **linear transformation** that rotates, scales or shears space. Composing two transformations means multiplying their matrices, and order matters.
 
-      In ML you will mostly care about **shapes**: a batch of $n$ examples with $d$ features is $X \in \mathbb{R}^{n \times d}$, and $XW$ with $W \in \mathbb{R}^{d \times k}$ gives $k$ outputs for every example in one operation.
+      Shapes tell us how many numbers are in each direction. If the rows of $X \in \mathbb{R}^{n \times d}$ hold $n$ sets of measurements and $W \in \mathbb{R}^{d \times k}$, then $XW$ gives $k$ output numbers for each row.
   - kind: example
     md: |
       $$A = \begin{pmatrix}1 & 2\\ 0 & 1\end{pmatrix},\quad x = \begin{pmatrix}3\\1\end{pmatrix},\quad Ax = \begin{pmatrix}1\cdot3 + 2\cdot1\\ 0\cdot3 + 1\cdot1\end{pmatrix} = \begin{pmatrix}5\\1\end{pmatrix}.$$
       Row 1 dotted with $x$ gives 5, and row 2 dotted with $x$ gives 1. Geometrically, $A$ is a shear: it slides points sideways in proportion to their height.
-  - kind: check
-    exercise: mat-check-shape
   - kind: math
     md: |
       For $A \in \mathbb{R}^{m\times n}$ and $B \in \mathbb{R}^{n\times p}$:
@@ -34,6 +32,8 @@ blocks:
       Multiplying on the right by this permutation matrix swaps the **columns**. Multiplying on the left would swap the rows instead, which shows directly that $AB \neq BA$.
 
       In NumPy: `A @ B`. For a batch, `X @ W + b` broadcasts the bias over all rows.
+  - kind: check
+    exercise: mat-check-shape
   - kind: summary
     md: |
       - $(m\times n)(n\times p) \to m\times p$. Check shapes first.
