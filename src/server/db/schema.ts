@@ -69,6 +69,17 @@ export const projectStatusEnum = pgEnum('project_status', [
   'in_progress',
   'completed',
 ]);
+export const lessonRunStatusEnum = pgEnum('lesson_run_status', [
+  'in_progress',
+  'needs_retry',
+  'completed',
+]);
+export const xpEventKindEnum = pgEnum('xp_event_kind', [
+  'knowledge_point',
+  'review',
+  'quiz',
+  'project',
+]);
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -152,6 +163,73 @@ export const attempts = pgTable(
   (table) => [
     index('attempts_user_concept_created_idx').on(table.userId, table.conceptId, table.createdAt),
     index('attempts_activity_exercise_idx').on(table.activityId, table.exerciseId, table.attemptNo),
+  ],
+);
+
+export const lessonRuns = pgTable(
+  'lesson_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    conceptId: text('concept_id').notNull(),
+    status: lessonRunStatusEnum('status').notNull().default('in_progress'),
+    startedAt: timestamp('started_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    completedAt: timestamp('completed_at', { withTimezone: true, mode: 'date' }),
+  },
+  (table) => [
+    uniqueIndex('lesson_runs_user_concept_unique').on(table.userId, table.conceptId),
+    index('lesson_runs_user_status_idx').on(table.userId, table.status),
+  ],
+);
+
+export const lessonProblems = pgTable(
+  'lesson_problems',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => lessonRuns.id, { onDelete: 'cascade' }),
+    knowledgePointId: text('knowledge_point_id').notNull(),
+    round: integer('round').notNull(),
+    position: integer('position').notNull(),
+    exerciseId: text('exercise_id').notNull(),
+    seed: integer('seed'),
+    servedAt: timestamp('served_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    answeredAt: timestamp('answered_at', { withTimezone: true, mode: 'date' }),
+    correct: real('correct'),
+    attemptId: uuid('attempt_id').references(() => attempts.id, { onDelete: 'set null' }),
+  },
+  (table) => [
+    uniqueIndex('lesson_problems_run_point_round_position_unique').on(
+      table.runId,
+      table.knowledgePointId,
+      table.round,
+      table.position,
+    ),
+    index('lesson_problems_run_point_idx').on(table.runId, table.knowledgePointId, table.round),
+  ],
+);
+
+export const xpEvents = pgTable(
+  'xp_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: xpEventKindEnum('kind').notNull(),
+    sourceKey: text('source_key').notNull(),
+    conceptId: text('concept_id'),
+    amount: integer('amount').notNull(),
+    earnedAt: timestamp('earned_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    localDate: text('local_date').notNull(),
+  },
+  (table) => [
+    uniqueIndex('xp_events_user_source_unique').on(table.userId, table.sourceKey),
+    index('xp_events_user_local_date_idx').on(table.userId, table.localDate),
   ],
 );
 

@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { loadContent } from '../content/load.js';
 import { serializeConcept, serializeExercise, serializeLesson } from '../content/serialize.js';
+import { instantiateExercise, isTemplate } from '../content/templates.js';
 import type { ContentIndex, IndexedExercise } from '../content/types.js';
 import type { Database } from '../db/client.js';
 import { LearnerRepository } from '../db/repository.js';
@@ -11,6 +12,8 @@ import {
   attempts,
   diagnosticRuns,
   hintEvents,
+  lessonProblems,
+  lessonRuns,
   masteryEvents,
   projectProgress,
   projectSubmissions,
@@ -24,6 +27,7 @@ import {
 } from '../db/schema.js';
 import { env } from '../env.js';
 import { gradeExercise } from '../grading/index.js';
+import { updateActivityAndAdvance } from '../learning/activity-completion.js';
 import { deriveLearningDebt } from '../learning/debt.js';
 import {
   createDiagnosticState,
@@ -58,8 +62,9 @@ import { initialMastery, masteryRank } from '../learning/types.js';
 import { createTutorProvider, type TutorProvider } from '../tutor/provider.js';
 import { scoreRubric } from '../tutor/scoring.js';
 import { TutorService } from '../tutor/service.js';
+import { registerLessonRunRoutes } from './lesson-runs.js';
 
-type ApiEnv = { Variables: { userId: string; timeZone: string } };
+export type ApiEnv = { Variables: { userId: string; timeZone: string } };
 type TutorGradeResult = {
   status: 'graded';
   correct: number;
@@ -102,6 +107,14 @@ export function createApiRoutes(deps: {
       env.TUTOR_DAILY_CALL_CAP,
       context.get('timeZone'),
     );
+
+  registerLessonRunRoutes(api, {
+    db,
+    content,
+    withRepo,
+    requestNow,
+    applyMastery,
+  });
 
   api.get('/today', async (context) => {
     const [index, repo] = [await content(), withRepo(context)];
@@ -418,6 +431,12 @@ export function createApiRoutes(deps: {
 
   api.get('/exercises/:id', async (context) => {
     const exercise = (await content()).exercisesById.get(context.req.param('id'));
+    if (exercise && isTemplate(exercise)) {
+      return context.json(
+        { error: 'Template exercises are only available through a lesson run.' },
+        400,
+      );
+    }
     return exercise
       ? context.json(serializeExercise(exercise, context.get('userId')))
       : context.json({ error: 'Exercise not found' }, 404);
@@ -613,36 +632,74 @@ export function createApiRoutes(deps: {
     const body = z
       .object({
         question: z.string().trim().min(1).max(2000),
-        exerciseId: z.string(),
-        activityId: z.string().uuid(),
+        exerciseId: z.string().optional(),
+        activityId: z.string().uuid().optional(),
+        lessonProblemId: z.string().uuid().optional(),
         mode: z.literal('practice'),
       })
+      .refine((value) => (value.lessonProblemId ? true : !!value.exerciseId && !!value.activityId))
       .safeParse(await context.req.json().catch(() => ({})));
     if (!body.success) return context.json({ error: 'Invalid tutor request' }, 400);
     const index = await content();
-    const exercise = index.exercisesById.get(body.data.exerciseId);
+    let lessonProblem: (typeof lessonProblems.$inferSelect & { userId: string }) | undefined;
+    if (body.data.lessonProblemId) {
+      const [owned] = await db
+        .select({ problem: lessonProblems, userId: lessonRuns.userId })
+        .from(lessonProblems)
+        .innerJoin(lessonRuns, eq(lessonProblems.runId, lessonRuns.id))
+        .where(eq(lessonProblems.id, body.data.lessonProblemId))
+        .limit(1);
+      if (!owned || owned.userId !== context.get('userId') || !owned.problem.answeredAt) {
+        return context.json({ error: 'Lesson problem is not available to the tutor.' }, 403);
+      }
+      lessonProblem = { ...owned.problem, userId: owned.userId };
+    }
+    const exerciseId = lessonProblem?.exerciseId ?? body.data.exerciseId;
+    let exercise = exerciseId ? index.exercisesById.get(exerciseId) : undefined;
+    if (
+      lessonProblem &&
+      body.data.exerciseId &&
+      body.data.exerciseId !== lessonProblem.exerciseId
+    ) {
+      return context.json({ error: 'Lesson problem does not match the exercise.' }, 403);
+    }
+    if (lessonProblem && exercise && isTemplate(exercise)) {
+      const template = exercise;
+      const instance = instantiateExercise(template, lessonProblem.seed ?? 0).exercise;
+      exercise = {
+        ...instance,
+        concept: template.concept,
+        contentVersion: template.contentVersion,
+      };
+    }
     if (!exercise) return context.json({ error: 'Exercise not found' }, 404);
+    if (isTemplate(exercise) && !lessonProblem) {
+      return context.json({ error: 'Template exercises require an answered lesson problem.' }, 400);
+    }
     if (exercise.role === 'diagnostic') {
       return context.json({ error: 'Tutor chat is only available in practice.' }, 403);
     }
-    const [activity] = await db
-      .select({
-        kind: sessionActivities.kind,
-      })
-      .from(sessionActivities)
-      .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
-      .where(
-        and(
-          eq(sessionActivities.id, body.data.activityId),
-          eq(studySessions.userId, context.get('userId')),
-        ),
-      )
-      .limit(1);
-    if (
-      !activity ||
-      !['learn', 'practice', 'remediate', 'transfer', 'teachback'].includes(activity.kind)
-    ) {
-      return context.json({ error: 'Tutor chat is only available in practice.' }, 403);
+    let activity: { kind: string } | undefined;
+    if (body.data.activityId) {
+      [activity] = await db
+        .select({
+          kind: sessionActivities.kind,
+        })
+        .from(sessionActivities)
+        .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
+        .where(
+          and(
+            eq(sessionActivities.id, body.data.activityId),
+            eq(studySessions.userId, context.get('userId')),
+          ),
+        )
+        .limit(1);
+      if (
+        !activity ||
+        !['learn', 'practice', 'remediate', 'transfer', 'teachback'].includes(activity.kind)
+      ) {
+        return context.json({ error: 'Tutor chat is only available in practice.' }, 403);
+      }
     }
     const concept = index.conceptsById.get(exercise.concept);
     const lesson = index.lessonsByConcept.get(exercise.concept);
@@ -681,14 +738,14 @@ export function createApiRoutes(deps: {
     await db.insert(tutorMessages).values([
       {
         userId: context.get('userId'),
-        activityId: body.data.activityId,
+        activityId: body.data.activityId ?? null,
         exerciseId: exercise.id,
         role: 'user',
         content: body.data.question,
       },
       {
         userId: context.get('userId'),
-        activityId: body.data.activityId,
+        activityId: body.data.activityId ?? null,
         exerciseId: exercise.id,
         role: 'assistant',
         content: result.value.message_md,
@@ -714,6 +771,12 @@ export function createApiRoutes(deps: {
     const exercise = index.exercisesById.get(body.data.exerciseId);
     if (!exercise) {
       return context.json({ error: 'Exercise not found' }, 404);
+    }
+    if (isTemplate(exercise)) {
+      return context.json(
+        { error: 'Template exercises must be answered through a lesson run.' },
+        400,
+      );
     }
     const repo = withRepo(context);
     const [activityRow] = body.data.activityId
@@ -933,26 +996,14 @@ export function createApiRoutes(deps: {
       }
       const completed =
         learningGoalMet || exerciseIds.every((id) => completedExerciseIds.includes(id));
-      await db
-        .update(sessionActivities)
-        .set({
-          exerciseIds,
-          progress: { ...progress, completedExerciseIds, outcomes },
-          status: completed ? 'completed' : 'in_progress',
-          completedAt: completed ? now : null,
-        })
-        .where(eq(sessionActivities.id, activity.id));
-      if (completed) {
-        const nextActivity = session?.activities
-          .filter((item) => item.status === 'planned')
-          .sort((left, right) => left.idx - right.idx)[0];
-        if (nextActivity) {
-          await db
-            .update(sessionActivities)
-            .set({ status: 'in_progress', startedAt: now })
-            .where(eq(sessionActivities.id, nextActivity.id));
-        }
-      }
+      await updateActivityAndAdvance(db, {
+        activityId: activity.id,
+        completed,
+        now,
+        session,
+        exerciseIds,
+        progress: { ...progress, completedExerciseIds, outcomes },
+      });
     }
     return context.json({
       ...result,

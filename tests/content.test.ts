@@ -16,7 +16,7 @@ function required<T>(value: T | undefined, label: string): T {
 test('loads the fixture graph and builds lookup indexes', async () => {
   const content = await loadContent('tests/fixtures/content');
 
-  expect(content.concepts).toHaveLength(8);
+  expect(content.concepts).toHaveLength(9);
   expect(new Set(content.concepts.map((concept) => concept.domain))).toEqual(
     new Set(['math', 'ml']),
   );
@@ -30,7 +30,7 @@ test('loads the fixture graph and builds lookup indexes', async () => {
   });
   expect(content.exercisesByConcept.get('vectors')).toHaveLength(4);
   expect(content.exercisesByDimension.get('math')?.length).toBeGreaterThan(0);
-  expect(content.exercisesByRole.get('diagnostic')?.length).toBe(7);
+  expect(content.exercisesByRole.get('diagnostic')?.length).toBe(8);
   expect(new Set(content.exercises.map((exercise) => exercise.type))).toEqual(
     new Set([
       'mc',

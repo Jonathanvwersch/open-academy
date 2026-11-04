@@ -5,7 +5,7 @@ domains:
 weeks:
   - week: 1
     title: ML fundamentals
-    concepts: [vectors, derivatives, linear-algebra, linear-models]
+    concepts: [vectors, derivatives, linear-algebra, linear-models, supervised-learning]
     project: linreg-numpy
     saturday: Build a simple model.
     sunday: Review foundational ideas.

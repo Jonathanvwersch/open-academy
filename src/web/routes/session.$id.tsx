@@ -10,7 +10,14 @@ import {
   Markdown,
   ModeBadge,
 } from '../components';
-import { exerciseQueryOptions, lessonQueryOptions, sessionQueryOptions } from '../queries.js';
+import { LessonRunner } from '../lesson/LessonRunner.js';
+import {
+  exerciseQueryOptions,
+  type LessonRunPayload,
+  lessonQueryOptions,
+  lessonRunQueryOptions,
+  sessionQueryOptions,
+} from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
 
 export const Route = createFileRoute('/session/$id')({
@@ -20,6 +27,15 @@ export const Route = createFileRoute('/session/$id')({
       session.activities.map((activity) =>
         activity.kind === 'learn' && activity.conceptId
           ? context.queryClient.ensureQueryData(lessonQueryOptions(activity.conceptId))
+          : Promise.resolve(null),
+      ),
+    );
+    await Promise.all(
+      lessons.map((lesson, index) =>
+        lesson?.knowledge_points?.length
+          ? context.queryClient.ensureQueryData(
+              lessonRunQueryOptions(session.activities[index]?.conceptId ?? null),
+            )
           : Promise.resolve(null),
       ),
     );
@@ -72,9 +88,22 @@ function SessionPage() {
     }
   }, [sessionQuery.data?.serverNow]);
   const activities = sessionQuery.data.activities;
-  const activity =
+  const activeActivity =
     activities.find((item) => item.status === 'in_progress') ??
     activities.find((item) => item.status === 'planned');
+  const completedLesson = activities.find((item) => {
+    if (
+      item.kind !== 'learn' ||
+      item.status !== 'completed' ||
+      !item.conceptId ||
+      item.progress?.lessonRunnerContinued
+    ) {
+      return false;
+    }
+    const run = queryClient.getQueryData<LessonRunPayload>(['lesson-run', item.conceptId])?.run;
+    return run?.status === 'needs_retry' || run?.status === 'completed';
+  });
+  const activity = completedLesson ?? activeActivity;
   const exerciseId = activity?.exerciseIds.find(
     (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
   );
@@ -193,6 +222,19 @@ function SessionPage() {
   const continueNext = async () => {
     await queryClient.invalidateQueries({ queryKey: ['session', id] });
   };
+  const continueLessonRunner = async () => {
+    if (!activity) return;
+    await fetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ...(activity.progress ?? {}),
+        complete: true,
+        lessonRunnerContinued: true,
+      }),
+    });
+    await queryClient.invalidateQueries({ queryKey: ['session', id] });
+  };
 
   const endSession = async () => {
     await fetch(`/api/sessions/${id}/end`, { method: 'POST' });
@@ -225,6 +267,19 @@ function SessionPage() {
     .reduce((sum, item) => sum + item.plannedMinutes, 0);
   const remainingMinutes = remainingPlannedMinutes;
   const lesson = lessonQuery.data;
+  if (activity.kind === 'learn' && activity.conceptId && lesson?.knowledge_points?.length) {
+    return (
+      <LessonRunner
+        conceptId={activity.conceptId}
+        activityId={activity.id}
+        title={activity.conceptTitle ?? activity.conceptId}
+        tutorEnabled={sessionQuery.data.tutorEnabled}
+        resumeRetry={activity.status !== 'completed'}
+        onTutor={(lessonProblemId) => <TutorChat lessonProblemId={lessonProblemId} />}
+        onContinue={() => void continueLessonRunner()}
+      />
+    );
+  }
   if (activity.kind === 'learn' && !activity.progress?.lessonViewed && lesson?.blocks.length) {
     const answeredOnServer = new Set(activity.progress?.completedExerciseIds ?? []);
     const checksPending = lesson.blocks.some(
@@ -447,7 +502,15 @@ function InlineLessonCheck({
   );
 }
 
-function TutorChat({ activityId, exerciseId }: { activityId: string; exerciseId: string }) {
+function TutorChat({
+  activityId,
+  exerciseId,
+  lessonProblemId,
+}: {
+  activityId?: string;
+  exerciseId?: string;
+  lessonProblemId?: string;
+}) {
   const [question, setQuestion] = useState('');
   const [reply, setReply] = useState('');
   const [error, setError] = useState('');
@@ -462,7 +525,13 @@ function TutorChat({ activityId, exerciseId }: { activityId: string; exerciseId:
       const response = await fetch('/api/tutor/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ question, exerciseId, activityId, mode: 'practice' }),
+        body: JSON.stringify({
+          question,
+          exerciseId,
+          activityId,
+          lessonProblemId,
+          mode: 'practice',
+        }),
       });
       const result = (await response.json()) as { message?: string; error?: string };
       if (!response.ok) throw new Error(result.error ?? 'Tutor is unavailable.');
