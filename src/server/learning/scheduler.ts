@@ -3,6 +3,24 @@ import type { MasteryRecord } from './types.js';
 import { masteryRank } from './types.js';
 
 export type SessionKind = 'weekday' | 'saturday' | 'sunday' | 'custom';
+
+export interface SessionPreferences {
+  scheduleMinutes?: number;
+  saturdayMinutes?: number;
+  sundayMinutes?: number;
+}
+
+export function sessionBudget(kind: SessionKind, prefs: SessionPreferences = {}): number {
+  const configured =
+    kind === 'saturday'
+      ? (prefs.saturdayMinutes ?? 300)
+      : kind === 'sunday'
+        ? (prefs.sundayMinutes ?? 60)
+        : (prefs.scheduleMinutes ?? 60);
+  const fallback = kind === 'saturday' ? 300 : 60;
+  return Number.isFinite(configured) ? Math.max(5, Math.floor(configured)) : fallback;
+}
+
 export type ActivityKind =
   | 'review'
   | 'learn'
@@ -744,9 +762,10 @@ function planSaturday(
   ]);
   if (dueReview && budget > 0) {
     plan.push({ ...dueReview.activity, plannedMinutes: Math.min(10, budget) });
-  } else {
-    plan.push(staticCandidate('review', undefined, [], Math.min(10, budget), 'Review warm-up.'));
   }
+  const warmupMinutes = dueReview ? Math.min(10, budget) : 0;
+  const reflectionMinutes = budget >= 20 ? 10 : 0;
+  const projectMinutes = Math.max(0, budget - warmupMinutes - reflectionMinutes);
   const week = currentCurriculumWeek(state.startDate, now);
   const currentProject =
     state.currentProjectId ??
@@ -757,16 +776,58 @@ function planSaturday(
           (item) => item.projectId === project.id && item.status === 'completed',
         ),
     )?.id;
-  if (currentProject && budget > 20) {
+  const projectDone =
+    currentProject &&
+    state.projectProgress.some(
+      (item) => item.projectId === currentProject && item.status === 'completed',
+    );
+  if (currentProject && !projectDone && projectMinutes > 0) {
     plan.push({
       kind: 'lab',
       projectId: currentProject,
       exerciseIds: [],
-      plannedMinutes: Math.max(0, budget - 20),
+      plannedMinutes: projectMinutes,
       reason: staticReason(`Lab activity references project ${currentProject}.`),
     });
   }
-  if (budget >= 20) {
+  if (projectDone && projectMinutes > 0) {
+    const extensionConceptId = content.projectsById.get(currentProject)?.prereqs[0];
+    const extensionConcept = extensionConceptId
+      ? content.conceptsById.get(extensionConceptId)
+      : undefined;
+    const extension = extensionConcept
+      ? chooseExercise(
+          state,
+          content,
+          extensionConcept,
+          'implementation',
+          ['core', 'transfer'],
+          now,
+        )
+      : undefined;
+    if (extension) {
+      plan.push(
+        staticCandidate(
+          'practice',
+          extension.concept,
+          [extension.id],
+          projectMinutes,
+          'Extend the completed lab with a fresh implementation item.',
+        ),
+      );
+    } else {
+      plan.push(
+        staticCandidate(
+          'remediate',
+          extensionConceptId,
+          [],
+          projectMinutes,
+          'Review an open project prerequisite.',
+        ),
+      );
+    }
+  }
+  if (reflectionMinutes > 0) {
     const reflection = content.projectsById
       .get(currentProject ?? '')
       ?.reflection.map((id) => content.exercisesById.get(id))
@@ -864,6 +925,35 @@ function planSunday(
         'Review progress and plan the next week.',
       ),
     );
+  }
+  const plannedMinutes = plan.reduce((sum, activity) => sum + activity.plannedMinutes, 0);
+  const remaining = budget - plannedMinutes;
+  if (remaining > 0) {
+    const exercise = known
+      .map((record) => content.conceptsById.get(record.conceptId))
+      .filter((item): item is IndexedConcept => Boolean(item))
+      .map((concept) =>
+        chooseExercise(
+          { ...state, usedExerciseIds: [...usedExerciseIds] },
+          content,
+          concept,
+          undefined,
+          ['core', 'transfer', 'review'],
+          now,
+        ),
+      )
+      .find((candidate): candidate is IndexedExercise => Boolean(candidate));
+    if (exercise && !usedExerciseIds.has(exercise.id)) {
+      plan.push(
+        staticCandidate(
+          'remediate',
+          exercise.concept,
+          [exercise.id],
+          remaining,
+          'Consolidate the cumulative assessment and revisit any uncertain steps.',
+        ),
+      );
+    }
   }
   return toPlan(plan.filter((activity) => activity.plannedMinutes > 0));
 }

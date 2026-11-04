@@ -15,6 +15,13 @@
       "when": 1793754949860,
       "tag": "0001_striped_bushwacker",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793760262999,
+      "tag": "0002_salty_shocker",
+      "breakpoints": true
     }
   ]
 }

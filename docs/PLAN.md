@@ -10,7 +10,7 @@ Academy is a single-user, adaptive learning platform for ML, AI and robotics. It
 
 Learning state is built only from graded evidence. Exercises are graded deterministically wherever possible (multiple choice, numeric with tolerance, expression equivalence by random-point evaluation, normalized text match, debugging line identification). Open explanations are graded by an LLM against an explicit rubric, and that grade alone can never establish independent mastery. Mastery is tracked per concept *and* per competency dimension (conceptual / mathematical / implementation / transfer), as ordinal states rather than fake probabilities. Assisted answers (hints, second tries) earn less credit than independent ones. FSRS (ts-fsrs) schedules review of each dimension the learner has demonstrated.
 
-An LLM tutor (Anthropic, configurable model) explains, gives escalating hints and diagnoses misconceptions. It uses versioned prompts, zod-validated structured outputs, a usage log and daily budgets. It never writes learner state: business rules, grading, mastery and scheduling are plain code.
+An LLM tutor (OpenAI, configurable model) explains, gives escalating hints and diagnoses misconceptions. It uses zod-validated structured outputs, a usage log and a daily call cap. It never writes learner state: business rules, grading, mastery and scheduling are plain code.
 
 Labs run in the learner's own IDE against starter code in the repo. A local `verify` script runs the tests and writes `results.json`, which the learner uploads. The server never executes learner code.
 
@@ -116,7 +116,7 @@ Pure function: `planSession(state, content, now, budgetMinutes, kind) → { acti
 - Blocks are filled greedily by score. Leftover minutes roll into practice on the session's main concept.
 - The same exercise is never assigned twice in one session or within 7 days, unless the pool is exhausted.
 
-**Saturday:** a 10-minute review warm-up, then the lab (current project, or the next unfinished one), then 10 minutes of reflection items.
+**Saturday (300 minutes):** up to 20 minutes of due-review warm-up (10 minutes by default), then the current/next unfinished lab, then 10 minutes of reflection. A completed lab is replaced by an extension or remediation activity.
 
 **Sunday:** 20 minutes of a cumulative independent check (interleaved items from concepts reached that week and earlier; no hints), 20 minutes of remediation, 10 minutes of teach-back, then the progress review and next week's plan.
 
@@ -171,20 +171,12 @@ Pure function: `planSession(state, content, now, budgetMinutes, kind) → { acti
 
 ## 9. Tutor architecture
 
-- Module `src/server/tutor/`: `provider.ts`, `prompts/*.ts`, `schemas.ts`, `budget.ts`, `service.ts`.
-  - `provider.ts` is the `LlmProvider` interface with an Anthropic implementation, plus a `FakeProvider` for tests and for running without a key.
-  - `prompts/*.ts` export `{ id, version, system, build(input) }`.
-  - `schemas.ts` holds the zod schemas.
-- Structured outputs: the Anthropic Messages API with a single tool whose `input_schema` is generated from the zod schema, and a forced `tool_choice`. The result is validated with zod. On a validation failure, retry once, then fall back (authored content, or "tutor unavailable"). The model comes from `TUTOR_MODEL` (env, default a current Sonnet-class model); a cheaper model is used for hints.
-- Functions:
-  - `explainMistake(item, answer, gradingResult)` → `{ misconception_category, diagnosis, next_step_question, suggested_prereq_id? }`
-  - `hint(item, level, priorHints, answerSoFar)` → `{ level, text, reveals_solution: boolean }`. Only used after the authored hints run out, and the level is server-enforced.
-  - `gradeExplanation(item, rubric, answer)` → `{ criteria: [{id, met: yes|partial|no, evidence_quote}], missing_concepts, uncertainty, feedback }`. The score is computed in code from the rubric weights. Length is explicitly not a criterion. An LLM grade alone never makes a dimension independent.
-  - `chat(conceptContext, history, message)` → `{ reply, asks_question: boolean }`. Socratic, practice mode only.
-- Inputs are untrusted: learner text is placed in delimited blocks, and prompts instruct the model to ignore instructions inside them. Answer keys are only sent where needed (explainMistake, gradeExplanation), never to `chat` during an open item.
-- The tutor returns data. Only server code decides what to persist; no model output touches mastery directly.
-- Logging: every call writes an `llm_calls` row (prompt id + version, provider, model, input/output tokens, estimated cost from a pricing table, latency, status, validation error).
-- Budgets: `LLM_DAILY_BUDGET_USD` (default 1.00), `LLM_MAX_REQUESTS_PER_MIN` (default 10) and a per-call max_tokens. When the budget is exhausted, the app degrades gracefully to authored-only mode, with a banner.
+- Module `src/server/tutor/`: provider interface, OpenAI and fake providers, strict response schemas, service/budget handling, and the verbatim prompt files `prompts/tutor-system.md` and `prompts/rubric-grader.md`.
+- The `TutorProvider` interface exposes `respond(ctx, level)` and `gradeExplanation(ctx)`, returning `{ value, usage }` with nullable token usage. `OpenAIProvider` uses the official `openai` package and the Responses API with strict JSON Schema structured outputs generated from zod. `OPENAI_MODEL` selects the model (default `gpt-5.4-mini`); `OPENAI_API_KEY` is read only from the validated environment. Provider calls have a 20-second timeout and a 600-token output limit.
+- A `FakeProvider` is injected by tests only. Without a key, the provider is absent: hints are authored-only, explain exercises use self-check, and tutor chat returns 503. Provider errors, timeouts, budget exhaustion and schema failures do not create hint events; the solution is always authored. The generated tutor schema has no correctness field, and extra fields are rejected.
+- `respond` supports `nudge`, `hint` and `worked_step`; it is called only after authored hints at the requested level run out. `gradeExplanation` returns rubric judgements, while the application scores weights and required criteria in code. Without an API key the existing learner self-check remains available. Tutor chat is practice-only and its messages never mutate mastery.
+- Context includes concept title/objectives/lesson summary, exercise prompt, learner answer and grader verdict, hint level, authored hints and solution, and the five most recent mistake categories.
+- The existing `llm_calls` table records each provider attempt with nullable user, prompt ID and 12-character prompt hash, provider, model, input/output tokens, latency, status and error class. `TUTOR_DAILY_CALL_CAP` defaults to 200 calls per learner-local day. No API key is persisted or logged.
 
 ## 10. Exercise and grading design
 
@@ -208,7 +200,7 @@ Practice vs assessment: in assessment items (diagnostic, Sunday check, quick che
 ## 11. Coding / project workflow
 
 - `labs/` is a uv-managed Python project (numpy, matplotlib, pytest). One folder per project: `labs/<project-id>/README.md` (mirrored in-app), `starter/` (learner edits a copy in `work/`, gitignored), `tests/` (public), `verify.py`.
-- Flow: `uv run labs/setup.py <project>` copies starter → `work/`; learner implements in their IDE; `uv run labs/verify.py <project>` runs pytest + metric checks (e.g. final MSE below threshold on held-out synthetic data, gradient check against finite differences) and writes `labs/<project>/work/results.json` `{project, version, tests:[{id,passed,message}], metrics:{…}, generated_at}`.
+- Flow: each project includes a local setup script and verifier; for the NumPy lab, run `python setup.py`, edit `work/linreg.py`, then run `python verify.py` to write `work/results.json` `{project, version, tests:[{id,passed,message}], metrics:{…}, generated_at}`. The app validates the uploaded JSON and never executes learner code.
 - Upload results.json in the Lab page → server validates schema, records submission, maps tests → concepts (implementation evidence, `graded_by=deterministic`, mode=practice unless "no hints used" declared), then asks reflection/prediction questions (graded items, e.g. "what happens to the loss curve if η is 10× larger?").
 - Why not browser Pyodide / server sandbox in MVP: local IDE is what real ML work looks like, needs no sandbox security, and supports numpy/torch natively. Tradeoff: results.json is self-reported (acceptable for a single honest user; documented). Never executing learner code on the server satisfies the isolation requirement.
 - Week-1 project fully built: `linreg-numpy` (implement predict, mse, gradients, gradient descent, train/val split; plot loss + parameter trajectory; reflection questions). Further projects stubbed with briefs.
@@ -231,7 +223,7 @@ Content lives in files; tables hold learner state only.
 - `project_progress` (user_id, project_id, status, task_state jsonb, started_at, completed_at)
 - `project_submissions` (id, user_id, project_id, results jsonb, passed int, total int, metrics jsonb, created_at)
 - `tutor_messages` (id, user_id, activity_id?, exercise_id?, role, content, llm_call_id?, created_at)
-- `llm_calls` (id, prompt_id, prompt_version, provider, model, input_tokens, output_tokens, cost_usd, latency_ms, status, error, created_at)
+- `llm_calls` (id, nullable user_id, prompt_id, prompt_version, provider, model, input_tokens, output_tokens, cost_usd, latency_ms, status, error, created_at; indexed by user and creation time)
 
 Migrations: drizzle-kit generated SQL in `drizzle/`, applied by `pnpm db:migrate` (also run by `pnpm dev`). Seed: default user only (content needs no seeding).
 
@@ -246,9 +238,9 @@ Routes (JSON, zod-validated, single user resolved by middleware):
 - `GET /api/lessons/:conceptId`
 - `POST /api/diagnostic` (start/resume), `GET /api/diagnostic/:id/next`, `POST /api/diagnostic/:id/answer`, `GET /api/diagnostic/:id/results`
 - `GET /api/map` (nodes+edges+state, filter by domain), `GET /api/concepts/:id` (details, mastery, evidence history, debt)
-- `GET /api/projects`, `GET /api/projects/:id`, `POST /api/projects/:id/submissions`, `POST /api/projects/:id/tasks`
+- `GET /api/projects`, `GET /api/projects/:id`, `POST /api/projects/:id/results` (validates verifier JSON and records linked implementation evidence)
 - `GET /api/progress`, `GET /api/plan/week`
-- `POST /api/tutor/explain`, `POST /api/tutor/chat`, `POST /api/tutor/grade` (internal use from attempts)
+- `POST /api/tutor/chat` (practice-only); explanation rubric grading is invoked internally from practice attempts
 - `GET/PUT /api/settings`
 
 ## 14. Frontend screens and components
@@ -272,7 +264,7 @@ Keyboard: Enter submit, `h` hint, `n`/→ next, `1–9` choose MC option, `?` sh
 - No learner code on the server; lab results are parsed as data (size-limited, zod-validated).
 - All LLM output validated; never mutates state directly; learner text delimited as untrusted.
 - Answer keys/solutions only returned after submission; hint levels enforced server-side.
-- Secrets via env (`ANTHROPIC_API_KEY`), never logged; `.env` gitignored.
+- Secrets via env (`OPENAI_API_KEY`), never logged; `.env` gitignored. The tutor uses the official OpenAI Node package and Responses API structured outputs; `OPENAI_MODEL` selects the model and `TUTOR_DAILY_CALL_CAP` defaults to 200.
 - Single user: app binds to localhost by default; optional `ACADEMY_PASSWORD` enables a signed-cookie login for any non-local deployment.
 - Rate limits + daily LLM budget; body size limits; input validation on every route.
 - Expected cost: hints/feedback with a small model ≈ cents/day; budget default $1/day.

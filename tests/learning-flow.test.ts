@@ -4,18 +4,21 @@ import { createApp } from '../src/server/app.js';
 import { loadContent } from '../src/server/content/load.js';
 import type { ContentIndex } from '../src/server/content/types.js';
 import { createDb } from '../src/server/db/client.js';
-import { users } from '../src/server/db/schema.js';
+import { hintEvents, users } from '../src/server/db/schema.js';
 import { env } from '../src/server/env.js';
+import { FakeProvider } from '../src/server/tutor/provider.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000001';
 const now = '2026-01-01T12:00:00.000Z';
 let app: ReturnType<typeof createApp>;
+let noTutorApp: ReturnType<typeof createApp>;
 let content: ContentIndex;
 
 beforeAll(async () => {
   content = await loadContent('tests/fixtures/content');
-  app = createApp({ db, content });
+  app = createApp({ db, content, tutorProvider: new FakeProvider() });
+  noTutorApp = createApp({ db, content, tutorProvider: null });
   await db.delete(users);
   await db
     .insert(users)
@@ -114,7 +117,7 @@ test('unscoped hints lower credit and restart after the previous attempt', async
   expect(await nextHint.json()).toMatchObject({ level: 1 });
 });
 
-test('missing authored hints do not reduce credit; explicit solution reveal does', async () => {
+test('tutor hints without authored hints reduce credit; explicit solution reveal is final', async () => {
   const fixture = await loadContent('tests/fixtures/content');
   const exercise = fixture.exercisesById.get('vectors-magnitude');
   if (exercise?.type !== 'numeric') throw new Error('Missing hint-free numeric item');
@@ -127,14 +130,14 @@ test('missing authored hints do not reduce credit; explicit solution reveal does
     headers: { 'content-type': 'application/json', 'X-Now': '2026-01-03T12:00:00.000Z' },
     body: JSON.stringify({ exerciseId: exercise.id }),
   });
-  expect(await unavailable.json()).toMatchObject({ hasMore: false });
+  expect(await unavailable.json()).toMatchObject({ level: 1 });
 
   const unassisted = await app.request('/api/attempts', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'X-Now': '2026-01-03T12:01:00.000Z' },
     body: JSON.stringify({ exerciseId: exercise.id, answer: exercise.answer, mode: 'practice' }),
   });
-  expect(await unassisted.json()).toMatchObject({ hintsUsed: 0, credit: 1 });
+  expect(await unassisted.json()).toMatchObject({ hintsUsed: 1, credit: 0.7 });
 
   const solution = await app.request('/api/hints', {
     method: 'POST',
@@ -148,4 +151,31 @@ test('missing authored hints do not reduce credit; explicit solution reveal does
     body: JSON.stringify({ exerciseId: exercise.id, answer: exercise.answer, mode: 'practice' }),
   });
   expect(await assisted.json()).toMatchObject({ hintsUsed: 5, credit: 0.1 });
+});
+
+test('null tutor keeps authored hints, disables chat, and reports tutor availability', async () => {
+  await db.delete(hintEvents).where(eq(hintEvents.userId, userId));
+  const today = await noTutorApp.request('/api/today');
+  expect(await today.json()).toMatchObject({ tutorEnabled: false });
+
+  const exercise = content.exercisesById.get('linear-algebra-code-complete');
+  if (!exercise) throw new Error('Missing authored-hint exercise');
+  const hint = await noTutorApp.request('/api/hints', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': '2026-02-01T12:00:00.000Z' },
+    body: JSON.stringify({ exerciseId: exercise.id }),
+  });
+  const hintBody = await hint.json();
+  expect(hintBody).toMatchObject({
+    level: 1,
+    text: exercise.hints[0],
+    hasMore: exercise.hints.length > 1,
+  });
+
+  const chat = await noTutorApp.request('/api/tutor/chat', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  expect(chat.status).toBe(503);
 });
