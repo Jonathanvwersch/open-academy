@@ -118,7 +118,6 @@ exercises:
         }
       - { id: r3, criterion: "Names a plausible model family and data source", weight: 1 }
     exemplar: "Predict delivery time in minutes from distance and time of day. Inputs: distance and time of day; target: delivery time. Model: a line that combines the two inputs. Loss: squared error. Data: 5,000 past deliveries."
-    solution: "See the exemplar."
   - id: slp-predict
     dimension: math
     type: numeric

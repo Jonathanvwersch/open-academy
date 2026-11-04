@@ -128,4 +128,3 @@ exercises:
         }
       - { id: r3, criterion: "Notes that this only holds locally, for small steps", weight: 1 }
     exemplar: "For a small step δ, the change in f is approximately ∇f·δ = |∇f||δ|cosθ. For a fixed step length this is most negative when cosθ = -1, i.e. δ points opposite the gradient. It is only a local, first-order statement, so big steps can overshoot."
-    solution: "See the exemplar."

@@ -4,7 +4,16 @@ import { createApp } from '../src/server/app.js';
 import { loadContent } from '../src/server/content/load.js';
 import type { ContentIndex } from '../src/server/content/types.js';
 import { createDb } from '../src/server/db/client.js';
-import { hintEvents, users } from '../src/server/db/schema.js';
+import {
+  attempts,
+  hintEvents,
+  lessonRuns,
+  masteryEvents,
+  sessionActivities,
+  studySessions,
+  users,
+  xpEvents,
+} from '../src/server/db/schema.js';
 import { env } from '../src/server/env.js';
 import { FakeProvider } from '../src/server/tutor/provider.js';
 
@@ -182,4 +191,157 @@ test('null tutor keeps authored hints, disables chat, and reports tutor availabi
     body: JSON.stringify({ question: 'Can you explain this?' }),
   });
   expect(chat.status).toBe(503);
+});
+
+test('explain attempts return and persist tutor rubric judgements and the exemplar', async () => {
+  const exercise = content.exercisesById.get('sl-explain-setup');
+  if (exercise?.type !== 'explain') throw new Error('Missing explain exercise');
+  const judgement = {
+    criteria: [
+      { id: 'r1', judgement: 'met' as const, evidence: 'inputs and target' },
+      { id: 'r2', judgement: 'partial' as const, evidence: 'loss' },
+      { id: 'r3', judgement: 'missing' as const, evidence: null },
+    ],
+    feedback_md: 'Good start.',
+  };
+  const gradedApp = createApp({
+    db,
+    content,
+    tutorProvider: new FakeProvider(undefined, judgement),
+  });
+  const [session] = await db
+    .insert(studySessions)
+    .values({ userId, plannedMinutes: 15, status: 'active', kind: 'weekday' })
+    .returning();
+  if (!session) throw new Error('Could not create a session fixture');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'practice',
+      conceptId: exercise.concept,
+      exerciseIds: [exercise.id],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Could not create an activity fixture');
+
+  const response = await gradedApp.request('/api/attempts', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': now },
+    body: JSON.stringify({
+      exerciseId: exercise.id,
+      activityId: activity.id,
+      answer: { text: 'Inputs, target, model, loss and data.' },
+      mode: 'practice',
+    }),
+  });
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(body).toMatchObject({
+    graded_by: 'llm',
+    feedback: 'Good start.',
+    rubric: [
+      { id: 'r1', judgement: 'met' },
+      { id: 'r2', judgement: 'partial' },
+      { id: 'r3', judgement: 'missing' },
+    ],
+    exemplar: exercise.exemplar,
+  });
+  expect(body).not.toHaveProperty('solution');
+  const reloaded = await gradedApp.request(`/api/sessions/${session.id}`);
+  const sessionBody = await reloaded.json();
+  expect(sessionBody.activities[0].lastAttempt).toMatchObject({
+    exerciseId: exercise.id,
+    rubric: body.rubric,
+    exemplar: exercise.exemplar,
+  });
+  expect(sessionBody.activities[0].lastAttempt).not.toHaveProperty('solution');
+});
+
+test('no-tutor explain flow returns model answer before the capped self-check result', async () => {
+  const exercise = content.exercisesById.get('sl-explain-setup');
+  if (exercise?.type !== 'explain') throw new Error('Missing explain exercise');
+  const headers = { 'content-type': 'application/json', 'X-Now': now };
+  const first = await noTutorApp.request('/api/attempts', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      exerciseId: exercise.id,
+      answer: { text: 'A model maps inputs to a target.' },
+      mode: 'practice',
+    }),
+  });
+  expect(first.status).toBe(200);
+  const firstBody = await first.json();
+  expect(firstBody).toMatchObject({
+    status: 'self_check_required',
+    exemplar: exercise.exemplar,
+    yourAnswer: 'A model maps inputs to a target.',
+  });
+  expect(firstBody).not.toHaveProperty('solution');
+
+  const second = await noTutorApp.request('/api/attempts', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      exerciseId: exercise.id,
+      answer: { text: 'A model maps inputs to a target.', metCriteria: ['r1', 'r2', 'r3'] },
+      mode: 'practice',
+    }),
+  });
+  expect(second.status).toBe(200);
+  const body = await second.json();
+  expect(body).toMatchObject({
+    status: 'graded',
+    graded_by: 'self',
+    exemplar: exercise.exemplar,
+  });
+  expect(body).not.toHaveProperty('solution');
+  expect(body.credit).toBeLessThanOrEqual(0.5);
+});
+
+test('opening a lesson review does not create session or attempt rows', async () => {
+  const expectedLesson = content.lessonsByConcept.get('vectors');
+  if (!expectedLesson) throw new Error('Missing vectors lesson');
+  const beforeAttempts = await db.select().from(attempts).where(eq(attempts.userId, userId));
+  const beforeSessions = await db
+    .select()
+    .from(studySessions)
+    .where(eq(studySessions.userId, userId));
+  const beforeActivities = await db.select().from(sessionActivities);
+  const beforeRuns = await db.select().from(lessonRuns).where(eq(lessonRuns.userId, userId));
+  const beforeXp = await db.select().from(xpEvents).where(eq(xpEvents.userId, userId));
+  const beforeMasteryEvents = await db
+    .select()
+    .from(masteryEvents)
+    .where(eq(masteryEvents.userId, userId));
+  const response = await app.request('/api/lessons/vectors/review');
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(body).toMatchObject({
+    conceptTitle: 'Vectors',
+    lesson: { blocks: expect.any(Array) },
+  });
+  expect(body.lesson.blocks).toHaveLength(expectedLesson.blocks.length);
+  const afterAttempts = await db.select().from(attempts).where(eq(attempts.userId, userId));
+  const afterSessions = await db
+    .select()
+    .from(studySessions)
+    .where(eq(studySessions.userId, userId));
+  const afterActivities = await db.select().from(sessionActivities);
+  const afterRuns = await db.select().from(lessonRuns).where(eq(lessonRuns.userId, userId));
+  const afterXp = await db.select().from(xpEvents).where(eq(xpEvents.userId, userId));
+  const afterMasteryEvents = await db
+    .select()
+    .from(masteryEvents)
+    .where(eq(masteryEvents.userId, userId));
+  expect(afterAttempts).toHaveLength(beforeAttempts.length);
+  expect(afterSessions).toHaveLength(beforeSessions.length);
+  expect(afterActivities).toHaveLength(beforeActivities.length);
+  expect(afterRuns).toHaveLength(beforeRuns.length);
+  expect(afterXp).toHaveLength(beforeXp.length);
+  expect(afterMasteryEvents).toHaveLength(beforeMasteryEvents.length);
 });

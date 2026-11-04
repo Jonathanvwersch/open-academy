@@ -66,7 +66,21 @@ test('client-safe exercise views omit keys, hints, and rubric weights', async ()
     { id: 'local-rate', criterion: 'Names the local rate of change', required: true },
     { id: 'tangent-slope', criterion: 'Connects it to tangent slope', required: false },
   ]);
+  expect(safeExplain).not.toHaveProperty('solution');
   expect(safeExplain).not.toHaveProperty('exemplar');
+});
+
+test('explain exercises can use their exemplar without a separate solution', async () => {
+  const content = await loadContent('tests/fixtures/content');
+  const explain = required(content.exercisesById.get('derivatives-explain'), 'explain exercise');
+  const input = Object.fromEntries(
+    Object.entries(explain).filter(
+      ([key]) => key !== 'solution' && key !== 'concept' && key !== 'contentVersion',
+    ),
+  );
+  const parsed = ExerciseSchema.parse(input);
+  expect(parsed).toMatchObject({ type: 'explain', exemplar: expect.any(String) });
+  expect(parsed).not.toHaveProperty('solution');
 });
 
 test('client-safe template views hide expressions and sampling ranges', async () => {

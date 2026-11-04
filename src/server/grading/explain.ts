@@ -10,7 +10,7 @@ export class SelfCheckExplanationGrader implements ExplanationGrader {
     if (!metCriteria) {
       return {
         status: 'self_check_required',
-        feedback: 'Read your explanation, then select the criteria it meets.',
+        feedback: 'Review the model answer, then check which ideas your answer included.',
         graded_by: 'self',
         rubric: exercise.rubric.map(({ id, criterion, required }) => ({
           id,

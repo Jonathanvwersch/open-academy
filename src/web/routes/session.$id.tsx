@@ -1,14 +1,7 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
-import {
-  ExerciseForm,
-  FeedbackPanel,
-  HintLadder,
-  LessonBlock,
-  Markdown,
-  ModeBadge,
-} from '../components';
+import { ExerciseForm, FeedbackPanel, HintLadder, LessonBlock, Markdown } from '../components';
 import { LessonRunner } from '../lesson/LessonRunner.js';
 import {
   exerciseQueryOptions,
@@ -18,6 +11,7 @@ import {
   sessionQueryOptions,
 } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
+import { SessionActivityHeader } from '../session/SessionActivityHeader.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
 
 export const Route = createFileRoute('/session/$id')({
@@ -25,7 +19,9 @@ export const Route = createFileRoute('/session/$id')({
     const session = await context.queryClient.ensureQueryData(sessionQueryOptions(params.id));
     const lessons = await Promise.all(
       session.activities.map((activity) =>
-        activity.kind === 'learn' && activity.conceptId
+        ['learn', 'practice', 'remediate', 'transfer'].includes(activity.kind) &&
+        activity.conceptId &&
+        activity.lessonAvailable
           ? context.queryClient.ensureQueryData(lessonQueryOptions(activity.conceptId))
           : Promise.resolve(null),
       ),
@@ -131,10 +127,15 @@ function SessionPage() {
   }, [activityScrollKey]);
   useEffect(() => {
     if (activity?.id && exerciseId) {
-      setResult(null);
+      const lastAttempt = activity.lastAttempt;
+      setResult(
+        lastAttempt && lastAttempt.exerciseId === exerciseId
+          ? { ...lastAttempt, status: 'graded' }
+          : null,
+      );
       setHint(null);
     }
-  }, [activity?.id, exerciseId]);
+  }, [activity?.id, activity?.lastAttempt, exerciseId]);
   useEffect(() => {
     const session = sessionQuery.data;
     if (!session?.startedAt || !session.plannedMinutes) return;
@@ -192,7 +193,13 @@ function SessionPage() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [id, queryClient, result]);
   const lessonQuery = useSuspenseQuery(
-    lessonQueryOptions(activity?.kind === 'learn' ? (activity.conceptId ?? null) : null),
+    lessonQueryOptions(
+      activity &&
+        ['learn', 'practice', 'remediate', 'transfer'].includes(activity.kind) &&
+        activity.lessonAvailable
+        ? (activity.conceptId ?? null)
+        : null,
+    ),
   );
 
   const markLessonViewed = async () => {
@@ -277,17 +284,46 @@ function SessionPage() {
       : activity.kind === 'quick_check' || activity.kind === 'diagnostic'
         ? 'assessment'
         : 'practice';
-  const remainingPlannedMinutes = activities
-    .filter((item) => item.status !== 'completed')
-    .reduce((sum, item) => sum + item.plannedMinutes, 0);
-  const remainingMinutes = remainingPlannedMinutes;
   const lesson = lessonQuery.data;
+  const activityPosition = Math.max(1, activities.findIndex((item) => item.id === activity.id) + 1);
+  const activityLabel = sessionActivityLabel(activity.kind);
+  const activityTitle =
+    activity.conceptTitle ??
+    (activity.kind === 'review'
+      ? 'Review'
+      : activity.kind === 'lab'
+        ? 'Project'
+        : ['quick_check', 'diagnostic', 'assessment'].includes(activity.kind)
+          ? 'Quiz'
+          : sessionActivityLabel(activity.kind));
+  const lessonHref =
+    activity.conceptId && activity.lessonAvailable
+      ? `/lessons/${encodeURIComponent(activity.conceptId)}?from=${encodeURIComponent(id)}`
+      : undefined;
+  const canSubmitAnswer =
+    !result ||
+    result.status === 'invalid' ||
+    result.status === 'self_check_required' ||
+    (Number(result?.correct) === 0 && result?.retryAllowed === true);
+  const canAskForHelp = !result || result.status === 'invalid' || result.retryAllowed === true;
+  const triesLeft = Math.max(0, 2 - Number(result?.attemptNo ?? 1));
+  const submitLabel =
+    result?.status === 'self_check_required'
+      ? 'Submit self-check'
+      : Number(result?.correct) === 0 && result?.retryAllowed === true
+        ? `Try again · ${triesLeft} ${triesLeft === 1 ? 'try' : 'tries'} left`
+        : 'Submit answer';
   if (activity.kind === 'learn' && activity.conceptId && lesson?.knowledge_points?.length) {
     return (
       <LessonRunner
         conceptId={activity.conceptId}
         activityId={activity.id}
         title={activity.conceptTitle ?? activity.conceptId}
+        activityLabel={activityLabel}
+        activityPosition={activityPosition}
+        activityCount={activities.length}
+        lessonHref={lessonHref}
+        mode={mode}
         tutorEnabled={sessionQuery.data.tutorEnabled}
         resumeRetry={activity.status !== 'completed'}
         onContinue={() => void continueLessonRunner()}
@@ -309,9 +345,14 @@ function SessionPage() {
     ];
     return (
       <section className="mx-auto max-w-3xl space-y-6">
-        <p className="text-sm text-neutral-500">
-          Lesson · {activity.conceptTitle ?? activity.conceptId}
-        </p>
+        <SessionActivityHeader
+          title={activityTitle}
+          label={activityLabel}
+          position={activityPosition}
+          total={activities.length}
+          mode={mode}
+          lessonHref={lessonHref}
+        />
         <div className="space-y-5">
           {orderedBlocks.map((block) => (
             <LessonBlock
@@ -350,43 +391,14 @@ function SessionPage() {
   }
   return (
     <section className="mx-auto max-w-3xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm text-neutral-500">
-            {activity.kind.replace('_', ' ')}
-            {activity.conceptId ? ` · ${activity.conceptTitle ?? activity.conceptId}` : ''}
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold">Session</h1>
-        </div>
-        <ModeBadge mode={mode} />
-      </div>
-      <div className="space-y-2 rounded-lg border border-neutral-200 bg-white p-4">
-        <p className="text-sm text-neutral-600">
-          About {remainingMinutes} minutes remaining in your {sessionQuery.data.plannedMinutes}
-          -minute plan.
-        </p>
-        <ol className="flex flex-wrap gap-2" aria-label="Session timeline">
-          {activities.map((item) => (
-            <li
-              key={item.id}
-              className={`rounded-full border px-3 py-1 text-xs ${
-                Object.values(item.progress?.outcomes ?? {}).includes('incorrect')
-                  ? 'border-red-300 bg-red-50 text-red-900'
-                  : Object.values(item.progress?.outcomes ?? {}).includes('correct')
-                    ? 'border-green-300 bg-green-50 text-green-900'
-                    : item.status === 'completed'
-                      ? 'border-neutral-300 bg-neutral-100 text-neutral-700'
-                      : item.status === 'in_progress'
-                        ? 'border-blue-300 bg-blue-50 text-blue-900'
-                        : 'border-neutral-200 text-neutral-600'
-              }`}
-            >
-              {item.kind.replace('_', ' ')} · {item.conceptTitle ?? item.conceptId ?? 'activity'} ·{' '}
-              {item.plannedMinutes} min
-            </li>
-          ))}
-        </ol>
-      </div>
+      <SessionActivityHeader
+        title={activityTitle}
+        label={activityLabel}
+        position={activityPosition}
+        total={activities.length}
+        mode={mode}
+        lessonHref={lessonHref}
+      />
       {exerciseQuery.data ? (
         <article className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
           <Markdown>{exerciseQuery.data.prompt}</Markdown>
@@ -413,13 +425,16 @@ function SessionPage() {
           {hint?.tutorUnavailable ? (
             <p className="text-xs text-neutral-500">Tutor unavailable right now.</p>
           ) : null}
-          {!result ||
-          result.status === 'invalid' ||
-          (Number(result.correct) === 0 && result.retryAllowed) ? (
+          {canSubmitAnswer ? (
             <ExerciseForm
               key={`${activity.id}:${exerciseId}`}
               exercise={exerciseQuery.data}
               onSubmit={submitAnswer}
+              explainStep={result?.status === 'self_check_required' ? 'self-check' : 'answer'}
+              readOnlyAnswer={
+                typeof result?.yourAnswer === 'string' ? result.yourAnswer : undefined
+              }
+              submitLabel={submitLabel}
             />
           ) : (
             <button
@@ -427,32 +442,35 @@ function SessionPage() {
               onClick={continueNext}
               className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white"
             >
-              Next
+              Continue
             </button>
           )}
-          {mode !== 'assessment' &&
-          (!result || result.status === 'invalid' || result.retryAllowed) ? (
-            <HintLadder
-              exerciseId={exerciseId ?? ''}
-              activityId={activity.id}
-              hintCount={exerciseQuery.data.hintCount}
-              tutorEnabled={sessionQuery.data.tutorEnabled}
-              onHint={setHint}
-              mode={mode === 'review' ? 'review' : 'practice'}
-              buttonRef={hintButton}
-            />
-          ) : null}
-          {mode === 'practice' && exerciseId && sessionQuery.data.tutorEnabled ? (
-            <TutorLauncher
-              context={{
-                conceptId: activity.conceptId,
-                conceptTitle: activity.conceptTitle,
-                activityId: activity.id,
-                exerciseId,
-                allowed: true,
-                enabled: sessionQuery.data.tutorEnabled,
-              }}
-            />
+          {canAskForHelp ? (
+            <div className="flex flex-wrap gap-2">
+              {mode !== 'assessment' ? (
+                <HintLadder
+                  exerciseId={exerciseId ?? ''}
+                  activityId={activity.id}
+                  hintCount={exerciseQuery.data.hintCount}
+                  tutorEnabled={sessionQuery.data.tutorEnabled}
+                  onHint={setHint}
+                  mode={mode === 'review' ? 'review' : 'practice'}
+                  buttonRef={hintButton}
+                />
+              ) : null}
+              {mode === 'practice' && exerciseId && sessionQuery.data.tutorEnabled ? (
+                <TutorLauncher
+                  context={{
+                    conceptId: activity.conceptId,
+                    conceptTitle: activity.conceptTitle,
+                    activityId: activity.id,
+                    exerciseId,
+                    allowed: true,
+                    enabled: sessionQuery.data.tutorEnabled,
+                  }}
+                />
+              ) : null}
+            </div>
           ) : null}
         </article>
       ) : !exerciseId ? (
@@ -478,6 +496,23 @@ function SessionPage() {
       ) : null}
     </section>
   );
+}
+
+function sessionActivityLabel(kind: string) {
+  const labels: Record<string, string> = {
+    learn: 'Lesson',
+    practice: 'Practice',
+    remediate: 'Remediation',
+    transfer: 'Transfer',
+    review: 'Review',
+    quick_check: 'Quiz',
+    diagnostic: 'Quiz',
+    assessment: 'Assessment',
+    lab: 'Project',
+    teachback: 'Teach-back',
+    reflect: 'Reflection',
+  };
+  return labels[kind] ?? kind.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase());
 }
 
 function InlineLessonCheck({

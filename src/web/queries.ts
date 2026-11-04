@@ -33,6 +33,8 @@ export interface SessionActivity {
   exerciseIds: string[];
   plannedMinutes: number;
   status: string;
+  lessonAvailable?: boolean;
+  lastAttempt?: Record<string, unknown> | null;
   startedAt?: string;
   progress: {
     lessonViewed?: boolean;
@@ -59,6 +61,12 @@ export interface LessonPayload {
     worked: string;
     problems: string[];
   }>;
+}
+
+export interface LessonReviewPayload {
+  lesson: LessonPayload;
+  checkAnswers: Record<string, string>;
+  conceptTitle: string;
 }
 
 export type ExercisePayload = ClientExercise;
@@ -154,6 +162,7 @@ export interface MapPayload {
     domain: string;
     status: string;
     available: boolean;
+    hasLesson: boolean;
     dimensions: Record<string, { state: string; inferred?: boolean }>;
   }>;
   edges: Array<{ conceptId: string; prerequisiteId: string }>;
@@ -244,6 +253,16 @@ export const lessonQueryOptions = (conceptId: string | null) =>
             'Lesson not found',
           )
         : Promise.resolve(null),
+  });
+
+export const lessonReviewQueryOptions = (conceptId: string) =>
+  queryOptions({
+    queryKey: ['lesson-review', conceptId] as const,
+    queryFn: () =>
+      getJson<LessonReviewPayload>(
+        `/api/lessons/${encodeURIComponent(conceptId)}/review`,
+        'Lesson not found',
+      ),
   });
 
 export const lessonRunQueryOptions = (conceptId: string | null) =>

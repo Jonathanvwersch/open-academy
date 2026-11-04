@@ -110,4 +110,3 @@ exercises:
           weight: 1,
         }
     exemplar: "Stacking linear layers gives another linear layer, so without a nonlinearity a deep network is no more expressive than a single layer. During backprop each activation's derivative multiplies the gradient, and saturating functions such as sigmoid have derivatives at most 0.25, so gradients vanish over many layers. ReLU passes gradients with slope 1 when active, but units can die if they are always negative."
-    solution: "See the exemplar."

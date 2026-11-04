@@ -377,6 +377,7 @@ const DebugExerciseSchema = CommonExerciseSchema.extend({
 }).strict();
 
 const ExplainExerciseSchema = CommonExerciseSchema.extend({
+  solution: z.string().min(1).optional(),
   type: z.literal('explain'),
   rubric: z
     .array(

@@ -16,6 +16,7 @@ import { Route as MapRouteImport } from './routes/map'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as DiagnosticResultsRouteImport } from './routes/diagnostic.results'
+import { Route as LessonsConceptIdRouteImport } from './routes/lessons.$conceptId'
 import { Route as SessionIdRouteImport } from './routes/session.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,6 +54,11 @@ const DiagnosticResultsRoute = DiagnosticResultsRouteImport.update({
   path: '/results',
   getParentRoute: () => DiagnosticRoute,
 } as any)
+const LessonsConceptIdRoute = LessonsConceptIdRouteImport.update({
+  id: '/lessons/$conceptId',
+  path: '/lessons/$conceptId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SessionIdRoute = SessionIdRouteImport.update({
   id: '/session/$id',
   path: '/session/$id',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
   '/diagnostic/results': typeof DiagnosticResultsRoute
+  '/lessons/$conceptId': typeof LessonsConceptIdRoute
   '/session/$id': typeof SessionIdRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
   '/diagnostic/results': typeof DiagnosticResultsRoute
+  '/lessons/$conceptId': typeof LessonsConceptIdRoute
   '/session/$id': typeof SessionIdRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
   '/diagnostic/results': typeof DiagnosticResultsRoute
+  '/lessons/$conceptId': typeof LessonsConceptIdRoute
   '/session/$id': typeof SessionIdRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/settings'
     | '/diagnostic/results'
+    | '/lessons/$conceptId'
     | '/session/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/settings'
     | '/diagnostic/results'
+    | '/lessons/$conceptId'
     | '/session/$id'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/settings'
     | '/diagnostic/results'
+    | '/lessons/$conceptId'
     | '/session/$id'
   fileRoutesById: FileRoutesById
 }
@@ -130,6 +142,7 @@ export interface RootRouteChildren {
   MapRoute: typeof MapRoute
   ProgressRoute: typeof ProgressRoute
   SettingsRoute: typeof SettingsRoute
+  LessonsConceptIdRoute: typeof LessonsConceptIdRoute
   SessionIdRoute: typeof SessionIdRoute
 }
 
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DiagnosticResultsRouteImport
       parentRoute: typeof DiagnosticRoute
     }
+    '/lessons/$conceptId': {
+      id: '/lessons/$conceptId'
+      path: '/lessons/$conceptId'
+      fullPath: '/lessons/$conceptId'
+      preLoaderRoute: typeof LessonsConceptIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/session/$id': {
       id: '/session/$id'
       path: '/session/$id'
@@ -213,6 +233,7 @@ const rootRouteChildren: RootRouteChildren = {
   MapRoute: MapRoute,
   ProgressRoute: ProgressRoute,
   SettingsRoute: SettingsRoute,
+  LessonsConceptIdRoute: LessonsConceptIdRoute,
   SessionIdRoute: SessionIdRoute,
 }
 export const routeTree = rootRouteImport

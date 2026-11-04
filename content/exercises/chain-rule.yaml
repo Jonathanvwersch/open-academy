@@ -108,4 +108,3 @@ exercises:
         }
       - { id: r3, criterion: "Gives or references a concrete example", weight: 1 }
     exemplar: "Each stage of a composed function has a local sensitivity: how much its output moves per unit change in its input. The overall sensitivity is the product of these along the chain, e.g. y=(3x+1)^2 gives 2(3x+1)·3. If x reaches the output through two routes, each route contributes its product and you add them."
-    solution: "See the exemplar."

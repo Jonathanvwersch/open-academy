@@ -154,4 +154,4 @@ exercises:
           weight: 1,
         }
     exemplar: "Each feature is one coordinate, so an example becomes a point in an n-dimensional space and similar examples are nearby points. Euclidean distance adds up squared differences per coordinate, so a feature measured in large units (say area in m²) swamps one in small units (bedrooms). Standardising each feature to zero mean and unit variance puts them on comparable scales."
-    solution: "See the exemplar. The key ideas are coordinates = features, and distance is sensitive to units/scale."
+    solution: "The key ideas are coordinates = features, and distance is sensitive to units/scale."

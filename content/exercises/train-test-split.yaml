@@ -124,4 +124,3 @@ exercises:
         }
       - { id: r3, criterion: "Mentions that test should be used once / at the end", weight: 1 }
     exemplar: "We use the validation set over and over to pick hyperparameters and stopping points, so the chosen model is partly fitted to it and its validation score is optimistic. A separate test set that played no role in any decision gives an unbiased estimate of performance on new data, as long as we only use it at the end."
-    solution: "See the exemplar."

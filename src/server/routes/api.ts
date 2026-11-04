@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -69,6 +69,8 @@ type TutorGradeResult = {
   feedback: string;
   graded_by: 'llm';
   mistake_category?: string;
+  rubric: Array<{ id: string; criterion: string; judgement: 'met' | 'partial' | 'missing' }>;
+  exemplar: string;
 };
 
 export function createApiRoutes(deps: {
@@ -87,7 +89,11 @@ export function createApiRoutes(deps: {
       : deps.tutorProvider;
 
   api.use('*', async (context, next) => {
-    const [user] = await db.select().from(users).limit(1);
+    const [user] = await db
+      .select()
+      .from(users)
+      .orderBy(asc(users.createdAt), asc(users.id))
+      .limit(1);
     if (!user) {
       return context.json({ error: 'Seed the default learner before using the API.' }, 503);
     }
@@ -279,6 +285,19 @@ export function createApiRoutes(deps: {
   api.get('/sessions/:id', async (context) => {
     const session = await withRepo(context).session(context.req.param('id'));
     const index = await content();
+    const activityIds = session?.activities.map((activity) => activity.id) ?? [];
+    const activityAttempts = activityIds.length
+      ? await db
+          .select()
+          .from(attempts)
+          .where(
+            and(
+              eq(attempts.userId, context.get('userId')),
+              inArray(attempts.activityId, activityIds),
+            ),
+          )
+          .orderBy(desc(attempts.createdAt))
+      : [];
     return session
       ? context.json({
           ...session,
@@ -287,6 +306,25 @@ export function createApiRoutes(deps: {
             conceptTitle: activity.conceptId
               ? index.conceptsById.get(activity.conceptId)?.title
               : undefined,
+            lessonAvailable: activity.conceptId
+              ? index.lessonsByConcept.has(activity.conceptId)
+              : false,
+            lastAttempt: activityAttempts
+              .filter((attempt) => attempt.activityId === activity.id)
+              .map((attempt) => {
+                const feedback = attempt.feedback as Record<string, unknown>;
+                return {
+                  exerciseId: attempt.exerciseId,
+                  correct: attempt.correct,
+                  attemptNo: attempt.attemptNo,
+                  retryAllowed:
+                    attempt.mode === 'practice' && attempt.correct === 0 && attempt.attemptNo < 2,
+                  feedback: feedback.message ?? '',
+                  rubric: feedback.rubric,
+                  exemplar: feedback.exemplar,
+                  solution: feedback.solution,
+                };
+              })[0],
           })),
           serverNow: requestNow(context),
           tutorEnabled: tutorProvider !== null,
@@ -469,6 +507,25 @@ export function createApiRoutes(deps: {
       : context.json({ error: 'Lesson not found' }, 404);
   });
 
+  api.get('/lessons/:conceptId/review', async (context) => {
+    const index = await content();
+    const conceptId = context.req.param('conceptId');
+    const lesson = index.lessonsByConcept.get(conceptId);
+    if (!lesson) return context.json({ error: 'Lesson not found' }, 404);
+    const checkAnswers = Object.fromEntries(
+      lesson.blocks.flatMap((block) =>
+        block.kind === 'check' && block.exercise
+          ? [[block.exercise, index.exercisesById.get(block.exercise)?.solution ?? '']]
+          : [],
+      ),
+    );
+    return context.json({
+      lesson: serializeLesson(lesson),
+      checkAnswers,
+      conceptTitle: index.conceptsById.get(conceptId)?.title ?? conceptId,
+    });
+  });
+
   api.post('/hints', async (context) => {
     const body = z
       .object({
@@ -495,6 +552,7 @@ export function createApiRoutes(deps: {
     if (!exercise) {
       return context.json({ error: 'Exercise not found' }, 404);
     }
+    const solution = exercise.solution ?? (exercise.type === 'explain' ? exercise.exemplar : '');
     if (exercise.role === 'diagnostic') {
       return context.json({ error: 'Diagnostic exercises do not allow hints.' }, 403);
     }
@@ -535,12 +593,12 @@ export function createApiRoutes(deps: {
         activityId: body.data.activityId,
         exerciseId: exercise.id,
         level: 5,
-        text: exercise.solution,
+        text: solution,
         createdAt: requestNow(context),
       });
       return context.json({
         level: 5,
-        text: exercise.solution,
+        text: solution,
         revealedSolution: true,
         hintEventId: event?.id,
       });
@@ -582,7 +640,7 @@ export function createApiRoutes(deps: {
             : 'No prior answer.',
           hintLevel: level,
           authoredHints: hints,
-          solution: exercise.solution,
+          solution: exercise.solution ?? '',
           recentMistakes,
           history: [],
           problem_status: priorAttempt ? 'answered' : 'unanswered',
@@ -701,7 +759,15 @@ export function createApiRoutes(deps: {
       ? await repo.attemptsForActivity(body.data.activityId, exercise.id)
       : [];
     if (body.data.mode === 'practice' && previousAttempts.length >= 2) {
-      return context.json({ error: 'No retries remain.', solution: exercise.solution }, 409);
+      return context.json(
+        {
+          error: 'No retries remain.',
+          ...(exercise.type === 'explain'
+            ? { exemplar: exercise.exemplar }
+            : { solution: exercise.solution }),
+        },
+        409,
+      );
     }
     if (body.data.mode !== 'practice' && previousAttempts.length >= 1) {
       return context.json({ error: 'This activity allows one attempt.' }, 409);
@@ -732,6 +798,14 @@ export function createApiRoutes(deps: {
           correct: score.score,
           feedback: score.feedback,
           graded_by: 'llm' as const,
+          rubric: exercise.rubric.map((criterion) => ({
+            id: criterion.id,
+            criterion: criterion.criterion,
+            judgement:
+              judged.value?.criteria.find((entry) => entry.id === criterion.id)?.judgement ??
+              'missing',
+          })),
+          exemplar: exercise.exemplar,
         };
       } else {
         result = await gradeExercise(exercise, body.data.answer);
@@ -740,7 +814,22 @@ export function createApiRoutes(deps: {
       result = await gradeExercise(exercise, body.data.answer);
     }
     if (result.status !== 'graded') {
-      return context.json(result, result.status === 'invalid' ? 422 : 200);
+      return context.json(
+        exercise.type === 'explain' && result.status === 'self_check_required'
+          ? {
+              ...result,
+              ...(typeof body.data.answer === 'object' &&
+              body.data.answer !== null &&
+              'text' in body.data.answer &&
+              typeof body.data.answer.text === 'string'
+                ? { yourAnswer: body.data.answer.text }
+                : {}),
+              exemplar: exercise.exemplar,
+              ...(exercise.solution ? { solution: exercise.solution } : {}),
+            }
+          : result,
+        result.status === 'invalid' ? 422 : 200,
+      );
     }
     const now = requestNow(context);
     const attemptId = crypto.randomUUID();
@@ -774,7 +863,16 @@ export function createApiRoutes(deps: {
       hintsUsed,
       attemptNo,
       gradedBy,
-      feedback: { message: result.feedback },
+      feedback: {
+        message: result.feedback,
+        ...('rubric' in result ? { rubric: result.rubric } : {}),
+        ...(exercise.type === 'explain'
+          ? {
+              exemplar: exercise.exemplar,
+              ...(exercise.solution ? { solution: exercise.solution } : {}),
+            }
+          : {}),
+      },
       mistakeCategory: result.mistake_category,
       durationMs: body.data.durationMs,
       createdAt: now,
@@ -888,7 +986,16 @@ export function createApiRoutes(deps: {
       mastery: masteryResult,
       retryAllowed,
       ...(result.correct === 0 && (body.data.mode !== 'practice' || revealSolution)
-        ? { solution: exercise.solution }
+        ? exercise.type === 'explain'
+          ? {}
+          : { solution: exercise.solution }
+        : {}),
+      ...(exercise.type === 'explain'
+        ? {
+            exemplar: exercise.exemplar,
+            ...(exercise.solution ? { solution: exercise.solution } : {}),
+            ...('rubric' in result ? { rubric: result.rubric } : {}),
+          }
         : {}),
     });
   });
@@ -1194,7 +1301,12 @@ export function createApiRoutes(deps: {
           );
         }),
       );
-      return { ...serializeConcept(concept), dimensions, available };
+      return {
+        ...serializeConcept(concept),
+        dimensions,
+        available,
+        hasLesson: index.lessonsByConcept.has(concept.id),
+      };
     });
     return context.json({
       nodes,
@@ -1236,6 +1348,7 @@ export function createApiRoutes(deps: {
     });
     return context.json({
       concept: serializeConcept(concept),
+      lessonAvailable: index.lessonsByConcept.has(concept.id),
       mastery: (await repo.masteryRecords()).filter((record) => record.conceptId === concept.id),
       events: await repo.events(concept.id),
       debt: debt.filter((entry) => entry.conceptId === concept.id),
