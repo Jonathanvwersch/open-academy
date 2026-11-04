@@ -1,0 +1,52 @@
+{
+  "name": "academy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:api": "tsx watch src/server/index.ts",
+    "dev:web": "vite --config vite.config.ts --host 0.0.0.0",
+    "db:generate": "drizzle-kit generate --config drizzle.config.ts",
+    "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "test": "docker compose up -d && node scripts/wait-for-db.mjs && vitest run --config vitest.config.ts",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "build": "vite build --config vite.config.ts && tsc -p tsconfig.server.json"
+  },
+  "dependencies": {
+    "@hono/node-server": "2.1.6",
+    "@tanstack/react-query": "5.105.3",
+    "@tanstack/react-router": "1.170.46",
+    "dotenv": "18.0.9",
+    "drizzle-orm": "0.45.4",
+    "hono": "4.13.16",
+    "postgres": "4.0.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.4",
+    "@playwright/test": "1.64.1",
+    "@tailwindcss/vite": "4.3.4",
+    "@tanstack/router-plugin": "1.168.48",
+    "@types/node": "26.6.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.2.1",
+    "drizzle-kit": "0.31.11",
+    "tailwindcss": "4.3.4",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.1.0"
+  }
+}
