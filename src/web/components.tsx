@@ -113,12 +113,12 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
       : Number(result.correct) > 0
         ? 'Partly correct'
         : 'Not quite';
-  const feedback =
-    typeof result.feedback === 'string' ? result.feedback.trim().replace(/\.$/, '') : '';
+  const feedback = typeof result.feedback === 'string' ? result.feedback.trim() : '';
+  const repeatsTitle = feedback.replace(/\.$/, '') === title;
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-4" role="status">
       <p className="font-medium">{title}</p>
-      {feedback && feedback !== title ? (
+      {feedback && !repeatsTitle ? (
         <div className="mt-1 text-sm text-neutral-600">
           <Markdown>{feedback}</Markdown>
         </div>
