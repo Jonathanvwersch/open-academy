@@ -371,6 +371,62 @@ test('learn duration uses the concept estimate', () => {
   expect(learn?.plannedMinutes).toBe(concept.est_minutes);
 });
 
+test('unfinished knowledge-point lessons are prioritized regardless of mastery, but completed ones are not relearned', () => {
+  const concept = required(content.conceptsById.get('supervised-learning'), 'supervised-learning');
+  const base = emptyState();
+  base.mastery = [
+    ...concept.dimensions.map((dimension) => ({
+      ...initialMastery(concept.id, dimension),
+      state: 'independent' as const,
+    })),
+    ...concept.prereqs
+      .filter((prerequisite) => prerequisite.strength === 'hard')
+      .flatMap((prerequisite) => {
+        const requiredConcept = content.conceptsById.get(prerequisite.id);
+        return (
+          requiredConcept?.dimensions.map((dimension) => ({
+            ...initialMastery(prerequisite.id, dimension),
+            state: 'independent' as const,
+          })) ?? []
+        );
+      }),
+  ];
+  for (const status of ['in_progress', 'needs_retry'] as const) {
+    const state = {
+      ...base,
+      lessonRuns: [{ conceptId: concept.id, status }],
+    };
+    expect(
+      planSession(state, content, now, 60).activities.find(
+        (activity) => activity.conceptId === concept.id,
+      )?.kind,
+    ).toBe('learn');
+  }
+  expect(
+    planSession(
+      { ...base, lessonRuns: [{ conceptId: concept.id, status: 'completed' }] },
+      content,
+      now,
+      60,
+    ).activities.find((activity) => activity.conceptId === concept.id)?.kind,
+  ).not.toBe('learn');
+});
+
+test('legacy lessons are not forced back to learn by a lesson-run status', () => {
+  const vectors = required(content.conceptsById.get('vectors'), 'vectors');
+  const state = emptyState();
+  state.mastery = vectors.dimensions.map((dimension) => ({
+    ...initialMastery(vectors.id, dimension),
+    state: 'independent',
+  }));
+  state.lessonRuns = [{ conceptId: vectors.id, status: 'needs_retry' }];
+  expect(
+    planSession(state, content, now, 60).activities.find(
+      (activity) => activity.conceptId === vectors.id,
+    )?.kind,
+  ).not.toBe('learn');
+});
+
 test('weekday plans avoid duplicate concepts, cap activities, and never add empty fillers', () => {
   const state = emptyState();
   state.cards = [{ conceptId: 'vectors', dimension: 'math', dueAt: '2026-01-14T11:00:00.000Z' }];

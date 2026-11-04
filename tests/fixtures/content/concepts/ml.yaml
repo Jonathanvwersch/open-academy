@@ -48,3 +48,19 @@ concepts:
     projects: [linreg-numpy]
     sources: []
     status: authored
+  - id: supervised-learning
+    title: Supervised learning
+    description: Learn from examples that pair inputs with known targets.
+    difficulty: 1
+    est_minutes: 30
+    week: 1
+    goal_weight: 3
+    dimensions: [conceptual, math]
+    prereqs: []
+    related: [linear-models]
+    objectives:
+      - { text: "Identify inputs, targets, and model settings", dimension: conceptual }
+      - { text: Calculate and compare squared-error losses, dimension: math }
+    projects: [linreg-numpy]
+    sources: []
+    status: authored

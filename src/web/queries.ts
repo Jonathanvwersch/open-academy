@@ -36,6 +36,7 @@ export interface SessionActivity {
   startedAt?: string;
   progress: {
     lessonViewed?: boolean;
+    lessonRunnerContinued?: boolean;
     completedExerciseIds?: string[];
     outcomes?: Record<string, 'correct' | 'incorrect'>;
   };
@@ -51,9 +52,74 @@ export interface SessionPayload {
 
 export interface LessonPayload {
   blocks: Array<{ kind: LessonBlockKind; md?: string; exercise?: string }>;
+  knowledge_points?: Array<{
+    id: string;
+    title: string;
+    explain: string;
+    worked: string;
+    problems: string[];
+  }>;
 }
 
 export type ExercisePayload = ClientExercise;
+
+export interface LessonRunPayload {
+  run: null | {
+    id: string;
+    status: 'in_progress' | 'needs_retry' | 'completed';
+    points: Array<{
+      id: string;
+      status: 'passed' | 'failed' | 'active' | 'locked';
+      round: number;
+      answered: number;
+      streak: number;
+      xpEarned: number;
+    }>;
+    currentPointId: string | null;
+    currentPoint?: { id: string; title: string; explain: string; worked: string };
+    pending?: {
+      id: string;
+      knowledgePointId: string;
+      round: number;
+      position: number;
+      exerciseId: string;
+      seed: number | null;
+    };
+    pendingProblem?: {
+      id: string;
+      knowledgePointId: string;
+      round: number;
+      position: number;
+      exerciseId: string;
+      seed: number | null;
+      exercise: ClientExercise;
+    };
+    lastAnswered?: {
+      id: string;
+      knowledgePointId: string;
+      correct: number | null;
+      round: number;
+      position: number;
+    };
+    lastAnsweredProblem?: {
+      id: string;
+      knowledgePointId: string;
+      correct: number | null;
+      round: number;
+      position: number;
+      activityId?: string | null;
+      exercise: ClientExercise;
+      result: {
+        correct: number | null;
+        feedback: string;
+        solution: string;
+        yourAnswer: string;
+        correctAnswer: string;
+      };
+    };
+    xpEarned: number;
+  };
+}
 
 export interface ProgressPayload {
   domains: Array<{ id: string; title: string; counts: Record<string, number> }>;
@@ -162,6 +228,18 @@ export const lessonQueryOptions = (conceptId: string | null) =>
             'Lesson not found',
           )
         : Promise.resolve(null),
+  });
+
+export const lessonRunQueryOptions = (conceptId: string | null) =>
+  queryOptions({
+    queryKey: ['lesson-run', conceptId] as const,
+    queryFn: () =>
+      conceptId
+        ? getJson<LessonRunPayload>(
+            `/api/lessons/${encodeURIComponent(conceptId)}/run`,
+            'Lesson progress unavailable',
+          )
+        : Promise.resolve({ run: null }),
   });
 
 export const exerciseQueryOptions = (exerciseId: string | null) =>

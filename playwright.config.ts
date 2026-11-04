@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
+  workers: 1,
   projects: [
     {
       name: 'chromium',
@@ -22,6 +23,7 @@ export default defineConfig({
         process.env.TEST_DATABASE_URL ?? 'postgres://academy:academy@localhost:5433/academy_test',
       NODE_ENV: 'test',
       NOW_OVERRIDE: '2026-01-01T12:00:00.000Z',
+      ACADEMY_E2E: '1',
       PORT: '3002',
       VITE_PORT: '5174',
     },

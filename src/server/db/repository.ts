@@ -10,6 +10,7 @@ import {
   attempts,
   diagnosticRuns,
   hintEvents,
+  lessonRuns,
   mastery,
   masteryEvents,
   projectProgress,
@@ -101,7 +102,7 @@ export class LearnerRepository {
 
   async schedulerState(now: Date): Promise<SchedulerState> {
     const [user] = await this.db.select().from(users).where(eq(users.id, this.userId)).limit(1);
-    const [masteryRows, cards, recentAttempts, flags, projects] = await Promise.all([
+    const [masteryRows, cards, recentAttempts, flags, projects, lessonRunRows] = await Promise.all([
       this.masteryRecords(),
       this.db.select().from(reviewCards).where(eq(reviewCards.userId, this.userId)),
       this.db
@@ -115,6 +116,7 @@ export class LearnerRepository {
         .from(remediationFlags)
         .where(and(eq(remediationFlags.userId, this.userId), eq(remediationFlags.status, 'open'))),
       this.db.select().from(projectProgress).where(eq(projectProgress.userId, this.userId)),
+      this.db.select().from(lessonRuns).where(eq(lessonRuns.userId, this.userId)),
     ]);
     return {
       mastery: masteryRows,
@@ -140,6 +142,10 @@ export class LearnerRepository {
       projectProgress: projects.map((project) => ({
         projectId: project.projectId,
         status: project.status,
+      })),
+      lessonRuns: lessonRunRows.map((run) => ({
+        conceptId: run.conceptId,
+        status: run.status,
       })),
       startDate: user?.startDate || now.toISOString(),
     };

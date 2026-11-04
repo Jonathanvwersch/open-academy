@@ -22,6 +22,13 @@
       "when": 1793760262999,
       "tag": "0002_salty_shocker",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793819247683,
+      "tag": "0003_massive_goliath",
+      "breakpoints": true
     }
   ]
 }
