@@ -226,7 +226,13 @@ function SessionPage() {
   const remainingMinutes = remainingPlannedMinutes;
   const lesson = lessonQuery.data;
   if (activity.kind === 'learn' && !activity.progress?.lessonViewed && lesson?.blocks.length) {
-    const lessonExercises = lesson.blocks.filter((block) => block.exercise);
+    const answeredOnServer = new Set(activity.progress?.completedExerciseIds ?? []);
+    const checksPending = lesson.blocks.some(
+      (block) =>
+        block.exercise &&
+        !completedLessonChecks.has(block.exercise) &&
+        !answeredOnServer.has(block.exercise),
+    );
     const orderedBlocks = [
       ...lesson.blocks.filter((block) => block.kind === 'objective'),
       ...lesson.blocks.filter((block) => block.kind !== 'objective' && block.kind !== 'summary'),
@@ -262,13 +268,14 @@ function SessionPage() {
         <button
           type="button"
           onClick={markLessonViewed}
-          disabled={lessonExercises.some(
-            (block) => block.exercise && !completedLessonChecks.has(block.exercise),
-          )}
-          className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white"
+          disabled={checksPending}
+          className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           Continue to practice
         </button>
+        {checksPending ? (
+          <p className="text-sm text-neutral-500">Answer or skip the check above to continue.</p>
+        ) : null}
       </section>
     );
   }

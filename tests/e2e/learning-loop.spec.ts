@@ -177,6 +177,8 @@ test('a final wrong practice answer reveals the worked solution', async ({ page 
   await expect(page.getByRole('heading', { name: 'Your starting point' })).toBeVisible();
   await page.getByRole('link', { name: 'View Today' }).click();
   await page.getByRole('button', { name: 'Start session' }).click();
+  await expect(page.getByRole('button', { name: 'Continue to practice' })).toBeDisabled();
+  await expect(page.getByText('Answer or skip the check above to continue.')).toBeVisible();
   await page.getByRole('button', { name: 'Skip this check' }).click();
   await page.getByRole('button', { name: 'Continue to practice' }).click();
   await page.getByLabel('Your answer').fill('0');
@@ -185,6 +187,33 @@ test('a final wrong practice answer reveals the worked solution', async ({ page 
   await page.getByLabel('Your answer').fill('1');
   await page.getByRole('button', { name: 'Submit answer' }).click();
   await expect(page.getByText('The magnitude is', { exact: false })).toBeVisible();
+});
+
+test('an answered lesson check still unlocks Continue after a reload', async ({ page }) => {
+  await page.route('**/api/**', (route) =>
+    route.continue({
+      headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
+    }),
+  );
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Start diagnostic' }).click();
+  for (let step = 0; step < 2; step += 1) {
+    const skip = page.waitForResponse(
+      (response) => response.url().includes('/skip') && response.request().method() === 'POST',
+    );
+    await page.getByRole('button', { name: 'I haven’t studied this domain' }).click();
+    await skip;
+  }
+  await expect(page.getByRole('heading', { name: 'Your starting point' })).toBeVisible();
+  await page.getByRole('link', { name: 'View Today' }).click();
+  await page.getByRole('button', { name: 'Start session' }).click();
+  await page.getByLabel('Your answer').fill('5');
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByRole('button', { name: 'Continue to practice' })).toBeEnabled();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Continue to practice' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Continue to practice' }).click();
+  await expect(page.getByRole('button', { name: 'Hint' })).toBeVisible();
 });
 
 test('lab uploads fixture results, records evidence, and reveals reflection', async ({ page }) => {
