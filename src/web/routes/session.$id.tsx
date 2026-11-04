@@ -11,6 +11,7 @@ import {
   ModeBadge,
 } from '../components';
 import { exerciseQueryOptions, lessonQueryOptions, sessionQueryOptions } from '../queries.js';
+import { RouteLoadError } from '../route-error.js';
 
 export const Route = createFileRoute('/session/$id')({
   loader: async ({ context, params }) => {
@@ -34,6 +35,9 @@ export const Route = createFileRoute('/session/$id')({
       ),
     );
   },
+  errorComponent: () => (
+    <RouteLoadError message="This session could not be resumed." className="text-sm text-red-700" />
+  ),
   component: SessionPage,
 });
 
@@ -75,6 +79,12 @@ function SessionPage() {
     (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
   );
   const exerciseQuery = useSuspenseQuery(exerciseQueryOptions(exerciseId ?? null));
+  const activityScrollKey = activity
+    ? `${activity.id}:${activity.progress?.lessonViewed ?? ''}`
+    : '';
+  useEffect(() => {
+    if (activityScrollKey) window.scrollTo({ top: 0 });
+  }, [activityScrollKey]);
   useEffect(() => {
     if (activity?.id && exerciseId) {
       setResult(null);
@@ -421,9 +431,11 @@ function InlineLessonCheck({
           ) : null}
         </>
       ) : null}
-      <button type="button" className="text-sm underline" onClick={onDone}>
-        Skip this check
-      </button>
+      {!result ? (
+        <button type="button" className="text-sm underline" onClick={onDone}>
+          Skip this check
+        </button>
+      ) : null}
     </div>
   );
 }

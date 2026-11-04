@@ -1,9 +1,11 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { progressQueryOptions } from '../queries.js';
+import { RouteLoadError } from '../route-error.js';
 
 export const Route = createFileRoute('/progress')({
   loader: ({ context }) => context.queryClient.ensureQueryData(progressQueryOptions()),
+  errorComponent: () => <RouteLoadError message="Progress is unavailable." role="alert" />,
   component: ProgressPage,
 });
 

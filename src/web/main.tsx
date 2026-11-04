@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { RouteLoadError } from './route-error.js';
 import { routeTree } from './routeTree.gen.js';
 import './styles.css';
 
@@ -12,6 +13,16 @@ function RoutePendingSkeleton() {
       <div className="h-9 w-56 rounded bg-neutral-200" />
       <div className="h-36 w-full rounded-xl bg-neutral-200" />
     </div>
+  );
+}
+
+function DefaultRouteError() {
+  return (
+    <RouteLoadError
+      message="This page couldn't load."
+      className="text-sm text-red-700"
+      role="alert"
+    />
   );
 }
 
@@ -30,6 +41,7 @@ const router = createRouter({
   defaultPendingMs: 400,
   defaultPendingMinMs: 300,
   defaultPendingComponent: RoutePendingSkeleton,
+  defaultErrorComponent: DefaultRouteError,
 });
 
 declare module '@tanstack/react-router' {

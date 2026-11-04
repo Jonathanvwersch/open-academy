@@ -107,18 +107,20 @@ export function ModeBadge({ mode }: { mode: 'practice' | 'assessment' | 'review'
 }
 
 export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
+  const title =
+    Number(result.correct) >= 1
+      ? 'Correct'
+      : Number(result.correct) > 0
+        ? 'Partly correct'
+        : 'Not quite';
+  const feedback =
+    typeof result.feedback === 'string' ? result.feedback.trim().replace(/\.$/, '') : '';
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-4" role="status">
-      <p className="font-medium">
-        {Number(result.correct) >= 1
-          ? 'Correct'
-          : Number(result.correct) > 0
-            ? 'Partly correct'
-            : 'Not quite'}
-      </p>
-      {typeof result.feedback === 'string' ? (
+      <p className="font-medium">{title}</p>
+      {feedback && feedback !== title ? (
         <div className="mt-1 text-sm text-neutral-600">
-          <Markdown>{result.feedback}</Markdown>
+          <Markdown>{feedback}</Markdown>
         </div>
       ) : null}
       {typeof result.solution === 'string' ? (

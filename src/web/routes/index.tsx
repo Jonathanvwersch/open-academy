@@ -1,9 +1,13 @@
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { todayQueryOptions } from '../queries.js';
+import { RouteLoadError } from '../route-error.js';
 
 export const Route = createFileRoute('/')({
   loader: ({ context }) => context.queryClient.ensureQueryData(todayQueryOptions()),
+  errorComponent: () => (
+    <RouteLoadError message="Your plan is unavailable." className="text-sm text-red-700" />
+  ),
   component: TodayPage,
 });
 

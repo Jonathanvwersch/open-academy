@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { diagnosticResultsQueryOptions, latestDiagnosticQueryOptions } from '../queries.js';
+import { RouteLoadError } from '../route-error.js';
 
 export const Route = createFileRoute('/diagnostic/results')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -21,6 +22,9 @@ export const Route = createFileRoute('/diagnostic/results')({
     await context.queryClient.ensureQueryData(diagnosticResultsQueryOptions(latest.id));
     return latest.id;
   },
+  errorComponent: () => (
+    <RouteLoadError message="Diagnostic results are unavailable." role="alert" />
+  ),
   component: DiagnosticResultsPage,
 });
 

@@ -29,6 +29,21 @@ test('diagnostic to hinted practice updates the map and schedules a review', asy
       headers: { ...route.request().headers(), 'x-now': now },
     }),
   );
+  let interceptInlineCheck = true;
+  await page.route('**/api/attempts', async (route) => {
+    if (interceptInlineCheck) {
+      interceptInlineCheck = false;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'correct', correct: 1, feedback: 'Correct.' }),
+      });
+      return;
+    }
+    await route.continue({
+      headers: { ...route.request().headers(), 'x-now': now },
+    });
+  });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Welcome to Academy' })).toBeVisible();
   await page.evaluate(async () => {
@@ -79,9 +94,20 @@ test('diagnostic to hinted practice updates the map and schedules a review', asy
     page.getByText('A vector is an ordered list of coordinates in a shared space.'),
   ).toBeVisible();
   await expect(page.getByText('Practice check: vectors-magnitude')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Skip this check' }).click();
-  await expect(page.getByRole('button', { name: 'Continue to practice' })).toBeVisible();
+  await page.getByLabel('Your answer').fill('5');
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByRole('button', { name: 'Skip this check' })).toHaveCount(0);
+  const lessonFeedback = page.getByRole('status').filter({ hasText: 'Correct' }).first();
+  await expect(lessonFeedback).toBeVisible();
+  await expect(lessonFeedback.getByText('Correct.', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Continue to practice' })).toBeEnabled();
+  await page.evaluate(() => {
+    document.body.style.minHeight = '200vh';
+    window.scrollTo({ top: 500 });
+  });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Continue to practice' }).click();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await expect(page.getByRole('button', { name: 'Hint' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('button', { name: 'Hint' })).toBeVisible();
@@ -184,6 +210,13 @@ test('progress displays mastery, goal progress, study time, and evidence section
   await expect(page.getByRole('heading', { name: 'Learning debt' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Study time' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Recent evidence' })).toBeVisible();
+});
+
+test('progress loader failure restores the unavailable message', async ({ page }) => {
+  await page.route('**/api/progress', (route) => route.abort());
+  await page.goto('/progress');
+  await expect(page.getByRole('alert')).toHaveText('Progress is unavailable.');
+  await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
 });
 
 test('route loaders keep content stable under 300ms latency', async ({ page }) => {

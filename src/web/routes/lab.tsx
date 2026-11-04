@@ -3,9 +3,11 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Markdown } from '../components.js';
 import { projectQueryOptions } from '../queries.js';
+import { RouteLoadError } from '../route-error.js';
 
 export const Route = createFileRoute('/lab')({
   loader: ({ context }) => context.queryClient.ensureQueryData(projectQueryOptions('linreg-numpy')),
+  errorComponent: () => <RouteLoadError message="Lab is unavailable." role="alert" />,
   component: LabPage,
 });
 
