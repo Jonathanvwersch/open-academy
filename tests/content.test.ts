@@ -57,7 +57,7 @@ test('client-safe exercise views omit keys, hints, and rubric weights', async ()
   expect(safeNumeric).not.toHaveProperty('hints');
   expect(safeChoice.options).toEqual([
     { id: 'euclidean-norm', text: 'Euclidean norm' },
-    { id: 'coordinate-count', text: 'Number of coordinates' },
+    { id: 'coordinate-count', text: 'A product like $32 \\times 10$' },
   ]);
   expect(safeExplain.rubric).toEqual([
     { id: 'local-rate', criterion: 'Names the local rate of change', required: true },

@@ -31,8 +31,29 @@ function stripPrivateFields(value: unknown, omitWeight = false): unknown {
   );
 }
 
-export function serializeExercise(exercise: IndexedExercise): Record<string, unknown> {
-  return stripPrivateFields(exercise) as Record<string, unknown>;
+export function serializeExercise(exercise: IndexedExercise, userId = ''): Record<string, unknown> {
+  const serialized = stripPrivateFields(exercise) as Record<string, unknown>;
+  const options = serialized.options;
+  if (Array.isArray(options)) {
+    serialized.options = [...options].sort(
+      (left, right) =>
+        seededOrder(userId, exercise.id, left) - seededOrder(userId, exercise.id, right),
+    );
+  }
+  return serialized;
+}
+
+function seededOrder(userId: string, exerciseId: string, option: unknown): number {
+  const id =
+    typeof option === 'object' && option !== null && 'id' in option
+      ? String(option.id)
+      : String(option);
+  const input = `${userId}:${exerciseId}:${id}`;
+  let hash = 2166136261;
+  for (const char of input) {
+    hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  }
+  return hash >>> 0;
 }
 
 export function serializeLesson(lesson: IndexedLesson): Record<string, unknown> {

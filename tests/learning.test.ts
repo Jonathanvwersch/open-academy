@@ -9,7 +9,13 @@ import {
   nextDiagnosticExercise,
   recordDiagnosticAnswer,
 } from '../src/server/learning/diagnostic.js';
-import { mapReviewRating, newReviewCard, scheduleReview } from '../src/server/learning/fsrs.js';
+import {
+  mapReviewRating,
+  newReviewCard,
+  scheduleInitialReview,
+  scheduleReview,
+} from '../src/server/learning/fsrs.js';
+import { countHintsSincePreviousAttempt } from '../src/server/learning/hints.js';
 import {
   calculateCredit,
   DefaultMasteryModel,
@@ -78,8 +84,8 @@ test('mastery introduces attempts, requires distinct independent items, and reta
     },
     now,
   );
-  expect(first.mastery.state).toBe('introduced');
-  expect(first.event?.rule).toBe('attempt_introduced');
+  expect(first.mastery.state).toBe('assisted');
+  expect(first.event?.rule).toBe('independent_correct_assisted');
   const second = model.applyAttempt(
     first.mastery,
     {
@@ -116,6 +122,67 @@ test('mastery introduces attempts, requires distinct independent items, and reta
   );
   expect(delayed.mastery.state).toBe('retained');
   expect(delayed.event?.rule).toBe('delayed_recall_retained');
+});
+
+test('a hinted correct answer also raises introduced mastery to assisted', () => {
+  const result = new DefaultMasteryModel().applyAttempt(
+    initialMastery('vectors', 'math'),
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      attemptId: 'hinted-1',
+      exerciseId: 'vectors-magnitude',
+      correct: 1,
+      hintsUsed: 1,
+      attemptNo: 1,
+      mode: 'practice',
+      itemRole: 'core',
+      gradedBy: 'deterministic',
+    },
+    now,
+  );
+
+  expect(result.mastery.state).toBe('assisted');
+});
+
+test('hint counts reset after the previous attempt and respect activity scope', () => {
+  const at = (minute: number) =>
+    new Date(`2026-01-14T12:${minute.toString().padStart(2, '0')}:00.000Z`);
+  const attempts = [
+    {
+      userId: 'learner',
+      exerciseId: 'item',
+      activityId: 'activity-1',
+      createdAt: at(1),
+    },
+    {
+      userId: 'learner',
+      exerciseId: 'item',
+      activityId: 'activity-2',
+      createdAt: at(4),
+    },
+  ];
+  const hints = [
+    { userId: 'learner', exerciseId: 'item', activityId: 'activity-1', createdAt: at(0) },
+    { userId: 'learner', exerciseId: 'item', activityId: 'activity-1', createdAt: at(2) },
+    { userId: 'learner', exerciseId: 'item', activityId: 'activity-2', createdAt: at(3) },
+    { userId: 'learner', exerciseId: 'item', activityId: 'activity-2', createdAt: at(5) },
+    { userId: 'other', exerciseId: 'item', activityId: 'activity-1', createdAt: at(6) },
+    { userId: 'learner', exerciseId: 'another-item', activityId: 'activity-1', createdAt: at(6) },
+  ];
+
+  expect(
+    countHintsSincePreviousAttempt({ userId: 'learner', exerciseId: 'item', attempts, hints }),
+  ).toBe(1);
+  expect(
+    countHintsSincePreviousAttempt({
+      userId: 'learner',
+      exerciseId: 'item',
+      activityId: 'activity-1',
+      attempts,
+      hints,
+    }),
+  ).toBe(1);
 });
 
 test('diagnostic success is provisional and hard prerequisites are inferred', () => {
@@ -200,20 +267,40 @@ test('FSRS rating mapping never assigns Easy and schedules a review card', () =>
   expect(result.card.due.getTime()).toBeGreaterThan(now.getTime());
 });
 
+test('a newly scheduled review is due no earlier than the next learner calendar day', () => {
+  const scheduled = scheduleInitialReview(newReviewCard(now), now, 'good', 'Europe/London', false);
+  const dateInZone = (date: Date) =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(date);
+
+  expect(scheduled.card.reps).toBeGreaterThan(0);
+  expect(scheduled.card.due.getTime()).toBeGreaterThan(now.getTime());
+  expect(dateInZone(scheduled.card.due)).not.toBe(dateInZone(now));
+});
+
 test('diagnostic ladders interleave domains and move up or down one rung', () => {
   const state = createDiagnosticState(content);
   const math = required(nextDiagnosticExercise(state, content), 'math diagnostic exercise');
-  expect(math.id).toBe('dx-derivatives');
+  expect(math.id).toBe('dx-vectors');
   const first = recordDiagnosticAnswer(state, math, true, content, now);
-  expect(first.state.domains.math?.position).toBe(2);
-  expect(first.inferredPrerequisiteIds).toEqual(['vectors']);
+  expect(first.state.domains.math?.position).toBe(1);
+  expect(first.inferredPrerequisiteIds).toEqual([]);
   const next = required(nextDiagnosticExercise(first.state, content), 'next diagnostic exercise');
   expect(next.id).toBe('dx-loss-functions');
   const second = recordDiagnosticAnswer(first.state, next, false, content, now);
   expect(second.state.domains.ml?.position).toBe(0);
-  const skipped = markDiagnosticUnassessed(second.state, 'math', now);
+  const skipped = markDiagnosticUnassessed(second.state, 'math', now, content);
   expect(skipped.domains.math?.status).toBe('unassessed');
   expect(diagnosticComplete(skipped)).toBe(false);
+});
+
+test('skipping a diagnostic domain advances in curriculum ladder order', () => {
+  const state = createDiagnosticState(content);
+  const reordered = {
+    ...state,
+    domains: Object.fromEntries(Object.entries(state.domains).reverse()),
+  };
+  const skipped = markDiagnosticUnassessed(reordered, 'math', now, content);
+  expect(nextDiagnosticExercise(skipped, content)?.id).toBe('dx-loss-functions');
 });
 
 test('learning debt derives implementation gaps, demotions, hints, and open flags', () => {
@@ -256,6 +343,78 @@ test('No-knowledge user gets foundational concepts', () => {
       (activity) => activity.kind === 'learn' && activity.conceptId === 'vectors',
     ),
   ).toBe(true);
+});
+
+test('learn duration uses the concept estimate', () => {
+  const concept = required(content.conceptsById.get('vectors'), 'vectors concept');
+  const plan = planSession(emptyState(), content, now, concept.est_minutes);
+  const learn = plan.activities.find(
+    (activity) => activity.kind === 'learn' && activity.conceptId === concept.id,
+  );
+
+  expect(learn?.plannedMinutes).toBe(concept.est_minutes);
+});
+
+test('weekday plans avoid duplicate concepts, cap activities, and never add empty fillers', () => {
+  const state = emptyState();
+  state.cards = [{ conceptId: 'vectors', dimension: 'math', dueAt: '2026-01-14T11:00:00.000Z' }];
+  state.mastery = [
+    {
+      ...initialMastery('vectors', 'math'),
+      state: 'independent',
+      provisional: true,
+    },
+  ];
+  const plan = planSession(state, content, now, 90);
+  const conceptIds = plan.activities
+    .map((activity) => activity.conceptId)
+    .filter((id): id is string => Boolean(id));
+
+  expect(new Set(conceptIds).size).toBe(conceptIds.length);
+  expect(plan.activities.length).toBeLessThanOrEqual(6);
+  expect(plan.activities.every((activity) => activity.exerciseIds.length > 0)).toBe(true);
+});
+
+test('quick checks are limited to diagnostic-provisional prerequisites of planned learn targets', () => {
+  const state = emptyState();
+  state.mastery = [
+    {
+      ...initialMastery('vectors', 'math'),
+      state: 'independent',
+      provisional: true,
+    },
+    {
+      ...initialMastery('linear-algebra', 'math'),
+      state: 'independent',
+      provisional: true,
+    },
+  ];
+  const plan = planSession(state, content, now, 60);
+  const learnIds = new Set(
+    plan.activities
+      .filter((activity) => activity.kind === 'learn')
+      .map((activity) => activity.conceptId)
+      .filter((id): id is string => typeof id === 'string'),
+  );
+  const prerequisites = new Set(
+    [...learnIds].flatMap(
+      (id) =>
+        content.conceptsById
+          .get(id)
+          ?.prereqs.filter((prerequisite) => prerequisite.strength === 'hard')
+          .map((prerequisite) => prerequisite.id) ?? [],
+    ),
+  );
+  const quickChecks = plan.activities.filter((activity) => activity.kind === 'quick_check');
+
+  expect(learnIds.has('derivatives')).toBe(true);
+  expect(quickChecks.length).toBeGreaterThan(0);
+  expect(
+    quickChecks.every(
+      (activity) => activity.conceptId !== undefined && prerequisites.has(activity.conceptId),
+    ),
+  ).toBe(true);
+  expect(quickChecks.some((activity) => activity.conceptId === 'linear-algebra')).toBe(false);
 });
 
 test('Knowledgeable user skips mastered prerequisites', () => {

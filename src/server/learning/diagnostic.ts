@@ -140,13 +140,15 @@ export function markDiagnosticUnassessed(
   state: DiagnosticRunState,
   domain: string,
   now: Date,
+  content: ContentIndex,
 ): DiagnosticRunState {
   const previous = state.domains[domain];
   if (previous?.status !== 'active') {
     return state;
   }
-  const ladders = Object.keys(state.domains);
-  const index = ladders.indexOf(domain);
+  const ladders = content.diagnostic?.domains ?? [];
+  const index = ladders.findIndex((entry) => entry.domain === domain);
+  if (index < 0) return state;
   return {
     ...state,
     cursor: ladders.length > 0 ? (index + 1) % ladders.length : 0,

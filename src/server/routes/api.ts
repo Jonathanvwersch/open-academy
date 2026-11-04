@@ -28,7 +28,13 @@ import {
   nextDiagnosticExercise,
   recordDiagnosticAnswer,
 } from '../learning/diagnostic.js';
-import { mapReviewRating, newReviewCard, scheduleReview } from '../learning/fsrs.js';
+import {
+  mapReviewRating,
+  newReviewCard,
+  scheduleInitialReview,
+  scheduleReview,
+} from '../learning/fsrs.js';
+import { countHintsSincePreviousAttempt } from '../learning/hints.js';
 import {
   calculateCredit,
   DefaultMasteryModel,
@@ -69,15 +75,27 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
     const plan = planSession(state, index, now, budget);
     const active = await repo.activeSession();
     const diagnostic = await repo.latestDiagnosticRun();
-    const due = state.cards.filter((card) => Date.parse(card.dueAt) <= now.getTime()).length;
+    const week = currentCurriculumWeek(state.startDate, now);
+    const weekFocus = index.curriculum?.weeks.find((entry) => entry.week === week);
     return context.json({
-      needsDiagnostic: !diagnostic && Boolean(index.diagnostic),
-      objective: prefs.goal ?? 'Build a steady foundation in machine learning.',
-      week: currentCurriculumWeek(state.startDate, now),
-      dueReviews: due,
+      needsDiagnostic: (!diagnostic || diagnostic.status === 'active') && Boolean(index.diagnostic),
+      diagnosticActive: diagnostic?.status === 'active',
+      diagnosticRunId: diagnostic?.status === 'active' ? diagnostic.id : null,
+      objective: weekFocus?.title ?? prefs.goal ?? 'Build a steady foundation in machine learning.',
+      weekTitle: weekFocus?.title ?? `Week ${week}`,
+      week,
+      dueReviews: plan.activities.filter((activity) => activity.kind === 'review').length,
       budgetMinutes: budget,
       activeSessionId: active?.id ?? null,
-      plan,
+      plan: {
+        ...plan,
+        activities: plan.activities.map((activity) => ({
+          ...activity,
+          conceptTitle: activity.conceptId
+            ? index.conceptsById.get(activity.conceptId)?.title
+            : undefined,
+        })),
+      },
     });
   });
 
@@ -169,17 +187,38 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
 
   api.get('/sessions/active', async (context) => {
     const session = await withRepo(context).activeSession();
+    const index = await content();
+    const fullSession = session ? await withRepo(context).session(session.id) : null;
     return context.json(
-      session
-        ? { ...(await withRepo(context).session(session.id)), serverNow: requestNow(context) }
+      fullSession
+        ? {
+            ...fullSession,
+            activities: fullSession.activities.map((activity) => ({
+              ...activity,
+              conceptTitle: activity.conceptId
+                ? index.conceptsById.get(activity.conceptId)?.title
+                : undefined,
+            })),
+            serverNow: requestNow(context),
+          }
         : null,
     );
   });
 
   api.get('/sessions/:id', async (context) => {
     const session = await withRepo(context).session(context.req.param('id'));
+    const index = await content();
     return session
-      ? context.json({ ...session, serverNow: requestNow(context) })
+      ? context.json({
+          ...session,
+          activities: session.activities.map((activity) => ({
+            ...activity,
+            conceptTitle: activity.conceptId
+              ? index.conceptsById.get(activity.conceptId)?.title
+              : undefined,
+          })),
+          serverNow: requestNow(context),
+        })
       : context.json({ error: 'Session not found' }, 404);
   });
 
@@ -311,7 +350,7 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
   api.get('/exercises/:id', async (context) => {
     const exercise = (await content()).exercisesById.get(context.req.param('id'));
     return exercise
-      ? context.json(serializeExercise(exercise))
+      ? context.json(serializeExercise(exercise, context.get('userId')))
       : context.json({ error: 'Exercise not found' }, 404);
   });
 
@@ -387,18 +426,13 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
         return context.json({ error: 'Hint mode does not match this activity.' }, 400);
       }
     }
-    const existing = await db
-      .select()
-      .from(hintEvents)
-      .where(
-        and(
-          eq(hintEvents.userId, context.get('userId')),
-          eq(hintEvents.exerciseId, exercise.id),
-          body.data.activityId ? eq(hintEvents.activityId, body.data.activityId) : sql`true`,
-        ),
-      )
-      .orderBy(desc(hintEvents.level));
-    const level = (existing[0]?.level ?? 0) + 1;
+    const hintsUsed = await hintsSincePreviousAttempt(
+      db,
+      context.get('userId'),
+      exercise.id,
+      body.data.activityId,
+    );
+    const level = hintsUsed + 1;
     if (level > 5) {
       return context.json({ error: 'The solution has already been revealed.' }, 409);
     }
@@ -412,6 +446,7 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
       exerciseId: exercise.id,
       level,
       text,
+      createdAt: requestNow(context),
     });
     return context.json({ level, text, revealedSolution: level === 5, hintEventId: event?.id });
   });
@@ -490,19 +525,12 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
     const now = requestNow(context);
     const attemptId = crypto.randomUUID();
     const gradedBy = result.graded_by ?? 'deterministic';
-    const hintsUsed = body.data.activityId
-      ? ((
-          await db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(hintEvents)
-            .where(
-              and(
-                eq(hintEvents.activityId, body.data.activityId),
-                eq(hintEvents.exerciseId, exercise.id),
-              ),
-            )
-        )[0]?.count ?? 0)
-      : 0;
+    const hintsUsed = await hintsSincePreviousAttempt(
+      db,
+      context.get('userId'),
+      exercise.id,
+      body.data.activityId,
+    );
     const credit = calculateCredit({
       correct: result.correct,
       hintsUsed,
@@ -586,7 +614,14 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
     const retryAllowed = body.data.mode === 'practice' && result.correct === 0 && attemptNo < 2;
     const revealSolution = body.data.mode === 'practice' && result.correct === 0 && attemptNo >= 2;
     if (activityRow && activity && (result.correct > 0 || !retryAllowed)) {
-      const progress = activity.progress as { completedExerciseIds?: string[] };
+      const progress = activity.progress as {
+        completedExerciseIds?: string[];
+        outcomes?: Record<string, 'correct' | 'incorrect'>;
+      };
+      const outcomes = {
+        ...(progress.outcomes ?? {}),
+        [exercise.id]: result.correct > 0 ? 'correct' : 'incorrect',
+      };
       const completedExerciseIds = [
         ...new Set([...(progress.completedExerciseIds ?? []), exercise.id]),
       ];
@@ -619,7 +654,7 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
         .update(sessionActivities)
         .set({
           exerciseIds,
-          progress: { ...progress, completedExerciseIds },
+          progress: { ...progress, completedExerciseIds, outcomes },
           status: completed ? 'completed' : 'in_progress',
           completedAt: completed ? now : null,
         })
@@ -644,7 +679,9 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
       credit,
       mastery: masteryResult,
       retryAllowed,
-      ...(revealSolution ? { solution: exercise.solution } : {}),
+      ...(result.correct === 0 && (body.data.mode !== 'practice' || revealSolution)
+        ? { solution: exercise.solution }
+        : {}),
     });
   });
 
@@ -687,7 +724,11 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
     return context.json({
       complete: false,
       domain: concept?.domain,
-      exercise: serializeExercise(exercise),
+      domainId: concept?.domain,
+      domainTitle:
+        (await content()).curriculum?.domains.find((entry) => entry.id === concept?.domain)
+          ?.title ?? concept?.domain,
+      exercise: serializeExercise(exercise, context.get('userId')),
     });
   });
 
@@ -703,10 +744,12 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
     if (!run) {
       return context.json({ error: 'Diagnostic not found' }, 404);
     }
+    const index = await content();
     const state = markDiagnosticUnassessed(
       run.state as never,
       body.data.domain,
       requestNow(context),
+      index,
     );
     const complete = diagnosticComplete(state as never);
     await db
@@ -817,6 +860,7 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
     }
     return context.json({
       ...result,
+      ...(result.correct === 0 ? { solution: exercise.solution } : {}),
       evidence: answer.evidence,
       complete: diagnosticComplete(nextState),
       attemptId: attempt.id,
@@ -824,19 +868,87 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
   });
 
   api.get('/diagnostic/:id/results', async (context) => {
-    const run = await withRepo(context).diagnosticRun(context.req.param('id'));
+    const repo = withRepo(context);
+    const run = await repo.diagnosticRun(context.req.param('id'));
+    const index = await content();
+    const now = requestNow(context);
+    const state = await repo.schedulerState(now);
+    const user = await repo.user();
+    const prefs = (user?.prefs ?? {}) as { scheduleMinutes?: number };
+    const firstSession = planSession(
+      state,
+      index,
+      now,
+      Math.max(5, Number(prefs.scheduleMinutes ?? 60)),
+    );
+    const runState = run?.state as
+      | {
+          domains?: Record<
+            string,
+            {
+              status: string;
+              answers: number;
+              correctConceptIds: string[];
+              gapConceptIds: string[];
+            }
+          >;
+        }
+      | undefined;
+    const curriculum = index.curriculum;
     return run
       ? context.json({
           ...run,
           state: run.state,
-          mastery: await withRepo(context).masteryRecords(),
+          mastery: await repo.masteryRecords(),
+          domains: (curriculum?.domains ?? []).map((domain) => {
+            const progress = runState?.domains?.[domain.id];
+            const concepts = index.concepts.filter((concept) => concept.domain === domain.id);
+            const titleFor = (id: string) => index.conceptsById.get(id)?.title ?? id;
+            return {
+              id: domain.id,
+              title: domain.title,
+              outcome: progress?.status === 'unassessed' ? 'unassessed' : 'assessed',
+              answers: progress?.answers ?? 0,
+              knownConcepts: [...new Set(progress?.correctConceptIds ?? [])].map(titleFor),
+              gaps: [...new Set(progress?.gapConceptIds ?? [])].map(titleFor),
+              conceptCount: concepts.length,
+            };
+          }),
+          plan: {
+            firstWeek: curriculum?.weeks.find((entry) => entry.week === 1) ?? null,
+            firstWeekConcepts:
+              curriculum?.weeks
+                .find((entry) => entry.week === 1)
+                ?.concepts.map((id) => index.conceptsById.get(id)?.title ?? id) ?? [],
+            firstSession: firstSession.activities.map((activity) => ({
+              ...activity,
+              conceptTitle: activity.conceptId
+                ? index.conceptsById.get(activity.conceptId)?.title
+                : undefined,
+            })),
+            ninetyDayPath: (curriculum?.weeks ?? [])
+              .slice(0, 13)
+              .map((entry) => ({ week: entry.week, title: entry.title })),
+          },
         })
       : context.json({ error: 'Diagnostic not found' }, 404);
   });
 
   api.get('/map', async (context) => {
     const index = await content();
-    const domain = context.req.query('domain');
+    const requestedDomain = context.req.query('domain');
+    const currentWeek = currentCurriculumWeek(
+      (await withRepo(context).user())?.startDate ?? new Date().toISOString(),
+      requestNow(context),
+    );
+    const currentWeekDomain =
+      index.curriculum?.weeks
+        .find((entry) => entry.week === currentWeek)
+        ?.concepts.map((id) => index.conceptsById.get(id)?.domain)
+        .find((value): value is string => Boolean(value)) ??
+      index.curriculum?.domains[0]?.id ??
+      '';
+    const domain = requestedDomain === 'all' ? '' : (requestedDomain ?? currentWeekDomain);
     const concepts = domain
       ? index.concepts.filter((concept) => concept.domain === domain)
       : index.concepts;
@@ -868,7 +980,8 @@ export function createApiRoutes(deps: { db: Database; content?: ContentIndex }) 
       edges: index.edges.filter((edge) =>
         concepts.some((concept) => concept.id === edge.conceptId),
       ),
-      domains: [...new Set(index.concepts.map((concept) => concept.domain))],
+      domains: (index.curriculum?.domains ?? []).map(({ id, title }) => ({ id, title })),
+      currentWeekDomain,
     });
   });
 
@@ -1032,7 +1145,14 @@ async function applyMastery(input: {
         hintsUsed: input.hintsUsed,
         attemptNo: input.attemptNo,
       });
-      const scheduled = scheduleReview(card, input.now, rating, process.env.NODE_ENV !== 'test');
+      const timezone = (await input.repo.user())?.timezone ?? 'UTC';
+      const scheduled = scheduleInitialReview(
+        card,
+        input.now,
+        rating,
+        timezone,
+        process.env.NODE_ENV !== 'test',
+      );
       await input.repo.db.insert(reviewCards).values({
         userId: input.userId,
         conceptId: input.exercise.concept,
@@ -1059,4 +1179,41 @@ function requestNow(context: { req: { header(name: string): string | undefined }
     }
   }
   return new Date();
+}
+
+async function hintsSincePreviousAttempt(
+  db: Database,
+  userId: string,
+  exerciseId: string,
+  activityId?: string,
+): Promise<number> {
+  const scope = activityId ? eq(attempts.activityId, activityId) : sql`true`;
+  const hintScope = activityId ? eq(hintEvents.activityId, activityId) : sql`true`;
+  const [attemptRows, hintRows] = await Promise.all([
+    db
+      .select({
+        userId: attempts.userId,
+        exerciseId: attempts.exerciseId,
+        activityId: attempts.activityId,
+        createdAt: attempts.createdAt,
+      })
+      .from(attempts)
+      .where(and(eq(attempts.userId, userId), eq(attempts.exerciseId, exerciseId), scope)),
+    db
+      .select({
+        userId: hintEvents.userId,
+        exerciseId: hintEvents.exerciseId,
+        activityId: hintEvents.activityId,
+        createdAt: hintEvents.createdAt,
+      })
+      .from(hintEvents)
+      .where(and(eq(hintEvents.userId, userId), eq(hintEvents.exerciseId, exerciseId), hintScope)),
+  ]);
+  return countHintsSincePreviousAttempt({
+    userId,
+    exerciseId,
+    activityId,
+    attempts: attemptRows,
+    hints: hintRows,
+  });
 }

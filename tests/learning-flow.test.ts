@@ -84,3 +84,30 @@ test('attempts update mastery and create a review card used by Today', async () 
     true,
   );
 });
+
+test('unscoped hints lower credit and restart after the previous attempt', async () => {
+  const exerciseId = 'linear-algebra-code-complete';
+  const hint = await app.request('/api/hints', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': '2026-01-02T12:00:00.000Z' },
+    body: JSON.stringify({ exerciseId }),
+  });
+  expect(hint.status).toBe(200);
+  expect((await hint.json()).text).toContain('operation that sums pairwise products');
+
+  const firstAttempt = await app.request('/api/attempts', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': '2026-01-02T12:01:00.000Z' },
+    body: JSON.stringify({ exerciseId, answer: '@', mode: 'practice' }),
+  });
+  expect(firstAttempt.status).toBe(200);
+  expect(await firstAttempt.json()).toMatchObject({ hintsUsed: 1, credit: 0.7 });
+
+  const nextHint = await app.request('/api/hints', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': '2026-01-02T12:02:00.000Z' },
+    body: JSON.stringify({ exerciseId }),
+  });
+  expect(nextHint.status).toBe(200);
+  expect(await nextHint.json()).toMatchObject({ level: 1 });
+});

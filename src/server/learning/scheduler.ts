@@ -17,7 +17,12 @@ export type ActivityKind =
 
 export const SCHEDULER_CONFIG = {
   weights: { goal: 1, week_fit: 1, project: 1, unlock: 1, gap: 1, review: 1, cost: 1 },
-  weekday: { reviewBudgetRatio: 0.25, remediationBudgetRatio: 0.3, maxNewConcepts: 2 },
+  weekday: {
+    reviewBudgetRatio: 0.25,
+    remediationBudgetRatio: 0.3,
+    maxNewConcepts: 2,
+    maxActivities: 6,
+  },
   repeatWindowDays: 7,
   consolidationMinutes: 5,
   saturdayReviewMinutes: 10,
@@ -161,6 +166,19 @@ function packWeekday(
   const candidates = generateCandidates(state, content, now);
   const selected: Candidate[] = [];
   let usedMinutes = 0;
+  const selectedConcepts = new Set<string>();
+  const canAdd = (candidate: Candidate, limit = budget) =>
+    selected.length < SCHEDULER_CONFIG.weekday.maxActivities &&
+    usedMinutes + candidate.adjustedMinutes <= limit &&
+    !usesSelectedExercise(candidate, selected) &&
+    (!candidate.activity.conceptId || !selectedConcepts.has(candidate.activity.conceptId));
+  const add = (candidate: Candidate, limit = budget) => {
+    if (!canAdd(candidate, limit)) return false;
+    selected.push(candidate);
+    usedMinutes += candidate.adjustedMinutes;
+    if (candidate.activity.conceptId) selectedConcepts.add(candidate.activity.conceptId);
+    return true;
+  };
   const reviewCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'review')
     .sort((left, right) => right.score - left.score);
@@ -168,26 +186,14 @@ function packWeekday(
   const reviewLimit =
     reviewCandidates.length > 0 ? Math.max(reviewCap, Math.min(budget, 1)) : reviewCap;
   for (const candidate of reviewCandidates) {
-    if (
-      usedMinutes + candidate.adjustedMinutes <= reviewLimit &&
-      !usesSelectedExercise(candidate, selected)
-    ) {
-      selected.push(candidate);
-      usedMinutes += candidate.adjustedMinutes;
-    }
+    add(candidate, reviewLimit);
   }
   if (
     reviewCandidates.length > 0 &&
     !selected.some((candidate) => candidate.activity.kind === 'review')
   ) {
-    const first = reviewCandidates.find(
-      (candidate) =>
-        candidate.adjustedMinutes <= budget && !usesSelectedExercise(candidate, selected),
-    );
-    if (first) {
-      selected.push(first);
-      usedMinutes += first.adjustedMinutes;
-    }
+    const first = reviewCandidates.find((candidate) => canAdd(candidate));
+    if (first) add(first);
   }
   const remediationCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'remediate')
@@ -195,105 +201,91 @@ function packWeekday(
   const remediationCap = Math.floor(budget * SCHEDULER_CONFIG.weekday.remediationBudgetRatio);
   let remediationMinutes = 0;
   for (const candidate of remediationCandidates) {
-    if (
-      usedMinutes + candidate.adjustedMinutes <= budget &&
-      remediationMinutes + candidate.adjustedMinutes <= remediationCap &&
-      !usesSelectedExercise(candidate, selected)
-    ) {
-      selected.push(candidate);
-      usedMinutes += candidate.adjustedMinutes;
-      remediationMinutes += candidate.adjustedMinutes;
+    if (remediationMinutes + candidate.adjustedMinutes <= remediationCap && canAdd(candidate)) {
+      if (add(candidate)) remediationMinutes += candidate.adjustedMinutes;
     }
   }
 
-  const remaining = candidates
-    .filter((candidate) => !selected.includes(candidate))
+  const learnCandidates = candidates
+    .filter((candidate) => candidate.activity.kind === 'learn')
     .sort((left, right) => {
-      if (left.activity.conceptId === state.inProgressConceptId) {
-        return -1;
-      }
-      if (right.activity.conceptId === state.inProgressConceptId) {
-        return 1;
-      }
+      if (left.activity.conceptId === state.inProgressConceptId) return -1;
+      if (right.activity.conceptId === state.inProgressConceptId) return 1;
       return right.score - left.score;
     });
   let newConceptCount = 0;
-  let mainConceptId =
-    state.inProgressConceptId &&
-    content.conceptsById.get(state.inProgressConceptId)?.status !== 'stub'
-      ? state.inProgressConceptId
-      : undefined;
-  for (const candidate of remaining) {
-    if (candidate.newConcept && newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) {
-      continue;
-    }
-    if (
-      usedMinutes + candidate.adjustedMinutes > budget ||
-      usesSelectedExercise(candidate, selected)
-    ) {
-      continue;
-    }
-    selected.push(candidate);
-    usedMinutes += candidate.adjustedMinutes;
-    if (candidate.newConcept) {
-      newConceptCount += 1;
-    }
-    mainConceptId ??= candidate.activity.conceptId;
+  for (const candidate of learnCandidates) {
+    if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
+    if (add(candidate)) newConceptCount += 1;
   }
 
-  const mainConcept = mainConceptId ? content.conceptsById.get(mainConceptId) : undefined;
-  const remainingMinutes = Math.max(0, budget - usedMinutes);
-  if (remainingMinutes >= SCHEDULER_CONFIG.consolidationMinutes) {
-    const selectedExerciseIds = new Set([
-      ...(state.usedExerciseIds ?? []),
-      ...selected.flatMap((candidate) => candidate.activity.exerciseIds),
-    ]);
-    const teachbackExercise = [
-      ...(mainConcept ? (content.exercisesByConcept.get(mainConcept.id) ?? []) : []),
-      ...content.exercises,
-    ].find((exercise) => exercise.type === 'explain' && !selectedExerciseIds.has(exercise.id));
-    selected.push({
-      activity: staticCandidate(
-        'teachback',
-        teachbackExercise?.concept,
-        teachbackExercise ? [teachbackExercise.id] : [],
-        5,
-        'Five-minute consolidation.',
-      ),
-      score: 0,
-      adjustedMinutes: 5,
-      newConcept: false,
-    });
-    usedMinutes += 5;
+  const learnTargets = new Set(
+    selected
+      .filter((candidate) => candidate.activity.kind === 'learn')
+      .map((candidate) => candidate.activity.conceptId)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const prerequisiteIds = new Set(
+    [...learnTargets].flatMap(
+      (id) =>
+        content.conceptsById
+          .get(id)
+          ?.prereqs.filter((prerequisite) => prerequisite.strength === 'hard')
+          .map((prerequisite) => prerequisite.id) ?? [],
+    ),
+  );
+  for (const candidate of candidates
+    .filter(
+      (entry) =>
+        entry.activity.kind === 'quick_check' &&
+        Boolean(entry.activity.conceptId && prerequisiteIds.has(entry.activity.conceptId)),
+    )
+    .sort((left, right) => right.score - left.score)) {
+    add(candidate);
   }
-  const leftover = budget - usedMinutes;
-  if (leftover > 0 && mainConcept) {
+
+  const otherCandidates = candidates
+    .filter(
+      (candidate) =>
+        !['review', 'remediate', 'learn', 'quick_check'].includes(candidate.activity.kind),
+    )
+    .sort((left, right) => right.score - left.score);
+  for (const candidate of otherCandidates) add(candidate);
+
+  const practiceTarget =
+    selected.find((candidate) => candidate.activity.kind === 'learn') ??
+    selected.find((candidate) => candidate.activity.kind === 'practice');
+  const targetConcept = practiceTarget?.activity.conceptId
+    ? content.conceptsById.get(practiceTarget.activity.conceptId)
+    : undefined;
+  const ratio = Math.min(2, Math.max(0.5, state.actualEstimateRatio ?? 1));
+  while (practiceTarget && targetConcept) {
     const exercise = chooseExercise(
       {
         ...state,
         usedExerciseIds: [
           ...(state.usedExerciseIds ?? []),
+          ...state.recentAttempts
+            .filter(
+              (attempt) => daysSince(attempt.createdAt, now) < SCHEDULER_CONFIG.repeatWindowDays,
+            )
+            .map((attempt) => attempt.exerciseId),
           ...selected.flatMap((candidate) => candidate.activity.exerciseIds),
         ],
       },
       content,
-      mainConcept,
+      targetConcept,
       undefined,
       ['core', 'check'],
       now,
     );
-    selected.push({
-      activity: staticCandidate(
-        'practice',
-        mainConcept.id,
-        exercise ? [exercise.id] : [],
-        leftover,
-        'Use remaining time to practice the session’s main concept.',
-      ),
-      score: 0,
-      adjustedMinutes: leftover,
-      newConcept: false,
-    });
+    if (!exercise) break;
+    const minutes = Math.max(1, Math.ceil(exercise.est_minutes * ratio));
+    if (usedMinutes + minutes > budget) break;
+    practiceTarget.activity.exerciseIds.push(exercise.id);
+    practiceTarget.activity.plannedMinutes += minutes;
+    practiceTarget.adjustedMinutes += minutes;
+    usedMinutes += minutes;
   }
   return toPlan(selected);
 }
@@ -378,11 +370,7 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
       }
     }
 
-    if (
-      conceptRecords.some(
-        (record) => record.inferred || (record.provisional && record.state === 'independent'),
-      )
-    ) {
+    if (conceptRecords.some((record) => record.provisional && record.state === 'independent')) {
       const dimension = concept.dimensions.find((candidate) => {
         const record = masteryByKey.get(masteryKey(concept.id, candidate));
         return record?.inferred || record?.provisional;
@@ -502,7 +490,7 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
   }
 
   for (const card of state.cards) {
-    if (Date.parse(card.dueAt) > endOfDay(now).getTime()) {
+    if (Date.parse(card.dueAt) > now.getTime()) {
       continue;
     }
     const concept = content.conceptsById.get(card.conceptId);
@@ -571,9 +559,11 @@ function makeCandidate(
 ): Candidate {
   const ratio = Math.min(2, Math.max(0.5, state.actualEstimateRatio ?? 1));
   const baseMinutes =
-    exercises.length > 0
-      ? exercises.reduce((sum, exercise) => sum + exercise.est_minutes, 0)
-      : concept.est_minutes;
+    kind === 'learn'
+      ? concept.est_minutes
+      : exercises.length > 0
+        ? exercises.reduce((sum, exercise) => sum + exercise.est_minutes, 0)
+        : concept.est_minutes;
   const adjustedMinutes = Math.max(1, Math.ceil(baseMinutes * ratio));
   const terms = noTerms();
   terms.goal = concept.goal_weight;
@@ -873,12 +863,6 @@ function lastSeen(exerciseId: string, state: SchedulerState): number {
 
 function daysSince(iso: string, now: Date): number {
   return (now.getTime() - Date.parse(iso)) / 86_400_000;
-}
-
-function endOfDay(now: Date): Date {
-  const result = new Date(now);
-  result.setUTCHours(23, 59, 59, 999);
-  return result;
 }
 
 function masteryKey(conceptId: string, dimension: string): string {

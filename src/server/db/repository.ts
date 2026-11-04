@@ -216,6 +216,7 @@ export class LearnerRepository {
     exerciseId: string;
     level: number;
     text: string;
+    createdAt: Date;
   }) {
     return this.db
       .insert(hintEvents)
@@ -226,6 +227,7 @@ export class LearnerRepository {
         level: input.level,
         source: 'authored',
         text: input.text,
+        createdAt: input.createdAt,
       })
       .returning();
   }

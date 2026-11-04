@@ -103,8 +103,10 @@ export class DefaultMasteryModel implements MasteryModel {
           state = 'retained';
           rule = 'delayed_recall_retained';
         }
-      } else if (rule === undefined) {
-        rule = 'attempt_introduced';
+      } else if (masteryRank(state) < masteryRank('assisted')) {
+        state = 'assisted';
+        provisional = false;
+        rule = 'independent_correct_assisted';
       }
     } else if (independent && input.correct === 0) {
       lastIndependentCorrect = false;
