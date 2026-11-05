@@ -6,15 +6,15 @@ exercises:
     role: check
     difficulty: 1
     est_minutes: 1
-    prompt: "You train a model to predict tomorrow's electricity demand (in MW) from today's temperature, the day of week and today's demand. What is the **target**?"
+    prompt: "An electricity supplier must plan how much power to provide tomorrow. Today its customers use 500 megawatts, a unit of power. It trains a model to predict tomorrow's demand from today's demand, temperature and day of the week. What is the **target**?"
     options:
-      - { id: a, text: "Tomorrow's demand in MW", correct: true }
+      - { id: a, text: "Tomorrow's demand in megawatts", correct: true }
       - {
           id: b,
           text: "Today's temperature",
           correct: false,
           category: misunderstood_definition,
-          feedback: "That is an input feature.",
+          feedback: "That is an input: information available before making the prediction.",
         }
       - {
           id: c,
@@ -31,7 +31,7 @@ exercises:
     role: diagnostic
     difficulty: 1
     est_minutes: 1
-    prompt: "A robot learns to imitate a human: it records camera images and the joint commands the human teleoperator sent, then trains a network to output the commands from the images. In supervised-learning terms, what are the joint commands?"
+    prompt: "A human controls a robot arm and records 100 camera images together with the movement commands sent to the arm. A model learns to predict those commands from each image so that the robot can repeat the task. In supervised learning, what are the recorded movement commands?"
     options:
       - { id: a, text: "The targets (labels)", correct: true }
       - { id: b, text: "The inputs", correct: false, category: misunderstood_definition }
@@ -40,10 +40,10 @@ exercises:
           text: "The reward",
           correct: false,
           category: misunderstood_definition,
-          feedback: "There is no reward here. This is supervised learning (behavioral cloning), not RL.",
+          feedback: "The examples provide the actions to copy, not scores for how well the robot performed. The recorded actions are targets.",
         }
       - { id: d, text: "The model parameters", correct: false, category: misunderstood_definition }
-    solution: "Images are the inputs; the expert's joint commands are the targets."
+    solution: "The camera images are the inputs. The human's recorded movement commands are the targets that the model learns to predict."
   - id: sl-classify-vs-regress
     dimension: conceptual
     type: mc
@@ -56,10 +56,10 @@ exercises:
       - { id: a, text: "Deciding whether an email is spam", correct: true }
       - {
           id: b,
-          text: "Predicting a gripper's next x-position in metres",
+          text: "Predicting how far a robot gripper moves to the right, in metres",
           correct: false,
           category: misunderstood_definition,
-          feedback: "A continuous target makes this regression.",
+          feedback: "The target is a measured distance rather than a category, so this is regression.",
         }
       - { id: c, text: "Choosing which of 10 objects is in an image", correct: true }
       - {
@@ -68,14 +68,14 @@ exercises:
           correct: false,
           category: misunderstood_definition,
         }
-    solution: "Spam and object identity are categorical (classification); position and battery life are real-valued (regression)."
+    solution: "Spam status and object identity are category labels, so predicting them is classification. Position and battery life are numerical measurements, so predicting them is regression."
   - id: sl-review-ingredients
     dimension: conceptual
     type: mc
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "What does training choose in supervised learning?"
+    prompt: "A house-price model has average squared loss 200 with one set of settings and 2300 with another, on the same past sales. What does training choose in supervised learning?"
     options:
       - {
           id: a,
@@ -95,14 +95,14 @@ exercises:
           category: misunderstood_definition,
           feedback: "The loss is chosen by the engineer, not learned.",
         }
-    solution: "Training finds $\\theta$ minimising $\\frac1n\\sum L(f_\\theta(x_i), y_i)$."
+    solution: "Training chooses the adjustable model settings that make the average loss on the known examples as small as possible. Here the settings with average loss 200 fit the sales better than those with loss 2300."
   - id: sl-explain-setup
     dimension: conceptual
     type: explain
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Pick any real problem you care about (robotics is fine) and describe it as a supervised-learning problem: name the inputs, targets, a model family, a loss and where the data would come from."
+    prompt: "A delivery company has records of 5,000 journeys and wants to tell customers how many minutes a delivery will take. Describe this, or another real problem you care about, as a supervised-learning problem. Name the inputs, the targets, a possible prediction rule, a loss measure and where the training examples would come from."
     rubric:
       - {
           id: r1,
@@ -117,7 +117,7 @@ exercises:
           required: true,
         }
       - { id: r3, criterion: "Names a plausible model family and data source", weight: 1 }
-    exemplar: "Predict delivery time in minutes from distance and time of day. Inputs: distance and time of day; target: delivery time. Model: a line that combines the two inputs. Loss: squared error. Data: 5,000 past deliveries."
+    exemplar: "A delivery company wants to tell customers how many minutes their orders will take. It has records of 5,000 deliveries. The inputs are distance and time of day, and the target is the recorded delivery time. A model multiplies each input by an adjustable setting and adds the results to predict minutes. Squared error measures how far each predicted time is from the recorded time. The past delivery records provide the training data."
   - id: slp-predict
     dimension: math
     type: numeric
@@ -141,28 +141,42 @@ exercises:
           category: math_error,
           feedback: "Include the bedroom term too: $w_2\\cdot\\text{bedrooms}$.",
         }
-  - id: slp-predict-variant
-    dimension: math
-    type: numeric
+  - id: slp-why-targets
+    dimension: conceptual
+    type: mc
     role: practice
     difficulty: 1
-    est_minutes: 2
-    prompt: "A simple model predicts $w\\cdot x+b$. For $x={{=x}}$, $w={{=w}}$, and $b={{=b}}$, what is the prediction?"
-    hints: ["Multiply $w$ by $x$, then add $b$."]
-    solution: "$w\\cdot x+b = {{=w}}\\cdot{{=x}}+{{=b}}={{=w * x + b}}$."
-    answer_expr: "w * x + b"
-    params:
-      w: { min: 1, max: 8 }
-      x: { min: 2, max: 9 }
-      b: { min: 0, max: 20, step: 5 }
-    tolerance: { abs: 0.000001 }
+    est_minutes: 1
+    prompt: "We collect 100 past house sales, recording each house's size, bedroom count and sale price. Why do we need the known prices as well as the house details to train this supervised model?"
+    options:
+      - {
+          id: a,
+          text: "They let us measure prediction mistakes and compare parameter settings",
+          correct: true,
+        }
+      - id: b
+        text: "The model needs the true sale price as an input when pricing a new house"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The sale price is the answer to predict, not an input available for a new house."
+      - id: c
+        text: "Each known price is one of the model's adjustable parameters"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Prices are targets in the data. The adjustable parameters are the model's weights and bias."
+      - id: d
+        text: "Targets can be replaced by the model's own guesses without changing how we judge it"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Comparing guesses with themselves gives no evidence of whether they match actual sales."
+    solution: "Known targets supply the answers against which predictions are checked. Without them, this setup cannot tell which settings fit the observed sales better."
   - id: slp-input-target
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A shop predicts tomorrow's number of orders from today's temperature and whether it is a weekday. What is the target?"
+    prompt: "A shop received 50 orders today and needs to plan tomorrow's staffing. A model predicts tomorrow's number of orders from today's temperature and whether it is a weekday. What is the target?"
     options:
       - { id: a, text: "Tomorrow's number of orders", correct: true }
       - { id: b, text: "Today's temperature", correct: false, category: misunderstood_definition }
@@ -185,7 +199,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "In the house-price model $\\hat y=w_1\\cdot\\text{size}+w_2\\cdot\\text{bedrooms}+b$, what does $\\theta$ stand for?"
+    prompt: "A model estimates the price of a 100 m², two-bedroom house using $\\hat y=w_1\\cdot\\text{size}+w_2\\cdot\\text{bedrooms}+b$. What does $\\theta$ stand for?"
     options:
       - { id: a, text: "The adjustable settings $w_1$, $w_2$ and $b$", correct: true }
       - {
@@ -253,30 +267,91 @@ exercises:
         }
       - {
           id: b,
-          text: "Squared errors always have the same size",
+          text: "Squaring keeps the sign, so overestimates still cancel underestimates",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Both positive and negative errors have non-negative squares, so their squared contributions cannot cancel.",
         }
       - {
           id: c,
-          text: "Signed errors cannot be added",
+          text: "A zero average signed error means every prediction is correct",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Errors of +10 and −10 average to zero even though both predictions are wrong.",
         }
       - {
           id: d,
-          text: "Squaring makes the model use fewer inputs",
+          text: "Averaging signed errors already measures the typical size of a miss",
           correct: false,
           category: misunderstood_definition,
+          feedback: "A signed average measures the balance of overestimates and underestimates, not their sizes.",
         }
     solution: "A prediction that is too high has a positive error and one that is too low has a negative error. Their signed sum can be zero by cancellation. Squaring makes each contribution non-negative."
+  - id: slp-why-square-not-absolute
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A pricing mistake of 20 thousand pounds can be much more damaging than one of 10 thousand. Why choose squared rather than absolute errors if we want the larger mistake to count more than twice as much?"
+    options:
+      - {
+          id: a,
+          text: "Doubling the error multiplies its squared loss by four, but only doubles its absolute loss",
+          correct: true,
+        }
+      - id: b
+        text: "Absolute errors let positive and negative misses cancel"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Absolute errors are non-negative too. Both choices stop cancellation."
+      - id: c
+        text: "Squaring makes large misses count less than small ones"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "An error of 20 contributes 400, while an error of 10 contributes 100. The larger error therefore counts four times as much."
+      - id: d
+        text: "Squared error is always the right loss, regardless of the task"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The choice depends on which mistakes matter. Here we want a very large pricing error to count much more heavily than a small one, which squaring achieves."
+    solution: "For errors of 10 and 20, absolute losses are 10 and 20, while squared losses are 100 and 400. The larger mistake is twice as large, but contributes four times as much squared loss."
+  - id: slp-why-average
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "The house-price model has total squared error 600 on three sales. Why divide by three to report average loss 200 rather than report only the total?"
+    options:
+      - {
+          id: a,
+          text: "The average measures loss per house, so repeating the same dataset does not inflate it",
+          correct: true,
+        }
+      - id: b
+        text: "Dividing guarantees zero loss on new houses"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Division changes the scale of the reported loss, not the predictions on new houses."
+      - id: c
+        text: "Averaging removes the largest mistakes from the calculation"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Every squared error remains in the sum before division; large mistakes still contribute."
+      - id: d
+        text: "On the same dataset, averaging selects different best settings from summing"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Every setting's total is divided by the same positive number, so their ordering stays the same."
+    solution: "Repeating all three sales doubles both the total squared error and the number of houses. The average stays 200 for Setting A: it measures loss per house, not dataset size."
   - id: slp-average-mse
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "For three houses, the prediction/target pairs are ${{=p1}}/{{=y1}}$, ${{=p2}}/{{=y2}}$, and ${{=p3}}/{{=y3}}$ thousand. What is the mean squared error?"
+    prompt: "A house-price model predicts {{=p1}} thousand for a house that sold for {{=y1}} thousand, {{=p2}} thousand for one that sold for {{=y2}} thousand, and {{=p3}} thousand for one that sold for {{=y3}} thousand. What is its mean squared error across the three houses?"
     hints: ["Square each prediction error, add the three results, and divide by 3."]
     solution: "The squared errors are $({{=p1-y1}})^2={{=(p1-y1)^2}}$, $({{=p2-y2}})^2={{=(p2-y2)^2}}$, and $({{=p3-y3}})^2={{=(p3-y3)^2}}$. Their sum is ${{=(p1-y1)^2+(p2-y2)^2+(p3-y3)^2}}$. Divide by 3: ${{=(p1-y1)^2+(p2-y2)^2+(p3-y3)^2}}\\div3={{=((p1-y1)^2+(p2-y2)^2+(p3-y3)^2)/3}}$."
     answer_expr: "((p1-y1)^2 + (p2-y2)^2 + (p3-y3)^2) / 3"
@@ -295,7 +370,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A prediction is 7 and the target is 5. What is the squared error, (prediction − target)²?"
+    prompt: "A house-price model predicts 7 hundred thousand pounds for a house that sold for 5 hundred thousand. Using the numbers 7 and 5, what is the squared error, (prediction − target)²?"
     answer: 4
     tolerance: { abs: 0.000001 }
     solution: "The error is 7 − 5 = 2. Squaring it gives 2² = 4."
@@ -305,7 +380,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "What does $\\arg\\min_\\theta$ mean in the training formula?"
+    prompt: "We compare settings for a house-price model by their average squared error on past sales. In the training formula, what does $\\arg\\min_\\theta$ ask us to find?"
     options:
       - {
           id: a,
@@ -330,7 +405,7 @@ exercises:
           correct: false,
           category: misunderstood_definition,
         }
-    solution: "$\\arg\\min_\\theta$ names the parameter setting that minimises the average loss that follows it."
+    solution: "$\\arg\\min_\\theta$ asks for the adjustable settings that make the following average loss as small as possible. It names the settings, not the size of the loss."
   - id: slp-best-setting
     dimension: conceptual
     type: mc
@@ -360,7 +435,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "Why test a house-price model on sales it did not train on?"
+    prompt: "We choose a house-price model's settings using 100 past sales. Why test it on 20 other sales that did not help choose those settings?"
     options:
       - {
           id: a,
@@ -369,21 +444,24 @@ exercises:
         }
       - {
           id: b,
-          text: "To make its training loss larger",
+          text: "Because a small training loss guarantees a small loss on new sales",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Fitting known answers does not guarantee good predictions for houses the model has not seen.",
         }
       - {
           id: c,
-          text: "To change the target from a price to a category",
+          text: "Because testing on the training sales gives an independent check",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Those sale prices already helped choose the model's settings. Using different sales checks whether it can predict answers that did not help choose those settings.",
         }
       - {
           id: d,
-          text: "To guarantee every prediction is exact",
+          text: "Because the test sale prices should also be used to adjust the settings before measuring their loss",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Then those answers would also influence the model, defeating the purpose of testing on unused sales.",
         }
     solution: "The aim is to price houses the model has not seen. A model can fit past sales well but still predict new houses badly."
   - id: slp-regression-classification
@@ -420,7 +498,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A travel app predicts how many minutes a journey will take. Is this regression or classification?"
+    prompt: "A travel app predicts that a journey will take 25 minutes so you can decide when to leave. Is predicting the number of minutes regression or classification?"
     options:
       - { id: a, text: "Regression, because the target is a number", correct: true }
       - {
@@ -448,7 +526,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A delivery service predicts whether a parcel will arrive today or tomorrow. What kind of task is this?"
+    prompt: "A delivery service chooses between two labels, today and tomorrow, to tell a customer when a parcel will arrive. What kind of prediction task is this?"
     options:
       - { id: a, text: "Classification, because the target is a category", correct: true }
       - {
@@ -476,7 +554,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A model has a small average loss on the houses used to train it. Why does that alone not show that it is good?"
+    prompt: "A model has average loss 1 on the 100 houses used to choose its settings. A family wants to price a different house. Why does the small training loss alone not show that the model will help them?"
     options:
       - { id: a, text: "It may still predict poorly for houses it has not seen", correct: true }
       - {
