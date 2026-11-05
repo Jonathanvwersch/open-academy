@@ -8,13 +8,15 @@ knowledge_points:
   - id: pd-hold-fixed
     title: Change one input, hold the rest fixed
     explain: |
-      **How much does extra space add to a house's price?** Comparing a larger, younger house mixes two effects. An estate agent's formula uses size $s$, in tens of square metres, and age $a$, in years. The estimated price, in thousands of pounds, is
+      An estate agent prices houses using size $s$, in tens of square metres, and age $a$, in years. The estimated price, in thousands of pounds, is
 
       $$P(s, a) = 30s - 2a - 0.1\,s\,a$$
 
-      A 100 m² house ($s = 10$) that is 20 years old is priced at $P(10, 20) = 300 - 40 - 20 = 240$, so £240k.
+      A 100 m² house ($s = 10$) aged 20 is priced at $P(10, 20) = 300 - 40 - 20 = 240$, so £240k. **How much does extra space add?** One derivative won't do, because the price depends on two inputs.
 
-      Freeze the age at 20 and treat it as an ordinary number. This works because fixing age leaves a one-input price curve, whose slope measures size's effect alone. Why this way? Moving both inputs would no longer isolate extra space.
+      So freeze the age at 20 and differentiate in size alone. Comparing a larger, younger house instead would mix the effects of size and age.
+
+      This works because you are walking along one row of the grid below. Along that row, price depends on size alone, so its slope measures size's effect.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="A grid of houses by size and age. From the house at size 10 and age 20, a green arrow moves right along the size axis with age fixed, labelled partial P by partial s. An amber arrow moves up along the age axis with size fixed, labelled partial P by partial a.">
@@ -68,15 +70,17 @@ knowledge_points:
   - id: pd-compute
     title: Computing partials with the derivative rules
     explain: |
-      **How can we find a partial at every point?** Substituting numbers first means repeating the calculation for each house. Instead, keep frozen inputs as letters treated as constants. This works because a fixed letter cannot change when the chosen input moves. Why this way? Letters preserve a reusable formula.
+      **How can we find a partial at every point?** You could plug in numbers for each house, but you'd redo the work each time. Instead, keep frozen inputs as letters and treat them like constants such as 5.
+
+      This works because a frozen letter stays unchanged as the chosen input moves, just as a fixed number would.
 
       All the derivative rules still apply. For $\frac{\partial}{\partial x}$, read "the partial derivative with respect to $x$ of":
 
-      - Terms without $x$, such as $3y$ or $e^y$, contribute 0.
-      - Frozen multipliers stay in front: $\frac{\partial}{\partial x}\,(x^2 y) = 2xy$.
-      - Sums split into terms; products of two $x$-dependent parts need the product rule.
+      - A term without $x$, such as $3y$ or $e^y$, is constant and contributes 0.
+      - A letter multiplying an $x$ term stays in front, like a constant multiple: $\frac{\partial}{\partial x}\,(x^2 y) = 2xy$.
+      - Sums split into terms; two factors containing $x$ need the product rule.
 
-      Repeat for each input, freezing the rest.
+      Repeat for each other input, freezing the rest.
     worked: |
       This example shows both partial derivatives of one function, computed term by term.
 
@@ -107,18 +111,20 @@ knowledge_points:
   - id: pd-many-inputs
     title: A squared gap with many inputs
     explain: |
-      **Which dial should you turn to improve a house-price guess?** Changing both together hides each dial's effect. A guess for size $x$ is $wx + b$, where $w$ and $b$ are adjustable dials. The house sold for $y$, giving the squared gap
+      A house of size $x$ has a price guess $wx + b$, where $w$ and $b$ are two dials you can turn. It sold for $y$, giving the squared gap
 
       $$f(w, b) = (wx + b - y)^2$$
 
-      Why square rather than keep the signed gap? Squaring makes overestimates and underestimates both positive errors. The house's $x$ and $y$ are fixed facts; only $w$ and $b$ are inputs we adjust.
+      **Which way should you turn each dial to shrink the gap?** Trying both together hides which dial helped. Instead, take one partial per dial, keeping the house's $x$ and $y$ fixed.
 
-      Write $g = wx + b - y$, so $f = g \cdot g$. This works because a nudge changes both copies of $g$: the product rule adds their effects, giving $2g\,g'$, with the prime meaning the derivative in the chosen input:
+      Write $g = wx + b - y$, so $f = g \cdot g$. The product rule gives $g'g + gg' = 2g\,g'$, where the prime means differentiation in the chosen input.
+
+      This works because a nudge changes both copies of the gap: each contributes its change times the other copy's value. Thus:
 
       - $\frac{\partial g}{\partial w} = x$, so $\frac{\partial f}{\partial w} = 2(wx + b - y)\,x$.
       - $\frac{\partial g}{\partial b} = 1$, so $\frac{\partial f}{\partial b} = 2(wx + b - y)$.
 
-      A positive partial means a small upward nudge raises $f$, so turn that dial down. This connects our houses to ML: each partial tells how one model dial affects prediction error. With more inputs, take one partial per input, freezing the rest.
+      A positive partial means a small upward nudge raises $f$, so turn that dial down. In ML, these house-price dials are model parameters: their partials tell how each affects prediction error. The same recipe works with more dials, freezing all but one.
     worked: |
       This example shows the partials of a squared gap at one setting of the dials.
 
