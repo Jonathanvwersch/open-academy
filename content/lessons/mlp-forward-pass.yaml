@@ -2,24 +2,24 @@ concept: mlp-forward-pass
 version: 2
 objective: |
   **Goal:** compute a two-layer forward pass by hand, count a layer's weights and biases, and track the shape of every array as a batch of examples moves through a multilayer perceptron.
+why: |
+  A model uses a house's size, say 100 m², and its distance from the station, say 2 km, to produce a rating. Several neurons can calculate different scores from those measurements. You could write each calculation separately, but repeating that code for hundreds of neurons makes mistakes hard to find. Instead, arrange neurons in groups called layers. Matrix multiplication calculates a group's scores together, activations change those scores, and the next group combines the results. This ordered calculation is the forward pass. Counting rows and columns helps you check that the right numbers reach each neuron. You will build on this in Backpropagation, PyTorch fundamentals, and Stochastic and minibatch gradient descent.
 knowledge_points:
   - id: mlp-layer-of-neurons
     title: A layer is many neurons at once
     explain: |
-      One neuron draws one straight boundary. To score a house on several things at once, you'd want several neurons, each with its own weights and bias, all reading the same inputs.
+      A model rates a 100 m² house that is 2 km from the station. Its inputs are $x = (1, 2)$, measuring size in hundreds of m² and distance in km. **How can several neurons use these measurements?** Calculate their scores:
 
-      Take a house with size $x_1 = 1$ (hundreds of m²) and distance $x_2 = 2$ km, so $x = (1, 2)$. Two neurons read it:
+      - Neuron 1 has weights $(1, 0)$ and bias $0$, so its score is $1 \cdot 1 + 0 \cdot 2 + 0 = 1$.
+      - Neuron 2 has weights $(-1, 1)$ and bias $-2$, so its score is $-1 \cdot 1 + 1 \cdot 2 - 2 = -1$.
 
-      - neuron 1 has weights $(1, 0)$ and bias $0$, so its score is $1 \cdot 1 + 0 \cdot 2 + 0 = 1$;
-      - neuron 2 has weights $(-1, 1)$ and bias $-2$, so its score is $-1 \cdot 1 + 1 \cdot 2 - 2 = -1$.
-
-      Stack each neuron's weights as one row of a matrix $W_1$ and their biases into a vector $b_1$. Then a matrix-vector product computes every score in one go, because it dots each row with $x$:
+      Repeating this code for hundreds of neurons becomes hard to manage. Instead put each neuron's weights in one row of matrix $W_1$ and its bias in vector $b_1$. This works because each row's dot product with $x$ calculates one neuron's score:
 
       $$W_1 = \begin{pmatrix}1 & 0\\ -1 & 1\end{pmatrix}, \quad b_1 = (0, -2), \quad W_1 x + b_1 = (1, -1)$$
 
-      Row $i$ of $W_1$ belongs to neuron $i$, and the entry in row $i$, column $j$ is the weight from input $j$ to neuron $i$.
+      Row $i$, column $j$ holds neuron $i$'s weight on input $j$. Why a matrix rather than a **loop**, code that repeats a calculation? Both give the same scores, but computers can handle matrix calculations together efficiently.
 
-      Finally apply an activation $\phi$ to each score. Here it's ReLU, giving $h = \phi(W_1 x + b_1) = (1, 0)$. This group of neurons is a **layer**. Its outputs $h$ are **hidden values**: the network computes them itself; they aren't in the data. So it's called a **hidden layer**.
+      Apply activation $\phi$ to each score. ReLU gives $h = \phi(W_1 x + b_1) = (1, 0)$. This group of neurons is a **layer**. Its outputs $h$ are **hidden values**, calculated inside the network rather than supplied in the data. This makes it a **hidden layer**.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" aria-label="A small network: two inputs, x1 = 1 and x2 = 2, each connect to two hidden units h1 and h2 with weights 1 and 0 into h1 and minus 1 and 1 into h2. The hidden units have biases 0 and minus 2 and use ReLU. Both connect to one output with weights 2 and 3 and bias 1.">
@@ -54,33 +54,33 @@ knowledge_points:
       </svg>
       ```
     worked: |
-      This example shows a layer of three neurons for one input.
+      This example shows three neurons reading one house's two measurements. The house is 100 m² and 2 km from the station, so $x = (1, 2)$.
 
       $$W = \begin{pmatrix}2 & 1\\ 0 & -1\\ 1 & 1\end{pmatrix}, \quad b = (-1, 1, -4), \quad x = (1, 2)$$
 
-      1. **Row 1:** $2 \cdot 1 + 1 \cdot 2 = 4$, plus $-1$ gives $3$.
-      2. **Row 2:** $0 \cdot 1 + (-1) \cdot 2 = -2$, plus $1$ gives $-1$.
-      3. **Row 3:** $1 \cdot 1 + 1 \cdot 2 = 3$, plus $-4$ gives $-1$.
-      4. **ReLU:** $(3, -1, -1)$ becomes $h = (3, 0, 0)$.
+      1. **Neuron 1:** Its row gives $2 \cdot 1 + 1 \cdot 2 = 4$. Adding its bias of $-1$ gives a score of $3$.
+      2. **Neuron 2:** Its row gives $0 \cdot 1 + (-1) \cdot 2 = -2$. Adding its bias of $1$ gives a score of $-1$.
+      3. **Neuron 3:** Its row gives $1 \cdot 1 + 1 \cdot 2 = 3$. Adding its bias of $-4$ gives a score of $-1$.
+      4. **Activation:** ReLU changes the scores $(3, -1, -1)$ into hidden values $h = (3, 0, 0)$.
 
-      Three rows means three neurons and three hidden values. Two columns means each neuron reads two inputs.
+      The matrix has three rows because there are three neurons. Each row has two columns because each neuron reads the house's two measurements.
     problems:
       - mlpp-layer-values
       - mlpp-unit-score-template
-      - mlpp-rows-neurons
+      - mlpp-why-matrix
       - mlpp-weight-entry
       - mlpp-why-activation
       - mlpp-robot-layer
   - id: mlp-two-layers
     title: The forward pass through two layers
     explain: |
-      The hidden values $h$ aren't the answer yet. You still need one number, say a score for how good the house is. So a second layer reads $h$ the same way the first read $x$:
+      The house has hidden values $h = (1, 0)$, but you still need its final rating. **How should you combine them?** Simply adding them makes each count equally. A second layer instead gives each its own weight:
 
       $$h = \phi(W_1 x + b_1), \qquad \hat y = W_2 h + b_2$$
 
-      Here $W_2$ holds the output neuron's weights, $b_2$ its bias, and $\hat y$ ("y-hat") is the network's prediction. When the output is meant to be any number, like a price or a score, the output layer usually has no activation.
+      $W_2$ contains those weights, $b_2$ is their bias, and $\hat y$ ("y-hat") is the prediction. This works because the rating can depend differently on each hidden value. The activation keeps the network from becoming one weighted sum.
 
-      Running an input through every layer in order is the **forward pass**. A network built this way, layers of neurons with an activation between them, is a **multilayer perceptron** (MLP). The activation between the layers is what stops them collapsing into one weighted sum.
+      Running these layers in order is the **forward pass** of a **multilayer perceptron** (MLP). Why no output sigmoid? A house rating need not stay between 0 and 1.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 140" aria-label="The forward pass as four steps left to right: input x = (1, 2); layer 1 scores W1 x + b1 = (1, minus 1); hidden values after ReLU h = (1, 0); output y-hat = W2 h + b2 = 3.">
@@ -109,40 +109,40 @@ knowledge_points:
       </svg>
       ```
     worked: |
-      This example shows a forward pass through the house network for a new house, $x = (3, 4)$.
+      This example shows the network rating a 300 m² house that is 4 km from the station, so $x = (3, 4)$.
 
-      Network: $W_1 = \begin{pmatrix}1 & 0\\ -1 & 1\end{pmatrix}$, $b_1 = (0, -2)$, ReLU, $W_2 = (2, 3)$, $b_2 = 1$.
+      The first layer uses $W_1 = \begin{pmatrix}1 & 0\\ -1 & 1\end{pmatrix}$, $b_1 = (0, -2)$ and ReLU. The output layer uses $W_2 = (2, 3)$ and $b_2 = 1$.
 
-      1. **Layer 1 scores:** $W_1 x = (1 \cdot 3 + 0 \cdot 4,\ -1 \cdot 3 + 1 \cdot 4) = (3, 1)$. Add $b_1$: $(3, -1)$.
-      2. **Activation:** ReLU gives $h = (3, 0)$.
-      3. **Output:** $\hat y = 2 \cdot 3 + 3 \cdot 0 + 1 = 7$.
+      1. **Layer 1 scores:** The matrix product gives $W_1 x = (1 \cdot 3 + 0 \cdot 4,\ -1 \cdot 3 + 1 \cdot 4) = (3, 1)$. Adding the biases $b_1$ gives $(3, -1)$.
+      2. **Activation:** ReLU keeps 3 and changes $-1$ to 0, giving $h = (3, 0)$.
+      3. **Output:** The second layer combines these values into $\hat y = 2 \cdot 3 + 3 \cdot 0 + 1 = 7$.
 
       Without ReLU, step 3 would use $(3, -1)$ and give $2 \cdot 3 + 3 \cdot (-1) + 1 = 4$. The activation changed the answer.
     problems:
       - mlpp-forward-order
       - mlpp-forward-template
       - mlpp-forward-fixed
-      - mlpp-output-no-activation
+      - mlpp-why-no-sigmoid-output
       - mlpp-hidden-meaning
       - mlpp-robot-forward
   - id: mlp-shapes
     title: Shapes and parameter counts
     explain: |
-      In code you rarely push one house through at a time. You stack many examples and process the whole group, called a **batch**, in one matrix product. Getting the shapes right is most of the work.
+      **How do you rate 3 houses at once?** A loop handles them separately. A **batch** groups them in a matrix, letting the computer process them together. This works because every row uses the same weights without mixing houses.
 
-      Write $B$ for the number of examples in the batch, $d_\text{in}$ for the number of inputs per example and $d_\text{out}$ for the number of neurons in the layer.
+      A matrix's **shape** is its number of rows and columns. Let $B$ count houses, $d_\text{in}$ count inputs per house and $d_\text{out}$ count neurons.
 
-      - $W$ has one row per neuron and one column per input, so $W \in \mathbb{R}^{d_\text{out} \times d_\text{in}}$.
-      - The batch $X$ stores one example per row: $X \in \mathbb{R}^{B \times d_\text{in}}$.
-      - $XW^\top + b$ applies the same weights to every row. $W^\top$ is $d_\text{in} \times d_\text{out}$, so the inner sizes match and the result is $B \times d_\text{out}$: one row of scores per example. The bias is added to every row.
+      - $W$ has one row per neuron and one column per input, giving shape $d_\text{out} \times d_\text{in}$.
+      - $X$ stores one house per row, giving shape $B \times d_\text{in}$.
+      - Transposing $W$ gives $W^\top$ shape $d_\text{in} \times d_\text{out}$. Thus $XW^\top + b$ gives shape $B \times d_\text{out}$, with biases added to every house's scores.
 
-      Many libraries store the weights already transposed, as $d_\text{in} \times d_\text{out}$, and write `X @ W + b`. The result is the same shape.
+      Some libraries store $W$ transposed and write `X @ W + b` instead.
 
-      Each layer has $d_\text{in} \cdot d_\text{out}$ weights plus $d_\text{out}$ biases. These are its **parameters**, the numbers training will adjust:
+      Why share weights? Every house needs the same rating rule. The adjustable numbers, called **parameters**, are each neuron's $d_\text{in}$ weights and one bias:
 
       $$\text{parameters} = d_\text{in} \cdot d_\text{out} + d_\text{out}$$
     worked: |
-      This example shows shapes and parameter counts through the house network for a batch of $B = 3$ houses.
+      This example shows how to check the numbers of rows, columns and parameters when rating a batch of $B = 3$ houses.
 
       The network takes 2 inputs, has 2 hidden neurons, and returns 1 output.
 
@@ -154,16 +154,18 @@ knowledge_points:
       | $W_2$ | $1 \times 2$ | 1 neuron, 2 inputs |
       | output $\hat Y$ | $3 \times 1$ | $(3 \times 2)(2 \times 1)$ |
 
-      Parameters: layer 1 has $2 \cdot 2 + 2 = 6$, layer 2 has $2 \cdot 1 + 1 = 3$, so the network has $9$. The batch size never appears in the count: the same 9 numbers are used for every house.
+      Layer 1 has $2 \cdot 2 + 2 = 6$ parameters. Layer 2 has $2 \cdot 1 + 1 = 3$, so the network has $9$ in total. The batch size never appears in this count because every house uses the same 9 weights and biases.
     problems:
       - mlpp-batch-shape
       - mlpp-params-template
-      - mlpp-weight-shape
+      - mlpp-why-shared-weights
       - mlpp-hidden-array-size
       - mlpp-why-transpose
       - mlpp-robot-shapes
 final: mlp-explain
 summary: |
   - A layer computes $\phi(Wx + b)$: each row of $W$ is one neuron's weights, and the activation is applied to every score.
-  - The forward pass runs the layers in order: $h = \phi(W_1 x + b_1)$, then $\hat y = W_2 h + b_2$, usually with no activation on the output.
+  - The forward pass runs the layers in order: $h = \phi(W_1 x + b_1)$, then $\hat y = W_2 h + b_2$. Here the final numerical rating has no output activation.
   - For a batch $X$ of shape $B \times d_\text{in}$, a layer outputs $B \times d_\text{out}$ and has $d_\text{in} \cdot d_\text{out} + d_\text{out}$ parameters.
+
+  **Where you'll use this:** Backpropagation reuses the values calculated in the forward pass. In PyTorch fundamentals you will implement layers, and in Stochastic and minibatch gradient descent you will train them on batches.
