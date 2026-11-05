@@ -252,6 +252,9 @@ export function LessonRunner({
           {point ? (
             <section className="space-y-4">
               <h2 className="text-xl font-semibold">{point.title}</h2>
+              {point.id === lesson?.knowledge_points?.[0]?.id && (lesson?.why ?? state.why) ? (
+                <LessonBlock kind="why" md={lesson?.why ?? state.why} />
+              ) : null}
               <Markdown>{point.explain}</Markdown>
               <LessonBlock kind="worked" md={point.worked} />
             </section>

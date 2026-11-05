@@ -1,6 +1,8 @@
 concept: vectors
 version: 2
 objective: Compute vector magnitudes and explain dot products.
+why: |
+  A robot, image, or model may need to track several measurements together, such as position, color, or features. Treating each number separately hides their relationships and makes calculations repetitive. A vector stores the coordinates as one object, so its length and operations can summarize the quantity or compare it with another. This makes vectors a practical language for data with many components and prepares you to understand matrix operations and model inputs.
 knowledge_points:
   - id: vectors-fixture-1
     title: Vector magnitude
@@ -25,4 +27,6 @@ knowledge_points:
         vectors-fixture-template-2,
       ]
 final: vectors-fixture-final
-summary: Vector coordinates represent quantities, and the magnitude measures vector length.
+summary: |
+  Vector coordinates represent quantities, and the magnitude measures vector length.
+  **Where you'll use this:** vectors represent features, predictions, and directions in machine learning.

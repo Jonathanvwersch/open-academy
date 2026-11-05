@@ -142,6 +142,7 @@ export function registerLessonRunRoutes(
     return {
       id: run.id,
       status: derived.status,
+      why: lesson.why,
       points: derived.points.map((point) => ({
         ...point,
         xpEarned: point.status === 'passed' ? xpForPassedPoint(point.answered) : 0,

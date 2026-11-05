@@ -551,6 +551,22 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
 
   for (const { value: lesson, file } of data.lessons) {
     if (lesson.knowledge_points) {
+      const whyWords = countKnowledgePointWords(lesson.why ?? '');
+      if (whyWords < 60 || whyWords > 140) {
+        addIssue(issues, file, lesson.concept, `lesson why has ${whyWords} words; expected 60–140`);
+      }
+      if (
+        !(lesson.summary ?? '')
+          .split(/\r?\n/)
+          .some((line) => line.trimStart().startsWith("**Where you'll use this:**"))
+      ) {
+        addIssue(
+          issues,
+          file,
+          lesson.concept,
+          'lesson summary must contain a line starting with "**Where you\'ll use this:**"',
+        );
+      }
       const final = exercises.get(lesson.final ?? '');
       if (!final) {
         addIssue(issues, file, lesson.concept, `final exercise "${lesson.final}" does not exist`);

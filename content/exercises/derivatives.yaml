@@ -110,26 +110,22 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "A function has $f(3) = 9$ and $f'(3) = 6$. Explain in 2–4 sentences what $f'(3) = 6$ tells you about $f$ near $x = 3$, and use it to estimate $f(3.1)$."
+    prompt: "A model's loss for one weight is $L(w) = (2w - 6)^2$. Expand $L(w)$, find $L'(w)$ and $L'(2)$, then explain in 2–4 sentences what a small increase in $w$ near 2 will do to the loss."
     rubric:
       - {
           id: r1,
-          criterion: "Says $f'(3)$ is the rate of change of the output per unit change of input at $x = 3$ (the slope of the tangent there)",
+          criterion: "Expands $L(w)$ to $4w^2 - 24w + 36$ and differentiates to $L'(w) = 8w - 24$",
           weight: 2,
           required: true,
         }
-      - {
-          id: r2,
-          criterion: "Estimates $f(3.1) \\approx f(3) + f'(3) \\times 0.1 = 9.6$",
-          weight: 2,
-          required: true,
-        }
+      - { id: r2, criterion: "Evaluates $L'(2) = -8$", weight: 1, required: true }
       - {
           id: r3,
-          criterion: "Notes the estimate is only reliable for small nudges, because the slope can change away from 3",
-          weight: 1,
+          criterion: "Explains that a small increase in $w$ near 2 lowers the loss by about 8 times the increase",
+          weight: 2,
+          required: true,
         }
-    exemplar: "f'(3) = 6 means that near x = 3 the output rises about 6 for every unit the input rises; it is the slope of the tangent line at 3. For a nudge of 0.1 the output rises by about 6 × 0.1 = 0.6, so f(3.1) ≈ 9 + 0.6 = 9.6. This works only for small nudges, because the slope itself can change as you move away from 3."
+    exemplar: "Expanding gives $L(w) = 4w^2 - 24w + 36$, so $L'(w) = 8w - 24$. At $w = 2$, the derivative is $-8$. Near 2, a small positive nudge to the weight lowers the loss by about 8 times the nudge; this local rate tells us the direction without trying many weights."
   - id: derp-meaning
     dimension: conceptual
     type: mc
@@ -377,27 +373,27 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A classmate differentiates $f(x) = x^2 + 10$ and writes $2x + 10$. What went wrong?"
+    prompt: "Why does the added constant 10 in $f(x) = x^2 + 10$ contribute 0 to the derivative?"
     options:
       - id: a
-        text: "The constant 10 never changes, so its derivative is 0"
+        text: "Changing $x$ never changes the added 10, so that term contributes no change in output"
         correct: true
       - id: b
-        text: "The 10 should have been multiplied by $2x$"
+        text: "The 10 is a coefficient of $x$, so its derivative should be 10"
         correct: false
         category: misunderstood_definition
-        feedback: "The sum rule differentiates each term on its own. Nothing multiplies the 10."
+        feedback: "The expression adds 10; it does not multiply $x$ by 10. An added constant stays fixed as $x$ changes."
       - id: c
-        text: "The derivative of $x^2$ is $x$, not $2x$"
-        correct: false
-        category: recall_failure
-        feedback: "The power rule does give $2x$. The error is in the constant term."
-      - id: d
-        text: "Nothing; constants pass through unchanged"
+        text: "The 10 cancels the derivative of $x^2$"
         correct: false
         category: misunderstood_definition
-        feedback: "Constants pass through when they *multiply* a function. A constant added on its own has derivative 0."
-    solution: "A number on its own doesn't change as $x$ changes, so its rate of change is 0. The answer is $f'(x) = 2x$."
+        feedback: "The sum rule differentiates each term separately. The constant contributes 0; it does not cancel $2x$."
+      - id: d
+        text: "The derivative keeps every term unchanged, including the 10"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Differentiation measures how the output changes with $x$. The added 10 stays fixed, so only $x^2$ contributes."
+    solution: "The value 10 stays fixed for every $x$, so it contributes no change in output. Thus $f'(x) = 2x$."
   - id: derp-drone-climb
     dimension: math
     type: expression
@@ -469,25 +465,27 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "What is the slope of $f(x) = e^x$ at $x = 2$?"
+    prompt: "Why is the slope of $f(x) = e^x$ at any point equal to the function's value there?"
     options:
-      - { id: a, text: '$e^2 \approx 7.39$', correct: true }
+      - id: a
+        text: "Base $e$ makes exponential growth proportional to its current value with factor 1"
+        correct: true
       - id: b
-        text: '$2e \approx 5.44$'
+        text: "The power rule treats the variable exponent as a fixed power"
         correct: false
         category: misapplied_technique
-        feedback: "The power rule needs a fixed power. Here $x$ is the exponent, and $e^x$ is its own derivative."
+        feedback: "The power rule applies to a fixed exponent such as $x^2$. Here $x$ is the exponent; $e^x$ has its own derivative rule."
       - id: c
-        text: '$e \approx 2.72$'
-        correct: false
-        category: misapplied_technique
-        feedback: "The derivative of $e^x$ is $e^x$, so evaluate it at $x = 2$."
-      - id: d
-        text: "$2$"
+        text: "The derivative is the constant base $e$, independent of the input"
         correct: false
         category: misunderstood_definition
-        feedback: "That is the input. The slope of $e^x$ equals its value, $e^2$."
-    solution: "The derivative of $e^x$ is $e^x$, so the slope at 2 equals the value there: $e^2 \\approx 7.39$."
+        feedback: "The base is constant, but the function's value and slope change with $x$. Both equal $e^x$."
+      - id: d
+        text: "Because $e$ is constant, the derivative of $e^x$ is zero"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The base $e$ is constant, but the whole expression $e^x$ changes with $x$; it is not a constant function."
+    solution: "Exponential growth is proportional to the amount already present. The base $e$ makes the proportionality factor 1, so the rate of change is $e^x$ itself."
   - id: derp-ln-meaning
     dimension: conceptual
     type: mc
@@ -596,10 +594,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A classmate says the derivative of $x^2 e^x$ is $2x \\cdot e^x$. What went wrong?"
+    prompt: "Why can't you find the derivative of $x^2 e^x$ by multiplying the derivatives of its two factors?"
     options:
       - id: a
-        text: "They multiplied the derivatives; the product rule also needs the term $x^2 e^x$"
+        text: "Both factors can change, so the product changes from each factor's contribution; the product rule adds both"
         correct: true
       - id: b
         text: "Nothing; the derivative of a product is the product of the derivatives"

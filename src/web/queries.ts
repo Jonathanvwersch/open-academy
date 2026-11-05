@@ -95,6 +95,7 @@ export interface SessionPayload {
 }
 
 export interface LessonPayload {
+  why?: string;
   final?: string;
   blocks: Array<{ kind: LessonBlockKind; md?: string; exercise?: string }>;
   knowledge_points?: Array<{
@@ -118,6 +119,7 @@ export interface LessonRunPayload {
   run: null | {
     id: string;
     status: 'in_progress' | 'needs_retry' | 'completed';
+    why?: string;
     points: Array<{
       id: string;
       status: 'passed' | 'failed' | 'active' | 'locked';
