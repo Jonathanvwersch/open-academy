@@ -6,7 +6,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "What is the dot product $(1,2,3)\\cdot(4,-5,6)$?"
+    prompt: "A viewer's taste weights are $(1,2,3)$ for action, comedy and romance. A film has scores $(4,-5,6)$ in that order. Negative scores mean the film has the opposite qualities in that category. What is the dot product?"
     solution: "Multiply matching entries, then add: $1\\cdot4+2\\cdot(-5)+3\\cdot6=4-10+18=12$. The result is one number."
     options:
       - { id: a, text: "12", correct: true, feedback: "The contributions are 4, minus 10 and 18." }
@@ -28,7 +28,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A house score uses weights $w=({{=u}},{{=v}})$ and features $x=({{=a}},{{=b}})$. What is $w\\cdot x$?"
+    prompt: "A film app uses taste weights $w=({{=u}},{{=v}})$ and film scores $x=({{=a}},{{=b}})$, both ordered as (action, comedy). What recommendation score does $w\\cdot x$ give?"
     solution: "The contributions are ${{=u}}\\cdot{{=a}}={{=u*a}}$ and ${{=v}}\\cdot{{=b}}={{=v*b}}$. Adding them gives ${{=u*a+v*b}}$, the weighted score."
     tolerance: { abs: 0.000001 }
     params:
@@ -44,26 +44,26 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A house-price score uses weights $(0.5,2)$ for (area units, bedrooms). Holding area fixed, what does one extra bedroom do?"
-    solution: "The extra contribution is $2\\cdot1=2$. In a linear score, each weight gives the change caused by one extra unit of its feature."
+    prompt: "A film app uses taste weights $(0.5,2)$ for action and comedy. A film's comedy score rises by 1 while its action score stays fixed. How does the recommendation score change?"
+    solution: "The extra comedy score adds $2\\cdot1=2$ to the total. The action part does not change."
     options:
       - {
           id: a,
-          text: "Raises the score by 2",
+          text: "The score rises by 2.",
           correct: true,
-          feedback: "The bedroom weight is the contribution of one extra bedroom.",
+          feedback: "The comedy weight is 2, so each extra comedy point adds 2 to the total.",
         }
       - {
           id: b,
-          text: "Raises the score by 0.5",
+          text: "The score rises by 0.5.",
           correct: false,
-          feedback: "That weight belongs to area, not bedrooms.",
+          feedback: "The weight 0.5 belongs to action, which has not changed.",
         }
       - {
           id: c,
-          text: "Multiplies the score by 2",
+          text: "The whole score doubles.",
           correct: false,
-          feedback: "The weight multiplies the added feature unit, not the whole score.",
+          feedback: "The weight multiplies the added comedy point. It does not multiply the existing total.",
         }
   - id: dotp-order
     dimension: conceptual
@@ -71,24 +71,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A feature vector is (area units, bedrooms), but its weights are accidentally listed as (bedrooms, area units). What should you do?"
+    prompt: "A film's scores are $(4,1)$ in the order (action, comedy). A viewer's weights are $(2,0.5)$ but are stored in the order (comedy, action). What should the app do before calculating their dot product?"
     solution: "The dot product pairs entries by position. Reorder one list so each feature is matched to its own weight."
     options:
       - {
           id: a,
-          text: "Reorder weights to match the features",
+          text: "It should reorder the weights to match the film's categories.",
           correct: true,
           feedback: "Each weight must multiply its intended feature.",
         }
       - {
           id: b,
-          text: "Add the vectors before scoring them",
+          text: "It should add the two vectors first.",
           correct: false,
           feedback: "Adding entries does not fix which feature each weight belongs to.",
         }
       - {
           id: c,
-          text: "Keep the order because sums ignore it",
+          text: "It should keep the order because addition ignores order.",
           correct: false,
           feedback: "Reordering one vector alone changes the paired products.",
         }
@@ -98,26 +98,26 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A cart route score uses weights $(2,-1)$ for (deliveries, minutes). What does one extra minute do, with deliveries fixed?"
-    solution: "The extra minute contributes $(-1)\\cdot1=-1$. Negative weights subtract from the total when the corresponding feature grows."
+    prompt: "A viewer's taste weights are $(2,-1)$ for action and comedy. The negative weight means they dislike comedy. If a film gains 1 comedy point while its action score stays fixed, what happens to its recommendation score?"
+    solution: "The extra comedy point adds $(-1)\\cdot1=-1$ to the total. The recommendation score falls by 1."
     options:
       - {
           id: a,
-          text: "Lowers the score by one",
+          text: "The score falls by 1.",
           correct: true,
-          feedback: "The time weight is minus one.",
+          feedback: "The viewer's comedy weight is minus one.",
         }
       - {
           id: b,
-          text: "Raises the score by one",
+          text: "The score rises by 1.",
           correct: false,
           feedback: "A negative weight makes an increase lower the score.",
         }
       - {
           id: c,
-          text: "Leaves the score unchanged",
+          text: "The score stays unchanged.",
           correct: false,
-          feedback: "Only a zero weight would ignore extra minutes.",
+          feedback: "Only a zero comedy weight would ignore the extra comedy point.",
         }
   - id: dotp-why-total
     dimension: conceptual
@@ -125,24 +125,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why add the matching products instead of leaving them as a list when a house model needs one weighted score?"
-    solution: "For weights $(0.5,2)$ and features $(4,1)$, the matching products are $(2,2)$. Adding gives the single score 4; stopping at the products leaves two separate contributions."
+    prompt: "A film app uses taste weights $(0.5,2)$ and film scores $(4,1)$ for action and comedy. Why add the matching products instead of leaving them as a list?"
+    solution: "The matching products are $(2,2)$, one number for each category. Adding gives 4, a single recommendation score the app can use to rank this film."
     options:
       - {
           id: a,
-          text: "Adding combines the separate weighted contributions into one number",
+          text: "Adding gives one number for ranking the film.",
           correct: true,
           feedback: "Multiplication sets each contribution's size; addition totals them.",
         }
       - {
           id: b,
-          text: "A list of products already ranks every house with one number",
+          text: "A list of products already gives one number for ranking the film.",
           correct: false,
           feedback: "A list still has separate entries. It does not supply the requested single score.",
         }
       - {
           id: c,
-          text: "Adding makes every feature equally important, regardless of its weight",
+          text: "Adding makes both categories equally important, whatever the weights.",
           correct: false,
           feedback: "Weights have already changed the contributions before addition. Adding does not undo that weighting.",
         }
@@ -152,24 +152,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two non-zero floor arrows form an angle greater than 90 degrees. What sign is their dot product?"
+    prompt: "Two viewers' non-zero taste vectors for action and comedy form an angle greater than 90 degrees when drawn as arrows from $(0,0)$. Positive ratings mean liking a category and negative ratings mean disliking it. What sign is their dot product?"
     solution: "The dot product is the product of two positive lengths and the angle cosine. Above 90 degrees the cosine is negative, so the score is negative."
     options:
       - {
           id: a,
-          text: "Negative, because their directions broadly oppose",
+          text: "It is negative because the tastes oppose each other overall.",
           correct: true,
           feedback: "Cosine is negative for angles above 90 degrees.",
         }
       - {
           id: b,
-          text: "Positive, because both arrows have positive lengths",
+          text: "It is positive because both arrows have positive lengths.",
           correct: false,
           feedback: "Positive lengths multiply a negative cosine.",
         }
       - {
           id: c,
-          text: "Zero, because the arrows are not identical",
+          text: "It is zero because the arrows are different.",
           correct: false,
           feedback: "Only a right angle gives zero for non-zero arrows.",
         }
@@ -179,8 +179,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Floor moves are $a=({{=h}},{{=v}})$ and $b=({{=k}},0)$. What is $a\\cdot b$?"
-    solution: "The horizontal contribution is ${{=h}}\\cdot{{=k}}={{=h*k}}$ and the vertical contribution is ${{=v}}\\cdot0=0$. Their sum is ${{=h*k}}$, also the horizontal projection times the length of $b$."
+    prompt: "Two viewers have taste vectors $a=({{=h}},{{=v}})$ and $b=({{=k}},0)$ for action and comedy. What is $a\\cdot b$?"
+    solution: "Action adds ${{=h}}\\cdot{{=k}}={{=h*k}}$ to the score. Comedy adds ${{=v}}\\cdot0=0$, so the total is ${{=h*k}}$."
     tolerance: { abs: 0.000001 }
     params:
       h: { min: -4, max: 4 }
@@ -194,26 +194,26 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two non-zero floor moves have dot product zero. What does this tell you?"
+    prompt: "Two viewers have non-zero taste vectors for action and comedy, and their dot product is zero. What does this tell you about the arrows representing those tastes?"
     solution: "With both lengths non-zero, a zero dot product means $\\cos\\theta=0$. The arrows are perpendicular, also called orthogonal."
     options:
       - {
           id: a,
-          text: "Their arrows meet at a right angle",
+          text: "The arrows meet at a right angle.",
           correct: true,
           feedback: "Non-zero lengths mean the angle cosine must be zero.",
         }
       - {
           id: b,
-          text: "Their arrows point in opposite directions",
+          text: "The arrows point in opposite directions.",
           correct: false,
           feedback: "Opposite arrows give a negative dot product.",
         }
       - {
           id: c,
-          text: "Their arrows must have equal lengths",
+          text: "The arrows must have equal lengths.",
           correct: false,
-          feedback: "A zero dot product constrains direction, not equal length.",
+          feedback: "A zero dot product tells you about the angle. It does not require equal lengths.",
         }
   - id: dotp-projection
     dimension: math
@@ -221,7 +221,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "For $a=(3,4)$ and $b=(2,0)$, the projection of $a$ onto the direction of $b$ is 3. What is $a\\cdot b$?"
+    prompt: "Two viewers' taste vectors are $a=(3,4)$ and $b=(2,0)$ for action and comedy. The projection of $a$, its signed shadow along $b$'s direction, is 3. What is $a\\cdot b$?"
     solution: "Multiply the signed projection by the other arrow length: $3\\cdot2=6$. Direct multiplication agrees: $3\\cdot2+4\\cdot0=6$."
     tolerance: { abs: 0.000001 }
     answer: 6
@@ -232,24 +232,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "The dot product of two floor moves is 6. You reverse the second move without changing its length. What is the new score?"
+    prompt: "Two viewers' taste vectors have dot product 6. The second viewer changes every liking to an equally strong dislike, and every dislike to an equally strong liking. This negates their vector. What is the new score?"
     solution: "Reversing one vector negates each matching product. Their sum becomes $-6$, reflecting the reversed projection."
     options:
       - {
           id: a,
-          text: "Minus 6, because the projection reverses",
+          text: "It is minus 6 because every product changes sign.",
           correct: true,
           feedback: "Reversing one vector changes every product sign.",
         }
       - {
           id: b,
-          text: "Plus 6, because both lengths stay fixed",
+          text: "It stays plus 6 because both lengths stay fixed.",
           correct: false,
-          feedback: "Length is unchanged, but the signed alignment reverses.",
+          feedback: "The length is unchanged, but agreement becomes opposition when every rating changes sign.",
         }
       - {
           id: c,
-          text: "Zero, because the reversed move is perpendicular",
+          text: "It becomes zero because reversing an arrow makes it perpendicular.",
           correct: false,
           feedback: "Reversing gives the opposite direction, not a right-angle turn.",
         }
@@ -259,24 +259,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why not decide whether two floor arrows agree in direction just by checking that their lengths match?"
-    solution: "The arrows $(2,0)$ and $(-2,0)$ both have length 2 but point opposite ways. Their dot product is $-4$, recording opposition that equal lengths cannot reveal."
+    prompt: "One viewer likes action, with taste vector $(2,0)$ for action and comedy. Another dislikes action, with vector $(-2,0)$. Why can't their equal arrow lengths tell the app that their tastes agree?"
+    solution: "Both arrows have length 2, but one viewer likes exactly what the other dislikes. Their dot product is $2\\cdot(-2)+0\\cdot0=-4$, which records that opposition."
     options:
       - {
           id: a,
-          text: "Equal lengths can belong to opposite directions; the dot product records signed alignment",
+          text: "Equal lengths can represent opposite tastes, which a negative dot product distinguishes.",
           correct: true,
           feedback: "Length measures how far an arrow reaches, not which way it points.",
         }
       - {
           id: b,
-          text: "Equal lengths force the arrows to point the same way",
+          text: "Equal lengths force the arrows to point the same way.",
           correct: false,
           feedback: "Reversing an arrow preserves its length but gives the opposite direction.",
         }
       - {
           id: c,
-          text: "Multiplying the lengths gives a negative number for opposing arrows",
+          text: "Multiplying the lengths gives a negative number for opposing tastes.",
           correct: false,
           feedback: "Non-zero lengths are positive. Their product cannot record opposition without the angle cosine.",
         }
@@ -286,7 +286,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "For $a=(3,4)$ and $b=(4,3)$, what is the cosine similarity?"
+    prompt: "Two viewers rate action and comedy as $a=(3,4)$ and $b=(4,3)$. What is their cosine similarity?"
     solution: "The dot product is $12+12=24$ and both lengths are 5. Divide by both lengths to get $24/(5\\cdot5)=0.96$."
     tolerance: { abs: 0.000001 }
     answer: 0.96
@@ -297,8 +297,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "For $a=(3,4)$ and $b=({{=k}},3)$, what is the cosine similarity? Round to three decimal places."
-    solution: "The dot product is $3\\cdot{{=k}}+4\\cdot3={{=3*k+12}}$. The lengths are 5 and $\\sqrt{ {{=k*k+9}} }$, so divide to get ${{=(3*k+12)/(5*sqrt(k*k+9))}}$; dividing by both lengths removes their effect on the score."
+    prompt: "Two viewers rate action and comedy as $a=(3,4)$ and $b=({{=k}},3)$. What is their cosine similarity? Round to three decimal places."
+    solution: "The dot product is $3\\cdot{{=k}}+4\\cdot3={{=3*k+12}}$. The arrow lengths are 5 and $\\sqrt{ {{=k*k+9}} }$. Dividing by their product gives ${{=(3*k+12)/(5*sqrt(k*k+9))}}$."
     tolerance: { abs: 0.00051 }
     params:
       k: { min: 1, max: 6 }
@@ -310,24 +310,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why does multiplying a non-zero vector by 3 leave its cosine similarity with a fixed non-zero vector unchanged?"
-    solution: "The numerator and denominator both gain a factor of three. Cancelling that factor leaves cosine similarity unchanged."
+    prompt: "A viewer triples every rating in their non-zero taste vector for action and comedy. Why does its cosine similarity with another viewer's fixed non-zero vector stay unchanged?"
+    solution: "The top and bottom of the fraction both triple. Cancelling that factor leaves cosine similarity unchanged."
     options:
       - {
           id: a,
-          text: "It stays the same because the length factor cancels",
+          text: "Both parts of the fraction triple, so the factor of three cancels.",
           correct: true,
           feedback: "The dot product and that vector length both triple.",
         }
       - {
           id: b,
-          text: "It triples because the dot product triples",
+          text: "It triples because the dot product triples.",
           correct: false,
           feedback: "You must also divide by the tripled length.",
         }
       - {
           id: c,
-          text: "It becomes one because the vector is longer",
+          text: "It becomes one because the vector is longer.",
           correct: false,
           feedback: "Being longer does not make directions identical.",
         }
@@ -337,24 +337,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Can you compute cosine similarity between $(0,0)$ and $(1,2)$?"
+    prompt: "One viewer has supplied no preferences, giving a taste vector $(0,0)$ for action and comedy. Another has ratings $(1,2)$. Can the app calculate their cosine similarity?"
     solution: "Cosine similarity divides by both norms. The zero vector has norm zero, making the ratio undefined."
     options:
       - {
           id: a,
-          text: "No, because the denominator contains a zero length",
+          text: "No. The bottom of the fraction contains a zero length.",
           correct: true,
           feedback: "The zero vector has no direction and division by zero is undefined.",
         }
       - {
           id: b,
-          text: "Yes, it is zero because the dot product is zero",
+          text: "Yes. It is zero because the dot product is zero.",
           correct: false,
-          feedback: "A zero numerator does not make division by zero valid.",
+          feedback: "Even when the top of the fraction is zero, division by zero is not valid.",
         }
       - {
           id: c,
-          text: "Yes, it is one because zero points every way",
+          text: "Yes. It is one because a zero vector points every way.",
           correct: false,
           feedback: "The zero vector has no direction, not every direction.",
         }
@@ -364,26 +364,26 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A buyer's preference vector and a house's feature vector have dot product 2. If the house vector is tripled without changing direction, what happens to the dot-product score?"
-    solution: "Scaling one vector by 3 multiplies the dot product by 3, so the score becomes 6. This shows that a raw dot product depends on vector length as well as direction."
+    prompt: "A viewer's taste vector and a film's category vector have dot product 2. The app triples every film rating without changing the viewer's tastes. What happens to the dot product?"
+    solution: "Multiplying the film vector by 3 multiplies the dot product by 3, so the score becomes 6. The dot product depends on rating size as well as the balance of categories."
     options:
       - {
           id: a,
-          text: "The score becomes 6 despite unchanged direction",
+          text: "The score becomes 6 even though the film's balance of categories is unchanged.",
           correct: true,
-          feedback: "A raw dot product grows with the key length.",
+          feedback: "Each film rating triples, so every product in the sum triples.",
         }
       - {
           id: b,
-          text: "The score stays 2 because direction is unchanged",
+          text: "The score stays 2 because direction is unchanged.",
           correct: false,
-          feedback: "That would describe cosine similarity, not a raw dot product.",
+          feedback: "Cosine similarity would stay unchanged. An unadjusted dot product also depends on rating size.",
         }
       - {
           id: c,
-          text: "The score becomes 18 because length is squared",
+          text: "The score becomes 18 because the arrow's length is squared.",
           correct: false,
-          feedback: "Only the key is scaled, so the score gains one factor of three.",
+          feedback: "Only the film vector is multiplied by 3. The total gains one factor of 3, not two.",
         }
   - id: dotp-position
     dimension: conceptual
@@ -391,24 +391,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Floor-position vectors $(1,1)$ and $(10,10)$ have cosine similarity one. What does that establish?"
-    solution: "Cosine similarity one means matching directions. It does not mean equal coordinates or zero distance."
+    prompt: "Two viewers rate action and comedy as $(1,1)$ and $(10,10)$. Their cosine similarity is one. What does that establish?"
+    solution: "Both viewers give equal importance to action and comedy, so their arrows point the same way. Their rating sizes are different."
     options:
       - {
           id: a,
-          text: "They point the same way, not to the same position",
+          text: "They give the categories the same relative importance, but use different rating sizes.",
           correct: true,
           feedback: "One is ten times longer, so their endpoints differ.",
         }
       - {
           id: b,
-          text: "They occupy the same point on the floor",
+          text: "They gave exactly the same ratings.",
           correct: false,
           feedback: "Cosine similarity ignores their different lengths.",
         }
       - {
           id: c,
-          text: "They have zero straight-line distance apart",
+          text: "The distance between the two rating vectors is zero.",
           correct: false,
           feedback: "Different coordinates give a non-zero distance despite equal direction.",
         }
@@ -418,7 +418,7 @@ exercises:
     role: check
     difficulty: 1
     est_minutes: 1
-    prompt: "Compute $(1, 2, 3) \\cdot (4, -5, 6)$."
+    prompt: "A viewer's taste vector is $(1,2,3)$ and a film's category vector is $(4,-5,6)$, both ordered as (action, comedy, romance). Calculate the recommendation score using their dot product."
     answer: 12
     tolerance: { abs: 0.001 }
     hints: ["Multiply matching entries: $1\\cdot4$, $2\\cdot(-5)$, $3\\cdot6$."]
@@ -429,7 +429,7 @@ exercises:
     role: check
     difficulty: 1
     est_minutes: 2
-    prompt: "For $a = (3, 4)$ and $b = (4, 3)$, what is the cosine similarity? (2 decimal places)"
+    prompt: "Two viewers rate action and comedy as $a=(3,4)$ and $b=(4,3)$. Calculate their cosine similarity to two decimal places."
     answer: 0.96
     tolerance: { abs: 0.005 }
     common_wrong:
@@ -446,7 +446,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "What is the cosine similarity between $u = (1, 0, 1)$ and $v = (0, 1, 1)$?"
+    prompt: "Two viewers rate action, comedy and romance as $u=(1,0,1)$ and $v=(0,1,1)$. What is their cosine similarity?"
     answer: 0.5
     tolerance: { abs: 0.005 }
     common_wrong:
@@ -463,24 +463,34 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "Two non-zero vectors have dot product $0$. What can you conclude?"
+    prompt: "Two viewers' non-zero taste vectors have dot product $0$. What can you conclude about their arrows, drawn from the same starting point?"
     options:
-      - { id: a, text: "They are perpendicular (orthogonal)", correct: true }
+      - {
+          id: a,
+          text: "The arrows are perpendicular, meaning they meet at a right angle.",
+          correct: true,
+        }
       - {
           id: b,
-          text: "At least one of them is the zero vector",
+          text: "At least one vector must be zero.",
           correct: false,
           category: misunderstood_definition,
           feedback: "The question says both are non-zero. $(1,0)\\cdot(0,1) = 0$.",
         }
       - {
           id: c,
-          text: "They point in opposite directions",
+          text: "The arrows point in opposite directions.",
           correct: false,
           category: misunderstood_definition,
           feedback: "Opposite directions give a *negative* dot product ($\\cos 180^\\circ = -1$).",
         }
-      - { id: d, text: "They are identical", correct: false, category: misunderstood_definition }
+      - {
+          id: d,
+          text: "The vectors are identical.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Identical non-zero vectors have a positive dot product, because it adds the squares of their entries.",
+        }
     solution: "$a\\cdot b = \\|a\\|\\|b\\|\\cos\\theta = 0$ with non-zero lengths means $\\cos\\theta = 0$, so $\\theta = 90^\\circ$."
   - id: dot-review-weighted
     dimension: math
@@ -488,7 +498,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 2
-    prompt: "A linear score uses weights $w = (2, -1, 0.5)$. For input $x = (3, 4, 2)$, what is $w \\cdot x$?"
+    prompt: "A film app uses taste weights $w=(2,-1,0.5)$ for action, comedy and romance. A film has ratings $x=(3,4,2)$ in that order. What recommendation score does $w\\cdot x$ give?"
     answer: 3
     tolerance: { abs: 0.001 }
     solution: "$6 - 4 + 1 = 3$."
@@ -498,37 +508,43 @@ exercises:
     role: transfer
     difficulty: 2
     est_minutes: 2
-    prompt: "A text model scores how relevant each word is to another by taking the dot product of two lists of numbers, called a query and a key. It then converts those scores into relative attention weights. If one key is multiplied by 3 without changing its direction, what happens to its score, and why might that be a problem?"
+    prompt: "A film app gives a film a positive recommendation score by taking the dot product of its category ratings with your taste weights. The app then triples every category rating for that film. Why might the new score be misleading?"
     options:
       - {
           id: a,
-          text: "Its score triples, so it can rank higher because of its length rather than its relevance",
+          text: "Its score triples even though its balance of categories has not changed.",
           correct: true,
         }
       - {
           id: b,
-          text: "Nothing changes: dot products depend only on direction",
+          text: "Its score stays unchanged because dot products depend only on direction.",
           correct: false,
           category: misunderstood_definition,
-          feedback: "Only cosine similarity is length-invariant. $q\\cdot(3k) = 3(q \\cdot k)$.",
+          feedback: "Cosine similarity would stay unchanged. In a dot product, every multiplied pair now gives three times its previous value.",
         }
       - {
           id: c,
-          text: "Its score becomes 9 times larger",
+          text: "Its score becomes nine times larger.",
           correct: false,
           category: math_error,
-          feedback: "The dot product is linear in each argument, so scaling $k$ by 3 scales the score by 3.",
+          feedback: "Only the film's ratings triple. Your weights stay fixed, so each product gains one factor of three.",
         }
-      - { id: d, text: "Its score becomes negative", correct: false, category: incorrect_reasoning }
-    hints: ["Is the dot product linear in $k$?"]
-    solution: "$q \\cdot (3k) = 3\\,(q\\cdot k)$. Raw dot products reward length as well as alignment, which is one reason vector norms are controlled, e.g. by normalisation layers and the $1/\\sqrt d$ scaling."
+      - {
+          id: d,
+          text: "Its score becomes negative.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Multiplying a positive score by three keeps it positive.",
+        }
+    hints: ["What happens to each product if only the film's number triples?"]
+    solution: "Every category adds three times its previous amount, so the total triples. The film may now rank higher without matching your balance of interests any better."
   - id: dot-explain
     dimension: conceptual
     type: explain
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Explain in 2–4 sentences why a dot product can be read as a similarity score, and when that reading is misleading."
+    prompt: "A film app compares your taste weights with a film's category ratings using a dot product. Explain in 2–4 sentences why that can measure agreement, and why larger ratings can make the comparison misleading."
     rubric:
       - {
           id: r1,
@@ -547,4 +563,4 @@ exercises:
           criterion: "Mentions cosine similarity or normalisation as the length-independent alternative",
           weight: 1,
         }
-    exemplar: "Since a·b = |a||b|cosθ, the dot product is biggest when the vectors point in the same direction, zero when orthogonal and negative when opposite, so it behaves like a similarity. But it also scales with the lengths, so a long vector can out-score a better-aligned short one. Cosine similarity divides out the lengths to compare direction only."
+    exemplar: "For fixed arrow lengths, the dot product is largest when the represented tastes point in the same direction. It is zero for perpendicular arrows and negative for opposing arrows. Larger rating sizes can raise the score even without a better balance of interests. Cosine similarity divides by both lengths to compare direction alone."
