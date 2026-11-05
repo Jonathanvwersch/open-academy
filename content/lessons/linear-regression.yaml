@@ -1,41 +1,126 @@
 concept: linear-regression
-version: 1
-fast_path: [objective, summary]
-blocks:
-  - kind: objective
-    md: |
-      **Goal:** write the linear model in vector form, interpret its weights, and compute vectorised predictions in NumPy.
-  - kind: intuition
-    md: |
-      Linear regression predicts a number as a weighted sum of features plus an offset $b$, also called the bias:
-      $$\hat y = w \cdot x + b.$$
-      Each weight $w_j$ says how much the prediction changes when feature $j$ increases by one unit and all other features stay fixed. This simple model makes it clear how inputs, weights, predictions and errors fit together.
-  - kind: example
-    md: |
-      This example uses a linear model to turn house measurements into a predicted price.
+version: 2
+objective: |
+  **Goal:** write a linear house-price model in vector form, interpret its weights and bias, and make vectorised NumPy predictions for a batch of houses.
+knowledge_points:
+  - id: lr-add-contributions
+    title: Build a price from weighted house features
+    explain: |
+      You know a house's area and number of bedrooms, and want to predict its sale price. You need a rule that combines both details rather than looking up each house separately. Start by giving each detail a fixed contribution to the price.
 
-      House price (in thousands) $= 3\cdot\text{area} + 10\cdot\text{bedrooms} + 50$. A 100 m², 2-bedroom house: $300 + 20 + 50 = 370$. One extra m² adds 3 (thousand); one extra bedroom *at the same area* adds 10.
-  - kind: math
-    md: |
-      For a batch $X \in \mathbb R^{n\times d}$, there are $n$ rows (examples) and $d$ columns (features). The ones vector $\mathbf 1$ is a list of $n$ ones.
-      $$\hat y = Xw + b\mathbf 1 \in \mathbb{R}^n.$$
-      A common trick is to append a constant-1 feature to every row, so the bias becomes just another weight.
-  - kind: worked
-    md: |
-      This worked example uses matrix multiplication to make predictions for several houses at once.
+      A **linear regression** model predicts a number by multiplying each input feature by a weight, adding the results, then adding an offset. For our house model, prices are in thousands of pounds, area is in square metres, and the rule is $3\cdot\text{area}+10\cdot\text{bedrooms}+50$.
+
+      Collect a house's features in the vector $x=(\text{area},\text{bedrooms})$ and the corresponding weights in $w=(3,10)$. Let $b=50$ be the offset, also called the **bias**, and $\hat y$ the predicted price. The dot product adds matching weight-times-feature contributions:
+
+      $$\hat y=w\cdot x+b.$$
+
+      The order matters: the first weight multiplies area, and the second multiplies bedrooms. The bias is added once, not once per feature.
+
+      Here the weights are given so you can practise prediction; training chooses their values using past sales. A line with an offset is often called linear in this context even though it need not pass through zero.
+    worked: |
+      This example shows how each feature contributes to one house's price.
+
+      A 100 m², 2-bedroom house has feature vector $x=(100,2)$.
+
+      1. Area contribution: $3\times100=300$.
+      2. Bedroom contribution: $10\times2=20$.
+      3. Add contributions: $300+20=320$.
+      4. Add the bias once: $320+50=370$, meaning £370,000.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 190" aria-label="Area contributes 300 and bedrooms contribute 20, then a bias of 50 gives a house-price prediction of 370 thousand pounds">
+        <rect x="4" y="15" width="210" height="50" rx="6" fill="#3b82f6" fill-opacity="0.12"/>
+        <rect x="4" y="105" width="210" height="50" rx="6" fill="#3b82f6" fill-opacity="0.12"/>
+        <path d="M216 40 H267 V85 H295 M216 130 H267 V85" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+        <path d="M287 79 L295 85 L287 91 M433 85 H455 M447 79 L455 85 L447 91" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+        <rect x="298" y="58" width="133" height="55" rx="6" fill="#f59e0b" fill-opacity="0.18"/>
+        <rect x="458" y="58" width="158" height="55" rx="6" fill="#10b981" fill-opacity="0.18"/>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+          <text x="18" y="46">Area: 100 × 3 = 300</text><text x="18" y="136">Bedrooms: 2 × 10 = 20</text><text x="309" y="91">Sum + bias 50</text><text x="475" y="91">Prediction: 370</text><text x="7" y="182">All price contributions are in thousands of pounds.</text>
+        </g>
+      </svg>
+      ```
+
+      Keep the feature order aligned with the weights and add the offset only after the dot product.
+    problems:
+      [lrp-formula, lrp-price-template, lrp-dot-template, lrp-order, lrp-bias-once, lrp-new-task]
+  - id: lr-interpret-weights
+    title: Read each weight in its own units
+    explain: |
+      You tell a buyer that the bedroom weight is 10. Does that mean bedrooms are more important than area, whose weight is only 3? You cannot tell from those two numbers alone. They measure changes in different input units.
+
+      A **weight** tells you how much the prediction changes for one extra unit of its feature, **with the other features held fixed**. In our model, one extra square metre adds 3 thousand pounds if bedroom count stays unchanged. One extra bedroom adds 10 thousand pounds if area stays unchanged.
+
+      Write $w_j$ for the weight of feature number $j$. If only that feature changes by an amount $\Delta x_j$, the prediction changes by $w_j\Delta x_j$. The Greek letter $\Delta$ ("delta") means a change. The bias cancels when comparing two predictions from the same model.
+
+      A negative weight subtracts from the prediction as that feature grows; it is not automatically a coding mistake. Changing units changes the weight too: measuring area in hundreds of square metres changes its weight from 3 to 300 without changing any price.
+
+      These are statements about the model's predictions, not proof that changing a real house causes the same price change. The bias is the model's prediction when all features are zero, which need not describe a realistic house.
+    worked: |
+      This example shows why you must hold other features fixed when reading a weight.
+
+      | House | Area | Bedrooms | Calculation | Predicted price |
+      |---|---|---|---|---|
+      | A | 100 | 2 | $300+20+50$ | 370 |
+      | B | 100 | 3 | $300+30+50$ | 380 |
+      | C | 110 | 3 | $330+30+50$ | 410 |
+
+      A to B changes only bedrooms: $10(3-2)=10$. A to C changes both features: $3(110-100)+10(3-2)=30+10=40$.
+
+      In hundreds of square metres, house A has area 1: $300\times1+10\times2+50=370$.
+
+      Weights describe per-unit changes, so comparing their raw magnitudes across different units does not rank feature importance.
+    problems:
+      [
+        lrp-weight-meaning,
+        lrp-change-template,
+        lrp-both-template,
+        lrp-units,
+        lrp-negative,
+        lrp-zero-input,
+      ]
+  - id: lr-batch-predictions
+    title: Predict every row with one matrix operation
+    explain: |
+      You have hundreds of house sales to price. Repeating the two multiplications by hand invites mistakes, and writing a Python loop hides the simple structure: every house uses the same weights. Put the houses into rows and do all the dot products together.
+
+      The **input matrix** $X$ has $n$ rows for houses and $d$ columns for features. The weight vector $w$ has $d$ entries; the prediction vector $\hat y$ has $n$ entries. A **ones vector** $\mathbf 1$ is a list of $n$ ones, so multiplying it by the scalar bias $b$ adds the same offset to each row:
+
+      $$\hat y=Xw+b\mathbf 1.$$
+
+      Here matrix multiplication $Xw$ computes one weighted sum per row. In NumPy you write `X @ w + b`. With `X.shape == (n, d)` and `w.shape == (d,)`, the result has shape `(n,)`. Adding the scalar `b` to every entry is called **broadcasting**.
+
+      You can also append a constant-1 feature to each house and append $b$ to the weights. The extra product $1\times b$ supplies the offset. This makes the new matrix have $d+1$ columns and the new weight vector have $d+1$ entries. If you use this trick, do not add a separate bias again.
+    worked: |
+      This example shows three house predictions with one matrix multiplication.
 
       ```python
       import numpy as np
-      X = np.array([[100., 2.], [80., 1.], [150., 4.]])  # area, bedrooms
+      X = np.array([[100., 2.], [80., 1.], [150., 4.]])
       w = np.array([3., 10.])
       b = 50.
-      y_hat = X @ w + b      # array([370., 300., 540.])
+      y_hat = X @ w + b
+      # array([370., 300., 540.]), shape (3,)
       ```
-      `X @ w` has shape `(3,)`; the scalar `b` broadcasts to every row. No Python loop is needed.
-  - kind: check
-    exercise: lr-check-predict
-  - kind: summary
-    md: |
-      - $\hat y = w\cdot x + b$, and for a batch, $\hat y = Xw + b$.
-      - $w_j$ is the change in prediction per unit of feature $j$, with the other features held fixed.
-      - Vectorise with `X @ w + b`.
+
+      - Row 1: $100\times3+2\times10=320$; add 50 to get 370.
+      - Row 2: $80\times3+1\times10=250$; add 50 to get 300.
+      - Row 3: $150\times3+4\times10=490$; add 50 to get 540.
+
+      With the bias trick, row 1 becomes $(100,2,1)$ and the weights become $(3,10,50)$. Its dot product is $300+20+50=370$, unchanged.
+
+      Each row gives one price, whether you add the bias separately or include it as a constant feature.
+    problems:
+      [
+        lrp-batch-rule,
+        lrp-batch-template,
+        lrp-augmented-template,
+        lrp-code,
+        lrp-shape,
+        lrp-bias-trick,
+      ]
+final: lr-explain-model
+summary: |
+  - A linear price model adds matching weight-times-feature contributions and one bias: $\hat y=w\cdot x+b$.
+  - Each weight describes a per-unit prediction change with other inputs fixed; units matter, and weights alone do not rank importance.
+  - Use `X @ w + b` for one prediction per row, or append a constant-1 column and a bias weight without adding the bias twice.

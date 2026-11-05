@@ -127,3 +127,498 @@ exercises:
         "What single number minimises the sum of squared deviations? The sum of absolute deviations?",
       ]
     solution: "The constant minimising MSE is the mean; the one minimising MAE is the median. A skewed distribution separates them."
+  - id: lossp-measure
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: House-price errors are +10, +10 and −20 thousand pounds. Which calculation gives MAE?
+    options:
+      - id: a
+        text: Add 10, 10 and 20, then divide by 3
+        correct: true
+      - id: b
+        text: Add 10, 10 and −20, then divide by 3
+        correct: false
+        category: incorrect_reasoning
+        feedback: Signed errors cancel; absolute errors measure distances from zero.
+      - id: c
+        text: Add 100, 100 and 400, then divide by 3
+        correct: false
+        category: incorrect_reasoning
+        feedback: Squaring and averaging gives MSE, not MAE.
+    solution: MAE averages the distances from zero, so the negative error contributes 20 rather than −20.
+  - id: lossp-mse-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      Two house-price errors are {{=a}} and −{{=b}} thousand pounds. What is their MSE? Give the
+      number in squared thousands of pounds.
+    params:
+      a:
+        min: 1
+        max: 6
+        step: 1
+      b:
+        min: 2
+        max: 8
+        step: 1
+    answer_expr: (a^2+b^2)/2
+    tolerance:
+      abs: 0.001
+    solution:
+      "Square both errors, add them, and divide by 2: ({{=a}}² + {{=b}}²)/2 = {{=(a^2+b^2)/2}}.
+      Squaring stops their signs cancelling."
+    common_wrong:
+      - answer_expr: a^2+b^2
+        category: math_error
+        feedback: That is the total squared error; divide by the two sales.
+  - id: lossp-mae-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Two house-price errors are −{{=a}} and {{=b}} thousand pounds. What is their MAE in
+      thousands of pounds?
+    params:
+      a:
+        min: 1
+        max: 9
+        step: 1
+      b:
+        min: 2
+        max: 10
+        step: 1
+    answer_expr: (a+b)/2
+    tolerance:
+      abs: 0.001
+    solution:
+      Their absolute errors are {{=a}} and {{=b}}, so MAE = ({{=a}} + {{=b}})/2 = {{=(a+b)/2}}.
+      Both misses count positively.
+    common_wrong:
+      - answer_expr: (b-a)/2
+        category: math_error
+        feedback: That averages signed errors; remove each sign before averaging.
+  - id: lossp-cancellation
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A price model misses one house by +20 and another by −20. What does their signed average of
+      zero tell you?
+    options:
+      - id: a
+        text: The errors cancel, but both prices are wrong
+        correct: true
+      - id: b
+        text: The model has zero loss under squared error
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each squared error is 400, so MSE is 400 rather than zero.
+      - id: c
+        text: The model has zero loss under absolute error
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each absolute error is 20, so MAE is 20 rather than zero.
+    solution:
+      A signed average measures the balance of over- and under-predictions, not their distances
+      from the targets.
+  - id: lossp-repeat
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      You duplicate every row of a house-sales dataset without changing predictions. What happens
+      to MSE?
+    options:
+      - id: a
+        text: It stays the same because total and count both double
+        correct: true
+      - id: b
+        text: It doubles because every squared error appears twice
+        correct: false
+        category: incorrect_reasoning
+        feedback: The count in the denominator also doubles.
+      - id: c
+        text: It halves because the dataset has twice as many rows
+        correct: false
+        category: incorrect_reasoning
+        feedback: The total squared error doubles along with the count.
+    solution:
+      A mean divides by the number of rows, so repeating identical evidence changes the total
+      but not the average.
+  - id: lossp-units
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Prices are recorded in thousands of pounds. Which units describe the two losses?
+    options:
+      - id: a
+        text: "MAE: thousands of pounds; MSE: squared thousands of pounds"
+        correct: true
+      - id: b
+        text: "MAE: squared thousands of pounds; MSE: thousands of pounds"
+        correct: false
+        category: incorrect_reasoning
+        feedback: MAE does not square the errors, but MSE does.
+      - id: c
+        text: "Both: thousands of pounds, because both use a mean"
+        correct: false
+        category: incorrect_reasoning
+        feedback: Taking a mean preserves the units after squaring; it does not undo the square.
+    solution:
+      Absolute values preserve price units, whereas squaring changes them, so an MSE of 100 and
+      an MAE of 10 cannot be compared as if they were the same measure.
+  - id: lossp-outlier
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      One house has an error of 9; another has an error of 1, in the same price units. How much
+      larger is the first contribution?
+    options:
+      - id: a
+        text: 81 times for MSE; 9 times for MAE
+        correct: true
+      - id: b
+        text: 9 times for MSE; 81 times for MAE
+        correct: false
+        category: incorrect_reasoning
+        feedback: "MSE squares the errors, not MAE: 9²/1² = 81."
+      - id: c
+        text: 9 times for both losses after taking the mean
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both contributions are divided by the same count, so their ratio still depends on squaring.
+    solution:
+      "The common averaging factor cancels in the comparison: squared errors are 81 and 1, while
+      absolute errors are 9 and 1."
+  - id: lossp-slope-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      For one house, the prediction is {{=y+r}} and the actual price is {{=y}}, in thousands of
+      pounds. What is the derivative of its squared error with respect to its prediction?
+    params:
+      y:
+        min: 280
+        max: 340
+        step: 10
+      r:
+        min: -8
+        max: -2
+        step: 2
+    answer_expr: 2*r
+    tolerance:
+      abs: 0.001
+    solution:
+      The error is {{=y+r}} − {{=y}} = {{=r}}. The squared-error derivative is twice the error,
+      giving {{=2*r}}.
+    common_wrong:
+      - answer_expr: r
+        category: math_error
+        feedback: The derivative of a square includes the factor 2.
+  - id: lossp-square-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: One house-price error grows from {{=r}} to {{=2*r}}. By how much does its squared error
+      increase?
+    params:
+      r:
+        min: 1
+        max: 6
+        step: 1
+    answer_expr: 3*r^2
+    tolerance:
+      abs: 0.001
+    solution: The old squared error is {{=r^2}} and the new one is {{=4*r^2}}. Their difference is
+      {{=3*r^2}}, because doubling an error quadruples its square.
+    common_wrong:
+      - answer_expr: r^2
+        category: math_error
+        feedback: That is the old squared error, not the increase.
+  - id: lossp-mae-slope
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A house is underpriced by 9 thousand pounds. What is the derivative of its individual
+      absolute error with respect to the prediction?
+    options:
+      - id: a
+        text: −1, because raising the prediction reduces the distance
+        correct: true
+      - id: b
+        text: +1, because absolute error is always positive
+        correct: false
+        category: incorrect_reasoning
+        feedback: The loss is positive, but its slope is negative below the target.
+      - id: c
+        text: −18, because twice the error gives the slope
+        correct: false
+        category: incorrect_reasoning
+        feedback: Twice the error is the squared-error derivative, not the absolute-error derivative.
+    solution:
+      Below the target, raising the prediction by one unit removes one unit of absolute error,
+      so the derivative is −1.
+  - id: lossp-corner
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: At an exactly correct prediction, what happens to the absolute-error curve?
+    options:
+      - id: a
+        text: It has a corner, so its ordinary derivative is undefined
+        correct: true
+      - id: b
+        text: It has a smooth bottom with derivative exactly zero
+        correct: false
+        category: incorrect_reasoning
+        feedback: The left slope is −1 and the right slope is +1, so there is no single ordinary derivative.
+      - id: c
+        text: It has derivative +1 because absolute values are positive
+        correct: false
+        category: incorrect_reasoning
+        feedback: The right slope is +1, but the left slope differs.
+    solution:
+      The sign function can be defined as zero at zero, but that convention does not make the
+      corner of absolute error differentiable.
+  - id: lossp-sensor
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A robot distance sensor has a few incorrectly recorded targets far from all other values.
+      Why might MAE be useful while you investigate?
+    options:
+      - id: a
+        text: Large errors have less influence, but bad labels still need checking
+        correct: true
+      - id: b
+        text: Large errors disappear entirely, so the labels need no checking
+        correct: false
+        category: incorrect_reasoning
+        feedback: MAE still charges for every unit of error; it does not remove the bad records.
+      - id: c
+        text: Large errors get squared, so they matter more than before
+        correct: false
+        category: incorrect_reasoning
+        feedback: Squaring is MSE; MAE uses absolute distance and a constant-magnitude slope.
+    solution:
+      MAE limits how much the slope grows with an extreme error, but the incorrect labels still
+      provide misleading targets.
+  - id: lossp-constant
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: You predict a single price for sales at 290, 300 and 560 thousand pounds. Which choices
+      minimise each loss?
+    options:
+      - id: a
+        text: "MSE: the mean; MAE: the middle price"
+        correct: true
+      - id: b
+        text: "MSE: the middle price; MAE: the mean"
+        correct: false
+        category: incorrect_reasoning
+        feedback: Squared error is minimised by the mean, while absolute error is minimised by a median.
+      - id: c
+        text: "Both: the highest price, to avoid underpricing"
+        correct: false
+        category: incorrect_reasoning
+        feedback: Predicting the maximum creates unnecessary error on the other sales.
+    solution:
+      The mean balances squared-error slopes; the median balances the number of values on either
+      side under absolute error.
+  - id: lossp-mean-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      Three house prices, in tens of thousands of pounds, are {{=a}}, {{=a+3}} and {{=a+18}}. What
+      constant minimises MSE?
+    params:
+      a:
+        min: 20
+        max: 35
+        step: 1
+    answer_expr: a+7
+    tolerance:
+      abs: 0.001
+    solution:
+      Add the targets to get {{=3*a+21}}, then divide by 3 to get {{=a+7}}. The mean minimises
+      squared error.
+    common_wrong:
+      - answer_expr: a+3
+        category: math_error
+        feedback: That is the median, which minimises MAE rather than MSE.
+  - id: lossp-median-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      Three house prices, in tens of thousands of pounds, are {{=a}}, {{=a+3}} and {{=a+18}}. What
+      constant minimises MAE?
+    params:
+      a:
+        min: 20
+        max: 35
+        step: 1
+    answer_expr: a+3
+    tolerance:
+      abs: 0.001
+    solution:
+      The ordered middle price is {{=a+3}}. Moving away from it increases two distances while
+      reducing only one, so it minimises MAE.
+    common_wrong:
+      - answer_expr: a+7
+        category: math_error
+        feedback: That is the mean, which minimises MSE rather than MAE.
+  - id: lossp-extreme-sale
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The prices are 290, 300 and 560. Only the last changes, to 900. What happens to the best
+      constant under each loss?
+    options:
+      - id: a
+        text: The MSE choice rises; the MAE choice stays at 300
+        correct: true
+      - id: b
+        text: Both choices rise by the same amount
+        correct: false
+        category: incorrect_reasoning
+        feedback: The median remains the same middle sale even though the mean increases.
+      - id: c
+        text: The MAE choice rises; the MSE choice stays fixed
+        correct: false
+        category: incorrect_reasoning
+        feedback: It is the mean, not the median, that is pulled by the changed extreme value.
+    solution:
+      The total price rises, moving the mean; the ordered middle value remains 300, so the MAE
+      choice is unchanged.
+  - id: lossp-even
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Four sale prices are 280, 300, 320 and 600. Which constants minimise MAE?
+    options:
+      - id: a
+        text: Every value from 300 to 320, including both ends
+        correct: true
+      - id: b
+        text: Only 375, the mean of all four sale prices
+        correct: false
+        category: incorrect_reasoning
+        feedback:
+          The mean minimises MSE; for MAE, the whole interval between the middle values minimises
+          the total distance.
+      - id: c
+        text: Only 280, the smallest of the four sale prices
+        correct: false
+        category: incorrect_reasoning
+        feedback: Moving up towards the middle reduces more distances than it increases.
+    solution:
+      Between 300 and 320, moving the prediction changes two distances up and two down by equal
+      amounts, leaving the total unchanged.
+  - id: lossp-route
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A robot takes 10, 10 and 60 minutes on three recorded trips. Which constant is less pulled
+      by the one long trip?
+    options:
+      - id: a
+        text: The MAE choice of 10 minutes, the median
+        correct: true
+      - id: b
+        text: The MSE choice of about 26.67 minutes, the mean
+        correct: false
+        category: incorrect_reasoning
+        feedback: The mean includes all 60 minutes in the total and is pulled upwards.
+      - id: c
+        text: Both choices are equally pulled towards 60 minutes
+        correct: false
+        category: incorrect_reasoning
+        feedback: The middle value stays at 10 even with the long trip.
+    solution: The median remains at the typical short trip, while the mean is (10 + 10 + 60)/3, so
+      squared error favours a larger constant.
+  - id: loss-explain-choice
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: Your house-price model has many small errors and a few very large ones. Explain how you
+      would compute and choose between MSE and MAE, how their slopes treat the large errors, and
+      which constant baseline each would choose.
+    rubric:
+      - id: r1
+        criterion:
+          Computes MSE by averaging squares and MAE by averaging absolute errors, preventing
+          cancellation
+        weight: 1
+        required: true
+      - id: r2
+        criterion:
+          Explains that squared-error slopes grow with the error while absolute-error slopes have
+          constant magnitude away from zero, and relates this to outliers
+        weight: 1
+        required: true
+      - id: r3
+        criterion:
+          Chooses the mean for a constant MSE baseline and a median for MAE, with a reason tied to
+          the cost of mistakes
+        weight: 1
+        required: true
+    exemplar:
+      I subtract each actual price from its prediction, then average either the squared errors
+      for MSE or their absolute values for MAE; opposite misses cannot cancel. Squared-error slopes
+      are twice the errors, whereas absolute-error slopes have magnitude 1 away from zero, so large
+      misses pull harder under MSE. I would use MSE if large misses deserve a much bigger penalty
+      and MAE if typical absolute distance matters more; the constant baselines are the mean and a
+      median respectively.
+    solution:
+      I subtract each actual price from its prediction, then average either the squared errors
+      for MSE or their absolute values for MAE; opposite misses cannot cancel. Squared-error slopes
+      are twice the errors, whereas absolute-error slopes have magnitude 1 away from zero, so large
+      misses pull harder under MSE. I would use MSE if large misses deserve a much bigger penalty
+      and MAE if typical absolute distance matters more; the constant baselines are the mean and a
+      median respectively.
