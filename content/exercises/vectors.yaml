@@ -6,8 +6,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A warehouse robot travels $a=(1,2)$, then $b=(3,-1)$, in metres east and north. Which vector describes its combined movement?"
-    solution: "Add eastward distances separately from northward distances: $(1+3,2+(-1))=(4,1)$. The robot ends 4 metres east and 1 north of its start."
+    prompt: "Follow arrow $a=(1,2)$, then $b=(3,-1)$, with right first and up second. Which vector joins the original start to the final endpoint?"
+    solution: "Add matching coordinates: $(1+3,2+(-1))=(4,1)$. The endpoint is 4 units right and 1 up from the start."
     options:
       - {
           id: a,
@@ -19,7 +19,7 @@ exercises:
           id: b,
           text: "$(4,3)$",
           correct: false,
-          feedback: "The second journey goes 1 metre south, not north.",
+          feedback: "The second arrow goes 1 unit down, not up.",
         }
       - {
           id: c,
@@ -141,26 +141,26 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A robot travels $(1,2)$ metres east and north. Why must it double both entries to reach a parcel twice as far away in the same direction?"
-    solution: "Doubling both entries gives $(2,4)$, keeping twice as much northward as eastward travel. Doubling only the first gives $(2,2)$, which points in a different direction."
+    prompt: "Why must you double both entries of arrow $(1,2)$ to make it twice as long without turning?"
+    solution: "Doubling both entries gives $(2,4)$, keeping twice as much upward as rightward distance. Doubling only the first gives $(2,2)$, which points in a different direction."
     options:
       - {
           id: a,
           text: "Doubling both entries preserves the proportions of travel in each direction.",
           correct: true,
-          feedback: "Both journeys cover twice as much distance north as east.",
+          feedback: "Both arrows reach twice as far up as right.",
         }
       - {
           id: b,
           text: "Adding the same number to both entries would also preserve direction.",
           correct: false,
-          feedback: "Adding two gives $(3,4)$, which no longer has twice as much northward as eastward travel. Multiplication preserves that proportion; addition does not.",
+          feedback: "Adding two gives $(3,4)$, which no longer has twice as much upward as rightward distance. Multiplication preserves that proportion; addition does not.",
         }
       - {
           id: c,
           text: "The signs alone determine direction, so doubling only one entry would work too.",
           correct: false,
-          feedback: "$(1,2)$ and $(2,2)$ both point east and north, but at different angles. Signs do not tell you the exact direction.",
+          feedback: "$(1,2)$ and $(2,2)$ both point right and up, but at different angles. Signs do not tell you the exact direction.",
         }
   - id: vecp-scale-template
     dimension: math
