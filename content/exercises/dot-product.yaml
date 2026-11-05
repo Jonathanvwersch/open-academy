@@ -1,5 +1,417 @@
 concept: dot-product
 exercises:
+  - id: dotp-total
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What is the dot product $(1,2,3)\\cdot(4,-5,6)$?"
+    solution: "Multiply matching entries, then add: $1\\cdot4+2\\cdot(-5)+3\\cdot6=4-10+18=12$. The result is one number."
+    options:
+      - { id: a, text: "12", correct: true, feedback: "The contributions are 4, minus 10 and 18." }
+      - {
+          id: b,
+          text: "32",
+          correct: false,
+          feedback: "The second contribution is negative: two times minus five.",
+        }
+      - {
+          id: c,
+          text: "21",
+          correct: false,
+          feedback: "Adding all entries is not multiplying matching entries first.",
+        }
+  - id: dotp-total-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A house score uses weights $w=({{=u}},{{=v}})$ and features $x=({{=a}},{{=b}})$. What is $w\\cdot x$?"
+    solution: "The contributions are ${{=u}}\\cdot{{=a}}={{=u*a}}$ and ${{=v}}\\cdot{{=b}}={{=v*b}}$. Adding them gives ${{=u*a+v*b}}$, the weighted score."
+    tolerance: { abs: 0.000001 }
+    params:
+      u: { min: 1, max: 4 }
+      v: { min: -3, max: 3 }
+      a: { min: 2, max: 8 }
+      b: { min: 1, max: 5 }
+    answer_expr: "u*a+v*b"
+
+  - id: dotp-model
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A house-price score uses weights $(0.5,2)$ for (area units, bedrooms). Holding area fixed, what does one extra bedroom do?"
+    solution: "The extra contribution is $2\\cdot1=2$. In a linear score, each weight gives the change caused by one extra unit of its feature."
+    options:
+      - {
+          id: a,
+          text: "Raises the score by 2",
+          correct: true,
+          feedback: "The bedroom weight is the contribution of one extra bedroom.",
+        }
+      - {
+          id: b,
+          text: "Raises the score by 0.5",
+          correct: false,
+          feedback: "That weight belongs to area, not bedrooms.",
+        }
+      - {
+          id: c,
+          text: "Multiplies the score by 2",
+          correct: false,
+          feedback: "The weight multiplies the added feature unit, not the whole score.",
+        }
+  - id: dotp-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A feature vector is (area units, bedrooms), but its weights are accidentally listed as (bedrooms, area units). What should you do?"
+    solution: "The dot product pairs entries by position. Reorder one list so each feature is matched to its own weight."
+    options:
+      - {
+          id: a,
+          text: "Reorder weights to match the features",
+          correct: true,
+          feedback: "Each weight must multiply its intended feature.",
+        }
+      - {
+          id: b,
+          text: "Add the vectors before scoring them",
+          correct: false,
+          feedback: "Adding entries does not fix which feature each weight belongs to.",
+        }
+      - {
+          id: c,
+          text: "Keep the order because sums ignore it",
+          correct: false,
+          feedback: "Reordering one vector alone changes the paired products.",
+        }
+  - id: dotp-negative-weight
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A cart route score uses weights $(2,-1)$ for (deliveries, minutes). What does one extra minute do, with deliveries fixed?"
+    solution: "The extra minute contributes $(-1)\\cdot1=-1$. Negative weights subtract from the total when the corresponding feature grows."
+    options:
+      - {
+          id: a,
+          text: "Lowers the score by one",
+          correct: true,
+          feedback: "The time weight is minus one.",
+        }
+      - {
+          id: b,
+          text: "Raises the score by one",
+          correct: false,
+          feedback: "A negative weight makes an increase lower the score.",
+        }
+      - {
+          id: c,
+          text: "Leaves the score unchanged",
+          correct: false,
+          feedback: "Only a zero weight would ignore extra minutes.",
+        }
+  - id: dotp-one-number
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "How do vector addition and a dot product differ?"
+    solution: "Addition sums matching entries into a new list. A dot product multiplies matching entries and adds all the products into one score."
+    options:
+      - {
+          id: a,
+          text: "Addition returns a vector; a dot product returns a number",
+          correct: true,
+          feedback: "Addition keeps components separate, while a dot product totals products.",
+        }
+      - {
+          id: b,
+          text: "Addition returns a number; a dot product returns a vector",
+          correct: false,
+          feedback: "That reverses the two operations.",
+        }
+      - {
+          id: c,
+          text: "Both operations return vectors of matching products",
+          correct: false,
+          feedback: "A dot product adds products rather than leaving them as a list.",
+        }
+  - id: dotp-sign
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Two non-zero floor arrows form an angle greater than 90 degrees. What sign is their dot product?"
+    solution: "The dot product is the product of two positive lengths and the angle cosine. Above 90 degrees the cosine is negative, so the score is negative."
+    options:
+      - {
+          id: a,
+          text: "Negative, because their directions broadly oppose",
+          correct: true,
+          feedback: "Cosine is negative for angles above 90 degrees.",
+        }
+      - {
+          id: b,
+          text: "Positive, because both arrows have positive lengths",
+          correct: false,
+          feedback: "Positive lengths multiply a negative cosine.",
+        }
+      - {
+          id: c,
+          text: "Zero, because the arrows are not identical",
+          correct: false,
+          feedback: "Only a right angle gives zero for non-zero arrows.",
+        }
+  - id: dotp-alignment-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Floor moves are $a=({{=h}},{{=v}})$ and $b=({{=k}},0)$. What is $a\\cdot b$?"
+    solution: "The horizontal contribution is ${{=h}}\\cdot{{=k}}={{=h*k}}$ and the vertical contribution is ${{=v}}\\cdot0=0$. Their sum is ${{=h*k}}$, also the horizontal projection times the length of $b$."
+    tolerance: { abs: 0.000001 }
+    params:
+      h: { min: -4, max: 4 }
+      v: { min: 1, max: 5 }
+      k: { min: 1, max: 4 }
+    answer_expr: "h*k"
+
+  - id: dotp-right-angle
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Two non-zero floor moves have dot product zero. What does this tell you?"
+    solution: "With both lengths non-zero, a zero dot product means $\\cos\\theta=0$. The arrows are perpendicular, also called orthogonal."
+    options:
+      - {
+          id: a,
+          text: "Their arrows meet at a right angle",
+          correct: true,
+          feedback: "Non-zero lengths mean the angle cosine must be zero.",
+        }
+      - {
+          id: b,
+          text: "Their arrows point in opposite directions",
+          correct: false,
+          feedback: "Opposite arrows give a negative dot product.",
+        }
+      - {
+          id: c,
+          text: "Their arrows must have equal lengths",
+          correct: false,
+          feedback: "A zero dot product constrains direction, not equal length.",
+        }
+  - id: dotp-projection
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "For $a=(3,4)$ and $b=(2,0)$, the projection of $a$ onto the direction of $b$ is 3. What is $a\\cdot b$?"
+    solution: "Multiply the signed projection by the other arrow length: $3\\cdot2=6$. Direct multiplication agrees: $3\\cdot2+4\\cdot0=6$."
+    tolerance: { abs: 0.000001 }
+    answer: 6
+
+  - id: dotp-reverse
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "The dot product of two floor moves is 6. You reverse the second move without changing its length. What is the new score?"
+    solution: "Reversing one vector negates each matching product. Their sum becomes $-6$, reflecting the reversed projection."
+    options:
+      - {
+          id: a,
+          text: "Minus 6, because the projection reverses",
+          correct: true,
+          feedback: "Reversing one vector changes every product sign.",
+        }
+      - {
+          id: b,
+          text: "Plus 6, because both lengths stay fixed",
+          correct: false,
+          feedback: "Length is unchanged, but the signed alignment reverses.",
+        }
+      - {
+          id: c,
+          text: "Zero, because the reversed move is perpendicular",
+          correct: false,
+          feedback: "Reversing gives the opposite direction, not a right-angle turn.",
+        }
+  - id: dotp-longer
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A floor arrow is doubled without turning it. What happens to its dot product with a fixed arrow?"
+    solution: "Every matching product gains a factor of two, so their sum doubles. A dot-product similarity score therefore rewards length as well as direction."
+    options:
+      - {
+          id: a,
+          text: "It doubles because every contribution doubles",
+          correct: true,
+          feedback: "Each entry in one vector has been multiplied by two.",
+        }
+      - {
+          id: b,
+          text: "It stays fixed because direction is unchanged",
+          correct: false,
+          feedback: "The raw dot product depends on length as well as direction.",
+        }
+      - {
+          id: c,
+          text: "It quadruples because both lengths double",
+          correct: false,
+          feedback: "Only one arrow has been doubled.",
+        }
+  - id: dotp-cosine
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "For $a=(3,4)$ and $b=(4,3)$, what is the cosine similarity?"
+    solution: "The dot product is $12+12=24$ and both lengths are 5. Divide by both lengths to get $24/(5\\cdot5)=0.96$."
+    tolerance: { abs: 0.000001 }
+    answer: 0.96
+
+  - id: dotp-cosine-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "For $a=(3,4)$ and $b=({{=k}},3)$, what is the cosine similarity? Round to three decimal places."
+    solution: "The dot product is $3\\cdot{{=k}}+4\\cdot3={{=3*k+12}}$. The lengths are 5 and $\\sqrt{ {{=k*k+9}} }$, so divide to get ${{=(3*k+12)/(5*sqrt(k*k+9))}}$; dividing by both lengths removes their effect on the score."
+    tolerance: { abs: 0.00051 }
+    params:
+      k: { min: 1, max: 6 }
+    answer_expr: "(3*k+12)/(5*sqrt(k*k+9))"
+
+  - id: dotp-scaling
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A non-zero vector is multiplied by 3. What happens to its cosine similarity with a fixed non-zero vector?"
+    solution: "The numerator and denominator both gain a factor of three. Cancelling that factor leaves cosine similarity unchanged."
+    options:
+      - {
+          id: a,
+          text: "It stays the same because the length factor cancels",
+          correct: true,
+          feedback: "The dot product and that vector length both triple.",
+        }
+      - {
+          id: b,
+          text: "It triples because the dot product triples",
+          correct: false,
+          feedback: "You must also divide by the tripled length.",
+        }
+      - {
+          id: c,
+          text: "It becomes one because the vector is longer",
+          correct: false,
+          feedback: "Being longer does not make directions identical.",
+        }
+  - id: dotp-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Can you compute cosine similarity between $(0,0)$ and $(1,2)$?"
+    solution: "Cosine similarity divides by both norms. The zero vector has norm zero, making the ratio undefined."
+    options:
+      - {
+          id: a,
+          text: "No, because the denominator contains a zero length",
+          correct: true,
+          feedback: "The zero vector has no direction and division by zero is undefined.",
+        }
+      - {
+          id: b,
+          text: "Yes, it is zero because the dot product is zero",
+          correct: false,
+          feedback: "A zero numerator does not make division by zero valid.",
+        }
+      - {
+          id: c,
+          text: "Yes, it is one because zero points every way",
+          correct: false,
+          feedback: "The zero vector has no direction, not every direction.",
+        }
+  - id: dotp-attention
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In attention, a query and a key are word vectors whose dot product is a relevance score. A positive score is 2; the key is tripled without turning it. What happens?"
+    solution: "Every key entry triples, so the dot product becomes $3\\cdot2=6$. This shows why a raw relevance score can reward length rather than direction alone."
+    options:
+      - {
+          id: a,
+          text: "The score becomes 6 despite unchanged direction",
+          correct: true,
+          feedback: "A raw dot product grows with the key length.",
+        }
+      - {
+          id: b,
+          text: "The score stays 2 because direction is unchanged",
+          correct: false,
+          feedback: "That would describe cosine similarity, not a raw dot product.",
+        }
+      - {
+          id: c,
+          text: "The score becomes 18 because length is squared",
+          correct: false,
+          feedback: "Only the key is scaled, so the score gains one factor of three.",
+        }
+  - id: dotp-position
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Floor-position vectors $(1,1)$ and $(10,10)$ have cosine similarity one. What does that establish?"
+    solution: "Cosine similarity one means matching directions. It does not mean equal coordinates or zero distance."
+    options:
+      - {
+          id: a,
+          text: "They point the same way, not to the same position",
+          correct: true,
+          feedback: "One is ten times longer, so their endpoints differ.",
+        }
+      - {
+          id: b,
+          text: "They occupy the same point on the floor",
+          correct: false,
+          feedback: "Cosine similarity ignores their different lengths.",
+        }
+      - {
+          id: c,
+          text: "They have zero straight-line distance apart",
+          correct: false,
+          feedback: "Different coordinates give a non-zero distance despite equal direction.",
+        }
   - id: dot-check-1
     dimension: math
     type: numeric
