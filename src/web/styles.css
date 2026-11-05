@@ -57,6 +57,16 @@ body {
   margin: 0;
 }
 
+button:not(:disabled),
+[role="button"],
+a[href],
+label[for],
+[role="radio"],
+[role="checkbox"],
+[role="option"] {
+  cursor: pointer;
+}
+
 :focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;

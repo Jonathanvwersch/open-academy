@@ -10,7 +10,7 @@ declare global {
   }
 }
 
-const screenshotDir = '/home/ubuntu/screenshots/shadcn';
+const screenshotDir = '/home/ubuntu/screenshots/ui-polish';
 mkdirSync(screenshotDir, { recursive: true });
 let sessionId = '';
 
@@ -49,7 +49,7 @@ test.beforeEach(async () => {
   await db.$client.end();
 });
 
-test('tutor sidebar saves threads, restores after reload, switches chats, hides on diagnostic, and overlays without CLS', async ({
+test('tutor sidebar pushes the page, restores without CLS, saves threads, and hides on diagnostic', async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -65,14 +65,23 @@ test('tutor sidebar saves threads, restores after reload, switches chats, hides 
   await page.goto(`/session/${sessionId}`);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Ask the tutor' })).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/closed-button.png` });
+  await expect(page.getByRole('button', { name: 'Open tutor' })).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/tutor-launcher-closed.png` });
 
   await page.evaluate(() => {
     window.__layoutShifts = [];
   });
+  const mainContent = page.locator('main').first();
+  const mainWidthBefore = await mainContent.evaluate(
+    (element) => element.getBoundingClientRect().width,
+  );
   await page.getByRole('button', { name: 'Ask the tutor' }).click();
-  await expect(page.getByRole('dialog', { name: 'Tutor' })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Tutor' })).toBeVisible();
   await expect(page.locator('[data-slot="sheet-overlay"]')).toHaveCount(0);
+  const mainWidthAfter = await mainContent.evaluate(
+    (element) => element.getBoundingClientRect().width,
+  );
+  expect(mainWidthAfter, 'tutor sidebar reduces the main page width').toBeLessThan(mainWidthBefore);
   await page.getByLabel('Ask the tutor').fill('Explain the first step');
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.getByText('Tutor reply to: Explain the first step')).toBeVisible();
@@ -83,7 +92,7 @@ test('tutor sidebar saves threads, restores after reload, switches chats, hides 
   await page.screenshot({ path: `${screenshotDir}/open-conversation.png` });
 
   await page.reload();
-  await expect(page.getByRole('dialog', { name: 'Tutor' })).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Tutor' })).toBeVisible();
   await expect(page.getByText('Tutor reply to: Explain the first step')).toBeVisible();
   await expect(page.getByText('Problem 1 · up to 5')).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/after-reload.png` });
@@ -99,7 +108,22 @@ test('tutor sidebar saves threads, restores after reload, switches chats, hides 
   await page.getByRole('option').filter({ hasText: 'Explain the first step' }).click();
   await expect(page.getByText('Tutor reply to: Explain the first step')).toBeVisible();
 
+  await page.evaluate(() => {
+    window.__layoutShifts = [];
+    localStorage.setItem('academy.tutor.open', 'true');
+  });
+  await page.goto('/');
+  await expect(page.getByRole('complementary', { name: 'Tutor' })).toBeVisible();
+  const restoreCls = await page.evaluate(() =>
+    window.__layoutShifts.reduce((total, value) => total + value, 0),
+  );
+  expect(restoreCls, 'restoring the tutor sidebar on Learn CLS').toBeLessThan(0.02);
+  await page.goto('/lessons/vectors');
+  await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
+  await expect(page.getByText('Tutor reply to: Explain the first step')).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/lesson-tutor-open.png` });
+
   await page.goto('/diagnostic');
   await expect(page.getByRole('button', { name: 'Open tutor' })).toHaveCount(0);
-  await expect(page.getByRole('dialog', { name: 'Tutor' })).toHaveCount(0);
+  await expect(page.getByRole('complementary', { name: 'Tutor' })).toHaveCount(0);
 });

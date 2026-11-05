@@ -326,7 +326,7 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
     });
   }
 
-  await page.getByRole('link', { name: 'Learn' }).click();
+  await page.getByRole('link', { name: 'Learn', exact: true }).click();
   await page.getByRole('link', { name: 'Start diagnostic' }).click();
   await expect(page.getByRole('heading', { name: 'Starting-point diagnostic' })).toBeVisible();
   await page.getByRole('button', { name: 'I haven’t studied this domain' }).click();

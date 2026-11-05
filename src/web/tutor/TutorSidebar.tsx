@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Sparkles } from 'lucide-react';
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Markdown } from '../components.js';
 import {
@@ -7,12 +8,27 @@ import {
   tutorThreadQueryOptions,
   tutorThreadsQueryOptions,
 } from '../queries.js';
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+} from '../ui/ai/conversation.js';
+import { Loader } from '../ui/ai/loader.js';
+import { Message, MessageContent } from '../ui/ai/message.js';
+import { PromptInput, PromptInputSubmit, PromptInputTextarea } from '../ui/ai/prompt-input.js';
 import { Alert, AlertDescription } from '../ui/alert.js';
 import { Badge } from '../ui/badge.js';
 import { Button } from '../ui/button.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select.js';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet.js';
-import { Textarea } from '../ui/textarea.js';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarInset,
+  SidebarProvider,
+} from '../ui/sidebar.js';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip.js';
 
 export interface TutorRequestContext {
   conceptId?: string;
@@ -139,148 +155,183 @@ export function TutorContextProvider({
     mutation.mutate(draft.trim());
   };
   return (
-    <TutorContext.Provider value={value}>
-      {children}
-      {enabled && context.allowed && routeAllowed ? (
-        <Sheet open={open} onOpenChange={setOpen} modal={false}>
-          <Button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="fixed bottom-5 right-5 z-40 rounded-full shadow-lg"
-            aria-label="Open tutor"
-          >
-            Tutor
-          </Button>
-          <SheetContent
-            aria-label="Tutor sidebar"
-            side="right"
-            showOverlay={false}
-            showCloseButton={false}
-            className="flex h-full w-[400px] max-w-[100vw] flex-col gap-0 p-0"
-          >
-            <SheetHeader className="gap-3 border-b p-4">
+    <SidebarProvider
+      open={open && routeAllowed}
+      onOpenChange={setOpen}
+      style={{ '--sidebar-width': '24rem' } as React.CSSProperties}
+    >
+      <TutorContext.Provider value={value}>
+        <SidebarInset className="min-w-0">{children}</SidebarInset>
+        {routeAllowed ? (
+          <Sidebar side="right" collapsible="offcanvas" role="complementary" aria-label="Tutor">
+            <SidebarHeader className="gap-3 border-b p-4">
               <div className="flex items-center justify-between">
-                <SheetTitle>Tutor</SheetTitle>
+                <h2 className="text-base font-medium">Tutor</h2>
                 <Button
                   type="button"
                   aria-label="Close tutor"
                   variant="ghost"
                   size="icon"
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    setOpen(false);
+                  }}
                 >
                   ×
                 </Button>
               </div>
-              <div className="flex min-w-0 items-center gap-2">
-                <div className="min-w-0 flex-1">
-                  <Select
-                    value={selectedId}
-                    onValueChange={(threadId) => {
-                      setNewChatSelected(false);
-                      setSelectedId(threadId);
+              {enabled && context.allowed ? (
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <Select
+                      value={selectedId}
+                      onValueChange={(threadId) => {
+                        setNewChatSelected(false);
+                        setSelectedId(threadId);
+                      }}
+                    >
+                      <SelectTrigger aria-label="Tutor conversation" className="w-full min-w-0">
+                        <SelectValue className="min-w-0 truncate" placeholder="Choose chat">
+                          {selectedThread ? (
+                            <span className="flex min-w-0 items-center gap-2">
+                              <Badge variant="secondary" className="max-w-[10rem] truncate">
+                                {selectedThread.conceptTitle ?? 'General'}
+                              </Badge>
+                              <span className="shrink-0 text-xs">
+                                {selectedThread.title.split(' · ').at(-1)}
+                              </span>
+                            </span>
+                          ) : undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent aria-label="Saved tutor conversations">
+                        {(threads.data ?? []).map((thread) => (
+                          <SelectItem key={thread.id} value={thread.id}>
+                            <span className="flex min-w-0 items-center gap-2">
+                              <Badge variant="secondary" className="max-w-[10rem] truncate">
+                                {thread.conceptTitle ?? 'General'}
+                              </Badge>
+                              <span className="min-w-0 truncate text-xs">
+                                {thread.lastMessagePreview}
+                              </span>
+                              <span className="shrink-0 text-xs">
+                                {thread.title.split(' · ').at(-1)}
+                              </span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 whitespace-nowrap"
+                    onClick={() => {
+                      setNewChatSelected(true);
+                      setSelectedId('');
                     }}
                   >
-                    <SelectTrigger aria-label="Tutor conversation" className="w-full min-w-0">
-                      <SelectValue className="min-w-0 truncate" placeholder="Choose chat">
-                        {selectedThread ? (
-                          <span className="flex min-w-0 items-center gap-2">
-                            <Badge variant="secondary" className="max-w-[10rem] truncate">
-                              {selectedThread.conceptTitle ?? 'General'}
-                            </Badge>
-                            <span className="shrink-0 text-xs">
-                              {selectedThread.title.split(' · ').at(-1)}
-                            </span>
-                          </span>
-                        ) : undefined}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent aria-label="Saved tutor conversations">
-                      {(threads.data ?? []).map((thread) => (
-                        <SelectItem key={thread.id} value={thread.id}>
-                          <span className="flex min-w-0 items-center gap-2">
-                            <Badge variant="secondary" className="max-w-[10rem] truncate">
-                              {thread.conceptTitle ?? 'General'}
-                            </Badge>
-                            <span className="min-w-0 truncate text-xs">
-                              {thread.lastMessagePreview}
-                            </span>
-                            <span className="shrink-0 text-xs">
-                              {thread.title.split(' · ').at(-1)}
-                            </span>
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    New chat
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 whitespace-nowrap"
-                  onClick={() => {
-                    setNewChatSelected(true);
-                    setSelectedId('');
-                  }}
-                >
-                  New chat
-                </Button>
-              </div>
-            </SheetHeader>
-            <div className="border-b px-4 py-2 text-xs text-muted-foreground">
-              {context.conceptTitle ?? context.conceptId ?? 'General'}
-              {context.lessonProblemId || context.exerciseId ? ' · current problem' : ''}
-              {selectedThread ? ` · ${selectedThread.messageCount} messages` : ''}
-            </div>
-            <div className="flex-1 space-y-4 overflow-y-auto p-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={
-                    message.role === 'user'
-                      ? 'ml-8 rounded-lg bg-muted p-3'
-                      : 'mr-4 rounded-lg border p-3'
-                  }
-                >
-                  <p className="mb-1 text-xs font-medium text-muted-foreground">
-                    {message.role === 'user' ? 'You' : 'Tutor'}
-                  </p>
-                  <Markdown>{message.content}</Markdown>
-                </div>
-              ))}
-            </div>
-            <form
-              className="space-y-2 border-t border-neutral-200 p-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                send();
-              }}
-            >
-              {error ? (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
               ) : null}
-              <Textarea
-                aria-label="Ask the tutor"
-                className="min-h-24 w-full"
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    send();
-                  }
-                }}
-              />
-              <Button type="submit" disabled={mutation.isPending || !draft.trim()}>
-                {mutation.isPending ? 'Sending…' : 'Send'}
+            </SidebarHeader>
+            {enabled && context.allowed ? (
+              <>
+                <div className="border-b px-4 py-2 text-xs text-muted-foreground">
+                  {context.conceptTitle ?? context.conceptId ?? 'General'}
+                  {context.lessonProblemId || context.exerciseId ? ' · current problem' : ''}
+                  {selectedThread ? ` · ${selectedThread.messageCount} messages` : ''}
+                </div>
+                <SidebarContent className="min-h-0 flex-1 p-0">
+                  <Conversation aria-label="Tutor messages">
+                    <ConversationContent className="gap-4 p-4">
+                      {messages.length ? (
+                        messages.map((message) => (
+                          <Message
+                            key={message.id}
+                            from={message.role === 'user' ? 'user' : 'assistant'}
+                          >
+                            <p
+                              className={`w-full text-xs font-medium text-muted-foreground ${
+                                message.role === 'user' ? 'text-right' : 'text-left'
+                              }`}
+                            >
+                              {message.role === 'user' ? 'You' : 'Tutor'}
+                            </p>
+                            <MessageContent>
+                              <Markdown>{message.content}</Markdown>
+                            </MessageContent>
+                          </Message>
+                        ))
+                      ) : (
+                        <ConversationEmptyState title="Start a conversation" description="" />
+                      )}
+                      {mutation.isPending ? (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader size={16} aria-label="Tutor is responding" />
+                          Tutor is responding…
+                        </div>
+                      ) : null}
+                    </ConversationContent>
+                  </Conversation>
+                </SidebarContent>
+                <SidebarFooter className="border-t p-4">
+                  <PromptInput
+                    className="w-full space-y-2"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      send();
+                    }}
+                  >
+                    {error ? (
+                      <Alert variant="destructive">
+                        <AlertDescription>{error}</AlertDescription>
+                      </Alert>
+                    ) : null}
+                    <PromptInputTextarea
+                      aria-label="Ask the tutor"
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && !event.shiftKey) {
+                          event.preventDefault();
+                          send();
+                        }
+                      }}
+                    />
+                    <PromptInputSubmit disabled={mutation.isPending || !draft.trim()}>
+                      {mutation.isPending ? 'Sending…' : 'Send'}
+                    </PromptInputSubmit>
+                  </PromptInput>
+                </SidebarFooter>
+              </>
+            ) : (
+              <SidebarContent className="p-4 text-sm text-muted-foreground">
+                Tutor is unavailable.
+              </SidebarContent>
+            )}
+          </Sidebar>
+        ) : null}
+        {enabled && context.allowed && routeAllowed && !open ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="fixed bottom-5 right-5 z-40 size-12 rounded-full shadow-lg"
+                size="icon-lg"
+                aria-label="Open tutor"
+              >
+                <Sparkles aria-hidden="true" className="size-5" />
               </Button>
-            </form>
-          </SheetContent>
-        </Sheet>
-      ) : null}
-    </TutorContext.Provider>
+            </TooltipTrigger>
+            <TooltipContent>Tutor</TooltipContent>
+          </Tooltip>
+        ) : null}
+      </TutorContext.Provider>
+    </SidebarProvider>
   );
 }
 

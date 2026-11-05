@@ -31,43 +31,73 @@ function CoursePage() {
             </CardHeader>
             <CardContent className="p-0">
               <ol className="divide-y">
-                {week.topics.map((topic) => (
-                  <li
-                    key={topic.conceptId}
-                    className={`flex items-center justify-between gap-3 px-4 py-3 ${
-                      topic.status === 'locked' ? 'text-muted-foreground opacity-60' : ''
-                    }`}
-                  >
-                    <div className="flex min-w-0 items-start gap-3">
-                      <span className="w-9 shrink-0 pt-0.5 text-sm tabular-nums text-muted-foreground">
-                        {topic.number}
-                      </span>
-                      <div className="min-w-0 space-y-1">
-                        <p className="font-medium">{topic.title}</p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="secondary">{topic.mastery}</Badge>
-                          {topic.status !== 'not_started' ? (
-                            <span className="text-xs text-muted-foreground">
-                              {topic.status === 'locked'
-                                ? `Needs ${topic.needs?.map((prerequisite) => prerequisite.title).join(', ')}`
-                                : COURSE_STATUS_LABEL[topic.status]}
-                            </span>
-                          ) : null}
+                {week.topics.map((topic) => {
+                  const row = (
+                    <>
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span className="w-9 shrink-0 pt-0.5 text-sm tabular-nums text-muted-foreground">
+                          {topic.number}
+                        </span>
+                        <div className="min-w-0 space-y-1">
+                          <p className="font-medium">{topic.title}</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge
+                              variant="secondary"
+                              className={
+                                topic.status === 'complete'
+                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                  : ''
+                              }
+                            >
+                              {topic.mastery}
+                            </Badge>
+                            {topic.status !== 'not_started' ? (
+                              <span
+                                className={`text-xs ${
+                                  topic.status === 'complete'
+                                    ? 'text-emerald-700 dark:text-emerald-300'
+                                    : 'text-muted-foreground'
+                                }`}
+                              >
+                                {topic.status === 'locked'
+                                  ? `Needs ${topic.needs?.map((prerequisite) => prerequisite.title).join(', ')}`
+                                  : COURSE_STATUS_LABEL[topic.status]}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    {topic.hasLesson ? (
-                      <Link
-                        to="/lessons/$conceptId"
-                        params={{ conceptId: topic.conceptId }}
-                        search={{ from: undefined }}
-                        className="shrink-0 text-sm font-medium underline-offset-4 hover:underline"
-                      >
-                        View lesson
-                      </Link>
-                    ) : null}
-                  </li>
-                ))}
+                      {topic.hasLesson ? (
+                        <span className="shrink-0 text-sm font-medium underline-offset-4 group-hover:underline">
+                          View lesson
+                        </span>
+                      ) : null}
+                    </>
+                  );
+                  const rowClassName = `flex items-center justify-between gap-3 px-4 py-3 ${
+                    topic.status === 'locked'
+                      ? 'text-muted-foreground opacity-60'
+                      : topic.status === 'complete'
+                        ? 'bg-emerald-50/70 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200'
+                        : ''
+                  }`;
+                  return (
+                    <li key={topic.conceptId}>
+                      {topic.hasLesson ? (
+                        <Link
+                          to="/lessons/$conceptId"
+                          params={{ conceptId: topic.conceptId }}
+                          search={{ from: undefined }}
+                          className={`group ${rowClassName} hover:bg-muted/60`}
+                        >
+                          {row}
+                        </Link>
+                      ) : (
+                        <div className={rowClassName}>{row}</div>
+                      )}
+                    </li>
+                  );
+                })}
               </ol>
             </CardContent>
           </Card>
