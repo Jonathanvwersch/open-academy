@@ -39,6 +39,7 @@ function LessonReviewPage() {
   const finalBlock = lesson.blocks.find(
     (block) => block.kind === 'check' && block.exercise === lesson.final,
   );
+  const objectiveBlock = lesson.blocks.find((block) => block.kind === 'objective');
   return (
     <section className="mx-auto max-w-3xl space-y-6">
       {from ? (
@@ -49,6 +50,8 @@ function LessonReviewPage() {
       <h1 className="text-3xl font-semibold">{conceptTitle}</h1>
       {lesson.knowledge_points?.length ? (
         <div className="space-y-5">
+          {objectiveBlock ? <LessonBlock kind="objective" md={objectiveBlock.md} /> : null}
+          {lesson.why ? <LessonBlock kind="why" md={lesson.why} /> : null}
           {lesson.knowledge_points.map((point, index) => (
             <article key={point.id} className="space-y-4">
               <h2 className="text-xl font-semibold">

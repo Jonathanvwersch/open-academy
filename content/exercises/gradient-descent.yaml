@@ -277,29 +277,28 @@ exercises:
           category: incorrect_reasoning,
         }
     solution: "With noise variance 0.25, no model can do much better than MSE ≈ 0.25 on new data."
-  - id: gdp-direction
+  - id: gdp-why-negative-slope
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: The current house-price weight is 0 and the loss slope is −6. Which update moves downhill?
+    prompt: Why does subtracting a negative loss slope increase the house-price weight and reduce loss for a small enough step?
     options:
       - id: a
-        text: Subtract the rate times −6, increasing the weight
+        text: The curve tilts down as the weight increases, and subtracting a negative number moves that way
         correct: true
       - id: b
-        text: Add the rate times −6, decreasing the weight
+        text: A negative slope means the weight itself must be negative, so subtraction corrects its sign
         correct: false
         category: incorrect_reasoning
-        feedback: Adding the gradient moves uphill; subtracting a negative slope increases the weight.
+        feedback: The slope describes how loss changes, not the sign of the weight. A positive weight can have a negative loss slope too.
       - id: c
-        text: Keep the weight fixed because a negative slope is invalid
+        text: Any increase in the weight reduces loss, regardless of how large the step is
         correct: false
         category: incorrect_reasoning
-        feedback: "A negative slope is valid: it means loss falls as the weight increases locally."
-    solution: The gradient points uphill, so subtracting its negative value moves the weight upwards
-      towards lower loss.
+        feedback: The slope describes a local tilt. A large increase can cross the minimum and leave a larger loss.
+    solution: A negative slope means a small increase in the weight lowers loss. Subtracting a positive learning rate times that slope increases the weight. For example, slope −6 and rate 0.25 move weight 0 to 1.5 on the house-price bowl, reducing loss from 9 to 2.25.
   - id: gdp-step-template
     dimension: math
     type: numeric
@@ -551,54 +550,50 @@ exercises:
     solution:
       The controlled rate comparison supports slow steps as the cause; a flat curve alone would
       not establish it.
-  - id: gdp-boundary
+  - id: gdp-why-learning-rate
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: For $L(w)=(w-3)^2$, start at 0 with rate 1. What happens?
+    prompt: Why does a downhill direction still need a learning rate to control the step on the house-price loss bowl?
     options:
       - id: a
-        text: Weights alternate 0 and 6; loss stays at 9
+        text: The slope describes the nearby tilt, but a large step can cross the bottom and end farther away
         correct: true
       - id: b
-        text: Weights alternate 0 and 6; loss falls towards zero
+        text: The learning rate changes where the loss bowl's minimum is located
         correct: false
         category: incorrect_reasoning
-        feedback: Both weights are distance 3 from the minimum, so each has loss 9.
+        feedback: Changing the rate changes the updates, not the loss function or the location of its minimum.
       - id: c
-        text: The first update reaches 3 and then stays there
+        text: A downhill direction guarantees lower loss, so the rate only controls how quickly you reach it
         correct: false
         category: incorrect_reasoning
-        feedback: The first slope is −6, so the update is 0 − 1 × (−6) = 6, not 3.
-    solution: The multiplier is 1 − 2 × 1 × 1 = −1, so distance changes sign without shrinking; the
-      equality boundary does not converge from this start.
-  - id: gdp-gradient-method
+        feedback: A direction is downhill only locally. A large enough step can increase loss even when it starts in that direction.
+    solution: For the bowl with best weight 3, starting at 0 gives slope −6. Rate 0.25 reaches 1.5 and lowers loss from 9 to 2.25; rate 1.1 reaches 6.6 and raises it to 12.96. Both steps start in the downhill direction, but only the smaller step ends closer.
+  - id: gdp-why-input-factor
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt:
-      For the no-bias price model, how do you calculate the MSE slope for one weight across the
-      sales?
+    prompt: Why does each house's contribution to the weight's MSE slope include its input size as well as its residual?
     options:
       - id: a
-        text: Average twice each residual times its input feature
+        text: The same weight nudge changes a larger house's prediction more, so its error has more influence on the slope
         correct: true
       - id: b
-        text: Average twice each residual without its input feature
+        text: Larger houses must always have larger residuals, even when the model predicts them correctly
         correct: false
         category: incorrect_reasoning
-        feedback: That is the bias slope; changing a weight changes predictions in proportion to its input.
+        feedback: A large house can have zero residual. Input size describes sensitivity to a weight nudge, not how wrong the current prediction must be.
       - id: c
-        text: Average the squared residuals without their input features
+        text: Multiplying by size removes each residual's sign so all houses push the weight upwards
         correct: false
         category: incorrect_reasoning
-        feedback: That computes MSE itself rather than its derivative with respect to the weight.
-    solution: Differentiating each squared error gives twice residual times input; averaging those
-      contributions gives the MSE slope.
+        feedback: Multiplication by a positive size keeps the residual's sign. Overpriced and underpriced houses can pull the weight in opposite directions.
+    solution: With prediction wx, a weight increase of 0.1 raises predictions by 0.1 for input 1 and 0.2 for input 2. At equal residual −2, the individual squared-error slopes are −4 and −8. Multiplying twice the residual by the input accounts for this difference before averaging over houses.
   - id: gdp-gradient-template
     dimension: math
     type: numeric
@@ -800,29 +795,28 @@ exercises:
       - w-lr*dw
       - w - dw * lr
     solution: Use `w - lr * dw` to move against the current gradient; adding it would move uphill.
-  - id: gdp-stale-errors
+  - id: gdp-why-fresh-errors
     dimension: implementation
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: The loop computes `r` once before the loop and reuses it for all 20 updates. What is the bug?
+    prompt: What goes wrong if the house-price training loop computes residuals `r` once and reuses them for every update?
     options:
       - id: a
         text: The slopes stop reflecting predictions from the current parameters
         correct: true
       - id: b
-        text: The learning rate is automatically reset on every update
+        text: Nothing goes wrong because the sale prices and house sizes have not changed
         correct: false
         category: incorrect_reasoning
-        feedback: Reusing residuals does not reset the rate; it keeps using a stale direction.
+        feedback: The data stays fixed, but the predictions change with the parameters. Residuals compare those current predictions with the targets.
       - id: c
-        text: The mean loss becomes a sum because the loop has 20 steps
+        text: Reusing errors makes the steps shrink automatically as the current predictions improve
         correct: false
         category: incorrect_reasoning
-        feedback: The averaging formula is unchanged; the mistake is failing to refresh the errors.
-    solution: Each parameter update changes the predictions, so residuals and gradients must be
-      recalculated inside the loop.
+        feedback: Fixed residuals give fixed slopes for this linear model. With a fixed rate, the loop keeps making the same changes instead of shrinking them.
+    solution: For the two-house model without bias, weight 0 gives residuals −2 and −4 and slope −10. After a rate-0.1 step to weight 1, the residuals become −1 and −2 and the slope becomes −5. Reusing the old residuals would take another step of 1 instead of 0.5, ignoring the change in the loss surface's tilt.
   - id: gdp-shape
     dimension: implementation
     type: mc

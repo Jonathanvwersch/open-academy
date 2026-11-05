@@ -88,6 +88,7 @@ function plainText(children: ReactNode): string {
 
 export type LessonBlockKind =
   | 'objective'
+  | 'why'
   | 'intuition'
   | 'example'
   | 'math'
@@ -98,6 +99,7 @@ export type LessonBlockKind =
 
 const lessonBlockLabels: Partial<Record<LessonBlockKind, string>> = {
   objective: 'Goal',
+  why: 'Why this exists',
   example: 'Example',
   math: 'Key formula',
   worked: 'Worked example',

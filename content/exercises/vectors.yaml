@@ -6,8 +6,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Which move combines $a=(1,2)$ and $b=(3,-1)$?"
-    solution: "Add horizontal and vertical moves separately: $(1+3,2+(-1))=(4,1)$. The sum ends where the tip-to-tail arrows end."
+    prompt: "Follow arrow $a=(1,2)$, then $b=(3,-1)$, with right first and up second. Which vector joins the original start to the final endpoint?"
+    solution: "Add matching coordinates: $(1+3,2+(-1))=(4,1)$. The endpoint is 4 units right and 1 up from the start."
     options:
       - {
           id: a,
@@ -19,7 +19,7 @@ exercises:
           id: b,
           text: "$(4,3)$",
           correct: false,
-          feedback: "The second move goes down one, not up one.",
+          feedback: "The second arrow goes 1 unit down, not up.",
         }
       - {
           id: c,
@@ -34,7 +34,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two moves are $({{=a}},{{=b}})$ and $({{=c}},{{=d}})$. What is the second component of their sum?"
+    prompt: "A robot travels $({{=a}},{{=b}})$ then $({{=c}},{{=d}})$, in metres east and north. What is the northward component of its combined movement, in metres?"
     solution: "Add the second entries: ${{=b}}+({{=d}})={{=b+d}}$. The first entries affect only the first component."
     params:
       a: { min: -5, max: 5 }
@@ -50,23 +50,23 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: "A house vector is $(120,3,15)$ in the order (area in square metres, bedrooms, age in years). What does it represent?"
-    solution: "Each measurement becomes a coordinate of one point in three-dimensional space. The coordinate meanings come from the stated feature order."
+    solution: "The three coordinates describe one house. Their meanings come from the stated order: 120 square metres, 3 bedrooms, and 15 years old."
     options:
       - {
           id: a,
-          text: "A point with one coordinate per measurement",
+          text: "It describes one house, with one coordinate per measurement.",
           correct: true,
           feedback: "Each entry is one feature, in the stated order.",
         }
       - {
           id: b,
-          text: "A floor position 120 right and 3 up",
+          text: "It gives a robot's position, 120 metres east and 3 north.",
           correct: false,
-          feedback: "These coordinates are house measurements, not two floor distances.",
+          feedback: "These coordinates are house measurements, not distances from a dock.",
         }
       - {
           id: c,
-          text: "Three houses with one measurement each",
+          text: "It describes three houses, with one measurement each.",
           correct: false,
           feedback: "All three entries describe the same house.",
         }
@@ -76,26 +76,26 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "You store floor moves as (right, up). Why is $(2,5)$ not interchangeable with $(5,2)$?"
-    solution: "The first entry always gives the rightward move and the second the upward move. Swapping them changes the destination."
+    prompt: "A robot records positions in metres east and north of its dock. Why must it distinguish $(2,5)$ from $(5,2)$ when finding a parcel?"
+    solution: "The first entry gives the eastward distance and the second the northward distance. Swapping them sends the robot to a different destination."
     options:
       - {
           id: a,
-          text: "Swapping entries changes the move direction",
+          text: "Swapping entries changes the destination.",
           correct: true,
           feedback: "The entries specify different directions.",
         }
       - {
           id: b,
-          text: "Swapping entries changes the number of entries",
+          text: "Swapping entries changes the number of entries.",
           correct: false,
           feedback: "Both vectors still have two entries.",
         }
       - {
           id: c,
-          text: "Swapping entries makes the move invalid",
+          text: "Swapping entries makes the position invalid.",
           correct: false,
-          feedback: "Both are valid moves, but to different points.",
+          feedback: "Both are valid positions, but they describe different places.",
         }
   - id: vecp-new-moves
     dimension: conceptual
@@ -103,26 +103,26 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A delivery cart moves $(2,-3)$ metres, then $(-1,5)$ metres. What is its combined move?"
-    solution: "The horizontal moves total $2+(-1)=1$ and the vertical moves total $-3+5=2$. The combined move is $(1,2)$ metres."
+    prompt: "A warehouse robot travels $(2,-3)$ metres, then $(-1,5)$ metres, in east, north order. What is its combined movement?"
+    solution: "The eastward distances total $2+(-1)=1$ and the northward distances total $-3+5=2$. The combined movement is $(1,2)$ metres."
     options:
       - {
           id: a,
           text: "$(1,2)$ metres",
           correct: true,
-          feedback: "Add matching entries to get one right and two up.",
+          feedback: "Adding matching entries gives 1 metre east and 2 north.",
         }
       - {
           id: b,
           text: "$(3,2)$ metres",
           correct: false,
-          feedback: "The second horizontal move is negative, so subtract one.",
+          feedback: "The second journey goes 1 metre west, so subtract one from the eastward total.",
         }
       - {
           id: c,
           text: "$(1,-8)$ metres",
           correct: false,
-          feedback: "The second vertical move is positive five, so add it.",
+          feedback: "The second journey goes 5 metres north, so add five to the northward total.",
         }
   - id: vecp-entry
     dimension: math
@@ -131,31 +131,36 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "For $x=(120,3,15)$, what is $x_2$, the second entry?"
+    prompt: "A house has vector $x=(120,3,15)$ for area in square metres, bedrooms, and age in years. What is $x_2$, the second entry?"
     solution: "The subscript selects an entry by position. The second entry is 3, not the total number of entries or their sum."
     answer: 3
 
-  - id: vecp-scale
+  - id: vecp-why-scale-all
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "What is $2a$ when $a=(1,2)$?"
-    solution: "Scaling multiplies every entry by the same scalar: $(2\\cdot1,2\\cdot2)=(2,4)$. This doubles the arrow without turning it."
+    prompt: "Why must you double both entries of arrow $(1,2)$ to make it twice as long without turning?"
+    solution: "Doubling both entries gives $(2,4)$, keeping twice as much upward as rightward distance. Doubling only the first gives $(2,2)$, which points in a different direction."
     options:
-      - { id: a, text: "$(2,4)$", correct: true, feedback: "Multiply both entries by two." }
+      - {
+          id: a,
+          text: "Doubling both entries preserves the proportions of travel in each direction.",
+          correct: true,
+          feedback: "Both arrows reach twice as far up as right.",
+        }
       - {
           id: b,
-          text: "$(2,2)$",
+          text: "Adding the same number to both entries would also preserve direction.",
           correct: false,
-          feedback: "Doubling only the first entry changes direction.",
+          feedback: "Adding two gives $(3,4)$, which no longer has twice as much upward as rightward distance. Multiplication preserves that proportion; addition does not.",
         }
       - {
           id: c,
-          text: "$(3,4)$",
+          text: "The signs alone determine direction, so doubling only one entry would work too.",
           correct: false,
-          feedback: "Adding two to each entry is not scaling by two.",
+          feedback: "$(1,2)$ and $(2,2)$ both point right and up, but at different angles. Signs do not tell you the exact direction.",
         }
   - id: vecp-scale-template
     dimension: math
@@ -164,7 +169,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "For $x=({{=a}},{{=b}})$ and scalar $c={{=c}}$, what is the first entry of $cx$?"
+    prompt: "A robot's planned movement is $x=({{=a}},{{=b}})$ metres east and north. It scales this by $c={{=c}}$. What is the eastward entry of $cx$, in metres?"
     solution: "Multiply the first entry by the scalar: ${{=c}}\\cdot({{=a}})={{=c*a}}$. Scaling applies this same multiplication to every entry."
     params:
       a: { min: -5, max: 5 }
@@ -178,24 +183,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A move is $(2,-3)$ metres. What does multiplying it by $-1$ do?"
+    prompt: "A robot travels $(2,-3)$ metres east and north. Which instruction retraces this journey by multiplying its vector by $-1$?"
     solution: "Multiplying every entry by $-1$ gives $(-2,3)$. It has the same length and the opposite direction."
     options:
       - {
           id: a,
-          text: "Gives $(-2,3)$, reversing the move",
+          text: "It should travel $(-2,3)$ metres.",
           correct: true,
           feedback: "Both signs reverse, so the arrow points back.",
         }
       - {
           id: b,
-          text: "Gives $(-2,-3)$, reversing the move",
+          text: "It should travel $(-2,-3)$ metres.",
           correct: false,
           feedback: "You must reverse both components, not just the first.",
         }
       - {
           id: c,
-          text: "Gives $(2,3)$, reversing the move",
+          text: "It should travel $(2,3)$ metres.",
           correct: false,
           feedback: "You must reverse both components, not just the second.",
         }
@@ -205,24 +210,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "What happens when you multiply $(3,4)$ by zero?"
+    prompt: "A robot cancels its planned journey of $(3,4)$ metres east and north by multiplying the vector by zero. What instruction remains?"
     solution: "Both entries become zero, so there is no movement. The zero vector has no direction."
     options:
       - {
           id: a,
-          text: "You get $(0,0)$, with no direction",
+          text: "It gets $(0,0)$, meaning no movement and no direction.",
           correct: true,
           feedback: "Every entry becomes zero.",
         }
       - {
           id: b,
-          text: "You get $(3,4)$, with its direction",
+          text: "It gets $(3,4)$, keeping the original journey.",
           correct: false,
           feedback: "Multiplying by one preserves a vector; zero does not.",
         }
       - {
           id: c,
-          text: "You get $(0,4)$, with upward direction",
+          text: "It gets $(0,4)$, meaning 4 metres north.",
           correct: false,
           feedback: "Zero multiplies both entries, not just the first.",
         }
@@ -233,7 +238,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "For $a=(1,2)$ and $b=(3,-1)$, what is the second entry of $3a-b$?"
+    prompt: "A robot's movements are $a=(1,2)$ and $b=(3,-1)$ metres east and north. It travels $a$ three times, then reverses $b$. What is the northward entry of $3a-b$, in metres?"
     solution: "First $3a=(3,6)$. Subtracting the second entry of $b$ gives $6-(-1)=7$, because subtracting a negative adds its positive value."
     answer: 7
 
@@ -243,7 +248,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A cart move is $(6,2)$ metres. Which move goes half as far in the same direction?"
+    prompt: "A robot's planned journey is $(6,2)$ metres east and north. A parcel is halfway along that direction. Which movement reaches it?"
     solution: "Multiply both entries by $1/2$: $(6/2,2/2)=(3,1)$. A positive scalar preserves the direction."
     options:
       - {
@@ -270,7 +275,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Which calculation gives the L2 length of $(3,-4)$?"
+    prompt: "A robot travels $(3,-4)$ metres east and north. Which calculation gives its straight-line distance from its starting point?"
     solution: "The squared entries are 9 and 16, so their sum is 25 and its square root is 5. Negative entries still contribute positive squares."
     options:
       - {
@@ -283,7 +288,7 @@ exercises:
           id: b,
           text: "$3+4=7$",
           correct: false,
-          feedback: "Adding component lengths measures a right-then-down route, not the straight arrow.",
+          feedback: "Adding the distances measures a route east then south, not the straight line.",
         }
       - {
           id: c,
@@ -298,7 +303,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A move is $(3\\cdot{{=k}},-4\\cdot{{=k}})$ metres. What is its L2 length in metres?"
+    prompt: "A robot is $(3\\cdot{{=k}},-4\\cdot{{=k}})$ metres east and north of its dock. What is its straight-line distance to the dock, in metres?"
     solution: "The entries are ${{=3*k}}$ and ${{=-4*k}}$, whose squares add to ${{=9*k*k}}+{{=16*k*k}}={{=25*k*k}}$. The square root is ${{=5*k}}$, the straight-line length."
     params:
       k: { min: 1, max: 6 }
@@ -311,36 +316,36 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two floor positions are $(1,1)$ and $(4,5)$ metres. What is their straight-line distance in metres?"
+    prompt: "A robot is at $(1,1)$ and a parcel is at $(4,5)$, in metres east and north of the charging dock. What is the straight-line distance between them, in metres?"
     solution: "Subtract coordinates to get $(4-1,5-1)=(3,4)$. Its length is $\\sqrt{3^2+4^2}=\\sqrt{25}=5$ metres."
     answer: 5
 
-  - id: vecp-root
+  - id: vecp-why-root
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "For $(1,-2,2)$, the squared entries sum to 9. What is its L2 norm?"
-    solution: "The L2 norm is the square root of the sum of squared entries. Here $\\sqrt{1+4+4}=3$."
+    prompt: "A robot is 3 metres east and 4 north of its dock. Why must it take the square root after adding the squared distances to find how far away the dock is?"
+    solution: "Pythagoras gives the squared diagonal length. The root recovers the diagonal itself: for $(3,4)$ metres, the squared steps sum to 25 square metres, but the length is 5 metres."
     options:
       - {
           id: a,
-          text: "3, because length takes the square root",
+          text: "Pythagoras gives squared length, so the root is needed to recover length in metres.",
           correct: true,
-          feedback: "The square root of nine is three.",
+          feedback: "The squared steps give square metres, and their square root gives metres.",
         }
       - {
           id: b,
-          text: "9, because squared entries already give length",
+          text: "The root is what makes negative entries contribute positively.",
           correct: false,
-          feedback: "Nine is the squared norm; the square root is still needed.",
+          feedback: "Squaring already makes each contribution nonnegative. The root recovers length from squared length.",
         }
       - {
           id: c,
-          text: "1, because signed entries add to one",
+          text: "The root converts the straight-line distance into the route east then north.",
           correct: false,
-          feedback: "Signed entries can cancel; the norm uses squares.",
+          feedback: "Travelling east then north covers 7 metres here. Squaring, adding, and taking the square root gives the straight-line distance of 5 metres instead.",
         }
   - id: vecp-units
     dimension: conceptual
@@ -348,24 +353,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "House vectors use (rooms, kilometres to centre). You change kilometres to metres without rescaling. What happens to distance comparisons?"
+    prompt: "A house app compares $(2,5)$ with $(4,1)$, recording room count and kilometres to the town centre. It converts kilometres to metres without adjusting anything else. What happens to its distance comparisons?"
     solution: "Converting kilometres to metres multiplies those coordinate gaps by 1,000 and their squared contributions by 1,000,000. Rescaling features to comparable ranges avoids one unit choice dominating similarity."
     options:
       - {
           id: a,
-          text: "The centre-distance feature can dominate more",
+          text: "Distance to the town centre can have much more influence on the comparison.",
           correct: true,
           feedback: "Its differences become 1,000 times larger before squaring.",
         }
       - {
           id: b,
-          text: "The comparisons stay unchanged by the units",
+          text: "The comparisons stay unchanged when the units change.",
           correct: false,
           feedback: "The physical houses stay the same, but the numerical gaps change.",
         }
       - {
           id: c,
-          text: "The room-count feature must now dominate",
+          text: "Room count must now have the greatest influence.",
           correct: false,
           feedback: "The room gaps stay unchanged while the other feature grows.",
         }
@@ -376,7 +381,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "What is the L2 norm of $(0,0,0)$?"
+    prompt: "A house model records differences in area, bedroom count and age as $(0,0,0)$. What is the L2 length of this difference vector?"
     solution: "All squared entries are zero, so their sum is zero. Taking the square root still gives zero."
     answer: 0
   - id: vec-check-combo
@@ -385,9 +390,9 @@ exercises:
     role: check
     difficulty: 1
     est_minutes: 2
-    prompt: "With $a = (1, 2)$ and $b = (3, -1)$, compute $3a - b$. Answer as `(x, y)`."
+    prompt: "A robot's movements are $a=(1,2)$ and $b=(3,-1)$ metres east and north. Find $3a-b$ to plan three journeys of $a$ followed by the reverse of $b$. Answer as `(east, north)`."
     accept: ["(0,7)", "(0, 7)", "0,7", "0, 7", "[0,7]", "[0, 7]"]
-    hints: ["Compute $3a$ first.", "$3a = (3, 6)$. Now subtract $b$ componentwise."]
+    hints: ["Compute $3a$ first.", "$3a=(3,6)$. Now subtract each matching entry of $b$."]
     solution: "$3a = (3, 6)$, and $(3, 6) - (3, -1) = (0, 7)$."
   - id: dx-math-1
     dimension: math
@@ -395,14 +400,14 @@ exercises:
     role: diagnostic
     difficulty: 1
     est_minutes: 1
-    prompt: "What is the L2 norm $\\|x\\|_2$ of $x = (3, 4, 12)$?"
+    prompt: "A flying warehouse robot is 3 metres east, 4 north and 12 above its dock. What is the L2 length of its position vector $x=(3,4,12)$, in metres?"
     answer: 13
     tolerance: { abs: 0.001 }
     common_wrong:
       - {
           answer: 19,
           category: misunderstood_definition,
-          feedback: "That is the L1 norm (sum of absolute values). The L2 norm is the square root of the sum of squares.",
+          feedback: "Adding the distances gives a route along three directions, not the straight line. Square each distance, add, then take the square root.",
         }
       - { answer: 169, category: math_error, feedback: "You forgot the square root." }
     solution: "$\\sqrt{9 + 16 + 144} = \\sqrt{169} = 13$."
@@ -412,7 +417,7 @@ exercises:
     role: core
     difficulty: 1
     est_minutes: 2
-    prompt: "Compute $\\|v\\|_2$ for $v = (1, -2, 2)$."
+    prompt: "A flying robot travels $v=(1,-2,2)$ metres in east, north, upward order. What is its straight-line distance from its start, $\\|v\\|_2$, in metres?"
     answer: 3
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -424,7 +429,7 @@ exercises:
       - {
           answer: 5,
           category: misunderstood_definition,
-          feedback: "That is the L1 norm $\\sum|v_i|$. The L2 norm is $\\sqrt{\\sum v_i^2}$.",
+          feedback: "Adding the absolute distances measures a route along the separate directions. For the straight line, square each entry, add, then take the square root.",
         }
       - { answer: 9, category: math_error, feedback: "You forgot the square root." }
     hints: ["Square each component.", "$1 + 4 + 4 = 9$. One step left."]
@@ -435,14 +440,14 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 2
-    prompt: "What is the Euclidean distance between the points $(1, 1)$ and $(4, 5)$?"
+    prompt: "A robot is at $(1,1)$ and its parcel at $(4,5)$, in metres east and north from the dock. What is their Euclidean distance, in metres?"
     answer: 5
     tolerance: { abs: 0.001 }
     common_wrong:
       - {
           answer: 7,
           category: misunderstood_definition,
-          feedback: "That is the L1 (Manhattan) distance $|3| + |4|$.",
+          feedback: "Adding $|3|+|4|$ measures a route east then north, not the direct distance.",
         }
       - { answer: 25, category: math_error, feedback: "You forgot the square root." }
     hints: ["Distance is the norm of the difference vector."]
@@ -457,38 +462,39 @@ exercises:
     options:
       - {
           id: a,
-          text: "Area dominates the distance, so bedrooms barely affect which houses count as similar",
+          text: "Area has much more influence on the distance, so bedroom count can barely affect the comparison.",
           correct: true,
         }
       - {
           id: b,
-          text: "Both features contribute equally because distance treats each coordinate the same",
+          text: "Both features must contribute equally because the rule treats each coordinate the same.",
           correct: false,
           category: incorrect_reasoning,
           feedback: "Each coordinate is treated the same *numerically*, but a 50 m² gap contributes $50^2 = 2500$ while a 2-bedroom gap contributes $4$.",
         }
       - {
           id: c,
-          text: "Bedrooms dominate because they are integers",
+          text: "Bedroom count has more influence because it uses whole numbers.",
           correct: false,
           category: incorrect_reasoning,
+          feedback: "The sizes of the differences matter, not whether the numbers are whole.",
         }
       - {
           id: d,
-          text: "Distance is undefined for features with different units",
+          text: "Distance cannot be calculated for features with different units.",
           correct: false,
           category: misunderstood_definition,
-          feedback: "It is defined, which is exactly the trap: it silently mixes units.",
+          feedback: "The calculation still gives a number, but its meaning depends on the units and ranges chosen.",
         }
     hints: ["Compare the size of a typical difference in each feature, then square both."]
-    solution: "Squared differences in area are thousands of times larger than in bedrooms. Standardise each feature (subtract the mean, divide by the standard deviation) so they are comparable."
+    solution: "An area gap of 50 contributes $50^2=2500$, while a gap of two bedrooms contributes $2^2=4$. Convert each feature to a comparable numerical range before using distance to judge similarity."
   - id: vec-review-l1-l2
     dimension: conceptual
     type: mc
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "Which expression is the L2 norm of $x \\in \\mathbb{R}^n$?"
+    prompt: "A model compares houses by the length of a difference vector $x\\in\\mathbb{R}^n$. Which expression gives that L2 length?"
     options:
       - { id: a, text: "$\\sqrt{\\sum_i x_i^2}$", correct: true }
       - {
@@ -496,14 +502,14 @@ exercises:
           text: "$\\sum_i |x_i|$",
           correct: false,
           category: recall_failure,
-          feedback: "That is the L1 norm.",
+          feedback: "That adds the absolute entries instead of squaring, adding, and taking a square root.",
         }
       - {
           id: c,
           text: "$\\max_i |x_i|$",
           correct: false,
           category: recall_failure,
-          feedback: "That is the L∞ (max) norm.",
+          feedback: "That selects only the largest absolute entry. L2 length includes every squared entry.",
         }
       - { id: d, text: "$\\sum_i x_i$", correct: false, category: recall_failure }
     solution: "$\\|x\\|_2 = \\sqrt{\\sum_i x_i^2}$."
@@ -513,7 +519,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "In 2–4 sentences: what does it mean to represent a data example as a vector, and why does the scale of each feature matter when you compare examples by distance?"
+    prompt: "A house app records area, bedrooms and age as $(120,3,15)$. In 2–4 sentences, explain what this vector represents and why the numerical range of each measurement matters when comparing houses by distance."
     rubric:
       - {
           id: r1,
@@ -529,8 +535,8 @@ exercises:
         }
       - {
           id: r3,
-          criterion: "Mentions standardising or normalising features as the remedy",
+          criterion: "Explains that features should be rescaled to comparable numerical ranges",
           weight: 1,
         }
-    exemplar: "Each feature is one coordinate, so an example becomes a point in an n-dimensional space and similar examples are nearby points. Euclidean distance adds up squared differences per coordinate, so a feature measured in large units (say area in m²) swamps one in small units (bedrooms). Standardising each feature to zero mean and unit variance puts them on comparable scales."
-    solution: "The key ideas are coordinates = features, and distance is sensitive to units/scale."
+    exemplar: "Each measurement is one coordinate in a fixed order, so all three numbers describe the same house. Distance adds squared differences for each coordinate; an area difference of 50 adds 2500, while two bedrooms add only 4. Area can therefore overwhelm the comparison even if bedrooms matter to the buyer. Rescaling the measurements to comparable numerical ranges makes this comparison more useful."
+    solution: "Each coordinate records a feature of one house. The units and numerical ranges affect how strongly each feature contributes to distance."

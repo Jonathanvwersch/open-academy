@@ -138,6 +138,39 @@ test('lessons start with an objective and end with a summary', () => {
   );
 });
 
+test('knowledge-point lesson why counts words after removing math and fenced blocks', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
+  if (!lesson) throw new Error('Missing derivatives fixture');
+  const fencedWords = Array.from({ length: 100 }, () => 'ignored').join(' ');
+  lesson.value.why = `${Array.from({ length: 58 }, () => 'word').join(' ')} $x + 1$ \n\`\`\`text\n${fencedWords}\n\`\`\``;
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'derivatives',
+        message: 'lesson why has 59 words; expected 60–140',
+      }),
+    ]),
+  );
+});
+
+test('knowledge-point lesson summary requires the Where you will use this line', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
+  if (!lesson) throw new Error('Missing derivatives fixture');
+  lesson.value.summary = 'A summary without the required application line.';
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'derivatives',
+        message: 'lesson summary must contain a line starting with "**Where you\'ll use this:**"',
+      }),
+    ]),
+  );
+});
+
 test('hard prerequisites must precede concepts in the curriculum outline', async () => {
   const data = await notationFixture();
   const week = data.curriculum?.value.weeks[0];
@@ -300,6 +333,7 @@ test('knowledge-point lessons derive the legacy block shape', () => {
     concept: 'vectors',
     version: 3,
     objective: 'Learn the idea.',
+    why: 'This explains why the idea exists.',
     final: 'final-explain',
     knowledge_points: [
       {

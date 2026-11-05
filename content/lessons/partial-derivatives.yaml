@@ -2,17 +2,21 @@ concept: partial-derivatives
 version: 2
 objective: |
   **Goal:** compute the partial derivative of a function of several variables with respect to any one of them, and read it as the rate of change when only that variable moves.
+why: |
+  A house-price model estimates £240,000 for a 100 m² house aged 20. An estate agent wants to know how much an extra room would add to that estimate. Comparing it with a larger, younger house mixes the effects of size and age. A partial derivative answers the question by changing size while keeping age fixed. The same idea helps improve the model itself. Its weights are adjustable numbers in its prediction formula; changing them all together hides which change helped. Partial derivatives show how each weight affects the prediction error while the others stay fixed. You'll need this idea for gradients, gradient descent, the chain rule, and backpropagation.
 knowledge_points:
   - id: pd-hold-fixed
     title: Change one input, hold the rest fixed
     explain: |
-      An estate agent prices houses with a formula that uses two inputs: the size $s$, in tens of square metres, and the age $a$, in years. The estimated price, in thousands of pounds, is
+      **How fast does an output change if only one input moves?** Our answer must separate that input's effect from the others. One derivative won't do, because a function of two inputs can change in two different directions.
+
+      Consider a house-price formula with size $s$ in tens of square metres and age $a$ in years. Price is in thousands of pounds:
 
       $$P(s, a) = 30s - 2a - 0.1\,s\,a$$
 
-      A 100 m² house ($s = 10$) that is 20 years old is priced at $P(10, 20) = 300 - 40 - 20 = 240$, so £240k. **How much does the price rise for a little more size, if the house stays the same age?** One derivative won't do, because the price depends on two inputs.
+      At $s = 10$ and $a = 20$, the estimate is £240,000. Keep age fixed and the formula becomes $P(s, 20) = 28s - 40$. Its slope is 28, or £28,000 per extra 10 m².
 
-      So freeze the age at 20 and treat it as an ordinary number. The price now depends on size alone, and you can find its derivative in the usual way.
+      This works because fixing age takes a slice of the price surface. Along one row of the grid below, only size changes. Comparing a larger, younger house would leave that row and mix the two effects.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="A grid of houses by size and age. From the house at size 10 and age 20, a green arrow moves right along the size axis with age fixed, labelled partial P by partial s. An amber arrow moves up along the age axis with size fixed, labelled partial P by partial a.">
@@ -37,44 +41,48 @@ knowledge_points:
       </svg>
       ```
 
-      The derivative of $P$ with $s$ moving and $a$ held fixed is the **partial derivative** of $P$ with respect to $s$. It's written $\frac{\partial P}{\partial s}$, read "partial P by partial s". The curly $\partial$ is a reminder that only one input moves.
+      This slope is the **partial derivative** with respect to $s$, written $\frac{\partial P}{\partial s}$ and read "partial P by partial s". The curly $\partial$ reminds us that other inputs stay fixed.
 
-      In symbols, nudge $s$ by a small $h$ and keep $a$ exactly as it was:
+      Increase $s$ by a small $h$, divide the price change by $h$, then let $h$ approach zero:
 
       $$\frac{\partial P}{\partial s} = \lim_{h \to 0} \frac{P(s + h, a) - P(s, a)}{h}$$
 
-      Swap the roles and you get $\frac{\partial P}{\partial a}$, the rate of change as the house ages with its size fixed. A function of two inputs has two partial derivatives.
+      Swapping roles gives $\frac{\partial P}{\partial a}$. In ML, the same separation tells us how one model weight affects prediction error while the others stay fixed.
     worked: |
-      This example shows a partial derivative computed by freezing one input, then checked with a nudge.
+      This example shows how keeping age fixed lets the agent estimate the value of extra space.
 
       Take the house with $s = 10$ and $a = 20$.
 
-      1. Freeze $a = 20$: $P = 30s - 40 - 2s = 28s - 40$.
-      2. Differentiate with respect to $s$: $\frac{\partial P}{\partial s} = 28$, so £28k per extra 10 m².
-      3. Check with a nudge of $h = 0.1$: $P(10.1, 20) = 303 - 40 - 20.2 = 242.8$. The price rose by $2.8$ for a nudge of $0.1$, a rate of $2.8 \div 0.1 = 28$.
+      1. Keep $a = 20$, so $P = 30s - 40 - 2s = 28s - 40$.
+      2. Differentiate with respect to $s$: $\frac{\partial P}{\partial s} = 28$. This means £28,000 per extra 10 m².
+      3. Add 1 m², which increases $s$ by $h = 0.1$. Then $P(10.1, 20) = 303 - 40 - 20.2 = 242.8$. The price rose by £2,800, giving a rate of $2.8 \div 0.1 = 28$ in our chosen units.
 
-      Now freeze $s = 10$ instead: $P = 300 - 2a - a = 300 - 3a$, so $\frac{\partial P}{\partial a} = -3$. Each extra year takes about £3k off this house's price.
+      Now keep $s = 10$ instead. We get $P = 300 - 2a - a = 300 - 3a$, so $\frac{\partial P}{\partial a} = -3$. Each extra year takes about £3,000 off this house's price.
 
       A partial derivative is an ordinary derivative taken while every other input is held fixed.
     problems:
       - pdp-meaning
       - pdp-house-rate
-      - pdp-which-fixed
+      - pdp-why-freeze
       - pdp-sign
       - pdp-nudge-check
       - pdp-how-many
   - id: pd-compute
     title: Computing partials with the derivative rules
     explain: |
-      Freezing an input by plugging in a number works, but you'd like a formula for the partial at every point. So keep the frozen input as a letter, and treat that letter exactly like a constant such as 5.
+      **Can we find a partial derivative without choosing the fixed inputs' values first?** We want one formula that works at every point, rather than repeating the calculation for every house.
+
+      Keep age $a$ as a letter in $P(s, a) = 30s - 2a - 0.1sa$. With respect to size, the three terms give $30$, $0$ and $-0.1a$. So $\partial P/\partial s = 30 - 0.1a$, which gives 28 when $a = 20$.
+
+      This works because $a$ stays unchanged along each size-only slice of the surface. Keeping it as a letter describes all those slices at once.
 
       All the derivative rules still apply. For $\frac{\partial}{\partial x}$, read "the partial derivative with respect to $x$ of":
 
-      - A term with no $x$ in it, such as $3y$ or $e^y$, is a constant, so it contributes 0.
-      - A letter that multiplies an $x$ term stays in front, like a constant multiple. So $\frac{\partial}{\partial x}\,(x^2 y) = 2xy$.
-      - Sums still split into terms, and products of two parts that both contain $x$ still need the product rule.
+      - A term without $x$, such as $3y$ or $e^y$, is constant and contributes 0.
+      - A letter multiplying an $x$ term stays in front, like a constant multiple: $\frac{\partial}{\partial x}\,(x^2 y) = 2xy$.
+      - Differentiate sums term by term. Products of two expressions containing $x$ need the product rule.
 
-      Then do the same for each other input in turn, freezing all the rest.
+      Repeat for each input. A model can use these formulas to calculate how changing each weight affects its error.
     worked: |
       This example shows both partial derivatives of one function, computed term by term.
 
@@ -83,61 +91,67 @@ knowledge_points:
       **With respect to $w$** (treat $b$ as a constant):
 
       1. $w^2 b$: $b$ is a constant multiple of $w^2$, giving $2wb$.
-      2. $3b$: no $w$ in it, giving 0.
+      2. The term $3b$ contains no $w$, so its derivative is 0.
       3. So $\frac{\partial f}{\partial w} = 2wb$.
 
       **With respect to $b$** (treat $w$ as a constant):
 
       1. $w^2 b$: $w^2$ is a constant multiple of $b$, giving $w^2$.
-      2. $3b$: gives 3.
+      2. The derivative of $3b$ is 3.
       3. So $\frac{\partial f}{\partial b} = w^2 + 3$.
 
       At $(w, b) = (2, 5)$: $\frac{\partial f}{\partial w} = 2 \cdot 2 \cdot 5 = 20$ and $\frac{\partial f}{\partial b} = 4 + 3 = 7$.
 
-      Decide which letters are frozen, and the rules you already know do the rest.
+      Once you decide which input changes, the usual derivative rules apply.
     problems:
       - pdp-compute-x
       - pdp-value-template
-      - pdp-no-x-term
+      - pdp-why-zero
       - pdp-exp-log
       - pdp-product
       - pdp-compute-y
   - id: pd-many-inputs
     title: A squared gap with many inputs
     explain: |
-      Functions in practice often have many inputs. Suppose a price guess for a house of size $x$ is $wx + b$, where $w$ and $b$ are two dials you can turn. The house really sold for $y$, so the squared gap between guess and truth is
+      **How does a squared difference change when we adjust just one input?** We need to account for the square while separating adjustable numbers from recorded facts.
+
+      A house-price model predicts $wx + b$. Size $x$ is in tens of square metres; price is in hundreds of thousands of pounds. The adjustable numbers $w$ and $b$ are called parameters. With $x = 3$, $w = 1$, $b = 1$ and recorded price $y = 1$, the prediction is 4 and the difference is 3. Its square is
 
       $$f(w, b) = (wx + b - y)^2$$
 
-      **Which way should you turn each dial to shrink the gap?** The partial derivatives tell you. Here the house's $x$ and $y$ are fixed numbers, and only the dials $w$ and $b$ are inputs.
+      Keep $x$ and $y$ fixed and differentiate in one parameter at a time. Changing both parameters together would hide their separate effects.
 
-      Write $g = wx + b - y$ for the gap, so $f = g \cdot g$. The product rule gives $f' = g'g + gg' = 2g\,g'$. So each partial is $2g$ times the partial of the gap itself:
+      Write $g = wx + b - y$ for the difference. Since $f = g \cdot g$, the product rule gives $g'g + gg' = 2g\,g'$. Here the prime means differentiation in the chosen parameter.
+
+      This works because the square contains two copies of the same difference. Changing a parameter changes both copies; the product rule counts each effect:
 
       - $\frac{\partial g}{\partial w} = x$, so $\frac{\partial f}{\partial w} = 2(wx + b - y)\,x$.
       - $\frac{\partial g}{\partial b} = 1$, so $\frac{\partial f}{\partial b} = 2(wx + b - y)$.
 
-      A positive partial means turning that dial up makes $f$ bigger, so you'd turn it down. With three or more inputs, such as $f(x, y, z)$, the recipe is the same: one partial per input, with all the others frozen.
+      At our numbers the rates are 18 and 6. Both are positive, so decreasing either parameter slightly reduces the squared error. ML models use this calculation to improve their predictions.
     worked: |
-      This example shows the partials of a squared gap at one setting of the dials.
+      This example shows which adjustment would reduce the house-price model's squared error.
 
-      A house has size $x = 3$ and sold for $y = 1$. The dials are at $w = 1$ and $b = 1$.
+      Size is measured in tens of square metres and price in hundreds of thousands of pounds. A house with $x = 3$ sold for $y = 1$. The model uses $w = 1$ and $b = 1$.
 
-      1. The gap: $g = 1 \cdot 3 + 1 - 1 = 3$, so $f = 9$.
-      2. $\frac{\partial f}{\partial w} = 2 \cdot 3 \cdot 3 = 18$.
-      3. $\frac{\partial f}{\partial b} = 2 \cdot 3 = 6$.
+      1. The difference is $g = 1 \cdot 3 + 1 - 1 = 3$, so $f = 9$.
+      2. Changing $w$ gives the rate $\frac{\partial f}{\partial w} = 2 \cdot 3 \cdot 3 = 18$.
+      3. Changing $b$ gives the rate $\frac{\partial f}{\partial b} = 2 \cdot 3 = 6$.
 
-      Both partials are positive, so turning either dial down shrinks the gap. The squared gap is 3 times as sensitive to $w$ as to $b$, because $w$ is multiplied by the size $x = 3$.
+      Both partials are positive, so decreasing either parameter slightly reduces the squared error. The same small decrease in $w$ reduces it about 3 times as much as a decrease in $b$, because $w$ is multiplied by $x = 3$.
 
-      Each input gets its own partial, and comparing them shows which input the output is most sensitive to.
+      Each partial describes how much the error changes when one parameter changes and the other stays fixed.
     problems:
       - pdp-gap-w
       - pdp-gap-template
       - pdp-gap-b
-      - pdp-data-fixed
+      - pdp-why-data-fixed
       - pdp-turn-dial
       - pdp-three-inputs
 final: pd-explain
 summary: |
   - A partial derivative such as $\frac{\partial P}{\partial s}$ is the rate of change of the output as one input moves while every other input is held fixed.
-  - To compute it, treat the frozen letters as constants and use the ordinary rules: terms without the moving input contribute 0, and frozen letters multiplying it stay in front.
-  - A function of $n$ inputs has $n$ partials, one per input, and they show which way to move each input and how sensitive the output is to it.
+  - To compute it, treat the other inputs as constants and use the ordinary derivative rules. Terms without the changing input contribute 0, and constant multipliers stay in front.
+  - A function of $n$ inputs has $n$ partial derivatives. Each tells you how much the output changes for a small increase in one input.
+
+  **Where you'll use this:** gradients collect these rates of change. Gradient descent uses them to adjust model weights, while the chain rule and backpropagation connect the rates across a model's calculations.

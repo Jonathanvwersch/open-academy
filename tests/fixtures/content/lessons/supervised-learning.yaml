@@ -2,6 +2,8 @@ concept: supervised-learning
 version: 3
 objective: |
   **Goal:** identify the inputs, targets, model, loss and training data in any supervised problem, and explain why training means making the average loss small.
+why: |
+  Many useful tasks start with examples whose correct answers are already known: past house sales, labelled photos, or recorded delivery times. Writing a separate rule for every new case does not scale, and memorizing the examples will not handle new ones. Supervised learning uses those input-answer pairs to fit a model, then measures its mistakes with a loss. Training adjusts the model so that its average loss on examples becomes small and predictions work on unseen cases.
 knowledge_points:
   - id: sl-inputs-targets
     title: Inputs, targets and the model
@@ -111,3 +113,5 @@ summary: |
   - Five ingredients: inputs $x$, target $y$, a model $f_\theta$ with parameters $\theta$, a loss $L$, and a dataset of $(x, y)$ pairs.
   - The loss turns "how wrong" into a number. Squaring stops errors that are too high and too low from cancelling out.
   - Training picks the parameters with the smallest average loss on the training data, but what matters is performance on new data.
+
+  **Where you'll use this:** supervised learning frames prediction tasks across classification and regression.

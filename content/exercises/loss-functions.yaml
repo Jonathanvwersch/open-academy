@@ -127,28 +127,28 @@ exercises:
         "What single number minimises the sum of squared deviations? The sum of absolute deviations?",
       ]
     solution: "The constant minimising MSE is the mean; the one minimising MAE is the median. A skewed distribution separates them."
-  - id: lossp-measure
+  - id: lossp-why-not-count
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: House-price errors are +10, +10 and −20 thousand pounds. Which calculation gives MAE?
+    prompt: Why not just count wrong house-price predictions instead of using MSE or MAE to guide small improvements?
     options:
       - id: a
-        text: Add 10, 10 and 20, then divide by 3
+        text: Almost every price is inexact, so the count hides improvements and has no useful slope
         correct: true
       - id: b
-        text: Add 10, 10 and −20, then divide by 3
+        text: Counting wrong predictions lets positive and negative errors cancel
         correct: false
         category: incorrect_reasoning
-        feedback: Signed errors cancel; absolute errors measure distances from zero.
+        feedback: Counts are nonnegative, so cancellation is not the problem. A smaller miss still counts as wrong.
       - id: c
-        text: Add 100, 100 and 400, then divide by 3
+        text: Counting wrong predictions penalises large misses more strongly than MSE
         correct: false
         category: incorrect_reasoning
-        feedback: Squaring and averaging gives MSE, not MAE.
-    solution: MAE averages the distances from zero, so the negative error contributes 20 rather than −20.
+        feedback: The count gives a tiny miss and a huge miss the same penalty; MSE distinguishes their sizes.
+    solution: Reducing an error from 20 to 10 still leaves one wrong prediction. MSE and MAE decrease, but the count stays flat until exact equality, giving no useful slope for small improvements.
   - id: lossp-mse-template
     dimension: math
     type: numeric
@@ -334,28 +334,28 @@ exercises:
       - answer_expr: r
         category: math_error
         feedback: The derivative of a square includes the factor 2.
-  - id: lossp-square-template
-    dimension: math
-    type: numeric
+  - id: lossp-why-square
+    dimension: conceptual
+    type: mc
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: One house-price error grows from {{=r}} to {{=2*r}}. By how much does its squared error
-      increase?
-    params:
-      r:
-        min: 1
-        max: 6
-        step: 1
-    answer_expr: 3*r^2
-    tolerance:
-      abs: 0.001
-    solution: The old squared error is {{=r^2}} and the new one is {{=4*r^2}}. Their difference is
-      {{=3*r^2}}, because doubling an error quadruples its square.
-    common_wrong:
-      - answer_expr: r^2
-        category: math_error
-        feedback: That is the old squared error, not the increase.
+    prompt: Why does the squared-error slope tell you more than the absolute-error slope about how far a prediction is from its target?
+    options:
+      - id: a
+        text: Its slope is twice the error, so it fades to zero at the target and grows for large misses
+        correct: true
+      - id: b
+        text: Its slope always has size 1, regardless of the miss
+        correct: false
+        category: misunderstood_definition
+        feedback: A fixed slope size of 1 describes absolute error away from zero, not squared error.
+      - id: c
+        text: Squaring caps the slope, so a huge miss pulls no harder than a small one
+        correct: false
+        category: incorrect_reasoning
+        feedback: Squared-error slopes grow with the error without a cap. It is absolute error whose slope size stays fixed.
+    solution: For an individual error r, the squared-error slope is 2r. Errors 9, 1 and 0.1 give slopes 18, 2 and 0.2, so the slope's size tracks the miss. Absolute error gives a slope of size 1 for all three.
   - id: lossp-mae-slope
     dimension: conceptual
     type: mc
@@ -431,31 +431,28 @@ exercises:
     solution:
       MAE limits how much the slope grows with an extreme error, but the incorrect labels still
       provide misleading targets.
-  - id: lossp-constant
+  - id: lossp-why-median
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: You predict a single price for sales at 290, 300 and 560 thousand pounds. Which choices
-      minimise each loss?
+    prompt: Why does the median price 300 minimise MAE for sales at 290, 300 and 560 thousand pounds, rather than the mean of about 383.33?
     options:
       - id: a
-        text: "MSE: the mean; MAE: the middle price"
+        text: Moving away from 300 increases distances to two prices while reducing distance to only one
         correct: true
       - id: b
-        text: "MSE: the middle price; MAE: the mean"
+        text: The largest error has the steepest absolute-error slope, so it balances the two smaller errors
         correct: false
         category: incorrect_reasoning
-        feedback: Squared error is minimised by the mean, while absolute error is minimised by a median.
+        feedback: Absolute-error slopes have equal size away from zero. Larger errors get steeper slopes under squared error instead.
       - id: c
-        text: "Both: the highest price, to avoid underpricing"
+        text: MAE ignores the sale at 560 entirely because it is far from the others
         correct: false
         category: incorrect_reasoning
-        feedback: Predicting the maximum creates unnecessary error on the other sales.
-    solution:
-      The mean balances squared-error slopes; the median balances the number of values on either
-      side under absolute error.
+        feedback: The sale at 560 still contributes its full absolute distance. MAE limits its slope size; it does not discard it.
+    solution: From 300, a small move upwards increases distances to 290 and 300 and decreases only the distance to 560. A small move downwards increases distances to 300 and 560 and decreases only the distance to 290. Each move raises the total, and continuing farther cannot reverse that increase. Dividing by three preserves the minimum.
   - id: lossp-mean-template
     dimension: math
     type: numeric

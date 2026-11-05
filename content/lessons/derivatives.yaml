@@ -1,7 +1,9 @@
 concept: derivatives
 version: 2
 objective: |
-  **Goal:** find the derivative of polynomials, $e^x$, $\ln x$, products and quotients, and use a derivative to estimate how much an output changes when you nudge its input.
+  **Goal:** find derivatives of common functions and use them to tell how a small input nudge changes an output, including a model's loss when its weight changes.
+why: |
+  Training a model means choosing weights that make its loss small. When a loss depends on a weight, you need to know whether nudging that weight upward will raise or lower the loss, and by how much. The obvious approach is to try many nearby values and compare the losses, but that is slow and noisy—and impossible to repeat for millions of weights. A derivative gives the local change as a formula, so one calculation tells you the direction and strength of the effect. This idea is needed for partial derivatives, gradients, gradient descent, and backpropagation.
 knowledge_points:
   - id: der-speed-at-instant
     title: Speed at one instant, as a slope
@@ -9,6 +11,8 @@ knowledge_points:
       A car pulls away from a junction. After $t$ seconds it has travelled $d(t) = t^2$ metres, so after 3 seconds it has gone 9 m. **How fast is it going at exactly 3 seconds?** Two positions only give you an average speed over a stretch of time.
 
       So measure the average speed over a short window starting at 3 seconds: distance gained divided by time taken. Make the window shorter and shorter, and the average settles on one number. That number is the speed at that instant.
+
+      This works because the straight line joining two nearby points on a smooth curve approaches the tangent as the points move together. Its slope therefore approaches the curve's instantaneous rate of change.
 
       This settled rate is the **derivative**. For a function $f$ with input $x$, the derivative $f'(x)$ (read "f prime of x") is how much the output changes per unit change in the input, for a tiny nudge. On a graph it's the slope of the **tangent line**, the straight line that just touches the curve at that point.
 
@@ -79,6 +83,8 @@ knowledge_points:
 
       The **power rule** generalises this. For $f(x) = x^n$, the derivative is $f'(x) = n\,x^{n-1}$: bring the power down in front, then lower the power by one. So $x^3$ becomes $3x^2$, and $x$ itself (which is $x^1$) becomes 1.
 
+      Why does the rule work? Expanding $(x+h)^n$ gives the first changing term $n x^{n-1}h$ plus terms with higher powers of $h$. After dividing by $h$, those higher-power terms vanish as $h$ shrinks to 0, leaving $n x^{n-1}$.
+
       Three more rules let you differentiate any **polynomial**, a sum of powers of $x$ with number multipliers, like $3x^4 - 2x + 5$:
 
       - **Constant multiple:** $c\,g(x)$ has derivative $c\,g'(x)$, for any number $c$. Doubling a function doubles its slope.
@@ -114,6 +120,8 @@ knowledge_points:
 
       - The number **$e$** is about 2.718. The function $e^x$ is special: its slope at every point equals its own value. So the derivative of $e^x$ is $e^x$.
       - The **natural logarithm** $\ln x$ undoes $e^x$. It answers "which power of $e$ gives $x$?" For example, $\ln 1 = 0$ because $e^0 = 1$, and $\ln(e^2) = 2$. It's defined for $x > 0$, and its derivative is $\frac{1}{x}$. So $\ln x$ keeps rising, but more and more slowly.
+
+      Why does $e^x$ have its own slope? Exponential growth is proportional to the current amount, and base $e$ makes that proportionality constant 1. The rate of change is therefore exactly the function's value.
 
       If you've met sine and cosine as functions of an angle in radians, their derivatives come from the same limit. Here is the full lookup table:
 
@@ -177,6 +185,8 @@ knowledge_points:
 
       The area grows for two reasons: the width changes while the height stays put, and the height changes while the width stays put. That gives the **product rule**:
 
+      The remaining corner has area $\Delta u\,\Delta v$, which shrinks faster than either side's change. After dividing by a small input nudge and taking the limit, that corner contributes nothing; the two strips give the product rule.
+
       $$(u\,v)' = u'\,v + u\,v'$$
 
       For a fraction $\frac{u}{v}$, a similar argument gives the **quotient rule**:
@@ -200,6 +210,8 @@ knowledge_points:
       3. At $x = 1$: $\frac{1}{4} = 0.25$.
 
       Naming $u$, $v$ and their derivatives first keeps both rules mechanical.
+
+      **A model weight:** let the loss be $L(w) = (2w - 6)^2$. Expanding gives $L(w) = 4w^2 - 24w + 36$, so $L'(w) = 8w - 24$. At $w = 2$, the slope is $-8$: a small increase in the weight lowers the loss by about 8 times that increase.
     problems:
       - derp-product-expr
       - derp-product-value
@@ -212,3 +224,5 @@ summary: |
   - The derivative $f'(x)$ is the rate of change of the output per unit of input at one point: the slope of the tangent, found as the limit of average rates over shrinking windows.
   - The rules: power ($x^n \to n x^{n-1}$), constant multiple, sum, $e^x \to e^x$, $\ln x \to 1/x$, product ($u'v + uv'$) and quotient ($\frac{u'v - uv'}{v^2}$).
   - A derivative measures sensitivity: for a small nudge $h$, $f(x+h) \approx f(x) + f'(x)\,h$.
+
+  **Where you'll use this:** partial derivatives and gradients measure weight effects; gradient descent and backpropagation use them to reduce a model's loss.

@@ -6,7 +6,7 @@ exercises:
     role: check
     difficulty: 1
     est_minutes: 2
-    prompt: "A graph computes $q = x + y$, then $f = q \\cdot z$, with $x=-2, y=5, z=-4$. What is $\\partial f/\\partial z$?"
+    prompt: "A robot calculates a movement command by adding a position error $x = -2$ to a correction $y = 5$, then multiplying by a setting $z = -4$. Its graph is $q = x + y$, then $f = q \\cdot z$. How much does the command change per unit change in $z$, that is, what is $\\partial f/\\partial z$?"
     answer: 3
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -22,7 +22,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 3
-    prompt: "$f = a\\cdot b + c\\cdot b$ with $a = 2$, $b = -3$, $c = 4$. Using the graph (two multiply nodes feeding an add node, and $b$ used twice), what is $\\partial f/\\partial b$?"
+    prompt: "A robot cart uses command $b = -3$ in two movement calculations. They give distances $a \\cdot b$ and $c \\cdot b$ centimetres, with $a = 2$ and $c = 4$. Its total movement is $f = a \\cdot b + c \\cdot b$. How much does the total change per unit change in $b$, that is, what is $\\partial f/\\partial b$?"
     answer: 6
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -39,7 +39,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "Let $f = \\max(0, wx)$, which is 0 when $wx$ is negative and $wx$ otherwise. For $w = -1$, $x = 3$, what is $\\partial f/\\partial w$?"
+    prompt: "A robot's model estimates a forward movement $wx$, but replaces negative estimates with 0 because this command must not move backwards. Its output is $f = \\max(0, wx)$, which means the larger of 0 and $wx$. For $w = -1$ and $x = 3$, what is $\\partial f/\\partial w$?"
     answer: 0
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -55,11 +55,11 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Why can it help to break a calculation into simple steps, such as adding and multiplying, when finding how its final result changes as an input changes?"
+    prompt: "A house-price model predicts 7 for a house whose true price is 5, using units of hundreds of thousands of pounds. We want to know how changing a model setting changes its squared error. Why does breaking the calculation into addition, multiplication and squaring help us find that derivative?"
     rubric:
       - {
           id: r1,
-          criterion: "Each primitive node only needs its simple local derivative",
+          criterion: "Each operation node uses only its own local derivative rule",
           weight: 2,
           required: true,
         }
@@ -71,17 +71,17 @@ exercises:
         }
       - {
           id: r3,
-          criterion: "Mentions this lets frameworks automate differentiation for arbitrary models",
+          criterion: "Explains that software can apply the same operation rules automatically to different models",
           weight: 1,
         }
-    exemplar: "Breaking the computation into primitive nodes means each node only has to know a trivial local derivative (add passes gradients through, multiply swaps in the other input). The chain rule then composes these along every path from the loss back to each parameter, summing where paths merge. Because the rules are local, a framework can do this automatically for any model you write."
+    exemplar: "Each node performs one operation with a known derivative rule. For example, a multiplication's derivative with respect to one input is the other input. The chain rule multiplies these derivatives along each path from a setting to the loss. If several paths exist, we add their contributions. We can therefore find the complete derivative without expanding the whole error formula. Software can record the operations and apply these same rules automatically for different models."
   - id: cgp-steps-for-expression
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "Which list of nodes is the computational graph of $f = (a + b) \\cdot c$?"
+    prompt: "A house-price model adds two amounts $a = 2$ and $b = 1$, then multiplies by a size adjustment $c = 3$. Its formula is $f = (a + b) \\cdot c$. Which list of operation nodes preserves this calculation?"
     options:
       - { id: a, text: "$q = a + b$, then $f = q \\cdot c$", correct: true }
       - id: b
@@ -93,7 +93,7 @@ exercises:
         text: "$q = a \\cdot c$, then $f = q + b$"
         correct: false
         category: misunderstood_definition
-        feedback: "That graph computes $ac + b$, a different number. Follow the brackets: add first, then multiply."
+        feedback: "That graph computes $ac + b$, which is a different calculation. The brackets in the original formula require adding $a$ and $b$ before multiplying by $c$."
       - id: d
         text: "One node, $f = a + b + c$"
         correct: false
@@ -106,7 +106,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Evaluate the graph $m = w \\cdot x$, $\\hat y = m + b$, $r = \\hat y - y$, $L = r^2$ with $w = {{=w}}$, $x = {{=x}}$, $b = {{=b}}$ and $y = {{=y}}$. What is $L$?"
+    prompt: "A house-price model uses size $x = {{=x}}$, multiplier $w = {{=w}}$ and added amount $b = {{=b}}$. The true sale price is $y = {{=y}}$ in the same price units. It calculates $m = w \\cdot x$, $\\hat y = m + b$, $r = \\hat y - y$, then $L = r^2$. What squared error $L$ does it report?"
     hints: ["Work left to right: find $m$, then $\\hat y$, then $r$, then square it."]
     solution: "$m = {{=w}} \\cdot {{=x}} = {{=w*x}}$, $\\hat y = {{=w*x}} + {{=b}} = {{=w*x+b}}$, $r = {{=w*x+b}} - {{=y}} = {{=w*x+b-y}}$, so $L = ({{=w*x+b-y}})^2 = {{=(w*x+b-y)^2}}$."
     answer_expr: "(w * x + b - y)^2"
@@ -127,7 +127,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "In a computational graph, what does an arrow from node A to node B mean?"
+    prompt: "In the house-price model, node A calculates $3 \\cdot 2 = 6$ and an arrow connects it to node B, which adds 1. What does that arrow mean?"
     options:
       - { id: a, text: "B uses A's output as one of its inputs", correct: true }
       - id: b
@@ -152,7 +152,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "In the graph $m = w \\cdot x$, $\\hat y = m + b$, why must the add node be evaluated after the multiply node?"
+    prompt: "The house-price model calculates $m = w \\cdot x$, then $\\hat y = m + b$, with $w = 3$, $x = 2$ and $b = 1$. Why must the addition wait until after the multiplication?"
     options:
       - { id: a, text: "It needs $m$, which the multiply node produces", correct: true }
       - id: b
@@ -177,7 +177,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "You draw the graph of $f = (a - b)^2 \\cdot c$ with one operation per node. How many operation nodes does it have?"
+    prompt: "A robot measures its position as $a = 5$ cm and its goal as $b = 3$ cm. To score the error, it calculates $f = (a - b)^2 \\cdot c$, where $c = 2$ sets how strongly position errors count. With one operation per node, how many operation nodes does the graph need?"
     answer: 3
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -189,14 +189,14 @@ exercises:
         tolerance: { abs: 0.001 }
         category: incomplete_explanation
         feedback: "Squaring is an operation too, so it gets its own node."
-    solution: "Three operations: subtract ($a - b$), square, then multiply by $c$."
+    solution: "The graph needs three operation nodes. First it subtracts $b$ from $a$, then squares that answer, then multiplies the square by $c$."
   - id: cgp-shared-input
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "In the graph of $f = a \\cdot b + c \\cdot b$, how does the input $b$ appear?"
+    prompt: "A robot cart uses command $b = -3$ in two movement calculations, $a \\cdot b$ and $c \\cdot b$, with $a = 2$ and $c = 4$. In the graph for their sum $f = a \\cdot b + c \\cdot b$, how should the command $b$ appear?"
     options:
       - { id: a, text: "Once, with arrows into both multiply nodes", correct: true }
       - id: b
@@ -221,7 +221,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A multiply node computes $q = a \\cdot b$ with $a = 4$ and $b = -3$. What is the local derivative $\\partial q/\\partial a$?"
+    prompt: "A robot's model multiplies sensor reading $b = -3$ by an adjustable weight $a = 4$ to calculate $q = a \\cdot b$. Keeping the reading fixed, what is the local derivative $\\partial q/\\partial a$?"
     options:
       - { id: a, text: "$-3$", correct: true }
       - id: b
@@ -246,7 +246,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A multiply node computes $q = a \\cdot b$ with $a = {{=a}}$ and $b = {{=b}}$. If you nudge $b$ up by 0.1, by how much does $q$ go up?"
+    prompt: "A robot's model multiplies a sensor reading $a = {{=a}}$ by a weight $b = {{=b}}$ to calculate $q = a \\cdot b$. If you increase the weight $b$ by 0.1 while keeping the reading fixed, by how much does $q$ increase?"
     hints: ["The local derivative $\\partial q/\\partial b$ is the other input, $a$."]
     solution: "$\\partial q/\\partial b = a = {{=a}}$, so a nudge of 0.1 raises $q$ by ${{=a}} \\times 0.1 = {{=a*0.1}}$."
     answer_expr: "a * 0.1"
@@ -265,7 +265,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A square node computes $L = r^2$, and the value flowing into it is $r = {{=r}}$. What is the local derivative $dL/dr$?"
+    prompt: "A house-price model's prediction error is $r = {{=r}}$ in its price units. It measures the mistake with squared loss $L = r^2$. What is the local derivative $dL/dr$?"
     hints: ["The derivative of $r^2$ is $2r$."]
     solution: "$dL/dr = 2r = 2 \\times ({{=r}}) = {{=2*r}}$."
     answer_expr: "2 * r"
@@ -277,38 +277,42 @@ exercises:
       - answer_expr: "r^2"
         category: misunderstood_definition
         feedback: "$r^2$ is the node's output. Its local derivative is $2r$."
-  - id: cgp-add-local
-    dimension: math
+  - id: cgp-why-store-values
+    dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "An add node computes $q = a + b$ with $a = 7$ and $b = -2$. What is $\\partial q/\\partial a$?"
+    prompt: "The house-price model calculates prediction error $r = 2$ and squared loss $L = r^2 = 4$. Why save $r$ for the derivative calculation rather than repeat the earlier calculations to find it again?"
     options:
-      - { id: a, text: "$1$", correct: true }
+      - {
+          id: a,
+          text: "The local derivative needs $r$, and reusing it avoids repeating the operations that produced it",
+          correct: true,
+        }
       - id: b
-        text: "$-2$"
+        text: "The saved value is already the derivative, so no derivative rule is needed"
         correct: false
         category: misapplied_technique
-        feedback: "Using the other input is the multiply rule. An add node passes a nudge through unchanged."
+        feedback: "The saved input is 2, but the square node's derivative is $2r = 4$. We still need the node's rule."
       - id: c
-        text: "$7$"
+        text: "Recomputing $r$ with unchanged inputs would give a different derivative"
         correct: false
         category: misunderstood_definition
-        feedback: "7 is the value of $a$. Adding 1 to $a$ raises $a + b$ by exactly 1."
+        feedback: "If the inputs have not changed, repeating the calculation gives the same value and derivative. Saving the value avoids that repeated work; it does not change the answer."
       - id: d
-        text: "$5$"
+        text: "Stored values remain valid even after changing the model's settings"
         correct: false
         category: misunderstood_definition
-        feedback: "5 is the node's output $a + b$, not its derivative."
-    solution: "Raise $a$ by 1 and $a + b$ rises by 1 whatever the values are, so $\\partial q/\\partial a = 1$."
+        feedback: "Changing a model setting can change $r$. To find derivatives for the new settings, we must first calculate the forward values for those settings."
+    solution: "The square node needs its input to compute $2r$. Keeping $r = 2$ gives the derivative 4 without repeating the earlier multiply, add and subtract operations, but uses memory."
   - id: cgp-subtract-local
     dimension: math
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A subtract node computes $r = \\hat y - y$. What are its local derivatives $\\partial r/\\partial \\hat y$ and $\\partial r/\\partial y$?"
+    prompt: "A house-price model predicts $\\hat y = 7$ when the true price is $y = 5$, in the same price units. It calculates the error $r = \\hat y - y$. What are the local derivatives $\\partial r/\\partial \\hat y$ and $\\partial r/\\partial y$?"
     options:
       - { id: a, text: "$1$ and $-1$", correct: true }
       - id: b
@@ -333,7 +337,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "A node computes $q = \\max(0, a)$, and its input is $a = -3$. What is the local derivative $dq/da$?"
+    prompt: "A robot's model must not request a negative forward distance, so it calculates $q = \\max(0, a)$, the larger of 0 and its estimate $a$. At $a = -3$ cm, what is the local derivative $dq/da$?"
     options:
       - { id: a, text: "$0$, because the output is stuck at 0 here", correct: true }
       - id: b
@@ -351,14 +355,14 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "$\\max(0, a)$ doesn't flip signs. For a negative input it outputs 0."
-    solution: "For $a = -3$, $\\max(0, a) = 0$, and it stays 0 after a small nudge. So the local derivative is 0: the node blocks the nudge."
+    solution: "At $a = -3$, $\\max(0, a) = 0$. A small increase or decrease in $a$ still leaves it negative, so the output stays 0. The rate of change is therefore 0."
   - id: cgp-path-product
     dimension: math
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "In the graph $m = w \\cdot x$, $\\hat y = m + b$, $r = \\hat y - y$, $L = r^2$, which product gives $\\partial L/\\partial b$?"
+    prompt: "For the house-price model, $m = w \\cdot x$, $\\hat y = m + b$, $r = \\hat y - y$ and $L = r^2$. The added amount $b$ changes the prediction directly. Which product includes every operation between $b$ and the squared error, giving $\\partial L/\\partial b$?"
     options:
       - id: a
         text: "$\\frac{dL}{dr}\\cdot\\frac{\\partial r}{\\partial \\hat y}\\cdot\\frac{\\partial \\hat y}{\\partial b}$"
@@ -385,7 +389,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: "For the graph $m = w \\cdot x$, $\\hat y = m + b$, $r = \\hat y - y$, $L = r^2$ with $w = {{=w}}$, $x = {{=x}}$, $b = {{=b}}$ and $y = {{=y}}$, what is $\\partial L/\\partial w$?"
+    prompt: "A house-price model uses size $x = {{=x}}$, weight $w = {{=w}}$ and added amount $b = {{=b}}$ to predict $\\hat y = wx + b$. The actual price is $y = {{=y}}$ in the same price units. Its graph calculates $m = w \\cdot x$, $r = \\hat y - y$ and $L = r^2$. To improve the weight, what is $\\partial L/\\partial w$?"
     hints:
       - "Evaluate the graph first to get $r$."
       - "Multiply along the path: $dL/dr = 2r$, then $1$, then $1$, then $\\partial m/\\partial w = x$."
@@ -411,7 +415,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "For $f = a \\cdot b + c \\cdot b$, a student follows only the path through $a \\cdot b$ and reports $\\partial f/\\partial b = a$. What did they miss?"
+    prompt: "A robot cart calculates its total movement as $f = a \\cdot b + c \\cdot b$, with $a = 2$, $b = -3$ and $c = 4$. A student follows only the first movement calculation, $a \\cdot b$, and reports $\\partial f/\\partial b = a$. What did they miss?"
     options:
       - { id: a, text: "The path through $c \\cdot b$; the answer is $a + c$", correct: true }
       - id: b
@@ -436,7 +440,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A graph computes $p = x \\cdot y$, then $f = p + x$, with $x = 3$ and $y = 5$. The input $x$ feeds both nodes. What is $\\partial f/\\partial x$?"
+    prompt: "A house-price rule multiplies size $x = 3$ by a weight $y = 5$, then adds size once more: $p = x \\cdot y$ and $f = p + x$. Size is used in both operations. How much does the prediction change per unit change in size, that is, what is $\\partial f/\\partial x$?"
     answer: 6
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -450,29 +454,35 @@ exercises:
         feedback: "That is only the direct path. Add the path through $p$: $1 \\cdot y = 5$."
     hints: ["Path through $p$: $1 \\cdot y$. Direct path into the add node: $1$."]
     solution: "Through $p$: $\\frac{\\partial f}{\\partial p}\\cdot\\frac{\\partial p}{\\partial x} = 1 \\cdot y = 5$. Directly: $\\partial f/\\partial x = 1$. Add the paths: $5 + 1 = 6$."
-  - id: cgp-sum-times-template
-    dimension: math
-    type: numeric
+  - id: cgp-why-multiply-path
+    dimension: conceptual
+    type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A graph computes $q = x + y$, then $f = q \\cdot z$, with $x = {{=x}}$, $y = {{=y}}$ and $z = {{=z}}$. What is $\\partial f/\\partial x$?"
-    hints:
-      [
-        "Path from $x$: the add node gives $\\partial q/\\partial x = 1$, the multiply node gives $\\partial f/\\partial q = z$.",
-      ]
-    solution: "$\\frac{\\partial f}{\\partial x} = \\frac{\\partial f}{\\partial q}\\cdot\\frac{\\partial q}{\\partial x} = z \\cdot 1 = {{=z}}$."
-    answer_expr: "z"
-    params:
-      x: { min: 1, max: 6 }
-      y: { min: 1, max: 6 }
-      z: { min: 2, max: 9 }
-    constraints: ["z != x + y"]
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - answer_expr: "x + y"
-        category: misapplied_technique
-        feedback: "$x + y = q$ is $\\partial f/\\partial z$. For $x$, the multiply node scales by the other input, $z$."
+    prompt: "In the house-price graph, increasing a weight by 0.01 first increases an intermediate answer by 0.02. The later operations multiply that change by about 4. Why multiply the local derivatives 2 and 4 rather than add them?"
+    options:
+      - {
+          id: a,
+          text: "The first node doubles a small nudge, and the next scales that doubled nudge by 4",
+          correct: true,
+        }
+      - id: b
+        text: "Each node receives the original nudge independently, so the contributions add"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That describes separate paths. Along one path, the next node receives the already-scaled nudge."
+      - id: c
+        text: "Only the last derivative matters, because earlier changes disappear"
+        correct: false
+        category: incomplete_explanation
+        feedback: "The last node receives the change produced by the first node. If we ignore the first factor, we incorrectly treat its input change as 0.01 rather than 0.02."
+      - id: d
+        text: "We should multiply the node outputs instead of their derivatives"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Node outputs tell us values. Derivatives tell us how changes in those values are scaled."
+    solution: "An input nudge of 0.01 becomes about 0.02 after the first node and 0.08 after the second. The overall scale is $2 \\cdot 4 = 8$, not $2 + 4 = 6$."
   - id: cgp-robot-error
     dimension: transfer
     type: numeric

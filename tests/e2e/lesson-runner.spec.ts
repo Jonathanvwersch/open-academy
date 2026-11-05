@@ -132,6 +132,8 @@ test('passes every knowledge point and restores the exact problem and result aft
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   const sessionId = await createSession(page);
+  const whyHeading = page.getByRole('heading', { name: 'Why this exists', exact: true });
+  await expect(whyHeading).toBeVisible();
   const workedExample = page.getByRole('heading', { name: 'Worked example', exact: true });
   await expect(workedExample).toBeVisible();
   await expect(workedExample.locator('xpath=../..')).toHaveAttribute('data-slot', 'card');
@@ -167,7 +169,10 @@ test('passes every knowledge point and restores the exact problem and result aft
         });
       }
     }
-    if (pointIndex < run.points.length - 1) run = await nextProblemAndReload(page);
+    if (pointIndex < run.points.length - 1) {
+      run = await nextProblemAndReload(page);
+      if (pointIndex === 0) await expect(whyHeading).toHaveCount(0);
+    }
   }
 
   expect(run.status).toBe('completed');
@@ -219,6 +224,8 @@ test('passes every knowledge point and restores the exact problem and result aft
   expect(finalActivity.lastAttempt.status).toBe('graded');
   expect(finalActivity.lastAttempt.yourAnswer).toContain('Predict delivery time');
   expect(page.url()).toContain(`/session/${sessionId}`);
+  await page.goto('/lessons/supervised-learning');
+  await expect(page.getByRole('heading', { name: 'Why this exists', exact: true })).toBeVisible();
 });
 
 test('a legacy v1 learn activity resumes through the KP runner and final question', async ({

@@ -1,6 +1,8 @@
 concept: derivatives
 version: 2
 objective: Practice the central idea of derivatives.
+why: |
+  Training a model means changing weights to make its loss smaller. If the loss depends on a weight, you need to know whether nudging it upward will raise or lower the loss, and by how much. Trying many nearby values is slow and noisy, especially when a model has millions of weights. A derivative gives the local change as a formula instead of a repeated measurement. It becomes the basis for partial derivatives, gradients, gradient descent, and backpropagation.
 knowledge_points:
   - id: derivatives-fixture-1
     title: Derivative practice
@@ -25,4 +27,6 @@ knowledge_points:
         derivatives-fixture-template-2,
       ]
 final: derivatives-fixture-final
-summary: A derivative measures local change and gives a tangent slope.
+summary: |
+  A derivative measures local change and gives a tangent slope.
+  **Where you'll use this:** derivatives help tune weights through gradients and backpropagation.

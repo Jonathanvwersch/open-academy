@@ -2,27 +2,31 @@ concept: gradients
 version: 2
 objective: |
   **Goal:** compute the gradient $\nabla f$ of a function of several inputs, use it to estimate how the output changes for a small step, and explain why the negative gradient is the direction of steepest descent.
+why: |
+  A robot predicts that an object is 2 metres away, but a measurement puts it at 1.8 metres. To improve the prediction, you adjust the model's weights, the numbers that control its calculation. Trying one weight at a time can help, but a coordinated change may reduce the error more for the same total amount of adjustment. A gradient collects the rate of change for every weight and uses them together to find that direction. Think of prediction error as height in a valley and the weights as your position: you want the quickest way downhill from where you stand. This idea is used in gradient descent, backpropagation, and momentum and Adam.
 knowledge_points:
   - id: grad-vector-of-partials
     title: The gradient collects every partial derivative
     explain: |
-      You're standing on the side of a valley. Your position is $(x, y)$: $x$ hundred metres east and $y$ hundred metres north of the valley floor. Your height above the floor, in metres, is
+      **How can we describe all the slopes of a function at one point?** One partial derivative describes only one input. A useful answer must keep every input's rate of change and preserve which rate belongs to which input. Adding the rates would lose that information.
+
+      Take the height of a valley, in metres:
 
       $$h(x, y) = x^2 + 2y^2$$
 
-      At $(1.5, 1)$ you're $2.25 + 2 = 4.25$ m up. **Which way is uphill, and how steep is it?** Each partial derivative only answers this for one compass direction: $\frac{\partial h}{\partial x}$ for east and $\frac{\partial h}{\partial y}$ for north.
+      Position $(x, y)$ is measured in hundreds of metres east and north of the lowest point. At $(1.5, 1)$ the height is 4.25 m. The eastward slope is $2x = 3$ and the northward slope is $4y = 4$.
 
-      So put the partials side by side as one vector. The **gradient** of $h$, written $\nabla h$ and read "grad h", is the vector of its partial derivatives:
+      Collect these rates in a vector, an ordered list of numbers. This is the **gradient**, written $\nabla h$ and read "grad h":
 
       $$\nabla h = \left(\frac{\partial h}{\partial x},\ \frac{\partial h}{\partial y}\right)$$
 
-      The upside-down triangle $\nabla$ is called "nabla". A function with $n$ inputs has a gradient with $n$ components, one per input, in the same order as the inputs.
+      Here $\nabla h = (3, 4)$. This works because each number is the slope of a slice through the surface: one slice runs east–west, the other north–south. Together they describe the hillside around this point.
 
-      The gradient is a vector, so it has a direction and a length. The output $h$ itself is a single number.
+      The symbol $\nabla$ is called "nabla". For $n$ inputs there are $n$ components, meaning numbers in the vector, in input order. For a model, these numbers describe how prediction error changes with each weight.
     worked: |
       This example shows the gradient computed one partial at a time, then evaluated at a point.
 
-      **Valley: $h(x, y) = x^2 + 2y^2$ at $(1.5, 1)$.**
+      **First find the slopes for our walk, using $h(x, y) = x^2 + 2y^2$ at $(1.5, 1)$.**
 
       1. $\frac{\partial h}{\partial x} = 2x$ (treat $y$ as a constant).
       2. $\frac{\partial h}{\partial y} = 4y$ (treat $x$ as a constant).
@@ -34,24 +38,26 @@ knowledge_points:
       2. $\frac{\partial f}{\partial w_2} = w_1^2 + \cos w_2$, which is $1 + 1 = 2$ at $(1, 0)$.
       3. So $\nabla f(1, 0) = (0, 2)$.
 
-      The gradient is just every partial derivative, written in order as one vector.
+      For $h$, the two numbers describe eastward and northward changes. For $f$, they describe changes in $w_1$ and $w_2$ instead.
     problems:
       - gradp-compute
       - gradp-component
-      - gradp-is-vector
+      - gradp-why-vector
       - gradp-three-inputs
       - gradp-order
       - gradp-exp-component
   - id: grad-points-uphill
     title: The gradient points uphill
     explain: |
-      Knowing $\nabla h(1.5, 1) = (3, 4)$, can you predict your height after a small step? Write the step as a vector $\delta = (\delta_x, \delta_y)$, where $\delta$ ("delta") is $\delta_x$ east and $\delta_y$ north.
+      **How do the separate slopes combine when several inputs change together?** An estimate must include each input's contribution and give the usual slope-times-distance answer when only one input changes.
 
-      Each partial is a rate for its own direction, so the height changes by about $3\delta_x$ from going east plus $4\delta_y$ from going north. That sum is the dot product of the gradient with the step:
+      At $p = (1.5, 1)$, the valley has $\nabla h = (3, 4)$. Write a displacement as $\delta = (\delta_x, \delta_y)$, read "delta", recording the eastward and northward changes. For $\delta = (0.06, 0.08)$, the estimated height change is $3(0.06) + 4(0.08) = 0.5$ m. This sum is a dot product:
 
       $$h(p + \delta) \approx h(p) + \nabla h \cdot \delta$$
 
-      Here $p$ is your current position, and this **first-order approximation** holds for small steps.
+      This is a **first-order approximation**: an estimate using the slopes at the starting point $p$.
+
+      This works because a smooth surface is nearly flat close to one point. That flat approximation is its **tangent plane**. On this plane, the eastward and northward height changes add exactly; on the curved hillside, small displacements give close estimates.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Contour lines of the valley h equals x squared plus 2 y squared, drawn as ellipses of equal height. At the point (1.5, 1) a blue gradient arrow points straight across the contours, away from the valley floor. A green arrow points the opposite way, downhill. A dashed grey line runs along the contour, where the height doesn't change.">
@@ -75,7 +81,7 @@ knowledge_points:
       </svg>
       ```
 
-      The dot product is positive for steps roughly along the gradient, so the gradient points uphill. It's zero for steps at right angles to the gradient, which run along a **contour**, a line of equal height. A longer gradient means a steeper slope, and a gradient of $(0, 0)$ means the ground is flat there.
+      In the picture, each **contour line** joins points of equal height. The gradient crosses these lines uphill. A displacement at right angles to it gives zero dot product and no predicted height change. In ML, the same estimate predicts how a small change in several weights affects error.
     worked: |
       This example shows the approximation predicting the height change for three small steps from $(1.5, 1)$, where $h = 4.25$ and $\nabla h = (3, 4)$.
 
@@ -87,7 +93,7 @@ knowledge_points:
 
       Check the first one exactly: $h(1.6, 1) = 2.56 + 2 = 4.56$ m, very close to the predicted $4.55$ m.
 
-      All three steps have length 0.1, but the one along the gradient climbs the most, and the one at right angles doesn't climb at all.
+      All three displacements have length 0.1. The one along the gradient gives the largest predicted climb, while the one at right angles has no predicted climb. The actual ground curves, so the estimate is not exact.
 
       The dot product of the gradient with a small step predicts the change in output.
     problems:
@@ -100,13 +106,15 @@ knowledge_points:
   - id: grad-steepest-descent
     title: The negative gradient is steepest descent
     explain: |
-      You want to get down to the valley floor as fast as possible, taking small steps of a fixed length. **Which direction drops your height the most per step?**
+      **Which direction makes the output decrease fastest?** A fair comparison must use equal small distances. Otherwise a longer move could give a larger decrease simply by going farther.
 
-      The change for a step $\delta$ is about $\nabla h \cdot \delta$. The dot product can also be written with lengths and the angle $\theta$ between the two vectors, where $\|\cdot\|$ means length:
+      At $(1.5, 1)$, the gradient is $(3, 4)$ with length 5. Due south, $(0, -1)$, the dot product is $-4$. Opposite the gradient, in direction $(-0.6, -0.8)$, it is $3(-0.6) + 4(-0.8) = -5$. Both direction vectors have length 1, so the second gives a greater decrease per unit distance.
+
+      For any displacement $\delta$, write $\theta$ for its angle with the gradient and $\|\cdot\|$ for length:
 
       $$\nabla h \cdot \delta = \|\nabla h\|\,\|\delta\|\cos\theta$$
 
-      For a fixed step length only $\cos\theta$ can change, and it is smallest, $-1$, when $\theta = 180^\circ$. So the biggest drop comes from stepping exactly opposite the gradient. The **steepest-descent direction** is the negative gradient, $-\nabla h$.
+      This works because, with both lengths fixed, only the angle can change the result. The cosine is smallest, $-1$, at $180^\circ$. On the picture's circle, that means the arrow opposite the gradient. This is the **steepest-descent direction**, $-\nabla h$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Unit-length steps from one point, with the gradient (3, 4) in blue. The step opposite the gradient, in green, changes the height by minus 5. A step south changes it by minus 4, a step east by plus 3, and a step at right angles to the gradient by 0.">
@@ -127,7 +135,7 @@ knowledge_points:
         <text x="288" y="222" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">0</text>
         <text x="200" y="270" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#f59e0b">−4</text>
         <text x="132" y="248" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#10b981">−5</text>
-        <text x="380" y="80" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Height change for a step of length 1:</text>
+        <text x="380" y="80" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Estimated change per unit distance:</text>
         <text x="380" y="110" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#f59e0b">east (1, 0): +3</text>
         <text x="380" y="135" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">along the contour (0.8, −0.6): 0</text>
         <text x="380" y="160" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#f59e0b">south (0, −1): −4</text>
@@ -135,13 +143,13 @@ knowledge_points:
       </svg>
       ```
 
-      To get a step of length 1 in that direction, divide by the gradient's length: $-\frac{\nabla h}{\|\nabla h\|}$. Along it the output falls at rate $\|\nabla h\|$ per unit step. This is a local statement: it only holds for small steps, because the gradient changes as you move.
+      Dividing by the gradient's length gives a direction vector of length 1: $-\frac{\nabla h}{\|\nabla h\|}$. Gradient descent uses this downhill idea to reduce prediction error by adjusting weights. It is a guide for small changes, not a promise about a distant minimum, because slopes change as you move.
     worked: |
       This example shows the steepest-descent step and its rate at $(1.5, 1)$, where $\nabla h = (3, 4)$.
 
-      1. Length of the gradient: $\|\nabla h\| = \sqrt{3^2 + 4^2} = \sqrt{25} = 5$.
-      2. Unit steepest-descent step: $-\frac{(3, 4)}{5} = (-0.6, -0.8)$.
-      3. Its rate: $\nabla h \cdot (-0.6, -0.8) = -1.8 - 3.2 = -5$, so the height falls 5 m per unit step.
+      1. The gradient has length $\|\nabla h\| = \sqrt{3^2 + 4^2} = \sqrt{25} = 5$.
+      2. Divide the negative gradient by 5 to get length 1: $-\frac{(3, 4)}{5} = (-0.6, -0.8)$.
+      3. The dot product gives $\nabla h \cdot (-0.6, -0.8) = -1.8 - 3.2 = -5$. At this point, the height falls at 5 m per unit distance, where one unit is 100 m on the ground.
       4. Compare stepping due south, $(0, -1)$: $\nabla h \cdot (0, -1) = -4$. That's downhill too, but less steeply.
 
       For a small step of length 0.1 along $(-0.6, -0.8)$, the height drops by about $0.1 \times 5 = 0.5$ m.
@@ -157,5 +165,7 @@ knowledge_points:
 final: grad-explain
 summary: |
   - The gradient $\nabla f$ is the vector of all partial derivatives of $f$, one component per input.
-  - For a small step $\delta$, $f(p + \delta) \approx f(p) + \nabla f \cdot \delta$, so $\nabla f$ points uphill and steps at right angles to it leave $f$ unchanged.
-  - Because $\nabla f \cdot \delta = \|\nabla f\|\,\|\delta\|\cos\theta$, the negative gradient $-\nabla f$ is the steepest-descent direction, with $f$ falling at rate $\|\nabla f\|$ for small steps.
+  - For a small displacement $\delta$, estimate the new value using $f(p + \delta) \approx f(p) + \nabla f \cdot \delta$. This uses the slopes at the starting position $p$, so it becomes less reliable as you move farther away.
+  - For equal small distances, walking opposite the gradient gives the largest decrease. This direction is $-\nabla f$, and its rate of decrease is $\|\nabla f\|$. At right angles to the gradient, the estimate predicts no change.
+
+  **Where you'll use this:** gradient descent uses gradients to adjust model weights and reduce error. Backpropagation calculates those gradients through a model. Momentum and Adam build on these weight adjustments.

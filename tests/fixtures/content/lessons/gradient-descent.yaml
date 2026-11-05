@@ -1,6 +1,8 @@
 concept: gradient-descent
 version: 2
 objective: Practice gradient descent updates.
+why: |
+  A model can make predictions but still perform poorly, so its parameters need to change to reduce the loss. Randomly adjusting weights gives no reliable direction, while trying every possible setting is impossible for a large model. The gradient tells which way the loss rises most quickly; moving against it makes a small local decrease. Gradient descent turns that signal into a repeatable update, and the learning rate controls how large each step is.
 knowledge_points:
   - id: gradient-descent-fixture-1
     title: Update a parameter
@@ -25,4 +27,6 @@ knowledge_points:
         gradient-descent-fixture-template-2,
       ]
 final: gradient-descent-fixture-final
-summary: Gradient descent updates parameters against the gradient, scaled by the learning rate.
+summary: |
+  Gradient descent updates parameters against the gradient, scaled by the learning rate.
+  **Where you'll use this:** training uses gradient descent to reduce a model's loss.

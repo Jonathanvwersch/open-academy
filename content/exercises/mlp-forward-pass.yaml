@@ -177,30 +177,41 @@ exercises:
           category: misunderstood_definition,
           feedback: "That's neuron 1's score. Neuron 2 uses row 2 of $W$.",
         }
-  - id: mlpp-rows-neurons
+  - id: mlpp-why-matrix
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A hidden layer's weight matrix $W_1$ has 4 rows and 3 columns. What does that tell you?"
+    prompt: "Why compute a layer's scores as $Wx + b$ instead of writing a separate loop for each neuron's weighted sum?"
     options:
-      - { id: a, text: "The layer has 4 neurons, each reading 3 inputs", correct: true }
+      - {
+          id: a,
+          text: "Each row calculates one neuron's weighted sum, so a computer can process many neuron calculations together without changing their results",
+          correct: true,
+        }
       - {
           id: b,
-          text: "The layer has 3 neurons, each reading 4 inputs",
+          text: "The matrix product changes the scores so the model becomes nonlinear",
           correct: false,
           category: misunderstood_definition,
-          feedback: "Each row is one neuron's weights, so rows count neurons and columns count inputs.",
+          feedback: "Matrix multiplication is still a collection of weighted sums. The activation supplies nonlinearity, not the matrix notation.",
         }
       - {
           id: c,
-          text: "The network has 4 layers of 3 neurons",
+          text: "A loop cannot represent a neuron with a bias",
           correct: false,
           category: misunderstood_definition,
-          feedback: "One matrix describes one layer. Its rows are that layer's neurons.",
+          feedback: "A loop can add the bias after accumulating the weighted inputs. Both methods perform the same calculation.",
         }
-    solution: "Each row holds one neuron's weights, one per input. 4 rows means 4 neurons, and 3 columns means each reads 3 inputs, giving 4 hidden values."
+      - {
+          id: d,
+          text: "One matrix row averages the weights of all neurons into a single score",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "One row belongs to one neuron. Its dot product with the input gives that neuron's score, not an average across neurons.",
+        }
+    solution: "For $W = \\begin{pmatrix}1 & 0\\\\ -1 & 1\\end{pmatrix}$ and $x = (1, 2)$, the row dot products are 1 and 1, just as two loops would compute. Adding $b = (0, -2)$ gives $(1, -1)$. Matrix form groups identical operations without changing their meaning."
   - id: mlpp-weight-entry
     dimension: conceptual
     type: mc
@@ -376,34 +387,41 @@ exercises:
         }
     hints: ["$W_1 x + b_1 = (2, -1) + (0, -2)$."]
     solution: "$W_1 x = (2, -1)$, plus $b_1$ gives $(2, -3)$. ReLU gives $h = (2, 0)$, so $\\hat y = 2 \\cdot 2 + 3 \\cdot 0 + 1 = 5$."
-  - id: mlpp-output-no-activation
+  - id: mlpp-why-no-sigmoid-output
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "A network predicts house prices in thousands of pounds. Why does its output layer usually have no activation?"
+    prompt: "A network predicts house prices directly in thousands of pounds, including a target of 250. Why leave its output as $W_2 h + b_2$ instead of applying sigmoid?"
     options:
       - {
           id: a,
-          text: "So the prediction can be any number; an activation would limit its range",
+          text: "Sigmoid would trap predictions between 0 and 1, preventing the model from reaching a target of 250",
           correct: true,
         }
       - {
           id: b,
-          text: "Because activations only work on hidden layers",
+          text: "Activations cannot be applied to a single output number",
           correct: false,
           category: misunderstood_definition,
-          feedback: "An output can have an activation, such as sigmoid for a 0-to-1 answer. It's left out here because a price shouldn't be squeezed.",
+          feedback: "Sigmoid accepts a single score. The problem is its output range, not the number of outputs.",
         }
       - {
           id: c,
-          text: "To stop the layers collapsing into one",
+          text: "Removing the output sigmoid removes every nonlinearity in the network",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "That's the job of the activation between layers. After the last layer there's nothing left to collapse into.",
+          feedback: "The hidden activation is still present. It prevents the two layers collapsing even when the output has no activation.",
         }
-    solution: "Sigmoid would trap the output between 0 and 1, and ReLU would forbid negatives. A plain $W_2 h + b_2$ lets the prediction take any value."
+      - {
+          id: d,
+          text: "A large enough output bias can make sigmoid return 250",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The bias changes the score before sigmoid, but sigmoid maps every finite score to a value between 0 and 1.",
+        }
+    solution: "A direct numerical prediction of 250 cannot come from sigmoid, whose outputs lie between 0 and 1. Leaving the final weighted sum unrestricted allows that target; hidden activations still let the network represent bends. An output intended as a probability would be a different choice."
   - id: mlpp-hidden-meaning
     dimension: conceptual
     type: mc
@@ -514,30 +532,41 @@ exercises:
           category: incomplete_explanation,
           feedback: "That's layer 1 only. Add the output layer's weights and biases.",
         }
-  - id: mlpp-weight-shape
+  - id: mlpp-why-shared-weights
     dimension: implementation
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A layer reads 10 inputs and has 16 neurons. Using one row per neuron, so that one input is processed as $Wx$, what shape is $W$?"
+    prompt: "A house model's batch grows from 8 houses to 32 with no change to its layers. Why does its number of parameters stay the same?"
     options:
-      - { id: a, text: "$16 \\times 10$", correct: true }
+      - {
+          id: a,
+          text: "Every house uses the same weights and biases; only the number of rows of computed values grows",
+          correct: true,
+        }
       - {
           id: b,
-          text: "$10 \\times 16$",
+          text: "The number of weights grows fourfold but the number of biases shrinks to compensate",
           correct: false,
           category: misunderstood_definition,
-          feedback: "That's the transposed layout some libraries use with `X @ W`. With one row per neuron, it's 16 rows of 10 weights.",
+          feedback: "Neither weights nor biases depend on the batch size. Both are reused for every input row.",
         }
       - {
           id: c,
-          text: "$16 \\times 16$",
+          text: "The batch is averaged into one house before the layer computes anything",
           correct: false,
-          category: math_error,
-          feedback: "Each row needs one weight per input, so 10 columns.",
+          category: misunderstood_definition,
+          feedback: "Each house keeps its own row of outputs. Batch matrix multiplication does not average the examples together.",
         }
-    solution: "16 neurons give 16 rows; each row has one weight per input, so 10 columns: $16 \\times 10$, and $(16 \\times 10)(10 \\times 1)$ gives 16 scores."
+      - {
+          id: d,
+          text: "Hidden values are parameters, but they are discarded after every batch",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Hidden values are computed results, not adjustable weights or biases. More results require more storage, not more model parameters.",
+        }
+    solution: "A layer with 2 inputs and 2 neurons has $2 \\times 2 + 2 = 6$ parameters whether it sees 8 or 32 houses. Its output grows from $8 \\times 2$ to $32 \\times 2$, but all rows reuse the same 6 parameters."
   - id: mlpp-hidden-array-size
     dimension: implementation
     type: numeric

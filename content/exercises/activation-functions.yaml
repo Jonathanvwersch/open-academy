@@ -194,30 +194,41 @@ exercises:
           category: incomplete_explanation,
           feedback: "You've multiplied out the bracket but left out the second rule's own intercept. Add $e$.",
         }
-  - id: actp-many-layers
+  - id: actp-why-not-more-layers
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "Network A has one layer of weighted sums plus biases. Network B stacks ten such layers with no activation between them. Both use two inputs and give a yes/no score. Which is true?"
+    prompt: "Why won't adding ten more layers of weighted sums plus biases, with no nonlinear activation, let a house model draw a curved boundary?"
     options:
-      - { id: a, text: "Both can only draw a straight boundary between yes and no", correct: true }
+      - {
+          id: a,
+          text: "Multiplying and adding these rules only produces another weighted sum plus a bias",
+          correct: true,
+        }
       - {
           id: b,
-          text: "B can draw curved boundaries because it has more layers",
+          text: "It will work once there are more layers than inputs",
           correct: false,
           category: misunderstood_definition,
-          feedback: "Without activations, the ten layers multiply out into one weighted sum plus bias, so B's boundary is still straight.",
+          feedback: "Layer count does not change the algebra: weighted sums of weighted sums are still a weighted sum plus bias.",
         }
       - {
           id: c,
-          text: "B can draw ten straight boundaries, one per layer",
+          text: "Each layer keeps its own boundary in the final answer, so enough lines become a curve",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "The layers combine into a single rule, which has a single straight boundary.",
+          feedback: "Without activations the intermediate scores are only scaled and added. Their boundaries are not kept as separate decisions.",
         }
-    solution: "Ten stacked weighted sums plus biases collapse into one, so B is no more flexible than A: both draw one straight boundary."
+      - {
+          id: d,
+          text: "The biases are nonlinear, so keeping them already prevents collapse",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A bias adds a constant. It shifts a straight-line rule but does not bend it.",
+        }
+    solution: "For example, $u = 3x + 1$ then $y = 2u + 5$ gives $y = 6x + 7$. More scaling and addition just change the final coefficients. A nonlinear activation, not extra straight-line layers, supplies a bend."
   - id: actp-what-bends
     dimension: conceptual
     type: mc
@@ -419,37 +430,41 @@ exercises:
         }
     hints: ["Find $u$ first, then apply ReLU, then the second rule."]
     solution: "$u = 0 - 2 = -2$, $\\text{ReLU}(-2) = 0$, so $y = 3 \\times 0 + 1 = 1$. For every $x$ up to 2 the output stays at 1, then it rises by 3 per unit: a bend."
-  - id: actp-probability-pick
+  - id: actp-why-sigmoid-output
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A network's last neuron should output how likely an email is to be spam, a number that can be anything between 0 and 1. Which activation fits best?"
+    prompt: "Why choose sigmoid rather than ReLU or a step rule for an output meant to express how likely an email is to be spam?"
     options:
-      - { id: a, text: "Sigmoid", correct: true }
+      - {
+          id: a,
+          text: "It can return values such as 0.2 or 0.8, while ReLU can exceed 1 and a step rule only gives yes/no",
+          correct: true,
+        }
       - {
           id: b,
-          text: "ReLU",
+          text: "ReLU also stays between 0 and 1 because it removes negative scores",
           correct: false,
           category: incorrect_reasoning,
           feedback: "ReLU has no upper limit, so it could output 7, which can't be a likelihood.",
         }
       - {
           id: c,
-          text: "tanh",
+          text: "Sigmoid turns every positive score into exactly 1 and every negative score into 0",
           correct: false,
           category: recall_failure,
-          feedback: "tanh outputs between $-1$ and $1$, so it can go negative.",
+          feedback: "That describes the step rule. Sigmoid gives intermediate values, such as 0.5 at a score of 0.",
         }
       - {
           id: d,
-          text: "The step rule",
+          text: "Using sigmoid alone guarantees that 0.8 means exactly 80 percent of such emails are spam",
           correct: false,
           category: incomplete_explanation,
-          feedback: "The step rule only outputs 0 or 1, with nothing in between.",
+          feedback: "Sigmoid sets the output range, not its accuracy. Matching predicted likelihoods to data still depends on the model's weights.",
         }
-    solution: "Sigmoid's output always lies between 0 and 1 and can take any value in between, so it reads like a likelihood."
+    solution: "Sigmoid maps any score into the range between 0 and 1 while keeping differences between scores. ReLU can output 7, while the step rule only gives 0 or 1. Sigmoid's range suits an output meaning how likely an email is to be spam, but does not itself guarantee that the model is accurate."
   - id: actp-tanh-range
     dimension: conceptual
     type: mc
@@ -550,30 +565,41 @@ exercises:
         }
     hints: ["Change in output ≈ slope × change in score."]
     solution: "The output changes by about $0.25 \\times 0.2 = 0.05$, so it's about $0.5 + 0.05 = 0.55$. (The exact value is $\\sigma(0.2) \\approx 0.550$.)"
-  - id: actp-sigmoid-flat
+  - id: actp-why-saturation
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "Where is the sigmoid's slope close to 0?"
+    prompt: "A sigmoid neuron already outputs 0.999. Why does a small increase in its score barely change the output?"
     options:
-      - { id: a, text: "Where the score $z$ is far from 0, in either direction", correct: true }
+      - {
+          id: a,
+          text: "Its slope is $0.999(1 - 0.999)$, close to zero, so the curve is almost flat at this score",
+          correct: true,
+        }
       - {
           id: b,
-          text: "At $z = 0$",
+          text: "Its slope equals its output, so it is almost 1",
           correct: false,
           category: recall_failure,
-          feedback: "At $z = 0$ the slope is at its largest, 0.25.",
+          feedback: "The output is a height, not a slope. Multiply it by $1 - 0.999$ to find the slope.",
         }
       - {
           id: c,
-          text: "Only for large positive $z$",
+          text: "Sigmoid rounds every output above 0.5 to exactly 1",
           correct: false,
-          category: incomplete_explanation,
-          feedback: "The curve is flat at both ends: near 0 for very negative $z$ and near 1 for very positive $z$.",
+          category: misunderstood_definition,
+          feedback: "Sigmoid does not round. Its output changes smoothly, just very slowly near either end.",
         }
-    solution: "$\\sigma'(z) = \\sigma(z)(1 - \\sigma(z))$ is near 0 when the output is near 0 or near 1, which happens when $z$ is far below or far above 0. There the sigmoid is saturated."
+      - {
+          id: d,
+          text: "The slope is large, but the output cannot exceed 1 so it ignores this change",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The smooth flattening is precisely a small slope. There is no separate clipping step that discards the nudge.",
+        }
+    solution: "The derivative is $0.999 \\times 0.001 = 0.000999$. A score increase of 0.1 therefore changes the output by roughly $0.000999 \\times 0.1 = 0.0000999$. This small response to a score change is saturation, not rounding."
   - id: actp-tanh-slope
     dimension: math
     type: numeric
