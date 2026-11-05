@@ -57,9 +57,11 @@ knowledge_points:
   - id: sl-training-loss
     title: Training chooses the smallest average loss
     explain: |
-      **Which setting fits better?** Judging one house can reward luck. Average losses instead: this works because every sale contributes, not just one lucky prediction. Average squared error is **mean squared error (MSE)**. Why average rather than sum? It measures error per house, not a total that grows with dataset size.
+      **Which setting fits better?** One house can be lucky or unlucky, so we average losses across the sales. This works because every sale contributes. Average squared error is **mean squared error (MSE)**. Why average rather than sum? We want error per house, not dataset-size-dependent totals.
 
-      **The loss on one house.** House number $i$ has inputs $x_i$ and true price $y_i$. The subscript $i$ identifies which house we mean. The model predicts $f_\theta(x_i)$, and the loss $L\big(f_\theta(x_i), y_i\big)$ says how wrong that is. With squared error it is $\big(f_\theta(x_i) - y_i\big)^2$.
+      The worked example is exactly what the standard formula says. Here it is, one piece at a time.
+
+      **The loss on one house.** Subscript $i$ identifies a house: inputs $x_i$, true price $y_i$, prediction $f_\theta(x_i)$. Its loss $L\big(f_\theta(x_i), y_i\big)$ measures the mistake; squared error gives $\big(f_\theta(x_i) - y_i\big)^2$.
 
       Add up the loss for all $n$ houses and divide by $n$:
 
@@ -71,7 +73,7 @@ knowledge_points:
 
       $$\theta^\star = \arg\min_\theta \frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(x_i), y_i\big)$$
 
-      Read $\arg\min_\theta$ as "the $\theta$ that makes what follows as small as possible", and $\theta^\star$ ("theta star") as "the best parameters". The gradient descent lesson shows how training searches through all of them automatically.
+      Read $\arg\min_\theta$ as "the $\theta$ that makes what follows as small as possible", and $\theta^\star$ ("theta star") as "the best parameters". Gradient descent shows how to search automatically.
     worked: |
       This example shows two settings compared by their average squared error.
 

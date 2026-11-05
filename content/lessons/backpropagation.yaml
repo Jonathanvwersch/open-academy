@@ -127,7 +127,7 @@ knowledge_points:
   - id: bp-arrays
     title: Whole layers at once, in NumPy
     explain: |
-      **How do we handle whole layers and batches?** Working through every number separately is slow. Arrays apply the same rules together. This works because matrix products sum the same per-example contributions a loop would compute.
+      **How do we handle whole layers and batches?** Networks have many units and examples, so working through every number separately is slow. Arrays let us apply the rules together. This works because matrix products sum the same contributions a loop would compute.
 
       In code, store a batch as `X` with shape $(B, d)$: $B$ examples in rows, $d$ inputs each. Store the first layer's weights `W1` with shape $(d, H)$, so `Z = X @ W1 + b1` gives one row of $H$ values per example. Write $G_Z$ for the array of $\partial L/\partial Z$ values, which has the same shape as $Z$. Three rules cover the backward pass:
 
