@@ -8,11 +8,11 @@ knowledge_points:
   - id: cr-rates-multiply
     title: Rates along a chain multiply
     explain: |
-      You're planning a journey and need to budget for fuel. You drive at 60 km per hour, and the car uses 0.08 litres per km. **How much fuel does each hour of driving use?**
+      **How do we find a rate of change through two successive calculations?** The answer must account for both: how much the first output changes, and how much that change affects the final output. Its units must also match the rate we want.
 
-      Adding those rates mixes different units and cannot give litres per hour. Instead, consider one extra hour. You travel 60 km, and each kilometre uses 0.08 litres, so you need $60 \times 0.08 = 4.8$ litres.
+      Suppose driving time determines distance at 60 km per hour, and distance determines fuel use at 0.08 litres per km. One extra hour adds 60 km, each using 0.08 litres. Multiplication gives $60 \times 0.08 = 4.8$ litres per hour. Adding the rates would mix incompatible units.
 
-      This works because the extra hour produces more kilometres, and every one of those kilometres uses fuel. The two rates describe successive parts of the same journey.
+      This works because a small increase passes through each step in turn. In the picture, the added time first becomes added distance; that distance then becomes added fuel. Each step multiplies the change it receives.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 130" aria-label="A chain from time to distance to fuel. Distance grows by 60 km per hour and fuel by 0.08 litres per km, so fuel grows by 4.8 litres per hour">
@@ -33,7 +33,7 @@ knowledge_points:
       </svg>
       ```
 
-      Write $t$ for hours, $s$ for distance in km and $F$ for fuel in litres. Each derivative measures one rate: $ds/dt = 60$ for distance per hour and $dF/ds = 0.08$ for fuel per km. Multiply them to find fuel per hour:
+      Write $t$ for hours, $s$ for distance in km and $F$ for fuel in litres:
 
       $$\frac{dF}{dt} = \frac{dF}{ds}\cdot\frac{ds}{dt} = 0.08 \times 60 = 4.8$$
 
@@ -41,7 +41,7 @@ knowledge_points:
 
       $$\frac{dy}{dx} = \frac{dy}{du}\cdot\frac{du}{dx}.$$
 
-      For changing rates, use the derivatives at the current values.
+      For changing rates, use the derivatives at the current values. In a model, this lets us find how an early weight affects a later prediction without expanding every calculation into one formula.
     worked: |
       This example shows how six extra minutes affect your fuel budget.
 
@@ -62,14 +62,16 @@ knowledge_points:
   - id: cr-nested-formulas
     title: Differentiating a formula inside a formula
     explain: |
-      A robot's distance prediction is wrong by $3x + 1$ metres, where $x$ is an adjustable model setting. At $x = 0$, the error is 1 metre. We want to reduce its square, $y = (3x + 1)^2$. **How does changing $x$ affect $y$?** Expanding works here, but becomes cumbersome for powers such as $(3x + 1)^{10}$.
+      **How do we differentiate a function inside another function?** We need the outer function's slope at the value it actually receives. We also need to account for how quickly that value changes with the original input.
 
-      Instead, separate the two calculations:
+      Take $y = (3x + 1)^2$. Expanding works, but becomes cumbersome for powers such as $(3x + 1)^{10}$. Instead, separate the calculations:
 
-      - The **inner function**, $u = 3x + 1$, calculates the error.
-      - The **outer function**, $y = u^2$, squares that error.
+      - The **inner function**, $u = 3x + 1$, turns $x$ into $u$.
+      - The **outer function**, $y = u^2$, squares that result.
 
-      This works because a small change in $x$ changes the error first, then its square. Multiplying the two derivatives follows both effects.
+      At $x = 0$, we have $u = 1$. The inner derivative is 3 and the outer derivative is $2u = 2$, so $dy/dx = 2 \times 3 = 6$.
+
+      This works because a small increase in $x$ becomes an increase three times as large in $u$. Near $u = 1$, squaring approximately doubles that increase. Following the arrows below therefore multiplies the two rates.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 130" aria-label="x goes into the inner function u = 3x + 1, which goes into the outer function y = u squared. The local rates are 3 and 2u, so dy/dx = 2u times 3">
@@ -98,7 +100,7 @@ knowledge_points:
 
       $$(f\circ g)'(x) = f'\big(g(x)\big)\cdot g'(x).$$
 
-      Evaluate the outer derivative at the inner value, then multiply by the inner derivative. Otherwise you ignore how quickly the error itself changes.
+      Omitting the inner derivative would ignore how quickly $u$ changes. For a robot model, $3x + 1$ could be a prediction error and $y$ its square; the derivative tells us how adjusting $x$ affects that squared error.
     worked: |
       This example shows the same method for another nested formula, $y = (x^2 + 1)^3$, at $x = 1$.
 
@@ -119,18 +121,20 @@ knowledge_points:
   - id: cr-two-routes
     title: When the input reaches the output by two routes
     explain: |
-      A delivery driver needs to price a longer trip. Its cost $C$, in pounds, includes fuel $F$ at £1.50 per litre and driving time $H$ at £12 per hour:
+      **What if one input changes the output in two different ways?** We must include both effects without counting either twice. Following only one sequence of calculations would miss part of the change.
+
+      For example, a trip's cost $C$, in pounds, includes fuel $F$ at £1.50 per litre and driving time $H$ at £12 per hour:
 
       $$C = 1.5F + 12H$$
 
-      Both depend on the distance $s$. The car uses $F = 0.08s$ litres, and at 60 km per hour the drive takes $H = s/60$ hours. **How much does one extra km add to the cost?**
-
-      Counting only fuel would leave the driver's extra time unpaid. Calculate both effects with the chain rule, then add them. Each sequence of calculations from distance to cost is called a route.
-
-      This works because each extra kilometre adds fuel and wages to the same bill. You pay both amounts, rather than multiplying them or choosing the larger one.
+      Both depend on distance $s$ in km: $F = 0.08s$ litres and $H = s/60$ hours at 60 km per hour. Each sequence from distance to cost is called a route.
 
       - Fuel adds 1.5 pounds per litre × 0.08 litres per km = 0.12 pounds per km.
       - Wages add 12 pounds per hour × $\tfrac{1}{60}$ hours per km = 0.20 pounds per km.
+
+      Together they add $0.12 + 0.20 = 0.32$ pounds per km.
+
+      This works because the same distance increase travels down both arrows in the picture. It produces extra fuel and extra driving time, whose costs join on one bill. Multiply within each route, then add their contributions.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 210" aria-label="Distance s reaches cost C by two routes: through fuel F with rates 0.08 and 1.5, and through hours H with rates 1/60 and 12. The routes give 0.12 and 0.20, which add to 0.32">
@@ -155,7 +159,7 @@ knowledge_points:
       </svg>
       ```
 
-      So $dC/ds = 0.12 + 0.20 = 0.32$: each extra km costs 32p. The partial $\partial C/\partial F = 1.5$ holds hours fixed. The **multivariable chain rule** combines the rates:
+      The partial $\partial C/\partial F = 1.5$ holds hours fixed. The **multivariable chain rule** combines the rates:
 
       $$\frac{dC}{ds} = \frac{\partial C}{\partial F}\cdot\frac{dF}{ds} + \frac{\partial C}{\partial H}\cdot\frac{dH}{ds}$$
 
