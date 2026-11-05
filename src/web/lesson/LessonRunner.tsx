@@ -32,7 +32,7 @@ export function LessonRunner({
   mode: 'practice' | 'assessment' | 'review';
   tutorEnabled: boolean;
   resumeRetry: boolean;
-  onContinue: () => void;
+  onContinue: (status: 'completed' | 'needs_retry') => void;
 }) {
   const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
@@ -124,7 +124,7 @@ export function LessonRunner({
   const next = async () => {
     if (!state) return;
     if (state.status === 'needs_retry' || state.status === 'completed') {
-      onContinue();
+      onContinue(state.status === 'completed' ? 'completed' : 'needs_retry');
       return;
     }
     setBusy(true);

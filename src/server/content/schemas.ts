@@ -191,6 +191,7 @@ const KnowledgePointSchema = z
 const KnowledgePointLessonSchema = LessonFieldsSchema.extend({
   objective: z.string().min(1),
   knowledge_points: z.array(KnowledgePointSchema).min(2).max(4),
+  final: IdSchema,
   summary: z.string().min(1),
 }).strict();
 
@@ -202,6 +203,7 @@ export type LessonInput = z.infer<typeof LessonSchema>;
 export type Lesson = Omit<z.infer<typeof LegacyLessonSchema>, 'fast_path'> & {
   fast_path: z.infer<typeof LegacyLessonSchema>['fast_path'];
   knowledge_points?: KnowledgePoint[];
+  final?: string;
 };
 
 export function normalizeLesson(
@@ -216,10 +218,12 @@ export function normalizeLesson(
     const fixedProblem = point.problems.find((problemId) => !isTemplateProblem(problemId));
     if (fixedProblem) blocks.push({ kind: 'check', exercise: fixedProblem });
   }
+  blocks.push({ kind: 'check', exercise: lesson.final });
   blocks.push({ kind: 'summary', md: lesson.summary });
   return {
     concept: lesson.concept,
     version: lesson.version,
+    final: lesson.final,
     knowledge_points: lesson.knowledge_points,
     blocks,
     fast_path: ['objective', 'summary'],

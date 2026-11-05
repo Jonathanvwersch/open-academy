@@ -36,6 +36,11 @@ async function createSession(page: Page, focusConcept = true) {
     return { status: response.status, session: await response.json() };
   }, focusConcept);
   expect(session.status).toBe(201);
+  expect(
+    session.session.activities.find(
+      (activity: { conceptId: string }) => activity.conceptId === conceptId,
+    ).exerciseIds,
+  ).toEqual(['sl-explain-setup']);
   await page.goto(`/session/${session.session.id}`);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
   await expect(page.getByText(/^Learn · \d+ of \d+ today$/)).toBeVisible();
@@ -171,7 +176,48 @@ test('passes every knowledge point and restores the exact problem and result aft
   await page.screenshot({ path: `${screenshotDir}/lesson-complete.png`, fullPage: true });
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByText('Lesson complete · +40 XP')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Supervised learning' })).toHaveCount(0);
+  await expect(page.getByLabel('Your answer')).toBeVisible();
+  await expect(page.getByTestId('exercise-prompt')).toContainText('Pick any real problem');
+  await page.reload();
+  await expect(page.getByLabel('Your answer')).toBeVisible();
+  await page
+    .getByLabel('Your answer')
+    .fill(
+      'Predict delivery time in minutes from distance and time of day. Inputs: distance and time of day; target: delivery time. Model: a line that combines the two inputs. Loss: squared error. Data: 5,000 past deliveries.',
+    );
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  const selfCheck = page.getByRole('button', { name: 'Submit self-check' });
+  const retry = page.getByRole('button', { name: /Try again/ });
+  await expect
+    .poll(
+      async () =>
+        (await selfCheck.isVisible()) ||
+        (await retry.isVisible()) ||
+        (await page.getByRole('button', { name: 'Continue' }).isVisible()),
+    )
+    .toBe(true);
+  if (await selfCheck.isVisible()) {
+    for (const checkbox of await page.getByRole('checkbox').all()) await checkbox.click();
+    await selfCheck.click();
+  } else if (await retry.isVisible()) {
+    await retry.click();
+  }
+  await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
+  await expect(page.getByText('Your answer:', { exact: true })).toBeVisible();
+  const finalActivity = await page.evaluate(async (session) => {
+    const response = await fetch(`/api/sessions/${session}`);
+    const data = await response.json();
+    return data.activities.find(
+      (item: { conceptId: string }) => item.conceptId === 'supervised-learning',
+    );
+  }, sessionId);
+  expect(finalActivity.status).toBe('completed');
+  expect(finalActivity.progress.completedExerciseIds).toContain('sl-explain-setup');
+  expect(finalActivity.lastAttempt.exerciseId).toBe('sl-explain-setup');
+  expect(finalActivity.lastAttempt.status).toBe('graded');
+  expect(finalActivity.lastAttempt.yourAnswer).toContain('Predict delivery time');
   expect(page.url()).toContain(`/session/${sessionId}`);
 });
 
@@ -209,6 +255,7 @@ test('a failed knowledge point shows the retry screen and resumes at round two i
       activity.conceptId === conceptId && activity.kind === 'learn',
   );
   expect(reoffered).toBeTruthy();
+  expect(reoffered.exerciseIds).toEqual(['sl-explain-setup']);
   await page.goto(`/session/${session.id}`);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
   await expect.poll(async () => (await currentRun(page))?.pendingProblem?.round).toBe(2);

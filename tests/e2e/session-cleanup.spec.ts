@@ -141,6 +141,10 @@ test('legacy lesson review presents labelled blocks as cards with checks inside'
               md: 'Keep copies of one sale together in the same split.',
             },
             {
+              kind: 'faded',
+              md: '```svg\n<svg viewBox="0 0 10 10" aria-label="Data split diagram"><rect x="1" y="1" width="8" height="8" fill="#abc"/></svg>\n```',
+            },
+            {
               kind: 'math',
               md: 'The test error estimates future error when the split is representative.',
             },
@@ -171,17 +175,21 @@ test('legacy lesson review presents labelled blocks as cards with checks inside'
   );
   await page.goto('/lessons/train-test-split');
   await expect(page.getByRole('heading', { name: 'Training and evaluation splits' })).toBeVisible();
-  for (const label of [
-    'Goal',
-    'Example',
-    'Key formula',
-    'Check yourself',
-    'Fill in the steps',
-    'Key takeaways',
-  ]) {
+  await expect(page.getByRole('img', { name: 'Data split diagram' })).toBeVisible();
+  for (const [label, count] of [
+    ['Goal', 1],
+    ['Example', 1],
+    ['Key formula', 1],
+    ['Check yourself', 1],
+    ['Fill in the steps', 2],
+    ['Key takeaways', 1],
+  ] as const) {
     const title = page.getByRole('heading', { name: label, exact: true });
-    await expect(title).toBeVisible();
-    await expect(title.locator('xpath=../..')).toHaveAttribute('data-slot', 'card');
+    await expect(title).toHaveCount(count);
+    for (const heading of await title.all()) {
+      await expect(heading).toBeVisible();
+      await expect(heading.locator('xpath=../..')).toHaveAttribute('data-slot', 'card');
+    }
   }
   const intuition = page.getByText(
     'A model that has seen the answers will look better than it is.',

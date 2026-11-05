@@ -106,7 +106,18 @@ function SessionPage() {
     const run = queryClient.getQueryData<LessonRunPayload>(['lesson-run', item.conceptId])?.run;
     return run?.status === 'needs_retry' || run?.status === 'completed';
   });
-  const activity = completedLesson ?? activeActivity;
+  const completedFinal = activities.find(
+    (item) =>
+      item.kind === 'learn' &&
+      item.status === 'completed' &&
+      item.progress?.lessonRunnerContinued &&
+      !item.progress.finalQuestionContinued &&
+      (item.progress.completedExerciseIds ?? []).some((exerciseId) =>
+        item.exerciseIds.includes(exerciseId),
+      ),
+  );
+  const activity = completedLesson ?? completedFinal ?? activeActivity;
+  const showingCompletedFinal = activity?.id === completedFinal?.id;
   useEffect(() => {
     const allowed =
       !!activity && !['diagnostic', 'review', 'quick_check', 'assessment'].includes(activity.kind);
@@ -121,9 +132,13 @@ function SessionPage() {
       enabled: sessionQuery.data.tutorEnabled,
     });
   }, [activity, sessionQuery.data.tutorEnabled, tutorSidebar]);
-  const exerciseId = activity?.exerciseIds.find(
-    (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
-  );
+  const exerciseId = showingCompletedFinal
+    ? activity?.exerciseIds.find((candidate) =>
+        (activity.progress?.completedExerciseIds ?? []).includes(candidate),
+      )
+    : activity?.exerciseIds.find(
+        (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
+      );
   const exerciseQuery = useSuspenseQuery(exerciseQueryOptions(exerciseId ?? null));
   const activityScrollKey = activity
     ? `${activity.id}:${activity.progress?.lessonViewed ?? ''}`
@@ -136,7 +151,7 @@ function SessionPage() {
       const lastAttempt = activity.lastAttempt;
       setResult(
         lastAttempt && lastAttempt.exerciseId === exerciseId
-          ? { ...lastAttempt, status: 'graded' }
+          ? { ...lastAttempt, status: lastAttempt.status ?? 'graded' }
           : null,
       );
       setHint(null);
@@ -249,16 +264,32 @@ function SessionPage() {
     }
   };
   const continueNext = async () => {
+    if (showingCompletedFinal && activity) {
+      await fetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          ...(activity.progress ?? {}),
+          complete: true,
+          finalQuestionContinued: true,
+        }),
+      });
+    }
     await queryClient.invalidateQueries({ queryKey: ['session', id] });
   };
-  const continueLessonRunner = async () => {
+  const continueLessonRunner = async (status: 'completed' | 'needs_retry') => {
     if (!activity) return;
+    const finalQuestionPending =
+      status === 'completed' &&
+      !!lesson?.final &&
+      activity.exerciseIds.includes(lesson.final) &&
+      !(activity.progress?.completedExerciseIds ?? []).includes(lesson.final);
     await fetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ...(activity.progress ?? {}),
-        complete: true,
+        ...(!finalQuestionPending ? { complete: true } : {}),
         lessonRunnerContinued: true,
       }),
     });
@@ -316,7 +347,12 @@ function SessionPage() {
       : Number(result?.correct) === 0 && result?.retryAllowed === true
         ? `Try again · ${triesLeft} ${triesLeft === 1 ? 'try' : 'tries'} left`
         : 'Submit answer';
-  if (activity.kind === 'learn' && activity.conceptId && lesson?.knowledge_points?.length) {
+  if (
+    activity.kind === 'learn' &&
+    activity.conceptId &&
+    lesson?.knowledge_points?.length &&
+    !activity.progress?.lessonRunnerContinued
+  ) {
     return (
       <LessonRunner
         conceptId={activity.conceptId}
@@ -329,11 +365,16 @@ function SessionPage() {
         mode={mode}
         tutorEnabled={sessionQuery.data.tutorEnabled}
         resumeRetry={activity.status !== 'completed'}
-        onContinue={() => void continueLessonRunner()}
+        onContinue={(status) => void continueLessonRunner(status)}
       />
     );
   }
-  if (activity.kind === 'learn' && !activity.progress?.lessonViewed && lesson?.blocks.length) {
+  if (
+    activity.kind === 'learn' &&
+    !activity.progress?.lessonViewed &&
+    !lesson?.knowledge_points?.length &&
+    lesson?.blocks.length
+  ) {
     const answeredOnServer = new Set(activity.progress?.completedExerciseIds ?? []);
     const checksPending = lesson.blocks.some(
       (block) =>

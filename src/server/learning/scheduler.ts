@@ -448,27 +448,13 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     const completedKnowledgePointLesson =
       hasKnowledgePointLesson && lessonRunStatus === 'completed';
     if (shouldResumeLesson) {
-      const exercise = chooseExercise(
-        state,
-        content,
-        concept,
-        undefined,
-        ['core', 'check'],
-        now,
-        recentIds,
-      );
+      const finalId = content.lessonsByConcept.get(concept.id)?.final;
+      const exercise = finalId
+        ? content.exercisesById.get(finalId)
+        : chooseExercise(state, content, concept, undefined, ['core', 'check'], now, recentIds);
+      const exerciseIds = exercise ? [exercise] : [];
       candidates.push(
-        makeCandidate(
-          state,
-          content,
-          concept,
-          'learn',
-          exercise ? [exercise] : [],
-          week,
-          project,
-          true,
-          100,
-        ),
+        makeCandidate(state, content, concept, 'learn', exerciseIds, week, project, true, 100),
       );
     } else if (!completedKnowledgePointLesson && (isNew || isContinuing)) {
       const dimension = concept.dimensions.find((candidate) => {
@@ -483,15 +469,9 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
           (state === 'introduced' || state === 'assisted' || state === 'not_assessed')
         );
       });
-      const exercise = chooseExercise(
-        state,
-        content,
-        concept,
-        dimension,
-        ['core', 'check'],
-        now,
-        recentIds,
-      );
+      const exercise = hasKnowledgePointLesson
+        ? content.exercisesById.get(content.lessonsByConcept.get(concept.id)?.final ?? '')
+        : chooseExercise(state, content, concept, dimension, ['core', 'check'], now, recentIds);
       if (exercise) {
         candidates.push(
           makeCandidate(

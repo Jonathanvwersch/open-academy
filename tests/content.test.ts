@@ -255,6 +255,7 @@ test('knowledge-point Markdown participates in notation checks', async () => {
       problems: [],
     },
   ];
+  addFinalExercise(data, 'derivatives');
   expect(validateContent(data)).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -279,6 +280,7 @@ test('an introducing lesson may teach notation in a knowledge point', async () =
       problems: [],
     },
   ];
+  addFinalExercise(data, 'vectors');
   expect(validateContent(data)).not.toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -294,6 +296,7 @@ test('knowledge-point lessons derive the legacy block shape', () => {
     concept: 'vectors',
     version: 3,
     objective: 'Learn the idea.',
+    final: 'final-explain',
     knowledge_points: [
       {
         id: 'kp-one',
@@ -315,6 +318,7 @@ test('knowledge-point lessons derive the legacy block shape', () => {
     { kind: 'intuition', md: '### Second\n\nExplain.' },
     { kind: 'worked', md: 'Work.' },
     { kind: 'check', exercise: 'fixed' },
+    { kind: 'check', exercise: 'final-explain' },
     { kind: 'summary', md: 'Finish.' },
   ]);
   expect(lesson.fast_path).toEqual(['objective', 'summary']);
@@ -333,9 +337,17 @@ test('knowledge-point lesson schema requires between two and four points', () =>
     concept: 'vectors',
     version: 3,
     objective: 'Goal.',
+    final: 'final-explain',
     summary: 'Summary.',
   };
   expect(LessonSchema.safeParse({ ...base, knowledge_points: [point] }).success).toBe(false);
+  expect(
+    LessonSchema.safeParse({
+      ...base,
+      final: undefined,
+      knowledge_points: [point, { ...point, id: 'kp-two' }],
+    }).success,
+  ).toBe(false);
   expect(
     LessonSchema.safeParse({
       ...base,
@@ -411,6 +423,7 @@ test('a valid knowledge-point lesson with a parameterised practice problem passe
       problems: ['kp-template-two', 'kp-fixed-three', 'kp-fixed-four'],
     },
   ];
+  addFinalExercise(data, 'vectors');
   expect(validateContent(data).filter((issue) => issue.id.startsWith('kp-'))).toEqual([]);
 });
 
@@ -471,6 +484,7 @@ test('knowledge-point rules reject short, duplicate, missing, non-practice, and 
       problems: ['practice-one'],
     },
   ];
+  addFinalExercise(data, 'vectors');
   const issues = validateContent(data);
   expect(issues.map((issue) => issue.message)).toEqual(
     expect.arrayContaining([
@@ -537,6 +551,7 @@ test('template validation reports unsatisfied constraints, unresolved text, cons
       problems: templates.map(({ id }) => id),
     },
   ];
+  addFinalExercise(data, 'vectors');
   const issues = validateContent(data);
   for (const [id, text] of [
     ['template-role', 'templates must have practice role'],
@@ -703,3 +718,93 @@ function addOwnedText(data: ContentSourceData, concept: string, text: string) {
   if (!exercise) throw new Error(`Missing fixture exercise for ${concept}`);
   exercise.value.prompt = `A prompt mentions ${text}.`;
 }
+
+function addFinalExercise(data: ContentSourceData, concept: string) {
+  const lesson = data.lessons.find((entry) => entry.value.concept === concept);
+  if (!lesson) throw new Error(`Missing ${concept} lesson fixture`);
+  const id = `${concept}-final-explain`;
+  const value = ExerciseSchema.parse({
+    id,
+    dimension: 'conceptual',
+    type: 'explain',
+    role: 'core',
+    difficulty: 1,
+    est_minutes: 1,
+    prompt: 'Explain the idea.',
+    solution: 'An explanation of the idea.',
+    rubric: [{ id: 'criterion', criterion: 'Names the main idea.', weight: 1, required: true }],
+    exemplar: 'The main idea is explained.',
+  });
+  data.exercises.push({ value, concept, file: `exercises/${concept}.yaml` });
+  lesson.value.final = id;
+}
+
+test('knowledge-point final exercise rules and gated lesson format are validated', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'supervised-learning');
+  if (!lesson) throw new Error('Missing supervised-learning fixture');
+  expect(lesson.value.final).toBe('sl-explain-setup');
+  expect(validateContent(data).some((issue) => issue.message.includes('final exercise'))).toBe(
+    false,
+  );
+
+  lesson.value.final = 'vectors-magnitude';
+  expect(validateContent(data).some((issue) => issue.message.includes('belong to'))).toBe(true);
+  lesson.value.final = 'missing-final';
+  expect(validateContent(data).some((issue) => issue.message.includes('does not exist'))).toBe(
+    true,
+  );
+  lesson.value.final = 'dx-ml-1';
+  expect(validateContent(data).some((issue) => issue.message.includes('type explain'))).toBe(true);
+  expect(validateContent(data).some((issue) => issue.message.includes('core role'))).toBe(true);
+  lesson.value.final = 'sl-explain-setup';
+  lesson.value.knowledge_points?.[0]?.problems.push('sl-explain-setup');
+  expect(validateContent(data).some((issue) => issue.message.includes('must not be listed'))).toBe(
+    true,
+  );
+
+  const gated = await notationFixture();
+  expect(
+    validateContent(gated, true).some(
+      (issue) =>
+        issue.id === 'vectors' && issue.message === 'authored lessons must use knowledge_points',
+    ),
+  ).toBe(true);
+});
+
+test('SVG fences reject malformed, unsafe, inaccessible, and non-hex SVG', async () => {
+  const invalidSvg = [
+    '<svg viewBox="0 0 10 10" aria-label="Diagram"><rect></svg>',
+    '<svg aria-label="Diagram"></svg>',
+    '<svg viewBox="0 0 10 10" aria-label=""><rect/></svg>',
+    '<svg viewBox="0 0 10 10" aria-label="Diagram"><script/></svg>',
+    '<svg viewBox="0 0 10 10" aria-label="Diagram"><foreignObject/></svg>',
+    '<svg viewBox="0 0 10 10" aria-label="Diagram"><rect onclick="go()"/></svg>',
+    '<svg viewBox="0 0 10 10" aria-label="Diagram"><use href="https://example.com/a.svg"/></svg>',
+    '<svg viewBox="0 0 10 10" aria-label="Diagram"><rect fill="red"/></svg>',
+    '<svg viewBox="0 0 10 10" aria-label="Diagram"><rect fill="var(--brand)"/></svg>',
+  ];
+  for (const svg of invalidSvg) {
+    const data = await notationFixture();
+    const exercise = data.exercises.find(({ concept }) => concept === 'vectors');
+    if (!exercise) throw new Error('Missing vector fixture exercise');
+    const lesson = data.lessons.find(({ value }) => value.concept === 'vectors');
+    if (!lesson) throw new Error('Missing vectors lesson fixture');
+    const block = lesson.value.blocks.find((candidate) => 'md' in candidate);
+    if (!block || !('md' in block)) throw new Error('Missing vectors lesson Markdown block');
+    const markdown = `Diagram:\n\`\`\`svg\n${svg}\n\`\`\``;
+    exercise.value.prompt = markdown;
+    block.md = markdown;
+    const issues = validateContent(data).filter((issue) => issue.message.startsWith('invalid SVG'));
+    expect(issues.some((issue) => issue.id === exercise.value.id)).toBe(true);
+    expect(issues.some((issue) => issue.id === lesson.value.concept)).toBe(true);
+  }
+  const valid = await notationFixture();
+  const exercise = valid.exercises.find(({ concept }) => concept === 'vectors');
+  if (!exercise) throw new Error('Missing vector fixture exercise');
+  exercise.value.prompt =
+    'Diagram:\n```svg\n<svg viewBox="0 0 10 10" aria-label="Diagram"><rect fill="#abc"/></svg>\n```';
+  expect(validateContent(valid).some((issue) => issue.message.startsWith('invalid SVG'))).toBe(
+    false,
+  );
+});

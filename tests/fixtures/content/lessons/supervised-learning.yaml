@@ -104,6 +104,7 @@ knowledge_points:
       - slp-target-type-travel
       - slp-target-type-parcel
       - slp-low-training-loss
+final: sl-explain-setup
 summary: |
   - Five ingredients: inputs $x$, target $y$, a model $f_\theta$ with parameters $\theta$, a loss $L$, and a dataset of $(x, y)$ pairs.
   - The loss turns "how wrong" into a number. Squaring stops errors that are too high and too low from cancelling out.
