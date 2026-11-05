@@ -3,34 +3,36 @@ version: 2
 objective: |
   **Goal:** turn two vectors into one number, see how that number measures agreement between arrows, and compare directions without rewarding length.
 why: |
-  A film app needs to recommend something you will enjoy. It records your taste for action, comedy and romance as (3, 0, 1), and a film's scores for those categories as (2, 1, 0). Adding the film's scores alone would ignore your tastes. A dot product pairs each film score with how much you care about that category, then adds the results to give one number for ranking films. Cosine similarity lets you compare the balance of categories without rewarding larger numbers alone. The same calculations appear in matrices, linear regression, the perceptron, and attention, where a model compares numerical descriptions to decide what matters.
+  A house-price model needs to combine area, bedrooms and age into one prediction. Adding those measurements would mix units and treat every feature as equally important. Instead, record area in tens of square metres, bedrooms, and age in years as x = (12, 3, 20). Weights w = (25, 10, -1), in thousand pounds per feature unit, give contributions of 300, 30 and minus 20 thousand pounds. The dot product adds them to predict 310 thousand pounds. Each weight controls how much its feature matters; the negative age weight lowers the price. You'll use this calculation in matrices, linear regression, the perceptron, and attention, where models combine measurements or compare vectors.
 knowledge_points:
   - id: dot-weighted-total
     title: Combining two lists into one number
     explain: |
       **How can two lists of numbers give one total, with each entry allowed to matter differently?** A useful calculation should pair entries with the same meaning. Doubling an entry in either list should double that pair's contribution. Adding a list's entries alone would ignore the other list.
 
-      Multiply matching entries, then add. For $a=(3,0,1)$ and $b=(2,1,0)$, this gives $3\cdot2+0\cdot1+1\cdot0=6$. This is the **dot product**, written $a\cdot b$. The dot between numbers means multiplication; between vectors it names the whole calculation.
+      A **feature** is an input measurement. For a house, let $x=(12,3,20)$ list area in tens of square metres, bedrooms, and age in years. **Weights** say how much each feature contributes. Use $w=(25,10,-1)$ in thousand pounds per feature unit: 25 per ten square metres, 10 per bedroom, and minus one per year.
+
+      Multiply matching entries, then add: $25\cdot12+10\cdot3+(-1)\cdot20=300+30-20=310$ thousand pounds. This **weighted sum** is the **dot product**, written $w\cdot x$. A dot between numbers means multiplication; between vectors it names the whole calculation.
 
       For vectors with $n$ entries, $i$ selects an entry and $\sum$ adds from entry one to $n$:
 
       $$a\cdot b=\sum_{i=1}^{n}a_i b_i.$$
 
-      Picture one contribution from each matching pair. The contributions are 6, 0 and 0 here. Multiplication sets their sizes, and addition combines them into one number. Why this way? Multiplying without adding leaves a list, not the requested total. Both vectors must keep the same entry order.
+      Picture the contributions on a number line: 300 forward, 30 forward, then 20 back. This works because each weight first converts its measurement into the same output units. The negative age weight lowers the price. Why this way? Multiplying without adding leaves separate contributions, not one prediction. Keep both vectors in the same feature order.
 
-      When one list controls how much each measurement matters, its entries are **weights** and the total is a **weighted sum**. A zero weight ignores a measurement; a negative weight reverses its contribution. A **linear model** uses this calculation to score input measurements, called **features**. For a film app, weights $(3,0,1)$ can describe interest in action, comedy and romance, while $(2,1,0)$ describes a film.
+      A **linear model** predicts a value using these weighted contributions. With other features fixed, one extra bedroom adds 10 thousand pounds in this model. These example weights illustrate the calculation, not a reliable valuation.
     worked: |
-      This example shows why a film's action score matters more to this viewer than its comedy score.
+      This example shows how differently weighted house measurements become one price prediction.
 
-      Use taste weights $w=(3,0,1)$ and film scores $x=(2,1,0)$, always in the order (action, comedy, romance).
+      A house has 120 square metres, 3 bedrooms and an age of 20 years. Record $x=(12,3,20)$ and use $w=(25,10,-1)$, in the same feature order. Each weight is in thousand pounds per unit of its feature.
 
-      1. Action adds $3\cdot2=6$ to the score.
-      2. Comedy adds $0\cdot1=0$, and romance adds $1\cdot0=0$.
-      3. The total is $w\cdot x=6+0+0=6$.
-      4. Increasing the film's action score to 3 gives $3\cdot3+0\cdot1+1\cdot0=9$.
-      5. Increasing only its comedy score instead leaves the total at 6, because the comedy weight is zero.
+      1. Area contributes $25\cdot12=300$ thousand pounds.
+      2. Bedrooms contribute $10\cdot3=30$ thousand pounds.
+      3. Age contributes $(-1)\cdot20=-20$ thousand pounds.
+      4. Add the contributions: $w\cdot x=300+30-20=310$ thousand pounds.
+      5. With area and bedrooms unchanged, increasing age to 21 gives $300+30-21=309$ thousand pounds.
 
-      The app can rank films by this number. That ranking is only as useful as the category scores and taste weights it uses.
+      A negative weight makes a larger feature value lower the prediction. A zero weight would ignore that feature entirely.
     problems:
       [
         dotp-total,
@@ -107,7 +109,7 @@ knowledge_points:
 
       The score ranges from minus one to one: one means the same direction, zero means perpendicular, and minus one means opposite. A zero vector has no direction, and its zero length makes the division undefined. Multiplying by a negative number reverses an arrow and flips the score's sign.
 
-      Why this way? Use cosine similarity when direction matters but size should not. In a film model, $(1,1)$ and $(10,10)$ give action and comedy the same relative importance. Cosine treats those tastes as identical in direction, not identical in ratings. Use the unadjusted dot product if rating strength should count too.
+      Why this way? Robot movements $(1,1)$ and $(10,10)$ have the same heading, meaning direction of travel, but different lengths. Cosine compares their headings without rewarding distance. When comparing house feature directions instead, first put features on comparable scales, as in the vectors lesson. Otherwise the choice of units can dominate the angle. Use the unadjusted dot product when size should count too.
     worked: |
       This example shows how dividing out lengths isolates direction.
 
@@ -121,13 +123,13 @@ knowledge_points:
 
       For $a=(3,4)$ and $b=(4,3)$, the dot product is $3\cdot4+4\cdot3=12+12=24$. Both lengths are $\sqrt{9+16}=5$, so cosine similarity is $24/(5\cdot5)=24/25=0.96$.
 
-      Multiplying either arrow by a positive number leaves its direction, and therefore its cosine similarity, unchanged. For taste vectors this compares the balance of interests, not how large the ratings are.
+      Multiplying either arrow by a positive number leaves its direction, and therefore its cosine similarity, unchanged. For a robot this compares headings rather than distances travelled.
     problems:
       [dotp-cosine, dotp-cosine-template, dotp-scaling, dotp-zero, dotp-attention, dotp-position]
 final: dot-explain
 summary: |
   - A dot product multiplies matching entries and adds the results. When one vector contains weights, it gives a weighted total of the other vector's measurements.
   - For arrows, the dot product is a signed projection multiplied by the other arrow's length. It is positive below a right angle, zero at a right angle, and negative above a right angle.
-  - Cosine similarity divides by both non-zero lengths. It compares directions without rewarding longer arrows. A model can use it to compare the balance of interests without rewarding larger ratings alone.
+  - Cosine similarity divides by both non-zero lengths. It compares directions without rewarding longer arrows. For house vectors, first put the features on comparable scales so the units do not dominate the comparison.
 
   **Where you'll use this:** matrices, linear regression, the perceptron, and attention reuse these ways of calculating and comparing scores from lists of numbers.

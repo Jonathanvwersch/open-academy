@@ -6,7 +6,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A viewer's taste weights are $(1,2,3)$ for action, comedy and romance. A film has scores $(4,-5,6)$ in that order. Negative scores mean the film has the opposite qualities in that category. What is the dot product?"
+    prompt: "Two vectors are $a=(1,2,3)$ and $b=(4,-5,6)$. What is their dot product?"
     solution: "Multiply matching entries, then add: $1\\cdot4+2\\cdot(-5)+3\\cdot6=4-10+18=12$. The result is one number."
     options:
       - { id: a, text: "12", correct: true, feedback: "The contributions are 4, minus 10 and 18." }
@@ -28,7 +28,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A film app uses taste weights $w=({{=u}},{{=v}})$ and film scores $x=({{=a}},{{=b}})$, both ordered as (action, comedy). What recommendation score does $w\\cdot x$ give?"
+    prompt: "A simplified house-price model uses weights $w=({{=u}},{{=v}})$ for area in tens of square metres and age in years. A house has $x=({{=a}},{{=b}})$ in that order. Each weight is in thousand pounds per feature unit. What is $w\\cdot x$, in thousand pounds?"
     solution: "The contributions are ${{=u}}\\cdot{{=a}}={{=u*a}}$ and ${{=v}}\\cdot{{=b}}={{=v*b}}$. Adding them gives ${{=u*a+v*b}}$, the weighted score."
     tolerance: { abs: 0.000001 }
     params:
@@ -44,26 +44,26 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A film app uses taste weights $(0.5,2)$ for action and comedy. A film's comedy score rises by 1 while its action score stays fixed. How does the recommendation score change?"
-    solution: "The extra comedy score adds $2\\cdot1=2$ to the total. The action part does not change."
+    prompt: "A simplified house-price model uses weights $(0.5,2)$ for area in tens of square metres and bedroom count, in thousand pounds per feature unit. A house gains one bedroom while its area stays fixed. How does the predicted price change?"
+    solution: "The extra bedroom adds $2\\cdot1=2$ thousand pounds to the total. The area contribution does not change."
     options:
       - {
           id: a,
-          text: "The score rises by 2.",
+          text: "The predicted price rises by 2 thousand pounds.",
           correct: true,
-          feedback: "The comedy weight is 2, so each extra comedy point adds 2 to the total.",
+          feedback: "The bedroom weight is 2, so each extra bedroom adds 2 thousand pounds.",
         }
       - {
           id: b,
-          text: "The score rises by 0.5.",
+          text: "The predicted price rises by 0.5 thousand pounds.",
           correct: false,
-          feedback: "The weight 0.5 belongs to action, which has not changed.",
+          feedback: "The weight 0.5 belongs to area, which has not changed.",
         }
       - {
           id: c,
-          text: "The whole score doubles.",
+          text: "The whole predicted price doubles.",
           correct: false,
-          feedback: "The weight multiplies the added comedy point. It does not multiply the existing total.",
+          feedback: "The weight multiplies the added bedroom. It does not multiply the existing total.",
         }
   - id: dotp-order
     dimension: conceptual
@@ -71,12 +71,12 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A film's scores are $(4,1)$ in the order (action, comedy). A viewer's weights are $(2,0.5)$ but are stored in the order (comedy, action). What should the app do before calculating their dot product?"
+    prompt: "A house's features are $(4,1)$ in the order (area in tens of square metres, bedrooms). A model stores weights $(2,0.5)$ in the reverse order (bedrooms, area), in thousand pounds per feature unit. What should it do before calculating their dot product?"
     solution: "The dot product pairs entries by position. Reorder one list so each feature is matched to its own weight."
     options:
       - {
           id: a,
-          text: "It should reorder the weights to match the film's categories.",
+          text: "It should reorder the weights to match the house's features.",
           correct: true,
           feedback: "Each weight must multiply its intended feature.",
         }
@@ -98,26 +98,26 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A viewer's taste weights are $(2,-1)$ for action and comedy. The negative weight means they dislike comedy. If a film gains 1 comedy point while its action score stays fixed, what happens to its recommendation score?"
-    solution: "The extra comedy point adds $(-1)\\cdot1=-1$ to the total. The recommendation score falls by 1."
+    prompt: "A simplified house-price model uses weights $(2,-1)$ for area in tens of square metres and age in years, in thousand pounds per feature unit. If age increases by one year while area stays fixed, what happens to the prediction?"
+    solution: "The extra year adds $(-1)\\cdot1=-1$ thousand pounds to the total. The prediction falls by 1 thousand pounds."
     options:
       - {
           id: a,
-          text: "The score falls by 1.",
+          text: "The prediction falls by 1 thousand pounds.",
           correct: true,
-          feedback: "The viewer's comedy weight is minus one.",
+          feedback: "The age weight is minus one thousand pounds per year.",
         }
       - {
           id: b,
-          text: "The score rises by 1.",
+          text: "The prediction rises by 1 thousand pounds.",
           correct: false,
           feedback: "A negative weight makes an increase lower the score.",
         }
       - {
           id: c,
-          text: "The score stays unchanged.",
+          text: "The prediction stays unchanged.",
           correct: false,
-          feedback: "Only a zero comedy weight would ignore the extra comedy point.",
+          feedback: "Only a zero age weight would ignore the extra year.",
         }
   - id: dotp-why-total
     dimension: conceptual
@@ -125,24 +125,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A film app uses taste weights $(0.5,2)$ and film scores $(4,1)$ for action and comedy. Why add the matching products instead of leaving them as a list?"
-    solution: "The matching products are $(2,2)$, one number for each category. Adding gives 4, a single recommendation score the app can use to rank this film."
+    prompt: "A simplified house-price model uses weights $(0.5,2)$ and features $(4,1)$ for area in tens of square metres and bedroom count. Each weight is in thousand pounds per feature unit. Why add the matching products instead of leaving them as a list?"
+    solution: "The matching products are $(2,2)$, each in thousand pounds. Adding gives one predicted price of 4 thousand pounds. These small example weights illustrate the calculation, not a reliable valuation."
     options:
       - {
           id: a,
-          text: "Adding gives one number for ranking the film.",
+          text: "Adding gives one number for the predicted price.",
           correct: true,
           feedback: "Multiplication sets each contribution's size; addition totals them.",
         }
       - {
           id: b,
-          text: "A list of products already gives one number for ranking the film.",
+          text: "A list of products already gives one number for the predicted price.",
           correct: false,
           feedback: "A list still has separate entries. It does not supply the requested single score.",
         }
       - {
           id: c,
-          text: "Adding makes both categories equally important, whatever the weights.",
+          text: "Adding makes both features equally important, whatever the weights.",
           correct: false,
           feedback: "Weights have already changed the contributions before addition. Adding does not undo that weighting.",
         }
@@ -286,7 +286,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two viewers rate action and comedy as $a=(3,4)$ and $b=(4,3)$. What is their cosine similarity?"
+    prompt: "Two robot movements are $a=(3,4)$ and $b=(4,3)$, in metres east and north. What is their cosine similarity?"
     solution: "The dot product is $12+12=24$ and both lengths are 5. Divide by both lengths to get $24/(5\\cdot5)=0.96$."
     tolerance: { abs: 0.000001 }
     answer: 0.96
@@ -297,7 +297,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two viewers rate action and comedy as $a=(3,4)$ and $b=({{=k}},3)$. What is their cosine similarity? Round to three decimal places."
+    prompt: "Two arrows are $a=(3,4)$ and $b=({{=k}},3)$. What is their cosine similarity? Round to three decimal places."
     solution: "The dot product is $3\\cdot{{=k}}+4\\cdot3={{=3*k+12}}$. The arrow lengths are 5 and $\\sqrt{ {{=k*k+9}} }$. Dividing by their product gives ${{=(3*k+12)/(5*sqrt(k*k+9))}}$."
     tolerance: { abs: 0.00051 }
     params:
@@ -310,7 +310,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A viewer triples every rating in their non-zero taste vector for action and comedy. Why does its cosine similarity with another viewer's fixed non-zero vector stay unchanged?"
+    prompt: "One non-zero arrow is made three times as long without turning. Another non-zero arrow stays fixed. Why does their cosine similarity stay unchanged?"
     solution: "The top and bottom of the fraction both triple. Cancelling that factor leaves cosine similarity unchanged."
     options:
       - {
@@ -337,7 +337,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "One viewer has supplied no preferences, giving a taste vector $(0,0)$ for action and comedy. Another has ratings $(1,2)$. Can the app calculate their cosine similarity?"
+    prompt: "A robot has not moved, so its movement vector is $(0,0)$. Another movement is $(1,2)$ metres east and north. Can cosine similarity compare their directions?"
     solution: "Cosine similarity divides by both norms. The zero vector has norm zero, making the ratio undefined."
     options:
       - {
@@ -364,26 +364,26 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A viewer's taste vector and a film's category vector have dot product 2. The app triples every film rating without changing the viewer's tastes. What happens to the dot product?"
-    solution: "Multiplying the film vector by 3 multiplies the dot product by 3, so the score becomes 6. The dot product depends on rating size as well as the balance of categories."
+    prompt: "Two arrows have dot product 2. Every entry of one vector is multiplied by 3 while the other vector stays fixed. What happens to the dot product?"
+    solution: "Each matching product becomes three times as large, so their sum is $3\\cdot2=6$. The dot product depends on arrow lengths as well as their directions."
     options:
       - {
           id: a,
-          text: "The score becomes 6 even though the film's balance of categories is unchanged.",
+          text: "The dot product becomes 6 even though neither arrow has turned.",
           correct: true,
-          feedback: "Each film rating triples, so every product in the sum triples.",
+          feedback: "Each entry of one vector triples, so every product in the sum triples.",
         }
       - {
           id: b,
           text: "The score stays 2 because direction is unchanged.",
           correct: false,
-          feedback: "Cosine similarity would stay unchanged. An unadjusted dot product also depends on rating size.",
+          feedback: "Cosine similarity would stay unchanged. An unadjusted dot product also depends on length.",
         }
       - {
           id: c,
           text: "The score becomes 18 because the arrow's length is squared.",
           correct: false,
-          feedback: "Only the film vector is multiplied by 3. The total gains one factor of 3, not two.",
+          feedback: "Only one vector is multiplied by 3. The total gains one factor of 3, not two.",
         }
   - id: dotp-position
     dimension: conceptual
@@ -391,24 +391,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two viewers rate action and comedy as $(1,1)$ and $(10,10)$. Their cosine similarity is one. What does that establish?"
-    solution: "Both viewers give equal importance to action and comedy, so their arrows point the same way. Their rating sizes are different."
+    prompt: "Two robot movements are $(1,1)$ and $(10,10)$ metres east and north. Their cosine similarity is one. What does that establish?"
+    solution: "Both movements point in the same direction because each covers equal distances east and north. Their lengths are different."
     options:
       - {
           id: a,
-          text: "They give the categories the same relative importance, but use different rating sizes.",
+          text: "They have the same heading but different travel distances.",
           correct: true,
           feedback: "One is ten times longer, so their endpoints differ.",
         }
       - {
           id: b,
-          text: "They gave exactly the same ratings.",
+          text: "They represent exactly the same movement.",
           correct: false,
           feedback: "Cosine similarity ignores their different lengths.",
         }
       - {
           id: c,
-          text: "The distance between the two rating vectors is zero.",
+          text: "The distance between their endpoints is zero.",
           correct: false,
           feedback: "Different coordinates give a non-zero distance despite equal direction.",
         }
@@ -418,7 +418,7 @@ exercises:
     role: check
     difficulty: 1
     est_minutes: 1
-    prompt: "A viewer's taste vector is $(1,2,3)$ and a film's category vector is $(4,-5,6)$, both ordered as (action, comedy, romance). Calculate the recommendation score using their dot product."
+    prompt: "Calculate the dot product of vectors $(1,2,3)$ and $(4,-5,6)$."
     answer: 12
     tolerance: { abs: 0.001 }
     hints: ["Multiply matching entries: $1\\cdot4$, $2\\cdot(-5)$, $3\\cdot6$."]
@@ -429,7 +429,7 @@ exercises:
     role: check
     difficulty: 1
     est_minutes: 2
-    prompt: "Two viewers rate action and comedy as $a=(3,4)$ and $b=(4,3)$. Calculate their cosine similarity to two decimal places."
+    prompt: "Two arrows are $a=(3,4)$ and $b=(4,3)$. Calculate their cosine similarity to two decimal places."
     answer: 0.96
     tolerance: { abs: 0.005 }
     common_wrong:
@@ -446,7 +446,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "Two viewers rate action, comedy and romance as $u=(1,0,1)$ and $v=(0,1,1)$. What is their cosine similarity?"
+    prompt: "Two vectors are $u=(1,0,1)$ and $v=(0,1,1)$. What is their cosine similarity?"
     answer: 0.5
     tolerance: { abs: 0.005 }
     common_wrong:
@@ -463,7 +463,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "Two viewers' non-zero taste vectors have dot product $0$. What can you conclude about their arrows, drawn from the same starting point?"
+    prompt: "Two non-zero vectors have dot product $0$. What can you conclude about their arrows, drawn from the same starting point?"
     options:
       - {
           id: a,
@@ -498,7 +498,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 2
-    prompt: "A film app uses taste weights $w=(2,-1,0.5)$ for action, comedy and romance. A film has ratings $x=(3,4,2)$ in that order. What recommendation score does $w\\cdot x$ give?"
+    prompt: "A simplified house-price model uses weights $w=(2,-1,0.5)$ for area in tens of square metres, age in years, and bedroom count. Each weight is in thousand pounds per feature unit. A house has $x=(3,4,2)$ in that order. What is $w\\cdot x$, in thousand pounds?"
     answer: 3
     tolerance: { abs: 0.001 }
     solution: "$6 - 4 + 1 = 3$."
@@ -508,11 +508,11 @@ exercises:
     role: transfer
     difficulty: 2
     est_minutes: 2
-    prompt: "A film app gives a film a positive recommendation score by taking the dot product of its category ratings with your taste weights. The app then triples every category rating for that film. Why might the new score be misleading?"
+    prompt: "Two non-zero arrows have a positive dot product. One arrow is made three times as long without turning. Why would using the new dot product alone to judge agreement of direction be misleading?"
     options:
       - {
           id: a,
-          text: "Its score triples even though its balance of categories has not changed.",
+          text: "The dot product triples even though the angle between the arrows has not changed.",
           correct: true,
         }
       - {
@@ -527,7 +527,7 @@ exercises:
           text: "Its score becomes nine times larger.",
           correct: false,
           category: math_error,
-          feedback: "Only the film's ratings triple. Your weights stay fixed, so each product gains one factor of three.",
+          feedback: "Only one vector triples. The other stays fixed, so each product gains one factor of three.",
         }
       - {
           id: d,
@@ -536,15 +536,15 @@ exercises:
           category: incorrect_reasoning,
           feedback: "Multiplying a positive score by three keeps it positive.",
         }
-    hints: ["What happens to each product if only the film's number triples?"]
-    solution: "Every category adds three times its previous amount, so the total triples. The film may now rank higher without matching your balance of interests any better."
+    hints: ["What happens to each product if only one vector's entry triples?"]
+    solution: "Every matching product becomes three times as large, so the total triples. The angle has not changed. Cosine similarity divides by both lengths to compare direction alone."
   - id: dot-explain
     dimension: conceptual
     type: explain
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "A film app compares your taste weights with a film's category ratings using a dot product. Explain in 2–4 sentences why that can measure agreement, and why larger ratings can make the comparison misleading."
+    prompt: "Two robot movement vectors record metres east and north. Explain in 2–4 sentences how their dot product measures agreement between their directions, and why a longer movement can raise the score without making the headings closer."
     rubric:
       - {
           id: r1,
@@ -563,4 +563,4 @@ exercises:
           criterion: "Mentions cosine similarity or normalisation as the length-independent alternative",
           weight: 1,
         }
-    exemplar: "For fixed arrow lengths, the dot product is largest when the represented tastes point in the same direction. It is zero for perpendicular arrows and negative for opposing arrows. Larger rating sizes can raise the score even without a better balance of interests. Cosine similarity divides by both lengths to compare direction alone."
+    exemplar: "For fixed lengths, the dot product is largest when the movement arrows point in the same direction. It is zero for perpendicular arrows and negative when their angle exceeds a right angle. Lengthening one arrow without turning raises a positive score even though the headings are no closer. Cosine similarity divides by both non-zero lengths to compare direction alone."
