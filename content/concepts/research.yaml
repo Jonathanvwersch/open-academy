@@ -22,11 +22,8 @@ concepts:
       week: 11,
       goal_weight: 2,
       dimensions: [conceptual, math],
-      prereqs: [
-        { id: experimental-design },
-        { id: probability-basics },
-        { id: descriptive-statistics },
-      ],
+      prereqs:
+        [{ id: experimental-design }, { id: probability-basics }, { id: descriptive-statistics }],
       objectives: [{ text: "Compute a confidence interval on a success rate", dimension: math }],
       status: stub,
     }

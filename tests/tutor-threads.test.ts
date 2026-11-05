@@ -79,6 +79,7 @@ test('create-on-first-send persists messages and list/detail preserve newest-fir
   expect(first.status).toBe(200);
   const firstPayload = await first.json();
   expect(firstPayload.messages).toHaveLength(2);
+  expect(firstPayload.thread.title).toBe('first');
   const second = await send('second', firstPayload.thread.id);
   expect(second.status).toBe(200);
   const third = await send('third', firstPayload.thread.id);
@@ -94,6 +95,7 @@ test('create-on-first-send persists messages and list/detail preserve newest-fir
   expect(listed[0]).toMatchObject({
     conceptId: 'supervised-learning',
     conceptTitle: 'Supervised learning setup',
+    title: 'first',
     messageCount: 6,
     lastMessagePreview: 'first',
   });
@@ -116,15 +118,45 @@ test('create-on-first-send persists messages and list/detail preserve newest-fir
     'third',
     'Tutor reply to: third',
   ]);
-  expect(detail.thread.title).toBe('Supervised learning setup · 4 Jan');
+  expect(detail.thread.title).toBe('first');
   const general = await (await send('general question')).json();
   const newestFirst = await (await app.request('/api/tutor/threads', { headers })).json();
   expect(newestFirst).toHaveLength(2);
   expect(newestFirst[0]).toMatchObject({
     id: general.thread.id,
     conceptId: null,
-    title: 'General · 4 Jan',
+    title: 'general question',
   });
+});
+
+test('thread titles collapse whitespace and truncate the first user message to 80 characters', async () => {
+  const question = `  ${'first   question\t'.repeat(10)}  `;
+  const normalized = question.trim().replace(/\s+/g, ' ');
+  const expectedTitle = `${normalized.slice(0, 79)}…`;
+  expect(normalized.length).toBeGreaterThan(80);
+
+  const created = await (await send(question)).json();
+  expect(created.thread.title).toBe(expectedTitle);
+
+  const listed = await (await app.request('/api/tutor/threads', { headers })).json();
+  expect(listed[0].title).toBe(expectedTitle);
+  const detail = await (
+    await app.request(`/api/tutor/threads/${created.thread.id}`, { headers })
+  ).json();
+  expect(detail.thread.title).toBe(expectedTitle);
+});
+
+test('threads without user messages use the New chat title', async () => {
+  const [thread] = await db
+    .insert(tutorThreads)
+    .values({ userId, conceptId: null, title: 'unused stored title' })
+    .returning();
+  if (!thread) throw new Error('Expected a tutor thread');
+
+  const listed = await (await app.request('/api/tutor/threads', { headers })).json();
+  expect(listed[0].title).toBe('New chat');
+  const detail = await (await app.request(`/api/tutor/threads/${thread.id}`, { headers })).json();
+  expect(detail.thread.title).toBe('New chat');
 });
 
 test('history is oldest-first and capped at the latest twelve messages', async () => {
