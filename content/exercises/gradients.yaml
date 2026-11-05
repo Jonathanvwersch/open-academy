@@ -167,33 +167,33 @@ exercises:
           category: math_error,
           feedback: "The term ${{=b}}xy$ also contains $x$, so it contributes ${{=b}}y$.",
         }
-  - id: gradp-is-vector
+  - id: gradp-why-vector
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "For a function $f(x, y)$, what kind of object is $\\nabla f$ at a point?"
+    prompt: "Why keep the partial derivatives of $f(x, y)$ as a vector instead of adding them into one number?"
     options:
       - id: a
-        text: 'A vector with two components, $\frac{\partial f}{\partial x}$ and $\frac{\partial f}{\partial y}$'
+        text: "Each partial belongs to a different input direction, and the vector preserves that information"
         correct: true
       - id: b
-        text: "A single number, the sum of the two partials"
+        text: "Adding the partials always gives 0, even on a slope"
         correct: false
         category: misunderstood_definition
-        feedback: "The partials are kept side by side as components of a vector, not added together."
+        feedback: "The sum need not be 0: partials 3 and 4 sum to 7. The problem is losing which slope belongs to which direction."
       - id: c
-        text: "The height $f(x, y)$ at that point"
+        text: "A vector stores the height as well as the slopes"
         correct: false
         category: misunderstood_definition
-        feedback: "That is the output. The gradient is built from its rates of change."
+        feedback: "Neither partial stores the height. Both are rates of change, and their vector still contains only rates."
       - id: d
-        text: "A single number, the steepest partial"
+        text: "Only the largest partial matters; the other component can be discarded"
         correct: false
         category: misunderstood_definition
-        feedback: "The gradient keeps every partial, one per input."
-    solution: "The gradient lists every partial derivative in order, so for two inputs it is a vector with two components."
+        feedback: "A step can change both inputs. Discarding one partial loses its contribution to the output change."
+    solution: "Partials 3 and 4 describe different slopes. Their sum 7 loses which input has slope 3 and which has slope 4; the vector keeps both so a step's effects can be computed."
   - id: gradp-three-inputs
     dimension: math
     type: text
