@@ -76,11 +76,8 @@ concepts:
       week: 7,
       goal_weight: 3,
       dimensions: [conceptual, transfer],
-      prereqs: [
-        { id: behavioral-cloning },
-        { id: evaluation-metrics },
-        { id: descriptive-statistics },
-      ],
+      prereqs:
+        [{ id: behavioral-cloning }, { id: evaluation-metrics }, { id: descriptive-statistics }],
       objectives: [{ text: "Design a fair policy evaluation", dimension: transfer }],
       status: stub,
     }
