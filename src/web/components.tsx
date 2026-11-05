@@ -1,7 +1,7 @@
 import type { FormEvent, KeyboardEvent, ReactNode, RefObject } from 'react';
 import * as React from 'react';
 import { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
@@ -31,49 +31,61 @@ export interface ClientExercise {
   rubric?: Array<{ id: string; criterion: string; required: boolean }>;
 }
 
-export function Markdown({ children }: { children: string }) {
-  return (
-    <div className="markdown max-w-[70ch] text-base leading-7 text-foreground">
-      <ReactMarkdown
-        components={{
-          code({ className, children: codeChildren, ...props }) {
-            if (/\blanguage-svg\b/.test(className ?? '')) {
-              const svg = plainText(codeChildren).replace(/\n$/, '');
-              const label = svg.match(/\baria-label\s*=\s*["']([^"']+)["']/)?.[1] ?? '';
-              return (
-                <figure className="my-6 flex max-w-full justify-center">
-                  <img
-                    src={`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`}
-                    alt={label}
-                    className="max-w-full"
-                    style={{ maxWidth: '70ch' }}
-                  />
-                </figure>
-              );
-            }
-            return (
-              <code className={className} {...props}>
-                {codeChildren}
-              </code>
-            );
-          },
-          pre({ children: preChildren }) {
-            const child = React.Children.only(preChildren);
-            if (
-              React.isValidElement<{ className?: string }>(child) &&
-              /language-svg/.test(child.props.className ?? '')
-            ) {
-              return child;
-            }
-            return <pre>{preChildren}</pre>;
-          },
-        }}
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex, rehypeHighlight]}
-      >
-        {normalizeDisplayMath(children)}
-      </ReactMarkdown>
-    </div>
+export function Markdown({ children, inline = false }: { children: string; inline?: boolean }) {
+  const markdownComponents: Components = {
+    code({ className, children: codeChildren, ...props }) {
+      if (/\blanguage-svg\b/.test(className ?? '')) {
+        const svg = plainText(codeChildren).replace(/\n$/, '');
+        const label = svg.match(/\baria-label\s*=\s*["']([^"']+)["']/)?.[1] ?? '';
+        return (
+          <figure className="my-6 flex max-w-full justify-center">
+            <img
+              src={`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`}
+              alt={label}
+              className="max-w-full"
+              style={{ maxWidth: '70ch' }}
+            />
+          </figure>
+        );
+      }
+      return (
+        <code className={className} {...props}>
+          {codeChildren}
+        </code>
+      );
+    },
+    pre({ children: preChildren }) {
+      const child = React.Children.only(preChildren);
+      if (
+        React.isValidElement<{ className?: string }>(child) &&
+        /language-svg/.test(child.props.className ?? '')
+      ) {
+        return child;
+      }
+      return <pre>{preChildren}</pre>;
+    },
+  };
+  const components: Components = inline
+    ? {
+        ...markdownComponents,
+        p({ children: paragraphChildren }) {
+          return <span>{paragraphChildren}</span>;
+        },
+      }
+    : markdownComponents;
+  const content = (
+    <ReactMarkdown
+      components={components}
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[rehypeKatex, rehypeHighlight]}
+    >
+      {normalizeDisplayMath(children)}
+    </ReactMarkdown>
+  );
+  return inline ? (
+    <span className="inline">{content}</span>
+  ) : (
+    <div className="markdown max-w-[70ch] text-base leading-7 text-foreground">{content}</div>
   );
 }
 
@@ -195,7 +207,7 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
             return (
               <li key={item.id ?? item.criterion} className="flex gap-2">
                 <span aria-hidden="true">{symbol}</span>
-                <span>{item.criterion}</span>
+                <Markdown inline>{item.criterion ?? ''}</Markdown>
               </li>
             );
           })}
@@ -328,7 +340,7 @@ export function ExerciseForm({
                         )
                       }
                     />
-                    <Markdown>{option.text}</Markdown>
+                    <Markdown inline>{option.text}</Markdown>
                   </Label>
                 );
               })}
@@ -348,7 +360,7 @@ export function ExerciseForm({
                     className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card p-3"
                   >
                     <RadioGroupItem id={optionId} value={option.id} />
-                    <Markdown>{option.text}</Markdown>
+                    <Markdown inline>{option.text}</Markdown>
                   </Label>
                 );
               })}
@@ -387,7 +399,7 @@ export function ExerciseForm({
                   exercise as ClientExercise & { fix_options?: Array<{ id: string; text: string }> }
                 ).fix_options?.map((option) => (
                   <SelectItem key={option.id} value={option.id}>
-                    {option.text}
+                    <Markdown inline>{option.text}</Markdown>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -412,7 +424,7 @@ export function ExerciseForm({
                   }
                 />
                 <Label htmlFor={itemId} className="flex items-center gap-2 text-base">
-                  {item.criterion}
+                  <Markdown inline>{item.criterion}</Markdown>
                   {item.required ? (
                     <Badge
                       variant="outline"

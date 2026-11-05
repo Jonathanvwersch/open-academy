@@ -465,7 +465,9 @@ function SessionPage() {
             {result && result.status !== 'invalid' ? <FeedbackPanel result={result} /> : null}
             {result?.status === 'invalid' ? (
               <Alert variant="destructive">
-                <AlertDescription>{String(result.feedback)}</AlertDescription>
+                <AlertDescription>
+                  <Markdown inline>{String(result.feedback)}</Markdown>
+                </AlertDescription>
               </Alert>
             ) : null}
             {hint?.text ? (
