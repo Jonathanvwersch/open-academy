@@ -1,40 +1,161 @@
 concept: gradients
-version: 1
-fast_path: [objective, summary]
-blocks:
-  - kind: objective
-    md: |
-      **Goal:** compute the gradient of a scalar function and explain which direction decreases it fastest.
-  - kind: intuition
-    md: |
-      The symbol $\nabla$ is read "nabla".
-      Stack all the partial derivatives into one vector and you get the **gradient**:
-      $$\nabla f = \left(\frac{\partial f}{\partial x_1}, \dots, \frac{\partial f}{\partial x_n}\right).$$
-      Picture standing on a hilly landscape. The gradient points uphill, in the steepest direction, and its length says how steep the slope is. To go downhill fastest, step along $-\nabla f$.
-  - kind: example
-    md: |
-      This example uses gradient components to compare rates of change along two axes.
+version: 2
+objective: |
+  **Goal:** compute the gradient $\nabla f$ of a function of several inputs, use it to estimate how the output changes for a small step, and explain why the negative gradient is the direction of steepest descent.
+knowledge_points:
+  - id: grad-vector-of-partials
+    title: The gradient collects every partial derivative
+    explain: |
+      You're standing on the side of a valley. Your position is $(x, y)$: $x$ hundred metres east and $y$ hundred metres north of the valley floor. Your height above the floor, in metres, is
 
-      $f(x, y) = x^2 + 3y^2$. Then $\nabla f = (2x, 6y)$. At $(1, 1)$, $\nabla f = (2, 6)$: the function rises 3 times faster in $y$ than in $x$, so the steepest-descent direction is $(-2, -6)$.
-  - kind: math
-    md: |
-      A small step $\delta$ is a small change to the inputs. The symbol $\approx$ means "approximately equal". A first-order change is an estimate using the local slope, before accounting for curvature.
-      $$f(x + \delta) \approx f(x) + \nabla f(x)\cdot\delta.$$
-      Among all steps of a fixed length, $\nabla f \cdot \delta = \|\nabla f\|\|\delta\|\cos\theta$ is most negative when $\theta = 180^\circ$, i.e. when $\delta$ points along $-\nabla f$. That is why the negative gradient is the direction of **steepest descent**. At a minimum (or any flat point) $\nabla f = 0$.
-  - kind: worked
-    md: |
-      This worked example calculates both partial derivatives to find the gradient at a point.
+      $$h(x, y) = x^2 + 2y^2$$
 
-      **Gradient of $f(w_1, w_2) = w_1^2 w_2 + \sin w_2$ at $(2, 0)$.**
+      At $(1.5, 1)$ you're $2.25 + 2 = 4.25$ m up. **Which way is uphill, and how steep is it?** Each partial derivative only answers this for one compass direction: $\frac{\partial h}{\partial x}$ for east and $\frac{\partial h}{\partial y}$ for north.
 
-      1. $\partial f/\partial w_1 = 2w_1 w_2$, which is $0$ at $(2,0)$.
-      2. $\partial f/\partial w_2 = w_1^2 + \cos w_2$, which is $4 + 1 = 5$ at $(2,0)$.
+      So put the partials side by side as one vector. The **gradient** of $h$, written $\nabla h$ and read "grad h", is the vector of its partial derivatives:
 
-      So $\nabla f(2, 0) = (0, 5)$. Moving in $w_1$ alone changes nothing to first order; decreasing $w_2$ lowers $f$.
-  - kind: check
-    exercise: grad-check-1
-  - kind: summary
-    md: |
-      - The gradient is the vector of all partial derivatives.
-      - It points in the direction of steepest ascent, and $-\nabla f$ in the direction of steepest descent.
-      - $f(x+\delta) \approx f(x) + \nabla f\cdot\delta$.
+      $$\nabla h = \left(\frac{\partial h}{\partial x},\ \frac{\partial h}{\partial y}\right)$$
+
+      The upside-down triangle $\nabla$ is called "nabla". A function with $n$ inputs has a gradient with $n$ components, one per input, in the same order as the inputs.
+
+      The gradient is a vector, so it has a direction and a length. The output $h$ itself is a single number.
+    worked: |
+      This example shows the gradient computed one partial at a time, then evaluated at a point.
+
+      **Valley: $h(x, y) = x^2 + 2y^2$ at $(1.5, 1)$.**
+
+      1. $\frac{\partial h}{\partial x} = 2x$ (treat $y$ as a constant).
+      2. $\frac{\partial h}{\partial y} = 4y$ (treat $x$ as a constant).
+      3. So $\nabla h = (2x, 4y)$, and at $(1.5, 1)$ it is $(3, 4)$.
+
+      **Another function: $f(w_1, w_2) = w_1^2 w_2 + \sin w_2$ at $(1, 0)$**, with inputs $w_1$ and $w_2$.
+
+      1. $\frac{\partial f}{\partial w_1} = 2w_1 w_2$, which is 0 at $(1, 0)$.
+      2. $\frac{\partial f}{\partial w_2} = w_1^2 + \cos w_2$, which is $1 + 1 = 2$ at $(1, 0)$.
+      3. So $\nabla f(1, 0) = (0, 2)$.
+
+      The gradient is just every partial derivative, written in order as one vector.
+    problems:
+      - gradp-compute
+      - gradp-component
+      - gradp-is-vector
+      - gradp-three-inputs
+      - gradp-order
+      - gradp-exp-component
+  - id: grad-points-uphill
+    title: The gradient points uphill
+    explain: |
+      Knowing $\nabla h(1.5, 1) = (3, 4)$, can you predict your height after a small step? Write the step as a vector $\delta = (\delta_x, \delta_y)$, where $\delta$ ("delta") is $\delta_x$ east and $\delta_y$ north.
+
+      Each partial is a rate for its own direction, so the height changes by about $3\delta_x$ from going east plus $4\delta_y$ from going north. That sum is the dot product of the gradient with the step:
+
+      $$h(p + \delta) \approx h(p) + \nabla h \cdot \delta$$
+
+      Here $p$ is your current position, and this **first-order approximation** holds for small steps.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Contour lines of the valley h equals x squared plus 2 y squared, drawn as ellipses of equal height. At the point (1.5, 1) a blue gradient arrow points straight across the contours, away from the valley floor. A green arrow points the opposite way, downhill. A dashed grey line runs along the contour, where the height doesn't change.">
+        <ellipse cx="220" cy="150" rx="60" ry="42" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
+        <ellipse cx="220" cy="150" rx="124" ry="87.5" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+        <ellipse cx="220" cy="150" rx="180" ry="127" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
+        <circle cx="220" cy="150" r="4" fill="#737373"/>
+        <text x="220" y="172" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">floor</text>
+        <line x1="270" y1="60" x2="350" y2="120" stroke="#737373" stroke-width="2" stroke-dasharray="6 5"/>
+        <line x1="310" y1="90" x2="346" y2="42" stroke="#3b82f6" stroke-width="3"/>
+        <polygon points="352,34 338,40 349,48" fill="#3b82f6"/>
+        <line x1="310" y1="90" x2="274" y2="138" stroke="#10b981" stroke-width="3"/>
+        <polygon points="268,146 271,131 282,139" fill="#10b981"/>
+        <circle cx="310" cy="90" r="5" fill="#171717"/>
+        <text x="430" y="60" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">∇h = (3, 4): uphill</text>
+        <text x="430" y="90" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#10b981">−∇h: downhill</text>
+        <text x="430" y="120" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">along the contour:</text>
+        <text x="430" y="140" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">no change in height</text>
+        <text x="430" y="180" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">Each ellipse joins points</text>
+        <text x="430" y="198" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">of equal height h.</text>
+      </svg>
+      ```
+
+      The dot product is positive for steps roughly along the gradient, so the gradient points uphill. It's zero for steps at right angles to the gradient, which run along a **contour**, a line of equal height. A longer gradient means a steeper slope, and a gradient of $(0, 0)$ means the ground is flat there.
+    worked: |
+      This example shows the approximation predicting the height change for three small steps from $(1.5, 1)$, where $h = 4.25$ and $\nabla h = (3, 4)$.
+
+      | step $\delta$ | $\nabla h \cdot \delta$ | predicted height |
+      |---|---|---|
+      | $(0.1, 0)$, east | $3 \times 0.1 + 4 \times 0 = 0.3$ | $4.55$ m |
+      | $(0.06, 0.08)$, along $\nabla h$ | $0.18 + 0.32 = 0.5$ | $4.75$ m |
+      | $(0.08, -0.06)$, along the contour | $0.24 - 0.24 = 0$ | $4.25$ m |
+
+      Check the first one exactly: $h(1.6, 1) = 2.56 + 2 = 4.56$ m, very close to the predicted $4.55$ m.
+
+      All three steps have length 0.1, but the one along the gradient climbs the most, and the one at right angles doesn't climb at all.
+
+      The dot product of the gradient with a small step predicts the change in output.
+    problems:
+      - gradp-uphill
+      - gradp-approx
+      - gradp-contour
+      - gradp-length
+      - gradp-predict-height
+      - gradp-small-step
+  - id: grad-steepest-descent
+    title: The negative gradient is steepest descent
+    explain: |
+      You want to get down to the valley floor as fast as possible, taking small steps of a fixed length. **Which direction drops your height the most per step?**
+
+      The change for a step $\delta$ is about $\nabla h \cdot \delta$. The dot product can also be written with lengths and the angle $\theta$ between the two vectors, where $\|\cdot\|$ means length:
+
+      $$\nabla h \cdot \delta = \|\nabla h\|\,\|\delta\|\cos\theta$$
+
+      For a fixed step length only $\cos\theta$ can change, and it is smallest, $-1$, when $\theta = 180^\circ$. So the biggest drop comes from stepping exactly opposite the gradient. The **steepest-descent direction** is the negative gradient, $-\nabla h$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Unit-length steps from one point, with the gradient (3, 4) in blue. The step opposite the gradient, in green, changes the height by minus 5. A step south changes it by minus 4, a step east by plus 3, and a step at right angles to the gradient by 0.">
+        <circle cx="200" cy="150" r="100" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
+        <line x1="200" y1="150" x2="256" y2="75" stroke="#3b82f6" stroke-width="3"/>
+        <polygon points="260,70 247,74 257,82" fill="#3b82f6"/>
+        <line x1="200" y1="150" x2="144" y2="225" stroke="#10b981" stroke-width="3"/>
+        <polygon points="140,230 143,217 153,225" fill="#10b981"/>
+        <line x1="200" y1="150" x2="294" y2="150" stroke="#f59e0b" stroke-width="2.5"/>
+        <polygon points="300,150 288,144 288,156" fill="#f59e0b"/>
+        <line x1="200" y1="150" x2="200" y2="244" stroke="#f59e0b" stroke-width="2.5"/>
+        <polygon points="200,250 194,238 206,238" fill="#f59e0b"/>
+        <line x1="200" y1="150" x2="276" y2="207" stroke="#737373" stroke-width="2.5"/>
+        <polygon points="280,210 267,208 274,199" fill="#737373"/>
+        <circle cx="200" cy="150" r="5" fill="#171717"/>
+        <text x="266" y="66" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#3b82f6">∇h = (3, 4)</text>
+        <text x="306" y="155" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#f59e0b">+3</text>
+        <text x="288" y="222" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">0</text>
+        <text x="200" y="270" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#f59e0b">−4</text>
+        <text x="132" y="248" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#10b981">−5</text>
+        <text x="380" y="80" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Height change for a step of length 1:</text>
+        <text x="380" y="110" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#f59e0b">east (1, 0): +3</text>
+        <text x="380" y="135" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">along the contour (0.8, −0.6): 0</text>
+        <text x="380" y="160" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#f59e0b">south (0, −1): −4</text>
+        <text x="380" y="185" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#10b981">opposite ∇h (−0.6, −0.8): −5</text>
+      </svg>
+      ```
+
+      To get a step of length 1 in that direction, divide by the gradient's length: $-\frac{\nabla h}{\|\nabla h\|}$. Along it the output falls at rate $\|\nabla h\|$ per unit step. This is a local statement: it only holds for small steps, because the gradient changes as you move.
+    worked: |
+      This example shows the steepest-descent step and its rate at $(1.5, 1)$, where $\nabla h = (3, 4)$.
+
+      1. Length of the gradient: $\|\nabla h\| = \sqrt{3^2 + 4^2} = \sqrt{25} = 5$.
+      2. Unit steepest-descent step: $-\frac{(3, 4)}{5} = (-0.6, -0.8)$.
+      3. Its rate: $\nabla h \cdot (-0.6, -0.8) = -1.8 - 3.2 = -5$, so the height falls 5 m per unit step.
+      4. Compare stepping due south, $(0, -1)$: $\nabla h \cdot (0, -1) = -4$. That's downhill too, but less steeply.
+
+      For a small step of length 0.1 along $(-0.6, -0.8)$, the height drops by about $0.1 \times 5 = 0.5$ m.
+
+      Of all steps of the same small length, the one opposite the gradient lowers the output the most, at rate $\|\nabla h\|$.
+    problems:
+      - gradp-descent-unit
+      - gradp-steepest-rate
+      - gradp-direction-rate
+      - gradp-why-180
+      - gradp-not-at-minimum
+      - gradp-descent-step
+final: grad-explain
+summary: |
+  - The gradient $\nabla f$ is the vector of all partial derivatives of $f$, one component per input.
+  - For a small step $\delta$, $f(p + \delta) \approx f(p) + \nabla f \cdot \delta$, so $\nabla f$ points uphill and steps at right angles to it leave $f$ unchanged.
+  - Because $\nabla f \cdot \delta = \|\nabla f\|\,\|\delta\|\cos\theta$, the negative gradient $-\nabla f$ is the steepest-descent direction, with $f$ falling at rate $\|\nabla f\|$ for small steps.
