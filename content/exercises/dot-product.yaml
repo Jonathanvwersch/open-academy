@@ -152,12 +152,12 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two viewers' non-zero taste vectors for action and comedy form an angle greater than 90 degrees when drawn as arrows from $(0,0)$. Positive ratings mean liking a category and negative ratings mean disliking it. What sign is their dot product?"
+    prompt: "Two non-zero arrows start at $(0,0)$ and form an angle greater than 90 degrees. What sign is their dot product?"
     solution: "The dot product is the product of two positive lengths and the angle cosine. Above 90 degrees the cosine is negative, so the score is negative."
     options:
       - {
           id: a,
-          text: "It is negative because the tastes oppose each other overall.",
+          text: "It is negative because the projection points against the other arrow.",
           correct: true,
           feedback: "Cosine is negative for angles above 90 degrees.",
         }
@@ -179,8 +179,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two viewers have taste vectors $a=({{=h}},{{=v}})$ and $b=({{=k}},0)$ for action and comedy. What is $a\\cdot b$?"
-    solution: "Action adds ${{=h}}\\cdot{{=k}}={{=h*k}}$ to the score. Comedy adds ${{=v}}\\cdot0=0$, so the total is ${{=h*k}}$."
+    prompt: "Two arrows from the origin are $a=({{=h}},{{=v}})$ and $b=({{=k}},0)$. What is $a\\cdot b$?"
+    solution: "The first pair contributes ${{=h}}\\cdot{{=k}}={{=h*k}}$. The second contributes ${{=v}}\\cdot0=0$, so the total is ${{=h*k}}$."
     tolerance: { abs: 0.000001 }
     params:
       h: { min: -4, max: 4 }
@@ -194,7 +194,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two viewers have non-zero taste vectors for action and comedy, and their dot product is zero. What does this tell you about the arrows representing those tastes?"
+    prompt: "Two non-zero arrows have dot product zero. What does this tell you about their directions?"
     solution: "With both lengths non-zero, a zero dot product means $\\cos\\theta=0$. The arrows are perpendicular, also called orthogonal."
     options:
       - {
@@ -221,7 +221,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two viewers' taste vectors are $a=(3,4)$ and $b=(2,0)$ for action and comedy. The projection of $a$, its signed shadow along $b$'s direction, is 3. What is $a\\cdot b$?"
+    prompt: "Two arrows are $a=(3,4)$ and $b=(2,0)$. The projection of $a$, its signed shadow along $b$'s direction, has length 3. What is $a\\cdot b$?"
     solution: "Multiply the signed projection by the other arrow length: $3\\cdot2=6$. Direct multiplication agrees: $3\\cdot2+4\\cdot0=6$."
     tolerance: { abs: 0.000001 }
     answer: 6
@@ -232,7 +232,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two viewers' taste vectors have dot product 6. The second viewer changes every liking to an equally strong dislike, and every dislike to an equally strong liking. This negates their vector. What is the new score?"
+    prompt: "Two arrows have dot product 6. Reverse the second arrow without changing its length. What is their new dot product?"
     solution: "Reversing one vector negates each matching product. Their sum becomes $-6$, reflecting the reversed projection."
     options:
       - {
@@ -245,7 +245,7 @@ exercises:
           id: b,
           text: "It stays plus 6 because both lengths stay fixed.",
           correct: false,
-          feedback: "The length is unchanged, but agreement becomes opposition when every rating changes sign.",
+          feedback: "The length is unchanged, but the projection now points against the reversed arrow.",
         }
       - {
           id: c,
@@ -259,12 +259,12 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "One viewer likes action, with taste vector $(2,0)$ for action and comedy. Another dislikes action, with vector $(-2,0)$. Why can't their equal arrow lengths tell the app that their tastes agree?"
-    solution: "Both arrows have length 2, but one viewer likes exactly what the other dislikes. Their dot product is $2\\cdot(-2)+0\\cdot0=-4$, which records that opposition."
+    prompt: "Arrows $(2,0)$ and $(-2,0)$ both have length 2. Why can't lengths alone measure how much they point the same way?"
+    solution: "Their equal lengths do not record their opposite directions. Their dot product is $2\\cdot(-2)+0\\cdot0=-4$, which records that opposition."
     options:
       - {
           id: a,
-          text: "Equal lengths can represent opposite tastes, which a negative dot product distinguishes.",
+          text: "Equal lengths can belong to opposite arrows, which a negative dot product distinguishes.",
           correct: true,
           feedback: "Length measures how far an arrow reaches, not which way it points.",
         }
@@ -276,7 +276,7 @@ exercises:
         }
       - {
           id: c,
-          text: "Multiplying the lengths gives a negative number for opposing tastes.",
+          text: "Multiplying the lengths gives a negative number for opposite arrows.",
           correct: false,
           feedback: "Non-zero lengths are positive. Their product cannot record opposition without the angle cosine.",
         }
