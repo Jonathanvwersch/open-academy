@@ -6,7 +6,9 @@ import { env } from '../../src/server/env.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const screenshotDir = '/home/ubuntu/screenshots/shadcn';
+const lessonCardScreenshotDir = '/home/ubuntu/screenshots/lesson-cards';
 mkdirSync(screenshotDir, { recursive: true });
+mkdirSync(lessonCardScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async () => {
@@ -115,6 +117,89 @@ test('knowledge-point lesson review shows explanations and worked examples witho
   await expect(page.getByText('Worked example').first()).toBeVisible();
   await expect(page.getByTestId('lesson-problem')).toHaveCount(0);
   await page.screenshot({ path: `${screenshotDir}/knowledge-point-lesson.png`, fullPage: true });
+});
+
+test('legacy lesson review presents labelled blocks as cards with checks inside', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.route('**/api/lessons/train-test-split/review', (route) =>
+    route.fulfill({
+      json: {
+        lesson: {
+          blocks: [
+            {
+              kind: 'objective',
+              md: '**Goal:** explain what training, validation and test sets are each for.',
+            },
+            {
+              kind: 'intuition',
+              md: 'A model that has seen the answers will look better than it is.',
+            },
+            {
+              kind: 'example',
+              md: 'Keep copies of one sale together in the same split.',
+            },
+            {
+              kind: 'math',
+              md: 'The test error estimates future error when the split is representative.',
+            },
+            { kind: 'check', exercise: 'tts-check-purpose' },
+            { kind: 'faded', md: 'Fit preprocessing statistics on the training set only.' },
+            { kind: 'summary', md: 'Train to fit, validate to choose, test once to report.' },
+          ],
+        },
+        checkAnswers: {
+          'tts-check-purpose': 'Hyperparameter selection uses validation data.',
+        },
+        conceptTitle: 'Training and evaluation splits',
+      },
+    }),
+  );
+  await page.route('**/api/exercises/tts-check-purpose', (route) =>
+    route.fulfill({
+      json: {
+        id: 'tts-check-purpose',
+        type: 'mc',
+        prompt: 'You try 20 hyperparameter settings and keep the one with the best score.',
+        options: [
+          { id: 'validation', text: 'Validation' },
+          { id: 'test', text: 'Test' },
+        ],
+      },
+    }),
+  );
+  await page.goto('/lessons/train-test-split');
+  await expect(page.getByRole('heading', { name: 'Training and evaluation splits' })).toBeVisible();
+  for (const label of [
+    'Goal',
+    'Example',
+    'Key formula',
+    'Check yourself',
+    'Fill in the steps',
+    'Key takeaways',
+  ]) {
+    const title = page.getByRole('heading', { name: label, exact: true });
+    await expect(title).toBeVisible();
+    await expect(title.locator('xpath=../..')).toHaveAttribute('data-slot', 'card');
+  }
+  const intuition = page.getByText(
+    'A model that has seen the answers will look better than it is.',
+    { exact: true },
+  );
+  await expect(intuition.locator('xpath=ancestor::*[@data-slot="card"]')).toHaveCount(0);
+  const checkCard = page
+    .getByRole('heading', { name: 'Check yourself', exact: true })
+    .locator('xpath=../..');
+  await expect(checkCard.getByRole('button', { name: 'Show answer' })).toBeVisible();
+  await page.screenshot({
+    path: `${lessonCardScreenshotDir}/legacy-train-test-split.png`,
+    fullPage: true,
+  });
+  await checkCard.getByRole('button', { name: 'Show answer' }).click();
+  await expect(
+    checkCard.getByText('Hyperparameter selection uses validation data.', { exact: true }),
+  ).toBeVisible();
 });
 
 test('Map concept details link to the lesson', async ({ page }) => {

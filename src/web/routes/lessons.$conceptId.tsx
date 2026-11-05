@@ -2,7 +2,6 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Button } from '@/ui/button.js';
-import { Card, CardContent } from '@/ui/card.js';
 import { LessonBlock, Markdown } from '../components.js';
 import { exerciseQueryOptions, lessonReviewQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
@@ -53,12 +52,7 @@ function LessonReviewPage() {
                 {index + 1}. {point.title}
               </h2>
               <Markdown>{point.explain}</Markdown>
-              <Card className="bg-muted/50">
-                <CardContent className="space-y-2 p-4">
-                  <h3 className="font-medium">Worked example</h3>
-                  <Markdown>{point.worked}</Markdown>
-                </CardContent>
-              </Card>
+              <LessonBlock kind="worked" md={point.worked} />
             </article>
           ))}
         </div>

@@ -9,7 +9,7 @@ import { normalizeDisplayMath } from '../shared/markdown';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert.js';
 import { Badge } from './ui/badge.js';
 import { Button } from './ui/button.js';
-import { Card, CardContent, CardHeader } from './ui/card.js';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card.js';
 import { Checkbox } from './ui/checkbox.js';
 import { Input } from './ui/input.js';
 import { Label } from './ui/label.js';
@@ -89,25 +89,17 @@ export function LessonBlock({
       </div>
     );
   }
-  const blockContent = (
-    <>
-      <Badge variant="outline">{lessonBlockLabels[kind]}</Badge>
-      {content ? <Markdown>{content}</Markdown> : null}
-      {children}
-    </>
+  return (
+    <Card className={kind === 'worked' ? 'gap-2 bg-muted/50' : 'gap-2'}>
+      <CardHeader className="gap-0 pt-4">
+        <CardTitle className="text-sm font-medium">{lessonBlockLabels[kind]}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {content ? <Markdown>{content}</Markdown> : null}
+        {children}
+      </CardContent>
+    </Card>
   );
-  if (kind === 'worked') {
-    return (
-      <Card className="bg-muted/50">
-        <CardHeader>{lessonBlockLabels[kind]}</CardHeader>
-        <CardContent className="space-y-3">
-          {content ? <Markdown>{content}</Markdown> : null}
-          {children}
-        </CardContent>
-      </Card>
-    );
-  }
-  return <section className="space-y-3">{blockContent}</section>;
 }
 
 export function ModeBadge({ mode }: { mode: 'practice' | 'assessment' | 'review' }) {
