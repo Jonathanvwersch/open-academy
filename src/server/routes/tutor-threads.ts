@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { instantiateExercise, isTemplate } from '../content/templates.js';
 import type { ContentIndex } from '../content/types.js';
 import type { Database } from '../db/client.js';
+import type { LearnerRepository } from '../db/repository.js';
 import {
   attempts,
   lessonProblems,
@@ -14,8 +15,11 @@ import {
   tutorMessages,
   tutorThreads,
 } from '../db/schema.js';
+import { answerDisplay } from '../learning/answer-display.js';
+import { buildTutorPageContent } from '../tutor/page-context.js';
 import type { TutorService } from '../tutor/service.js';
 import type { ApiEnv } from './api.js';
+import { buildCourseWeeks } from './learn-course.js';
 
 type Ctx = Context<ApiEnv>;
 const bodySchema = z.object({
@@ -24,6 +28,8 @@ const bodySchema = z.object({
   activityId: z.string().uuid().optional(),
   exerciseId: z.string().optional(),
   lessonProblemId: z.string().uuid().optional(),
+  page: z.enum(['session', 'lesson', 'course', 'map']).optional(),
+  knowledgePointId: z.string().max(200).optional(),
 });
 
 function formatThreadTitle(question: string): string {
@@ -54,6 +60,7 @@ export function registerTutorThreadRoutes(
   deps: {
     db: Database;
     content: () => Promise<ContentIndex>;
+    withRepo: (context: Ctx) => LearnerRepository;
     tutor: (context: Ctx) => TutorService | null;
     requestNow: (context: Ctx) => Date;
   },
@@ -148,6 +155,7 @@ export function registerTutorThreadRoutes(
     const index = await deps.content();
     let exerciseId = input.exerciseId;
     let lessonProblem: typeof lessonProblems.$inferSelect | undefined;
+    let currentAttempt: typeof attempts.$inferSelect | undefined;
     let activityId = input.activityId;
     let status: 'unanswered' | 'answered' | 'none' = 'none';
     if (input.lessonProblemId) {
@@ -168,6 +176,7 @@ export function registerTutorThreadRoutes(
       const [attempt] = row.problem.attemptId
         ? await db.select().from(attempts).where(eq(attempts.id, row.problem.attemptId)).limit(1)
         : [];
+      currentAttempt = attempt;
       activityId = attempt?.activityId ?? activityId;
     } else if (input.exerciseId) {
       if (!input.activityId) return c.json({ error: 'Activity required' }, 400);
@@ -199,7 +208,9 @@ export function registerTutorThreadRoutes(
             eq(attempts.exerciseId, input.exerciseId),
           ),
         )
+        .orderBy(desc(attempts.attemptNo))
         .limit(1);
+      currentAttempt = attempt;
       status = attempt ? 'answered' : 'unanswered';
     }
     let exercise = exerciseId ? index.exercisesById.get(exerciseId) : undefined;
@@ -230,9 +241,29 @@ export function registerTutorThreadRoutes(
         return c.json({ error: 'Tutor unavailable for this activity' }, 403);
     }
     if (exerciseId && !exercise) return c.json({ error: 'Exercise not found' }, 404);
-    const conceptId = exercise?.concept ?? thread?.conceptId ?? input.conceptId ?? null;
+    const conceptId = exercise?.concept ?? input.conceptId ?? thread?.conceptId ?? null;
     const concept = conceptId ? index.conceptsById.get(conceptId) : undefined;
     const lesson = conceptId ? index.lessonsByConcept.get(conceptId) : undefined;
+    const pageConceptId = exercise?.concept ?? input.conceptId ?? null;
+    const courseWeeks =
+      input.page === 'course'
+        ? buildCourseWeeks(
+            index,
+            (await deps.withRepo(c).schedulerState(deps.requestNow(c))).mastery,
+            await db
+              .select()
+              .from(lessonRuns)
+              .where(eq(lessonRuns.userId, c.get('userId'))),
+          )
+        : undefined;
+    const pageContent = buildTutorPageContent({
+      page: input.page,
+      index,
+      conceptId: pageConceptId,
+      knowledgePointId: lessonProblem?.knowledgePointId ?? input.knowledgePointId,
+      courseWeeks,
+    });
+    const correct = currentAttempt?.correct ?? lessonProblem?.correct;
     const service = deps.tutor(c);
     if (!service) return c.json({ error: 'Tutor unavailable' }, 503);
     const result = await service.respond(
@@ -245,8 +276,12 @@ export function registerTutorThreadRoutes(
             .map((b) => b.md)
             .join('\n') ?? '',
         exercisePrompt: exercise?.prompt ?? '',
-        learnerAnswer: '',
-        graderVerdict: '',
+        learnerAnswer:
+          status === 'answered' && currentAttempt && exercise
+            ? answerDisplay(exercise, currentAttempt.answer)
+            : '',
+        graderVerdict:
+          status !== 'answered' ? '' : correct === 1 ? 'correct' : correct === 0 ? 'incorrect' : '',
         hintLevel: 0,
         authoredHints: status === 'unanswered' ? (exercise?.hints ?? []) : [],
         solution: status === 'unanswered' ? '' : (exercise?.solution ?? ''),
@@ -255,6 +290,8 @@ export function registerTutorThreadRoutes(
         mode: 'practice',
         history,
         problem_status: status,
+        page: input.page ?? 'none',
+        page_content: pageContent,
       },
       status === 'unanswered' ? 'nudge' : 'worked_step',
     );

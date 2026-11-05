@@ -12,6 +12,8 @@ declare global {
 
 const screenshotDir = '/home/ubuntu/screenshots/tutor-optimistic';
 mkdirSync(screenshotDir, { recursive: true });
+const pageContextScreenshotDir = '/home/ubuntu/screenshots/tutor-page-context';
+mkdirSync(pageContextScreenshotDir, { recursive: true });
 let sessionId = '';
 
 test.beforeEach(async () => {
@@ -228,4 +230,66 @@ test('tutor send failure restores the draft and removes the optimistic message',
   await expect(tutor.getByRole('alert')).toContainText('The tutor could not respond. Try again.');
   await expect(tutor.getByTestId('tutor-user-message')).toHaveCount(0);
   await expect(tutor.getByTestId('tutor-thinking-bubble')).toHaveCount(0);
+});
+
+test('tutor Reading context follows the session, lesson, and home pages', async ({ page }) => {
+  let requestBody: Record<string, unknown> | undefined;
+  await page.route('**/api/tutor/threads**', async (route) => {
+    if (route.request().method() === 'POST') {
+      requestBody = route.request().postDataJSON() as Record<string, unknown>;
+    }
+    await route.continue();
+  });
+
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const reading = tutor.getByTestId('tutor-reading-context');
+  await expect(reading).toHaveText(/^Reading: Supervised learning · step 1 of \d+$/);
+  await page.screenshot({
+    path: `${pageContextScreenshotDir}/tutor-session.png`,
+    fullPage: true,
+  });
+
+  const knowledgePointId = await page.evaluate(async () => {
+    const response = await fetch('/api/lessons/supervised-learning/run');
+    const payload = await response.json();
+    return payload.run?.currentPointId as string | undefined;
+  });
+  expect(knowledgePointId).toBeTruthy();
+  await tutor.getByRole('button', { name: 'New chat' }).first().click();
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.fill('What does this step mean?');
+  const sendResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' && response.url().includes('/api/tutor/threads'),
+  );
+  await textarea.press('Enter');
+  await sendResponse;
+  expect(requestBody).toMatchObject({
+    page: 'session',
+    knowledgePointId,
+  });
+  expect(requestBody).not.toHaveProperty('pageLabel');
+  expect(requestBody).not.toHaveProperty('page_content');
+  await expect(tutor.getByTestId('tutor-assistant-message')).toContainText(
+    'Tutor reply to: What does this step mean?',
+  );
+
+  await page.evaluate(() => {
+    window.history.pushState(window.history.state, '', '/lessons/supervised-learning');
+    window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+  });
+  await expect(page).toHaveURL(/\/lessons\/supervised-learning$/);
+  await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  await expect(reading).toHaveText('Reading: Supervised learning · full lesson');
+  await page.screenshot({
+    path: `${pageContextScreenshotDir}/tutor-lesson.png`,
+    fullPage: true,
+  });
+
+  await page.getByRole('link', { name: 'Learn' }).click();
+  await expect(page).toHaveURL('/');
+  await expect(tutor.getByTestId('tutor-reading-context')).toHaveCount(0);
 });

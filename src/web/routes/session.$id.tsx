@@ -118,20 +118,6 @@ function SessionPage() {
   );
   const activity = completedLesson ?? completedFinal ?? activeActivity;
   const showingCompletedFinal = activity?.id === completedFinal?.id;
-  useEffect(() => {
-    const allowed =
-      !!activity && !['diagnostic', 'review', 'quick_check', 'assessment'].includes(activity.kind);
-    tutorSidebar.setContext({
-      conceptId: activity?.conceptId,
-      conceptTitle: activity?.conceptTitle,
-      activityId: activity?.id,
-      exerciseId: activity?.exerciseIds.find(
-        (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
-      ),
-      allowed,
-      enabled: sessionQuery.data.tutorEnabled,
-    });
-  }, [activity, sessionQuery.data.tutorEnabled, tutorSidebar]);
   const exerciseId = showingCompletedFinal
     ? activity?.exerciseIds.find((candidate) =>
         (activity.progress?.completedExerciseIds ?? []).includes(candidate),
@@ -223,6 +209,34 @@ function SessionPage() {
         : null,
     ),
   );
+  const lesson = lessonQuery.data;
+  useEffect(() => {
+    if (
+      activity?.kind === 'learn' &&
+      lesson?.knowledge_points?.length &&
+      !activity.progress?.lessonRunnerContinued
+    ) {
+      return;
+    }
+    if (!activity) {
+      tutorSidebar.clearContext();
+      return;
+    }
+    const allowed = !['diagnostic', 'review', 'quick_check', 'assessment'].includes(activity.kind);
+    tutorSidebar.setContext({
+      conceptId: activity.conceptId,
+      conceptTitle: activity.conceptTitle,
+      activityId: activity.id,
+      exerciseId: activity.exerciseIds.find(
+        (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
+      ),
+      page: 'session',
+      pageLabel: activity.conceptTitle,
+      allowed,
+      enabled: sessionQuery.data.tutorEnabled,
+    });
+    return () => tutorSidebar.clearContext();
+  }, [activity, lesson?.knowledge_points?.length, sessionQuery.data.tutorEnabled, tutorSidebar]);
 
   const markLessonViewed = async () => {
     if (!activity) return;
@@ -317,7 +331,6 @@ function SessionPage() {
       : activity.kind === 'quick_check' || activity.kind === 'diagnostic'
         ? 'assessment'
         : 'practice';
-  const lesson = lessonQuery.data;
   const activityPosition = Math.max(1, activities.findIndex((item) => item.id === activity.id) + 1);
   const activityLabel = sessionActivityLabel(activity.kind);
   const activityTitle =

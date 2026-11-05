@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../src/server/app.js';
 import { loadContent } from '../src/server/content/load.js';
+import { instantiateExercise, isTemplate } from '../src/server/content/templates.js';
 import type { ContentIndex } from '../src/server/content/types.js';
 import { createDb } from '../src/server/db/client.js';
 import {
@@ -16,6 +17,8 @@ import {
   users,
 } from '../src/server/db/schema.js';
 import { env } from '../src/server/env.js';
+import { answerDisplay } from '../src/server/learning/answer-display.js';
+import { sanitizePageContent } from '../src/server/tutor/page-context.js';
 import type { TutorProvider, TutorResult } from '../src/server/tutor/provider.js';
 import type { ExplanationContext, TutorContext, TutorReply } from '../src/server/tutor/schemas.js';
 
@@ -71,6 +74,39 @@ async function send(question: string, threadId?: string, extra: Record<string, u
     method: 'POST',
     headers,
     body: JSON.stringify({ question, ...extra }),
+  });
+}
+
+function concreteExercise(exerciseId: string, seed: number | null) {
+  const exercise = content.exercisesById.get(exerciseId);
+  if (!exercise) throw new Error(`Missing exercise ${exerciseId}`);
+  return isTemplate(exercise) ? instantiateExercise(exercise, seed ?? 0).exercise : exercise;
+}
+
+function correctAnswer(exerciseId: string, seed: number | null): unknown {
+  const exercise = concreteExercise(exerciseId, seed);
+  if (exercise.type === 'mc') {
+    const correct = exercise.options.filter((option) => option.correct).map((option) => option.id);
+    return exercise.multi ? correct : correct[0];
+  }
+  if (exercise.type === 'numeric') return exercise.answer;
+  if ('answer' in exercise) return exercise.answer;
+  throw new Error(`No test answer for ${exercise.id}`);
+}
+
+async function startLessonRun(conceptId: string) {
+  return app.request(`/api/lessons/${conceptId}/run`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({}),
+  });
+}
+
+async function answerLessonProblem(conceptId: string, problemId: string, answer: unknown) {
+  return app.request(`/api/lessons/${conceptId}/run/answer`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ problemId, answer }),
   });
 }
 
@@ -280,6 +316,141 @@ test('legacy exercise context is unanswered until an attempt exists for that act
   ).toBe(200);
   expect(captured.at(-1)?.problem_status).toBe('answered');
   expect(captured.at(-1)?.solution).toBe(exercise.solution);
+  const displayedAnswer =
+    exercise.type === 'mc'
+      ? (exercise.options.find((option) => option.id === 'a')?.text ?? 'a')
+      : 'a';
+  expect(captured.at(-1)?.learnerAnswer).toBe(displayedAnswer);
+  expect(captured.at(-1)?.graderVerdict).toBe('incorrect');
+});
+
+test('session page context uses the answered lesson problem KP and sanitized authored text', async () => {
+  const lesson = content.lessonsByConcept.get('derivatives');
+  const points = lesson?.knowledge_points ?? [];
+  const firstPoint = points[0];
+  const otherPoint = points[1];
+  if (!lesson || !firstPoint || !otherPoint) {
+    throw new Error('Expected the Derivatives knowledge-point lesson');
+  }
+
+  const started = await startLessonRun('derivatives');
+  expect(started.status).toBe(200);
+  const runPayload = await started.json();
+  const problem = runPayload.run.pending;
+  if (!problem) throw new Error('Expected a pending Derivatives lesson problem');
+  const exercise = concreteExercise(problem.exerciseId, problem.seed);
+
+  const beforeAnswer = await send('Explain this step', undefined, {
+    lessonProblemId: problem.id,
+    page: 'session',
+    knowledgePointId: otherPoint.id,
+  });
+  expect(beforeAnswer.status).toBe(200);
+  const initialContext = captured.at(-1);
+  const pageContent = initialContext?.page_content ?? '';
+  expect(initialContext?.page).toBe('session');
+  expect(pageContent).toContain(lesson.why);
+  expect(pageContent).toContain(`Current step (1 of ${points.length}): ${firstPoint.title}`);
+  expect(pageContent).toContain(sanitizePageContent(firstPoint.explain));
+  expect(pageContent).toContain(firstPoint.worked);
+  expect(pageContent).not.toContain(otherPoint.explain);
+  expect(pageContent).toContain('[diagram]');
+  expect(pageContent).not.toContain('```svg');
+  if ('solution' in exercise && exercise.solution) {
+    expect(pageContent).not.toContain(exercise.solution);
+  }
+  expect(initialContext?.learnerAnswer).toBe('');
+  expect(initialContext?.graderVerdict).toBe('');
+
+  const answer = correctAnswer(problem.exerciseId, problem.seed);
+  expect((await answerLessonProblem('derivatives', problem.id, answer)).status).toBe(200);
+  const afterAnswer = await send('Why was my answer right?', undefined, {
+    lessonProblemId: problem.id,
+    page: 'session',
+  });
+  expect(afterAnswer.status).toBe(200);
+  const answeredContext = captured.at(-1);
+  expect(answeredContext?.learnerAnswer).toBe(
+    answerDisplay(exercise as Parameters<typeof answerDisplay>[0], answer),
+  );
+  expect(answeredContext?.graderVerdict).toBe('correct');
+});
+
+test('full lesson page includes every knowledge point and the summary', async () => {
+  const lesson = content.lessonsByConcept.get('derivatives');
+  if (!lesson?.knowledge_points?.length) throw new Error('Missing Derivatives lesson');
+  expect(
+    (
+      await send('Explain this lesson', undefined, {
+        conceptId: 'derivatives',
+        page: 'lesson',
+      })
+    ).status,
+  ).toBe(200);
+  const pageContent = captured.at(-1)?.page_content ?? '';
+  for (const point of lesson.knowledge_points) {
+    expect(pageContent).toContain(`## ${point.title}`);
+  }
+  const summary = lesson.blocks.find((block) => block.kind === 'summary')?.md;
+  expect(summary).toBeTruthy();
+  expect(pageContent).toContain(summary ?? '');
+});
+
+test('map page context uses the current concept instead of the thread concept', async () => {
+  const first = await send('Start with supervised learning', undefined, {
+    conceptId: 'supervised-learning',
+  });
+  const threadId = (await first.json()).thread.id as string;
+  expect(
+    (
+      await send('What is this topic?', threadId, {
+        conceptId: 'derivatives',
+        page: 'map',
+      })
+    ).status,
+  ).toBe(200);
+  const pageContent = captured.at(-1)?.page_content ?? '';
+  expect(captured.at(-1)?.conceptTitle).toBe(content.conceptsById.get('derivatives')?.title);
+  expect(pageContent).toContain('# Derivatives');
+  const objective = content.conceptsById.get('derivatives')?.objectives[0]?.text;
+  expect(objective).toBeTruthy();
+  expect(pageContent).toContain(objective ?? '');
+
+  expect((await send('Show the map', threadId, { page: 'map' })).status).toBe(200);
+  expect(captured.at(-1)?.page_content).toBe('');
+});
+
+test('course page context includes outline topics and statuses', async () => {
+  expect((await send('What should I study next?', undefined, { page: 'course' })).status).toBe(200);
+  const pageContent = captured.at(-1)?.page_content ?? '';
+  expect(pageContent).toMatch(/^## Week \d+ · .+$/m);
+  expect(pageContent).toMatch(/^- .+ — .+$/m);
+});
+
+test('invalid knowledge-point IDs are ignored and client page text is never accepted', async () => {
+  expect(
+    (
+      await send('Help me with this session', undefined, {
+        conceptId: 'derivatives',
+        page: 'session',
+        knowledgePointId: 'not-a-real-point',
+        page_content: 'client supplied text',
+      })
+    ).status,
+  ).toBe(200);
+  const pageContent = captured.at(-1)?.page_content ?? '';
+  expect(pageContent).toContain('# Derivatives');
+  expect(pageContent).toContain('## Summary');
+  expect(pageContent).not.toContain('Current step');
+  expect(pageContent).not.toContain('client supplied text');
+});
+
+test('requests without a page have empty page context', async () => {
+  expect(
+    (await send('A general question', undefined, { page_content: 'not trusted' })).status,
+  ).toBe(200);
+  expect(captured.at(-1)?.page).toBe('none');
+  expect(captured.at(-1)?.page_content).toBe('');
 });
 
 test('explain tutor context accepts an omitted solution', async () => {

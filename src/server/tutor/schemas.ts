@@ -44,6 +44,8 @@ export interface TutorContext {
   mode?: 'practice';
   history: Array<{ role: 'learner' | 'tutor'; content: string }>;
   problem_status: 'unanswered' | 'answered' | 'none';
+  page: string;
+  page_content: string;
 }
 
 export interface ExplanationContext {

@@ -123,7 +123,7 @@ export function createApiRoutes(deps: {
     applyMastery,
   });
   registerLearnCourseRoutes(api, { db, content, withRepo, requestNow });
-  registerTutorThreadRoutes(api, { db, content, tutor, requestNow });
+  registerTutorThreadRoutes(api, { db, content, withRepo, tutor, requestNow });
 
   api.get('/today', async (context) => {
     const [index, repo] = [await content(), withRepo(context)];
@@ -681,6 +681,8 @@ export function createApiRoutes(deps: {
           recentMistakes,
           history: [],
           problem_status: priorAttempt ? 'answered' : 'unanswered',
+          page: 'none',
+          page_content: '',
         },
         level === 1 ? 'nudge' : level === 2 ? 'hint' : 'worked_step',
       );

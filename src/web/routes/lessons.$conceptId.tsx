@@ -1,10 +1,11 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/ui/button.js';
 import { LessonBlock, Markdown } from '../components.js';
 import { exerciseQueryOptions, lessonReviewQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
+import { useTutorSidebar } from '../tutor/TutorSidebar.js';
 
 export const Route = createFileRoute('/lessons/$conceptId')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -36,10 +37,22 @@ function LessonReviewPage() {
   const { from } = Route.useSearch();
   const { data } = useSuspenseQuery(lessonReviewQueryOptions(conceptId));
   const { lesson, checkAnswers, conceptTitle } = data;
+  const tutorSidebar = useTutorSidebar();
   const finalBlock = lesson.blocks.find(
     (block) => block.kind === 'check' && block.exercise === lesson.final,
   );
   const objectiveBlock = lesson.blocks.find((block) => block.kind === 'objective');
+  useEffect(() => {
+    tutorSidebar.setContext({
+      conceptId,
+      conceptTitle,
+      page: 'lesson',
+      pageLabel: `${conceptTitle} · full lesson`,
+      allowed: true,
+      enabled: false,
+    });
+    return () => tutorSidebar.clearContext();
+  }, [conceptId, conceptTitle, tutorSidebar]);
   return (
     <section className="mx-auto max-w-3xl space-y-6">
       {from ? (
