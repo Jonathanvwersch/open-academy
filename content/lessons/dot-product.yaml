@@ -3,7 +3,7 @@ version: 2
 objective: |
   **Goal:** compute dot products and cosine similarity, explain when they measure similarity, and recognise weighted scores in linear models and attention.
 why: |
-  A house-price model must turn area and bedroom count into one score, while letting each feature matter differently. Simply adding the features treats an extra area unit like an extra bedroom; keeping separate weighted contributions still leaves no single score to compare. A dot product multiplies each feature by its weight and totals the contributions. The same operation measures how floor arrows align, giving a picture of how a buyer's preferences align with a house's features. When only direction matters, cosine similarity removes the reward for longer vectors. These ideas underpin matrices, linear-regression, perceptron, and attention.
+  A house-price model must turn area and bedroom count into one score, while letting each feature matter differently. Simply adding the features treats an extra area unit like an extra bedroom; keeping separate weighted contributions still leaves no single score to compare. A dot product multiplies each feature by its weight and totals the contributions. The same operation measures how floor arrows align, giving a picture of how a buyer's preferences align with a house's features. When only direction matters, cosine similarity removes the reward for longer vectors. These ideas underpin matrices, linear regression, the perceptron, and attention.
 knowledge_points:
   - id: dot-weighted-total
     title: Turning matching entries into one score
@@ -132,4 +132,4 @@ summary: |
   - The dot product is positive for broadly agreeing arrows, zero for perpendicular arrows and negative for opposing arrows; its size also depends on length.
   - Cosine similarity divides by both non-zero lengths to compare direction only, avoiding the length reward in raw similarity scores.
 
-  **Where you'll use this:** matrices combine weighted scores; linear-regression and perceptron score features; attention compares vector alignment.
+  **Where you'll use this:** matrices combine weighted scores; linear regression and the perceptron score features; attention compares vector alignment.
