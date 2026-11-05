@@ -277,31 +277,35 @@ exercises:
       - answer_expr: "r^2"
         category: misunderstood_definition
         feedback: "$r^2$ is the node's output. Its local derivative is $2r$."
-  - id: cgp-add-local
-    dimension: math
+  - id: cgp-why-store-values
+    dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "An add node computes $q = a + b$ with $a = 7$ and $b = -2$. What is $\\partial q/\\partial a$?"
+    prompt: "Why keep the value $r = 2$ after evaluating $L = r^2$, rather than calculate $r$ again when finding derivatives?"
     options:
-      - { id: a, text: "$1$", correct: true }
+      - {
+          id: a,
+          text: "The local derivative needs $r$, and reusing it avoids repeating the operations that produced it",
+          correct: true,
+        }
       - id: b
-        text: "$-2$"
+        text: "The saved value is already the derivative, so no derivative rule is needed"
         correct: false
         category: misapplied_technique
-        feedback: "Using the other input is the multiply rule. An add node passes a nudge through unchanged."
+        feedback: "The saved input is 2, but the square node's derivative is $2r = 4$. We still need the node's rule."
       - id: c
-        text: "$7$"
+        text: "Recomputing $r$ with unchanged inputs would give a different derivative"
         correct: false
         category: misunderstood_definition
-        feedback: "7 is the value of $a$. Adding 1 to $a$ raises $a + b$ by exactly 1."
+        feedback: "With unchanged inputs, recomputing gives the same value and derivative. Storing it saves work, not changes the answer."
       - id: d
-        text: "$5$"
+        text: "Stored values remain valid even after changing the model's settings"
         correct: false
         category: misunderstood_definition
-        feedback: "5 is the node's output $a + b$, not its derivative."
-    solution: "Raise $a$ by 1 and $a + b$ rises by 1 whatever the values are, so $\\partial q/\\partial a = 1$."
+        feedback: "Changed settings can change $r$. Saved values must come from the evaluation whose derivatives we want."
+    solution: "The square node needs its input to compute $2r$. Keeping $r = 2$ gives the derivative 4 without repeating the earlier multiply, add and subtract operations, but uses memory."
   - id: cgp-subtract-local
     dimension: math
     type: mc
@@ -450,29 +454,35 @@ exercises:
         feedback: "That is only the direct path. Add the path through $p$: $1 \\cdot y = 5$."
     hints: ["Path through $p$: $1 \\cdot y$. Direct path into the add node: $1$."]
     solution: "Through $p$: $\\frac{\\partial f}{\\partial p}\\cdot\\frac{\\partial p}{\\partial x} = 1 \\cdot y = 5$. Directly: $\\partial f/\\partial x = 1$. Add the paths: $5 + 1 = 6$."
-  - id: cgp-sum-times-template
-    dimension: math
-    type: numeric
+  - id: cgp-why-multiply-path
+    dimension: conceptual
+    type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A graph computes $q = x + y$, then $f = q \\cdot z$, with $x = {{=x}}$, $y = {{=y}}$ and $z = {{=z}}$. What is $\\partial f/\\partial x$?"
-    hints:
-      [
-        "Path from $x$: the add node gives $\\partial q/\\partial x = 1$, the multiply node gives $\\partial f/\\partial q = z$.",
-      ]
-    solution: "$\\frac{\\partial f}{\\partial x} = \\frac{\\partial f}{\\partial q}\\cdot\\frac{\\partial q}{\\partial x} = z \\cdot 1 = {{=z}}$."
-    answer_expr: "z"
-    params:
-      x: { min: 1, max: 6 }
-      y: { min: 1, max: 6 }
-      z: { min: 2, max: 9 }
-    constraints: ["z != x + y"]
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - answer_expr: "x + y"
-        category: misapplied_technique
-        feedback: "$x + y = q$ is $\\partial f/\\partial z$. For $x$, the multiply node scales by the other input, $z$."
+    prompt: "Why multiply local derivatives of 2 and 4 along one path rather than add them?"
+    options:
+      - {
+          id: a,
+          text: "The first node doubles a small nudge, and the next scales that doubled nudge by 4",
+          correct: true,
+        }
+      - id: b
+        text: "Each node receives the original nudge independently, so the contributions add"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That describes separate paths. Along one path, the next node receives the already-scaled nudge."
+      - id: c
+        text: "Only the last derivative matters, because earlier changes disappear"
+        correct: false
+        category: incomplete_explanation
+        feedback: "The last node acts on the change produced upstream. Ignoring the first factor loses that scaling."
+      - id: d
+        text: "We should multiply the node outputs instead of their derivatives"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Node outputs tell us values. Derivatives tell us how changes in those values are scaled."
+    solution: "An input nudge of 0.01 becomes about 0.02 after the first node and 0.08 after the second. The overall scale is $2 \\cdot 4 = 8$, not $2 + 4 = 6$."
   - id: cgp-robot-error
     dimension: transfer
     type: numeric

@@ -2,13 +2,15 @@ concept: computational-graphs
 version: 2
 objective: |
   **Goal:** draw the computational graph of a calculation, find the local derivative at each node, and chain them to see how the result changes with any input.
+why: |
+  A house-price model makes a prediction, subtracts the true price, and squares the difference. To improve its settings, we need to know how changing a weight changes that final error. You could expand the whole formula and differentiate it by hand, but a larger model repeats many calculations, and rewriting everything hides which values depend on which others. A computational graph keeps those dependencies visible as small operations. Each operation has a simple derivative, and the chain rule connects them without expanding the entire formula. Stored intermediate values can be reused rather than calculated again for every derivative. Backpropagation and automatic differentiation build on this representation to make derivative calculations systematic for models with many settings.
 knowledge_points:
   - id: cg-drawing-graphs
     title: Breaking a calculation into simple steps
     explain: |
       A line prices a house as $\hat y = wx + b$, where $x$ is the size, $w$ and $b$ are the line's settings, and $\hat y$ ("y hat") is the predicted price. The true price is $y$, and the squared error is $L = (wx + b - y)^2$. **How does $L$ change if you nudge $w$?**
 
-      As one formula that's a tangle. So break it into steps that each do one simple operation, and give every in-between result a name:
+      Expanding the formula works here, but repeats more algebra as models grow. Instead, name each simple step:
 
       1. $m = w \cdot x$ (multiply)
       2. $\hat y = m + b$ (add)
@@ -16,6 +18,8 @@ knowledge_points:
       4. $L = r^2$ (square)
 
       Now draw it. Each operation is a **node**. An arrow carries a value into the node that uses it. Inputs sit on the left and the final result on the right. This picture is a **computational graph**.
+
+      This works because arrows preserve every dependency without expanding repeated calculations into separate copies.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" aria-label="Computational graph of the squared error. w = 3 and x = 2 feed a multiply node giving m = 6. m and b = 1 feed an add node giving y hat = 7. y hat and y = 5 feed a subtract node giving r = 2. A square node gives L = 4">
@@ -48,7 +52,7 @@ knowledge_points:
       </svg>
       ```
 
-      To evaluate the graph, work left to right. A node can run as soon as every arrow into it has a value.
+      Evaluate left to right: a node runs once all its inputs have values.
     worked: |
       This example shows the graph being evaluated one node at a time.
 
@@ -72,7 +76,7 @@ knowledge_points:
   - id: cg-local-derivatives
     title: Each node has its own simple derivative
     explain: |
-      Back to the question: how does $L$ change when you nudge $w$? Four steps at once is hard, but each node on its own is easy.
+      **How does $L$ change when you nudge $w$?** Differentiating all four steps at once hides their individual effects. Each node on its own is easier.
 
       A node's **local derivative** says how its output changes when you nudge one of its inputs and hold the others fixed. That is a partial derivative of one small operation, so a few rules cover almost everything:
 
@@ -83,11 +87,11 @@ knowledge_points:
       | multiply | $a \cdot b$ | $b$ for $a$, $a$ for $b$ |
       | square | $a^2$ | $2a$ |
       | exponential | $e^a$ | $e^a$ |
-      | max with 0 | $\max(0, a)$ | $1$ if $a > 0$, else $0$ |
+      | max with 0 | $\max(0, a)$ | $1$ if $a > 0$, $0$ if $a < 0$; undefined at $0$ |
 
-      Read the rules as nudges. An add node passes a nudge through unchanged: add 0.1 to $a$ and $a + b$ goes up by 0.1. A multiply node scales a nudge by the *other* input: if $b = 4$, adding 0.1 to $a$ raises $a \cdot b$ by 0.4. A $\max(0, a)$ node passes the nudge when $a$ is positive and blocks it when $a$ is negative, because the output is stuck at 0 there.
+      This works because holding the other inputs fixed isolates one operation's response. An add node passes a nudge through unchanged: add 0.1 to $a$ and $a + b$ rises by 0.1. A multiply node scales by the *other* input: if $b = 4$, adding 0.1 to $a$ raises $a \cdot b$ by 0.4. A $\max(0, a)$ node blocks nudges for negative $a$, where its output stays 0.
 
-      Several of these local derivatives depend on the values flowing through the node. So you evaluate the graph first, then read off each local derivative using those values.
+      Why store intermediate values rather than recompute them? Several local derivatives need those values; saving them avoids repeating earlier operations, at the cost of memory. Evaluate first, then reuse them.
     worked: |
       This example shows every local derivative in the house graph, using the values from evaluating it ($w = 3$, $x = 2$, $m = 6$, $\hat y = 7$, $r = 2$).
 
@@ -103,13 +107,13 @@ knowledge_points:
       - cgp-multiply-local
       - cgp-multiply-nudge
       - cgp-square-local
-      - cgp-add-local
+      - cgp-why-store-values
       - cgp-subtract-local
       - cgp-max-node
   - id: cg-chaining-paths
     title: Chaining local derivatives back to an input
     explain: |
-      Now you can answer the question. The path from $w$ to $L$ goes through the multiply, add, subtract and square nodes. A nudge in $w$ is scaled by each node's local derivative in turn, so by the chain rule you **multiply the local derivatives along the path**:
+      **Why isn't the first node's derivative enough?** It only tells us how $m$ changes, not $L$. The path from $w$ to $L$ goes through multiply, add, subtract and square nodes. **Multiply the local derivatives along the path**: this works because each node scales the nudge it receives from the previous one.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 130" aria-label="The path from w to L through m, y hat and r. The local derivatives along it are 2, 1, 1 and 4, which multiply to dL/dw = 8">
@@ -142,7 +146,7 @@ knowledge_points:
 
       Sometimes one input feeds more than one node, so there is more than one path from it to the result. Then you work out each path's product and **add the paths**, exactly as in the two-route rule of the chain-rule lesson.
 
-      This is why graphs are useful: you never differentiate the whole formula, only simple nodes, and the chain rule joins them up. The backpropagation lesson shows how to do this for every input in one sweep.
+      For our house-price model, this tells us how a weight affects the final error, not just the prediction. Backpropagation extends this calculation to every model setting in one sweep.
     worked: |
       This example shows adding paths when one input is used twice.
 
@@ -158,10 +162,12 @@ knowledge_points:
       - cgp-chain-template
       - cgp-one-path-only
       - cgp-used-twice
-      - cgp-sum-times-template
+      - cgp-why-multiply-path
       - cgp-robot-error
 final: cg-explain
 summary: |
   - A computational graph breaks a calculation into nodes that each do one simple operation, and arrows carry each value to the node that uses it.
   - Each node has simple local derivatives: add passes a nudge through unchanged, multiply scales it by the other input, and square scales it by twice its input.
   - Multiply local derivatives along the path from an input to the result, and add the paths when an input feeds several nodes.
+
+  **Where you'll use this:** backpropagation and automatic differentiation reuse these node rules and stored values to find how model settings affect a final loss.
