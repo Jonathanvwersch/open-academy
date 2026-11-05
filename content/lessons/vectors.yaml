@@ -2,17 +2,19 @@ concept: vectors
 version: 2
 objective: |
   **Goal:** read a feature vector as a point in space, add and scale vectors, and compute L2 lengths and distances.
+why: |
+  A delivery robot needs to combine floor moves and judge how far it is from a target. A house-price model needs to handle area, bedrooms and age together. You could write a separate rule for every coordinate or measurement, but those rules become unwieldy for images with thousands of pixel values, and mixing up their order changes their meaning. Vectors keep related numbers in a fixed order, so the same addition, scaling and distance rules work for robot positions and model inputs. The floor arrows here give you a picture of those operations before you apply them to data. You'll need them for dot product, matrices, linear regression, gradients, and coordinate frames.
 knowledge_points:
   - id: vec-points-moves
     title: Points and moves as ordered numbers
     explain: |
-      You need to record a position on a floor grid, then work out where two moves take you. Use metres, with right positive and up positive: $(3,4)$ means three right and four up from the origin, the starting point $(0,0)$.
+      **Where do two floor moves take you?** Adding all their numbers into one total loses which way you moved. Use metres, with right positive and up positive: $(3,4)$ means three right and four up from the origin, the starting point $(0,0)$.
 
-      Keep the numbers in a fixed order. This ordered list is a **vector**; each entry is a **component**. Picture it as a point, or as an arrow from the origin to that point. For a move, the arrow tells you how far to go in each direction. A negative entry means left or down.
+      An ordered list is a **vector**; each entry is a **component**. Picture a point, or an arrow from the origin to it. For a move, the arrow gives each direction's travel. Negative entries mean left or down.
 
-      To combine moves, add matching components. This is **vector addition**: put the second arrow's tail at the first arrow's tip. Both vectors need the same number of entries, with matching meanings and units.
+      To combine moves, add matching components: **vector addition**. This works because horizontal travel accumulates independently of vertical travel: put the second arrow's tail at the first arrow's tip. Why this way? Matching entries preserves each direction's total; mixing them does not. Both vectors need the same number of entries, with matching meanings and units.
 
-      The idea also works for measurements. A **feature vector** $(120,3,15)$ records a house's area in square metres, bedrooms and age in years. It is a point with three coordinates, not a floor position.
+      A **feature vector** $(120,3,15)$ records a house's area in square metres, bedrooms and age in years: a point with three coordinates, not a floor position.
 
       Write $x \in \mathbb{R}^n$ to say vector $x$ has $n$ real-number entries; $\in$ means “belongs to”, and $n$ counts the entries. The notation $x_i$ means entry number $i$ of $x$.
     worked: |
@@ -41,15 +43,15 @@ knowledge_points:
   - id: vec-change-move
     title: Making a move longer or reversing it
     explain: |
-      You have the move $(1,2)$, but want to travel twice as far in the same direction. Doubling only the first entry would turn the arrow. Instead, multiply every entry by two to get $(2,4)$.
+      **How can you make $(1,2)$ twice as long without turning it?** Doubling only the first entry turns the arrow. Instead, multiply every entry by two to get $(2,4)$.
 
-      Multiplying all components by the same number is **scaling**. The single number is a **scalar**. In $c x$, scalar $c$ multiplies each entry of vector $x$.
+      Multiplying every component by one number is **scaling**; that number is a **scalar**. In $c x$, scalar $c$ multiplies every entry of vector $x$. This works because equal scaling preserves the proportions of horizontal and vertical travel. Why this way? Adding two to each entry need not preserve those proportions.
 
-      A positive scalar keeps the direction: two doubles the length, while one half halves it. Zero makes the zero vector, whose entries are all zero and which has no direction.
+      A positive scalar keeps direction: two doubles length; one half halves it. Zero makes the zero vector: all entries zero, with no direction.
 
-      A negative scalar reverses the arrow as well as changing its length. Multiplying by $-1$ gives the move back along the same route.
+      A negative scalar reverses the arrow. Multiplying by $-1$ gives the move back along the same route.
 
-      This also explains **vector subtraction**: to subtract a vector, add its reversed arrow. Subtract matching entries, just as you add matching entries. You can combine scaling and subtraction by scaling first, then subtracting component by component.
+      **Vector subtraction** adds a reversed arrow: subtract matching entries. For scaling followed by subtraction, scale first, then subtract component by component.
     worked: |
       This example shows how scaling and subtraction change a move.
 
@@ -70,11 +72,12 @@ knowledge_points:
       ```
 
       Scaling changes every component, and subtracting a negative component adds its positive value.
-    problems: [vecp-scale, vecp-scale-template, vecp-negative, vecp-zero, vecp-subtract, vecp-half]
+    problems:
+      [vecp-why-scale-all, vecp-scale-template, vecp-negative, vecp-zero, vecp-subtract, vecp-half]
   - id: vec-length-distance
     title: Length and distance from squared steps
     explain: |
-      You can reach a floor position by going right then up, but how far away is it in a straight line? For a move of three metres right and four up, Pythagoras gives the straight length: square both steps, add them, then take the square root.
+      **How far away is a floor position?** Adding three metres right and four up gives the route, not the shortcut. Pythagoras gives straight length: square both steps, add, then take the square root.
 
       This length is the **L2 norm**, written $\|x\|_2$ for vector $x$. For any number of entries:
 
@@ -82,13 +85,13 @@ knowledge_points:
 
       The square-root sign $\sqrt{\phantom{a}}$ undoes squaring. The symbol $\sum_{i=1}^{n}$ means “add for entry numbers $i$ from one to $n$”; $x_i^2$ means square entry $i$.
 
-      Squaring makes negative entries contribute positively, so opposite signs cannot cancel. The zero vector has length zero.
+      This works because the arrow is a right triangle's diagonal. Why this way? Absolute steps measure the right-then-up route; squares give its shortcut, and the root restores length units. Squaring prevents signs cancelling. The zero vector has length zero.
 
       To measure the **Euclidean distance** between points $p$ and $q$, subtract their coordinates, then take the length: $\text{dist}(p,q)=\|p-q\|_2$. The symbol $\text{dist}$ means distance; reversing the subtraction gives the same length.
 
-      For feature vectors, watch the units. A house-area gap of 50 square metres contributes $50^2=2500$, while a two-bedroom gap contributes $2^2=4$. Large numerical ranges can dominate.
+      The robot's distance rule lets an ML model compare house vectors. But an area gap of 50 square metres contributes $50^2=2500$, while two bedrooms contribute $2^2=4$: numerical ranges can dominate.
 
-      Changing kilometres to metres changes a gap's contribution even though the houses have not moved. Rescale features to comparable ranges before judging similarity; mixed-unit distance is calculable, but is not a physical length in metres.
+      Changing units changes contributions without changing houses. Rescale features to comparable ranges; mixed-unit distance is calculable, but not a physical length in metres.
     worked: |
       This example shows length and distance using the same square-add-root steps.
 
@@ -115,9 +118,11 @@ knowledge_points:
 
       Length and distance use the same calculation, but feature units determine what the comparison means.
     problems:
-      [vecp-norm, vecp-norm-template, vecp-distance, vecp-root, vecp-units, vecp-zero-length]
+      [vecp-norm, vecp-norm-template, vecp-distance, vecp-why-root, vecp-units, vecp-zero-length]
 final: vec-explain
 summary: |
   - A vector is an ordered list: a point or arrow for coordinates, or a point with one coordinate per feature for data; add matching entries.
   - Scale every entry by the same scalar; a negative scalar reverses the arrow, and subtraction adds a reversed arrow.
   - The L2 norm squares, adds and takes a square root; distance is the norm of a difference, and feature units can dominate it.
+
+  **Where you'll use this:** dot product, matrices, linear regression, gradients, and coordinate frames build on these operations for model inputs, weight changes and robot positions.
