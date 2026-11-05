@@ -54,19 +54,19 @@ exercises:
     options:
       - {
           id: a,
-          text: "A column vector with three entries",
+          text: "The result is a column vector with three entries.",
           correct: true,
           feedback: "Each matrix row produces one dot product.",
         }
       - {
           id: b,
-          text: "A column vector with two entries",
+          text: "The result is a column vector with two entries.",
           correct: false,
           feedback: "The input entry count is not the output entry count.",
         }
       - {
           id: c,
-          text: "A single number from all six entries",
+          text: "The result is one number combining all six entries.",
           correct: false,
           feedback: "Each row gives its own number, rather than one total for the matrix.",
         }
@@ -81,19 +81,19 @@ exercises:
     options:
       - {
           id: a,
-          text: "No, the inner counts 3 and 2 differ",
+          text: "Each left row has three entries, but each right column has only two.",
           correct: true,
-          feedback: "A three-entry row cannot dot a two-entry column.",
+          feedback: "A dot product needs a matching partner for every entry. These lists have different lengths.",
         }
       - {
           id: b,
-          text: "Yes, the two row counts match",
+          text: "The product is possible because both matrices have two rows.",
           correct: false,
           feedback: "Multiplication matches left columns with right rows, not both row counts.",
         }
       - {
           id: c,
-          text: "Yes, the result has shape 3 by 4",
+          text: "The product is possible because it would have shape 3 by 4.",
           correct: false,
           feedback: "An output shape is valid only after the inner counts match.",
         }
@@ -119,19 +119,19 @@ exercises:
     options:
       - {
           id: a,
-          text: "Five house rows with two scores each",
+          text: "The result has five house rows with two scores each.",
           correct: true,
           feedback: "Each house row meets both weight columns.",
         }
       - {
           id: b,
-          text: "Three feature rows with three scores each",
+          text: "The result has three feature rows with three scores each.",
           correct: false,
           feedback: "Features are summed over, not retained as output rows.",
         }
       - {
           id: c,
-          text: "Two house rows with five scores each",
+          text: "The result has two house rows with five scores each.",
           correct: false,
           feedback: "The left rows remain rows, not output columns.",
         }
@@ -146,19 +146,19 @@ exercises:
     options:
       - {
           id: a,
-          text: "Adding moves before or after transforming agrees",
+          text: "Adding two arrows before transforming gives the same result as transforming each and then adding.",
           correct: true,
           feedback: "The transformation preserves vector addition and scaling.",
         }
       - {
           id: b,
-          text: "Every move keeps exactly the same length",
+          text: "Every arrow must keep exactly the same length.",
           correct: false,
           feedback: "Stretching is linear even though it changes lengths.",
         }
       - {
           id: c,
-          text: "The origin can move to any chosen point",
+          text: "The origin can move to any chosen point.",
           correct: false,
           feedback: "A matrix alone sends the zero vector to zero.",
         }
@@ -168,8 +168,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A shear sends $(x,y)$ to $(x+2y,y)$. For the floor point $({{=x}},{{=y}})$, what is the new horizontal coordinate?"
-    solution: "Add twice the height to the horizontal coordinate: ${{=x}}+2\\cdot{{=y}}={{=x+2*y}}$. The vertical coordinate stays ${{=y}}$."
+    prompt: "A shear sends $(x,y)$ to $(x+2y,y)$, with right first and up second. For point $({{=x}},{{=y}})$, what is the new first coordinate?"
+    solution: "Add twice the second coordinate to the first: ${{=x}}+2\\cdot{{=y}}={{=x+2*y}}$. The second coordinate stays ${{=y}}$."
     tolerance: { abs: 0.000001 }
     params:
       x: { min: -3, max: 5 }
@@ -187,19 +187,19 @@ exercises:
     options:
       - {
           id: a,
-          text: "Leaves it at $(3,-2)$",
+          text: "It leaves the vector at $(3,-2)$.",
           correct: true,
           feedback: "Each row picks out the matching input entry.",
         }
       - {
           id: b,
-          text: "Swaps it to $(-2,3)$",
+          text: "It swaps the entries to give $(-2,3)$.",
           correct: false,
           feedback: "A swap matrix has ones off the diagonal instead.",
         }
       - {
           id: c,
-          text: "Sends it to $(0,0)$",
+          text: "It sends the vector to $(0,0)$.",
           correct: false,
           feedback: "That would require all-zero rows, not diagonal ones.",
         }
@@ -214,21 +214,21 @@ exercises:
     options:
       - {
           id: a,
-          text: "Swapping the order changes the input received by the second transformation",
+          text: "Swapping the order changes the input received by the second transformation.",
           correct: true,
           feedback: "A shear after a swap need not agree with a swap after a shear.",
         }
       - {
           id: b,
-          text: "The products must agree whenever the matrices are square",
+          text: "The products must agree whenever both matrices have the same number of rows as columns.",
           correct: false,
           feedback: "Square shapes let both orders exist; they do not make the transformations agree.",
         }
       - {
           id: c,
-          text: "Both orders just multiply corresponding entries, so order cannot matter",
+          text: "Both orders just multiply matching entries, so order cannot matter.",
           correct: false,
-          feedback: "That describes elementwise multiplication. Matrix multiplication takes row-column dot products and composes transformations.",
+          feedback: "Multiplying matching entries is called elementwise multiplication. A matrix product instead takes dot products and applies the two transformations in sequence.",
         }
   - id: matp-shear
     dimension: conceptual
@@ -236,24 +236,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A floor shear maps $(x,y)$ to $(x+2y,y)$. What happens to points on the horizontal axis?"
+    prompt: "A shear sends $(x,y)$ to $(x+2y,y)$. What happens to points on the horizontal axis, where $y=0$?"
     solution: "On the horizontal axis, $y=0$. The output is $(x+2\\cdot0,0)=(x,0)$, so every such point stays fixed."
     options:
       - {
           id: a,
-          text: "They stay fixed because their height is zero",
+          text: "They stay fixed because their second coordinate is zero.",
           correct: true,
           feedback: "With y equal to zero, the added horizontal amount is zero.",
         }
       - {
           id: b,
-          text: "They all move two units to the right",
+          text: "They all move two units to the right.",
           correct: false,
           feedback: "The shift is twice the height, not a fixed two units.",
         }
       - {
           id: c,
-          text: "They all move onto the vertical axis",
+          text: "They all move onto the vertical axis.",
           correct: false,
           feedback: "The shear keeps height fixed and does not swap coordinates.",
         }
@@ -268,19 +268,19 @@ exercises:
     options:
       - {
           id: a,
-          text: "Its columns swap, giving $\\begin{bmatrix}2&1\\\\4&3\\end{bmatrix}$",
+          text: "Its columns swap, giving $\\begin{bmatrix}2&1\\\\4&3\\end{bmatrix}$.",
           correct: true,
           feedback: "Right multiplication by P selects the second column first.",
         }
       - {
           id: b,
-          text: "Its rows swap, giving $\\begin{bmatrix}3&4\\\\1&2\\end{bmatrix}$",
+          text: "Its rows swap, giving $\\begin{bmatrix}3&4\\\\1&2\\end{bmatrix}$.",
           correct: false,
           feedback: "That is PC, with the swap matrix on the left.",
         }
       - {
           id: c,
-          text: "Its entries stay at $\\begin{bmatrix}1&2\\\\3&4\\end{bmatrix}$",
+          text: "Its entries stay at $\\begin{bmatrix}1&2\\\\3&4\\end{bmatrix}$.",
           correct: false,
           feedback: "P is a swap matrix, not the identity.",
         }
@@ -290,7 +290,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "In NumPy, X has shape (5, 3), W has shape (3, 2) and b has shape (2,). Which line gives two biased scores for every house?"
+    prompt: "A housing model stores five houses with three measurements each in NumPy array X, shape (5, 3). W holds weights for two buyer scores, shape (3, 2), and b holds two fixed score adjustments, shape (2,). Which line gives both adjusted scores for every house?"
     solution: "X rows dot W columns, giving shape (5, 2). Adding b broadcasts one bias per score across all five houses."
     options:
       - {
@@ -317,7 +317,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A house row is $({{=a}},{{=b}})$, one weight column is $(2,-1)$, and its bias is {{=c}}. What is the biased score?"
+    prompt: "A house row is $({{=a}},{{=b}})$ for area in hundreds of square metres and bedroom count. One buyer's weight column is $(2,-1)$, and the fixed amount added to their score is {{=c}}. What is the final score?"
     solution: "First take the dot product: $2\\cdot{{=a}}-{{=b}}={{=2*a-b}}$. Add the bias to get ${{=2*a-b}}+({{=c}})={{=2*a-b+c}}$."
     tolerance: { abs: 0.000001 }
     params:
@@ -332,7 +332,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Weights are stored as three score rows with two features each, shape (3, 2). House rows have shape (5, 2). Which product gives the scores?"
+    prompt: "W stores three buyers' weights as rows, with two measurements per buyer, shape (3, 2). X stores five houses with those same measurements, shape (5, 2). Which product gives every buyer's score for every house?"
     solution: "Transpose swaps the weight rows into columns without changing their values. Then (5, 2) times (2, 3) gives (5, 3)."
     options:
       - {
@@ -359,24 +359,24 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A NumPy product has shape (5, 2), and you add b with shape (2,). What does broadcasting do?"
+    prompt: "A NumPy product holds two buyer scores for each of five houses, shape (5, 2). You add b, an array of two fixed score adjustments, shape (2,). What does broadcasting do?"
     solution: "NumPy reuses the two bias entries across the five rows. The output shape stays (5, 2)."
     options:
       - {
           id: a,
-          text: "Adds the two biases to every row",
+          text: "It adds the two adjustments to every house row.",
           correct: true,
           feedback: "Each score column receives its matching bias for every house.",
         }
       - {
           id: b,
-          text: "Adds two new columns to every row",
+          text: "It adds two new columns to every row.",
           correct: false,
           feedback: "Bias addition changes values, not the number of score columns.",
         }
       - {
           id: c,
-          text: "Adds biases only to the first row",
+          text: "It adds the adjustments only to the first row.",
           correct: false,
           feedback: "The shorter array is reused for all five rows.",
         }
@@ -391,19 +391,19 @@ exercises:
     options:
       - {
           id: a,
-          text: "`@` groups the same dot products efficiently; `*` does not sum feature contributions",
+          text: "`@` groups the same dot products efficiently, while `*` does not add the feature contributions.",
           correct: true,
           feedback: "The loop is mathematically valid, but `@` handles the repeated house-score calculation in the library.",
         }
       - {
           id: b,
-          text: "A loop cannot compute these scores correctly, regardless of how it is written",
+          text: "A loop cannot compute these scores correctly, regardless of how it is written.",
           correct: false,
           feedback: "Correctly written loops give the same scores. The benefit is organised, efficient execution, not different mathematics.",
         }
       - {
           id: c,
-          text: "`*` gives the same scores as `@` whenever both arrays are square",
+          text: "`*` gives the same scores as `@` whenever both arrays have equal row and column counts.",
           correct: false,
           feedback: "Square shapes do not change the operations: `*` multiplies corresponding entries without summing across features.",
         }
@@ -440,7 +440,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Explain how a matrix turns a vector into new coordinates, then how NumPy can compute two weighted scores for each of five houses with three features. State the weight and output shapes, and explain adding one bias per score."
+    prompt: "Explain how a matrix turns $(3,1)$ into $(5,1)$ using rows $(1,2)$ and $(0,1)$. Then describe how NumPy can compute two buyer scores for each of five houses with three measurements. State the weight and output shapes, and explain adding one fixed amount per score."
     rubric:
       - {
           id: rows,
@@ -492,7 +492,7 @@ exercises:
     role: diagnostic
     difficulty: 1
     est_minutes: 1
-    prompt: "A batch of images is flattened to $X \\in \\mathbb{R}^{32 \\times 784}$ and multiplied by a weight matrix $W \\in \\mathbb{R}^{784 \\times 10}$. What is the shape of $XW$?"
+    prompt: "Each of 32 images is stored as a row of 784 pixel brightness numbers in $X\\in\\mathbb{R}^{32\\times784}$. A model has weights for ten scores in $W\\in\\mathbb{R}^{784\\times10}$. What is the shape of $XW$?"
     options:
       - { id: a, text: "$32 \\times 10$", correct: true }
       - { id: b, text: "$784 \\times 784$", correct: false, category: misunderstood_definition }
@@ -533,7 +533,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 3
-    prompt: "What does this print? Write the output exactly as Python would."
+    prompt: "This NumPy code fills X with ones. It fills W with the numbers 0 through 5, arranged into three rows and two columns. Array positions count from zero, so `out[0, 1]` selects the first row's second entry. What does it print? Write the output exactly as Python would."
     code: |
       import numpy as np
       X = np.ones((5, 3))
@@ -553,7 +553,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "Complete the line so that `Y` holds the outputs of a linear layer for a whole batch. `X` has shape `(n, d)`, `W` has shape `(d, k)` and `b` has shape `(k,)`."
+    prompt: "Complete the line so Y holds the scores for several houses together. X holds n house rows with d measurements each, shape `(n, d)`. W holds weights for k scores, shape `(d, k)`. b holds one fixed adjustment per score, shape `(k,)`."
     code: |
       import numpy as np
       Y = ____
@@ -566,16 +566,16 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "$R$ rotates the plane by $90^\\circ$ and $S$ stretches the x-axis by a factor of 2. Is $SR\\,x$ (rotate, then stretch) always equal to $RS\\,x$ (stretch, then rotate)?"
+    prompt: "$R$ turns each arrow 90 degrees anticlockwise. $S$ doubles its first coordinate and keeps its second unchanged. Is $SRx$ (turn, then stretch) always equal to $RSx$ (stretch, then turn)?"
     options:
       - {
           id: a,
-          text: "No. Matrix multiplication is not commutative, and the order of transformations matters",
+          text: "No. Applying the two rules in opposite orders can give different endpoints.",
           correct: true,
         }
       - {
           id: b,
-          text: "Yes. Both apply the same two transformations",
+          text: "Yes. Both apply the same two transformations.",
           correct: false,
           category: misunderstood_definition,
           feedback: "Try $x = (1, 0)$: rotate then stretch gives $(0, 1)$; stretch then rotate gives $(0, 2)$.",
