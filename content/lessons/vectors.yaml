@@ -91,7 +91,7 @@ knowledge_points:
 
       The robot's distance rule lets an ML model compare house vectors. But an area gap of 50 square metres contributes $50^2=2500$, while two bedrooms contribute $2^2=4$: numerical ranges can dominate.
 
-      Changing units changes contributions without changing houses. Rescale features to comparable ranges; mixed-unit distance is calculable, but not a physical length in metres.
+      Changing units changes contributions without changing houses. Rescale features to comparable ranges; mixed-unit distance is calculable, but not a length in metres.
     worked: |
       This example shows length and distance using the same square-add-root steps.
 
