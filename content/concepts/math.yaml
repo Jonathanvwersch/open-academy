@@ -136,6 +136,32 @@ concepts:
     objectives:
       - { text: "Derive MSE as Gaussian maximum likelihood", dimension: math }
     status: stub
+  - id: information-theory
+    title: Entropy, cross-entropy and KL divergence
+    description: Surprise and entropy, cross-entropy as the classification loss, KL divergence as the gap between two distributions.
+    difficulty: 2
+    est_minutes: 30
+    week: 3
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs: [{ id: probability-basics }]
+    objectives:
+      - { text: "Compute entropy and cross-entropy for a small distribution", dimension: math }
+      - { text: "Explain why cross-entropy is the loss for classification", dimension: conceptual }
+    status: stub
+  - id: descriptive-statistics
+    title: Mean, variance and confidence intervals
+    description: Mean, variance, standard deviation, standard error and confidence intervals for averages and success rates.
+    difficulty: 2
+    est_minutes: 30
+    week: 3
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs: [{ id: probability-basics }]
+    objectives:
+      - { text: "Compute the standard error of a mean or a success rate", dimension: math }
+      - { text: "Judge whether two small-sample success rates really differ", dimension: conceptual }
+    status: stub
   - id: rotation-matrices
     title: Rotation matrices
     description: 2D/3D rotations as orthonormal matrices; composition.
@@ -147,4 +173,17 @@ concepts:
     prereqs: [{ id: matrices }]
     objectives:
       - { text: "Build and compose 2D rotation matrices", dimension: math }
+    status: stub
+  - id: eigen-svd
+    title: Eigenvalues, eigenvectors and SVD
+    description: Directions a matrix only stretches, SVD as rotate–stretch–rotate, and low-rank approximation.
+    difficulty: 3
+    est_minutes: 35
+    week: 5
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs: [{ id: matrices }, { id: rotation-matrices }]
+    objectives:
+      - { text: "Find the eigenvalues of a 2×2 matrix", dimension: math }
+      - { text: "Explain SVD as rotate, stretch, rotate", dimension: conceptual }
     status: stub
