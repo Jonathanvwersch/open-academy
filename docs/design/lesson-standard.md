@@ -51,3 +51,13 @@ we'd want frequencies (e.g. a hum in a recording is invisible in the waveform bu
   *Neural networks* ch1; d2l.ai ch5 (MLP, activation functions).
 - computational-graphs, backpropagation: Karpathy *micrograd* lecture; Nielsen ch2 ("In what sense is backpropagation
   a fast algorithm?"); 3Blue1Brown *Neural networks* ch3–4.
+
+## Writing style (decided after user review)
+- **Maths topics** (vectors, dot product, matrices, derivatives, partials, gradients, chain rule) follow the
+  3Blue1Brown / Math Insight pattern: plain question about the idea itself → what a good answer must do → the calculation
+  with small numbers → the picture that shows why it works (standard term, e.g. projection) → why ML/robotics cares.
+  Basis: necessity principle (the need is a question about the idea, not a contrived story) and concreteness fading
+  (Fyfe et al. 2014: concrete picture → general idea → formula).
+- **ML topics** open with the real situation, because the scenario is the topic.
+- **Voice:** a teacher talking. Standard terms only, no coined phrases ("floor move"); define every noun on first use;
+  full sentences that build one step at a time; never "because the formula says so".
