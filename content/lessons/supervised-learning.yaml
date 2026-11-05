@@ -8,7 +8,7 @@ knowledge_points:
   - id: sl-inputs-targets
     title: Inputs, targets and the model
     explain: |
-      **How can we predict a house's price?** Handwritten rules need guessed settings. Instead, learn from past sales with known answers: **supervised learning**.
+      **How can we predict what a house will sell for?** Writing rules yourself means guessing their settings. Instead, collect past sales, each with the house's details and the price it actually sold for, and let the computer find a rule that fits them. Learning from examples with known answers is **supervised learning**.
 
       Every supervised problem has the same five ingredients:
 
@@ -18,7 +18,7 @@ knowledge_points:
       4. **Loss** $L$: a number that says how wrong a prediction is.
       5. **Dataset**: the past examples, each one an $(x, y)$ pair.
 
-      This works because known targets let us compare predictions with answers and judge settings by their mistakes, rather than guesswork.
+      This works because known answers let us judge settings by their mistakes rather than guesswork.
     worked: |
       This example shows that a model is a rule with adjustable settings, and different settings give different predictions.
 
@@ -36,7 +36,9 @@ knowledge_points:
   - id: sl-measuring-error
     title: "Measuring how wrong: squared error"
     explain: |
-      **How wrong are the prices?** Signed errors can average to zero despite wrong predictions. Use **squared-error loss**: $(\hat y - y)^2$. This works because squares are non-negative: opposite misses cannot cancel. Why square rather than take absolute errors? Both prevent cancellation; squaring gives large misses extra weight when those matter more.
+      **Why not just average the errors?** High and low errors cancel even when every prediction is wrong. Use **squared-error loss**: $(\hat y - y)^2$.
+
+      This works because squares cannot be negative. Why not absolute errors? Squaring penalises doubled misses fourfold and has a smooth curve for later differentiation, but unusual sales with enormous errors can dominate.
     worked: |
       This example shows why signed errors can cancel and how squaring prevents it.
 
@@ -86,6 +88,8 @@ knowledge_points:
     title: New houses and two kinds of target
     explain: |
       **Will the model price new houses well?** Checking only its training sales can reward remembering those answers. Test on sales it didn't train on instead. This works because their answers were not used to choose the settings, so success tests prediction beyond the training examples. Training and evaluation splits covers how.
+
+      Low average loss on past sales is a means to an end: good prices for houses the model has never seen.
 
       **Two kinds of target.** A numeric target $y$, like a price, means **regression**; a category, like "spam" or "not spam", means **classification**. The five ingredients stay the same. Why not use squared error for every target? Category names have no meaningful numeric distance, so classification needs a loss suited to categories.
 
