@@ -2,6 +2,8 @@ concept: backpropagation
 version: 2
 objective: |
   **Goal:** explain why training needs every gradient and why the backward pass reuses forward values, compute gradients through a small network by hand, write a backward pass in NumPy, and diagnose common gradient bugs.
+why: |
+  A robot's vision network may have millions of weights, all contributing to one prediction error. To improve it, training needs to know how that error changes with every weight. You could nudge each weight and rerun the network, but millions of extra predictions for each training step would make learning impractically slow. Backpropagation shares the work: one forward pass stores intermediate values, then one backward pass combines local derivatives to find every weight's effect on the loss. It works through the existing graph rather than testing each weight separately. Automatic differentiation, PyTorch fundamentals, and debugging training runs build on this method, turning a model's calculation into gradients we can compute and check.
 knowledge_points:
   - id: bp-why-backprop
     title: Why you need every gradient, and fast
@@ -40,7 +42,7 @@ knowledge_points:
       </svg>
       ```
 
-      The backward pass needs the kept values because local derivatives depend on them: a multiply node needs its other input, and a square node needs its input. That is why training uses much more memory than just running a network. In return, the backward pass costs about the same as the forward pass, however many parameters there are.
+      This works because paths share their downstream calculations: each node's loss gradient is computed once and reused for its inputs. Kept values supply local derivatives: a multiply needs its other input, a square its input. Saving them costs memory but avoids recomputation. Backward costs a small multiple of forward work, not an extra pass per parameter.
     worked: |
       This example shows how the cost of the two approaches grows with the number of parameters.
 
@@ -68,13 +70,15 @@ knowledge_points:
 
       The forward pass gives $z = 2$, $h = 2$, $\hat y = 6$ and $L = 4$. The prediction is too high. **How strongly does each weight push the loss up?**
 
-      The backward pass follows three rules:
+      Forward order reaches nodes before their loss gradients are known. Instead:
 
       - **Start at the loss** with $\partial L/\partial L = 1$, because a quantity changes one-for-one with itself.
-      - **Visit nodes in reverse order.** Each node receives the derivative of the loss with respect to its output, called the **upstream gradient**. For each input, multiply the upstream gradient by the node's local derivative for that input, and pass the result back to that input.
+      - **Visit nodes in reverse order.** The **upstream gradient** is the loss's derivative with respect to this node's output. Multiply it by each input's local derivative and pass the result back.
       - **Add** the gradients that arrive at a value from more than one node.
 
-      ReLU's local derivative is 1 if $z > 0$ and 0 otherwise. This is written $\mathbf{1}[z > 0]$, which means "1 when $z > 0$, else 0". So ReLU acts as a gate: it passes the gradient for a unit that was switched on, and blocks it for one that was off.
+      This works because each node receives the loss's sensitivity to its output before passing it to its inputs. Separate paths add because a nudge changes the loss through every route.
+
+      ReLU gates the gradient with $\mathbf{1}[z > 0]$: 1 for positive $z$, 0 otherwise. It passes gradients for switched-on units and blocks them for negative inputs; at zero we choose 0.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 176" aria-label="The tiny network with forward values above each node (z = 2, h = 2, y hat = 6, L = 4) and backward gradients below (dL/dz = 12, dL/dh = 12, dL/dy hat = 4, dL/dL = 1), plus dL/dw1 = 12 and dL/dw2 = 8">
@@ -123,11 +127,11 @@ knowledge_points:
   - id: bp-arrays
     title: Whole layers at once, in NumPy
     explain: |
-      Real networks have layers of many units and train on a batch of many examples at once. Working through every number separately would be far too slow. The same rules apply to every entry, so you write them with arrays.
+      **How do we handle whole layers and batches?** Working through every number separately is slow. Arrays apply the same rules together. This works because matrix products sum the same per-example contributions a loop would compute.
 
       In code, store a batch as `X` with shape $(B, d)$: $B$ examples in rows, $d$ inputs each. Store the first layer's weights `W1` with shape $(d, H)$, so `Z = X @ W1 + b1` gives one row of $H$ values per example. Write $G_Z$ for the array of $\partial L/\partial Z$ values, which has the same shape as $Z$. Three rules cover the backward pass:
 
-      - **Shape rule.** A gradient always has the same shape as the thing it is the gradient of. `dW1` must be $(d, H)$, and the only way to multiply `X` $(B, d)$ and $G_Z$ $(B, H)$ into that shape is $X^\top G_Z$. In the same way, the gradient passed back to the layer's input is $G_Z W^\top$.
+      - **Shape rule.** A gradient has the shape of its parameter. Each weight receives its input times the upstream gradient, summed over examples: `dW1` is $X^\top G_Z$, with shape $(d, B)(B, H) = (d, H)$. The gradient passed back to the layer's input is $G_Z W^\top$. Shapes check the calculation; they do not prove it correct.
       - **Entry-by-entry nodes.** ReLU acts on each entry separately, so its backward pass multiplies matching entries. The symbol $\odot$ means "multiply matching entries": $(2, 3) \odot (4, 5) = (8, 15)$. So $G_Z = G_H \odot \mathbf{1}[Z > 0]$.
       - **Shared parameters add up.** The bias `b1` is added to every row, like a value used $B$ times, so its gradient adds up the rows of $G_Z$.
 
@@ -176,17 +180,17 @@ knowledge_points:
       - bpp-bias-code
       - bpp-weight-code
       - bpp-pass-back
-      - bpp-hadamard-meaning
+      - bpp-why-bias-sum
   - id: bp-checking
     title: Checking gradients and fixing common bugs
     explain: |
-      A wrong backward pass usually doesn't crash. It runs, prints numbers and the network trains badly, so you can't see the bug. **How do you know your gradients are right?**
+      A wrong backward pass may run and even lower the loss, so watching training alone can miss bugs. **How do you know your gradients are right?**
 
       Compare them with nudging, for a few parameters. Nudge one parameter $\theta$ up and down by a small amount $\epsilon$ ("epsilon", such as 0.01) and measure how the loss changes:
 
       $$\frac{\partial L}{\partial \theta} \approx \frac{L(\theta + \epsilon) - L(\theta - \epsilon)}{2\epsilon}$$
 
-      This is a **gradient check** (or finite-difference check). If it agrees with backprop to several digits, that part of your backward pass is right. Nudging is too slow to train with, but it's fine for checking a handful of parameters.
+      This **gradient check** works because nearby losses independently estimate the slope backprop computes. Why nudge both ways? A centred window cancels one-sided error on smooth curves. Agreement supports that derivative, not the whole program. Check a few parameters: all would be too slow.
 
       When the check fails, the pattern often points at the bug:
 
@@ -206,7 +210,7 @@ knowledge_points:
 
       Backprop gave $\partial L/\partial w_2 = 8$, so they agree. If your backward pass had given 4, half the check's value, you'd look for a step that dropped the factor 2 from the squared error.
     problems:
-      - bpp-check-compares
+      - bpp-why-check-nudges
       - bpp-check-template
       - bpp-sign-bug
       - bpp-gate-bug
@@ -217,3 +221,5 @@ summary: |
   - Training needs the loss's derivative for every parameter. Backprop gets them all from one forward pass, which keeps every value, and one backward pass.
   - Backward: start at $\partial L/\partial L = 1$, then at each node multiply the upstream gradient by the local derivative, adding where branches meet. ReLU gates with $\mathbf{1}[z > 0]$.
   - With arrays, a gradient has the same shape as its parameter, ReLU multiplies entries with $\odot$, and biases add up over rows. Check a few gradients with finite differences.
+
+  **Where you'll use this:** automatic differentiation, PyTorch fundamentals, and debugging training runs automate these derivatives and help you diagnose incorrect training code.

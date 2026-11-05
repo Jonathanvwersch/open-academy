@@ -599,60 +599,64 @@ exercises:
         category: implementation_error
         feedback: "Shapes don't fit: `(H, 1) @ (B, 1)` is undefined. `g_h1` must be `(B, H)`."
     solution: "`g_h1` must have the shape of `h1`, `(B, H)`. Only `g_y @ W2.T`, `(B, 1) @ (1, H)`, gives that."
-  - id: bpp-hadamard-meaning
-    dimension: math
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "What is $(1, -2, 3) \\odot (4, 0, -1)$?"
-    options:
-      - { id: a, text: "$(4, 0, -3)$", correct: true }
-      - id: b
-        text: "$1$"
-        correct: false
-        category: misunderstood_definition
-        feedback: "That is the dot product, which adds the products up. $\\odot$ keeps each product as its own entry."
-      - id: c
-        text: "$(5, -2, 2)$"
-        correct: false
-        category: misunderstood_definition
-        feedback: "That adds matching entries. $\\odot$ multiplies them."
-      - id: d
-        text: "$(4, -8, 12)$"
-        correct: false
-        category: math_error
-        feedback: "Multiply matching entries only: first with first, second with second, third with third."
-    solution: "$\\odot$ multiplies matching entries: $(1 \\cdot 4, -2 \\cdot 0, 3 \\cdot -1) = (4, 0, -3)$."
-  - id: bpp-check-compares
+  - id: bpp-why-bias-sum
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "What does a gradient check compare?"
+    prompt: "Why sum the per-example contributions to a shared bias gradient instead of averaging them again?"
     options:
       - {
           id: a,
-          text: "Backprop's gradient with a nudging estimate for the same parameter",
+          text: "The same bias affects every example, and the loss's averaging factor is already in the upstream gradients",
           correct: true,
         }
       - id: b
-        text: "The training loss before and after one training step"
+        text: "Averaging again is necessary whenever the loss is a mean"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The upstream gradients already include division by the batch size. Averaging again divides twice."
+      - id: c
+        text: "Only the example with the largest error affects the shared bias"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The bias affects every row, so every row's contribution must be included."
+      - id: d
+        text: "Contributions from separate examples should multiply, like steps along a path"
+        correct: false
+        category: math_error
+        feedback: "These are separate routes from the shared bias to the loss. Separate routes add; successive steps multiply."
+    solution: "A bias nudge changes every row. Add all those effects. For upstream contributions 2 and 3, the bias gradient is 5, not their mean 2.5; the loss's averaging factor was already applied upstream."
+  - id: bpp-why-check-nudges
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why use finite-difference nudges to check a few gradients, but not to compute all gradients during training?"
+    options:
+      - {
+          id: a,
+          text: "Nudges independently estimate derivatives, but each checked parameter needs extra forward passes",
+          correct: true,
+        }
+      - id: b
+        text: "A decreasing loss proves every gradient is correct, so nudges are unnecessary"
         correct: false
         category: misunderstood_definition
         feedback: "The loss can drop even with a buggy gradient. A gradient check compares derivatives directly."
       - id: c
-        text: "The gradients of two different parameters in the same layer"
+        text: "A numerical nudge computes exact derivatives, while backprop only approximates them"
         correct: false
         category: misunderstood_definition
-        feedback: "Different parameters can rightly have different gradients. The check compares two ways of getting one parameter's gradient."
+        feedback: "A finite window estimates a slope. Backprop applies derivative rules, subject to numerical rounding and the chosen rules at corners."
       - id: d
-        text: "The forward pass with a second run of the forward pass"
+        text: "Agreement for one parameter proves the whole backward pass is correct"
         correct: false
         category: misunderstood_definition
-        feedback: "The check is about the backward pass: are its derivatives right?"
-    solution: "You compute $\\partial L/\\partial \\theta$ two ways, with backprop and with $\\frac{L(\\theta + \\epsilon) - L(\\theta - \\epsilon)}{2\\epsilon}$. If they agree, that part of the backward pass is right."
+        feedback: "A check only supplies evidence for the parameter and input values tested. Other paths can still contain bugs."
+    solution: "Two nearby forward evaluations give an independent slope estimate for one parameter. This is affordable for a handful of checks, but repeating it for millions of parameters defeats backprop's shared-work advantage."
   - id: bpp-check-template
     dimension: math
     type: numeric
