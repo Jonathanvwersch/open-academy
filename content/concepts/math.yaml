@@ -160,7 +160,10 @@ concepts:
     prereqs: [{ id: probability-basics }]
     objectives:
       - { text: "Compute the standard error of a mean or a success rate", dimension: math }
-      - { text: "Judge whether two small-sample success rates really differ", dimension: conceptual }
+      - {
+          text: "Judge whether two small-sample success rates really differ",
+          dimension: conceptual,
+        }
     status: stub
   - id: rotation-matrices
     title: Rotation matrices

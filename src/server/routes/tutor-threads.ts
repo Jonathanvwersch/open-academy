@@ -26,6 +26,29 @@ const bodySchema = z.object({
   lessonProblemId: z.string().uuid().optional(),
 });
 
+function formatThreadTitle(question: string): string {
+  const collapsed = question.replace(/\s+/g, ' ').trim();
+  return collapsed.length > 80 ? `${collapsed.slice(0, 79)}…` : collapsed;
+}
+
+function threadTitleFromMessages() {
+  const firstUserMessage = sql<
+    string | null
+  >`(array_agg(${tutorMessages.content} order by ${tutorMessages.seq}) filter (where ${tutorMessages.role} = 'user'))[1]`;
+  const normalizedContent = sql<string | null>`nullif(
+    btrim(regexp_replace(${firstUserMessage}, '[[:space:]]+', ' ', 'g')),
+    ''
+  )`;
+  return sql<string>`coalesce(
+    case
+      when char_length(${normalizedContent}) > 80
+        then left(${normalizedContent}, 79) || '…'
+      else ${normalizedContent}
+    end,
+    'New chat'
+  )`;
+}
+
 export function registerTutorThreadRoutes(
   api: Hono<ApiEnv>,
   deps: {
@@ -41,7 +64,7 @@ export function registerTutorThreadRoutes(
       .select({
         id: tutorThreads.id,
         conceptId: tutorThreads.conceptId,
-        title: tutorThreads.title,
+        title: threadTitleFromMessages(),
         updatedAt: tutorThreads.updatedAt,
         messageCount: sql<number>`count(${tutorMessages.id})::int`,
         lastMessagePreview: sql<
@@ -70,9 +93,18 @@ export function registerTutorThreadRoutes(
   });
   api.get('/tutor/threads/:id', async (c) => {
     const [thread] = await db
-      .select()
+      .select({
+        id: tutorThreads.id,
+        userId: tutorThreads.userId,
+        conceptId: tutorThreads.conceptId,
+        title: threadTitleFromMessages(),
+        createdAt: tutorThreads.createdAt,
+        updatedAt: tutorThreads.updatedAt,
+      })
       .from(tutorThreads)
+      .leftJoin(tutorMessages, eq(tutorMessages.threadId, tutorThreads.id))
       .where(and(eq(tutorThreads.id, c.req.param('id')), eq(tutorThreads.userId, c.get('userId'))))
+      .groupBy(tutorThreads.id)
       .limit(1);
     if (!thread) return c.json({ error: 'Thread not found' }, 404);
     const messages = await db
@@ -245,17 +277,12 @@ export function registerTutorThreadRoutes(
     const saved = await db.transaction(async (tx) => {
       let target = thread;
       if (!target) {
-        const titleDate = new Intl.DateTimeFormat('en-GB', {
-          day: 'numeric',
-          month: 'short',
-          timeZone: c.get('timeZone'),
-        }).format(requestedNow);
         const [created] = await tx
           .insert(tutorThreads)
           .values({
             userId: c.get('userId'),
             conceptId,
-            title: `${concept?.title ?? 'General'} · ${titleDate}`,
+            title: formatThreadTitle(input.question),
             updatedAt: now,
           })
           .returning();

@@ -10,7 +10,7 @@ declare global {
   }
 }
 
-const screenshotDir = '/home/ubuntu/screenshots/ui-polish';
+const screenshotDir = '/home/ubuntu/screenshots/tutor-optimistic';
 mkdirSync(screenshotDir, { recursive: true });
 let sessionId = '';
 
@@ -49,9 +49,8 @@ test.beforeEach(async () => {
   await db.$client.end();
 });
 
-test('tutor sidebar pushes the page, restores without CLS, saves threads, and hides on diagnostic', async ({
-  page,
-}) => {
+test('tutor chat sends optimistically and supports chat-list navigation', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-01-01T12:00:00.000Z') });
   await page.addInitScript(() => {
     const shifts: number[] = [];
     window.__layoutShifts = shifts;
@@ -62,11 +61,14 @@ test('tutor sidebar pushes the page, restores without CLS, saves threads, and hi
       }
     }).observe({ type: 'layout-shift', buffered: true });
   });
+  await page.route('**/api/tutor/threads**', async (route) => {
+    if (route.request().method() === 'POST') await page.waitForTimeout(1800);
+    await route.continue();
+  });
   await page.goto(`/session/${sessionId}`);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Ask the tutor' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open tutor' })).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/tutor-launcher-closed.png` });
 
   await page.evaluate(() => {
     window.__layoutShifts = [];
@@ -76,37 +78,110 @@ test('tutor sidebar pushes the page, restores without CLS, saves threads, and hi
     (element) => element.getBoundingClientRect().width,
   );
   await page.getByRole('button', { name: 'Ask the tutor' }).click();
-  await expect(page.getByRole('complementary', { name: 'Tutor' })).toBeVisible();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  await expect(tutor).toBeVisible();
+  await expect(tutor.getByRole('heading', { name: 'Chats' })).toBeVisible();
   await expect(page.locator('[data-slot="sheet-overlay"]')).toHaveCount(0);
   const mainWidthAfter = await mainContent.evaluate(
     (element) => element.getBoundingClientRect().width,
   );
   expect(mainWidthAfter, 'tutor sidebar reduces the main page width').toBeLessThan(mainWidthBefore);
-  await page.getByLabel('Ask the tutor').fill('Explain the first step');
-  await page.getByRole('button', { name: 'Send' }).click();
-  await expect(page.getByText('Tutor reply to: Explain the first step')).toBeVisible();
+  await expect(tutor.getByText('No chats yet')).toBeVisible();
+  await tutor.getByRole('button', { name: 'New chat' }).first().click();
+  await expect(tutor.getByTestId('tutor-conversation-title')).toHaveText('New chat');
+  await expect(tutor.getByText('Supervised learning', { exact: true })).toBeVisible();
+  await expect(tutor.getByText('Start a conversation')).toBeVisible();
+
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.fill('Explain the first step');
+  await textarea.press('Enter');
+  await expect(textarea).toHaveValue('');
+  await expect(
+    tutor.getByTestId('tutor-user-message').filter({ hasText: 'Explain the first step' }),
+  ).toHaveCount(1);
+  await expect(tutor.getByRole('status', { name: 'Tutor is responding' })).toBeVisible();
+  await expect(tutor.getByTestId('tutor-thinking-bubble')).toBeVisible();
+  await textarea.fill('Draft while waiting');
+  await expect(textarea).toHaveValue('Draft while waiting');
+  await expect(tutor.getByRole('button', { name: 'Sending…' })).toBeDisabled();
+  await textarea.fill('');
+  await expect(textarea).toHaveValue('');
+  await page.screenshot({ path: `${screenshotDir}/tutor-pending.png` });
+
+  await expect(tutor.getByText('Tutor reply to: Explain the first step')).toBeVisible();
+  await expect(
+    tutor.getByTestId('tutor-user-message').filter({ hasText: 'Explain the first step' }),
+  ).toHaveCount(1);
+  await page.screenshot({ path: `${screenshotDir}/tutor-conversation.png` });
+
   const cls = await page.evaluate(() =>
     window.__layoutShifts.reduce((total, value) => total + value, 0),
   );
   expect(cls, 'opening the tutor sidebar CLS').toBeLessThan(0.02);
-  await page.screenshot({ path: `${screenshotDir}/open-conversation.png` });
 
   await page.reload();
-  await expect(page.getByRole('complementary', { name: 'Tutor' })).toBeVisible();
-  await expect(page.getByText('Tutor reply to: Explain the first step')).toBeVisible();
-  await expect(page.getByText('Problem 1 · up to 5')).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/after-reload.png` });
+  const restoredTutor = page.getByRole('complementary', { name: 'Tutor' });
+  await expect(restoredTutor).toBeVisible();
+  await expect(restoredTutor.getByText('Tutor reply to: Explain the first step')).toBeVisible();
+  await expect(
+    restoredTutor.getByTestId('tutor-user-message').filter({ hasText: 'Explain the first step' }),
+  ).toHaveCount(1);
 
-  await page.getByRole('button', { name: 'New chat' }).click();
-  await page.getByLabel('Ask the tutor').fill('Why are targets useful?');
-  await page.getByRole('button', { name: 'Send' }).click();
-  await expect(page.getByText('Tutor reply to: Why are targets useful?')).toBeVisible();
-  await page.getByRole('combobox', { name: 'Tutor conversation' }).click();
-  await expect(page.getByRole('listbox', { name: 'Saved tutor conversations' })).toBeVisible();
-  await expect(page.getByRole('option').filter({ hasText: 'Supervised learning' })).toHaveCount(2);
-  await page.screenshot({ path: `${screenshotDir}/thread-dropdown.png` });
-  await page.getByRole('option').filter({ hasText: 'Explain the first step' }).click();
-  await expect(page.getByText('Tutor reply to: Explain the first step')).toBeVisible();
+  await restoredTutor.getByRole('button', { name: 'Chats' }).click();
+  await expect(restoredTutor.getByRole('heading', { name: 'Chats' })).toBeVisible();
+  await restoredTutor.getByRole('button', { name: 'New chat' }).first().click();
+  await expect(restoredTutor.getByTestId('tutor-conversation-title')).toHaveText('New chat');
+  await expect(restoredTutor.getByText('Supervised learning', { exact: true })).toBeVisible();
+  const secondTextarea = restoredTutor.getByLabel('Ask the tutor');
+  await secondTextarea.fill('Why are targets useful?');
+  await restoredTutor.getByRole('button', { name: 'Send' }).click();
+  await expect(
+    restoredTutor.getByTestId('tutor-user-message').filter({ hasText: 'Why are targets useful?' }),
+  ).toHaveCount(1);
+  await expect(restoredTutor.getByText('Tutor reply to: Why are targets useful?')).toBeVisible();
+
+  await restoredTutor.getByRole('button', { name: 'Chats' }).click();
+  await expect(restoredTutor.getByRole('heading', { name: 'Today' })).toBeVisible();
+  const threadRows = restoredTutor.locator('[data-testid^="tutor-thread-"]');
+  await expect(threadRows).toHaveCount(2);
+  await expect(threadRows.filter({ hasText: 'Explain the first step' })).toHaveCount(1);
+  await expect(threadRows.filter({ hasText: 'Why are targets useful?' })).toHaveCount(1);
+  await expect(threadRows.first().locator('[data-slot="badge"]')).toHaveText('Supervised learning');
+  await expect(threadRows.nth(1).locator('[data-slot="badge"]')).toHaveText('Supervised learning');
+  await page.screenshot({ path: `${screenshotDir}/tutor-chats.png` });
+
+  const firstThreadRow = restoredTutor.locator(
+    '[data-testid^="tutor-thread-"]:not([aria-pressed="true"])',
+  );
+  await expect(firstThreadRow).toHaveCount(1);
+  const firstThreadTestId = await firstThreadRow.getAttribute('data-testid');
+  if (!firstThreadTestId) throw new Error('Could not identify the first tutor thread');
+  const firstThread = restoredTutor.getByTestId(firstThreadTestId);
+  await firstThread.click();
+  await expect(restoredTutor.getByTestId('tutor-conversation-title')).toHaveText(
+    'Explain the first step',
+  );
+  await expect(
+    restoredTutor.getByTestId('tutor-user-message').filter({ hasText: 'Explain the first step' }),
+  ).toHaveCount(1);
+  await restoredTutor.getByRole('button', { name: 'Chats' }).click();
+  await restoredTutor.getByRole('button', { name: 'New chat' }).first().click();
+  await expect(restoredTutor.getByTestId('tutor-conversation-title')).toHaveText('New chat');
+  await expect(restoredTutor.getByText('Supervised learning', { exact: true })).toBeVisible();
+  await expect(restoredTutor.getByTestId('tutor-user-message')).toHaveCount(0);
+  await expect(restoredTutor.getByText('Start a conversation')).toBeVisible();
+
+  await restoredTutor.getByRole('button', { name: 'Chats' }).click();
+  await firstThread.click();
+  await page.reload();
+  const reloadedTutor = page.getByRole('complementary', { name: 'Tutor' });
+  await expect(reloadedTutor).toBeVisible();
+  await expect(reloadedTutor.getByTestId('tutor-conversation-title')).toHaveText(
+    'Explain the first step',
+  );
+  await expect(
+    reloadedTutor.getByTestId('tutor-user-message').filter({ hasText: 'Explain the first step' }),
+  ).toHaveCount(1);
 
   await page.evaluate(() => {
     window.__layoutShifts = [];
@@ -118,12 +193,39 @@ test('tutor sidebar pushes the page, restores without CLS, saves threads, and hi
     window.__layoutShifts.reduce((total, value) => total + value, 0),
   );
   expect(restoreCls, 'restoring the tutor sidebar on Learn CLS').toBeLessThan(0.02);
-  await page.goto('/lessons/vectors');
-  await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
-  await expect(page.getByText('Tutor reply to: Explain the first step')).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/lesson-tutor-open.png` });
 
   await page.goto('/diagnostic');
   await expect(page.getByRole('button', { name: 'Open tutor' })).toHaveCount(0);
   await expect(page.getByRole('complementary', { name: 'Tutor' })).toHaveCount(0);
+});
+
+test('tutor send failure restores the draft and removes the optimistic message', async ({
+  page,
+}) => {
+  await page.route('**/api/tutor/threads**', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'The tutor could not respond. Try again.' }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await page.goto(`/session/${sessionId}`);
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  await tutor.getByRole('button', { name: 'New chat' }).first().click();
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.fill('What does the target represent?');
+  await textarea.press('Shift+Enter');
+  await textarea.type('Please show the next line.');
+  await expect(textarea).toHaveValue('What does the target represent?\nPlease show the next line.');
+  await textarea.fill('What does the target represent?');
+  await textarea.press('Enter');
+  await expect(textarea).toHaveValue('What does the target represent?');
+  await expect(tutor.getByRole('alert')).toContainText('The tutor could not respond. Try again.');
+  await expect(tutor.getByTestId('tutor-user-message')).toHaveCount(0);
+  await expect(tutor.getByTestId('tutor-thinking-bubble')).toHaveCount(0);
 });
