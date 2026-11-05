@@ -28,7 +28,7 @@ test('loads the fixture graph and builds lookup indexes', async () => {
     prerequisiteId: 'gradients',
     strength: 'hard',
   });
-  expect(content.exercisesByConcept.get('vectors')).toHaveLength(4);
+  expect(content.exercisesByConcept.get('vectors')).toHaveLength(13);
   expect(content.exercisesByDimension.get('math')?.length).toBeGreaterThan(0);
   expect(content.exercisesByRole.get('diagnostic')?.length).toBe(8);
   expect(new Set(content.exercises.map((exercise) => exercise.type))).toEqual(
@@ -130,6 +130,10 @@ test('lessons start with an objective and end with a summary', () => {
         id: 'example',
         message: 'lesson must end with a summary block',
       }),
+      expect.objectContaining({
+        id: 'example',
+        message: 'authored lessons must use knowledge_points',
+      }),
     ]),
   );
 });
@@ -181,7 +185,7 @@ test('notation used without an introducing hard prerequisite is an issue', async
   expect(validateContent(data)).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
-        id: 'dx-derivatives',
+        id: 'derivatives-fixture-practice-1',
         message: expect.stringContaining(
           'uses needle notation but none of vectors is a hard prerequisite',
         ),
@@ -215,7 +219,7 @@ test('a soft prerequisite does not allow notation use', async () => {
   expect(validateContent(data)).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
-        id: 'dx-linear-models',
+        id: 'linear-models-fixture-practice-1',
         message: expect.stringContaining(
           'uses needle notation but none of vectors is a hard prerequisite',
         ),
@@ -309,6 +313,7 @@ test('knowledge-point lessons derive the legacy block shape', () => {
     ],
     summary: 'Finish.',
   });
+  if (!('knowledge_points' in input)) throw new Error('Expected a KP lesson fixture');
   const lesson = normalizeLesson(input, (id) => id === 'template');
   expect(lesson.blocks).toEqual([
     { kind: 'objective', md: 'Learn the idea.' },
@@ -412,14 +417,14 @@ test('a valid knowledge-point lesson with a parameterised practice problem passe
       id: 'kp-valid-one',
       title: 'A valid point',
       explain: 'A concise explanation.',
-      worked: 'A complete worked example.',
+      worked: 'This example shows a complete worked example.',
       problems: ['kp-template-one', 'kp-fixed-one', 'kp-fixed-two'],
     },
     {
       id: 'kp-valid-two',
       title: 'Another valid point',
       explain: 'A concise explanation.',
-      worked: 'A complete worked example.',
+      worked: 'This example shows another complete worked example.',
       problems: ['kp-template-two', 'kp-fixed-three', 'kp-fixed-four'],
     },
   ];
@@ -739,7 +744,7 @@ function addFinalExercise(data: ContentSourceData, concept: string) {
   lesson.value.final = id;
 }
 
-test('knowledge-point final exercise rules and gated lesson format are validated', async () => {
+test('knowledge-point final exercise rules and lesson format are validated', async () => {
   const data = await notationFixture();
   const lesson = data.lessons.find(({ value }) => value.concept === 'supervised-learning');
   if (!lesson) throw new Error('Missing supervised-learning fixture');
@@ -763,13 +768,64 @@ test('knowledge-point final exercise rules and gated lesson format are validated
     true,
   );
 
-  const gated = await notationFixture();
+  const legacy = await notationFixture();
+  const legacyLesson = legacy.lessons.find(({ value }) => value.concept === 'vectors');
+  if (!legacyLesson) throw new Error('Missing vectors lesson');
+  const legacyInput = LessonSchema.parse({
+    concept: 'vectors',
+    version: 1,
+    blocks: [
+      { kind: 'objective', md: 'Compute vector magnitudes.' },
+      { kind: 'summary', md: 'Magnitude measures length.' },
+    ],
+  });
+  if (!('blocks' in legacyInput)) throw new Error('Expected a legacy lesson fixture');
+  legacyLesson.value = legacyInput;
   expect(
-    validateContent(gated, true).some(
+    validateContent(legacy).some(
       (issue) =>
         issue.id === 'vectors' && issue.message === 'authored lessons must use knowledge_points',
     ),
   ).toBe(true);
+});
+
+test('knowledge-point style rules count prose, math spans, and fenced code correctly', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'supervised-learning');
+  const [invalid, valid] = lesson?.value.knowledge_points ?? [];
+  if (!lesson || !invalid || !valid) throw new Error('Missing supervised-learning points');
+
+  invalid.title = 'Rate $r$';
+  invalid.explain = Array.from({ length: 251 }, () => 'word').join(' ');
+  invalid.worked = 'A worked example.';
+  valid.title = 'A plain title';
+  valid.explain = `${Array.from({ length: 249 }, () => 'word').join(' ')} $2x$ \`\`\`txt\nignored words\n\`\`\``;
+  valid.worked = 'This example shows a valid opening.';
+
+  const issues = validateContent(data);
+  expect(issues).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: invalid.id,
+        message: 'knowledge-point title must not contain "$"',
+      }),
+      expect.objectContaining({
+        id: invalid.id,
+        message: 'knowledge-point explain has 251 words; maximum is 250',
+      }),
+      expect.objectContaining({
+        id: invalid.id,
+        message: 'knowledge-point worked must start with "This example shows"',
+      }),
+    ]),
+  );
+  expect(
+    issues.some(
+      (issue) =>
+        issue.id === valid.id &&
+        (issue.message.includes('explain has') || issue.message.includes('worked must start')),
+    ),
+  ).toBe(false);
 });
 
 test('SVG fences reject malformed, unsafe, inaccessible, and non-hex SVG', async () => {

@@ -74,7 +74,7 @@ knowledge_points:
 
       ReLU's graph has a corner at 0, and the other two are S-shaped curves. None is a straight line, so any of them stops stacked layers collapsing into one.
     worked: |
-      This example applies the three functions to the same scores, then shows ReLU adding a corner to a stack.
+      This example shows all three activation functions on the same scores, then adds a ReLU bend between two rules.
 
       | score $z$ | $-2$ | $0.5$ | $3$ |
       |---|---|---|---|
@@ -126,7 +126,7 @@ knowledge_points:
 
       One ReLU problem: a neuron whose score is negative for every input always outputs 0 and always has slope 0, so nudging its numbers changes nothing. It's called a **dead** unit.
     worked: |
-      This example computes sigmoid's slope at two scores and checks one with a small nudge.
+      This example shows sigmoid's slope at two scores and checks one with a small nudge.
 
       1. **At $z = 0$:** $\sigma(0) = 0.5$, so $\sigma'(0) = 0.5 \times (1 - 0.5) = 0.25$.
       2. **Check with a nudge:** $\sigma(0.01) \approx 0.502500$. The output rose by $0.0025$ for a nudge of $0.01$, a ratio of $0.25$.

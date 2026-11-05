@@ -1,8 +1,28 @@
 concept: linear-algebra
-version: 1
-blocks:
-  - { kind: objective, md: "Read and complete simple matrix operations." }
-  - { kind: intuition, md: "Matrix notation makes repeated linear combinations compact." }
-  - { kind: check, exercise: linear-algebra-code-complete }
-  - { kind: summary, md: "Dimensions must line up for matrix products." }
-fast_path: [objective, summary]
+version: 2
+objective: Practice matrix operations.
+knowledge_points:
+  - id: linear-algebra-fixture-1
+    title: Multiply a matrix and vector
+    explain: Matrix-vector multiplication combines rows of a matrix with the vector.
+    worked: This example shows one matrix-vector product.
+    problems:
+      [
+        linear-algebra-fixture-practice-1,
+        linear-algebra-fixture-practice-2,
+        linear-algebra-fixture-practice-3,
+        linear-algebra-fixture-template-1,
+      ]
+  - id: linear-algebra-fixture-2
+    title: Track the output
+    explain: The output has one entry for each row of the matrix.
+    worked: This example shows how the matrix shape determines the output.
+    problems:
+      [
+        linear-algebra-fixture-practice-4,
+        linear-algebra-fixture-practice-5,
+        linear-algebra-fixture-practice-6,
+        linear-algebra-fixture-template-2,
+      ]
+final: linear-algebra-fixture-final
+summary: Matrix-vector multiplication combines rows and returns one value per row.

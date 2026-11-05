@@ -364,8 +364,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "In attention, a query and a key are word vectors whose dot product is a relevance score. A positive score is 2; the key is tripled without turning it. What happens?"
-    solution: "Every key entry triples, so the dot product becomes $3\\cdot2=6$. This shows why a raw relevance score can reward length rather than direction alone."
+    prompt: "A buyer's preference vector and a house's feature vector have dot product 2. If the house vector is tripled without changing direction, what happens to the dot-product score?"
+    solution: "Scaling one vector by 3 multiplies the dot product by 3, so the score becomes 6. This shows that a raw dot product depends on vector length as well as direction."
     options:
       - {
           id: a,

@@ -107,7 +107,7 @@ knowledge_points:
 
       Multiplying a non-zero vector by a positive scalar changes its length but not its cosine similarity to another vector. A negative scalar reverses its direction and flips the sign instead. Raw dot products mix length and direction; cosine similarity compares direction only, not whether two points occupy the same position.
 
-      The same distinction matters for feature vectors: a high score reflects the chosen representation, not a guarantee of real-world similarity. In attention, a text model can use a dot product between two word vectors, called a query and a key, as a relevance score, so length can affect that score too.
+      The same distinction matters for feature vectors: a high score reflects the chosen representation, not a guarantee of real-world similarity. A buyer's preference vector can score a house by its features, but the raw dot product reflects both fit and vector length; cosine removes the length factor.
     worked: |
       This example shows how dividing out lengths isolates direction.
 

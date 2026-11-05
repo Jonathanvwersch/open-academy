@@ -3,8 +3,6 @@ import { gradeNumeric } from '../grading/numeric.js';
 import { formatTemplateNumber, instantiateExercise, isTemplate } from './templates.js';
 import type { ContentIssue, ContentSourceData } from './types.js';
 
-export const REQUIRE_KNOWLEDGE_POINT_LESSONS = false;
-
 const SVG_FENCE = /```svg[ \t]*\r?\n([\s\S]*?)```/gi;
 const CURRENCY_MARKERS = [
   /(?<!\$)\$(?!\$)\d+(?:,\d{3})*(?:\.\d+)?(?=\s*(?:k\b|thousand\b|million\b|usd\b|dollars?\b))/i,
@@ -169,10 +167,7 @@ function findCycles(data: ContentSourceData, issues: ContentIssue[]) {
   }
 }
 
-export function validateContent(
-  data: ContentSourceData,
-  requireKnowledgePointLessons = REQUIRE_KNOWLEDGE_POINT_LESSONS,
-): ContentIssue[] {
+export function validateContent(data: ContentSourceData): ContentIssue[] {
   const issues: ContentIssue[] = [];
   const concepts = new Map(data.concepts.map(({ value, file }) => [value.id, { value, file }]));
   const exercises = new Map<
@@ -313,7 +308,7 @@ export function validateContent(
     { file: string; value: (typeof data.lessons)[number]['value'] }
   >();
   for (const { value, file } of data.lessons) {
-    if (requireKnowledgePointLessons && !value.knowledge_points) {
+    if (!value.knowledge_points) {
       addIssue(issues, file, value.concept, 'authored lessons must use knowledge_points');
     }
     for (const text of new Set(stringValues(value))) {
@@ -577,10 +572,29 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
       knowledgePointIds.add(point.id);
       if (!point.title.trim())
         addIssue(issues, file, point.id, 'knowledge-point title must not be empty');
+      if (point.title.includes('$'))
+        addIssue(issues, file, point.id, 'knowledge-point title must not contain "$"');
       if (!point.explain.trim())
         addIssue(issues, file, point.id, 'knowledge-point explain must not be empty');
+      const explanationWords = countKnowledgePointWords(point.explain);
+      if (explanationWords > 250) {
+        addIssue(
+          issues,
+          file,
+          point.id,
+          `knowledge-point explain has ${explanationWords} words; maximum is 250`,
+        );
+      }
       if (!point.worked.trim())
         addIssue(issues, file, point.id, 'knowledge-point worked must not be empty');
+      if (!point.worked.trimStart().startsWith('This example shows')) {
+        addIssue(
+          issues,
+          file,
+          point.id,
+          'knowledge-point worked must start with "This example shows"',
+        );
+      }
       if (point.problems.length < 3) {
         addIssue(issues, file, point.id, 'knowledge point must reference at least 3 problems');
       }
@@ -722,6 +736,15 @@ function validateTemplate(
       'template must produce at least 3 distinct answers across seeds 0–99',
     );
   }
+}
+
+function countKnowledgePointWords(text: string): number {
+  return text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/\$\$[\s\S]*?\$\$|\$[^$\n]+\$/g, ' math ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
 }
 
 function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) {

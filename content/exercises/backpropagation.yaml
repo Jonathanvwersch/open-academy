@@ -411,9 +411,9 @@ exercises:
       - answer: -48
         tolerance: { abs: 0.001 }
         category: misapplied_technique
-        feedback: "That lets the gradient through ReLU. Here $z = -2 < 0$, so the gate $\\mathbb{1}[z > 0]$ is 0."
+        feedback: "That lets the gradient through ReLU. Here $z = -2 < 0$, so the gate $\\mathbf{1}[z > 0]$ is 0."
     hints: ["Forward first: is $z$ positive?"]
-    solution: "Forward: $z = -2$, $h = 0$, $\\hat y = 0$. Backward: $\\partial L/\\partial \\hat y = -8$, $\\partial L/\\partial h = -24$, but $\\partial L/\\partial z = -24 \\cdot \\mathbb{1}[-2 > 0] = 0$. So $\\partial L/\\partial w_1 = 0 \\cdot x = 0$: the switched-off unit blocks the gradient."
+    solution: "Forward: $z = -2$, $h = 0$, $\\hat y = 0$. Backward: $\\partial L/\\partial \\hat y = -8$, $\\partial L/\\partial h = -24$, but $\\partial L/\\partial z = -24 \\cdot \\mathbf{1}[-2 > 0] = 0$. So $\\partial L/\\partial w_1 = 0 \\cdot x = 0$: the switched-off unit blocks the gradient."
   - id: bpp-reverse-order
     dimension: conceptual
     type: mc
@@ -525,10 +525,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A ReLU layer had inputs $Z = ({{=z1}}, {{=z2}}, {{=z3}})$. The upstream gradient for its outputs is $G_H = ({{=g1}}, {{=g2}}, {{=g3}})$. Compute $G_Z = G_H \\odot \\mathbb{1}[Z > 0]$ and give the **sum** of its three entries."
+    prompt: "A ReLU layer had inputs $Z = ({{=z1}}, {{=z2}}, {{=z3}})$. The upstream gradient for its outputs is $G_H = ({{=g1}}, {{=g2}}, {{=g3}})$. Compute $G_Z = G_H \\odot \\mathbf{1}[Z > 0]$ and give the **sum** of its three entries."
     hints:
       [
-        "$\\mathbb{1}[Z > 0]$ is 1 where an entry of $Z$ is positive and 0 elsewhere. Multiply it with $G_H$ entry by entry.",
+        "$\\mathbf{1}[Z > 0]$ is 1 where an entry of $Z$ is positive and 0 elsewhere. Multiply it with $G_H$ entry by entry.",
       ]
     solution: "The gate is 1 for positive entries of $Z$ and 0 for negative ones, so each entry of $G_H$ is kept or zeroed. The kept entries add up to {{=g1*(z1 > 0 ? 1 : 0) + g2*(z2 > 0 ? 1 : 0) + g3*(z3 > 0 ? 1 : 0)}}."
     answer_expr: "g1 * (z1 > 0 ? 1 : 0) + g2 * (z2 > 0 ? 1 : 0) + g3 * (z3 > 0 ? 1 : 0)"
@@ -728,7 +728,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: "A sign bug would affect every gradient, not just units that were switched off."
-    solution: "A unit with $z < 0$ has $\\mathbb{1}[z > 0] = 0$, so no gradient should pass through it. Without the `* (z1 > 0)` gate, gradient leaks through switched-off units."
+    solution: "A unit with $z < 0$ has $\\mathbf{1}[z > 0] = 0$, so no gradient should pass through it. Without the `* (z1 > 0)` gate, gradient leaks through switched-off units."
   - id: bpp-batch-bug
     dimension: transfer
     type: mc

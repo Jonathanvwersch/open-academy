@@ -31,7 +31,7 @@ terms:
   - {
       id: ones-vector,
       label: "ones vector 𝟏",
-      match: ['\\mathbf\s*\{?1'],
+      match: ['\\mathbf\s*\{?1(?!\s*\}?\s*\[)'],
       introduced_by: [linear-regression],
     }
   - { id: limit, label: "limit notation", match: ['\\lim'], introduced_by: [derivatives] }
@@ -86,7 +86,7 @@ terms:
   - {
       id: indicator,
       label: "𝟙[·] indicator",
-      match: ['\\mathbb\s*\{?1'],
+      match: ['\\mathbf\s*\{?1\s*\}?\s*\['],
       introduced_by: [backpropagation],
     }
   - {

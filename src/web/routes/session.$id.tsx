@@ -282,7 +282,6 @@ function SessionPage() {
     const finalQuestionPending =
       status === 'completed' &&
       !!lesson?.final &&
-      activity.exerciseIds.includes(lesson.final) &&
       !(activity.progress?.completedExerciseIds ?? []).includes(lesson.final);
     await fetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
       method: 'POST',

@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 import { createDb } from '../../src/server/db/client.js';
-import { users } from '../../src/server/db/schema.js';
+import { sessionActivities, studySessions, users } from '../../src/server/db/schema.js';
 import { env } from '../../src/server/env.js';
 
 const conceptId = 'supervised-learning';
@@ -48,15 +48,15 @@ async function createSession(page: Page, focusConcept = true) {
   return session.session.id as string;
 }
 
-async function currentRun(page: Page) {
-  return page.evaluate(async () => {
-    const response = await fetch('/api/lessons/supervised-learning/run');
+async function currentRun(page: Page, runConceptId = conceptId) {
+  return page.evaluate(async (concept) => {
+    const response = await fetch(`/api/lessons/${concept}/run`);
     return (await response.json()).run;
-  });
+  }, runConceptId);
 }
 
-async function answerAndReload(page: Page, correct: boolean) {
-  const run = await currentRun(page);
+async function answerAndReload(page: Page, correct: boolean, runConceptId = conceptId) {
+  const run = await currentRun(page, runConceptId);
   const problem = run.pendingProblem;
   const hook = await page.evaluate(async (id) => {
     const response = await fetch(`/api/test/lesson-problems/${id}/answer`);
@@ -88,7 +88,7 @@ async function answerAndReload(page: Page, correct: boolean) {
   }
   const responsePromise = page.waitForResponse(
     (response) =>
-      response.url().endsWith('/api/lessons/supervised-learning/run/answer') &&
+      response.url().endsWith(`/api/lessons/${runConceptId}/run/answer`) &&
       response.request().method() === 'POST',
   );
   await page.getByRole('button', { name: 'Submit answer' }).click();
@@ -99,13 +99,13 @@ async function answerAndReload(page: Page, correct: boolean) {
   await expect(page.getByRole('status')).toContainText(correct ? 'Correct' : 'Not quite');
   await expect(page.getByTestId('lesson-problem')).toHaveAttribute('data-problem-id', problem.id);
   await expect(page.getByTestId('lesson-problem-prompt')).toBeVisible();
-  expect(await currentRun(page)).toEqual(body.state);
+  expect(await currentRun(page, runConceptId)).toEqual(body.state);
   expect(body.state.lastAnsweredProblem.id).toBe(problem.id);
   return body.state;
 }
 
-async function nextProblemAndReload(page: Page) {
-  const before = await currentRun(page);
+async function nextProblemAndReload(page: Page, runConceptId = conceptId) {
+  const before = await currentRun(page, runConceptId);
   const buttonName =
     before.points.find(
       (point: { id: string }) => point.id === before.lastAnsweredProblem?.knowledgePointId,
@@ -114,7 +114,7 @@ async function nextProblemAndReload(page: Page) {
       : 'Next problem';
   const responsePromise = page.waitForResponse(
     (response) =>
-      response.url().endsWith('/api/lessons/supervised-learning/run') &&
+      response.url().endsWith(`/api/lessons/${runConceptId}/run`) &&
       response.request().method() === 'POST',
   );
   await page.getByRole('button', { name: buttonName }).click();
@@ -123,7 +123,7 @@ async function nextProblemAndReload(page: Page) {
   expect(response.status()).toBe(200);
   await page.reload();
   await expect(page.getByText(/^Problem \d+ · up to 5$/)).toBeVisible();
-  expect(await currentRun(page)).toEqual(body.run);
+  expect(await currentRun(page, runConceptId)).toEqual(body.run);
   return body.run;
 }
 
@@ -219,6 +219,106 @@ test('passes every knowledge point and restores the exact problem and result aft
   expect(finalActivity.lastAttempt.status).toBe('graded');
   expect(finalActivity.lastAttempt.yourAnswer).toContain('Predict delivery time');
   expect(page.url()).toContain(`/session/${sessionId}`);
+});
+
+test('a legacy v1 learn activity resumes through the KP runner and final question', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const db = createDb(env.TEST_DATABASE_URL);
+  const [learner] = await db.select({ id: users.id }).from(users).limit(1);
+  if (!learner) throw new Error('Missing E2E learner');
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId: learner.id,
+      kind: 'weekday',
+      plannedMinutes: 60,
+      status: 'active',
+      startedAt: new Date(),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create legacy session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: 'vectors',
+      exerciseIds: ['vectors-component-sum'],
+      plannedMinutes: 20,
+      status: 'in_progress',
+    })
+    .returning();
+  await db.$client.end();
+  if (!activity) throw new Error('Could not create legacy learn activity');
+
+  await page.goto(`/session/${session.id}`);
+  await expect(page.getByText(/^Problem 1 · up to 5$/)).toBeVisible();
+  await expect
+    .poll(async () => (await currentRun(page, 'vectors'))?.pendingProblem?.id)
+    .toBeTruthy();
+  let run = await currentRun(page, 'vectors');
+  expect(run.currentPointId).toBe('vectors-fixture-1');
+  expect(run.points[0]).toMatchObject({ status: 'active', round: 1, answered: 0 });
+
+  while (run.status !== 'completed') {
+    run = run.pendingProblem
+      ? await answerAndReload(page, true, 'vectors')
+      : await nextProblemAndReload(page, 'vectors');
+  }
+  await expect(page.getByText(/^Lesson complete/)).toBeVisible();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByTestId('exercise-prompt')).toContainText(
+    "Explain what a vector's magnitude represents.",
+  );
+  const migrated = await page.evaluate(
+    async ({ sessionId, activityId }) => {
+      const response = await fetch(`/api/sessions/${sessionId}`);
+      const data = await response.json();
+      return data.activities.find((item: { id: string }) => item.id === activityId);
+    },
+    { sessionId: session.id, activityId: activity.id },
+  );
+  expect(migrated.exerciseIds).toEqual(['vectors-fixture-final']);
+  expect(migrated.progress.lessonRunnerContinued).toBe(true);
+  expect(migrated.status).toBe('in_progress');
+  await page.reload();
+  await expect(page.getByTestId('exercise-prompt')).toContainText(
+    "Explain what a vector's magnitude represents.",
+  );
+  await page.getByLabel('Your answer').fill("A vector's magnitude is its length.");
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  const selfCheck = page.getByRole('button', { name: 'Submit self-check' });
+  const retry = page.getByRole('button', { name: /Try again/ });
+  const continueButton = page.getByRole('button', { name: 'Continue' });
+  await expect
+    .poll(
+      async () =>
+        (await selfCheck.isVisible()) ||
+        (await retry.isVisible()) ||
+        (await continueButton.isVisible()),
+    )
+    .toBe(true);
+  if (await selfCheck.isVisible()) {
+    for (const checkbox of await page.getByRole('checkbox').all()) await checkbox.click();
+    await selfCheck.click();
+  } else if (await retry.isVisible()) {
+    await retry.click();
+  }
+  await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
+  await continueButton.click();
+  const completed = await page.evaluate(
+    async ({ sessionId, activityId }) => {
+      const response = await fetch(`/api/sessions/${sessionId}`);
+      const data = await response.json();
+      return data.activities.find((item: { id: string }) => item.id === activityId);
+    },
+    { sessionId: session.id, activityId: activity.id },
+  );
+  expect(completed.status).toBe('completed');
+  expect(completed.lastAttempt.exerciseId).toBe('vectors-fixture-final');
 });
 
 test('a failed knowledge point shows the retry screen and resumes at round two if scheduled again', async ({

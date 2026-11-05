@@ -1,8 +1,28 @@
 concept: gradients
-version: 1
-blocks:
-  - { kind: objective, md: "Interpret a gradient as a vector of partial derivatives." }
-  - { kind: math, md: "For $f(x,y)=x^2+y^2$, $\\nabla f=(2x,2y)$." }
-  - { kind: check, exercise: gradients-code-read }
-  - { kind: summary, md: "The gradient points toward steepest increase." }
-fast_path: [objective, summary]
+version: 2
+objective: Practice gradients and their components.
+knowledge_points:
+  - id: gradients-fixture-1
+    title: Read a gradient
+    explain: A gradient collects the partial derivatives of a function.
+    worked: This example shows a gradient with two components.
+    problems:
+      [
+        gradients-fixture-practice-1,
+        gradients-fixture-practice-2,
+        gradients-fixture-practice-3,
+        gradients-fixture-template-1,
+      ]
+  - id: gradients-fixture-2
+    title: Use the gradient
+    explain: The gradient points toward the direction of steepest increase.
+    worked: This example shows how a gradient describes change.
+    problems:
+      [
+        gradients-fixture-practice-4,
+        gradients-fixture-practice-5,
+        gradients-fixture-practice-6,
+        gradients-fixture-template-2,
+      ]
+final: gradients-fixture-final
+summary: A gradient collects partial derivatives and describes steepest increase.

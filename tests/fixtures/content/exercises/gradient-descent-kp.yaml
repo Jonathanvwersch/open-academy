@@ -1,0 +1,116 @@
+concept: gradient-descent
+exercises:
+  - {
+      id: gradient-descent-fixture-practice-1,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: gradient-descent-fixture-practice-2,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: gradient-descent-fixture-practice-3,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: gradient-descent-fixture-practice-4,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: gradient-descent-fixture-practice-5,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: gradient-descent-fixture-practice-6,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - id: gradient-descent-fixture-final
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 1
+    est_minutes: 2
+    prompt: Explain how gradient descent updates a parameter.
+    hints: []
+    rubric:
+      - { id: update, criterion: Describes a parameter update, weight: 1, required: true }
+    exemplar: Gradient descent moves a parameter against its gradient, scaled by the learning rate.
+    solution: Gradient descent subtracts a learning-rate-scaled gradient from a parameter.
+  - id: gradient-descent-fixture-template-1
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "If a = {{=a}}, what is 2a?"
+    hints: ["Double a."]
+    solution: "Double a: 2 × {{=a}} = {{=2*a}}."
+    params: { a: { min: 1, max: 5 } }
+    answer_expr: 2*a
+    tolerance: { abs: 0 }
+  - id: gradient-descent-fixture-template-2
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "If a = {{=a}}, what is 2a?"
+    hints: ["Double a."]
+    solution: "Double a: 2 × {{=a}} = {{=2*a}}."
+    params: { a: { min: 1, max: 5 } }
+    answer_expr: 2*a
+    tolerance: { abs: 0 }

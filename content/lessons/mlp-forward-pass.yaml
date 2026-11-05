@@ -54,7 +54,7 @@ knowledge_points:
       </svg>
       ```
     worked: |
-      This example computes a layer of three neurons for one input.
+      This example shows a layer of three neurons for one input.
 
       $$W = \begin{pmatrix}2 & 1\\ 0 & -1\\ 1 & 1\end{pmatrix}, \quad b = (-1, 1, -4), \quad x = (1, 2)$$
 
@@ -109,7 +109,7 @@ knowledge_points:
       </svg>
       ```
     worked: |
-      This example runs the house network from the diagram on a new house, $x = (3, 4)$.
+      This example shows a forward pass through the house network for a new house, $x = (3, 4)$.
 
       Network: $W_1 = \begin{pmatrix}1 & 0\\ -1 & 1\end{pmatrix}$, $b_1 = (0, -2)$, ReLU, $W_2 = (2, 3)$, $b_2 = 1$.
 
@@ -142,7 +142,7 @@ knowledge_points:
 
       $$\text{parameters} = d_\text{in} \cdot d_\text{out} + d_\text{out}$$
     worked: |
-      This example tracks shapes and parameter counts through the house network for a batch of $B = 3$ houses.
+      This example shows shapes and parameter counts through the house network for a batch of $B = 3$ houses.
 
       The network takes 2 inputs, has 2 hidden neurons, and returns 1 output.
 

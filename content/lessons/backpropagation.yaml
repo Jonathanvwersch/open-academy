@@ -74,7 +74,7 @@ knowledge_points:
       - **Visit nodes in reverse order.** Each node receives the derivative of the loss with respect to its output, called the **upstream gradient**. For each input, multiply the upstream gradient by the node's local derivative for that input, and pass the result back to that input.
       - **Add** the gradients that arrive at a value from more than one node.
 
-      ReLU's local derivative is 1 if $z > 0$ and 0 otherwise. This is written $\mathbb{1}[z > 0]$, which means "1 when $z > 0$, else 0". So ReLU acts as a gate: it passes the gradient for a unit that was switched on, and blocks it for one that was off.
+      ReLU's local derivative is 1 if $z > 0$ and 0 otherwise. This is written $\mathbf{1}[z > 0]$, which means "1 when $z > 0$, else 0". So ReLU acts as a gate: it passes the gradient for a unit that was switched on, and blocks it for one that was off.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 176" aria-label="The tiny network with forward values above each node (z = 2, h = 2, y hat = 6, L = 4) and backward gradients below (dL/dz = 12, dL/dh = 12, dL/dy hat = 4, dL/dL = 1), plus dL/dw1 = 12 and dL/dw2 = 8">
@@ -109,7 +109,7 @@ knowledge_points:
       1. Loss node: $\partial L/\partial \hat y = 2(\hat y - y) = 2(6 - 4) = 4$.
       2. Node $\hat y = w_2 h$, for $w_2$: upstream 4 times the other input $h = 2$, so $\partial L/\partial w_2 = 8$.
       3. Same node, for $h$: upstream 4 times the other input $w_2 = 3$, so $\partial L/\partial h = 12$.
-      4. ReLU node: $\partial L/\partial z = 12 \cdot \mathbb{1}[z > 0] = 12 \cdot 1 = 12$, because $z = 2 > 0$.
+      4. ReLU node: $\partial L/\partial z = 12 \cdot \mathbf{1}[z > 0] = 12 \cdot 1 = 12$, because $z = 2 > 0$.
       5. Node $z = w_1 x$, for $w_1$: upstream 12 times the other input $x = 1$, so $\partial L/\partial w_1 = 12$.
 
       Every step used one upstream gradient and one value kept from the forward pass. Both gradients are positive, so lowering either weight lowers the loss, and $w_1$ has the stronger effect.
@@ -128,7 +128,7 @@ knowledge_points:
       In code, store a batch as `X` with shape $(B, d)$: $B$ examples in rows, $d$ inputs each. Store the first layer's weights `W1` with shape $(d, H)$, so `Z = X @ W1 + b1` gives one row of $H$ values per example. Write $G_Z$ for the array of $\partial L/\partial Z$ values, which has the same shape as $Z$. Three rules cover the backward pass:
 
       - **Shape rule.** A gradient always has the same shape as the thing it is the gradient of. `dW1` must be $(d, H)$, and the only way to multiply `X` $(B, d)$ and $G_Z$ $(B, H)$ into that shape is $X^\top G_Z$. In the same way, the gradient passed back to the layer's input is $G_Z W^\top$.
-      - **Entry-by-entry nodes.** ReLU acts on each entry separately, so its backward pass multiplies matching entries. The symbol $\odot$ means "multiply matching entries": $(2, 3) \odot (4, 5) = (8, 15)$. So $G_Z = G_H \odot \mathbb{1}[Z > 0]$.
+      - **Entry-by-entry nodes.** ReLU acts on each entry separately, so its backward pass multiplies matching entries. The symbol $\odot$ means "multiply matching entries": $(2, 3) \odot (4, 5) = (8, 15)$. So $G_Z = G_H \odot \mathbf{1}[Z > 0]$.
       - **Shared parameters add up.** The bias `b1` is added to every row, like a value used $B$ times, so its gradient adds up the rows of $G_Z$.
 
       ```svg
@@ -169,7 +169,7 @@ knowledge_points:
       db1 = g_z1.sum(axis=0)            # (H,)
       ```
 
-      In NumPy, `*` multiplies matching entries, so `g_h1 * (z1 > 0)` is $G_H \odot \mathbb{1}[Z > 0]$. Every gradient line is one of the three rules: the shape rule for weights and for passing back, the gate for ReLU, and a sum over rows for biases.
+      In NumPy, `*` multiplies matching entries, so `g_h1 * (z1 > 0)` is $G_H \odot \mathbf{1}[Z > 0]$. Every gradient line is one of the three rules: the shape rule for weights and for passing back, the gate for ReLU, and a sum over rows for biases.
     problems:
       - bpp-grad-shape
       - bpp-hadamard-template
@@ -215,5 +215,5 @@ knowledge_points:
 final: bp-explain
 summary: |
   - Training needs the loss's derivative for every parameter. Backprop gets them all from one forward pass, which keeps every value, and one backward pass.
-  - Backward: start at $\partial L/\partial L = 1$, then at each node multiply the upstream gradient by the local derivative, adding where branches meet. ReLU gates with $\mathbb{1}[z > 0]$.
+  - Backward: start at $\partial L/\partial L = 1$, then at each node multiply the upstream gradient by the local derivative, adding where branches meet. ReLU gates with $\mathbf{1}[z > 0]$.
   - With arrays, a gradient has the same shape as its parameter, ReLU multiplies entries with $\odot$, and biases add up over rows. Check a few gradients with finite differences.

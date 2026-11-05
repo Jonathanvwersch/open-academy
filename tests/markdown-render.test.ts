@@ -63,4 +63,4 @@ test('all authored lesson Markdown and exercise prompts render without errors', 
     expect(html, sample.id).not.toContain('katex-error');
     expect(html, sample.id).not.toContain('|---|');
   }
-});
+}, 20_000); // Renders all lesson Markdown, exercise prompts, and five samples per template.

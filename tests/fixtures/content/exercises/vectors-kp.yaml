@@ -1,0 +1,116 @@
+concept: vectors
+exercises:
+  - {
+      id: vectors-fixture-practice-1,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: vectors-fixture-practice-2,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: vectors-fixture-practice-3,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: vectors-fixture-practice-4,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: vectors-fixture-practice-5,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: vectors-fixture-practice-6,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - id: vectors-fixture-final
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 1
+    est_minutes: 2
+    prompt: Explain what a vector's magnitude represents.
+    hints: []
+    rubric:
+      - { id: length, criterion: Identifies magnitude as length, weight: 1, required: true }
+    exemplar: A vector's magnitude is its length.
+    solution: The magnitude summarizes the vector's length.
+  - id: vectors-fixture-template-1
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "If a = {{=a}}, what is 2a?"
+    hints: ["Double a."]
+    solution: "Double a: 2 × {{=a}} = {{=2*a}}."
+    params: { a: { min: 1, max: 5 } }
+    answer_expr: 2*a
+    tolerance: { abs: 0 }
+  - id: vectors-fixture-template-2
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "If a = {{=a}}, what is 2a?"
+    hints: ["Double a."]
+    solution: "Double a: 2 × {{=a}} = {{=2*a}}."
+    params: { a: { min: 1, max: 5 } }
+    answer_expr: 2*a
+    tolerance: { abs: 0 }

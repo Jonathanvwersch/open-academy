@@ -61,6 +61,7 @@ test('attempts update mastery and create a review card used by Today', async () 
   const activity = session.activities.find((item: { kind: string }) => item.kind === 'learn');
   expect(activity).toBeDefined();
   const exerciseId = activity.exerciseIds[0] as string;
+  expect(exerciseId).toBe('vectors-fixture-final');
 
   const first = await app.request('/api/attempts', {
     method: 'POST',
@@ -68,20 +69,28 @@ test('attempts update mastery and create a review card used by Today', async () 
     body: JSON.stringify({
       exerciseId,
       activityId: activity.id,
-      answer: 0,
+      answer: { text: 'I am not sure yet.' },
       mode: 'practice',
     }),
   });
   expect(first.status).toBe(200);
-  expect((await first.json()).retryAllowed).toBe(true);
+  expect(await first.json()).toMatchObject({ retryAllowed: true });
 
-  const second = await app.request('/api/attempts', {
+  const gradedApp = createApp({
+    db,
+    content,
+    tutorProvider: new FakeProvider(undefined, {
+      criteria: [{ id: 'length', judgement: 'met', evidence: 'magnitude is length' }],
+      feedback_md: 'Good explanation.',
+    }),
+  });
+  const second = await gradedApp.request('/api/attempts', {
     method: 'POST',
     headers,
     body: JSON.stringify({
       exerciseId,
       activityId: activity.id,
-      answer: 5,
+      answer: { text: 'A vector magnitude is its length.' },
       mode: 'practice',
     }),
   });

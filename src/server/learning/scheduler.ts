@@ -206,9 +206,6 @@ function packWeekday(
   const unfinishedLessonConcepts = new Set(
     (state.lessonRuns ?? [])
       .filter((run) => run.status === 'in_progress' || run.status === 'needs_retry')
-      .filter(
-        (run) => (content.lessonsByConcept.get(run.conceptId)?.knowledge_points?.length ?? 0) > 0,
-      )
       .map((run) => run.conceptId),
   );
   const compareLearnCandidates = (left: Candidate, right: Candidate) => {
@@ -449,13 +446,12 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
       hasKnowledgePointLesson && lessonRunStatus === 'completed';
     if (shouldResumeLesson) {
       const finalId = content.lessonsByConcept.get(concept.id)?.final;
-      const exercise = finalId
-        ? content.exercisesById.get(finalId)
-        : chooseExercise(state, content, concept, undefined, ['core', 'check'], now, recentIds);
-      const exerciseIds = exercise ? [exercise] : [];
-      candidates.push(
-        makeCandidate(state, content, concept, 'learn', exerciseIds, week, project, true, 100),
-      );
+      const exercise = finalId ? content.exercisesById.get(finalId) : undefined;
+      if (exercise) {
+        candidates.push(
+          makeCandidate(state, content, concept, 'learn', [exercise], week, project, true, 100),
+        );
+      }
     } else if (!completedKnowledgePointLesson && (isNew || isContinuing)) {
       const dimension = concept.dimensions.find((candidate) => {
         const state = masteryByKey.get(masteryKey(concept.id, candidate))?.state ?? 'not_assessed';

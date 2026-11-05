@@ -364,6 +364,18 @@ export function createApiRoutes(deps: {
     const completed = body.data.complete === true;
     const { complete: _complete, ...progress } = body.data;
     const now = requestNow(context);
+    const lessonIndex =
+      body.data.lessonRunnerContinued === true &&
+      !completed &&
+      activity.kind === 'learn' &&
+      activity.conceptId
+        ? await content()
+        : null;
+    const lesson = activity.conceptId
+      ? lessonIndex?.lessonsByConcept.get(activity.conceptId)
+      : undefined;
+    const exerciseIds =
+      lesson?.knowledge_points?.length && lesson.final ? [lesson.final] : activity.exerciseIds;
     const [updated] = await db
       .update(sessionActivities)
       .set({
@@ -371,6 +383,7 @@ export function createApiRoutes(deps: {
         status: completed ? 'completed' : 'in_progress',
         startedAt: activity.startedAt ?? now,
         completedAt: completed ? now : null,
+        ...(exerciseIds !== activity.exerciseIds ? { exerciseIds } : {}),
       })
       .where(eq(sessionActivities.id, activity.id))
       .returning();
