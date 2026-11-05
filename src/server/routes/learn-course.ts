@@ -53,7 +53,7 @@ export function registerLearnCourseRoutes(
       repo.schedulerState(now),
       repo.user(),
       deps.db.select().from(xpEvents).where(eq(xpEvents.userId, userId)),
-      repo.activeSession(),
+      repo.activeSession(now),
     ]);
     const todayLocal = localDateKey(now, timeZone);
     const totalXp = events.reduce((total, event) => total + event.amount, 0);

@@ -143,7 +143,7 @@ export function createApiRoutes(deps: {
     const sessionKind = weekday === 'Sat' ? 'saturday' : weekday === 'Sun' ? 'sunday' : 'weekday';
     const budget = sessionBudget(sessionKind, prefs);
     const plan = planSession(state, index, now, budget, sessionKind);
-    const active = await repo.activeSession();
+    const active = await repo.activeSession(now);
     const diagnostic = await repo.latestDiagnosticRun();
     const week = currentCurriculumWeek(state.startDate, now);
     const weekFocus = index.curriculum?.weeks.find((entry) => entry.week === week);
@@ -232,6 +232,12 @@ export function createApiRoutes(deps: {
       });
       plan.reasons.unshift(reason);
     }
+    await db
+      .update(studySessions)
+      .set({ status: 'abandoned', endedAt: now })
+      .where(
+        and(eq(studySessions.userId, context.get('userId')), eq(studySessions.status, 'active')),
+      );
     const [session] = await db
       .insert(studySessions)
       .values({
@@ -265,7 +271,8 @@ export function createApiRoutes(deps: {
   });
 
   api.get('/sessions/active', async (context) => {
-    const session = await withRepo(context).activeSession();
+    const now = requestNow(context);
+    const session = await withRepo(context).activeSession(now);
     const index = await content();
     const fullSession = session ? await withRepo(context).session(session.id) : null;
     return context.json(
@@ -278,7 +285,7 @@ export function createApiRoutes(deps: {
                 ? index.conceptsById.get(activity.conceptId)?.title
                 : undefined,
             })),
-            serverNow: requestNow(context),
+            serverNow: now,
           }
         : null,
     );
@@ -936,10 +943,12 @@ export function createApiRoutes(deps: {
         .limit(1);
       if (card) {
         const rating = mapReviewRating({ correct: result.correct, hintsUsed, attemptNo });
+        const timezone = (await repo.user())?.timezone ?? 'UTC';
         const scheduled = scheduleReview(
           card.fsrs as never,
           now,
           rating,
+          timezone,
           process.env.NODE_ENV !== 'test',
         );
         await db

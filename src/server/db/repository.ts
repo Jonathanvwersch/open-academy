@@ -5,6 +5,7 @@ import { retrievability } from '../learning/fsrs.js';
 import type { SchedulerState } from '../learning/scheduler.js';
 import type { MasteryRecord, MasteryState } from '../learning/types.js';
 import { initialMastery } from '../learning/types.js';
+import { localDateKey } from '../learning/xp.js';
 import type { Database } from './client.js';
 import {
   attempts,
@@ -182,14 +183,18 @@ export class LearnerRepository {
       .orderBy(asc(attempts.attemptNo));
   }
 
-  async activeSession() {
-    const [session] = await this.db
+  async activeSession(now: Date) {
+    const [user] = await this.db.select().from(users).where(eq(users.id, this.userId)).limit(1);
+    const timezone = user?.timezone ?? 'UTC';
+    const today = localDateKey(now, timezone);
+    const sessions = await this.db
       .select()
       .from(studySessions)
       .where(and(eq(studySessions.userId, this.userId), eq(studySessions.status, 'active')))
-      .orderBy(desc(studySessions.startedAt))
-      .limit(1);
-    return session;
+      .orderBy(desc(studySessions.startedAt));
+    return sessions.find(
+      (session) => session.startedAt && localDateKey(session.startedAt, timezone) === today,
+    );
   }
 
   async session(sessionId: string) {

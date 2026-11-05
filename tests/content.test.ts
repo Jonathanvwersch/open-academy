@@ -828,6 +828,26 @@ test('knowledge-point style rules count prose, math spans, and fenced code corre
   ).toBe(false);
 });
 
+test('lesson review dimensions require a non-template schedulable exercise', async () => {
+  const data = await notationFixture();
+  const mathExercises = data.exercises.filter(
+    (entry) => entry.concept === 'vectors' && entry.value.dimension === 'math',
+  );
+  expect(mathExercises.some((entry) => 'answer_expr' in entry.value)).toBe(true);
+  for (const entry of mathExercises) {
+    if (!('answer_expr' in entry.value)) entry.value.role = 'diagnostic';
+  }
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'vectors',
+        message: 'dimension "math" has exercises but no non-template review-compatible exercise',
+      }),
+    ]),
+  );
+});
+
 test('SVG fences reject malformed, unsafe, inaccessible, and non-hex SVG', async () => {
   const invalidSvg = [
     '<svg viewBox="0 0 10 10" aria-label="Diagram"><rect></svg>',

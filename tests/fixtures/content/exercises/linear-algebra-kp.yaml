@@ -114,3 +114,13 @@ exercises:
     params: { a: { min: 1, max: 5 } }
     answer_expr: 2*a
     tolerance: { abs: 0 }
+  - id: linear-algebra-fixture-review
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is the dot product of the row (1, 2) and the column (5, 6)?"
+    answer: 17
+    tolerance: { abs: 0.000001 }
+    solution: "Multiply matching entries and add: 1 × 5 + 2 × 6 = 17."

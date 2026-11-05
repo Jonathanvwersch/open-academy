@@ -18,6 +18,7 @@ const SVG_COLOR_PROPERTIES = new Set([
   'solid-color',
   'background-color',
 ]);
+const REVIEWABLE_EXERCISE_ROLES = new Set(['review', 'core', 'practice', 'transfer']);
 
 function svgIssue(source: string): string | null {
   if (/<\s*(script|foreignObject)\b/i.test(source)) return 'forbidden element';
@@ -346,6 +347,27 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
             `${block.kind} block exercise "${block.exercise}" belongs to "${exercise.concept}"`,
           );
         }
+      }
+    }
+  }
+
+  for (const { value: lesson, file } of data.lessons) {
+    const conceptExercises = data.exercises.filter((entry) => entry.concept === lesson.concept);
+    const dimensions = new Set(conceptExercises.map((entry) => entry.value.dimension));
+    for (const dimension of dimensions) {
+      const hasReviewableExercise = conceptExercises.some(
+        (entry) =>
+          entry.value.dimension === dimension &&
+          REVIEWABLE_EXERCISE_ROLES.has(entry.value.role) &&
+          !isTemplate(entry.value),
+      );
+      if (!hasReviewableExercise) {
+        addIssue(
+          issues,
+          file,
+          lesson.concept,
+          `dimension "${dimension}" has exercises but no non-template review-compatible exercise`,
+        );
       }
     }
   }

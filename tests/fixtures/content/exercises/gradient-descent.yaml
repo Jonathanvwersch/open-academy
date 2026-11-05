@@ -36,3 +36,31 @@ exercises:
     hints: []
     solution: "Subtract the gradient-scaled learning rate."
     accept: ["-"]
+  - id: gradient-descent-fixture-review
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In `w = w - eta * grad_w`, what does `grad_w` represent?"
+    options:
+      - { id: a, text: "The loss gradient with respect to w", correct: true }
+      - {
+          id: b,
+          text: "The current learning rate",
+          correct: false,
+          feedback: "The learning rate is eta.",
+        }
+      - {
+          id: c,
+          text: "The current value of w",
+          correct: false,
+          feedback: "The current parameter value is w.",
+        }
+      - {
+          id: d,
+          text: "The target value for w",
+          correct: false,
+          feedback: "The gradient comes from the loss, not a target parameter.",
+        }
+    solution: "The gradient measures how the loss changes as w changes. The update subtracts a scaled gradient to reduce the loss."

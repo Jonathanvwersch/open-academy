@@ -79,6 +79,45 @@ describe('buildProgress', () => {
     expect(result.hours).toBe(2);
   });
 
+  it('stops elapsed-time accumulation for abandoned sessions and keeps their study day', () => {
+    const result = buildProgress(
+      progressInput({
+        now: new Date('2026-01-02T00:30:00.000Z'),
+        sessions: [
+          {
+            activeSeconds: 600,
+            status: 'abandoned',
+            startedAt: new Date('2026-01-01T12:00:00.000Z'),
+          },
+          {
+            activeSeconds: 600,
+            status: 'completed',
+            startedAt: new Date('2026-01-02T00:10:00.000Z'),
+          },
+        ],
+      }),
+    );
+    expect(result.hours).toBeCloseTo(1 / 3);
+    expect(result.streakDays).toBe(2);
+  });
+
+  it('does not accrue stale active-session time after the learner local day changes', () => {
+    const result = buildProgress(
+      progressInput({
+        now: new Date('2026-01-02T08:30:00.000Z'),
+        timeZone: 'America/Los_Angeles',
+        sessions: [
+          {
+            activeSeconds: 600,
+            status: 'active',
+            startedAt: new Date('2026-01-02T07:30:00.000Z'),
+          },
+        ],
+      }),
+    );
+    expect(result.hours).toBeCloseTo(1 / 6);
+  });
+
   it('counts a streak by local dates across a UTC date boundary', () => {
     const result = buildProgress(
       progressInput({

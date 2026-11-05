@@ -86,15 +86,6 @@ export function buildProgress(input: {
         ),
     );
   });
-  const seconds = input.sessions.reduce(
-    (total, session) =>
-      total +
-      session.activeSeconds +
-      (session.status === 'active' && session.startedAt
-        ? Math.max(0, Math.floor((now.getTime() - session.startedAt.getTime()) / 1000))
-        : 0),
-    0,
-  );
   const dateKey = (date: Date) => {
     const parts = new Intl.DateTimeFormat('en-US', {
       timeZone,
@@ -105,12 +96,21 @@ export function buildProgress(input: {
     const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
     return `${values.year}-${values.month}-${values.day}`;
   };
+  const today = dateKey(now);
+  const seconds = input.sessions.reduce(
+    (total, session) =>
+      total +
+      session.activeSeconds +
+      (session.status === 'active' && session.startedAt && dateKey(session.startedAt) === today
+        ? Math.max(0, Math.floor((now.getTime() - session.startedAt.getTime()) / 1000))
+        : 0),
+    0,
+  );
   const studyDays = new Set(
     input.sessions
       .map((session) => (session.startedAt ? dateKey(session.startedAt) : ''))
       .filter(Boolean),
   );
-  const today = dateKey(now);
   const cursor = new Date(`${today}T00:00:00.000Z`);
   let streakDays = 0;
   while (studyDays.has(cursor.toISOString().slice(0, 10))) {

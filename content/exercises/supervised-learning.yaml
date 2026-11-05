@@ -289,6 +289,16 @@ exercises:
       y3: { min: 0, max: 100, step: 10 }
     constraints: ["mod((p1-y1)^2 + (p2-y2)^2 + (p3-y3)^2, 3) == 0"]
     tolerance: { abs: 0.000001 }
+  - id: slp-fixed-squared-error
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A prediction is 7 and the target is 5. What is the squared error, (prediction − target)²?"
+    answer: 4
+    tolerance: { abs: 0.000001 }
+    solution: "The error is 7 − 5 = 2. Squaring it gives 2² = 4."
   - id: slp-argmin
     dimension: conceptual
     type: mc

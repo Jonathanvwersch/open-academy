@@ -1,5 +1,7 @@
+import { fsrs, generatorParameters, Rating, State } from 'ts-fsrs';
 import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../src/server/content/load.js';
+import { isTemplate } from '../src/server/content/templates.js';
 import type { ContentIndex } from '../src/server/content/types.js';
 import { deriveLearningDebt } from '../src/server/learning/debt.js';
 import {
@@ -271,9 +273,33 @@ test('FSRS rating mapping never assigns Easy and schedules a review card', () =>
   expect(mapReviewRating({ correct: 1, hintsUsed: 1, attemptNo: 1 })).toBe(2);
   expect(mapReviewRating({ correct: 1, hintsUsed: 0, attemptNo: 1 })).toBe(3);
   const card = newReviewCard(now);
-  const result = scheduleReview(card, now, 'good', false);
+  const result = scheduleReview(card, now, 'good', 'UTC', false);
   expect(result.card.reps).toBeGreaterThan(0);
   expect(result.card.due.getTime()).toBeGreaterThan(now.getTime());
+});
+
+test('FSRS schedules new cards in day-scale intervals without short-term steps', () => {
+  const day = 86_400_000;
+  for (const [rating, expectedDays] of [
+    ['again', 1],
+    ['hard', 2],
+    ['good', 3],
+  ] as const) {
+    const scheduled = scheduleReview(newReviewCard(now), now, rating, 'UTC', false);
+    expect(scheduled.card.due.getTime() - now.getTime()).toBe(expectedDays * day);
+  }
+});
+
+test('reviewing a stored learning-state card schedules at least a day ahead', () => {
+  const shortTermScheduler = fsrs(generatorParameters({ enable_fuzz: false }));
+  const learning = shortTermScheduler.next(newReviewCard(now), now, Rating.Again).card;
+  expect(learning.state).toBe(State.Learning);
+
+  const reviewNow = new Date(now.getTime() + 5 * 60_000);
+  const scheduled = scheduleReview(learning, reviewNow, 'good', 'UTC', false);
+  expect(scheduled.card.due.getTime()).toBeGreaterThanOrEqual(
+    new Date('2026-01-15T00:00:00.000Z').getTime(),
+  );
 });
 
 test('a newly scheduled review is due no earlier than the next learner calendar day', () => {
@@ -720,6 +746,44 @@ test('Overdue reviews are scheduled', () => {
   expect(review).toBeDefined();
   expect(review?.reason.summary).toContain('Due since 13 Jan 2026');
   expect(review?.reason.summary).toContain('~70% recall');
+});
+
+test('due reviews use non-template practice exercises when no higher-priority role exists', () => {
+  const practiceOnlyContent: ContentIndex = {
+    ...content,
+    exercisesByConcept: new Map(content.exercisesByConcept),
+  };
+  const vectorExercises = content.exercisesByConcept.get('vectors') ?? [];
+  const practiceOnlyExercises = vectorExercises.map((exercise) =>
+    exercise.dimension === 'math' ? { ...exercise, role: 'practice' as const } : exercise,
+  );
+  const eligibleIds = new Set(
+    practiceOnlyExercises
+      .filter(
+        (exercise) =>
+          exercise.dimension === 'math' && exercise.role === 'practice' && !isTemplate(exercise),
+      )
+      .map((exercise) => exercise.id),
+  );
+  practiceOnlyContent.exercisesByConcept.set('vectors', practiceOnlyExercises);
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: new Date(now.getTime() - 86_400_000).toISOString(),
+      retrievability: 0.7,
+    },
+  ];
+
+  const review = planSession(state, practiceOnlyContent, now, 60).activities.find(
+    (activity) => activity.kind === 'review',
+  );
+  const selectedId = review?.exerciseIds[0] ?? '';
+  expect(eligibleIds.has(selectedId)).toBe(true);
+  expect(
+    practiceOnlyExercises.some((exercise) => exercise.id === selectedId && !isTemplate(exercise)),
+  ).toBe(true);
 });
 
 test('Project prerequisites receive a priority term', () => {

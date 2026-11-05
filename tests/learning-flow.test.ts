@@ -1,7 +1,8 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { createApp } from '../src/server/app.js';
 import { loadContent } from '../src/server/content/load.js';
+import { instantiateExercise, isTemplate } from '../src/server/content/templates.js';
 import type { ContentIndex } from '../src/server/content/types.js';
 import { createDb } from '../src/server/db/client.js';
 import {
@@ -9,12 +10,15 @@ import {
   hintEvents,
   lessonRuns,
   masteryEvents,
+  reviewCards,
+  reviewLogs,
   sessionActivities,
   studySessions,
   users,
   xpEvents,
 } from '../src/server/db/schema.js';
 import { env } from '../src/server/env.js';
+import { newReviewCard, scheduleInitialReview } from '../src/server/learning/fsrs.js';
 import { FakeProvider } from '../src/server/tutor/provider.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
@@ -48,6 +52,104 @@ afterAll(async () => {
   await db.delete(users).where(eq(users.id, userId));
   await db.$client.end();
 });
+
+async function resetLearner(timezone = 'UTC') {
+  await db.delete(users).where(eq(users.id, userId));
+  await db.insert(users).values({
+    id: userId,
+    displayName: 'Test learner',
+    timezone,
+    startDate: '2026-01-01',
+    prefs: { scheduleMinutes: 60 },
+  });
+}
+
+function headersAt(now: string) {
+  return { 'content-type': 'application/json', 'X-Now': now };
+}
+
+function correctAnswer(exerciseId: string, seed: number | null): unknown {
+  const indexed = content.exercisesById.get(exerciseId);
+  if (!indexed) throw new Error(`Missing fixture exercise ${exerciseId}`);
+  const exercise = isTemplate(indexed) ? instantiateExercise(indexed, seed ?? 0).exercise : indexed;
+  if (exercise.type === 'mc') {
+    const correct = exercise.options.filter((option) => option.correct).map((option) => option.id);
+    return exercise.multi ? correct : correct[0];
+  }
+  if ('answer' in exercise) return exercise.answer;
+  if ('accept' in exercise) return exercise.accept[0];
+  throw new Error(`No test answer for ${exercise.id}`);
+}
+
+async function startLessonRun(conceptId: string, activityId: string, now: string) {
+  const response = await app.request(`/api/lessons/${conceptId}/run`, {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ activityId }),
+  });
+  expect(response.status).toBe(200);
+  return (await response.json()).run;
+}
+
+async function answerLessonProblem(
+  conceptId: string,
+  activityId: string,
+  pending: { id: string; exerciseId: string; seed: number | null },
+  now: string,
+) {
+  return app.request(`/api/lessons/${conceptId}/run/answer`, {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({
+      problemId: pending.id,
+      activityId,
+      answer: correctAnswer(pending.exerciseId, pending.seed),
+    }),
+  });
+}
+
+async function passLessonRun(conceptId: string, activityId: string, now: string) {
+  let run = await startLessonRun(conceptId, activityId, now);
+  for (let count = 0; count < 20 && run.status !== 'completed'; count += 1) {
+    if (!run.pending) run = await startLessonRun(conceptId, activityId, now);
+    const pending = run.pending as
+      | { id: string; exerciseId: string; seed: number | null }
+      | undefined;
+    if (!pending) throw new Error('Lesson runner did not provide a pending problem');
+    const response = await answerLessonProblem(conceptId, activityId, pending, now);
+    expect(response.status).toBe(200);
+    run = (await response.json()).state;
+  }
+  expect(run.status).toBe('completed');
+}
+
+async function createLearnActivity(now: string) {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 30,
+      startedAt: new Date(now),
+      status: 'active',
+    })
+    .returning();
+  if (!session) throw new Error('Could not create a lesson-run session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: 'vectors',
+      exerciseIds: ['vectors-fixture-final'],
+      plannedMinutes: 15,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Could not create a lesson-run activity');
+  return { session, activity };
+}
 
 test('attempts update mastery and create a review card used by Today', async () => {
   const headers = { 'content-type': 'application/json', 'X-Now': now };
@@ -353,4 +455,230 @@ test('opening a lesson review does not create session or attempt rows', async ()
   expect(afterRuns).toHaveLength(beforeRuns.length);
   expect(afterXp).toHaveLength(beforeXp.length);
   expect(afterMasteryEvents).toHaveLength(beforeMasteryEvents.length);
+});
+
+test('lesson-runner review cards are all planned, then rescheduled after review', async () => {
+  await resetLearner('America/Los_Angeles');
+  const dayOne = '2026-01-01T12:00:00.000Z';
+  const { activity } = await createLearnActivity(dayOne);
+  await passLessonRun('vectors', activity.id, dayOne);
+
+  const cards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
+  expect(cards.length).toBeGreaterThan(0);
+  const latestDueAt = Math.max(...cards.map((card) => card.dueAt.getTime()));
+  const reviewNow = new Date(
+    Math.max(new Date('2026-01-12T12:00:00.000Z').getTime(), latestDueAt + 60_000),
+  );
+  const todayResponse = await app.request('/api/today', {
+    headers: headersAt(reviewNow.toISOString()),
+  });
+  expect(todayResponse.status).toBe(200);
+  const today = await todayResponse.json();
+  const dueCards = cards.filter((card) => card.dueAt <= reviewNow);
+  const reviewActivities = today.plan.activities.filter(
+    (activity: { kind: string }) => activity.kind === 'review',
+  );
+  const plannedCardKeys = reviewActivities.map(
+    (activity: { conceptId: string; exerciseIds: string[] }) => {
+      const exercise = content.exercisesById.get(activity.exerciseIds[0] ?? '');
+      return `${activity.conceptId}/${exercise?.dimension}`;
+    },
+  );
+  expect(new Set(plannedCardKeys)).toEqual(
+    new Set(dueCards.map((card) => `${card.conceptId}/${card.dimension}`)),
+  );
+
+  const reviewActivity = reviewActivities[0];
+  if (!reviewActivity) throw new Error('No due review activity was planned');
+  const exerciseId = reviewActivity.exerciseIds[0] as string;
+  const exercise = content.exercisesById.get(exerciseId);
+  if (!exercise) throw new Error(`Missing review exercise ${exerciseId}`);
+  const card = dueCards.find(
+    (item) => item.conceptId === exercise.concept && item.dimension === exercise.dimension,
+  );
+  if (!card) throw new Error('Planned review did not match a due card');
+  const answerResponse = await app.request('/api/attempts', {
+    method: 'POST',
+    headers: headersAt(reviewNow.toISOString()),
+    body: JSON.stringify({
+      exerciseId,
+      answer: correctAnswer(exerciseId, null),
+      mode: 'review',
+    }),
+  });
+  expect(answerResponse.status).toBe(200);
+  expect((await answerResponse.json()).correct).toBeGreaterThan(0);
+
+  const [rescheduled] = await db.select().from(reviewCards).where(eq(reviewCards.id, card.id));
+  expect(rescheduled?.dueAt.getTime()).toBeGreaterThanOrEqual(reviewNow.getTime() + 86_400_000);
+  const logs = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id));
+  expect(logs).toHaveLength(1);
+
+  const laterToday = new Date(reviewNow.getTime() + 2 * 60 * 60_000);
+  const laterResponse = await app.request('/api/today', {
+    headers: headersAt(laterToday.toISOString()),
+  });
+  const later = await laterResponse.json();
+  expect(
+    later.plan.activities.some(
+      (activity: { kind: string; conceptId?: string; exerciseIds: string[] }) => {
+        if (activity.kind !== 'review' || activity.conceptId !== card.conceptId) return false;
+        return activity.exerciseIds.some(
+          (id) => content.exercisesById.get(id)?.dimension === card.dimension,
+        );
+      },
+    ),
+  ).toBe(false);
+});
+
+test('stale sessions are hidden for today, abandoned by new sessions, and keep lesson progress', async () => {
+  await resetLearner('America/Los_Angeles');
+  const dayOne = '2026-01-02T07:30:00.000Z';
+  const sessionResponse = await app.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(dayOne),
+    body: JSON.stringify({ budgetMinutes: 60, focusConceptId: 'vectors' }),
+  });
+  expect(sessionResponse.status).toBe(201);
+  const oldSession = await sessionResponse.json();
+  const sameDayToday = await app.request('/api/today', {
+    headers: headersAt(dayOne),
+  });
+  expect((await sameDayToday.json()).activeSessionId).toBe(oldSession.id);
+  const learnActivity = oldSession.activities.find(
+    (activity: { kind: string; conceptId?: string }) =>
+      activity.kind === 'learn' && activity.conceptId === 'vectors',
+  );
+  expect(learnActivity).toBeDefined();
+
+  let run = await startLessonRun('vectors', learnActivity.id, dayOne);
+  const pending = run.pending as
+    | { id: string; exerciseId: string; seed: number | null }
+    | undefined;
+  if (!pending) throw new Error('Expected a pending lesson problem');
+  const firstAnswer = await answerLessonProblem('vectors', learnActivity.id, pending, dayOne);
+  expect(firstAnswer.status).toBe(200);
+  run = (await firstAnswer.json()).state;
+  expect(run.status).toBe('in_progress');
+  const [lessonRun] = await db
+    .select()
+    .from(lessonRuns)
+    .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, 'vectors')));
+  expect(lessonRun?.status).toBe('in_progress');
+
+  const dueAt = new Date('2026-01-02T08:00:00.000Z');
+  const [existingCard] = await db
+    .select()
+    .from(reviewCards)
+    .where(
+      and(
+        eq(reviewCards.userId, userId),
+        eq(reviewCards.conceptId, 'vectors'),
+        eq(reviewCards.dimension, 'math'),
+      ),
+    );
+  if (existingCard) {
+    await db.update(reviewCards).set({ dueAt }).where(eq(reviewCards.id, existingCard.id));
+  } else {
+    const scheduled = scheduleInitialReview(
+      newReviewCard(new Date(dayOne)),
+      new Date(dayOne),
+      'again',
+      'America/Los_Angeles',
+      false,
+    );
+    await db.insert(reviewCards).values({
+      userId,
+      conceptId: 'vectors',
+      dimension: 'math',
+      fsrs: scheduled.card,
+      dueAt,
+      lastReviewAt: new Date(dayOne),
+      reps: scheduled.card.reps,
+      lapses: scheduled.card.lapses,
+    });
+  }
+
+  const dayTwo = '2026-01-02T08:30:00.000Z';
+  const todayResponse = await app.request('/api/today', { headers: headersAt(dayTwo) });
+  const today = await todayResponse.json();
+  expect(today.activeSessionId).toBeNull();
+  expect(
+    today.plan.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'review' && activity.conceptId === 'vectors',
+    ),
+  ).toBe(true);
+  expect(
+    today.plan.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === 'vectors',
+    ),
+  ).toBe(true);
+
+  const learnResponse = await app.request('/api/learn', { headers: headersAt(dayTwo) });
+  const learn = await learnResponse.json();
+  expect(learn.activeSessionId).toBeNull();
+  expect(
+    learn.tasks.some(
+      (task: { activityKind: string; conceptId?: string }) =>
+        task.activityKind === 'review' && task.conceptId === 'vectors',
+    ),
+  ).toBe(true);
+  expect(
+    learn.tasks.some(
+      (task: { activityKind: string; conceptId?: string }) =>
+        task.activityKind === 'learn' && task.conceptId === 'vectors',
+    ),
+  ).toBe(true);
+  const progressResponse = await app.request('/api/progress', {
+    headers: headersAt(dayTwo),
+  });
+  expect((await progressResponse.json()).hours).toBe(0);
+
+  const activeResponse = await app.request('/api/sessions/active', {
+    headers: headersAt(dayTwo),
+  });
+  expect(await activeResponse.json()).toBeNull();
+  const oldSessionResponse = await app.request(`/api/sessions/${oldSession.id}`, {
+    headers: headersAt(dayTwo),
+  });
+  expect(oldSessionResponse.status).toBe(200);
+  expect((await oldSessionResponse.json()).status).toBe('active');
+
+  const newSessionResponse = await app.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(dayTwo),
+    body: JSON.stringify({ budgetMinutes: 60 }),
+  });
+  expect(newSessionResponse.status).toBe(201);
+  const newSession = await newSessionResponse.json();
+  expect(
+    newSession.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === 'vectors',
+    ),
+  ).toBe(true);
+  expect(
+    newSession.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'review' && activity.conceptId === 'vectors',
+    ),
+  ).toBe(true);
+  const [abandoned] = await db
+    .select()
+    .from(studySessions)
+    .where(eq(studySessions.id, oldSession.id));
+  expect(abandoned?.status).toBe('abandoned');
+  expect(abandoned?.endedAt?.toISOString()).toBe(dayTwo);
+  const oldUrlAfterAbandon = await app.request(`/api/sessions/${oldSession.id}`, {
+    headers: headersAt(dayTwo),
+  });
+  expect(oldUrlAfterAbandon.status).toBe(200);
+  expect((await oldUrlAfterAbandon.json()).status).toBe('abandoned');
+
+  const activeAfterStart = await app.request('/api/sessions/active', {
+    headers: headersAt(dayTwo),
+  });
+  expect((await activeAfterStart.json()).id).toBe(newSession.id);
 });

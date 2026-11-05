@@ -826,3 +826,13 @@ exercises:
           category: incorrect_reasoning,
           feedback: "That treats every test sale as having error {{=e}}. The {{=k}} duplicate cases contribute almost zero, lowering the average.",
         }
+  - id: ttsp-fixed-error-gap
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A model has training error 12 and test error 20. How much higher is the test error?"
+    answer: 8
+    tolerance: { abs: 0.000001 }
+    solution: "Subtract training error from test error: 20 − 12 = 8."

@@ -114,3 +114,13 @@ exercises:
     params: { a: { min: 1, max: 5 } }
     answer_expr: 2*a
     tolerance: { abs: 0 }
+  - id: gradients-fixture-review
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "For f(x, y) = x² + y², what is the partial derivative with respect to x at (3, 4)?"
+    answer: 6
+    tolerance: { abs: 0.000001 }
+    solution: "The partial derivative is 2x. At x = 3, it equals 2 × 3 = 6."
