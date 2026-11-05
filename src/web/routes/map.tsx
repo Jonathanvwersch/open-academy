@@ -8,6 +8,7 @@ import { Button } from '@/ui/button.js';
 import { Card, CardContent } from '@/ui/card.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/select.js';
 import { conceptQueryOptions, mapQueryOptions } from '../queries.js';
+import { useTutorSidebar } from '../tutor/TutorSidebar.js';
 import '@xyflow/react/dist/style.css';
 
 export const Route = createFileRoute('/map')({
@@ -20,6 +21,7 @@ export const Route = createFileRoute('/map')({
 
 function MapPage() {
   const queryClient = useQueryClient();
+  const tutorSidebar = useTutorSidebar();
   const [domain, setDomain] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, unknown> | null>(null);
   const mapQuery = useSuspenseQuery(mapQueryOptions(domain));
@@ -141,6 +143,26 @@ function MapPage() {
       }>
     | undefined;
   const selectedDomain = domain ?? mapQuery.data.currentWeekDomain;
+  useEffect(() => {
+    if (concept?.id && concept.title) {
+      tutorSidebar.setContext({
+        conceptId: concept.id,
+        conceptTitle: concept.title,
+        page: 'map',
+        pageLabel: `Map · ${concept.title}`,
+        allowed: true,
+        enabled: false,
+      });
+    } else {
+      tutorSidebar.setContext({
+        page: 'map',
+        pageLabel: 'Knowledge map',
+        allowed: true,
+        enabled: false,
+      });
+    }
+    return () => tutorSidebar.clearContext();
+  }, [concept?.id, concept?.title, tutorSidebar]);
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">

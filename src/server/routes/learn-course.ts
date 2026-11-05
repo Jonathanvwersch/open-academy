@@ -232,7 +232,7 @@ async function getProblemsByRun(db: Database, runIds: string[]) {
   return byRun;
 }
 
-function buildCourseWeeks(
+export function buildCourseWeeks(
   index: ContentIndex,
   masteryRecords: Awaited<ReturnType<LearnerRepository['masteryRecords']>>,
   runs: Array<typeof lessonRuns.$inferSelect>,

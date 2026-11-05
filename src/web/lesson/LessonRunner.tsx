@@ -44,6 +44,13 @@ export function LessonRunner({
   const [error, setError] = useState('');
   const state = query.data.run;
   const contextProblem = state?.pendingProblem ?? state?.lastAnsweredProblem;
+  const currentPointIndex = state?.currentPointId
+    ? state.points.findIndex((point) => point.id === state.currentPointId)
+    : -1;
+  const pageLabel =
+    state && currentPointIndex >= 0
+      ? `${title} · step ${currentPointIndex + 1} of ${state.points.length}`
+      : title;
 
   useEffect(() => {
     tutorSidebar.setContext({
@@ -52,14 +59,20 @@ export function LessonRunner({
       activityId,
       exerciseId: contextProblem?.exerciseId,
       lessonProblemId: contextProblem?.id,
+      page: 'session',
+      knowledgePointId: state?.currentPointId ?? undefined,
+      pageLabel,
       allowed: true,
       enabled: tutorEnabled,
     });
+    return () => tutorSidebar.clearContext();
   }, [
     activityId,
     conceptId,
     contextProblem?.exerciseId,
     contextProblem?.id,
+    pageLabel,
+    state?.currentPointId,
     title,
     tutorEnabled,
     tutorSidebar,

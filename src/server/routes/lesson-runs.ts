@@ -9,6 +9,7 @@ import { LearnerRepository } from '../db/repository.js';
 import { attempts, lessonProblems, lessonRuns, sessionActivities, xpEvents } from '../db/schema.js';
 import { gradeExercise } from '../grading/index.js';
 import { updateActivityAndAdvance } from '../learning/activity-completion.js';
+import { answerDisplay, answerText } from '../learning/answer-display.js';
 import {
   deriveLessonState,
   selectNextProblem,
@@ -18,28 +19,6 @@ import { calculateCredit } from '../learning/mastery.js';
 import type { ApiEnv } from './api.js';
 
 type LessonContext = Context<ApiEnv>;
-
-function answerText(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number') return formatTemplateNumber(value);
-  if (Array.isArray(value)) return value.map(answerText).join(', ');
-  if (value && typeof value === 'object') return JSON.stringify(value);
-  return '';
-}
-
-function answerDisplay(exercise: IndexedExercise, answer: unknown): string {
-  if (exercise.type === 'mc') {
-    const ids = Array.isArray(answer) ? answer : [answer];
-    return ids
-      .map((id) => exercise.options.find((option) => option.id === id)?.text ?? answerText(id))
-      .join('\n');
-  }
-  if (exercise.type === 'numeric') {
-    const numeric = typeof answer === 'number' ? answer : Number(answer);
-    return Number.isFinite(numeric) ? formatTemplateNumber(numeric) : answerText(answer);
-  }
-  return answerText(answer);
-}
 
 function correctAnswerDisplay(exercise: IndexedExercise): string {
   if (exercise.type === 'mc') {

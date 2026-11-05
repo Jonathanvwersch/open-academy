@@ -22,6 +22,8 @@ describe('live OpenAI tutor smoke', () => {
           recentMistakes: [],
           history: [],
           problem_status: 'unanswered',
+          page: 'none',
+          page_content: '',
         },
         'nudge',
       );

@@ -1,9 +1,11 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useEffect } from 'react';
 import { Badge } from '@/ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
 import { courseQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
+import { useTutorSidebar } from '../tutor/TutorSidebar.js';
 
 export const Route = createFileRoute('/course')({
   loader: ({ context }) => context.queryClient.ensureQueryData(courseQueryOptions()),
@@ -15,6 +17,16 @@ export const Route = createFileRoute('/course')({
 
 function CoursePage() {
   const { data } = useSuspenseQuery(courseQueryOptions());
+  const tutorSidebar = useTutorSidebar();
+  useEffect(() => {
+    tutorSidebar.setContext({
+      page: 'course',
+      pageLabel: 'Course outline',
+      allowed: true,
+      enabled: false,
+    });
+    return () => tutorSidebar.clearContext();
+  }, [tutorSidebar]);
   return (
     <section className="space-y-6">
       <div>

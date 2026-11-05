@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Sparkles, X } from 'lucide-react';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, Eye, Plus, Sparkles, X } from 'lucide-react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Markdown } from '../components.js';
 import {
   type TutorThreadDetail,
@@ -36,6 +36,9 @@ export interface TutorRequestContext {
   activityId?: string;
   exerciseId?: string;
   lessonProblemId?: string;
+  page?: 'session' | 'lesson' | 'course' | 'map';
+  knowledgePointId?: string;
+  pageLabel?: string;
   allowed: boolean;
   enabled: boolean;
 }
@@ -44,6 +47,7 @@ type TutorMessage = TutorThreadDetail['messages'][number];
 
 interface TutorContextValue {
   setContext: (context: TutorRequestContext) => void;
+  clearContext: () => void;
   open: (context?: Partial<TutorRequestContext>) => void;
 }
 
@@ -123,14 +127,24 @@ async function getJson<T>(url: string): Promise<T> {
   return (await response.json()) as T;
 }
 
+function ReadingLine({ pageLabel }: { pageLabel?: string }) {
+  return pageLabel ? (
+    <div
+      data-testid="tutor-reading-context"
+      className="flex w-full min-w-0 items-center gap-2 border-b px-4 py-2 text-xs text-muted-foreground"
+    >
+      <Eye aria-hidden="true" className="size-3.5 shrink-0" />
+      <span className="truncate">Reading: {pageLabel}</span>
+    </div>
+  ) : null;
+}
+
 export function TutorContextProvider({
   children,
   routeAllowed = true,
-  sessionRoute = false,
 }: {
   children: React.ReactNode;
   routeAllowed?: boolean;
-  sessionRoute?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [context, setContext] = useState<TutorRequestContext>({
@@ -164,9 +178,6 @@ export function TutorContextProvider({
   useEffect(() => {
     localStorage.setItem(OPEN_KEY, String(open));
   }, [open]);
-  useEffect(() => {
-    if (!sessionRoute) setContext({ allowed: true, enabled: false });
-  }, [sessionRoute]);
   useEffect(() => {
     if (selectedId) localStorage.setItem(THREAD_KEY, selectedId);
     else localStorage.removeItem(THREAD_KEY);
@@ -206,7 +217,15 @@ export function TutorContextProvider({
       const response = await fetch(target, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ question, ...requestContext }),
+        body: JSON.stringify({
+          question,
+          conceptId: requestContext.conceptId,
+          activityId: requestContext.activityId,
+          exerciseId: requestContext.exerciseId,
+          lessonProblemId: requestContext.lessonProblemId,
+          page: requestContext.page,
+          knowledgePointId: requestContext.knowledgePointId,
+        }),
       });
       const payload = (await response.json().catch(() => ({}))) as TutorSendResponse;
       if (!response.ok) throw new Error(payload.error ?? 'Tutor is unavailable.');
@@ -272,15 +291,19 @@ export function TutorContextProvider({
       setError(cause instanceof Error ? cause.message : 'Tutor is unavailable.');
     },
   });
+  const clearContext = useCallback(() => {
+    setContext({ allowed: true, enabled: false });
+  }, []);
   const value = useMemo<TutorContextValue>(
     () => ({
       setContext,
+      clearContext,
       open: (next) => {
         if (next) setContext((current) => ({ ...current, ...next }));
         setOpen(true);
       },
     }),
-    [],
+    [clearContext],
   );
   const messages = detail.data?.messages ?? [];
   const selectedThread =
@@ -350,6 +373,7 @@ export function TutorContextProvider({
                       </div>
                     </div>
                   </SidebarHeader>
+                  <ReadingLine pageLabel={context.pageLabel} />
                   <SidebarContent className="min-h-0 flex-1 p-2">
                     {threads.isPending ? (
                       <div className="flex items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
@@ -460,6 +484,7 @@ export function TutorContextProvider({
                       </Button>
                     </div>
                   </SidebarHeader>
+                  <ReadingLine pageLabel={context.pageLabel} />
                   <SidebarContent className="min-h-0 flex-1 p-0">
                     <Conversation aria-label="Tutor messages">
                       <ConversationContent className="gap-4 p-4">

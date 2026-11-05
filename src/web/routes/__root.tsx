@@ -21,10 +21,7 @@ function RootLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
     <TooltipProvider>
-      <TutorContextProvider
-        routeAllowed={!pathname.startsWith('/diagnostic')}
-        sessionRoute={pathname.startsWith('/session/')}
-      >
+      <TutorContextProvider routeAllowed={!pathname.startsWith('/diagnostic')}>
         <div className="min-h-screen bg-background text-foreground">
           <header className="border-b bg-background">
             <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-4 px-5">
