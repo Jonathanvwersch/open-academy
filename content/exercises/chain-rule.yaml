@@ -154,17 +154,17 @@ exercises:
       - answer_expr: "v / r"
         category: math_error
         feedback: "Multiply the two rates rather than dividing them."
-  - id: crp-add-rates
+  - id: crp-why-multiply
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: 'A student says: "The car covers 60 km per hour and burns 0.08 litres per km, so it burns $60 + 0.08 = 60.08$ litres per hour." What went wrong?'
+    prompt: "Why do we multiply 60 km per hour by 0.08 litres per km, rather than add them, to get fuel used per hour?"
     options:
       - {
           id: a,
-          text: "Rates along a chain multiply, so it is $60 \\times 0.08 = 4.8$",
+          text: "Each of the 60 extra km uses 0.08 litres, giving 4.8 litres per extra hour",
           correct: true,
         }
       - id: b
@@ -280,27 +280,31 @@ exercises:
       - answer_expr: "2 * (a * c + b)"
         category: misunderstood_definition
         feedback: "That is only $dy/du$. Multiply by the inner derivative $du/dx = {{=a}}$."
-  - id: crp-forgot-inner
+  - id: crp-why-inner-factor
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A student differentiates $y = (2x + 3)^4$ and gets $4(2x + 3)^3$. What is the correct derivative?"
+    prompt: "Why does differentiating $y = (2x + 3)^4$ require multiplying $4(2x + 3)^3$ by 2?"
     options:
-      - { id: a, text: "$8(2x + 3)^3$, because the inner derivative is 2", correct: true }
+      - {
+          id: a,
+          text: "A small nudge in $x$ produces twice that nudge in the inner value $2x + 3$",
+          correct: true,
+        }
       - id: b
-        text: "$4(2x + 3)^3$, because the student is right"
+        text: "It doesn't: differentiating the outer power already accounts for the inner rate"
         correct: false
         category: misunderstood_definition
         feedback: "That is only the outer derivative. The inner function $2x + 3$ changes at rate 2, so multiply by 2."
       - id: c
-        text: "$4 \\cdot 2^3$, because you differentiate the inside first"
+        text: "The inner derivative 2 replaces the inner value inside the outer derivative"
         correct: false
         category: misapplied_technique
         feedback: "Evaluate the outer derivative at the inner value, $4(2x+3)^3$, then multiply by the inner derivative 2."
       - id: d
-        text: "$2(2x + 3)^4$, because you multiply by the inner derivative"
+        text: "Multiplying by 2 lets us leave the outer function undifferentiated"
         correct: false
         category: math_error
         feedback: "You still need the outer derivative: the power drops from 4 to 3 and the 4 comes to the front."
@@ -420,30 +424,34 @@ exercises:
       - answer_expr: "w / v"
         category: incomplete_explanation
         feedback: "That is only the time route. The extra km also uses fuel."
-  - id: crp-missing-route
+  - id: crp-why-both-routes
     dimension: math
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Let $f = u^2 + v$, where $u = 2x$ and $v = x^2$. A student writes $df/dx = 2u \\cdot 2 = 8x$. What is the correct $df/dx$?"
+    prompt: "Let $f = u^2 + v$, where $u = 2x$ and $v = x^2$. Why is following only the route through $u$ not enough to find $df/dx$?"
     options:
-      - { id: a, text: "$10x$: add the route through $v$, which gives $2x$", correct: true }
+      - {
+          id: a,
+          text: "Changing $x$ also changes $v$, adding another $2x$ to the rate from the $u$ route",
+          correct: true,
+        }
       - id: b
-        text: "$8x$: the route through $u$ is the only one"
+        text: "It is enough, because $v$ is added rather than multiplied"
         correct: false
         category: incomplete_explanation
         feedback: "$x$ also reaches $f$ through $v = x^2$, adding $\\partial f/\\partial v \\cdot dv/dx = 1 \\cdot 2x$."
       - id: c
-        text: "$16x^2$: multiply the two routes"
+        text: "Both routes matter, but their rates must be multiplied together"
         correct: false
         category: misapplied_technique
         feedback: "Separate routes are added, not multiplied."
       - id: d
-        text: "$4x$: the route through $u$ is $2 \\cdot 2$"
+        text: "Only the route with the larger rate counts"
         correct: false
-        category: math_error
-        feedback: "$\\partial f/\\partial u = 2u = 4x$, so the $u$ route is $4x \\cdot 2 = 8x$. Then add the $v$ route."
+        category: incorrect_reasoning
+        feedback: "Even a smaller contribution changes the total. The two routes contribute $8x$ and $2x$, so both must be added."
     solution: "Route through $u$: $2u \\cdot 2 = 8x$. Route through $v$: $1 \\cdot 2x = 2x$. Total $10x$. Check: $f = 4x^2 + x^2 = 5x^2$, so $df/dx = 10x$."
   - id: crp-routes-expression
     dimension: math
