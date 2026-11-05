@@ -141,21 +141,35 @@ exercises:
           category: math_error,
           feedback: "Include the bedroom term too: $w_2\\cdot\\text{bedrooms}$.",
         }
-  - id: slp-predict-variant
-    dimension: math
-    type: numeric
+  - id: slp-why-targets
+    dimension: conceptual
+    type: mc
     role: practice
     difficulty: 1
-    est_minutes: 2
-    prompt: "A simple model predicts $w\\cdot x+b$. For $x={{=x}}$, $w={{=w}}$, and $b={{=b}}$, what is the prediction?"
-    hints: ["Multiply $w$ by $x$, then add $b$."]
-    solution: "$w\\cdot x+b = {{=w}}\\cdot{{=x}}+{{=b}}={{=w * x + b}}$."
-    answer_expr: "w * x + b"
-    params:
-      w: { min: 1, max: 8 }
-      x: { min: 2, max: 9 }
-      b: { min: 0, max: 20, step: 5 }
-    tolerance: { abs: 0.000001 }
+    est_minutes: 1
+    prompt: "Why do we need known sale prices as well as house details to train this supervised model?"
+    options:
+      - {
+          id: a,
+          text: "They let us measure prediction mistakes and compare parameter settings",
+          correct: true,
+        }
+      - id: b
+        text: "The model needs the true sale price as an input when pricing a new house"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The sale price is the answer to predict, not an input available for a new house."
+      - id: c
+        text: "Each known price is one of the model's adjustable parameters"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Prices are targets in the data. The adjustable parameters are the model's weights and bias."
+      - id: d
+        text: "Targets can be replaced by the model's own guesses without changing how we judge it"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Comparing guesses with themselves gives no evidence of whether they match actual sales."
+    solution: "Known targets supply the answers against which predictions are checked. Without them, this setup cannot tell which settings fit the observed sales better."
   - id: slp-input-target
     dimension: conceptual
     type: mc
@@ -253,23 +267,84 @@ exercises:
         }
       - {
           id: b,
-          text: "Squared errors always have the same size",
+          text: "Squaring keeps the sign, so overestimates still cancel underestimates",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Both positive and negative errors have non-negative squares, so their squared contributions cannot cancel.",
         }
       - {
           id: c,
-          text: "Signed errors cannot be added",
+          text: "A zero average signed error means every prediction is correct",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Errors of +10 and −10 average to zero even though both predictions are wrong.",
         }
       - {
           id: d,
-          text: "Squaring makes the model use fewer inputs",
+          text: "Averaging signed errors already measures the typical size of a miss",
           correct: false,
           category: misunderstood_definition,
+          feedback: "A signed average measures the balance of overestimates and underestimates, not their sizes.",
         }
     solution: "A prediction that is too high has a positive error and one that is too low has a negative error. Their signed sum can be zero by cancellation. Squaring makes each contribution non-negative."
+  - id: slp-why-square-not-absolute
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why choose squared rather than absolute errors when large pricing mistakes should count disproportionately more?"
+    options:
+      - {
+          id: a,
+          text: "Doubling a miss quadruples its squared loss, but only doubles its absolute loss",
+          correct: true,
+        }
+      - id: b
+        text: "Absolute errors let positive and negative misses cancel"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Absolute errors are non-negative too. Both choices stop cancellation."
+      - id: c
+        text: "Squaring makes large misses count less than small ones"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A miss of 20 contributes 400, compared with 100 for a miss of 10: the larger miss gets extra weight."
+      - id: d
+        text: "Squared error is always the right loss, regardless of the task"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The choice depends on which mistakes matter. Squaring is useful here because we want to penalise large misses especially strongly."
+    solution: "For misses of 10 and 20, absolute losses are 10 and 20, while squared losses are 100 and 400. Squaring gives the doubled miss four times the penalty."
+  - id: slp-why-average
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why divide the total squared error by the number of houses rather than report only the total?"
+    options:
+      - {
+          id: a,
+          text: "The average measures loss per house, so repeating the same dataset does not inflate it",
+          correct: true,
+        }
+      - id: b
+        text: "Dividing guarantees zero loss on new houses"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Division changes the scale of the reported loss, not the predictions on new houses."
+      - id: c
+        text: "Averaging removes the largest mistakes from the calculation"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Every squared error remains in the sum before division; large mistakes still contribute."
+      - id: d
+        text: "On the same dataset, averaging selects different best settings from summing"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Every setting's total is divided by the same positive number, so their ordering stays the same."
+    solution: "Repeating all three sales doubles both the total squared error and the number of houses. The average stays 200 for Setting A: it measures loss per house, not dataset size."
   - id: slp-average-mse
     dimension: math
     type: numeric
@@ -369,21 +444,24 @@ exercises:
         }
       - {
           id: b,
-          text: "To make its training loss larger",
+          text: "Because a small training loss guarantees a small loss on new sales",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Fitting known answers does not guarantee good predictions for houses the model has not seen.",
         }
       - {
           id: c,
-          text: "To change the target from a price to a category",
+          text: "Because testing on the training sales gives an independent check",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Those answers already helped choose the settings. Unused sales check predictions beyond that fitting process.",
         }
       - {
           id: d,
-          text: "To guarantee every prediction is exact",
+          text: "Because the test sale prices should also be used to adjust the settings before measuring their loss",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Then those answers would also influence the model, defeating the purpose of testing on unused sales.",
         }
     solution: "The aim is to price houses the model has not seen. A model can fit past sales well but still predict new houses badly."
   - id: slp-regression-classification

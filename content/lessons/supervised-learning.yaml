@@ -2,11 +2,13 @@ concept: supervised-learning
 version: 3
 objective: |
   **Goal:** identify the inputs, targets, model, loss and training data in any supervised problem, and explain why training means making the average loss small.
+why: |
+  A house-price model must estimate a sale price before anyone knows what the buyer will pay. You could write rules by hand for every combination of size and bedroom count, but those rules multiply as you add details, and guessing their settings gives no reliable way to compare them. Past sales already contain both the details and the answers. Supervised learning turns those pairs into a way to choose a prediction rule: measure its mistakes and adjust its settings to reduce them. The same setup lets a robot learn actions from human demonstrations. Linear regression, loss functions, gradient descent, training and evaluation splits, and behavioral cloning all build on this setup.
 knowledge_points:
   - id: sl-inputs-targets
     title: Inputs, targets and the model
     explain: |
-      Supervised learning means learning to predict an answer from examples where the answer is already known. Say you want to guess what a house will sell for. You don't write the rule yourself. You collect past sales, each with the house's details and the price it actually sold for, and let the computer find a rule that fits them.
+      **How can we predict a house's price?** Handwritten rules need guessed settings. Instead, learn from past sales with known answers: **supervised learning**.
 
       Every supervised problem has the same five ingredients:
 
@@ -16,7 +18,7 @@ knowledge_points:
       4. **Loss** $L$: a number that says how wrong a prediction is.
       5. **Dataset**: the past examples, each one an $(x, y)$ pair.
 
-      The rest of this lesson goes through them in order, using house prices.
+      This works because known targets let us compare predictions with answers and judge settings by their mistakes, rather than guesswork.
     worked: |
       This example shows that a model is a rule with adjustable settings, and different settings give different predictions.
 
@@ -30,13 +32,11 @@ knowledge_points:
       - **Setting B:** $w_1 = 2,\ w_2 = 20,\ b = 100$. The same house gets $2\cdot100 + 20\cdot2 + 100 = 340$.
 
       Training means choosing the setting. To choose, we need a way to say which one is better.
-    problems: [slp-predict, slp-predict-variant, slp-input-target, slp-parameters]
+    problems: [slp-predict, slp-why-targets, slp-input-target, slp-parameters]
   - id: sl-measuring-error
     title: "Measuring how wrong: squared error"
     explain: |
-      **Why not just average the errors?** Errors that are too high and too low can cancel each other out, making a model look perfect even when it gets every house wrong.
-
-      **Square each error instead.** Squares are never negative, so nothing cancels, and big misses count more than small ones. This is the **squared-error loss**: $(\hat y - y)^2$.
+      **How wrong are the prices?** Signed errors can average to zero despite wrong predictions. Use **squared-error loss**: $(\hat y - y)^2$. This works because squares are non-negative: opposite misses cannot cancel. Why square rather than take absolute errors? Both prevent cancellation; squaring gives large misses extra weight when those matter more.
     worked: |
       This example shows why signed errors can cancel and how squaring prevents it.
 
@@ -51,13 +51,11 @@ knowledge_points:
       The errors add up to $10 + 10 - 20 = 0$, even though every prediction is wrong.
 
       Squaring gives $10^2 = 100$, $10^2 = 100$, and $(-20)^2 = 400$. The squared errors are all positive, so they do not cancel.
-    problems: [slp-squared-error, slp-error-sum, slp-why-square]
+    problems: [slp-squared-error, slp-error-sum, slp-why-square, slp-why-square-not-absolute]
   - id: sl-training-loss
     title: Training chooses the smallest average loss
     explain: |
-      **Average over the houses.** One house can be lucky or unlucky, so we judge a setting by its average loss over all the sales. The average squared error is called **mean squared error (MSE)**.
-
-      The worked example is exactly what the standard formula says. Here it is, one piece at a time.
+      **Which setting fits better?** Judging one house can reward luck. Average losses instead: this works because every sale contributes, not just one lucky prediction. Average squared error is **mean squared error (MSE)**. Why average rather than sum? It measures error per house, not a total that grows with dataset size.
 
       **The loss on one house.** House number $i$ has inputs $x_i$ and true price $y_i$. The subscript $i$ identifies which house we mean. The model predicts $f_\theta(x_i)$, and the loss $L\big(f_\theta(x_i), y_i\big)$ says how wrong that is. With squared error it is $\big(f_\theta(x_i) - y_i\big)^2$.
 
@@ -83,17 +81,17 @@ knowledge_points:
       | **average** | **200** | | **2300** |
 
       Setting A averages 200 and Setting B averages 2300, so Setting A fits these sales much better.
-    problems: [slp-average-mse, slp-argmin, slp-best-setting]
+    problems: [slp-average-mse, slp-argmin, slp-best-setting, slp-why-average]
   - id: sl-new-data-targets
     title: New houses and two kinds of target
     explain: |
-      **The real goal is new houses.** A low average loss on past sales is only a means to an end. What you actually want is good prices for houses the model has never seen. A model can fit its training sales well and still price new houses badly, so we always test it on sales it didn't train on. The train/validation/test lesson covers how.
+      **Will the model price new houses well?** Checking only its training sales can reward remembering those answers. Test on sales it didn't train on instead. This works because their answers were not used to choose the settings, so success tests prediction beyond the training examples. Training and evaluation splits covers how.
 
-      **Two kinds of target.** When the target $y$ is a number, like a price, the problem is called **regression**. When $y$ is a category, like "spam" or "not spam", it is called **classification**. The five ingredients are the same either way. What changes is the loss, because "how wrong" means something different for a category than for a number.
+      **Two kinds of target.** A numeric target $y$, like a price, means **regression**; a category, like "spam" or "not spam", means **classification**. The five ingredients stay the same. Why not use squared error for every target? Category names have no meaningful numeric distance, so classification needs a loss suited to categories.
 
       Robots use the same setup. In learning from demonstrations, the input is what the robot's camera sees and the target is the action a human took.
     worked: |
-      This example shows three targets and identifies which ones are categories.
+      This example shows two targets and identifies which ones are categories.
 
       A parcel's delivery status—today or tomorrow—is a category, so predicting it is classification.
 
@@ -109,3 +107,5 @@ summary: |
   - Five ingredients: inputs $x$, target $y$, a model $f_\theta$ with parameters $\theta$, a loss $L$, and a dataset of $(x, y)$ pairs.
   - The loss turns "how wrong" into a number. Squaring stops errors that are too high and too low from cancelling out.
   - Training picks the parameters with the smallest average loss on the training data, but what matters is performance on new data.
+
+  **Where you'll use this:** linear regression, loss functions, gradient descent, training and evaluation splits, and behavioral cloning, where demonstration actions become targets for a robot.
