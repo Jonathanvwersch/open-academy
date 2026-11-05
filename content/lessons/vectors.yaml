@@ -8,13 +8,13 @@ knowledge_points:
   - id: vec-points-moves
     title: Points and moves as ordered numbers
     explain: |
-      **Where do two floor moves take you?** Adding all their numbers into one total loses which way you moved. Use metres, with right positive and up positive: $(3,4)$ means three right and four up from the origin, the starting point $(0,0)$.
+      You are recording moves on a floor grid. **Where do two moves take you?** Adding all their numbers into one total loses which way you moved. Use metres, with right positive and up positive: $(3,4)$ means three right and four up from the origin, the starting point $(0,0)$.
 
-      An ordered list is a **vector**; each entry is a **component**. Picture a point, or an arrow from the origin to it. For a move, the arrow gives each direction's travel. Negative entries mean left or down.
+      This ordered list is a **vector**; each entry is a **component**. Picture it as a point, or an arrow from the origin to that point. Negative entries mean left or down.
 
-      To combine moves, add matching components: **vector addition**. This works because horizontal travel accumulates independently of vertical travel: put the second arrow's tail at the first arrow's tip. Why this way? Matching entries preserves each direction's total; mixing them does not. Both vectors need the same number of entries, with matching meanings and units.
+      **Vector addition** combines moves by adding matching components. This works because horizontal travel accumulates independently of vertical travel. Picture the second arrow's tail at the first arrow's tip. Why this way? Mixing entries would mix directions rather than total each one. The entries must match in meaning and units.
 
-      A **feature vector** $(120,3,15)$ records a house's area in square metres, bedrooms and age in years: a point with three coordinates, not a floor position.
+      A **feature vector** $(120,3,15)$ records a house's area in square metres, bedrooms and age in years. These three coordinates describe measurements, not a floor position.
 
       Write $x \in \mathbb{R}^n$ to say vector $x$ has $n$ real-number entries; $\in$ means “belongs to”, and $n$ counts the entries. The notation $x_i$ means entry number $i$ of $x$.
     worked: |
@@ -43,15 +43,15 @@ knowledge_points:
   - id: vec-change-move
     title: Making a move longer or reversing it
     explain: |
-      **How can you make $(1,2)$ twice as long without turning it?** Doubling only the first entry turns the arrow. Instead, multiply every entry by two to get $(2,4)$.
+      Your move is $(1,2)$. **How can you travel twice as far without turning?** Doubling only the first entry turns the arrow. Instead, multiply every entry by two to get $(2,4)$.
 
-      Multiplying every component by one number is **scaling**; that number is a **scalar**. In $c x$, scalar $c$ multiplies every entry of vector $x$. This works because equal scaling preserves the proportions of horizontal and vertical travel. Why this way? Adding two to each entry need not preserve those proportions.
+      Multiplying every component by the same number is **scaling**; that number is a **scalar**. In $c x$, scalar $c$ multiplies every entry of vector $x$. This works because equal scaling preserves the proportions of horizontal and vertical travel. Why this way? Adding two to each entry need not preserve those proportions.
 
-      A positive scalar keeps direction: two doubles length; one half halves it. Zero makes the zero vector: all entries zero, with no direction.
+      A positive scalar keeps the direction and multiplies the length by that amount. Zero makes the zero vector, whose entries are all zero and which has no direction.
 
-      A negative scalar reverses the arrow. Multiplying by $-1$ gives the move back along the same route.
+      A negative scalar also reverses the arrow. Multiplying by $-1$ retraces your route.
 
-      **Vector subtraction** adds a reversed arrow: subtract matching entries. For scaling followed by subtraction, scale first, then subtract component by component.
+      **Vector subtraction** adds a reversed arrow, so subtract matching entries. For $3a-b$, scale first, then subtract.
     worked: |
       This example shows how scaling and subtraction change a move.
 
@@ -77,7 +77,7 @@ knowledge_points:
   - id: vec-length-distance
     title: Length and distance from squared steps
     explain: |
-      **How far away is a floor position?** Adding three metres right and four up gives the route, not the shortcut. Pythagoras gives straight length: square both steps, add, then take the square root.
+      You move three metres right and four up. **How far away is your starting point?** Adding absolute steps gives the 7 m right-then-up route, not the 5 m straight line. Pythagoras gives the straight line: square both steps, add them, then take the square root.
 
       This length is the **L2 norm**, written $\|x\|_2$ for vector $x$. For any number of entries:
 
@@ -85,13 +85,13 @@ knowledge_points:
 
       The square-root sign $\sqrt{\phantom{a}}$ undoes squaring. The symbol $\sum_{i=1}^{n}$ means “add for entry numbers $i$ from one to $n$”; $x_i^2$ means square entry $i$.
 
-      This works because the arrow is a right triangle's diagonal. Why this way? Absolute steps measure the right-then-up route; squares give its shortcut, and the root restores length units. Squaring prevents signs cancelling. The zero vector has length zero.
+      This works because the arrow is the right triangle's diagonal. Why this way? Pythagoras gives squared length; the root turns square metres back into metres. Squaring prevents opposite signs cancelling.
 
       To measure the **Euclidean distance** between points $p$ and $q$, subtract their coordinates, then take the length: $\text{dist}(p,q)=\|p-q\|_2$. The symbol $\text{dist}$ means distance; reversing the subtraction gives the same length.
 
-      The robot's distance rule lets an ML model compare house vectors. But an area gap of 50 square metres contributes $50^2=2500$, while two bedrooms contribute $2^2=4$: numerical ranges can dominate.
+      The robot's distance rule also lets an ML model compare house vectors. An area gap of 50 square metres contributes $50^2=2500$, while two bedrooms contribute $2^2=4$. Large numerical ranges can dominate similarity.
 
-      Changing units changes contributions without changing houses. Rescale features to comparable ranges; mixed-unit distance is calculable, but not a length in metres.
+      Rescale features to comparable ranges. Mixed-unit distance is calculable, but is not a physical length in metres.
     worked: |
       This example shows length and distance using the same square-add-root steps.
 
