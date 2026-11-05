@@ -36,6 +36,9 @@ function LessonReviewPage() {
   const { from } = Route.useSearch();
   const { data } = useSuspenseQuery(lessonReviewQueryOptions(conceptId));
   const { lesson, checkAnswers, conceptTitle } = data;
+  const finalBlock = lesson.blocks.find(
+    (block) => block.kind === 'check' && block.exercise === lesson.final,
+  );
   return (
     <section className="mx-auto max-w-3xl space-y-6">
       {from ? (
@@ -55,6 +58,19 @@ function LessonReviewPage() {
               <LessonBlock kind="worked" md={point.worked} />
             </article>
           ))}
+          {finalBlock?.exercise ? (
+            <LessonBlock key={finalBlock.exercise} kind="check" md={finalBlock.md}>
+              <ReadOnlyCheck
+                exerciseId={finalBlock.exercise}
+                answer={checkAnswers[finalBlock.exercise] ?? ''}
+              />
+            </LessonBlock>
+          ) : null}
+          {lesson.blocks
+            .filter((block) => block.kind === 'summary')
+            .map((block) => (
+              <LessonBlock key={`${block.kind}-${block.md}`} kind={block.kind} md={block.md} />
+            ))}
         </div>
       ) : (
         <div className="space-y-5">

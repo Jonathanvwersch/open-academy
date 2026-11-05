@@ -6,6 +6,10 @@ import type { ContentIssue, ContentSourceData } from './types.js';
 export const REQUIRE_KNOWLEDGE_POINT_LESSONS = false;
 
 const SVG_FENCE = /```svg[ \t]*\r?\n([\s\S]*?)```/gi;
+const CURRENCY_MARKERS = [
+  /(?<!\$)\$(?!\$)\d+(?:,\d{3})*(?:\.\d+)?(?=\s*(?:k\b|thousand\b|million\b|usd\b|dollars?\b))/i,
+  /(?<!\$)\$(?!\$)\{\{=[^{}]+\}\}(?=\s*(?:,|and\b|k\b|thousand\b|million\b|usd\b|dollars?\b))/i,
+];
 const SVG_COLOR_PROPERTIES = new Set([
   'color',
   'fill',
@@ -104,6 +108,12 @@ function validateSvgText(text: string, file: string, id: string, issues: Content
   for (const match of text.matchAll(SVG_FENCE)) {
     const error = svgIssue(match[1] ?? '');
     if (error) addIssue(issues, file, id, `invalid SVG: ${error}`);
+  }
+}
+
+function validateCurrencyText(text: string, file: string, id: string, issues: ContentIssue[]) {
+  if (CURRENCY_MARKERS.some((marker) => marker.test(text))) {
+    addIssue(issues, file, id, 'currency prices must not use a dollar sign before a number');
   }
 }
 
@@ -306,8 +316,10 @@ export function validateContent(
     if (requireKnowledgePointLessons && !value.knowledge_points) {
       addIssue(issues, file, value.concept, 'authored lessons must use knowledge_points');
     }
-    for (const text of new Set(stringValues(value)))
+    for (const text of new Set(stringValues(value))) {
       validateSvgText(text, file, value.concept, issues);
+      validateCurrencyText(text, file, value.concept, issues);
+    }
     if (lessonsByConcept.has(value.concept)) {
       addIssue(issues, file, value.concept, 'duplicate lesson for concept');
     }
@@ -627,7 +639,10 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
   }
 
   for (const { value: exercise, file } of data.exercises) {
-    for (const text of stringValues(exercise)) validateSvgText(text, file, exercise.id, issues);
+    for (const text of stringValues(exercise)) {
+      validateSvgText(text, file, exercise.id, issues);
+      validateCurrencyText(text, file, exercise.id, issues);
+    }
     if (exercise.role === 'practice' && references.get(exercise.id) !== 1) {
       addIssue(
         issues,

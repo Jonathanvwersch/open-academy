@@ -808,3 +808,34 @@ test('SVG fences reject malformed, unsafe, inaccessible, and non-hex SVG', async
     false,
   );
 });
+
+test('currency dollar markers are rejected without flagging inline math', async () => {
+  const data = await notationFixture();
+  const exercise = data.exercises.find(({ concept }) => concept === 'vectors');
+  if (!exercise) throw new Error('Missing vector fixture exercise');
+  const lesson = data.lessons.find(({ value }) => value.concept === 'vectors');
+  if (!lesson) throw new Error('Missing vectors lesson fixture');
+  const block = lesson.value.blocks.find((candidate) => 'md' in candidate);
+  if (!block || !('md' in block)) throw new Error('Missing vectors lesson Markdown block');
+
+  const currencyTemplate = '$' + '{{=price}}';
+  for (const text of [
+    'The price is $220 thousand.',
+    `The price is ${currencyTemplate} thousand.`,
+  ]) {
+    exercise.value.prompt = text;
+    block.md = text;
+    const issues = validateContent(data).filter((issue) =>
+      issue.message.includes('currency prices'),
+    );
+    expect(issues.some((issue) => issue.id === exercise.value.id)).toBe(true);
+    expect(issues.some((issue) => issue.id === lesson.value.concept)).toBe(true);
+  }
+
+  const templateMath = '$' + '{{=x}}' + '$';
+  exercise.value.prompt = `The expressions $2x$, $$2x$$, and ${templateMath} are valid math.`;
+  block.md = `The expressions $2x$, $$2x$$, and ${templateMath} are valid math.`;
+  expect(validateContent(data).some((issue) => issue.message.includes('currency prices'))).toBe(
+    false,
+  );
+});

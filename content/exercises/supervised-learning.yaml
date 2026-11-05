@@ -213,7 +213,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A house sold for ${{=target}}$ thousand and the model predicted ${{=prediction}}$ thousand. What is its squared error?"
+    prompt: "A house sold for {{=target}} thousand and the model predicted {{=prediction}} thousand. What is its squared error?"
     hints: ["Subtract the target from the prediction, then square the difference."]
     solution: "The error is ${{=prediction}}-{{=target}}={{=prediction-target}}$. Squaring gives $({{=prediction-target}})^2={{=(prediction-target)^2}}$."
     answer_expr: "(prediction - target)^2"
