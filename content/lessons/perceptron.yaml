@@ -1,28 +1,158 @@
 concept: perceptron
-version: 1
-fast_path: [objective, summary]
-blocks:
-  - kind: objective
-    md: |
-      **Goal:** compute a neuron's output, and explain why one linear unit can only separate classes with a straight line (a hyperplane).
-  - kind: intuition
-    md: |
-      A neuron adds a weighted sum of its inputs to a bias, then applies a step rule: output 1 when the score is positive, and 0 otherwise.
-      We call $\phi$ the activation function; here it is that step rule.
+version: 2
+objective: |
+  **Goal:** compute a neuron's output from its weights, bias and inputs, and explain why one neuron can only split its inputs with a straight boundary, so it can't compute XOR.
+knowledge_points:
+  - id: perc-score-and-step
+    title: A weighted score, then a yes or no
+    explain: |
+      You're house hunting and get hundreds of listings a week. You want a rule that reads two numbers about each house and answers **yes, shortlist it (1)** or **no (0)**:
 
-      The set where $w\cdot x + b = 0$ is a line in 2D, a plane in 3D, and a hyperplane in higher dimensions. A single neuron marks one side of that boundary as 1 and the other as 0. It cannot mark opposite corners of a square as 1 and the other corners as 0, because one straight line cannot separate them. This opposite-corners pattern is called **XOR**.
-  - kind: example
-    md: |
-      This example shows how one perceptron uses a straight boundary to separate inputs.
+      - $x_1$: the size, in hundreds of m² (so 1.2 means 120 m²);
+      - $x_2$: the distance to the station, in km.
 
-      $w = (1, 1)$, $b = -1.5$, step activation (output 1 if the score is $> 0$, else 0). Inputs $(0,0), (0,1), (1,0), (1,1)$ give scores $-1.5, -0.5, -0.5, 0.5$, so the outputs are $0, 0, 0, 1$. This neuron computes **AND**.
-  - kind: math
-    md: |
-      $$z = w\cdot x + b, \qquad a = \phi(z).$$
-      Read $\{x : w\cdot x+b=0\}$ as "the set of inputs $x$ for which the score is zero". The value $b$ shifts this boundary away from the origin.
-  - kind: check
-    exercise: perc-check-1
-  - kind: summary
-    md: |
-      - A neuron computes a weighted sum, adds a bias, and applies an activation.
-      - A single linear unit has a hyperplane as its decision boundary, so it cannot represent XOR.
+      Bigger is better and farther is worse. So give each input a **weight** that says how much it counts and in which direction, add them up, and add one more number, the **bias** $b$, that sets how high the bar is. With weights $w = (w_1, w_2)$ the **score** is the dot product plus the bias:
+
+      $$z = w \cdot x + b = w_1 x_1 + w_2 x_2 + b$$
+
+      A positive weight pushes the score up as that input grows; a negative weight pulls it down.
+
+      Then turn the score into an answer with a **step rule**: output 1 if $z > 0$, and 0 otherwise. The function applied to the score is called the **activation function** and is written $\phi$ ("phi"), so the output is $a = \phi(z)$.
+
+      This unit, a weighted sum plus a bias passed through an activation, is a **neuron**. With the step rule as its activation it's called a **perceptron**.
+    worked: |
+      This example shows a neuron scoring two houses and turning each score into a yes or no.
+
+      Take $w = (2, -1)$ and $b = -1$: each 100 m² adds 2 to the score, each km from the station takes 1 away.
+
+      | house | size $x_1$ | distance $x_2$ | score $z = 2x_1 - x_2 - 1$ | output $\phi(z)$ |
+      |---|---|---|---|---|
+      | A | 1.2 | 0.5 | $2.4 - 0.5 - 1 = 0.9$ | 1 |
+      | B | 0.8 | 1.5 | $1.6 - 1.5 - 1 = -0.9$ | 0 |
+      | C | 1.0 | 1.0 | $2 - 1 - 1 = 0$ | 0 |
+
+      House C scores exactly 0, and the rule says 1 only for $z > 0$, so it's a no. The score measures how far a house is from the bar; the step rule only keeps which side it's on.
+    problems:
+      - percp-output
+      - percp-score-template
+      - percp-score-zero
+      - percp-weight-sign
+      - percp-bias-role
+      - percp-robot-gripper
+  - id: perc-straight-boundary
+    title: The yes/no boundary is a straight line
+    explain: |
+      Which houses get a yes? Every house is a point $(x_1, x_2)$ on a map of size against distance. The neuron says yes where $z > 0$ and no where $z \le 0$, so the two answers meet where the score is exactly zero:
+
+      $$\{x : w \cdot x + b = 0\}$$
+
+      Read this as "the set of inputs $x$ whose score is zero". It's called the **decision boundary**. With two inputs, $w_1 x_1 + w_2 x_2 + b = 0$ is the equation of a straight line.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Houses plotted by size and distance to the station. The straight line where the score 2 x1 minus x2 minus 1 equals zero separates yes houses below it from no houses above it.">
+        <line x1="70" y1="270" x2="610" y2="270" stroke="#d4d4d4" stroke-width="2"/>
+        <line x1="70" y1="270" x2="70" y2="30" stroke="#d4d4d4" stroke-width="2"/>
+        <text x="340" y="315" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">size x1 (hundreds of m²)</text>
+        <text x="20" y="150" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373" transform="rotate(-90 20 150)">distance x2 (km)</text>
+        <text x="70" y="290" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">0</text>
+        <text x="340" y="290" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">1</text>
+        <text x="610" y="290" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">2</text>
+        <text x="56" y="194" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">1</text>
+        <text x="56" y="114" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">2</text>
+        <text x="56" y="34" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">3</text>
+        <line x1="205" y1="270" x2="610" y2="30" stroke="#3b82f6" stroke-width="3"/>
+        <text x="465" y="110" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">score = 0</text>
+        <circle cx="394" cy="230" r="8" fill="#10b981"/>
+        <text x="408" y="235" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">A</text>
+        <circle cx="520" cy="190" r="8" fill="#10b981"/>
+        <circle cx="286" cy="150" r="8" fill="#ef4444"/>
+        <text x="300" y="155" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">B</text>
+        <circle cx="160" cy="110" r="8" fill="#ef4444"/>
+        <circle cx="340" cy="190" r="8" fill="#ef4444"/>
+        <text x="354" y="182" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">C (on the line)</text>
+        <text x="110" y="60" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#ef4444">score &lt; 0: output 0</text>
+        <text x="470" y="255" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#10b981">score &gt; 0: output 1</text>
+      </svg>
+      ```
+
+      The weights set the line's direction and the bias shifts it. With three inputs the boundary is a flat plane, and with more inputs it's the same flat shape in more dimensions, called a **hyperplane**. Either way, one neuron can only split its inputs with something straight and flat. It can't draw a curve or a closed loop.
+    worked: |
+      This example shows how to locate the boundary and how the bias moves it.
+
+      With $w = (2, -1)$ and $b = -1$ the boundary is $2x_1 - x_2 - 1 = 0$.
+
+      1. **Where it crosses the size axis:** set $x_2 = 0$. Then $2x_1 - 1 = 0$, so $x_1 = 0.5$: a 50 m² house right at the station sits on the line.
+      2. **Another point:** set $x_1 = 1$. Then $2 - x_2 - 1 = 0$, so $x_2 = 1$. That's house C.
+      3. **Change the bias to $b = -2$:** now $2x_1 - 2 = 0$ gives $x_1 = 1$ on the size axis. The line has moved right by 0.5 without turning, and a house needs to be bigger to get a yes.
+
+      The weights fix which way the line points; the bias slides it.
+    problems:
+      - percp-boundary-meaning
+      - percp-crossing-template
+      - percp-which-side
+      - percp-bias-shift
+      - percp-hyperplane
+      - percp-no-curve
+  - id: perc-and-or-xor
+    title: AND and OR work, XOR is impossible
+    explain: |
+      Now use yes/no inputs: $x_1 = 1$ if the house has a garden and $x_2 = 1$ if it's near the station, otherwise 0. There are only four kinds of house: $(0,0), (0,1), (1,0), (1,1)$, the corners of a square.
+
+      One neuron can easily say yes to "garden **and** near the station" (only the $(1,1)$ corner) or to "garden **or** near the station" (every corner except $(0,0)$). In both cases a straight line cuts off the yes corners.
+
+      But suppose you want "**exactly one** of the two": yes for $(0,1)$ and $(1,0)$, no for $(0,0)$ and $(1,1)$. This pattern is called **XOR** ("exclusive or"). The yes corners sit diagonally opposite each other, and so do the no corners. Any straight line that puts both yes corners on one side also puts at least one no corner there.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 290" aria-label="Two unit squares. On the left, AND: a straight line cuts off the single yes corner (1,1). On the right, XOR: yes corners (0,1) and (1,0) are diagonal, so no straight line separates them from the no corners.">
+        <text x="150" y="24" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">AND: one line works</text>
+        <rect x="70" y="70" width="160" height="160" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
+        <line x1="140" y1="60" x2="280" y2="200" stroke="#3b82f6" stroke-width="3"/>
+        <circle cx="70" cy="230" r="10" fill="#ef4444"/>
+        <circle cx="70" cy="70" r="10" fill="#ef4444"/>
+        <circle cx="230" cy="230" r="10" fill="#ef4444"/>
+        <circle cx="230" cy="70" r="10" fill="#10b981"/>
+        <text x="70" y="256" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(0,0)</text>
+        <text x="70" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(0,1)</text>
+        <text x="230" y="256" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(1,0)</text>
+        <text x="230" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(1,1)</text>
+        <text x="490" y="24" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">XOR: no single line works</text>
+        <rect x="410" y="70" width="160" height="160" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
+        <line x1="380" y1="200" x2="600" y2="100" stroke="#737373" stroke-width="2" stroke-dasharray="6 6"/>
+        <circle cx="410" cy="230" r="10" fill="#ef4444"/>
+        <circle cx="410" cy="70" r="10" fill="#10b981"/>
+        <circle cx="570" cy="230" r="10" fill="#10b981"/>
+        <circle cx="570" cy="70" r="10" fill="#ef4444"/>
+        <text x="410" y="256" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(0,0)</text>
+        <text x="410" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(0,1)</text>
+        <text x="570" y="256" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(1,0)</text>
+        <text x="570" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(1,1)</text>
+        <text x="320" y="284" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">green = output 1, red = output 0</text>
+      </svg>
+      ```
+
+      So no choice of weights and bias lets a single neuron compute XOR. The next lessons fix this by feeding the outputs of several neurons into another one.
+    worked: |
+      This example shows one neuron computing AND, and how changing only the bias turns it into OR.
+
+      Take $w = (1, 1)$ and $b = -1.5$, with the step rule:
+
+      | house $(x_1, x_2)$ | score $x_1 + x_2 - 1.5$ | output |
+      |---|---|---|
+      | $(0,0)$ | $-1.5$ | 0 |
+      | $(0,1)$ | $-0.5$ | 0 |
+      | $(1,0)$ | $-0.5$ | 0 |
+      | $(1,1)$ | $0.5$ | 1 |
+
+      Only a house with both gets a yes: that's **AND**. Change the bias to $b = -0.5$ and the scores become $-0.5, 0.5, 0.5, 1.5$, so the outputs are $0, 1, 1, 1$: that's **OR**. The bias slid the line past two more corners.
+    problems:
+      - percp-xor-why
+      - percp-count-yes-template
+      - percp-or-bias
+      - percp-nand-output
+      - percp-which-pattern
+      - percp-robot-bumpers
+final: perc-explain
+summary: |
+  - A neuron computes a score $z = w \cdot x + b$ and applies an activation $\phi$; a perceptron uses the step rule, outputting 1 if $z > 0$ and 0 otherwise.
+  - Its decision boundary, where $w \cdot x + b = 0$, is a straight line (a plane or hyperplane with more inputs). The weights set its direction and the bias shifts it.
+  - One straight boundary can compute AND and OR, but not XOR, whose yes corners are diagonally opposite.
