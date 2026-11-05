@@ -3,14 +3,14 @@ version: 2
 objective: |
   **Goal:** draw the computational graph of a calculation, find the local derivative at each node, and chain them to see how the result changes with any input.
 why: |
-  A house-price model makes a prediction, subtracts the true price, and squares the difference. To improve its settings, we need to know how changing a weight changes that final error. You could expand the whole formula and differentiate it by hand, but a larger model repeats many calculations, and rewriting everything hides which values depend on which others. A computational graph keeps those dependencies visible as small operations. Each operation has a simple derivative, and the chain rule connects them without expanding the entire formula. Stored intermediate values can be reused rather than calculated again for every derivative. Backpropagation and automatic differentiation build on this representation to make derivative calculations systematic for models with many settings.
+  A house-price model predicts 700 thousand pounds for a house that sold for 500 thousand. Before changing its settings, we want to know how each setting affects that mistake. We could expand the complete error formula and differentiate it by hand. That is manageable for a small model, but a larger model may reuse the same calculation many times, making the expanded formula long and hard to check. A computational graph records each small calculation and shows where its answer is used. We can then find derivatives one operation at a time and reuse answers we have already calculated. Backpropagation and automatic differentiation build on this representation to calculate how every model setting affects its final error.
 knowledge_points:
   - id: cg-drawing-graphs
     title: Breaking a calculation into simple steps
     explain: |
-      A line prices a house as $\hat y = wx + b$, where $x$ is the size, $w$ and $b$ are the line's settings, and $\hat y$ ("y hat") is the predicted price. The true price is $y$, and the squared error is $L = (wx + b - y)^2$. **How does $L$ change if you nudge $w$?**
+      A house has size $x = 2$ in hundreds of m². We predict its price with $\hat y = wx + b$, where $w = 3$ multiplies the size and $b = 1$ is an amount added afterwards. Prices are in hundreds of thousands of pounds, so $\hat y = 7$ means 700 thousand pounds. The house actually sold for $y = 5$, so the squared error is $L = (wx + b - y)^2 = 4$. **How would changing $w$ change this error?**
 
-      Expanding the formula works here, but repeats more algebra as models grow. Instead, name each simple step:
+      We could expand the formula before differentiating it, but that becomes hard to follow when a model has many repeated calculations. Instead, give each small calculation a name:
 
       1. $m = w \cdot x$ (multiply)
       2. $\hat y = m + b$ (add)
@@ -19,7 +19,7 @@ knowledge_points:
 
       Now draw it. Each operation is a **node**. An arrow carries a value into the node that uses it. Inputs sit on the left and the final result on the right. This picture is a **computational graph**.
 
-      This works because arrows preserve every dependency without expanding repeated calculations into separate copies.
+      This works because every arrow tells us exactly where an earlier answer is needed. If two later calculations need the same answer, we can draw two arrows from it rather than calculate it twice.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" aria-label="Computational graph of the squared error. w = 3 and x = 2 feed a multiply node giving m = 6. m and b = 1 feed an add node giving y hat = 7. y hat and y = 5 feed a subtract node giving r = 2. A square node gives L = 4">
@@ -52,11 +52,11 @@ knowledge_points:
       </svg>
       ```
 
-      Evaluate left to right: a node runs once all its inputs have values.
+      Calculate the answers from left to right. A node can run only after all its inputs have been calculated.
     worked: |
       This example shows the graph being evaluated one node at a time.
 
-      To keep the numbers small, measure size in hundreds of m² and price in hundreds of thousands. The house has $x = 2$ and sold for $y = 5$. The line's settings are $w = 3$ and $b = 1$.
+      We use the same house and settings: size $x = 2$, sale price $y = 5$, multiplying setting $w = 3$ and added amount $b = 1$.
 
       | step | node | inputs | value |
       |---|---|---|---|
@@ -76,9 +76,9 @@ knowledge_points:
   - id: cg-local-derivatives
     title: Each node has its own simple derivative
     explain: |
-      **How does $L$ change when you nudge $w$?** Differentiating all four steps at once hides their individual effects. Each node on its own is easier.
+      Our house-price calculation multiplies $w = 3$ by $x = 2$ before adding the other terms. **How much does that multiplication's answer change when we change $w$?** Looking only at the complete error formula hides this small step. We can understand it by keeping $x = 2$ fixed and changing only $w$.
 
-      A node's **local derivative** says how its output changes when you nudge one of its inputs and hold the others fixed. That is a partial derivative of one small operation, so a few rules cover almost everything:
+      A node's **local derivative** measures how its output changes per unit change in one input, with the others fixed. It is the partial derivative of that one operation. The same few rules apply wherever that operation appears:
 
       | node | output | local derivatives |
       |---|---|---|
@@ -86,12 +86,10 @@ knowledge_points:
       | subtract | $a - b$ | $1$ for $a$, $-1$ for $b$ |
       | multiply | $a \cdot b$ | $b$ for $a$, $a$ for $b$ |
       | square | $a^2$ | $2a$ |
-      | exponential | $e^a$ | $e^a$ |
-      | max with 0 | $\max(0, a)$ | $1$ if $a > 0$, $0$ if $a < 0$; undefined at $0$ |
 
-      This works because holding the other inputs fixed isolates one operation's response. An add node passes a nudge through unchanged: add 0.1 to $a$ and $a + b$ rises by 0.1. A multiply node scales by the *other* input: if $b = 4$, adding 0.1 to $a$ raises $a \cdot b$ by 0.4. A $\max(0, a)$ node blocks nudges for negative $a$, where its output stays 0.
+      This works because holding the other inputs fixed lets us measure one input's effect without mixing in other changes. For $a + b$, increasing $a$ by 0.1 increases the answer by 0.1. For $a \cdot b$ with $b = 4$, the same increase in $a$ increases the answer by 0.4.
 
-      Why store intermediate values rather than recompute them? Several local derivatives need those values; saving them avoids repeating earlier operations, at the cost of memory. Evaluate first, then reuse them.
+      Why save answers such as $r = 2$? The derivative of $r^2$ needs that value to calculate $2r = 4$. Saving it uses memory, but avoids repeating all the calculations that produced $r$.
     worked: |
       This example shows every local derivative in the house graph, using the values from evaluating it ($w = 3$, $x = 2$, $m = 6$, $\hat y = 7$, $r = 2$).
 
@@ -102,7 +100,11 @@ knowledge_points:
       | $r = \hat y - y$ | $\partial r/\partial \hat y = 1$, $\partial r/\partial y = -1$ | $1$ and $-1$ |
       | $L = r^2$ | $dL/dr = 2r$ | $4$ |
 
-      Each entry needed only one node's rule and the values next to it. Nothing here looked at the whole formula.
+      Each derivative uses one operation's rule and its saved inputs. We do not need to differentiate the complete price-error formula to fill in this table.
+
+      For $\max(0, a)$, the output is whichever is larger: 0 or $a$. When $a = -3$, a small change leaves the output at 0, so the derivative is 0. When $a = 3$, the output changes by the same amount as $a$, so the derivative is 1. At zero the graph has a corner, so there is no derivative there.
+
+      An exponential node calculates $e^a$. Its derivative is also $e^a$, so its saved output already gives the local derivative.
     problems:
       - cgp-multiply-local
       - cgp-multiply-nudge
@@ -113,7 +115,9 @@ knowledge_points:
   - id: cg-chaining-paths
     title: Chaining local derivatives back to an input
     explain: |
-      **Why isn't the first node's derivative enough?** It only tells us how $m$ changes, not $L$. The path from $w$ to $L$ goes through multiply, add, subtract and square nodes. **Multiply the local derivatives along the path**: this works because each node scales the nudge it receives from the previous one.
+      For our house, increasing $w$ by 0.01 increases the multiplication result $m$ by 0.02 because $x = 2$. **Does that tell us how much the final error changes?** Not yet: the changed value still goes through addition, subtraction and squaring. We must include each of those operations, not stop at the first derivative.
+
+      Follow the arrows from $w$ to $L$ and multiply the local derivatives. This works because each operation changes the amount it receives from the previous operation. Here addition and subtraction each multiply the change by 1. Squaring, at $r = 2$, multiplies it by about 4.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 130" aria-label="The path from w to L through m, y hat and r. The local derivatives along it are 2, 1, 1 and 4, which multiply to dL/dw = 8">
@@ -144,19 +148,19 @@ knowledge_points:
 
       So nudging $w$ up by 0.01 raises the squared error by about $8 \times 0.01 = 0.08$.
 
-      Sometimes one input feeds more than one node, so there is more than one path from it to the result. Then you work out each path's product and **add the paths**, exactly as in the two-route rule of the chain-rule lesson.
+      Sometimes the same input is used by two later operations. Then there are two paths, or sequences of arrows, from that input to the result. Calculate the derivative along each path and add the two contributions. A change in the input affects the result through both calculations, so neither can be ignored.
 
-      For our house-price model, this tells us how a weight affects the final error, not just the prediction. Backpropagation extends this calculation to every model setting in one sweep.
+      For our house-price model, we now know how the setting $w$ affects the final error. Backpropagation organises this calculation for every model setting.
     worked: |
       This example shows adding paths when one input is used twice.
 
-      Let $f = a \cdot b + c \cdot b$ with $a = 2$, $b = -3$ and $c = 4$. The graph has two multiply nodes, $p = a \cdot b$ and $q = c \cdot b$, feeding an add node $f = p + q$. The input $b$ has arrows into both multiply nodes.
+      A robot cart receives the same movement command $b = -3$ for two one-second intervals. It travels $a \cdot b$ centimetres in the first interval and $c \cdot b$ centimetres in the second, where $a = 2$ and $c = 4$ describe how strongly it responds in each interval. Negative distances mean travelling backwards. The total distance with direction is $f = a \cdot b + c \cdot b$. We want to know how changing the command affects that total. The graph first calculates $p = a \cdot b$ and $q = c \cdot b$, then adds them as $f = p + q$.
 
       1. Path through $p$: $\frac{\partial f}{\partial p}\cdot\frac{\partial p}{\partial b} = 1 \cdot a = 2$.
       2. Path through $q$: $\frac{\partial f}{\partial q}\cdot\frac{\partial q}{\partial b} = 1 \cdot c = 4$.
-      3. Add the paths: $\partial f/\partial b = 2 + 4 = 6$.
+      3. Adding the two contributions gives $\partial f/\partial b = 2 + 4 = 6$.
 
-      Check: $f = (a + c) \cdot b$, so $\partial f/\partial b = a + c = 6$. Using only one path would give 2 or 4.
+      We can check by rewriting $f = (a + c) \cdot b$. Its derivative with respect to $b$ is $a + c = 6$. Using only one path would give 2 or 4 and would miss part of the setting's effect on the robot's calculated movement.
     problems:
       - cgp-path-product
       - cgp-chain-template
@@ -167,7 +171,7 @@ knowledge_points:
 final: cg-explain
 summary: |
   - A computational graph breaks a calculation into nodes that each do one simple operation, and arrows carry each value to the node that uses it.
-  - Each node has simple local derivatives: add passes a nudge through unchanged, multiply scales it by the other input, and square scales it by twice its input.
-  - Multiply local derivatives along the path from an input to the result, and add the paths when an input feeds several nodes.
+  - A local derivative describes one operation's response to a change in one input. For addition it is 1, for multiplication it is the other input, and for squaring it is twice the input.
+  - Multiply derivatives along each path from an input to the result. If several paths exist, add their contributions because changing that input affects every route.
 
   **Where you'll use this:** backpropagation and automatic differentiation reuse these node rules and stored values to find how model settings affect a final loss.
