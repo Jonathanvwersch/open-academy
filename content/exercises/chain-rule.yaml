@@ -35,7 +35,7 @@ exercises:
       - {
           answer: "cos(2*x)",
           category: misunderstood_definition,
-          feedback: "Review the relevant rule for this item.",
+          feedback: "The outer derivative is evaluated at $x^2$, not at its derivative $2x$. Keep $\\cos(x^2)$ and multiply by $2x$.",
         }
     solution: "$\\cos(x^2)\\cdot 2x$."
   - id: cr-exp
@@ -77,7 +77,7 @@ exercises:
     role: review
     difficulty: 3
     est_minutes: 3
-    prompt: "$L = u + uv$ where $u = 2x$ and $v = x^2$. Using the multivariable chain rule (sum over paths), give $dL/dx$."
+    prompt: "Let $L = u + uv$, where $u = 2x$ and $v = x^2$. Changing $x$ changes $L$ through both $u$ and $v$. Use the chain rule to find $dL/dx$, counting both effects."
     answer: "2 + 6*x^2"
     variables: { x: [-2, 2] }
     hints:
@@ -92,11 +92,11 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Explain the chain rule in your own words, as you would to another engineer, including what happens when a variable influences the output through two different paths."
+    prompt: "A journey's distance depends on driving time, and fuel use depends on distance. Explain in 2–4 sentences how the chain rule combines those rates. Then explain how to combine the effects if an extra kilometre adds both fuel costs and driver wages."
     rubric:
       - {
           id: r1,
-          criterion: "Describes multiplying local rates of change (sensitivity of each stage to its input)",
+          criterion: "Describes multiplying the derivatives of successive calculations",
           weight: 2,
           required: true,
         }
@@ -107,7 +107,7 @@ exercises:
           required: true,
         }
       - { id: r3, criterion: "Gives or references a concrete example", weight: 1 }
-    exemplar: "Each stage of a composed function has a local sensitivity: how much its output moves per unit change in its input. The overall sensitivity is the product of these along the chain, e.g. y=(3x+1)^2 gives 2(3x+1)·3. If x reaches the output through two routes, each route contributes its product and you add them."
+    exemplar: "Multiply kilometres per hour by litres per kilometre to find litres per hour, because every extra kilometre uses fuel. More generally, multiply the derivatives of successive calculations to find how the final result changes. When an extra kilometre adds both fuel costs and wages, calculate each added cost separately and add them, since both appear on the bill."
   - id: crp-total-rate
     dimension: conceptual
     type: mc
@@ -126,13 +126,13 @@ exercises:
         text: "$50 \\div 0.1 = 500$"
         correct: false
         category: math_error
-        feedback: "Dividing would give km per litre per hour, which isn't a fuel rate. Multiply the two local rates."
+        feedback: "Dividing does not give litres per hour. Each of the 50 km uses 0.1 litres, so multiply those numbers to find the fuel used in an hour."
       - id: d
         text: "$0.1$, the last step only"
         correct: false
         category: incorrect_reasoning
         feedback: "0.1 is litres per km. To get litres per hour you also need how many km an hour covers."
-    solution: "The chain rule multiplies the local rates: $\\frac{dF}{dt} = \\frac{dF}{ds}\\cdot\\frac{ds}{dt} = 0.1 \\times 50 = 5$ litres per hour."
+    solution: "Each hour adds 50 km, and each kilometre uses 0.1 litres. The chain rule multiplies these rates: $\\frac{dF}{dt} = \\frac{dF}{ds}\\cdot\\frac{ds}{dt} = 0.1 \\times 50 = 5$ litres per hour."
   - id: crp-rate-product
     dimension: math
     type: numeric
@@ -181,7 +181,7 @@ exercises:
         text: "Nothing: adding the two rates is the chain rule"
         correct: false
         category: misunderstood_definition
-        feedback: "The chain rule multiplies local rates. Adding them mixes km per hour with litres per km."
+        feedback: "The rates describe successive calculations, so multiply them. Adding km per hour to litres per km does not give litres per hour."
     solution: "One hour adds 60 km and each km uses 0.08 litres, so the hour uses $60 \\times 0.08 = 4.8$ litres. The chain rule multiplies the rates."
   - id: crp-local-meaning
     dimension: conceptual
@@ -189,7 +189,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "In the chain time $t$ → distance $s$ → fuel $F$, what does the local sensitivity $dF/ds$ tell you?"
+    prompt: "A car's driving time $t$ determines its distance $s$, and distance determines its fuel use $F$. What does the derivative $dF/ds$ measure?"
     options:
       - { id: a, text: "How much more fuel each extra km uses", correct: true }
       - id: b
@@ -230,7 +230,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A chain has three steps, $x \\to u \\to v \\to y$, with local rates $du/dx = 2$, $dv/du = -3$ and $dy/dv = 0.5$. What is $dy/dx$?"
+    prompt: "Three calculations turn $x$ into $u$, then $v$, then $y$. Their derivatives are $du/dx = 2$, $dv/du = -3$ and $dy/dv = 0.5$. What is $dy/dx$?"
     answer: -3
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -242,7 +242,7 @@ exercises:
         tolerance: { abs: 0.001 }
         category: math_error
         feedback: "Check the sign: one of the three rates is negative."
-    hints: ["Multiply all three local rates."]
+    hints: ["Multiply the derivatives of the three successive calculations."]
     solution: "$\\frac{dy}{dx} = \\frac{dy}{dv}\\cdot\\frac{dv}{du}\\cdot\\frac{du}{dx} = 0.5 \\times (-3) \\times 2 = -3$. A longer chain just has more rates to multiply."
   - id: crp-diff-cube
     dimension: math
@@ -308,7 +308,7 @@ exercises:
         correct: false
         category: math_error
         feedback: "You still need the outer derivative: the power drops from 4 to 3 and the 4 comes to the front."
-    solution: "Outer: $4u^3$ with $u = 2x + 3$. Inner: $du/dx = 2$. Multiply: $4(2x + 3)^3 \\cdot 2 = 8(2x + 3)^3$."
+    solution: "Let $u = 2x + 3$. The outer derivative is $4u^3$ and the inner derivative is $du/dx = 2$. Multiplying gives $4(2x + 3)^3 \\cdot 2 = 8(2x + 3)^3$."
   - id: crp-inner-outer
     dimension: conceptual
     type: mc
@@ -380,7 +380,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "An input $x$ reaches the output $f$ by two routes. Multiplying the rates along route 1 gives 5, and along route 2 gives $-2$. What is $df/dx$?"
+    prompt: "Changing $x$ affects $f$ through two separate sequences of calculations. Multiplying the derivatives in one sequence gives 5, and multiplying them in the other gives $-2$. What is $df/dx$ when both effects are included?"
     options:
       - { id: a, text: "$5 + (-2) = 3$", correct: true }
       - id: b
@@ -398,7 +398,7 @@ exercises:
         correct: false
         category: math_error
         feedback: "Routes are added. A route with a negative rate pulls the total down."
-    solution: "Each route's product says how much a nudge in $x$ changes $f$ along that route. Both changes happen, so add them: $5 + (-2) = 3$."
+    solution: "The two sequences contribute 5 and $-2$ to the rate of change of $f$ with $x$. Both effects happen together, so add them: $5 + (-2) = 3$."
   - id: crp-trip-cost
     dimension: math
     type: numeric
@@ -409,7 +409,7 @@ exercises:
     hints:
       - "There are two routes from $s$ to $C$: through $F$ and through $H$."
       - "Route through fuel: ${{=p}} \\times {{=r}}$. Route through time: ${{=w}} \\times \\frac{1}{ {{=v}} }$."
-    solution: "Through fuel: $\\frac{\\partial C}{\\partial F}\\cdot\\frac{dF}{ds} = {{=p}} \\times {{=r}} = {{=p*r}}$. Through time: $\\frac{\\partial C}{\\partial H}\\cdot\\frac{dH}{ds} = {{=w}} \\div {{=v}} \\approx {{=w/v}}$. Add the routes: $dC/ds \\approx {{=p*r+w/v}}$."
+    solution: "The added fuel costs $\\frac{\\partial C}{\\partial F}\\cdot\\frac{dF}{ds} = {{=p}} \\times {{=r}} = {{=p*r}}$ pounds per km. The extra driving time costs $\\frac{\\partial C}{\\partial H}\\cdot\\frac{dH}{ds} = {{=w}} \\div {{=v}} \\approx {{=w/v}}$ pounds per km. Add both costs to get $dC/ds \\approx {{=p*r+w/v}}$ pounds per km."
     answer_expr: "p * r + w / v"
     params:
       p: { min: 1.2, max: 1.8, step: 0.1 }
@@ -452,7 +452,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: "Even a smaller contribution changes the total. The two routes contribute $8x$ and $2x$, so both must be added."
-    solution: "Route through $u$: $2u \\cdot 2 = 8x$. Route through $v$: $1 \\cdot 2x = 2x$. Total $10x$. Check: $f = 4x^2 + x^2 = 5x^2$, so $df/dx = 10x$."
+    solution: "Changing $u$ contributes $2u \\cdot 2 = 8x$ to the derivative. Changing $v$ contributes $1 \\cdot 2x = 2x$. Their sum is $10x$. We can check by substituting first: $f = 4x^2 + x^2 = 5x^2$, whose derivative is also $10x$."
   - id: crp-routes-expression
     dimension: math
     type: expression
@@ -470,7 +470,7 @@ exercises:
         category: incomplete_explanation
         feedback: "That is only the route through $v$. Add the route through $u$: $v \\cdot 1$."
     hints: ["$\\partial f/\\partial u = v$ and $\\partial f/\\partial v = u$."]
-    solution: "Route through $u$: $v \\cdot 1 = x^2$. Route through $v$: $u \\cdot 2x = 2x(x + 1)$. Add: $x^2 + 2x^2 + 2x = 3x^2 + 2x$. Check: $f = x^3 + x^2$."
+    solution: "The change through $u$ contributes $v \\cdot 1 = x^2$ to the derivative. The change through $v$ contributes $u \\cdot 2x = 2x(x + 1)$. Adding gives $x^2 + 2x^2 + 2x = 3x^2 + 2x$. Substituting $f = x^3 + x^2$ first gives the same derivative."
   - id: crp-partial-meaning
     dimension: conceptual
     type: mc
@@ -502,7 +502,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot's battery drain $B$ depends on its speed $v$ directly, and also on its motor temperature $T$, which itself rises with speed. How do you find $dB/dv$?"
+    prompt: "A robot uses battery energy at a rate $B$, measured in joules per second. Increasing its speed $v$ raises this rate directly and also heats the motor. The higher motor temperature $T$ increases energy use further. How do you find $dB/dv$, counting both effects?"
     options:
       - id: a
         text: "Add $\\frac{\\partial B}{\\partial v}$ and $\\frac{\\partial B}{\\partial T}\\cdot\\frac{dT}{dv}$"

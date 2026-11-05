@@ -40,7 +40,7 @@ exercises:
       - {
           answer: 6,
           category: math_error,
-          feedback: "You dropped the inner factor $x = 3$: $\\partial f/\\partial w = 2r \\cdot x$.",
+          feedback: "The difference $r = wx + b - y$ changes at rate $x = 3$ when $w$ changes. Multiply by that rate: $\\partial f/\\partial w = 2r \\cdot x$.",
         }
       - { answer: 9, category: math_error, feedback: "Don't forget the factor 2 from the square." }
     hints:
@@ -65,7 +65,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A function $L$ is calculated from many examples and depends on parameters $w_1, w_2, w_3$. When finding $\\partial L/\\partial w_3$, which quantities are treated as constants?"
+    prompt: "A model's total prediction error $L$ depends on three adjustable numbers, called parameters: $w_1, w_2, w_3$. When finding $\\partial L/\\partial w_3$, which quantities are treated as constants?"
     options:
       - { id: a, text: "All data values and every parameter except $w_3$", correct: true }
       - {
@@ -189,7 +189,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "Every input except $y$ is held fixed."
-    solution: "Freezing $x$ and $z$ isolates the output change caused by $y$. If they also moved, the output change could include their effects too."
+    solution: "Keeping $x$ and $z$ fixed lets us measure the effect of $y$ alone. If they also changed, we could not attribute the output change to $y$."
   - id: pdp-sign
     dimension: conceptual
     type: mc
@@ -228,11 +228,11 @@ exercises:
       - {
           answer: 0.1202,
           category: math_error,
-          feedback: "That is the change in output. Divide it by the nudge 0.01 to get a rate.",
+          feedback: "That is the change in output. Divide it by the increase in $x$, which is 0.01, to get a rate.",
         }
     hints:
       [
-        "Rate = change in output ÷ nudge in $x$.",
+        "Divide the change in output by the change in $x$.",
         "$y$ stayed at 2, so this estimates the partial in $x$.",
       ]
     solution: "$(18.1202 - 18) \\div 0.01 = 12.02$, close to the exact value $2xy = 12$."
@@ -392,7 +392,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "For the squared gap $f(w, b) = (wx + b - y)^2$, where $x$ and $y$ are fixed numbers, give $\\frac{\\partial f}{\\partial w}$ in terms of $w$, $b$, $x$ and $y$."
+    prompt: "A house-price model predicts $wx + b$ for a house of size $x$ that sold for $y$. Its squared error is $f(w, b) = (wx + b - y)^2$. Keeping $x$ and $y$ fixed, give $\\frac{\\partial f}{\\partial w}$ in terms of $w$, $b$, $x$ and $y$."
     answer: "2*(w*x + b - y)*x"
     variables: { w: [-2, 2], b: [-2, 2], x: [-2, 2], y: [-2, 2] }
     common_wrong:
@@ -464,10 +464,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "In $f(w, b) = (wx + b - y)^2$, why are $x$ and $y$ treated as constants?"
+    prompt: "A house-price model predicts $wx + b$, with adjustable numbers $w$ and $b$. The house has size $x = 3$ and recorded sale price $y = 1$. Why do we keep $x$ and $y$ constant when using $f(w, b) = (wx + b - y)^2$ to improve the model?"
     options:
       - id: a
-        text: "They describe one house that has already sold, so only the dials $w$ and $b$ can move"
+        text: "They are recorded facts about the house; we can adjust the model's $w$ and $b$ instead"
         correct: true
       - id: b
         text: "Holding the data fixed makes their values 0 in the gap"
@@ -478,38 +478,38 @@ exercises:
         text: "Every input to a price formula must stay fixed, including $w$ and $b$"
         correct: false
         category: misunderstood_definition
-        feedback: "The house's facts stay fixed, but the model's dials can change. Freezing those too would prevent any adjustment."
+        feedback: "The house's facts stay fixed, but the model's adjustable numbers can change. Keeping those fixed too would prevent any improvement."
       - id: d
         text: 'They aren''t; you also need $\partial f / \partial x$ to shrink the gap'
         correct: false
         category: incorrect_reasoning
-        feedback: "You can't change the house's size or sale price, so their partials don't help you choose the dials."
-    solution: "The size and sale price are fixed facts about the house. The partials you need are for the dials you can turn, $w$ and $b$."
+        feedback: "You cannot change the house's size or recorded sale price to improve the model. You need the rates of change for $w$ and $b$ instead."
+    solution: "The size and sale price are fixed facts about the house. To improve the model, calculate how its error changes with the adjustable numbers $w$ and $b$."
   - id: pdp-turn-dial
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "For a squared gap $f(w, b)$, you find $\\frac{\\partial f}{\\partial w} = 18$ and $\\frac{\\partial f}{\\partial b} = 6$. Which small change to one dial shrinks $f$ the most?"
+    prompt: "A house-price model's squared error $f(w, b)$ depends on its adjustable numbers $w$ and $b$. You find $\\frac{\\partial f}{\\partial w} = 18$ and $\\frac{\\partial f}{\\partial b} = 6$. Compare changes of the same small amount to just one number. Which reduces $f$ the most?"
     options:
-      - { id: a, text: "Turn $w$ down a little", correct: true }
+      - { id: a, text: "Decrease $w$ a little", correct: true }
       - id: b
-        text: "Turn $w$ up a little"
+        text: "Increase $w$ a little"
         correct: false
         category: incorrect_reasoning
-        feedback: "A positive partial means turning $w$ up makes $f$ bigger."
+        feedback: "The positive partial derivative means that increasing $w$ slightly raises the error, rather than reducing it."
       - id: c
-        text: "Turn $b$ down a little"
+        text: "Decrease $b$ a little"
         correct: false
         category: incorrect_reasoning
-        feedback: "That helps, but $f$ is 3 times as sensitive to $w$, so the same nudge to $w$ shrinks it more."
+        feedback: "That reduces the error, but decreasing $w$ by the same small amount reduces it about 3 times as much, since $18 = 3 \\times 6$."
       - id: d
-        text: "Turn $b$ up a little"
+        text: "Increase $b$ a little"
         correct: false
         category: incorrect_reasoning
-        feedback: "A positive partial means turning $b$ up makes $f$ bigger."
-    solution: "Both partials are positive, so turning a dial down shrinks $f$. The partial for $w$ is larger, so a small nudge to $w$ changes $f$ the most."
+        feedback: "The positive partial derivative means that increasing $b$ slightly raises the error."
+    solution: "Both partial derivatives are positive, so a small decrease in either number reduces the error. The rate for $w$ is 18 rather than 6, so the same small decrease in $w$ reduces the error more."
   - id: pdp-three-inputs
     dimension: math
     type: expression

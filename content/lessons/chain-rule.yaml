@@ -1,18 +1,18 @@
 concept: chain-rule
 version: 2
 objective: |
-  **Goal:** differentiate a formula inside a formula with the chain rule, add up routes when an input reaches the output in more than one way, and explain the rule as multiplying local sensitivities.
+  **Goal:** differentiate a formula inside a formula with the chain rule, and combine the effects when one input changes the result through several calculations.
 why: |
-  A robot's model turns sensor readings into a prediction through several calculations. To improve that prediction, you need to know how changing an early weight affects the final error. You could expand the whole model into one enormous formula and differentiate it, but each added stage makes that harder to manage. The chain rule lets you keep the stages separate: measure how each responds to its input, then pass a small change through them. It's the same reasoning as following driving time through distance to fuel used, except the stages are now model calculations. When a weight affects several routes, you count every route. This prepares you for computational graphs, backpropagation, and autodiff.
+  A robot estimates that a wall is 2 metres away when it is actually 1.8 metres away. Its model makes that prediction through several calculations. You want to adjust a weight, a number used in one calculation, to reduce the final error. Expanding the whole model into one formula would work, but becomes difficult as more calculations are added. The chain rule lets you work through them separately and combine their rates of change. It's the same reasoning as finding fuel used per hour from driving speed and fuel used per kilometre. If one weight affects the error in two ways, both effects count. You'll use this in computational graphs, backpropagation, and autodiff.
 knowledge_points:
   - id: cr-rates-multiply
     title: Rates along a chain multiply
     explain: |
-      You drive at a steady 60 km per hour, and the car burns 0.08 litres of fuel per km. **How fast is the fuel going, in litres per hour?**
+      You're planning a journey and need to budget for fuel. You drive at 60 km per hour, and the car uses 0.08 litres per km. **How much fuel does each hour of driving use?**
 
-      Adding the two given rates would mix km per hour with litres per km, not give litres per hour. Instead, follow an extra hour through the chain: it adds 60 km, each using 0.08 litres, so the hour uses $60 \times 0.08 = 4.8$ litres.
+      Adding those rates mixes different units and cannot give litres per hour. Instead, consider one extra hour. You travel 60 km, and each kilometre uses 0.08 litres, so you need $60 \times 0.08 = 4.8$ litres.
 
-      This works because each stage scales the change arriving from the previous one. Picture the extra distance carrying its fuel cost into the next box below.
+      This works because the extra hour produces more kilometres, and every one of those kilometres uses fuel. The two rates describe successive parts of the same journey.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 130" aria-label="A chain from time to distance to fuel. Distance grows by 60 km per hour and fuel by 0.08 litres per km, so fuel grows by 4.8 litres per hour">
@@ -33,25 +33,25 @@ knowledge_points:
       </svg>
       ```
 
-      Write $t$ for hours, $s$ for distance in km and $F$ for fuel in litres. Each step's derivative is its **local sensitivity**: $ds/dt = 60$ measures distance per hour, and $dF/ds = 0.08$ measures fuel per km. The overall rate is their product:
+      Write $t$ for hours, $s$ for distance in km and $F$ for fuel in litres. Each derivative measures one rate: $ds/dt = 60$ for distance per hour and $dF/ds = 0.08$ for fuel per km. Multiply them to find fuel per hour:
 
       $$\frac{dF}{dt} = \frac{dF}{ds}\cdot\frac{ds}{dt} = 0.08 \times 60 = 4.8$$
 
-      This is the **chain rule**. Whenever $y$ depends on $u$ and $u$ depends on $x$,
+      This is the **chain rule**. If $x$ changes $u$, which changes $y$, then
 
       $$\frac{dy}{dx} = \frac{dy}{du}\cdot\frac{du}{dx}.$$
 
-      Rates along one chain multiply, rather than add.
+      For changing rates, use the derivatives at the current values.
     worked: |
-      This example shows that multiplying the two local rates gives the same answer as following a real nudge through the chain.
+      This example shows how six extra minutes affect your fuel budget.
 
-      Nudge the driving time by 0.1 hours (6 minutes):
+      Increase the driving time by 0.1 hours, which is 6 minutes.
 
-      1. Distance: $0.1 \times 60 = 6$ km more.
-      2. Fuel: $6 \times 0.08 = 0.48$ litres more.
-      3. Rate: $0.48 \div 0.1 = 4.8$ litres per hour.
+      1. You travel $0.1 \times 60 = 6$ km farther.
+      2. That distance uses $6 \times 0.08 = 0.48$ more litres.
+      3. Dividing by the added time gives $0.48 \div 0.1 = 4.8$ litres per hour.
 
-      That matches $\frac{dF}{ds}\cdot\frac{ds}{dt} = 0.08 \times 60 = 4.8$. Each step scales the nudge by its own rate, so the overall rate is the product of the rates.
+      That matches $\frac{dF}{ds}\cdot\frac{ds}{dt} = 0.08 \times 60 = 4.8$. The distance increase is multiplied by fuel per kilometre, so both rates matter.
     problems:
       - crp-total-rate
       - crp-rate-product
@@ -62,14 +62,14 @@ knowledge_points:
   - id: cr-nested-formulas
     title: Differentiating a formula inside a formula
     explain: |
-      Take $y = (3x + 1)^2$. **How can we differentiate it without expanding?** Multiplying out $9x^2 + 6x + 1$ works, but becomes unwieldy for $(3x + 1)^{10}$.
+      A robot's distance prediction is wrong by $3x + 1$ metres, where $x$ is an adjustable model setting. At $x = 0$, the error is 1 metre. We want to reduce its square, $y = (3x + 1)^2$. **How does changing $x$ affect $y$?** Expanding works here, but becomes cumbersome for powers such as $(3x + 1)^{10}$.
 
-      Instead, read the formula as two steps, just like time → distance → fuel:
+      Instead, separate the two calculations:
 
-      - the **inner function** $u = 3x + 1$ turns $x$ into $u$;
-      - the **outer function** $y = u^2$ turns $u$ into $y$.
+      - The **inner function**, $u = 3x + 1$, calculates the error.
+      - The **outer function**, $y = u^2$, squares that error.
 
-      This works because a small nudge in $x$ first becomes a nudge in $u$, then in $y$. Multiplying their local rates follows that same nudge through both boxes.
+      This works because a small change in $x$ changes the error first, then its square. Multiplying the two derivatives follows both effects.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 130" aria-label="x goes into the inner function u = 3x + 1, which goes into the outer function y = u squared. The local rates are 3 and 2u, so dy/dx = 2u times 3">
@@ -90,17 +90,17 @@ knowledge_points:
       </svg>
       ```
 
-      Here $du/dx = 3$ and $dy/du = 2u$. Multiply, then substitute $u = 3x + 1$:
+      The derivatives are $du/dx = 3$ and $dy/du = 2u$, giving
 
       $$\frac{dy}{dx} = \frac{dy}{du}\cdot\frac{du}{dx} = 2u \cdot 3 = 6(3x + 1)$$
 
-      Putting one function inside another is **composition**. With $g$ inside and $f$ outside, $f(g(x))$ means "apply $g$, then $f$". We also write $(f\circ g)(x)$, read "$f$ after $g$":
+      Putting one function inside another is **composition**. Write $f(g(x))$ or $(f\circ g)(x)$, read "$f$ after $g$", for applying $g$ then $f$:
 
       $$(f\circ g)'(x) = f'\big(g(x)\big)\cdot g'(x).$$
 
-      Differentiate the outer function at the inner value, then multiply by the inner derivative. Omitting that factor ignores how fast the inner value changes.
+      Evaluate the outer derivative at the inner value, then multiply by the inner derivative. Otherwise you ignore how quickly the error itself changes.
     worked: |
-      This example shows the three steps of the chain rule on $y = (x^2 + 1)^3$ at $x = 1$.
+      This example shows the same method for another nested formula, $y = (x^2 + 1)^3$, at $x = 1$.
 
       1. Name the inner function: $u = x^2 + 1$, so $du/dx = 2x$.
       2. Differentiate the outer function: $y = u^3$, so $dy/du = 3u^2$.
@@ -119,18 +119,18 @@ knowledge_points:
   - id: cr-two-routes
     title: When the input reaches the output by two routes
     explain: |
-      Back to the car. A trip's cost $C$, in pounds, depends on two things: the fuel $F$ at £1.50 per litre, and the driver's hours $H$ at £12 per hour:
+      A delivery driver needs to price a longer trip. Its cost $C$, in pounds, includes fuel $F$ at £1.50 per litre and driving time $H$ at £12 per hour:
 
       $$C = 1.5F + 12H$$
 
       Both depend on the distance $s$. The car uses $F = 0.08s$ litres, and at 60 km per hour the drive takes $H = s/60$ hours. **How much does one extra km add to the cost?**
 
-      Counting only fuel misses the extra wages. Follow both routes with the chain rule, then add their contributions rather than choosing just one.
+      Counting only fuel would leave the driver's extra time unpaid. Calculate both effects with the chain rule, then add them. Each sequence of calculations from distance to cost is called a route.
 
-      This works because each km adds two charges to the same bill: neither cancels the need to pay the other.
+      This works because each extra kilometre adds fuel and wages to the same bill. You pay both amounts, rather than multiplying them or choosing the larger one.
 
-      - through fuel: 1.5 pounds per litre × 0.08 litres per km = 0.12 pounds per km;
-      - through time: 12 pounds per hour × $\tfrac{1}{60}$ hours per km = 0.20 pounds per km.
+      - Fuel adds 1.5 pounds per litre × 0.08 litres per km = 0.12 pounds per km.
+      - Wages add 12 pounds per hour × $\tfrac{1}{60}$ hours per km = 0.20 pounds per km.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 210" aria-label="Distance s reaches cost C by two routes: through fuel F with rates 0.08 and 1.5, and through hours H with rates 1/60 and 12. The routes give 0.12 and 0.20, which add to 0.32">
@@ -155,19 +155,19 @@ knowledge_points:
       </svg>
       ```
 
-      So $dC/ds = 0.12 + 0.20 = 0.32$: each extra km costs 32p. Since $C$ has two inputs, $\partial C/\partial F = 1.5$ measures fuel's effect with hours fixed. The **multivariable chain rule** multiplies rates along each route, then adds the routes:
+      So $dC/ds = 0.12 + 0.20 = 0.32$: each extra km costs 32p. The partial $\partial C/\partial F = 1.5$ holds hours fixed. The **multivariable chain rule** combines the rates:
 
       $$\frac{dC}{ds} = \frac{\partial C}{\partial F}\cdot\frac{dF}{ds} + \frac{\partial C}{\partial H}\cdot\frac{dH}{ds}$$
 
-      In ML, a parameter can affect prediction error through several calculations, just as distance affects this bill through fuel and wages. Every route's contribution counts.
+      In ML, a model weight may change prediction error through several calculations, just as distance changes both charges. Every effect counts.
     worked: |
       This example shows the two-route rule on a formula, then checks the answer another way.
 
       Let $f = u \cdot v$, where $u = x^2$ and $v = 3x$. Find $df/dx$ at $x = 2$, where $u = 4$ and $v = 6$.
 
-      1. Route through $u$: $\partial f/\partial u = v = 6$ and $du/dx = 2x = 4$, so this route gives $6 \times 4 = 24$.
-      2. Route through $v$: $\partial f/\partial v = u = 4$ and $dv/dx = 3$, so this route gives $4 \times 3 = 12$.
-      3. Add the routes: $df/dx = 24 + 12 = 36$.
+      1. For the route through $u$, $\partial f/\partial u = v = 6$ and $du/dx = 2x = 4$. Multiplying gives $6 \times 4 = 24$.
+      2. For the route through $v$, $\partial f/\partial v = u = 4$ and $dv/dx = 3$. Multiplying gives $4 \times 3 = 12$.
+      3. Add both effects to get $df/dx = 24 + 12 = 36$.
 
       Check: $f = x^2 \cdot 3x = 3x^3$, so $df/dx = 9x^2 = 36$ at $x = 2$. Leaving out either route gives a wrong answer.
     problems:
@@ -181,6 +181,6 @@ final: cr-explain
 summary: |
   - Rates along a chain multiply: $\frac{dy}{dx} = \frac{dy}{du}\cdot\frac{du}{dx}$, just as km per hour × litres per km gives litres per hour.
   - For a formula inside a formula, $(f\circ g)'(x) = f'(g(x))\cdot g'(x)$: differentiate the outer function, then multiply by the inner function's derivative.
-  - When an input reaches the output by several routes, multiply the rates along each route and add the routes.
+  - When an input affects the output through several sequences of calculations, multiply the rates within each sequence, then add the results.
 
-  **Where you'll use this:** computational graphs show the routes through a model; backpropagation combines their sensitivities; autodiff automates these chain-rule calculations.
+  **Where you'll use this:** computational graphs show which calculations depend on which others. Backpropagation combines their rates of change to find how weights affect error. Autodiff performs these derivative calculations automatically.
