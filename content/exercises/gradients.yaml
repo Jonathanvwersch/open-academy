@@ -35,7 +35,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "At a point, $\\nabla L = (3, -4)$. Which unit-length step decreases $L$ fastest (to first order)?"
+    prompt: "A model's error $L$ has gradient $\\nabla L = (3, -4)$ at its current weights. Which direction vector of length 1 gives the largest estimated decrease for the same small change in the weights?"
     options:
       - { id: a, text: "$(-0.6, 0.8)$", correct: true }
       - {
@@ -43,14 +43,14 @@ exercises:
           text: "$(0.6, -0.8)$",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "That is along $+\\nabla L$, the direction of steepest *ascent*.",
+          feedback: "That points along $+\\nabla L$, which increases the error fastest rather than decreasing it.",
         }
       - {
           id: c,
           text: "$(0.8, 0.6)$",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "This is perpendicular to the gradient, so to first order $L$ does not change.",
+          feedback: "This is at right angles to the gradient. The estimate using the current slopes therefore predicts no change in $L$.",
         }
       - {
           id: d,
@@ -60,19 +60,19 @@ exercises:
           feedback: "This does decrease $L$, but more slowly: $\\nabla L \\cdot \\delta = -3$ versus $-5$ for the best direction.",
         }
     hints: ["Steepest descent is $-\\nabla L / \\|\\nabla L\\|$."]
-    solution: "$-\\nabla L/\\|\\nabla L\\| = (-3, 4)/5 = (-0.6, 0.8)$, giving a first-order change of $-5$."
+    solution: "The gradient has length 5. Divide its negative by 5 to get $(-3, 4)/5 = (-0.6, 0.8)$. The error decreases at an estimated rate of 5 per unit distance in this direction."
   - id: grad-review-flat
     dimension: conceptual
     type: mc
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "What is $\\nabla f$ at a local minimum of a smooth function?"
+    prompt: "A smooth function $f$ has a local minimum, meaning its value is no larger than at any nearby point. Assume its inputs can vary freely in every direction. What is $\\nabla f$ there?"
     options:
       - { id: a, text: "The zero vector", correct: true }
       - {
           id: b,
-          text: "A vector pointing toward the global minimum",
+          text: "A vector pointing toward the lowest value anywhere in the function",
           correct: false,
           category: misunderstood_definition,
         }
@@ -84,16 +84,16 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 3
-    prompt: "A loss is $L(w_1, w_2) = w_1^2 + 100\\,w_2^2$. You start at $(1, 1)$ and step along $-\\nabla L$, multiplying the gradient by one shared number $s$ for both weights. Which statement best describes the trade-off?"
+    prompt: "A model's loss, its numerical measure of error, is $L(w_1, w_2) = w_1^2 + 100\\,w_2^2$. Its weights start at $(1, 1)$. Each update subtracts $s\\nabla L$ from the weights, using one positive number $s$ to control the size of both changes. Which statement describes the difficulty?"
     options:
       - {
           id: a,
-          text: "A step size that is safe for $w_2$ makes progress in $w_1$ very slow, and a step that is fast for $w_1$ overshoots in $w_2$",
+          text: "A small enough update to reduce the size of $w_2$ changes $w_1$ very slowly; a faster update for $w_1$ can make $w_2$ grow in size instead",
           correct: true,
         }
       - {
           id: b,
-          text: "Both coordinates converge at the same rate because the gradient points at the minimum",
+          text: "Both weights approach 0 at the same rate because the gradient points at the minimum",
           correct: false,
           category: misunderstood_definition,
           feedback: "The gradient $(2, 200)$ points steeply along $w_2$, not at the minimum $(0, 0)$.",
@@ -116,7 +116,7 @@ exercises:
     rubric:
       - {
           id: r1,
-          criterion: "Uses the first-order approximation $f(x+\\delta) \\approx f(x) + \\nabla f\\cdot\\delta$ (or describes the change as a dot product with the gradient)",
+          criterion: "Estimates the change using the current slopes: $f(x+\\delta) \\approx f(x) + \\nabla f\\cdot\\delta$ (or describes the change as a dot product with the gradient)",
           weight: 2,
           required: true,
         }
@@ -126,8 +126,8 @@ exercises:
           weight: 2,
           required: true,
         }
-      - { id: r3, criterion: "Notes that this only holds locally, for small steps", weight: 1 }
-    exemplar: "For a small step δ, the change in f is approximately ∇f·δ = |∇f||δ|cosθ. For a fixed step length this is most negative when cosθ = -1, i.e. δ points opposite the gradient. It is only a local, first-order statement, so big steps can overshoot."
+      - { id: r3, criterion: "Notes that the estimate only applies to small changes", weight: 1 }
+    exemplar: "For a small displacement δ, estimate the change in f using ∇f·δ = |∇f||δ|cosθ. For equal distances, this is most negative when cosθ = -1, so δ points opposite the gradient. This uses the slopes at the starting point; a larger move can pass the lowest point and raise the value again."
   - id: gradp-compute
     dimension: math
     type: text
@@ -167,33 +167,33 @@ exercises:
           category: math_error,
           feedback: "The term ${{=b}}xy$ also contains $x$, so it contributes ${{=b}}y$.",
         }
-  - id: gradp-is-vector
+  - id: gradp-why-vector
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "For a function $f(x, y)$, what kind of object is $\\nabla f$ at a point?"
+    prompt: "Why keep the partial derivatives of $f(x, y)$ as a vector instead of adding them into one number?"
     options:
       - id: a
-        text: 'A vector with two components, $\frac{\partial f}{\partial x}$ and $\frac{\partial f}{\partial y}$'
+        text: "Each partial belongs to a different input direction, and the vector preserves that information"
         correct: true
       - id: b
-        text: "A single number, the sum of the two partials"
+        text: "Adding the partials always gives 0, even on a slope"
         correct: false
         category: misunderstood_definition
-        feedback: "The partials are kept side by side as components of a vector, not added together."
+        feedback: "The sum need not be 0: partials 3 and 4 sum to 7. The problem is losing which slope belongs to which direction."
       - id: c
-        text: "The height $f(x, y)$ at that point"
+        text: "A vector stores the height as well as the slopes"
         correct: false
         category: misunderstood_definition
-        feedback: "That is the output. The gradient is built from its rates of change."
+        feedback: "Neither partial stores the height. Both are rates of change, and their vector still contains only rates."
       - id: d
-        text: "A single number, the steepest partial"
+        text: "Only the largest partial matters; the other component can be discarded"
         correct: false
         category: misunderstood_definition
-        feedback: "The gradient keeps every partial, one per input."
-    solution: "The gradient lists every partial derivative in order, so for two inputs it is a vector with two components."
+        feedback: "A step can change both inputs. Discarding one partial loses its contribution to the output change."
+    solution: "Partials 3 and 4 describe different slopes. Their sum 7 loses which input has slope 3 and which has slope 4; the vector keeps both so a step's effects can be computed."
   - id: gradp-three-inputs
     dimension: math
     type: text
@@ -312,7 +312,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "At a point, $\\nabla h = (3, 4)$. To first order, which small step leaves the height unchanged?"
+    prompt: "A hillside has gradient $\\nabla h = (3, 4)$ where you stand. Using the slopes at this point, which small displacement gives a predicted height change of 0?"
     options:
       - { id: a, text: "$(0.08, -0.06)$", correct: true }
       - id: b
@@ -413,7 +413,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "At a point, $\\nabla f = (-5, 12)$, with length 13. Which step of length 1 decreases $f$ fastest, to first order?"
+    prompt: "The gradient of $f$ is $(-5, 12)$ and has length 13. Which direction vector of length 1 gives the greatest estimated decrease in $f$ per unit distance?"
     options:
       - { id: a, text: '$\left(\frac{5}{13}, -\frac{12}{13}\right)$', correct: true }
       - id: b
@@ -425,7 +425,7 @@ exercises:
         text: "$(5, -12)$"
         correct: false
         category: misapplied_technique
-        feedback: 'Right direction, but its length is 13. Divide by $\|\nabla f\|$ to get a unit step.'
+        feedback: 'This has the right direction, but its length is 13. Divide by $\|\nabla f\| = 13$ to get length 1.'
       - id: d
         text: "$(0, -1)$"
         correct: false
@@ -467,7 +467,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "At a point, $\\nabla f = (3, 4)$. To first order, how much does $f$ change for the unit step $(-1, 0)$, due west?"
+    prompt: "A hillside's height $f$ has gradient $(3, 4)$ where you stand. Using those slopes, what is the estimated rate of height change per unit distance due west, in direction $(-1, 0)$?"
     answer: -3
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -531,7 +531,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: 'The floor is at $(0, 0)$, where $h = 0$ and $\nabla h = (0, 0)$.'
-    solution: "Steepest descent is a local direction. The valley is twice as steep in $y$, so $-\\nabla h$ tilts more towards $y$ than the straight line to the floor does."
+    solution: "The negative gradient uses the slopes where you stand, not the location of the lowest point. Here the height changes at rates 3 eastward and 4 northward, so the steepest downhill direction is $(-3, -4)$. That is not parallel to $(-1.5, -1)$, the direction toward the lowest point."
   - id: gradp-descent-step
     dimension: math
     type: numeric
