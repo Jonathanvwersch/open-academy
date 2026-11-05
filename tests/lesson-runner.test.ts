@@ -92,7 +92,7 @@ test('last answered uses answer time, then authored point order, round and posit
   });
 });
 
-test('problem selection prefers unserved fixed items, cycles templates with supplied seeds, and caps at five', () => {
+test('problem selection follows authored order, cycles templates with fresh seeds, and caps at five', () => {
   const fixed = (id: string) =>
     ExerciseSchema.parse({
       id,
@@ -136,8 +136,8 @@ test('problem selection prefers unserved fixed items, cycles templates with supp
     return selected;
   };
   expect(take(100)).toEqual({ exerciseId: 'fixed-a', seed: null, position: 1 });
-  expect(take(101)).toEqual({ exerciseId: 'fixed-b', seed: null, position: 2 });
-  expect(take(102)).toEqual({ exerciseId: 'template-a', seed: 102, position: 3 });
+  expect(take(101)).toEqual({ exerciseId: 'template-a', seed: 101, position: 2 });
+  expect(take(102)).toEqual({ exerciseId: 'fixed-b', seed: null, position: 3 });
   expect(take(103)).toEqual({ exerciseId: 'template-b', seed: 103, position: 4 });
   expect(take(104)).toEqual({ exerciseId: 'template-a', seed: 104, position: 5 });
   expect(take(105)).toBeUndefined();
@@ -148,6 +148,25 @@ test('problem selection prefers unserved fixed items, cycles templates with supp
     'fixed-a',
     'fixed-b',
   ]);
+
+  const retryProblems: Array<{ exerciseId: string; seed: number | null; position: number }> = [];
+  const usedSeeds = new Set([101, 103, 104]);
+  const retryTake = (seed: number) => {
+    const selected = selectNextProblem(kp, exercises, retryProblems, seed, usedSeeds);
+    if (selected) retryProblems.push(selected);
+    return selected;
+  };
+  expect(retryTake(101)).toEqual({ exerciseId: 'fixed-a', seed: null, position: 1 });
+  expect(retryTake(101)).toEqual({ exerciseId: 'template-a', seed: 102, position: 2 });
+
+  const fixedOnly = point('kp', ['fixed-a', 'fixed-b']);
+  const fixedOnlyRows: Array<{ exerciseId: string; seed: number | null; position: number }> = [];
+  for (const seed of [200, 201]) {
+    const selected = selectNextProblem(fixedOnly, exercises, fixedOnlyRows, seed);
+    if (selected) fixedOnlyRows.push(selected);
+  }
+  expect(fixedOnlyRows.map((problem) => problem.exerciseId)).toEqual(['fixed-a', 'fixed-b']);
+  expect(selectNextProblem(fixedOnly, exercises, fixedOnlyRows, 202)).toBeUndefined();
 });
 
 test('retry uses only the latest round and resumes the failed knowledge point', () => {

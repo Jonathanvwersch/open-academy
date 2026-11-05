@@ -30,8 +30,8 @@ knowledge_points:
     problems:
       - ttsp-honest-estimate
       - ttsp-memoriser
-      - ttsp-pick-model
       - ttsp-heldout-error
+      - ttsp-pick-model
       - ttsp-exam-analogy
       - ttsp-robot-heldout
   - id: tts-three-splits
@@ -80,9 +80,9 @@ knowledge_points:
       You don't go back and swap versions because of the test result. If you did, the test set would turn into a second validation set.
     problems:
       - ttsp-which-set-fit
+      - ttsp-split-counts
       - ttsp-which-set-choose
       - ttsp-which-set-report
-      - ttsp-split-counts
       - ttsp-swap-after-test
       - ttsp-pick-version
   - id: tts-hyperparameters
@@ -129,10 +129,10 @@ knowledge_points:
     problems:
       - ttsp-duplicate-leak
       - ttsp-fill-average
+      - ttsp-dup-error
       - ttsp-same-house
       - ttsp-robot-frames
       - ttsp-spot-leak
-      - ttsp-dup-error
 final: tts-explain
 summary: |
   - Training error flatters a model. Judge it on sales it never trained on.
