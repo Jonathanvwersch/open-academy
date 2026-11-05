@@ -6,34 +6,34 @@ exercises:
     role: check
     difficulty: 2
     est_minutes: 2
-    prompt: "In the example ($x=1, w_1=2, w_2=3, t=4$), suppose instead $x = 2$ (keep the others). What is $\\partial L/\\partial w_2$?"
+    prompt: "The tiny network computes $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$ and $L = (\\hat y - y)^2$, with $x = 2$, $w_1 = 2$, $w_2 = 3$ and target $y = 4$. What is $\\partial L/\\partial w_2$?"
     answer: 64
     tolerance: { abs: 0.001 }
     hints:
       [
-        "Redo the forward pass: $z = 4$, $h = 4$, $y = 12$.",
-        "$\\partial L/\\partial y = 2(12 - 4) = 16$; then multiply by $h$.",
+        "Forward pass: $z = 4$, $h = 4$, $\\hat y = 12$.",
+        "$\\partial L/\\partial \\hat y = 2(12 - 4) = 16$; then multiply by $h$.",
       ]
-    solution: "Forward: $z = 4$, $h = 4$, $y = 12$. $\\partial L/\\partial y = 16$, so $\\partial L/\\partial w_2 = 16 \\cdot 4 = 64$."
+    solution: "Forward: $z = 4$, $h = 4$, $\\hat y = 12$. $\\partial L/\\partial \\hat y = 16$, so $\\partial L/\\partial w_2 = 16 \\cdot 4 = 64$."
   - id: bp-faded-1
     dimension: math
     type: numeric
     role: check
     difficulty: 2
     est_minutes: 3
-    prompt: "With $x = 1$, $w_1 = 2$, $w_2 = 3$, $t = 10$: what is $\\partial L/\\partial w_1$?"
+    prompt: "The tiny network computes $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$ and $L = (\\hat y - y)^2$, with $x = 1$, $w_1 = 2$, $w_2 = 3$ and target $y = 10$. Forward gives $\\hat y = 6$ and $\\partial L/\\partial \\hat y = 2(6 - 10) = -8$. What is $\\partial L/\\partial w_1$?"
     answer: -24
     tolerance: { abs: 0.001 }
     common_wrong:
       - {
           answer: 24,
           category: math_error,
-          feedback: "Sign: $y < t$, so $\\partial L/\\partial y$ is negative.",
+          feedback: "Sign: the prediction $\\hat y = 6$ is below the target 10, so $\\partial L/\\partial \\hat y$ is negative.",
         }
       - {
           answer: -8,
           category: incomplete_explanation,
-          feedback: "That is $\\partial L/\\partial y$. Continue through $w_2$, the ReLU gate and $x$.",
+          feedback: "That is $\\partial L/\\partial \\hat y$. Continue through $w_2$, the ReLU gate and $x$.",
         }
     hints:
       [
@@ -218,3 +218,555 @@ exercises:
           weight: 1,
         }
     exemplar: "Gradient descent needs ∂L/∂θ for every parameter. Backprop runs the network forward once, caching every intermediate value, then walks the computation graph backwards from the loss: each node multiplies the gradient arriving from above by its local derivative and passes the result to its inputs, adding where branches merge. Because each intermediate gradient is computed once and reused, you get every parameter's gradient for roughly the cost of one more forward pass, instead of one forward pass per parameter as with finite differences. The price is memory for the cached activations, and hand-written versions should be checked numerically."
+  - id: bpp-why-every
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why does training need $\\partial L/\\partial \\theta$ for every parameter $\\theta$, not just the loss $L$?"
+    options:
+      - {
+          id: a,
+          text: "Each parameter is moved using its own derivative of the loss",
+          correct: true,
+        }
+      - id: b
+        text: "The derivatives are needed to compute the loss itself"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The forward pass computes the loss. The derivatives say which way to move each parameter."
+      - id: c
+        text: "Only the last layer's parameters are trained"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Every parameter is trained, so every parameter needs its derivative."
+      - id: d
+        text: "The derivatives are only used to test the code"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Training itself uses them: each step moves every parameter against its derivative."
+    solution: "Training moves each parameter a little in the direction that lowers the loss. That direction comes from $\\partial L/\\partial \\theta$, so every parameter needs its own derivative on every step."
+  - id: bpp-nudge-time
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A network has {{=N}} parameters, and one forward pass takes {{=t}} ms. Estimating every derivative by nudging needs one forward pass for the starting loss plus one per parameter. How many **seconds** does that take?"
+    hints:
+      [
+        "Count the forward passes, multiply by the time per pass, then divide by 1,000 to turn ms into seconds.",
+      ]
+    solution: "Nudging needs {{=N}} + 1 = {{=N+1}} forward passes. At {{=t}} ms each that is {{=(N+1)*t}} ms, or {{=(N+1)*t/1000}} seconds, for one training step. Backprop needs one forward and one backward pass instead."
+    answer_expr: "(N + 1) * t / 1000"
+    params:
+      N: { min: 10000, max: 100000, step: 10000 }
+      t: { min: 2, max: 10 }
+    tolerance: { rel: 0.001 }
+    common_wrong:
+      - answer_expr: "(N + 1) * t"
+        category: math_error
+        feedback: "That is the time in milliseconds. Divide by 1,000 for seconds."
+  - id: bpp-keep-values
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why does the backward pass need values kept from the forward pass?"
+    options:
+      - { id: a, text: "Local derivatives, like a multiply node's, depend on them", correct: true }
+      - id: b
+        text: "The backward pass recomputes the loss from them"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The loss is already known. The kept values are needed to work out local derivatives."
+      - id: c
+        text: "The kept values are the gradients themselves"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Kept values are outputs like $z$ and $h$. Gradients are computed from them during the backward pass."
+      - id: d
+        text: "The backward pass runs before the forward pass"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The forward pass comes first; the backward pass then uses its values."
+    solution: "A multiply node's local derivative is its other input, a square node's is twice its input and ReLU's depends on the sign of its input. All of these are forward values, so they're kept until the backward pass has used them."
+  - id: bpp-cost
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Roughly how much work does backprop need to get every gradient of a network with a million parameters?"
+    options:
+      - { id: a, text: "About one forward pass plus one backward pass", correct: true }
+      - id: b
+        text: "About one forward pass per parameter"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is the cost of nudging. Backprop reuses work, so it needs only two sweeps."
+      - id: c
+        text: "About one backward pass per parameter"
+        correct: false
+        category: misunderstood_definition
+        feedback: "One backward pass produces every parameter's gradient at once."
+      - id: d
+        text: "About one forward pass per layer per parameter"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The cost doesn't grow with the number of parameters this way: one forward and one backward pass give everything."
+    solution: "One forward pass keeps every value, and one backward pass, which costs about the same, gives every gradient. The number of parameters doesn't change the number of passes."
+  - id: bpp-exact
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "How do backprop's gradients compare with gradients estimated by nudging?"
+    options:
+      - { id: a, text: "Backprop gives exact derivatives; nudging estimates them", correct: true }
+      - id: b
+        text: "Backprop is a faster estimate of what nudging gives exactly"
+        correct: false
+        category: misunderstood_definition
+        feedback: "It's the other way round. Backprop applies the chain rule exactly; nudging measures a small but finite change."
+      - id: c
+        text: "They are the same method run in a different order"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Nudging reruns the network once per parameter. Backprop applies the chain rule backwards through one graph."
+      - id: d
+        text: "Both are estimates that improve with more passes"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Backprop isn't an estimate: it gives the chain rule's exact answer in one backward pass."
+    solution: "Backprop computes the derivatives exactly with the chain rule. Nudging only approximates them, which is why it's useful as a check rather than for training."
+  - id: bpp-upstream-rule
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "During the backward pass, what does a node send back to each of its inputs?"
+    options:
+      - {
+          id: a,
+          text: "The upstream gradient times its local derivative for that input",
+          correct: true,
+        }
+      - id: b
+        text: "Its local derivative for that input, on its own"
+        correct: false
+        category: incomplete_explanation
+        feedback: "The local derivative only covers this node. Multiply it by the upstream gradient to connect it to the loss."
+      - id: c
+        text: "The upstream gradient plus its local derivative for that input"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Steps along a path multiply, as in the chain rule. Adding is only for separate paths."
+      - id: d
+        text: "The value it computed during the forward pass"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Forward values flow forwards. Going backwards, the node sends gradients."
+    solution: "The upstream gradient is $\\partial L$ with respect to the node's output. Multiplying by the local derivative gives $\\partial L$ with respect to that input, by the chain rule."
+  - id: bpp-w2-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "The tiny network computes $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$ and $L = (\\hat y - y)^2$, with $x = {{=x}}$, $w_1 = {{=w1}}$, $w_2 = {{=w2}}$ and target $y = {{=y}}$. What is $\\partial L/\\partial w_2$?"
+    hints:
+      - "Forward first: find $z$, $h$ and $\\hat y$."
+      - "$\\partial L/\\partial \\hat y = 2(\\hat y - y)$. At the node $\\hat y = w_2 h$, the local derivative for $w_2$ is $h$."
+    solution: "Forward: $z = {{=w1*x}}$, $h = {{=w1*x}}$, $\\hat y = {{=w2*w1*x}}$. Backward: $\\partial L/\\partial \\hat y = 2({{=w2*w1*x}} - {{=y}}) = {{=2*(w2*w1*x-y)}}$, then $\\partial L/\\partial w_2 = {{=2*(w2*w1*x-y)}} \\times h = {{=2*(w2*w1*x-y)}} \\times {{=w1*x}} = {{=2*(w2*w1*x-y)*w1*x}}$."
+    answer_expr: "2 * (w2 * w1 * x - y) * w1 * x"
+    params:
+      x: { min: 1, max: 3 }
+      w1: { min: 1, max: 3 }
+      w2: { min: 1, max: 4 }
+      y: { min: 1, max: 12 }
+    constraints: ["w2 * w1 * x != y", "w1 * x > 1", "w2 != w1 * x"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: "2 * (w2 * w1 * x - y)"
+        category: incomplete_explanation
+        feedback: "That is $\\partial L/\\partial \\hat y$. One more step: multiply by the local derivative for $w_2$, which is $h$."
+      - answer_expr: "2 * (w2 * w1 * x - y) * w2"
+        category: misapplied_technique
+        feedback: "That is $\\partial L/\\partial h$. At a multiply node the derivative for $w_2$ is the *other* input, $h$."
+  - id: bpp-gate-closed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "In the tiny network $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$, $L = (\\hat y - y)^2$, take $x = 2$, $w_1 = -1$, $w_2 = 3$ and $y = 4$. What is $\\partial L/\\partial w_1$?"
+    answer: 0
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: -48
+        tolerance: { abs: 0.001 }
+        category: misapplied_technique
+        feedback: "That lets the gradient through ReLU. Here $z = -2 < 0$, so the gate $\\mathbb{1}[z > 0]$ is 0."
+    hints: ["Forward first: is $z$ positive?"]
+    solution: "Forward: $z = -2$, $h = 0$, $\\hat y = 0$. Backward: $\\partial L/\\partial \\hat y = -8$, $\\partial L/\\partial h = -24$, but $\\partial L/\\partial z = -24 \\cdot \\mathbb{1}[-2 > 0] = 0$. So $\\partial L/\\partial w_1 = 0 \\cdot x = 0$: the switched-off unit blocks the gradient."
+  - id: bpp-reverse-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why does the backward pass visit nodes from the loss back towards the inputs?"
+    options:
+      - {
+          id: a,
+          text: "Each node needs the upstream gradient from the nodes after it",
+          correct: true,
+        }
+      - id: b
+        text: "The inputs were the last values computed going forwards"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Inputs come first going forwards. Backwards, a node can only start once its upstream gradient is known."
+      - id: c
+        text: "Going backwards saves memory compared with going forwards"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The order is forced by the chain rule: a node's gradient needs the upstream gradient first."
+      - id: d
+        text: "The order doesn't matter, as long as every node is visited"
+        correct: false
+        category: misunderstood_definition
+        feedback: "A node can't send gradients back until it has received its own upstream gradient."
+    solution: "A node multiplies its upstream gradient by its local derivatives. The upstream gradient comes from the nodes closer to the loss, so those must be done first."
+  - id: bpp-w1-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "The tiny network computes $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$ and $L = (\\hat y - y)^2$, with $x = {{=x}}$, $w_1 = {{=w1}}$, $w_2 = {{=w2}}$ and target $y = {{=y}}$. What is $\\partial L/\\partial w_1$?"
+    hints:
+      - "Forward first. Then $\\partial L/\\partial h = 2(\\hat y - y) \\cdot w_2$."
+      - "$z > 0$ here, so ReLU passes the gradient. The last step multiplies by $x$."
+    solution: "Forward: $z = h = {{=w1*x}}$, $\\hat y = {{=w2*w1*x}}$. Backward: $\\partial L/\\partial \\hat y = {{=2*(w2*w1*x-y)}}$, $\\partial L/\\partial h = {{=2*(w2*w1*x-y)}} \\times {{=w2}} = {{=2*(w2*w1*x-y)*w2}}$, the ReLU gate is 1, and $\\partial L/\\partial w_1 = {{=2*(w2*w1*x-y)*w2}} \\times {{=x}} = {{=2*(w2*w1*x-y)*w2*x}}$."
+    answer_expr: "2 * (w2 * w1 * x - y) * w2 * x"
+    params:
+      x: { min: 2, max: 3 }
+      w1: { min: 1, max: 3 }
+      w2: { min: 2, max: 4 }
+      y: { min: 1, max: 12 }
+    constraints: ["w2 * w1 * x != y"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: "2 * (w2 * w1 * x - y) * w2"
+        category: incomplete_explanation
+        feedback: "That is $\\partial L/\\partial z$. The last node, $z = w_1 x$, scales by $x = {{=x}}$."
+      - answer_expr: "2 * (w2 * w1 * x - y) * x"
+        category: incomplete_explanation
+        feedback: "You skipped the node $\\hat y = w_2 h$, which scales the gradient by $w_2 = {{=w2}}$."
+  - id: bpp-branch-sum
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A hidden value $h$ feeds two later nodes. In the backward pass, gradients of $3$ and $-5$ come back to $h$ from those nodes. What is $\\partial L/\\partial h$?"
+    options:
+      - { id: a, text: "$-2$", correct: true }
+      - id: b
+        text: "$-15$"
+        correct: false
+        category: misapplied_technique
+        feedback: "Gradients from separate branches add; they don't multiply."
+      - id: c
+        text: "$3$"
+        correct: false
+        category: incomplete_explanation
+        feedback: "Both branches carry part of $h$'s effect on the loss, so both count."
+      - id: d
+        text: "$8$"
+        correct: false
+        category: math_error
+        feedback: "Add the gradients with their signs: $3 + (-5)$."
+    solution: "$h$ affects the loss along two paths, so you add what comes back along each: $3 + (-5) = -2$."
+  - id: bpp-grad-shape
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A layer computes `Z = X @ W` with `X.shape == (32, 10)` and `W.shape == (10, 4)`. What shape must `dW`, the gradient of the loss with respect to `W`, have?"
+    options:
+      - { id: a, text: "`(10, 4)`", correct: true }
+      - id: b
+        text: "`(32, 4)`"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is the shape of `Z` and of its gradient. `dW` matches `W`."
+      - id: c
+        text: "`(32, 10)`"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is the shape of `X`. A gradient has the shape of the thing it's the gradient of."
+      - id: d
+        text: "`(4, 10)`"
+        correct: false
+        category: implementation_error
+        feedback: "That is `W` transposed. `dW` must have exactly `W`'s shape so you can update `W` with it."
+    solution: "A gradient always has the same shape as its parameter, so `dW` is `(10, 4)`, one entry per entry of `W`."
+  - id: bpp-hadamard-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A ReLU layer had inputs $Z = ({{=z1}}, {{=z2}}, {{=z3}})$. The upstream gradient for its outputs is $G_H = ({{=g1}}, {{=g2}}, {{=g3}})$. Compute $G_Z = G_H \\odot \\mathbb{1}[Z > 0]$ and give the **sum** of its three entries."
+    hints:
+      [
+        "$\\mathbb{1}[Z > 0]$ is 1 where an entry of $Z$ is positive and 0 elsewhere. Multiply it with $G_H$ entry by entry.",
+      ]
+    solution: "The gate is 1 for positive entries of $Z$ and 0 for negative ones, so each entry of $G_H$ is kept or zeroed. The kept entries add up to {{=g1*(z1 > 0 ? 1 : 0) + g2*(z2 > 0 ? 1 : 0) + g3*(z3 > 0 ? 1 : 0)}}."
+    answer_expr: "g1 * (z1 > 0 ? 1 : 0) + g2 * (z2 > 0 ? 1 : 0) + g3 * (z3 > 0 ? 1 : 0)"
+    params:
+      z1: { min: -3, max: 3 }
+      z2: { min: -3, max: 3 }
+      z3: { min: -3, max: 3 }
+      g1: { min: 1, max: 6 }
+      g2: { min: 1, max: 6 }
+      g3: { min: 1, max: 6 }
+    constraints: ["z1 != 0 and z2 != 0 and z3 != 0", "z1 < 0 or z2 < 0 or z3 < 0"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: "g1 + g2 + g3"
+        category: incomplete_explanation
+        feedback: "That ignores the gate. Units whose input was negative pass back 0."
+  - id: bpp-bias-code
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Complete the bias gradient. `g_z1` has shape `(B, H)` and `b1` has shape `(H,)`; `b1` was added to every row of `X @ W1`."
+    code: |
+      db1 = ____
+    accept: ["g_z1.sum(axis=0)", "g_z1.sum(0)", "np.sum(g_z1, axis=0)", "np.sum(g_z1, 0)"]
+    solution: "`db1 = g_z1.sum(axis=0)`. The bias is shared by every row, so its gradient adds up the rows, giving shape `(H,)`."
+  - id: bpp-weight-code
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Complete the weight gradient. `X` has shape `(B, d)`, `W1` has shape `(d, H)` and `g_z1` has shape `(B, H)`."
+    code: |
+      dW1 = ____
+    accept:
+      [
+        "X.T @ g_z1",
+        "X.T.dot(g_z1)",
+        "np.dot(X.T, g_z1)",
+        "np.matmul(X.T, g_z1)",
+        "X.transpose() @ g_z1",
+      ]
+    solution: "`dW1 = X.T @ g_z1`: shapes `(d, B) @ (B, H)` give `(d, H)`, the shape of `W1`."
+  - id: bpp-pass-back
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "The output layer is `y_hat = h1 @ W2 + b2`, with `h1` of shape `(B, H)` and `W2` of shape `(H, 1)`. Given `g_y` of shape `(B, 1)`, which line passes the gradient back to `h1`?"
+    options:
+      - { id: a, text: "`g_h1 = g_y @ W2.T`", correct: true }
+      - id: b
+        text: "`g_h1 = h1.T @ g_y`"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is `dW2`, the gradient for the weights, with shape `(H, 1)`."
+      - id: c
+        text: "`g_h1 = g_y @ W2`"
+        correct: false
+        category: implementation_error
+        feedback: "Shapes don't fit: `(B, 1) @ (H, 1)` is undefined. Transpose `W2`."
+      - id: d
+        text: "`g_h1 = W2 @ g_y`"
+        correct: false
+        category: implementation_error
+        feedback: "Shapes don't fit: `(H, 1) @ (B, 1)` is undefined. `g_h1` must be `(B, H)`."
+    solution: "`g_h1` must have the shape of `h1`, `(B, H)`. Only `g_y @ W2.T`, `(B, 1) @ (1, H)`, gives that."
+  - id: bpp-hadamard-meaning
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is $(1, -2, 3) \\odot (4, 0, -1)$?"
+    options:
+      - { id: a, text: "$(4, 0, -3)$", correct: true }
+      - id: b
+        text: "$1$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is the dot product, which adds the products up. $\\odot$ keeps each product as its own entry."
+      - id: c
+        text: "$(5, -2, 2)$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That adds matching entries. $\\odot$ multiplies them."
+      - id: d
+        text: "$(4, -8, 12)$"
+        correct: false
+        category: math_error
+        feedback: "Multiply matching entries only: first with first, second with second, third with third."
+    solution: "$\\odot$ multiplies matching entries: $(1 \\cdot 4, -2 \\cdot 0, 3 \\cdot -1) = (4, 0, -3)$."
+  - id: bpp-check-compares
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a gradient check compare?"
+    options:
+      - {
+          id: a,
+          text: "Backprop's gradient with a nudging estimate for the same parameter",
+          correct: true,
+        }
+      - id: b
+        text: "The training loss before and after one training step"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The loss can drop even with a buggy gradient. A gradient check compares derivatives directly."
+      - id: c
+        text: "The gradients of two different parameters in the same layer"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Different parameters can rightly have different gradients. The check compares two ways of getting one parameter's gradient."
+      - id: d
+        text: "The forward pass with a second run of the forward pass"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The check is about the backward pass: are its derivatives right?"
+    solution: "You compute $\\partial L/\\partial \\theta$ two ways, with backprop and with $\\frac{L(\\theta + \\epsilon) - L(\\theta - \\epsilon)}{2\\epsilon}$. If they agree, that part of the backward pass is right."
+  - id: bpp-check-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Nudging a parameter by $\\epsilon = 0.01$ gives $L(\\theta + 0.01) = {{=Lp}}$ and $L(\\theta - 0.01) = {{=Lm}}$. What is the finite-difference estimate of $\\partial L/\\partial \\theta$?"
+    hints: ["Subtract the two losses, then divide by $2\\epsilon = 0.02$."]
+    solution: "$\\frac{L(\\theta + \\epsilon) - L(\\theta - \\epsilon)}{2\\epsilon} = \\frac{ {{=Lp}} - {{=Lm}} }{0.02} = {{=(Lp-Lm)/0.02}}$."
+    answer_expr: "(Lp - Lm) / 0.02"
+    params:
+      Lp: { min: 3.1, max: 3.5, step: 0.01 }
+      Lm: { min: 3, max: 3.4, step: 0.01 }
+    constraints: ["Lp > Lm + 0.005"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: "(Lp - Lm) / 0.01"
+        category: math_error
+        feedback: "The two nudges are $2\\epsilon = 0.02$ apart, so divide by 0.02."
+      - answer_expr: "Lp - Lm"
+        category: incomplete_explanation
+        feedback: "That is the change in loss. Divide it by the size of the nudge, $2\\epsilon = 0.02$."
+  - id: bpp-sign-bug
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For every parameter, your backward pass gives the same size of gradient as the gradient check but with the opposite sign. What is the likely bug?"
+    options:
+      - {
+          id: a,
+          text: "The loss derivative uses `y - y_hat` instead of `y_hat - y`",
+          correct: true,
+        }
+      - id: b
+        text: "A bias gradient uses a mean over rows instead of a sum"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "That makes only the bias gradients wrong, by a factor of the batch size, not every sign."
+      - id: c
+        text: "The ReLU gate `(z1 > 0)` is missing"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "That gives non-zero gradients for switched-off units; it doesn't flip every sign."
+      - id: d
+        text: "The nudge $\\epsilon$ in the check is too small"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A tiny $\\epsilon$ can make the estimate noisy, but it won't flip every sign while keeping the size."
+    solution: "Every gradient flows from $\\partial L/\\partial \\hat y$ at the start of the backward pass. If it's $2(y - \\hat y)$ instead of $2(\\hat y - y)$, every gradient after it has its sign flipped."
+  - id: bpp-gate-bug
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Some hidden units had negative inputs `z1` for every example, yet your backward pass gives their incoming weights non-zero gradients. The gradient check says these should be 0. Which line is most likely wrong?"
+    options:
+      - { id: a, text: "`g_z1 = g_h1`, missing the `* (z1 > 0)` gate", correct: true }
+      - id: b
+        text: "`db1 = g_z1.sum(axis=0)`, which should use a mean"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The bias sum is correct, and it wouldn't affect the weight gradients."
+      - id: c
+        text: "`dW1 = X.T @ g_z1`, which should be `g_z1 @ X.T`"
+        correct: false
+        category: implementation_error
+        feedback: "Those shapes don't even fit. The problem is that switched-off units are passing gradient back."
+      - id: d
+        text: "`g_y = 2 * (y_hat - y) / len(y)`, which has the wrong sign"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A sign bug would affect every gradient, not just units that were switched off."
+    solution: "A unit with $z < 0$ has $\\mathbb{1}[z > 0] = 0$, so no gradient should pass through it. Without the `* (z1 > 0)` gate, gradient leaks through switched-off units."
+  - id: bpp-batch-bug
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "With a batch of 32 examples, the gradient check fails only for `b2`: the check's value is 32 times larger than your backward pass's. Which line is likely wrong?"
+    options:
+      - { id: a, text: "`db2 = g_y.mean(axis=0)`, which should be a sum", correct: true }
+      - id: b
+        text: "`dW2 = h1.T @ g_y`, which needs a transpose"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "`dW2` passes the check. The bug only affects the bias."
+      - id: c
+        text: "`g_z1 = g_h1 * (z1 > 0)`, which needs another gate"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "That line is in the first layer and wouldn't change `b2`."
+      - id: d
+        text: "`g_y = 2 * (y_hat - y) / len(y)`, which should not divide"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Then every gradient would be wrong, not just `b2`. The division is right for a mean loss."
+    solution: "`g_y` already includes the $1/B$ from the mean loss. A mean over rows divides by $B = 32$ again. The bias is shared by every row, so add up the rows with `.sum(axis=0)`."
+  - id: bpp-check-w1
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "In the tiny network with $x = 1$, $w_2 = 3$ and $y = 4$, the loss as a function of $w_1$ is $L = (3w_1 - 4)^2$ (for $w_1 > 0$). Use a gradient check with $\\epsilon = 0.01$ at $w_1 = 2$: what is the estimate of $\\partial L/\\partial w_1$?"
+    answer: 12
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - answer: 24
+        tolerance: { abs: 0.01 }
+        category: math_error
+        feedback: "Divide by $2\\epsilon = 0.02$, not by $\\epsilon = 0.01$."
+    hints: ["$L(2.01) = (6.03 - 4)^2$ and $L(1.99) = (5.97 - 4)^2$."]
+    solution: "$L(2.01) = 2.03^2 = 4.1209$ and $L(1.99) = 1.97^2 = 3.8809$. The estimate is $(4.1209 - 3.8809) \\div 0.02 = 12$, which matches backprop's $\\partial L/\\partial w_1 = 12$."

@@ -6,7 +6,7 @@ exercises:
     role: check
     difficulty: 1
     est_minutes: 2
-    prompt: "In the example $f = (x + y)\\cdot z$ with $x=-2, y=5, z=-4$, what is $\\partial f/\\partial z$?"
+    prompt: "A graph computes $q = x + y$, then $f = q \\cdot z$, with $x=-2, y=5, z=-4$. What is $\\partial f/\\partial z$?"
     answer: 3
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -75,3 +75,420 @@ exercises:
           weight: 1,
         }
     exemplar: "Breaking the computation into primitive nodes means each node only has to know a trivial local derivative (add passes gradients through, multiply swaps in the other input). The chain rule then composes these along every path from the loss back to each parameter, summing where paths merge. Because the rules are local, a framework can do this automatically for any model you write."
+  - id: cgp-steps-for-expression
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Which list of nodes is the computational graph of $f = (a + b) \\cdot c$?"
+    options:
+      - { id: a, text: "$q = a + b$, then $f = q \\cdot c$", correct: true }
+      - id: b
+        text: "$q = b \\cdot c$, then $f = a + q$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The brackets say $a + b$ is worked out first, and the result is multiplied by $c$."
+      - id: c
+        text: "$q = a \\cdot c$, then $f = q + b$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That graph computes $ac + b$, a different number. Follow the brackets: add first, then multiply."
+      - id: d
+        text: "One node, $f = a + b + c$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That changes the calculation. Each node does one operation, and this formula has an add and a multiply."
+    solution: "Brackets are worked out first, so an add node makes $q = a + b$, and a multiply node then makes $f = q \\cdot c$."
+  - id: cgp-forward-value
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Evaluate the graph $m = w \\cdot x$, $\\hat y = m + b$, $r = \\hat y - y$, $L = r^2$ with $w = {{=w}}$, $x = {{=x}}$, $b = {{=b}}$ and $y = {{=y}}$. What is $L$?"
+    hints: ["Work left to right: find $m$, then $\\hat y$, then $r$, then square it."]
+    solution: "$m = {{=w}} \\cdot {{=x}} = {{=w*x}}$, $\\hat y = {{=w*x}} + {{=b}} = {{=w*x+b}}$, $r = {{=w*x+b}} - {{=y}} = {{=w*x+b-y}}$, so $L = ({{=w*x+b-y}})^2 = {{=(w*x+b-y)^2}}$."
+    answer_expr: "(w * x + b - y)^2"
+    params:
+      w: { min: 1, max: 4 }
+      x: { min: 1, max: 4 }
+      b: { min: 0, max: 3 }
+      y: { min: 1, max: 10 }
+    constraints: ["abs(w * x + b - y) > 1"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: "w * x + b - y"
+        category: incomplete_explanation
+        feedback: "That is $r$. The last node squares it."
+  - id: cgp-arrow-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In a computational graph, what does an arrow from node A to node B mean?"
+    options:
+      - { id: a, text: "B uses A's output as one of its inputs", correct: true }
+      - id: b
+        text: "B is computed before A is computed"
+        correct: false
+        category: misunderstood_definition
+        feedback: "It's the other way round: B needs A's value, so A runs first."
+      - id: c
+        text: "B is the derivative of A's output"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Arrows carry values forward. Derivatives are worked out separately, node by node."
+      - id: d
+        text: "A and B always produce the same value"
+        correct: false
+        category: misunderstood_definition
+        feedback: "B applies its own operation to A's value, so the outputs usually differ."
+    solution: "An arrow carries a value: A's output is fed into B. That's also why A must be evaluated before B."
+  - id: cgp-why-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the graph $m = w \\cdot x$, $\\hat y = m + b$, why must the add node be evaluated after the multiply node?"
+    options:
+      - { id: a, text: "It needs $m$, which the multiply node produces", correct: true }
+      - id: b
+        text: "Adding is always done after multiplying"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "In $(a + b) \\cdot c$ the add comes first. The order comes from which node needs which value."
+      - id: c
+        text: "The add node has fewer inputs than the multiply node"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Both have two inputs. What matters is that one of the add node's inputs is $m$."
+      - id: d
+        text: "Order doesn't matter in a computational graph"
+        correct: false
+        category: misunderstood_definition
+        feedback: "A node can only run once every value flowing into it is known."
+    solution: "A node can run only when all its inputs have values. The add node's input $m$ comes from the multiply node, so the multiply runs first."
+  - id: cgp-node-count
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "You draw the graph of $f = (a - b)^2 \\cdot c$ with one operation per node. How many operation nodes does it have?"
+    answer: 3
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 6
+        tolerance: { abs: 0.001 }
+        category: misunderstood_definition
+        feedback: "The inputs $a$, $b$ and $c$ are where arrows start, not operations. Count only the operations."
+      - answer: 2
+        tolerance: { abs: 0.001 }
+        category: incomplete_explanation
+        feedback: "Squaring is an operation too, so it gets its own node."
+    solution: "Three operations: subtract ($a - b$), square, then multiply by $c$."
+  - id: cgp-shared-input
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "In the graph of $f = a \\cdot b + c \\cdot b$, how does the input $b$ appear?"
+    options:
+      - { id: a, text: "Once, with arrows into both multiply nodes", correct: true }
+      - id: b
+        text: "Once, with one arrow into the add node"
+        correct: false
+        category: misunderstood_definition
+        feedback: "$b$ is multiplied by $a$ and by $c$, so it feeds both multiply nodes."
+      - id: c
+        text: "It doesn't appear, because it cancels out"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Nothing cancels here. Every input used in the formula appears in the graph."
+      - id: d
+        text: "Once, with one arrow into the first multiply node"
+        correct: false
+        category: misunderstood_definition
+        feedback: "$b$ is also used in $c \\cdot b$, so it needs an arrow into that node too."
+    solution: "Each input appears once. Because $b$ is used in two multiplications, it has two arrows out, one to each multiply node."
+  - id: cgp-multiply-local
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A multiply node computes $q = a \\cdot b$ with $a = 4$ and $b = -3$. What is the local derivative $\\partial q/\\partial a$?"
+    options:
+      - { id: a, text: "$-3$", correct: true }
+      - id: b
+        text: "$4$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "For a multiply node, the derivative for one input is the value of the *other* input."
+      - id: c
+        text: "$1$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "1 is the local derivative of an add node. A multiply node scales by the other input."
+      - id: d
+        text: "$-12$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "$-12$ is the node's output $a \\cdot b$, not its derivative."
+    solution: "Holding $b$ fixed, $q = a \\cdot b$ changes by $b$ for each unit of $a$, so $\\partial q/\\partial a = b = -3$."
+  - id: cgp-multiply-nudge
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A multiply node computes $q = a \\cdot b$ with $a = {{=a}}$ and $b = {{=b}}$. If you nudge $b$ up by 0.1, by how much does $q$ go up?"
+    hints: ["The local derivative $\\partial q/\\partial b$ is the other input, $a$."]
+    solution: "$\\partial q/\\partial b = a = {{=a}}$, so a nudge of 0.1 raises $q$ by ${{=a}} \\times 0.1 = {{=a*0.1}}$."
+    answer_expr: "a * 0.1"
+    params:
+      a: { min: 2, max: 9 }
+      b: { min: 2, max: 9 }
+    constraints: ["a != b"]
+    tolerance: { abs: 0.0001 }
+    common_wrong:
+      - answer_expr: "b * 0.1"
+        category: misunderstood_definition
+        feedback: "A nudge in $b$ is scaled by the *other* input, $a = {{=a}}$."
+  - id: cgp-square-local
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A square node computes $L = r^2$, and the value flowing into it is $r = {{=r}}$. What is the local derivative $dL/dr$?"
+    hints: ["The derivative of $r^2$ is $2r$."]
+    solution: "$dL/dr = 2r = 2 \\times ({{=r}}) = {{=2*r}}$."
+    answer_expr: "2 * r"
+    params:
+      r: { min: -6, max: 6 }
+    constraints: ["r != 0", "r != 2"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: "r^2"
+        category: misunderstood_definition
+        feedback: "$r^2$ is the node's output. Its local derivative is $2r$."
+  - id: cgp-add-local
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "An add node computes $q = a + b$ with $a = 7$ and $b = -2$. What is $\\partial q/\\partial a$?"
+    options:
+      - { id: a, text: "$1$", correct: true }
+      - id: b
+        text: "$-2$"
+        correct: false
+        category: misapplied_technique
+        feedback: "Using the other input is the multiply rule. An add node passes a nudge through unchanged."
+      - id: c
+        text: "$7$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "7 is the value of $a$. Adding 1 to $a$ raises $a + b$ by exactly 1."
+      - id: d
+        text: "$5$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "5 is the node's output $a + b$, not its derivative."
+    solution: "Raise $a$ by 1 and $a + b$ rises by 1 whatever the values are, so $\\partial q/\\partial a = 1$."
+  - id: cgp-subtract-local
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A subtract node computes $r = \\hat y - y$. What are its local derivatives $\\partial r/\\partial \\hat y$ and $\\partial r/\\partial y$?"
+    options:
+      - { id: a, text: "$1$ and $-1$", correct: true }
+      - id: b
+        text: "$1$ and $1$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Raising $y$ makes $\\hat y - y$ smaller, so that derivative is negative."
+      - id: c
+        text: "$-1$ and $1$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Raising $\\hat y$ makes $\\hat y - y$ bigger, so $\\partial r/\\partial \\hat y = +1$."
+      - id: d
+        text: "$y$ and $\\hat y$"
+        correct: false
+        category: misapplied_technique
+        feedback: "Using the other input's value is the multiply rule. Subtracting gives $1$ and $-1$."
+    solution: "Raising $\\hat y$ by 1 raises $r$ by 1. Raising $y$ by 1 lowers $r$ by 1. So the local derivatives are $1$ and $-1$."
+  - id: cgp-max-node
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A node computes $q = \\max(0, a)$, and its input is $a = -3$. What is the local derivative $dq/da$?"
+    options:
+      - { id: a, text: "$0$, because the output is stuck at 0 here", correct: true }
+      - id: b
+        text: "$1$, because $\\max$ passes its input through"
+        correct: false
+        category: misunderstood_definition
+        feedback: "It passes the input through only when $a > 0$. At $a = -3$ the output is 0 for any small nudge."
+      - id: c
+        text: "$-3$, because that is the input value"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The local derivative is a rate of change, not the input's value."
+      - id: d
+        text: "$3$, because the input is flipped to positive"
+        correct: false
+        category: misunderstood_definition
+        feedback: "$\\max(0, a)$ doesn't flip signs. For a negative input it outputs 0."
+    solution: "For $a = -3$, $\\max(0, a) = 0$, and it stays 0 after a small nudge. So the local derivative is 0: the node blocks the nudge."
+  - id: cgp-path-product
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the graph $m = w \\cdot x$, $\\hat y = m + b$, $r = \\hat y - y$, $L = r^2$, which product gives $\\partial L/\\partial b$?"
+    options:
+      - id: a
+        text: "$\\frac{dL}{dr}\\cdot\\frac{\\partial r}{\\partial \\hat y}\\cdot\\frac{\\partial \\hat y}{\\partial b}$"
+        correct: true
+      - id: b
+        text: "$\\frac{dL}{dr}\\cdot\\frac{\\partial r}{\\partial \\hat y}\\cdot\\frac{\\partial \\hat y}{\\partial m}\\cdot\\frac{\\partial m}{\\partial w}$"
+        correct: false
+        category: misapplied_technique
+        feedback: "That is the path from $w$. The path from $b$ goes straight into the add node."
+      - id: c
+        text: "$\\frac{\\partial \\hat y}{\\partial b}$ on its own"
+        correct: false
+        category: incomplete_explanation
+        feedback: "That only covers the first step. Keep multiplying along the path all the way to $L$."
+      - id: d
+        text: "$\\frac{dL}{dr} + \\frac{\\partial r}{\\partial \\hat y} + \\frac{\\partial \\hat y}{\\partial b}$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Local derivatives along one path multiply. Only separate paths add."
+    solution: "$b$ enters the add node, then flows through the subtract and square nodes. Multiply the local derivatives along that path: $2r \\cdot 1 \\cdot 1$."
+  - id: cgp-chain-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "For the graph $m = w \\cdot x$, $\\hat y = m + b$, $r = \\hat y - y$, $L = r^2$ with $w = {{=w}}$, $x = {{=x}}$, $b = {{=b}}$ and $y = {{=y}}$, what is $\\partial L/\\partial w$?"
+    hints:
+      - "Evaluate the graph first to get $r$."
+      - "Multiply along the path: $dL/dr = 2r$, then $1$, then $1$, then $\\partial m/\\partial w = x$."
+    solution: "Forward: $r = {{=w}} \\cdot {{=x}} + {{=b}} - {{=y}} = {{=w*x+b-y}}$. Along the path: $\\partial L/\\partial w = 2r \\cdot 1 \\cdot 1 \\cdot x = 2 \\times ({{=w*x+b-y}}) \\times {{=x}} = {{=2*(w*x+b-y)*x}}$."
+    answer_expr: "2 * (w * x + b - y) * x"
+    params:
+      w: { min: 1, max: 4 }
+      x: { min: 2, max: 4 }
+      b: { min: 0, max: 3 }
+      y: { min: 1, max: 12 }
+    constraints: ["w * x + b != y", "w != x"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: "2 * (w * x + b - y)"
+        category: incomplete_explanation
+        feedback: "That stops at $\\hat y$. The last step, through the multiply node, scales by $\\partial m/\\partial w = x = {{=x}}$."
+      - answer_expr: "2 * (w * x + b - y) * w"
+        category: misapplied_technique
+        feedback: "At the multiply node the derivative for $w$ is the *other* input, $x = {{=x}}$."
+  - id: cgp-one-path-only
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $f = a \\cdot b + c \\cdot b$, a student follows only the path through $a \\cdot b$ and reports $\\partial f/\\partial b = a$. What did they miss?"
+    options:
+      - { id: a, text: "The path through $c \\cdot b$; the answer is $a + c$", correct: true }
+      - id: b
+        text: "Nothing; one path from $b$ is enough"
+        correct: false
+        category: incomplete_explanation
+        feedback: "$b$ feeds two nodes, so a nudge in $b$ changes $f$ along both paths."
+      - id: c
+        text: "They should multiply the paths, giving $a \\cdot c$"
+        correct: false
+        category: misapplied_technique
+        feedback: "Separate paths add. Multiplying is for steps along one path."
+      - id: d
+        text: "The add node's derivative; the answer is $a + 1$"
+        correct: false
+        category: math_error
+        feedback: "The add node's local derivative is 1 and it multiplies the path, giving $1 \\cdot a$. The missing piece is the second path, $1 \\cdot c$."
+    solution: "$b$ has arrows into both multiply nodes. The two paths give $1 \\cdot a$ and $1 \\cdot c$, and they add to $a + c$."
+  - id: cgp-used-twice
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A graph computes $p = x \\cdot y$, then $f = p + x$, with $x = 3$ and $y = 5$. The input $x$ feeds both nodes. What is $\\partial f/\\partial x$?"
+    answer: 6
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 5
+        tolerance: { abs: 0.001 }
+        category: incomplete_explanation
+        feedback: "That is only the path through $p$. $x$ also goes straight into the add node, adding 1."
+      - answer: 1
+        tolerance: { abs: 0.001 }
+        category: incomplete_explanation
+        feedback: "That is only the direct path. Add the path through $p$: $1 \\cdot y = 5$."
+    hints: ["Path through $p$: $1 \\cdot y$. Direct path into the add node: $1$."]
+    solution: "Through $p$: $\\frac{\\partial f}{\\partial p}\\cdot\\frac{\\partial p}{\\partial x} = 1 \\cdot y = 5$. Directly: $\\partial f/\\partial x = 1$. Add the paths: $5 + 1 = 6$."
+  - id: cgp-sum-times-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A graph computes $q = x + y$, then $f = q \\cdot z$, with $x = {{=x}}$, $y = {{=y}}$ and $z = {{=z}}$. What is $\\partial f/\\partial x$?"
+    hints:
+      [
+        "Path from $x$: the add node gives $\\partial q/\\partial x = 1$, the multiply node gives $\\partial f/\\partial q = z$.",
+      ]
+    solution: "$\\frac{\\partial f}{\\partial x} = \\frac{\\partial f}{\\partial q}\\cdot\\frac{\\partial q}{\\partial x} = z \\cdot 1 = {{=z}}$."
+    answer_expr: "z"
+    params:
+      x: { min: 1, max: 6 }
+      y: { min: 1, max: 6 }
+      z: { min: 2, max: 9 }
+    constraints: ["z != x + y"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: "x + y"
+        category: misapplied_technique
+        feedback: "$x + y = q$ is $\\partial f/\\partial z$. For $x$, the multiply node scales by the other input, $z$."
+  - id: cgp-robot-error
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot gripper is at position $p = 5$ cm and its goal is $g = 3$ cm. Its graph computes $r = p - g$, then the cost $C = r^2$. What is $\\partial C/\\partial p$?"
+    answer: 4
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: -4
+        tolerance: { abs: 0.001 }
+        category: misapplied_technique
+        feedback: "$-4$ is $\\partial C/\\partial g$. For $p$, the subtract node's local derivative is $+1$."
+      - answer: 2
+        tolerance: { abs: 0.001 }
+        category: incomplete_explanation
+        feedback: "2 is $r$. The square node's local derivative is $2r$."
+    solution: "$r = 5 - 3 = 2$. Along the path: $\\frac{dC}{dr}\\cdot\\frac{\\partial r}{\\partial p} = 2r \\cdot 1 = 4$. Moving the gripper further from the goal raises the cost."

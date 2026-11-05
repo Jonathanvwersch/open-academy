@@ -1,42 +1,167 @@
 concept: computational-graphs
-version: 1
-fast_path: [objective, summary]
-blocks:
-  - kind: objective
-    md: |
-      **Goal:** draw the computational graph of an expression and compute the local derivative at each node.
-  - kind: intuition
-    md: |
-      Any calculation can be broken into simple operations such as adding, multiplying and squaring numbers. Connect each operation to the values it uses: the inputs are at the start, and the final result is at the end.
+version: 2
+objective: |
+  **Goal:** draw the computational graph of a calculation, find the local derivative at each node, and chain them to see how the result changes with any input.
+knowledge_points:
+  - id: cg-drawing-graphs
+    title: Breaking a calculation into simple steps
+    explain: |
+      A line prices a house as $\hat y = wx + b$, where $x$ is the size, $w$ and $b$ are the line's settings, and $\hat y$ ("y hat") is the predicted price. The true price is $y$, and the squared error is $L = (wx + b - y)^2$. **How does $L$ change if you nudge $w$?**
 
-      Each operation has a **local derivative** that tells how its output changes when one of its inputs changes. The chain rule combines these local changes to show how an input affects the final result.
-  - kind: example
-    md: |
-      This example shows how local derivatives in an operation graph give an output's derivative with respect to an input.
+      As one formula that's a tangle. So break it into steps that each do one simple operation, and give every in-between result a name:
 
-      $f(x, y, z) = (x + y)\cdot z$ with $x=-2,\ y=5,\ z=-4$.
+      1. $m = w \cdot x$ (multiply)
+      2. $\hat y = m + b$ (add)
+      3. $r = \hat y - y$ (subtract: how far off the prediction is)
+      4. $L = r^2$ (square)
 
-      - Node $q = x + y = 3$, with local derivatives $\partial q/\partial x = 1$ and $\partial q/\partial y = 1$.
-      - Node $f = q\cdot z = -12$, with local derivatives $\partial f/\partial q = z = -4$ and $\partial f/\partial z = q = 3$.
+      Now draw it. Each operation is a **node**. An arrow carries a value into the node that uses it. Inputs sit on the left and the final result on the right. This picture is a **computational graph**.
 
-      Chaining them: $\partial f/\partial x = \partial f/\partial q\cdot\partial q/\partial x = -4$.
-  - kind: math
-    md: |
-      Local derivatives of common nodes:
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" aria-label="Computational graph of the squared error. w = 3 and x = 2 feed a multiply node giving m = 6. m and b = 1 feed an add node giving y hat = 7. y hat and y = 5 feed a subtract node giving r = 2. A square node gives L = 4">
+        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#737373"/></marker></defs>
+        <text x="20" y="50" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">w = 3</text>
+        <text x="20" y="122" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">x = 2</text>
+        <line x1="70" y1="50" x2="90" y2="70" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="70" y1="112" x2="90" y2="92" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
+        <rect x="92" y="60" width="56" height="40" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+        <text x="120" y="86" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717">×</text>
+        <line x1="148" y1="80" x2="220" y2="80" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="184" y="70" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">m = 6</text>
+        <rect x="222" y="60" width="56" height="40" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+        <text x="250" y="86" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717">+</text>
+        <text x="250" y="170" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">b = 1</text>
+        <line x1="250" y1="152" x2="250" y2="102" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="278" y1="80" x2="350" y2="80" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="314" y="70" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">ŷ = 7</text>
+        <rect x="352" y="60" width="56" height="40" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+        <text x="380" y="86" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717">−</text>
+        <text x="380" y="170" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">y = 5</text>
+        <line x1="380" y1="152" x2="380" y2="102" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="408" y1="80" x2="465" y2="80" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="437" y="70" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">r = 2</text>
+        <rect x="467" y="60" width="76" height="40" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+        <text x="505" y="85" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">square</text>
+        <line x1="543" y1="80" x2="575" y2="80" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="608" y="86" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#10b981">L = 4</text>
+        <text x="320" y="196" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">values flow left to right; each box does one operation</text>
+      </svg>
+      ```
+
+      To evaluate the graph, work left to right. A node can run as soon as every arrow into it has a value.
+    worked: |
+      This example shows the graph being evaluated one node at a time.
+
+      To keep the numbers small, measure size in hundreds of m² and price in hundreds of thousands. The house has $x = 2$ and sold for $y = 5$. The line's settings are $w = 3$ and $b = 1$.
+
+      | step | node | inputs | value |
+      |---|---|---|---|
+      | 1 | multiply | $w = 3$, $x = 2$ | $m = 6$ |
+      | 2 | add | $m = 6$, $b = 1$ | $\hat y = 7$ |
+      | 3 | subtract | $\hat y = 7$, $y = 5$ | $r = 2$ |
+      | 4 | square | $r = 2$ | $L = 4$ |
+
+      Each step only needed values that earlier steps had already produced, and the last node gives the squared error, $L = 4$.
+    problems:
+      - cgp-steps-for-expression
+      - cgp-forward-value
+      - cgp-arrow-meaning
+      - cgp-why-order
+      - cgp-node-count
+      - cgp-shared-input
+  - id: cg-local-derivatives
+    title: Each node has its own simple derivative
+    explain: |
+      Back to the question: how does $L$ change when you nudge $w$? Four steps at once is hard, but each node on its own is easy.
+
+      A node's **local derivative** says how its output changes when you nudge one of its inputs and hold the others fixed. That is a partial derivative of one small operation, so a few rules cover almost everything:
 
       | node | output | local derivatives |
       |---|---|---|
-      | add | $a + b$ | $1$, $1$ |
-      | multiply | $ab$ | $b$, $a$ |
-      | exp | $e^a$ | $e^a$ |
-      | subtract | $a - b$ | $1$, $-1$ |
+      | add | $a + b$ | $1$ for $a$, $1$ for $b$ |
+      | subtract | $a - b$ | $1$ for $a$, $-1$ for $b$ |
+      | multiply | $a \cdot b$ | $b$ for $a$, $a$ for $b$ |
       | square | $a^2$ | $2a$ |
+      | exponential | $e^a$ | $e^a$ |
+      | max with 0 | $\max(0, a)$ | $1$ if $a > 0$, else $0$ |
 
-      At an add node, changing either input by one changes the output by one. At a multiply node, the rate of change with respect to one input is the value of the other input.
-  - kind: check
-    exercise: cg-check-1
-  - kind: summary
-    md: |
-      - A calculation can be drawn as a directed graph of simple operations.
-      - Each operation has local derivatives, and the chain rule combines them.
-      - An add operation passes a change through unchanged; a multiply operation scales it by the other input.
+      Read the rules as nudges. An add node passes a nudge through unchanged: add 0.1 to $a$ and $a + b$ goes up by 0.1. A multiply node scales a nudge by the *other* input: if $b = 4$, adding 0.1 to $a$ raises $a \cdot b$ by 0.4. A $\max(0, a)$ node passes the nudge when $a$ is positive and blocks it when $a$ is negative, because the output is stuck at 0 there.
+
+      Several of these local derivatives depend on the values flowing through the node. So you evaluate the graph first, then read off each local derivative using those values.
+    worked: |
+      This example shows every local derivative in the house graph, using the values from evaluating it ($w = 3$, $x = 2$, $m = 6$, $\hat y = 7$, $r = 2$).
+
+      | node | local derivatives | values |
+      |---|---|---|
+      | $m = w \cdot x$ | $\partial m/\partial w = x$, $\partial m/\partial x = w$ | $2$ and $3$ |
+      | $\hat y = m + b$ | $\partial \hat y/\partial m = 1$, $\partial \hat y/\partial b = 1$ | $1$ and $1$ |
+      | $r = \hat y - y$ | $\partial r/\partial \hat y = 1$, $\partial r/\partial y = -1$ | $1$ and $-1$ |
+      | $L = r^2$ | $dL/dr = 2r$ | $4$ |
+
+      Each entry needed only one node's rule and the values next to it. Nothing here looked at the whole formula.
+    problems:
+      - cgp-multiply-local
+      - cgp-multiply-nudge
+      - cgp-square-local
+      - cgp-add-local
+      - cgp-subtract-local
+      - cgp-max-node
+  - id: cg-chaining-paths
+    title: Chaining local derivatives back to an input
+    explain: |
+      Now you can answer the question. The path from $w$ to $L$ goes through the multiply, add, subtract and square nodes. A nudge in $w$ is scaled by each node's local derivative in turn, so by the chain rule you **multiply the local derivatives along the path**:
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 130" aria-label="The path from w to L through m, y hat and r. The local derivatives along it are 2, 1, 1 and 4, which multiply to dL/dw = 8">
+        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#10b981"/></marker></defs>
+        <rect x="2" y="20" width="70" height="44" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+        <rect x="144" y="20" width="70" height="44" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+        <rect x="286" y="20" width="70" height="44" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+        <rect x="428" y="20" width="70" height="44" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+        <rect x="568" y="20" width="70" height="44" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+        <text x="37" y="47" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">w</text>
+        <text x="179" y="47" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">m</text>
+        <text x="321" y="47" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">ŷ</text>
+        <text x="463" y="47" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">r</text>
+        <text x="603" y="47" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">L</text>
+        <line x1="74" y1="52" x2="140" y2="52" stroke="#10b981" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="216" y1="52" x2="282" y2="52" stroke="#10b981" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="358" y1="52" x2="424" y2="52" stroke="#10b981" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="500" y1="52" x2="564" y2="52" stroke="#10b981" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="108" y="38" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 2</text>
+        <text x="250" y="38" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 1</text>
+        <text x="392" y="38" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 1</text>
+        <text x="532" y="38" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 4</text>
+        <text x="320" y="112" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#10b981">∂L/∂w = 4 × 1 × 1 × 2 = 8</text>
+      </svg>
+      ```
+
+      $$\frac{\partial L}{\partial w} = \frac{dL}{dr}\cdot\frac{\partial r}{\partial \hat y}\cdot\frac{\partial \hat y}{\partial m}\cdot\frac{\partial m}{\partial w} = 4 \cdot 1 \cdot 1 \cdot 2 = 8$$
+
+      So nudging $w$ up by 0.01 raises the squared error by about $8 \times 0.01 = 0.08$.
+
+      Sometimes one input feeds more than one node, so there is more than one path from it to the result. Then you work out each path's product and **add the paths**, exactly as in the two-route rule of the chain-rule lesson.
+
+      This is why graphs are useful: you never differentiate the whole formula, only simple nodes, and the chain rule joins them up. The backpropagation lesson shows how to do this for every input in one sweep.
+    worked: |
+      This example shows adding paths when one input is used twice.
+
+      Let $f = a \cdot b + c \cdot b$ with $a = 2$, $b = -3$ and $c = 4$. The graph has two multiply nodes, $p = a \cdot b$ and $q = c \cdot b$, feeding an add node $f = p + q$. The input $b$ has arrows into both multiply nodes.
+
+      1. Path through $p$: $\frac{\partial f}{\partial p}\cdot\frac{\partial p}{\partial b} = 1 \cdot a = 2$.
+      2. Path through $q$: $\frac{\partial f}{\partial q}\cdot\frac{\partial q}{\partial b} = 1 \cdot c = 4$.
+      3. Add the paths: $\partial f/\partial b = 2 + 4 = 6$.
+
+      Check: $f = (a + c) \cdot b$, so $\partial f/\partial b = a + c = 6$. Using only one path would give 2 or 4.
+    problems:
+      - cgp-path-product
+      - cgp-chain-template
+      - cgp-one-path-only
+      - cgp-used-twice
+      - cgp-sum-times-template
+      - cgp-robot-error
+final: cg-explain
+summary: |
+  - A computational graph breaks a calculation into nodes that each do one simple operation, and arrows carry each value to the node that uses it.
+  - Each node has simple local derivatives: add passes a nudge through unchanged, multiply scales it by the other input, and square scales it by twice its input.
+  - Multiply local derivatives along the path from an input to the result, and add the paths when an input feeds several nodes.

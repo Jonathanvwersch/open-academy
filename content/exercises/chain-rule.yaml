@@ -108,3 +108,410 @@ exercises:
         }
       - { id: r3, criterion: "Gives or references a concrete example", weight: 1 }
     exemplar: "Each stage of a composed function has a local sensitivity: how much its output moves per unit change in its input. The overall sensitivity is the product of these along the chain, e.g. y=(3x+1)^2 gives 2(3x+1)·3. If x reaches the output through two routes, each route contributes its product and you add them."
+  - id: crp-total-rate
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A car's distance grows at $ds/dt = 50$ km per hour, and it burns $dF/ds = 0.1$ litres per km. Which calculation gives $dF/dt$, the litres burned per hour?"
+    options:
+      - { id: a, text: "$0.1 \\times 50 = 5$", correct: true }
+      - id: b
+        text: "$0.1 + 50 = 50.1$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Rates along a chain multiply: each of the 50 km driven in an hour uses 0.1 litres."
+      - id: c
+        text: "$50 \\div 0.1 = 500$"
+        correct: false
+        category: math_error
+        feedback: "Dividing would give km per litre per hour, which isn't a fuel rate. Multiply the two local rates."
+      - id: d
+        text: "$0.1$, the last step only"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "0.1 is litres per km. To get litres per hour you also need how many km an hour covers."
+    solution: "The chain rule multiplies the local rates: $\\frac{dF}{dt} = \\frac{dF}{ds}\\cdot\\frac{ds}{dt} = 0.1 \\times 50 = 5$ litres per hour."
+  - id: crp-rate-product
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A car drives at {{=v}} km per hour and burns {{=r}} litres of fuel per km. How many litres per hour does it burn?"
+    hints: ["Multiply km per hour by litres per km."]
+    solution: "By the chain rule, $\\frac{dF}{dt} = \\frac{dF}{ds}\\cdot\\frac{ds}{dt} = {{=r}} \\times {{=v}} = {{=r*v}}$ litres per hour."
+    answer_expr: "r * v"
+    params:
+      v: { min: 40, max: 100, step: 10 }
+      r: { min: 0.05, max: 0.12, step: 0.01 }
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: "r + v"
+        category: misunderstood_definition
+        feedback: "Rates along a chain multiply, they don't add: each of the {{=v}} km uses {{=r}} litres."
+      - answer_expr: "v / r"
+        category: math_error
+        feedback: "Multiply the two rates rather than dividing them."
+  - id: crp-add-rates
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'A student says: "The car covers 60 km per hour and burns 0.08 litres per km, so it burns $60 + 0.08 = 60.08$ litres per hour." What went wrong?'
+    options:
+      - {
+          id: a,
+          text: "Rates along a chain multiply, so it is $60 \\times 0.08 = 4.8$",
+          correct: true,
+        }
+      - id: b
+        text: "The rates should be divided, so it is $60 \\div 0.08 = 750$"
+        correct: false
+        category: math_error
+        feedback: "Each of the 60 km uses 0.08 litres, so the fuel per hour is a product, not a quotient."
+      - id: c
+        text: "Only the last rate counts, so it is $0.08$ per hour"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "0.08 is litres per km. An hour covers 60 km, so you must multiply by 60."
+      - id: d
+        text: "Nothing: adding the two rates is the chain rule"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The chain rule multiplies local rates. Adding them mixes km per hour with litres per km."
+    solution: "One hour adds 60 km and each km uses 0.08 litres, so the hour uses $60 \\times 0.08 = 4.8$ litres. The chain rule multiplies the rates."
+  - id: crp-local-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the chain time $t$ → distance $s$ → fuel $F$, what does the local sensitivity $dF/ds$ tell you?"
+    options:
+      - { id: a, text: "How much more fuel each extra km uses", correct: true }
+      - id: b
+        text: "How much more fuel each extra hour uses"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is $dF/dt$, the rate for the whole chain. $dF/ds$ is the rate for the last step only."
+      - id: c
+        text: "How many more km each extra hour covers"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is $ds/dt$, the first step's rate."
+      - id: d
+        text: "How much fuel the whole trip uses"
+        correct: false
+        category: misunderstood_definition
+        feedback: "A derivative is a rate of change, not a total amount."
+    solution: "$dF/ds$ is the rate of one step: litres of fuel per extra km. Multiplying it by $ds/dt$ gives litres per hour."
+  - id: crp-robot-wheel
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A robot's motor turns its wheel at 2 turns per second, and each turn of the wheel moves the robot 0.3 m. How fast does the robot move, in metres per second?"
+    answer: 0.6
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 2.3
+        tolerance: { abs: 0.001 }
+        category: misunderstood_definition
+        feedback: "Rates along a chain multiply: each of the 2 turns moves the robot 0.3 m."
+    hints: ["Treat it as a chain: time → wheel turns → distance."]
+    solution: "Distance per second = metres per turn × turns per second = $0.3 \\times 2 = 0.6$ m per second."
+  - id: crp-three-steps
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A chain has three steps, $x \\to u \\to v \\to y$, with local rates $du/dx = 2$, $dv/du = -3$ and $dy/dv = 0.5$. What is $dy/dx$?"
+    answer: -3
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: -0.5
+        tolerance: { abs: 0.001 }
+        category: misunderstood_definition
+        feedback: "That adds the rates. Along a chain they multiply: $0.5 \\times (-3) \\times 2$."
+      - answer: 3
+        tolerance: { abs: 0.001 }
+        category: math_error
+        feedback: "Check the sign: one of the three rates is negative."
+    hints: ["Multiply all three local rates."]
+    solution: "$\\frac{dy}{dx} = \\frac{dy}{dv}\\cdot\\frac{dv}{du}\\cdot\\frac{du}{dx} = 0.5 \\times (-3) \\times 2 = -3$. A longer chain just has more rates to multiply."
+  - id: crp-diff-cube
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Differentiate $y = (4x - 1)^3$ with respect to $x$."
+    answer: "12*(4*x-1)^2"
+    variables: { x: [-3, 3] }
+    common_wrong:
+      - answer: "3*(4*x-1)^2"
+        category: misunderstood_definition
+        feedback: "You differentiated the outer function but forgot to multiply by the inner derivative, $d(4x-1)/dx = 4$."
+    hints: ["Let $u = 4x - 1$. Then $y = u^3$, so $dy/du = 3u^2$."]
+    solution: "With $u = 4x - 1$: $dy/du = 3u^2$ and $du/dx = 4$, so $dy/dx = 3(4x-1)^2 \\cdot 4 = 12(4x-1)^2$."
+  - id: crp-nested-slope
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Let $y = ({{=a}}x + {{=b}})^2$. What is $dy/dx$ at $x = {{=c}}$?"
+    hints:
+      - "Let $u = {{=a}}x + {{=b}}$, so $y = u^2$."
+      - "Find $u$ at $x = {{=c}}$, then multiply $dy/du = 2u$ by $du/dx = {{=a}}$."
+    solution: "At $x = {{=c}}$, $u = {{=a}} \\cdot {{=c}} + {{=b}} = {{=a*c+b}}$. Then $dy/du = 2u = {{=2*(a*c+b)}}$ and $du/dx = {{=a}}$, so $dy/dx = {{=2*(a*c+b)}} \\times {{=a}} = {{=2*(a*c+b)*a}}$."
+    answer_expr: "2 * (a * c + b) * a"
+    params:
+      a: { min: 2, max: 5 }
+      b: { min: 1, max: 4 }
+      c: { min: 1, max: 3 }
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: "2 * (a * c + b)"
+        category: misunderstood_definition
+        feedback: "That is only $dy/du$. Multiply by the inner derivative $du/dx = {{=a}}$."
+  - id: crp-forgot-inner
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A student differentiates $y = (2x + 3)^4$ and gets $4(2x + 3)^3$. What is the correct derivative?"
+    options:
+      - { id: a, text: "$8(2x + 3)^3$, because the inner derivative is 2", correct: true }
+      - id: b
+        text: "$4(2x + 3)^3$, because the student is right"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is only the outer derivative. The inner function $2x + 3$ changes at rate 2, so multiply by 2."
+      - id: c
+        text: "$4 \\cdot 2^3$, because you differentiate the inside first"
+        correct: false
+        category: misapplied_technique
+        feedback: "Evaluate the outer derivative at the inner value, $4(2x+3)^3$, then multiply by the inner derivative 2."
+      - id: d
+        text: "$2(2x + 3)^4$, because you multiply by the inner derivative"
+        correct: false
+        category: math_error
+        feedback: "You still need the outer derivative: the power drops from 4 to 3 and the 4 comes to the front."
+    solution: "Outer: $4u^3$ with $u = 2x + 3$. Inner: $du/dx = 2$. Multiply: $4(2x + 3)^3 \\cdot 2 = 8(2x + 3)^3$."
+  - id: crp-inner-outer
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "To differentiate $y = e^{5x}$ with the chain rule, which are the inner and outer functions?"
+    options:
+      - { id: a, text: "Inner $u = 5x$, outer $y = e^u$", correct: true }
+      - id: b
+        text: "Inner $u = e^x$, outer $y = 5u$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "$5e^x$ is a different function. In $e^{5x}$ the 5 multiplies $x$ before the exponential is applied."
+      - id: c
+        text: "Inner $u = e^u$, outer $y = 5x$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The inner function is applied first, to $x$. Here that is $5x$."
+      - id: d
+        text: "Inner $u = 5$, outer $y = e^{ux}$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The inner function must take $x$ as its input. Here it is $u = 5x$."
+    solution: "$x$ is first multiplied by 5, then the exponential is applied. So $u = 5x$ is inner, $y = e^u$ is outer, and $dy/dx = e^{5x}\\cdot 5$."
+  - id: crp-compose-notation
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Let $f(u) = u^2$ and $g(x) = 3x + 1$. What is $(f\\circ g)(x)$?"
+    options:
+      - { id: a, text: "$(3x + 1)^2$", correct: true }
+      - id: b
+        text: "$3x^2 + 1$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That applies $f$ first, then $g$. $f\\circ g$ means $f$ after $g$: apply $g$ first."
+      - id: c
+        text: "$x^2 (3x + 1)$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Composition puts one function inside the other. It doesn't multiply them."
+      - id: d
+        text: "$2(3x + 1)$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is $f'(g(x))$, a derivative. The question asks for the composed function itself."
+    solution: "$(f\\circ g)(x) = f(g(x))$: first $g$ gives $3x + 1$, then $f$ squares it, giving $(3x + 1)^2$."
+  - id: crp-diff-log
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Differentiate $y = \\ln(x^2 + 1)$ with respect to $x$."
+    answer: "2*x/(x^2+1)"
+    variables: { x: [-3, 3] }
+    common_wrong:
+      - answer: "1/(x^2+1)"
+        category: misunderstood_definition
+        feedback: "You differentiated the outer $\\ln u$ but forgot the inner derivative $2x$."
+    hints: ["Let $u = x^2 + 1$. The derivative of $\\ln u$ with respect to $u$ is $1/u$."]
+    solution: "With $u = x^2 + 1$: $dy/du = 1/u$ and $du/dx = 2x$, so $dy/dx = \\frac{2x}{x^2 + 1}$."
+  - id: crp-sum-routes
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "An input $x$ reaches the output $f$ by two routes. Multiplying the rates along route 1 gives 5, and along route 2 gives $-2$. What is $df/dx$?"
+    options:
+      - { id: a, text: "$5 + (-2) = 3$", correct: true }
+      - id: b
+        text: "$5 \\times (-2) = -10$"
+        correct: false
+        category: misapplied_technique
+        feedback: "Multiply rates along one route, but add separate routes together."
+      - id: c
+        text: "$5$, the larger route"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Both routes change the output, so both count."
+      - id: d
+        text: "$5 - (-2) = 7$"
+        correct: false
+        category: math_error
+        feedback: "Routes are added. A route with a negative rate pulls the total down."
+    solution: "Each route's product says how much a nudge in $x$ changes $f$ along that route. Both changes happen, so add them: $5 + (-2) = 3$."
+  - id: crp-trip-cost
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A trip costs $C = {{=p}}F + {{=w}}H$ pounds, where $F = {{=r}}s$ is the fuel in litres and $H = s/{{=v}}$ is the driving time in hours for a distance of $s$ km. How many pounds does one extra km add, $dC/ds$? Round to 3 decimal places."
+    hints:
+      - "There are two routes from $s$ to $C$: through $F$ and through $H$."
+      - "Route through fuel: ${{=p}} \\times {{=r}}$. Route through time: ${{=w}} \\times \\frac{1}{ {{=v}} }$."
+    solution: "Through fuel: $\\frac{\\partial C}{\\partial F}\\cdot\\frac{dF}{ds} = {{=p}} \\times {{=r}} = {{=p*r}}$. Through time: $\\frac{\\partial C}{\\partial H}\\cdot\\frac{dH}{ds} = {{=w}} \\div {{=v}} \\approx {{=w/v}}$. Add the routes: $dC/ds \\approx {{=p*r+w/v}}$."
+    answer_expr: "p * r + w / v"
+    params:
+      p: { min: 1.2, max: 1.8, step: 0.1 }
+      r: { min: 0.05, max: 0.1, step: 0.01 }
+      w: { min: 10, max: 20, step: 2 }
+      v: { min: 40, max: 80, step: 20 }
+    tolerance: { abs: 0.0011 }
+    common_wrong:
+      - answer_expr: "p * r"
+        category: incomplete_explanation
+        feedback: "That is only the fuel route. The extra km also adds driving time, paid at {{=w}} pounds per hour."
+      - answer_expr: "w / v"
+        category: incomplete_explanation
+        feedback: "That is only the time route. The extra km also uses fuel."
+  - id: crp-missing-route
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Let $f = u^2 + v$, where $u = 2x$ and $v = x^2$. A student writes $df/dx = 2u \\cdot 2 = 8x$. What is the correct $df/dx$?"
+    options:
+      - { id: a, text: "$10x$: add the route through $v$, which gives $2x$", correct: true }
+      - id: b
+        text: "$8x$: the route through $u$ is the only one"
+        correct: false
+        category: incomplete_explanation
+        feedback: "$x$ also reaches $f$ through $v = x^2$, adding $\\partial f/\\partial v \\cdot dv/dx = 1 \\cdot 2x$."
+      - id: c
+        text: "$16x^2$: multiply the two routes"
+        correct: false
+        category: misapplied_technique
+        feedback: "Separate routes are added, not multiplied."
+      - id: d
+        text: "$4x$: the route through $u$ is $2 \\cdot 2$"
+        correct: false
+        category: math_error
+        feedback: "$\\partial f/\\partial u = 2u = 4x$, so the $u$ route is $4x \\cdot 2 = 8x$. Then add the $v$ route."
+    solution: "Route through $u$: $2u \\cdot 2 = 8x$. Route through $v$: $1 \\cdot 2x = 2x$. Total $10x$. Check: $f = 4x^2 + x^2 = 5x^2$, so $df/dx = 10x$."
+  - id: crp-routes-expression
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "Let $f = u \\cdot v$, where $u = x + 1$ and $v = x^2$. Use the two-route rule to find $df/dx$ in terms of $x$."
+    answer: "3*x^2 + 2*x"
+    variables: { x: [-3, 3] }
+    common_wrong:
+      - answer: "x^2"
+        category: incomplete_explanation
+        feedback: "That is only the route through $u$. Add the route through $v$: $u \\cdot 2x$."
+      - answer: "2*x*(x+1)"
+        category: incomplete_explanation
+        feedback: "That is only the route through $v$. Add the route through $u$: $v \\cdot 1$."
+    hints: ["$\\partial f/\\partial u = v$ and $\\partial f/\\partial v = u$."]
+    solution: "Route through $u$: $v \\cdot 1 = x^2$. Route through $v$: $u \\cdot 2x = 2x(x + 1)$. Add: $x^2 + 2x^2 + 2x = 3x^2 + 2x$. Check: $f = x^3 + x^2$."
+  - id: crp-partial-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A trip costs $C = 1.5F + 12H$ pounds, with fuel $F$ in litres and driving time $H$ in hours. What does $\\partial C/\\partial F = 1.5$ mean?"
+    options:
+      - { id: a, text: "Each extra litre adds 1.5 pounds while hours stay fixed", correct: true }
+      - id: b
+        text: "Each extra km adds 1.5 pounds to the trip"
+        correct: false
+        category: misunderstood_definition
+        feedback: "An extra km changes both fuel and hours. $\\partial C/\\partial F$ is about fuel alone."
+      - id: c
+        text: "Each extra hour adds 1.5 pounds while fuel stays fixed"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That would be $\\partial C/\\partial H$, which is 12 here."
+      - id: d
+        text: "The whole trip costs 1.5 pounds in fuel"
+        correct: false
+        category: misunderstood_definition
+        feedback: "A derivative is a rate of change, not a total."
+    solution: "A partial derivative changes one variable and holds the others fixed. Here one extra litre of fuel, with the same hours, adds 1.5 pounds."
+  - id: crp-robot-routes
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot's battery drain $B$ depends on its speed $v$ directly, and also on its motor temperature $T$, which itself rises with speed. How do you find $dB/dv$?"
+    options:
+      - id: a
+        text: "Add $\\frac{\\partial B}{\\partial v}$ and $\\frac{\\partial B}{\\partial T}\\cdot\\frac{dT}{dv}$"
+        correct: true
+      - id: b
+        text: "Multiply $\\frac{\\partial B}{\\partial v}$ by $\\frac{\\partial B}{\\partial T}\\cdot\\frac{dT}{dv}$"
+        correct: false
+        category: misapplied_technique
+        feedback: "These are two separate routes from $v$ to $B$, so they add."
+      - id: c
+        text: "Use $\\frac{\\partial B}{\\partial v}$ alone, the direct route"
+        correct: false
+        category: incomplete_explanation
+        feedback: "Speed also changes $B$ by heating the motors. That route counts too."
+      - id: d
+        text: "Use $\\frac{\\partial B}{\\partial T}\\cdot\\frac{dT}{dv}$ alone, the longer route"
+        correct: false
+        category: incomplete_explanation
+        feedback: "Speed also drains the battery directly. That route counts too."
+    solution: "Speed reaches the battery drain by two routes: directly, and through temperature. Work out each route and add them."

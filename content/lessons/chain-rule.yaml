@@ -1,43 +1,176 @@
 concept: chain-rule
-version: 1
-fast_path: [objective, summary]
-blocks:
-  - kind: objective
-    md: |
-      **Goal:** differentiate compositions with the chain rule, and explain it as multiplying local sensitivities.
-  - kind: intuition
-    md: |
-      If $y$ depends on $u$ and $u$ depends on $x$, a nudge in $x$ moves $u$, which then moves $y$. The total sensitivity is the product of the two local sensitivities:
+version: 2
+objective: |
+  **Goal:** differentiate a formula inside a formula with the chain rule, add up routes when an input reaches the output in more than one way, and explain the rule as multiplying local sensitivities.
+knowledge_points:
+  - id: cr-rates-multiply
+    title: Rates along a chain multiply
+    explain: |
+      You drive at a steady 60 km per hour, and the car burns 0.08 litres of fuel per km. **How fast is the fuel going, in litres per hour?**
+
+      Nobody has told you fuel per hour. You know two separate rates, one for each step: time changes the distance, and distance changes the fuel. So follow one extra hour through the chain. It adds 60 km, and each of those km uses 0.08 litres, so the hour costs $60 \times 0.08 = 4.8$ litres.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 130" aria-label="A chain from time to distance to fuel. Distance grows by 60 km per hour and fuel by 0.08 litres per km, so fuel grows by 4.8 litres per hour">
+        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3b82f6"/></marker></defs>
+        <rect x="2" y="20" width="150" height="50" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+        <rect x="245" y="20" width="150" height="50" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+        <rect x="488" y="20" width="150" height="50" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+        <text x="77" y="50" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">time t (hours)</text>
+        <text x="320" y="50" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">distance s (km)</text>
+        <text x="563" y="50" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">fuel F (litres)</text>
+        <line x1="154" y1="45" x2="241" y2="45" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="397" y1="45" x2="484" y2="45" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="198" y="36" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 60</text>
+        <text x="198" y="64" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">km per hour</text>
+        <text x="441" y="36" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 0.08</text>
+        <text x="441" y="64" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">litres per km</text>
+        <text x="320" y="112" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#10b981">fuel per hour = 0.08 × 60 = 4.8 litres per hour</text>
+      </svg>
+      ```
+
+      Write $t$ for hours driven, $s$ for the distance in km and $F$ for the fuel used in litres. Each step has its own derivative, called its **local sensitivity**: $ds/dt = 60$ says how much $s$ moves per unit of $t$, and $dF/ds = 0.08$ says how much $F$ moves per unit of $s$. The rate from start to end is their product:
+
+      $$\frac{dF}{dt} = \frac{dF}{ds}\cdot\frac{ds}{dt} = 0.08 \times 60 = 4.8$$
+
+      This is the **chain rule**. Whenever $y$ depends on $u$ and $u$ depends on $x$,
+
       $$\frac{dy}{dx} = \frac{dy}{du}\cdot\frac{du}{dx}.$$
-      This rule lets us differentiate a nested formula one step at a time.
-  - kind: example
-    md: |
-      This example applies the chain rule to a square built from an inner linear expression.
 
-      $y = (3x + 1)^2$. Let $u = 3x + 1$, so $y = u^2$. Then $dy/du = 2u$ and $du/dx = 3$, giving $dy/dx = 2(3x+1)\cdot 3 = 6(3x+1)$.
-  - kind: math
-    md: |
-      Read $f\circ g$ as "f applied after g".
-      Single variable: $(f\circ g)'(x) = f'(g(x))\,g'(x)$.
+      Rates along a chain multiply. They never add.
+    worked: |
+      This example shows that multiplying the two local rates gives the same answer as following a real nudge through the chain.
 
-      Multivariable: if $L$ depends on $x$ through several intermediate variables, multiply the two rates along each route and add the results. For two routes:
-      $$\frac{\partial L}{\partial x} = \frac{\partial L}{\partial u_1}\frac{\partial u_1}{\partial x} + \frac{\partial L}{\partial u_2}\frac{\partial u_2}{\partial x}.$$
-  - kind: worked
-    md: |
-      This worked example differentiates a nested expression and adds contributions from two paths.
+      Nudge the driving time by 0.1 hours (6 minutes):
 
-      **Square of a linear expression.** Let $u = 2x - 1$ and $y = u^2$.
+      1. Distance: $0.1 \times 60 = 6$ km more.
+      2. Fuel: $6 \times 0.08 = 0.48$ litres more.
+      3. Rate: $0.48 \div 0.1 = 4.8$ litres per hour.
 
-      1. Inner: $du/dx = 2$.
-      2. Outer: $dy/du = 2u$.
-      3. Chain: $dy/dx = 2u\cdot 2 = 4(2x - 1)$.
+      That matches $\frac{dF}{ds}\cdot\frac{ds}{dt} = 0.08 \times 60 = 4.8$. Each step scales the nudge by its own rate, so the overall rate is the product of the rates.
+    problems:
+      - crp-total-rate
+      - crp-rate-product
+      - crp-add-rates
+      - crp-local-meaning
+      - crp-robot-wheel
+      - crp-three-steps
+  - id: cr-nested-formulas
+    title: Differentiating a formula inside a formula
+    explain: |
+      The chain rule also works on formulas. Take $y = (3x + 1)^2$. You could multiply it out to $9x^2 + 6x + 1$ first, but that gets painful fast: imagine multiplying out $(3x + 1)^{10}$.
 
-      At $x = 2$, $u = 3$, so $dy/dx = 12$.
+      Instead, read the formula as two steps, just like time → distance → fuel:
 
-      **Two paths.** Let $f = u + v$, where $u = x^2$ and $v = 3x$. Then $df/dx = 2x + 3$. At $x = 2$, the two paths contribute 4 and 3, for a total of 7.
-  - kind: check
-    exercise: cr-check-1
-  - kind: summary
-    md: |
-      - Multiply local derivatives along a chain.
-      - When a variable affects the output along several paths, add the contributions of the paths.
+      - the **inner function** $u = 3x + 1$ turns $x$ into $u$;
+      - the **outer function** $y = u^2$ turns $u$ into $y$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 130" aria-label="x goes into the inner function u = 3x + 1, which goes into the outer function y = u squared. The local rates are 3 and 2u, so dy/dx = 2u times 3">
+        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3b82f6"/></marker></defs>
+        <rect x="2" y="20" width="110" height="50" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+        <rect x="230" y="20" width="160" height="50" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+        <rect x="508" y="20" width="130" height="50" rx="8" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+        <text x="57" y="50" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">x</text>
+        <text x="310" y="50" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">u = 3x + 1</text>
+        <text x="573" y="50" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">y = u²</text>
+        <text x="310" y="90" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">inner function</text>
+        <text x="573" y="90" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">outer function</text>
+        <line x1="114" y1="45" x2="226" y2="45" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="392" y1="45" x2="504" y2="45" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="170" y="36" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">du/dx = 3</text>
+        <text x="448" y="36" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">dy/du = 2u</text>
+        <text x="320" y="120" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#10b981">dy/dx = 2u × 3 = 6(3x + 1)</text>
+      </svg>
+      ```
+
+      Each step is easy on its own: $du/dx = 3$ and $dy/du = 2u$. Multiply them, then put $u = 3x + 1$ back in:
+
+      $$\frac{dy}{dx} = \frac{dy}{du}\cdot\frac{du}{dx} = 2u \cdot 3 = 6(3x + 1)$$
+
+      Putting one function inside another is called **composition**. If $g$ is the inner function and $f$ the outer one, $f(g(x))$ means "apply $g$, then apply $f$ to the result". It is also written $(f\circ g)(x)$, read "$f$ after $g$". In this notation the chain rule is
+
+      $$(f\circ g)'(x) = f'\big(g(x)\big)\cdot g'(x).$$
+
+      In words: differentiate the outer function, evaluate it at the inner value, then multiply by the inner function's derivative. Forgetting that last factor is the most common mistake.
+    worked: |
+      This example shows the three steps of the chain rule on $y = (x^2 + 1)^3$ at $x = 1$.
+
+      1. Name the inner function: $u = x^2 + 1$, so $du/dx = 2x$.
+      2. Differentiate the outer function: $y = u^3$, so $dy/du = 3u^2$.
+      3. Multiply and put $u$ back: $dy/dx = 3(x^2 + 1)^2 \cdot 2x = 6x(x^2 + 1)^2$.
+
+      At $x = 1$, $u = 2$, so $dy/du = 3 \cdot 2^2 = 12$ and $du/dx = 2$. That gives $dy/dx = 12 \cdot 2 = 24$.
+
+      Forgetting the inner derivative would give 12, which is wrong by exactly the factor $du/dx = 2$.
+    problems:
+      - crp-diff-cube
+      - crp-nested-slope
+      - crp-forgot-inner
+      - crp-inner-outer
+      - crp-compose-notation
+      - crp-diff-log
+  - id: cr-two-routes
+    title: When the input reaches the output by two routes
+    explain: |
+      Back to the car. A trip's cost $C$, in pounds, depends on two things: the fuel $F$ at £1.50 per litre, and the driver's hours $H$ at £12 per hour:
+
+      $$C = 1.5F + 12H$$
+
+      Both depend on the distance $s$. The car uses $F = 0.08s$ litres, and at 60 km per hour the drive takes $H = s/60$ hours. **How much does one extra km add to the cost?**
+
+      An extra km reaches the cost by two separate routes, one through fuel and one through time. Work out each route with the chain rule, then add them, because you pay both extra costs:
+
+      - through fuel: 1.5 pounds per litre × 0.08 litres per km = 0.12 pounds per km;
+      - through time: 12 pounds per hour × $\tfrac{1}{60}$ hours per km = 0.20 pounds per km.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 210" aria-label="Distance s reaches cost C by two routes: through fuel F with rates 0.08 and 1.5, and through hours H with rates 1/60 and 12. The routes give 0.12 and 0.20, which add to 0.32">
+        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#737373"/></marker></defs>
+        <rect x="2" y="70" width="120" height="46" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+        <rect x="260" y="6" width="120" height="46" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+        <rect x="260" y="134" width="120" height="46" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+        <rect x="518" y="70" width="120" height="46" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+        <text x="62" y="98" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">distance s</text>
+        <text x="320" y="34" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">fuel F</text>
+        <text x="320" y="162" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">hours H</text>
+        <text x="578" y="98" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">cost C</text>
+        <line x1="122" y1="82" x2="256" y2="36" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="122" y1="104" x2="256" y2="152" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="380" y1="36" x2="514" y2="82" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="380" y1="152" x2="514" y2="104" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="176" y="44" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#f59e0b">× 0.08</text>
+        <text x="464" y="44" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#f59e0b">× 1.5</text>
+        <text x="176" y="152" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 1/60</text>
+        <text x="464" y="152" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 12</text>
+        <text x="320" y="202" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#10b981">dC/ds = 0.12 (via fuel) + 0.20 (via hours) = 0.32</text>
+      </svg>
+      ```
+
+      So $dC/ds = 0.12 + 0.20 = 0.32$: each extra km costs 32p. Because $C$ depends on two variables, the step from $F$ to $C$ is a partial derivative: $\partial C/\partial F = 1.5$ is how fast $C$ changes with $F$ while $H$ stays fixed. The **multivariable chain rule** says: multiply the rates along each route, then add the routes.
+
+      $$\frac{dC}{ds} = \frac{\partial C}{\partial F}\cdot\frac{dF}{ds} + \frac{\partial C}{\partial H}\cdot\frac{dH}{ds}$$
+
+      Training a model uses the same rule whenever one parameter affects the result through several routes.
+    worked: |
+      This example shows the two-route rule on a formula, then checks the answer another way.
+
+      Let $f = u \cdot v$, where $u = x^2$ and $v = 3x$. Find $df/dx$ at $x = 2$, where $u = 4$ and $v = 6$.
+
+      1. Route through $u$: $\partial f/\partial u = v = 6$ and $du/dx = 2x = 4$, so this route gives $6 \times 4 = 24$.
+      2. Route through $v$: $\partial f/\partial v = u = 4$ and $dv/dx = 3$, so this route gives $4 \times 3 = 12$.
+      3. Add the routes: $df/dx = 24 + 12 = 36$.
+
+      Check: $f = x^2 \cdot 3x = 3x^3$, so $df/dx = 9x^2 = 36$ at $x = 2$. Leaving out either route gives a wrong answer.
+    problems:
+      - crp-sum-routes
+      - crp-trip-cost
+      - crp-missing-route
+      - crp-routes-expression
+      - crp-partial-meaning
+      - crp-robot-routes
+final: cr-explain
+summary: |
+  - Rates along a chain multiply: $\frac{dy}{dx} = \frac{dy}{du}\cdot\frac{du}{dx}$, just as km per hour × litres per km gives litres per hour.
+  - For a formula inside a formula, $(f\circ g)'(x) = f'(g(x))\cdot g'(x)$: differentiate the outer function, then multiply by the inner function's derivative.
+  - When an input reaches the output by several routes, multiply the rates along each route and add the routes.
