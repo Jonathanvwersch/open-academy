@@ -161,31 +161,35 @@ exercises:
           category: misunderstood_definition,
           feedback: "That mixes in the age term. $-{{=d}}a$ has no $s$ in it, so it contributes 0.",
         }
-  - id: pdp-which-fixed
+  - id: pdp-why-freeze
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "When you compute $\\frac{\\partial f}{\\partial y}$ for $f(x, y, z)$, what do you do with $x$ and $z$?"
+    prompt: "Why must $x$ and $z$ stay fixed when computing $\\frac{\\partial f}{\\partial y}$ for $f(x, y, z)$?"
     options:
-      - { id: a, text: "Treat both as constants", correct: true }
+      - {
+          id: a,
+          text: "Otherwise their changes could mix with the effect of changing $y$",
+          correct: true,
+        }
       - id: b
-        text: "Set both to 0"
+        text: "Holding an input fixed means removing its contribution by setting it to 0"
         correct: false
         category: misunderstood_definition
         feedback: "They are held fixed at whatever values they have, not set to 0."
       - id: c
-        text: "Differentiate them too and add the results"
+        text: "Their derivatives must be added to the derivative in $y$"
         correct: false
         category: misunderstood_definition
         feedback: "Only $y$ moves. Adding all the changes would mix up the effects of different inputs."
       - id: d
-        text: "Hold $x$ fixed but let $z$ change"
+        text: "Only one other input needs to be fixed, so $z$ can still change"
         correct: false
         category: misunderstood_definition
         feedback: "Every input except $y$ is held fixed."
-    solution: "A partial derivative moves one input; every other input is frozen as a constant at its current value."
+    solution: "Freezing $x$ and $z$ isolates the output change caused by $y$. If they also moved, the output change could include their effects too."
   - id: pdp-sign
     dimension: conceptual
     type: mc
@@ -307,30 +311,30 @@ exercises:
           category: misunderstood_definition,
           feedback: "${{=b}}y$ has no $x$ in it, so it contributes 0.",
         }
-  - id: pdp-no-x-term
+  - id: pdp-why-zero
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "In $f(x, y) = x^3 + e^y$, what does the term $e^y$ contribute to $\\frac{\\partial f}{\\partial x}$?"
+    prompt: "Why does $e^y$ contribute 0 to $\\frac{\\partial f}{\\partial x}$ when $f(x, y) = x^3 + e^y$?"
     options:
-      - { id: a, text: "0", correct: true }
+      - { id: a, text: "With $y$ fixed, nudging $x$ leaves $e^y$ unchanged", correct: true }
       - id: b
-        text: "$e^y$"
+        text: "Every exponential term has derivative 0"
         correct: false
         category: misapplied_technique
-        feedback: "$e^y$ is its own derivative with respect to $y$. With $y$ frozen it is a constant."
+        feedback: "An exponential can change: with respect to $y$, the derivative of $e^y$ is $e^y$. Here it is constant only because $y$ is fixed."
       - id: c
-        text: '$x\,e^y$'
+        text: "The current value of $y$ must be 0"
         correct: false
         category: misapplied_technique
-        feedback: "Nothing in $e^y$ depends on $x$, so it doesn't change as $x$ moves."
+        feedback: "Fixed does not mean zero. Whatever value $y$ has, it stays there as $x$ moves."
       - id: d
-        text: "1"
+        text: "Terms added to $x^3$ never affect any partial derivative"
         correct: false
         category: misapplied_technique
-        feedback: "A constant term has derivative 0, not 1."
+        feedback: "Added terms can affect a partial when they contain the moving input. Here $e^y$ contributes to the partial in $y$, but not in $x$."
     solution: "With $y$ held fixed, $e^y$ is just a number, and the derivative of a constant is 0."
   - id: pdp-exp-log
     dimension: math
@@ -454,7 +458,7 @@ exercises:
         }
     hints: ["The gap is $g = 3 \\cdot 2 + 1 - 9$.", "$\\frac{\\partial f}{\\partial b} = 2g$."]
     solution: "The gap is $6 + 1 - 9 = -2$, so $\\frac{\\partial f}{\\partial b} = 2 \\times (-2) = -4$."
-  - id: pdp-data-fixed
+  - id: pdp-why-data-fixed
     dimension: conceptual
     type: mc
     role: practice
@@ -466,15 +470,15 @@ exercises:
         text: "They describe one house that has already sold, so only the dials $w$ and $b$ can move"
         correct: true
       - id: b
-        text: "Because $x$ and $y$ are always 0"
+        text: "Holding the data fixed makes their values 0 in the gap"
         correct: false
         category: misunderstood_definition
         feedback: "They are held at their actual values, such as $x = 3$ and $y = 1$, not set to 0."
       - id: c
-        text: "Because letters near the end of the alphabet are always constants"
+        text: "Every input to a price formula must stay fixed, including $w$ and $b$"
         correct: false
         category: misunderstood_definition
-        feedback: "What counts as an input depends on the problem, not the letter."
+        feedback: "The house's facts stay fixed, but the model's dials can change. Freezing those too would prevent any adjustment."
       - id: d
         text: 'They aren''t; you also need $\partial f / \partial x$ to shrink the gap'
         correct: false
