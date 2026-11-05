@@ -129,3 +129,47 @@ test('skips XP for activities with no attempts and for knowledge-point lessons',
   });
   expect(await db.select().from(xpEvents).where(eq(xpEvents.userId, userId))).toHaveLength(0);
 });
+
+test('advancing an abandoned session activity does not reactivate its parent session', async () => {
+  const activity = await createActivity();
+  const [nextActivity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: activity.sessionId,
+      idx: 1,
+      kind: 'practice',
+      conceptId: 'vectors',
+      exerciseIds: ['vectors-component-sum'],
+      plannedMinutes: 5,
+      status: 'planned',
+    })
+    .returning();
+  if (!nextActivity) throw new Error('Could not create the next activity');
+  await db
+    .update(studySessions)
+    .set({ status: 'abandoned' })
+    .where(eq(studySessions.id, activity.sessionId));
+
+  await updateActivityAndAdvance(db, {
+    activityId: activity.id,
+    completed: true,
+    now: new Date('2026-01-02T12:00:00.000Z'),
+    session: {
+      activities: [
+        { id: activity.id, idx: 0, status: 'in_progress' },
+        { id: nextActivity.id, idx: 1, status: 'planned' },
+      ],
+    },
+  });
+
+  const [parent] = await db
+    .select()
+    .from(studySessions)
+    .where(eq(studySessions.id, activity.sessionId));
+  const [advanced] = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, nextActivity.id));
+  expect(parent?.status).toBe('abandoned');
+  expect(advanced?.status).toBe('in_progress');
+});

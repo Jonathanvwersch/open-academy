@@ -488,3 +488,13 @@ exercises:
           category: misunderstood_definition,
         }
     solution: "A model can fit its training houses well but still predict new houses badly, so we test it on houses it did not train on."
+  - id: supervised-learning-fixture-review
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A prediction is 7 and the target is 5. What is the squared error?"
+    answer: 4
+    tolerance: { abs: 0.000001 }
+    solution: "The error is 7 − 5 = 2. Squaring it gives 2² = 4."

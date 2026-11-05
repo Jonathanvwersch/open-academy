@@ -8,6 +8,7 @@ export function fsrsScheduler(enableFuzz = true) {
     generatorParameters({
       request_retention: 0.9,
       maximum_interval: 60,
+      enable_short_term: false,
       enable_fuzz: enableFuzz,
     }),
   );
@@ -35,6 +36,7 @@ export function scheduleReview(
   card: Card,
   now: Date,
   rating: ReviewRating | Rating,
+  timezone = 'UTC',
   enableFuzz = true,
 ) {
   const mappedRating =
@@ -51,7 +53,11 @@ export function scheduleReview(
       : mappedRating === Rating.Easy
         ? Rating.Good
         : Rating.Again;
-  return fsrsScheduler(enableFuzz).next(card, now, safeRating);
+  const scheduled = fsrsScheduler(enableFuzz).next(card, now, safeRating);
+  const earliestDue = startOfNextCalendarDay(now, timezone);
+  return scheduled.card.due >= earliestDue
+    ? scheduled
+    : { ...scheduled, card: { ...scheduled.card, due: earliestDue } };
 }
 
 export function scheduleInitialReview(
@@ -61,11 +67,7 @@ export function scheduleInitialReview(
   timezone = 'UTC',
   enableFuzz = true,
 ) {
-  const scheduled = scheduleReview(card, now, rating, enableFuzz);
-  const earliestDue = startOfNextCalendarDay(now, timezone);
-  return scheduled.card.due >= earliestDue
-    ? scheduled
-    : { ...scheduled, card: { ...scheduled.card, due: earliestDue } };
+  return scheduleReview(card, now, rating, timezone, enableFuzz);
 }
 
 export function retrievability(card: Card, now: Date, enableFuzz = true): number {

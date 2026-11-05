@@ -1,3 +1,4 @@
+import { isTemplate } from '../content/templates.js';
 import type { ContentIndex, IndexedConcept, IndexedExercise } from '../content/types.js';
 import { compareOutlinePosition, masteryKey, prerequisiteMet } from './prerequisites.js';
 import type { MasteryRecord } from './types.js';
@@ -191,11 +192,24 @@ function packWeekday(
   let usedMinutes = 0;
   let newConceptCount = 0;
   const selectedConcepts = new Set<string>();
-  const canAdd = (candidate: Candidate, limit = budget) =>
-    selected.length < SCHEDULER_CONFIG.weekday.maxActivities &&
-    usedMinutes + candidate.adjustedMinutes <= limit &&
-    !usesSelectedExercise(candidate, selected) &&
-    (!candidate.activity.conceptId || !selectedConcepts.has(candidate.activity.conceptId));
+  const canAdd = (candidate: Candidate, limit = budget) => {
+    const reviewAlongsideLesson =
+      candidate.activity.kind === 'review' &&
+      Boolean(candidate.activity.conceptId) &&
+      selected.some(
+        (selectedCandidate) =>
+          selectedCandidate.activity.kind === 'learn' &&
+          selectedCandidate.activity.conceptId === candidate.activity.conceptId,
+      );
+    return (
+      selected.length < SCHEDULER_CONFIG.weekday.maxActivities &&
+      usedMinutes + candidate.adjustedMinutes <= limit &&
+      !usesSelectedExercise(candidate, selected) &&
+      (!candidate.activity.conceptId ||
+        !selectedConcepts.has(candidate.activity.conceptId) ||
+        reviewAlongsideLesson)
+    );
+  };
   const add = (candidate: Candidate, limit = budget) => {
     if (!canAdd(candidate, limit)) return false;
     selected.push(candidate);
@@ -613,10 +627,10 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
       continue;
     }
     const record = masteryByKey.get(masteryKey(card.conceptId, card.dimension));
-    const reviewRoles =
-      record && masteryRank(record.state) >= masteryRank('independent')
-        ? ['transfer', 'review', 'core']
-        : ['review', 'core'];
+    const isIndependent = record && masteryRank(record.state) >= masteryRank('independent');
+    const reviewRoles = isIndependent
+      ? ['transfer', 'review', 'core', 'practice']
+      : ['review', 'core', 'practice', 'transfer'];
     const exercise = chooseExercise(
       state,
       content,
@@ -763,7 +777,10 @@ function chooseExercise(
         .map((attempt) => attempt.exerciseId),
     );
   const pool = (content.exercisesByConcept.get(concept.id) ?? []).filter(
-    (exercise) => (!dimension || exercise.dimension === dimension) && !used.has(exercise.id),
+    (exercise) =>
+      (!dimension || exercise.dimension === dimension) &&
+      !used.has(exercise.id) &&
+      !isTemplate(exercise),
   );
   for (const role of preferredRoles) {
     const matching = pool.filter((exercise) => exercise.role === role);

@@ -35,3 +35,26 @@ exercises:
     options:
       - { id: feature-effect, text: The feature's effect on the prediction, correct: true }
       - { id: input-count, text: The number of input examples, correct: false }
+  - id: linear-models-fixture-review
+    dimension: implementation
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A program has a feature x and parameters w and b. Which line computes the simple linear model's prediction?"
+    options:
+      - { id: a, text: "y_hat = w * x + b", correct: true }
+      - {
+          id: b,
+          text: "y_hat = w + x + b",
+          correct: false,
+          feedback: "A linear model multiplies the input by its weight.",
+        }
+      - { id: c, text: "y_hat = w * x", correct: false, feedback: "This omits the bias term b." }
+      - {
+          id: d,
+          text: "y_hat = b * x + w",
+          correct: false,
+          feedback: "The weight multiplies x, and b is added as the bias.",
+        }
+    solution: "The model computes the weighted input w * x and adds the bias b."
