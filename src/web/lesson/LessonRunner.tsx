@@ -1,6 +1,6 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ExerciseForm, FeedbackPanel, Markdown } from '../components.js';
+import { ExerciseForm, FeedbackPanel, LessonBlock, Markdown } from '../components.js';
 import { type LessonRunPayload, lessonQueryOptions, lessonRunQueryOptions } from '../queries.js';
 import { SessionActivityHeader } from '../session/SessionActivityHeader.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
@@ -253,12 +253,7 @@ export function LessonRunner({
             <section className="space-y-4">
               <h2 className="text-xl font-semibold">{point.title}</h2>
               <Markdown>{point.explain}</Markdown>
-              <Card className="bg-muted/50">
-                <CardContent className="space-y-2 p-4">
-                  <h3 className="font-medium">Worked example</h3>
-                  <Markdown>{point.worked}</Markdown>
-                </CardContent>
-              </Card>
+              <LessonBlock kind="worked" md={point.worked} />
             </section>
           ) : null}
           {shownProblem ? (

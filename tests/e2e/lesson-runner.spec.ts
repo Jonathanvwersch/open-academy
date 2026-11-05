@@ -6,7 +6,9 @@ import { env } from '../../src/server/env.js';
 
 const conceptId = 'supervised-learning';
 const screenshotDir = '/home/ubuntu/screenshots/shadcn';
+const lessonCardScreenshotDir = '/home/ubuntu/screenshots/lesson-cards';
 mkdirSync(screenshotDir, { recursive: true });
+mkdirSync(lessonCardScreenshotDir, { recursive: true });
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -123,7 +125,15 @@ async function nextProblemAndReload(page: Page) {
 test('passes every knowledge point and restores the exact problem and result after reloads', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   const sessionId = await createSession(page);
+  const workedExample = page.getByRole('heading', { name: 'Worked example', exact: true });
+  await expect(workedExample).toBeVisible();
+  await expect(workedExample.locator('xpath=../..')).toHaveAttribute('data-slot', 'card');
+  await page.screenshot({
+    path: `${lessonCardScreenshotDir}/kp-runner-worked-example.png`,
+    fullPage: true,
+  });
   await page.screenshot({
     path: `${screenshotDir}/explanation-first-problem.png`,
     fullPage: true,
