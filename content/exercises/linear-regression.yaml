@@ -113,3 +113,487 @@ exercises:
           feedback: "A 1-D `w` gives a 1-D result. `(200, 1)` would need `w` of shape `(5, 1)`.",
         }
     solution: "One prediction per row: `(200,)`."
+  - id: lrp-formula
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For weights (3, 10), house features (area, bedrooms), and bias 50, which rule gives the
+      predicted price?
+    options:
+      - id: a
+        text: Multiply matching features and weights, sum, then add 50
+        correct: true
+      - id: b
+        text: Add the features, multiply by both weights, then add 50
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each weight multiplies its own feature, not the sum of all features.
+      - id: c
+        text: Multiply matching features and weights, then add 50 twice
+        correct: false
+        category: incorrect_reasoning
+        feedback: The bias is added once to the prediction, not once per feature.
+    solution: A dot product adds one contribution per feature, and the separate bias shifts the result once.
+  - id: lrp-price-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      Price in thousands of pounds is $3\cdot\text{area}+10\cdot\text{bedrooms}+50$. A house has
+      area {{=a}} m² and {{=k}} bedrooms. What is its predicted price?
+    params:
+      a:
+        min: 60
+        max: 160
+        step: 10
+      k:
+        min: 1
+        max: 5
+        step: 1
+    answer_expr: 3*a+10*k+50
+    tolerance:
+      abs: 0.001
+    solution: Area contributes {{=3*a}} and bedrooms contribute {{=10*k}}. Adding the bias gives
+      {{=3*a}} + {{=10*k}} + 50 = {{=3*a+10*k+50}} thousand pounds.
+    common_wrong:
+      - answer_expr: 3*a+10*k
+        category: math_error
+        feedback: That is the dot product only; add the bias of 50 once.
+  - id: lrp-dot-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A house has area {{=a}} m² and {{=k}} bedrooms, with weights 3 and 10. Before adding any
+      bias, what is its weighted feature sum in thousands of pounds?
+    params:
+      a:
+        min: 60
+        max: 160
+        step: 10
+      k:
+        min: 1
+        max: 5
+        step: 1
+    answer_expr: 3*a+10*k
+    tolerance:
+      abs: 0.001
+    solution: The dot product is 3 × {{=a}} + 10 × {{=k}} = {{=3*a+10*k}}. The question asks for
+      contributions before the offset.
+    common_wrong:
+      - answer_expr: 3*a+10*k+50
+        category: math_error
+        feedback: That includes an extra bias of 50; this question asks for the weighted sum alone.
+  - id: lrp-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: You change feature order from (area, bedrooms) to (bedrooms, area). How do you keep
+      predictions unchanged?
+    options:
+      - id: a
+        text: Change the weight order from (3, 10) to (10, 3)
+        correct: true
+      - id: b
+        text: Keep the weight order at (3, 10) and change nothing
+        correct: false
+        category: incorrect_reasoning
+        feedback: That would apply the area weight to bedrooms and the bedroom weight to area.
+      - id: c
+        text: Keep the weight order but subtract 50 from the bias
+        correct: false
+        category: incorrect_reasoning
+        feedback: A constant bias adjustment cannot correct swapped contributions for every house.
+    solution: A weight belongs to a feature, so permuting features requires the same permutation of weights.
+  - id: lrp-bias-once
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A house has weighted area contribution 300 and weighted bedroom contribution 20. The bias is
+      50. What is its predicted price?
+    options:
+      - id: a
+        text: 370, from adding both contributions and one bias
+        correct: true
+      - id: b
+        text: 420, from adding a separate bias for each feature
+        correct: false
+        category: incorrect_reasoning
+        feedback: The bias is a single offset for the whole prediction, not one offset per feature.
+      - id: c
+        text: 320, from adding just the two feature contributions
+        correct: false
+        category: incorrect_reasoning
+        feedback: That leaves out the separate offset of 50.
+    solution: The prediction is 300 + 20 + 50 = 370 thousand pounds; the bias is included exactly once.
+  - id: lrp-new-task
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A robot predicts travel time as distance × 2 plus parcel count × 0.5 plus 1 minute. Which
+      part acts as the bias?
+    options:
+      - id: a
+        text: The constant 1 minute added after the weighted inputs
+        correct: true
+      - id: b
+        text: The distance weight of 2 minutes per distance unit
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is a weight multiplying a changing feature, not a constant offset.
+      - id: c
+        text: The parcel count multiplied by 0.5 minute per parcel
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is a feature contribution that changes with the number of parcels.
+    solution:
+      The bias is the input-independent addition, here 1 minute, just as the house-price model
+      adds a fixed offset.
+  - id: lrp-weight-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The bedroom weight is 10 in the house-price model. What does it mean?
+    options:
+      - id: a
+        text: One extra bedroom adds £10,000 to the prediction at fixed area
+        correct: true
+      - id: b
+        text: One extra bedroom adds £10,000 even if area also changes
+        correct: false
+        category: incorrect_reasoning
+        feedback: When area changes too, its weighted contribution also changes the price.
+      - id: c
+        text: One extra bedroom proves the actual sale price rises by £10,000
+        correct: false
+        category: incorrect_reasoning
+        feedback: A fitted prediction rule does not establish a causal effect on real sale prices.
+    solution: The weight describes the model’s per-unit prediction change with other features held
+      fixed, not an unconditional or causal claim.
+  - id: lrp-change-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      In the house model, the area weight is 3 thousand pounds per m². Area increases by {{=d}} m²
+      while bedrooms and bias stay fixed. By how many thousands of pounds does the prediction rise?
+    params:
+      d:
+        min: 2
+        max: 20
+        step: 2
+    answer_expr: 3*d
+    tolerance:
+      abs: 0.001
+    solution: "The change is weight times input change: 3 × {{=d}} = {{=3*d}} thousand pounds. Fixed
+      bedroom and bias contributions cancel."
+    common_wrong:
+      - answer_expr: 3*d+50
+        category: math_error
+        feedback: The same bias appears in both predictions, so it cancels from their difference.
+  - id: lrp-both-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      Area increases by {{=d}} m² and bedroom count by {{=k}}. With weights 3 and 10, by how many
+      thousands of pounds does the prediction rise? The bias stays fixed.
+    params:
+      d:
+        min: 5
+        max: 20
+        step: 5
+      k:
+        min: 1
+        max: 3
+        step: 1
+    answer_expr: 3*d+10*k
+    tolerance:
+      abs: 0.001
+    solution: "Add both changes: 3 × {{=d}} + 10 × {{=k}} = {{=3*d+10*k}} thousand pounds. Neither
+      feature is held fixed here."
+    common_wrong:
+      - answer_expr: 10*k
+        category: math_error
+        feedback: That counts only bedrooms; the changing area contributes too.
+  - id: lrp-units
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      You replace area in square metres with area in hundreds of square metres. What area weight
+      preserves the same prices?
+    options:
+      - id: a
+        text: 300, because each new input unit represents 100 m²
+        correct: true
+      - id: b
+        text: 0.03, because the input number becomes 100 times smaller
+        correct: false
+        category: incorrect_reasoning
+        feedback: A smaller input number needs a larger weight to preserve the product.
+      - id: c
+        text: 3, because changing the units cannot change the weight
+        correct: false
+        category: incorrect_reasoning
+        feedback: Predictions can stay unchanged only if the weight compensates for the unit change.
+    solution:
+      For a 100 m² house, the old contribution is 3 × 100 = 300 and the new one must be 300 × 1
+      = 300.
+  - id: lrp-negative
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A linear model has weight −2 for distance from a town centre, in thousands of pounds per
+      kilometre. What does the model predict if only that distance rises by 1 km?
+    options:
+      - id: a
+        text: A price lower by £2,000, with other features fixed
+        correct: true
+      - id: b
+        text: A price higher by £2,000, since weights use magnitudes
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The negative sign matters: the contribution decreases as distance increases."
+      - id: c
+        text: An invalid result, because linear weights cannot be negative
+        correct: false
+        category: incorrect_reasoning
+        feedback: Negative weights are valid; they describe decreasing predictions for increasing inputs.
+    solution: The predicted change is −2 × 1 = −2 thousand pounds; this describes the model, not a
+      guaranteed real-world effect.
+  - id: lrp-zero-input
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In the model $3\cdot\text{area}+10\cdot\text{bedrooms}+50$, what does the bias of 50 mean?
+    options:
+      - id: a
+        text: The model predicts 50 when both feature values are zero
+        correct: true
+      - id: b
+        text: Every real house must sell for at least 50 regardless of data
+        correct: false
+        category: incorrect_reasoning
+        feedback: The bias is part of a prediction formula, not a guaranteed minimum real sale price.
+      - id: c
+        text: The area weight increases by 50 for each extra square metre
+        correct: false
+        category: incorrect_reasoning
+        feedback: The bias shifts predictions without changing the per-unit area weight.
+    solution:
+      Setting both features to zero leaves only 50, although a zero-area, zero-bedroom house is
+      not a realistic sale.
+  - id: lrp-batch-rule
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      "`X` has one house per row, `w` has one weight per feature, and `b` is a scalar bias. Which
+      NumPy calculation prices all the houses?"
+    options:
+      - id: a
+        text: "`X @ w + b`"
+        correct: true
+      - id: b
+        text: "`X @ w`, without the scalar bias"
+        correct: false
+        category: incorrect_reasoning
+        feedback: The matrix product computes feature contributions but omits the shared offset.
+      - id: c
+        text: "`X * w + b`, without summing across columns"
+        correct: false
+        category: incorrect_reasoning
+        feedback:
+          Elementwise multiplication leaves separate feature contributions instead of one sum per
+          house.
+    solution: Matrix multiplication sums feature contributions for each row; adding the scalar then
+      applies one bias per prediction.
+  - id: lrp-batch-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      Two rows of the house input matrix are [{{=a}}, 2] and [{{=a+20}}, 3]. Weights are [3, 10]
+      and bias is 50. What is the sum of the two predicted prices, in thousands of pounds?
+    params:
+      a:
+        min: 60
+        max: 140
+        step: 10
+    answer_expr: 6*a+210
+    tolerance:
+      abs: 0.001
+    solution: The first prediction is {{=3*a+70}} and the second is {{=3*a+140}}. Their sum is
+      {{=6*a+210}}; each row receives its own bias of 50.
+    common_wrong:
+      - answer_expr: 6*a+160
+        category: math_error
+        feedback: That includes the bias only once in the total; it is added to each row prediction.
+  - id: lrp-augmented-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A house row has been extended to [{{=a}}, {{=k}}, 1], with extended weights [3, 10, 50].
+      What is the prediction in thousands of pounds, with no separate bias addition?
+    params:
+      a:
+        min: 60
+        max: 160
+        step: 10
+      k:
+        min: 1
+        max: 5
+        step: 1
+    answer_expr: 3*a+10*k+50
+    tolerance:
+      abs: 0.001
+    solution:
+      The three contributions are {{=3*a}}, {{=10*k}} and 1 × 50. Their sum is {{=3*a+10*k+50}},
+      with the bias supplied by the last feature.
+    common_wrong:
+      - answer_expr: 3*a+10*k+100
+        category: math_error
+        feedback: The constant-1 feature already adds 50; a separate bias would count it twice.
+  - id: lrp-code
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      Complete this vectorised prediction function. `X` has shape `(n, d)`, `w` has shape `(d,)`,
+      and `b` is a scalar.
+    code: |
+      def predict(X, w, b):
+          return ____
+    accept:
+      - X @ w + b
+      - np.dot(X, w) + b
+      - X.dot(w) + b
+      - b + X @ w
+    solution:
+      Use `X @ w + b` to compute one dot product per row and add the same scalar offset to all
+      predictions.
+  - id: lrp-shape
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For 200 houses with 5 features, `X` has shape `(200, 5)` and `w` has shape `(5,)`. What
+      shape does `X @ w + 50` have?
+    options:
+      - id: a
+        text: "`(200,)`, one price per house"
+        correct: true
+      - id: b
+        text: "`(5,)`, one price per feature"
+        correct: false
+        category: incorrect_reasoning
+        feedback: The product sums over features, leaving one output per house rather than per feature.
+      - id: c
+        text: "`(200, 5)`, one price per matrix entry"
+        correct: false
+        category: incorrect_reasoning
+        feedback: The dot products combine each row into a single number.
+    solution:
+      Matrix multiplication removes the feature dimension and returns one prediction for each of
+      the 200 rows; scalar addition preserves that shape.
+  - id: lrp-bias-trick
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      You append a column of ones to the two-feature house matrix. How do you preserve predictions
+      without a separate bias?
+    options:
+      - id: a
+        text: Use weights (3, 10, 50) on the three columns
+        correct: true
+      - id: b
+        text: Use weights (3, 10, 1) on the three columns
+        correct: false
+        category: incorrect_reasoning
+        feedback: The constant feature value is 1, but its weight must be the old bias of 50.
+      - id: c
+        text: Use weights (3, 10) on the three columns
+        correct: false
+        category: incorrect_reasoning
+        feedback: The new matrix has three columns, so it needs three matching weights.
+    solution:
+      The new term is 1 × 50 for each row, replacing the old scalar addition without changing
+      any predictions.
+  - id: lr-explain-model
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: Explain how the house-price rule $3\cdot\text{area}+10\cdot\text{bedrooms}+50$ fits the
+      vector formula, what a weight means, and how you would price a batch in NumPy, including the
+      optional constant-feature trick.
+    rubric:
+      - id: r1
+        criterion: Identifies ordered input and weight vectors and adds the bias once in the dot-product model
+        weight: 1
+        required: true
+      - id: r2
+        criterion:
+          Interprets a weight as a per-unit prediction change with other inputs fixed, and notes
+          that units affect weight size
+        weight: 1
+        required: true
+      - id: r3
+        criterion:
+          Uses X @ w + b with one output per row and explains appending a constant-1 feature with
+          bias weight without double-counting
+        weight: 1
+        required: true
+    exemplar:
+      I use x = (area, bedrooms), w = (3, 10) and b = 50, so the dot product plus bias prices a
+      100 m², 2-bedroom house at 300 + 20 + 50 = 370 thousand pounds. The bedroom weight means an
+      extra bedroom adds 10 thousand pounds to the prediction at fixed area; raw weight sizes do not
+      rank features with different units. For a matrix with one house per row I use X @ w + b,
+      giving one price per row; alternatively I append a 1 to each row and 50 to the weights,
+      without adding a separate bias.
+    solution:
+      I use x = (area, bedrooms), w = (3, 10) and b = 50, so the dot product plus bias prices a
+      100 m², 2-bedroom house at 300 + 20 + 50 = 370 thousand pounds. The bedroom weight means an
+      extra bedroom adds 10 thousand pounds to the prediction at fixed area; raw weight sizes do not
+      rank features with different units. For a matrix with one house per row I use X @ w + b,
+      giving one price per row; alternatively I append a 1 to each row and 50 to the weights,
+      without adding a separate bias.

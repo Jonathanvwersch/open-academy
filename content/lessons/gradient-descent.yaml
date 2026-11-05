@@ -1,67 +1,180 @@
 concept: gradient-descent
-version: 1
-fast_path: [objective, summary]
-blocks:
-  - kind: objective
-    md: |
-      **Goal:** perform gradient-descent updates by hand, explain the effect of the learning rate, implement the loop, and diagnose divergence and slow convergence from loss curves.
-  - kind: intuition
-    md: |
-      You are on a foggy hillside and can only feel the slope under your feet. Gradient descent repeats one move: **take a step downhill, in proportion to the slope.**
-      The Greek letter $\eta$ ("eta") is the learning rate, or step size.
-      $$\theta \leftarrow \theta - \eta\,\nabla L(\theta).$$
-      Read $\leftarrow$ as "replace $\theta$ with". If the step is too small, you crawl. If it is too large, you overshoot the valley floor, land higher on the other side, and the loss explodes. This update can reduce any function when we can calculate its gradient.
-  - kind: example
-    md: |
-      This example shows gradient descent approaching a function's minimum through repeated updates.
+version: 2
+objective: |
+  **Goal:** take gradient-descent steps by hand, choose and diagnose a learning rate, and implement a loop that fits a linear house-price model.
+knowledge_points:
+  - id: gd-downhill-update
+    title: Change the price weight in the downhill direction
+    explain: |
+      You have a house-price model, but its current weight gives poor prices. Trying every possible weight is impossible. You need a repeatable way to improve the current setting using the slope of its loss.
 
-      $L(w) = (w - 3)^2$, so $L'(w) = 2(w - 3)$. Start at $w_0 = 0$ with $\eta = 0.25$:
+      For one 100 m² house sold for £300,000, measure size in hundreds of square metres and price in hundreds of thousands of pounds. The input is $x=1$, the target is $y=3$, and the model predicts $\hat y=wx$ with adjustable weight $w$ and no bias. Its squared-error loss is $L(w)=(w-3)^2$, where $L$ names the loss. The derivative $L'(w)=2(w-3)$ tells you which way increases loss.
 
-      - $w_1 = 0 - 0.25\cdot(-6) = 1.5$
-      - $w_2 = 1.5 - 0.25\cdot(-3) = 2.25$
-      - $w_3 = 2.625$
+      **Gradient descent** moves the other way. The **learning rate** $\eta$ ("eta") scales the step:
 
-      Each step halves the distance to 3.
-  - kind: math
-    md: |
-      For the quadratic $L(w) = a(w - w^\star)^2$, $w^\star$ ("w star") is the best $w$, where the loss is smallest. Its derivative is $L'(w)=2a(w-w^\star)$, so one update is $w_{t+1}=w_t-2a\eta(w_t-w^\star)$.
-      Subtracting $w^\star$ gives $w_{t+1} - w^\star = (1 - 2a\eta)\,(w_t - w^\star)$.
+      $$w_{t+1}=w_t-\eta L'(w_t).$$
 
-      The successive values $w_0,w_1,\dots$ are called iterates. They approach $w^\star$ monotonically when each step stays on the same side and gets closer. If they diverge, they move farther away instead.
-      - $0 < \eta < 1/(2a)$: the iterates approach $w^\star$ monotonically.
-      - $1/(2a) < \eta < 1/a$: they cross from side to side but still get closer.
-      - $\eta > 1/a$: $|1 - 2a\eta| > 1$, so they move farther away.
+      Here $t$ counts updates, $w_t$ is the current weight and $w_{t+1}$ is the next one. A negative slope makes the weight increase; a positive slope makes it decrease.
 
-      With many parameters, the steepest direction limits how large a safe step can be, while gentler directions may take longer to improve.
-  - kind: worked
-    md: |
-      This worked example takes one gradient step to fit a line to two data points.
+      With several parameters collected in $\theta$ ("theta"), use their gradient $\nabla L(\theta)$, the vector of loss slopes:
 
-      **Linear regression, one step by hand.** Data: $(x, y) = (1, 2), (2, 4)$. Model $\hat y = wx$ (no bias), MSE loss, $w_0 = 0$, $\eta = 0.1$.
+      $$\theta\leftarrow\theta-\eta\nabla L(\theta).$$
 
-      1. Predictions: $(0, 0)$. Residuals $\hat y - y = (-2, -4)$.
-      2. For one example, let $q=wx-y$. The squared error is $q^2$, and since $dq/dw=x$, its derivative is $2qx$.
-      3. Averaging the two derivatives gives $\partial L/\partial w = \frac{2}{2}((-2)(1) + (-4)(2)) = -10$.
-      4. $w_1 = 0 - 0.1\cdot(-10) = 1.0$.
+      The arrow means "replace with". Small enough steps can reduce loss; a downhill direction does not make every step size safe.
+    worked: |
+      This example shows three updates improving the price of the same house.
 
-      In `X.T @ r`, for each weight, add up residual times that feature.
+      Start at $w_0=0$ with $\eta=0.25$.
+
+      | Update | Current slope | Next weight | New loss |
+      |---|---|---|---|
+      | 1 | $2(0-3)=-6$ | $0-0.25(-6)=1.5$ | $(1.5-3)^2=2.25$ |
+      | 2 | $2(1.5-3)=-3$ | $1.5-0.25(-3)=2.25$ | $(2.25-3)^2=0.5625$ |
+      | 3 | $2(2.25-3)=-1.5$ | $2.25-0.25(-1.5)=2.625$ | $(2.625-3)^2=0.140625$ |
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 260" aria-label="Three gradient-descent steps move down a loss curve towards the best price weight of 3">
+        <path d="M50 25 V220 H565" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
+        <path d="M80 45 Q280 382 480 45" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="3"/>
+        <path d="M80 45 L180 172 L230 204 L255 212" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="3"/>
+        <circle cx="80" cy="45" r="5" fill="#10b981"/><circle cx="180" cy="172" r="5" fill="#10b981"/><circle cx="230" cy="204" r="5" fill="#10b981"/><circle cx="255" cy="212" r="5" fill="#10b981"/>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <text x="10" y="18">Loss</text><text x="84" y="35">Start: 0</text><text x="110" y="158">1.5</text><text x="189" y="195">2.25</text><text x="274" y="197">2.625</text><text x="267" y="241">3: best weight</text><text x="495" y="241">Weight</text>
+        </g>
+      </svg>
+      ```
+
+      Each update halves the distance to the best weight, so the predictions approach the actual price.
+    problems:
+      [gdp-direction, gdp-step-template, gdp-positive-slope, gdp-zero, gdp-vector, gdp-repeat]
+  - id: gd-step-size
+    title: Choose a step that gets closer rather than overshooting
+    explain: |
+      On the same house, a larger step might reach the right price faster, or jump past it and make the next error worse. You need to distinguish slow progress from unstable updates rather than treating every fall in loss as proof that the setting is safe.
+
+      Successive weights are called **iterates**. They **converge** when they approach the best weight, written $w^\star$ ("w star"). They **diverge** when they move farther away.
+
+      For a bowl-shaped loss $L(w)=a(w-w^\star)^2$, the positive number $a$ controls how steep the bowl is. Our house example has $a=1$ and $w^\star=3$.
+
+      Substitute its slope $2a(w-w^\star)$ into the update and subtract the best weight from both sides:
+
+      $$w_{t+1}-w^\star=(1-2a\eta)(w_t-w^\star).$$
+
+      Each step multiplies the signed distance by $1-2a\eta$:
+
+      - Between 0 and 1: approach from the same side, called **monotonic** approach.
+      - Between −1 and 0: cross sides but get closer, called **damped oscillation**.
+      - Magnitude greater than 1: get farther away and diverge.
+
+      Thus $0<\eta<1/(2a)$ approaches monotonically; $1/(2a)<\eta<1/a$ oscillates but converges. At $\eta=1/(2a)$ this exact bowl reaches the minimum in one step; at $\eta=1/a$ it keeps crossing without improving unless already at the minimum. With many parameters, the steepest direction restricts the safe rate while gentle directions can remain slow.
+    worked: |
+      This example shows why crossing the best house-price weight is not always a failure.
+
+      Use $L(w)=(w-3)^2$, starting at 0.
+
+      | Rate | First weight | Second weight | Losses, including start |
+      |---|---|---|---|
+      | 0.1 | $0-0.1(-6)=0.6$ | $0.6-0.1(-4.8)=1.08$ | $9,\ 5.76,\ 3.6864$ |
+      | 0.75 | $0-0.75(-6)=4.5$ | $4.5-0.75(3)=2.25$ | $9,\ 2.25,\ 0.5625$ |
+      | 1.1 | $0-1.1(-6)=6.6$ | $6.6-1.1(7.2)=-1.32$ | $9,\ 12.96,\ 18.6624$ |
+
+      Read a **loss curve** as loss plotted against update count: a smooth fall shows progress, a plateau shows little change, and rapidly growing loss suggests an unstable rate. A plateau alone does not prove the rate is too small; you might already be near the minimum. Exploding calculations can reach NaN, meaning "not a number".
+
+      Crossing the minimum can still improve loss; crossing with increasing distance is the warning sign.
+    problems:
+      [
+        gdp-rate-choice,
+        gdp-factor-template,
+        gdp-threshold-template,
+        gdp-loss-curve,
+        gdp-slow,
+        gdp-boundary,
+      ]
+  - id: gd-price-gradients
+    title: Work out the slopes from house-price errors
+    explain: |
+      A formula for stepping downhill is useful only if you can calculate the slope. You now have two training sales: a 100 m² house sold for £200,000 and a 200 m² house sold for £400,000. In the same scaled units, their input and target pairs are $(1,2)$ and $(2,4)$.
+
+      Keep the model $\hat y=wx$ without a bias. For one house with size $x$ and price $y$, expanding its squared error gives $w^2x^2-2wxy+y^2$. Treat $x$ and $y$ as fixed numbers. Differentiating with respect to $w$ gives $2wx^2-2xy=2x(wx-y)$.
+
+      The **residual** $r_i=\hat y_i-y_i$ is just the prediction error for house $i$. For $n$ houses, average their slope contributions:
+
+      $$\frac{\partial L}{\partial w}=\frac{2}{n}\sum_{i=1}^n x_i r_i.$$
+
+      The partial-derivative symbol means the loss slope when you change this weight and keep anything else fixed. Each $x_i$ is a size and each $r_i$ its residual; the sum adds all houses.
+
+      A larger input makes changing the weight affect that house's prediction more. This is why you multiply the error by its input instead of simply averaging errors. If you add a bias $b$ to every prediction, its slope is just twice the mean residual, because increasing $b$ adds equally to every prediction.
+    worked: |
+      This example shows one full weight update from the two sales.
+
+      Start at $w=0$ and use rate $\eta=0.1$.
+
+      1. Predictions: $0\times1=0$ and $0\times2=0$.
+      2. Residuals: $0-2=-2$ and $0-4=-4$.
+      3. Multiply by inputs: $1(-2)=-2$ and $2(-4)=-8$.
+      4. Average doubled contributions: $(2/2)(-2-8)=-10$.
+      5. Update: $w_{\text{new}}=0-0.1(-10)=1$; the subscript "new" means the value after the step.
+
+      From $w=1$ instead, the residuals are −1 and −2, the slope is $(2/2)(-1-4)=-5$, and the next weight is $1-0.1(-5)=1.5$.
+
+      Both steps increase the weight because both houses are underpriced.
+    problems:
+      [
+        gdp-gradient-method,
+        gdp-gradient-template,
+        gdp-data-step-template,
+        gdp-feature-factor,
+        gdp-average,
+        gdp-bias-slope,
+      ]
+  - id: gd-training-loop
+    title: Repeat prediction, error, slope and update
+    explain: |
+      You have taken a step by hand, but fitting many house sales means repeating it. After every update, the predictions and residuals change. Reusing the first residuals would keep walking in an old direction rather than following the current loss.
+
+      A **training loop** repeats four jobs: predict, calculate errors, calculate slopes, then update the parameters. Calculate all slopes from the same current parameters before changing any of them. This keeps each update tied to one point on the loss surface.
+
+      Store the house inputs in matrix $X$, with one row per house and one column per feature. If there are $n$ houses and $d$ features, `X` has shape `(n, d)`, the weight vector `w` has shape `(d,)`, and the target array `y` has shape `(n,)`. The bias `b` is one number.
+
+      In NumPy, `X @ w + b` predicts every price. The transpose `X.T` turns columns into rows, so `X.T @ r` adds each feature times its residual over houses. Its shape is `(d,)`, one slope per weight. Dividing by `len(y)` averages over houses, not features. After each step, check the loss as well: a correct-looking loop can still diverge if its learning rate is too high.
+    worked: |
+      This example shows a vectorised loop for the same two house sales, now allowing a bias.
+
       ```python
+      import numpy as np
+      X = np.array([[1.], [2.]])
+      y = np.array([2., 4.])
+      w = np.array([0.])
+      b = 0.
+      lr = 0.1  # learning rate
+      steps = 20
       for step in range(steps):
           y_hat = X @ w + b
           r = y_hat - y
           dw = 2 * X.T @ r / len(y)
           db = 2 * r.mean()
-          w -= lr * dw
-          b -= lr * db
+          w = w - lr * dw
+          b = b - lr * db
+          new_r = X @ w + b - y
+          print((new_r ** 2).mean())
       ```
-  - kind: faded
-    md: |
-      **Partly done.** Same data and model. Now start at $w_0 = 1$: the residuals are $(1\cdot1 - 2,\ 1\cdot2 - 4) = (-1, -2)$, so $\partial L/\partial w = \;?$ and $w_1 = \;?$
-    exercise: gd-faded-step
-  - kind: check
-    exercise: gd-check-step
-  - kind: summary
-    md: |
-      - Update rule: $\theta \leftarrow \theta - \eta\nabla L$.
-      - If $\eta$ is too small, progress is slow. If it is too big, steps can move farther away and the loss may grow or become NaN (not a number).
-      - A smooth decrease means progress; a plateau is little change; oscillation crosses the minimum; an explosion means errors grow.
+
+      On the first step, `r` is `[-2, -4]`, `dw` is `[-10]` and `db` is $2(-2-4)/2=-6$. The new weight is 1 and the new bias is $0-0.1(-6)=0.6$.
+
+      New predictions are $1+0.6=1.6$ and $2+0.6=2.6$. The loss falls from $(4+16)/2=10$ to $(0.16+1.96)/2=1.06$.
+
+      Recompute the errors next time: both parameters have changed what the model predicts.
+    problems:
+      [
+        gdp-loop-order,
+        gdp-bias-step-template,
+        gdp-code-gradient,
+        gdp-code-update,
+        gdp-stale-errors,
+        gdp-shape,
+      ]
+final: gd-explain-training
+summary: |
+  - Subtract the learning rate times the current loss gradient, then recompute it at the new parameters.
+  - Too-small rates can give slow progress; too-large rates can overshoot and diverge. Check the loss curve and whether distances shrink.
+  - For a linear price model, average error-times-input contributions for weights and errors for the bias, then repeat prediction, error, slope and update.

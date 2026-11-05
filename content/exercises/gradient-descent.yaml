@@ -277,3 +277,610 @@ exercises:
           category: incorrect_reasoning,
         }
     solution: "With noise variance 0.25, no model can do much better than MSE ≈ 0.25 on new data."
+  - id: gdp-direction
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The current house-price weight is 0 and the loss slope is −6. Which update moves downhill?
+    options:
+      - id: a
+        text: Subtract the rate times −6, increasing the weight
+        correct: true
+      - id: b
+        text: Add the rate times −6, decreasing the weight
+        correct: false
+        category: incorrect_reasoning
+        feedback: Adding the gradient moves uphill; subtracting a negative slope increases the weight.
+      - id: c
+        text: Keep the weight fixed because a negative slope is invalid
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A negative slope is valid: it means loss falls as the weight increases locally."
+    solution: The gradient points uphill, so subtracting its negative value moves the weight upwards
+      towards lower loss.
+  - id: gdp-step-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      For the house-price loss $L(w)=(w-3)^2$, the current weight is {{=w}} and the learning rate
+      is 0.25. What is the next weight?
+    params:
+      w:
+        min: -2
+        max: 2
+        step: 1
+    answer_expr: w-0.25*2*(w-3)
+    tolerance:
+      abs: 0.001
+    solution:
+      "The slope is 2({{=w}} − 3) = {{=2*(w-3)}}. Subtract 0.25 times that slope: {{=w}} − 0.25
+      × ({{=2*(w-3)}}) = {{=w-0.25*2*(w-3)}}."
+    common_wrong:
+      - answer_expr: w+0.25*2*(w-3)
+        category: math_error
+        feedback: That adds the gradient and moves uphill; the update subtracts it.
+  - id: gdp-positive-slope
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A house-price weight is 4 and the slope of its loss is +2. With a positive learning rate,
+      what should a gradient-descent step do?
+    options:
+      - id: a
+        text: Decrease the weight by the rate times 2
+        correct: true
+      - id: b
+        text: Increase the weight by the rate times 2
+        correct: false
+        category: incorrect_reasoning
+        feedback: A positive slope points towards increasing loss, so move in the opposite direction.
+      - id: c
+        text: Leave the weight unchanged until the slope turns negative
+        correct: false
+        category: incorrect_reasoning
+        feedback: A positive slope is already enough to choose a downhill direction.
+    solution:
+      Subtracting a positive gradient decreases the weight; the sign rule works on either side
+      of the minimum.
+  - id: gdp-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: At weight 3, the house-price loss $(w-3)^2$ has slope zero. What does the next
+      gradient-descent update do?
+    options:
+      - id: a
+        text: Leaves the weight at 3 because the step is zero
+        correct: true
+      - id: b
+        text: Moves the weight by the learning rate alone
+        correct: false
+        category: incorrect_reasoning
+        feedback: The step is the rate multiplied by the gradient, which is zero here.
+      - id: c
+        text: Returns the weight to its initial value of 0
+        correct: false
+        category: incorrect_reasoning
+        feedback: The update uses the current weight and gradient, not a reset to the starting value.
+    solution: The gradient multiplier is zero, so the weight stays at 3, the minimum of this particular bowl.
+  - id: gdp-vector
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A house-price model has an area weight, a bedroom weight and a bias. What does its loss
+      gradient contain?
+    options:
+      - id: a
+        text: One loss slope for each of the three parameters
+        correct: true
+      - id: b
+        text: One predicted price for each of the training houses
+        correct: false
+        category: incorrect_reasoning
+        feedback: Predictions have one entry per example; the gradient has one entry per parameter.
+      - id: c
+        text: One learning rate for each of the training houses
+        correct: false
+        category: incorrect_reasoning
+        feedback: The gradient describes slopes, not step-size settings or individual training examples.
+    solution:
+      The gradient collects the partial derivatives with respect to the adjustable parameters;
+      subtracting its scaled vector updates all of them.
+  - id: gdp-repeat
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: After moving the price weight from 0 to 1.5, what should you use for the next step?
+    options:
+      - id: a
+        text: The slope calculated at the new weight of 1.5
+        correct: true
+      - id: b
+        text: The original slope calculated at the weight of 0
+        correct: false
+        category: incorrect_reasoning
+        feedback: The slope changes along the curve; reusing it no longer follows the current loss.
+      - id: c
+        text: The actual sale price instead of a loss slope
+        correct: false
+        category: incorrect_reasoning
+        feedback: The target helps calculate the error, but is not itself the gradient.
+    solution:
+      Gradient descent follows the current local slope, so every step requires a fresh slope at
+      the current weight.
+  - id: gdp-rate-choice
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For the house-price loss $(w-3)^2$, weights go 0 → 4.5 → 2.25 while losses go 9 → 2.25 →
+      0.5625. What is happening?
+    options:
+      - id: a
+        text: The weight crosses the minimum but gets closer each time
+        correct: true
+      - id: b
+        text: The weight diverges because it crosses the minimum
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Crossing is not enough to show divergence: the distance and the loss are shrinking."
+      - id: c
+        text: The loss oscillates upwards because the weight changes sides
+        correct: false
+        category: incorrect_reasoning
+        feedback: The given losses decrease; oscillating weights need not mean increasing loss.
+    solution: "This is damped oscillation: the signed distance changes sign but shrinks in magnitude."
+  - id: gdp-factor-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For $L(w)={{=a}}(w-3)^2$, the learning rate is 0.1. What factor multiplies the signed
+      distance from 3 after one update?
+    params:
+      a:
+        min: 1
+        max: 8
+        step: 1
+    answer_expr: 1-0.2*a
+    tolerance:
+      abs: 0.001
+    solution:
+      The distance multiplier is 1 − 2 × {{=a}} × 0.1 = {{=1-0.2*a}}. Its sign tells you whether
+      the next weight crosses the minimum.
+    common_wrong:
+      - answer_expr: 1+0.2*a
+        category: math_error
+        feedback:
+          The update subtracts the gradient, so the factor is 1 minus twice the bowl scale times the
+          rate.
+  - id: gdp-threshold-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For the bowl $L(w)={{=a}}(w-3)^2$, positive learning rates must be strictly below which
+      threshold to converge from a weight other than 3? Give the threshold, not the
+      monotonic-approach boundary.
+    params:
+      a:
+        min: 2
+        max: 8
+        step: 1
+    answer_expr: 1/a
+    tolerance:
+      abs: 0.001
+    solution:
+      Convergence requires the distance multiplier to have magnitude below 1, giving 0 < rate <
+      1/{{=a}}. The upper threshold is {{=1/a}}, with equality excluded.
+    common_wrong:
+      - answer_expr: 1/(2*a)
+        category: math_error
+        feedback:
+          That boundary separates same-side approach from convergent crossing, not convergence from
+          divergence.
+  - id: gdp-loss-curve
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      House-price training losses go 10 → 6 → 12 → 40 → 180. What is the first sensible adjustment
+      to try?
+    options:
+      - id: a
+        text: Reduce the learning rate and check whether the growth stops
+        correct: true
+      - id: b
+        text: Increase the learning rate because the first step improved
+        correct: false
+        category: incorrect_reasoning
+        feedback: One improving step does not guarantee stability; subsequent growth suggests overshoot.
+      - id: c
+        text: Keep the rate unchanged because crossing is always harmless
+        correct: false
+        category: incorrect_reasoning
+        feedback: Repeated growing loss is not the shrinking-distance crossing that can converge.
+    solution:
+      A sharp rise after an initial improvement suggests unstable steps, so try a smaller rate
+      before blaming the model.
+  - id: gdp-slow
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      The house-price loss decreases smoothly but slowly. Doubling the rate makes it fall faster
+      without instability. What does this evidence suggest?
+    options:
+      - id: a
+        text: The old rate was small; try cautious increases while monitoring
+        correct: true
+      - id: b
+        text: The old rate was large; halve it to speed the same progress
+        correct: false
+        category: incorrect_reasoning
+        feedback: The larger rate improved progress without instability, suggesting the original was
+          conservative.
+      - id: c
+        text: Any plateau proves the model has reached the best weights
+        correct: false
+        category: incorrect_reasoning
+        feedback:
+          A plateau can mean small steps as well as being near a minimum; the rate comparison gives
+          additional evidence.
+    solution:
+      The controlled rate comparison supports slow steps as the cause; a flat curve alone would
+      not establish it.
+  - id: gdp-boundary
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For $L(w)=(w-3)^2$, start at 0 with rate 1. What happens?
+    options:
+      - id: a
+        text: Weights alternate 0 and 6; loss stays at 9
+        correct: true
+      - id: b
+        text: Weights alternate 0 and 6; loss falls towards zero
+        correct: false
+        category: incorrect_reasoning
+        feedback: Both weights are distance 3 from the minimum, so each has loss 9.
+      - id: c
+        text: The first update reaches 3 and then stays there
+        correct: false
+        category: incorrect_reasoning
+        feedback: The first slope is −6, so the update is 0 − 1 × (−6) = 6, not 3.
+    solution: The multiplier is 1 − 2 × 1 × 1 = −1, so distance changes sign without shrinking; the
+      equality boundary does not converge from this start.
+  - id: gdp-gradient-method
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      For the no-bias price model, how do you calculate the MSE slope for one weight across the
+      sales?
+    options:
+      - id: a
+        text: Average twice each residual times its input feature
+        correct: true
+      - id: b
+        text: Average twice each residual without its input feature
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is the bias slope; changing a weight changes predictions in proportion to its input.
+      - id: c
+        text: Average the squared residuals without their input features
+        correct: false
+        category: incorrect_reasoning
+        feedback: That computes MSE itself rather than its derivative with respect to the weight.
+    solution: Differentiating each squared error gives twice residual times input; averaging those
+      contributions gives the MSE slope.
+  - id: gdp-gradient-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      House inputs are 1 and 2, with targets 2 and 4. The no-bias model has weight {{=w}}. What is
+      the MSE slope with respect to the weight?
+    params:
+      w:
+        min: -2
+        max: 1
+        step: 1
+    answer_expr: 5*w-10
+    tolerance:
+      abs: 0.001
+    solution: Residuals are {{=w-2}} and {{=2*w-4}}. The slope is (2/2) × (1 × ({{=w-2}}) + 2 ×
+      ({{=2*w-4}})) = {{=5*w-10}}.
+    common_wrong:
+      - answer_expr: (5*w-10)/2
+        category: math_error
+        feedback:
+          You averaged the residual-times-input values but omitted the factor 2 from differentiating
+          the square.
+  - id: gdp-data-step-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For the same sales (1, 2) and (2, 4), the no-bias model has weight {{=w}} and MSE slope
+      {{=5*w-10}}. At rate 0.1, what is the next weight?
+    params:
+      w:
+        min: -2
+        max: 1
+        step: 1
+    answer_expr: w-0.1*(5*w-10)
+    tolerance:
+      abs: 0.001
+    solution:
+      "Subtract rate times slope: {{=w}} − 0.1 × ({{=5*w-10}}) = {{=w-0.1*(5*w-10)}}. A negative
+      slope increases the underpricing weight."
+    common_wrong:
+      - answer_expr: w+0.1*(5*w-10)
+        category: math_error
+        feedback: That adds the slope and moves in the wrong direction.
+  - id: gdp-feature-factor
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Two sales have the same residual of −2, but their scaled sizes are 1 and 2. How do their
+      individual weight-slope contributions compare?
+    options:
+      - id: a
+        text: The larger house contributes −8; the smaller contributes −4
+        correct: true
+      - id: b
+        text: Both houses contribute −4 because their errors are equal
+        correct: false
+        category: incorrect_reasoning
+        feedback: A weight changes the larger house prediction twice as much, so input size also matters.
+      - id: c
+        text: The larger house contributes −4; the smaller contributes −8
+        correct: false
+        category: incorrect_reasoning
+        feedback: The input multiplies the residual, so the larger input has the larger-magnitude
+          contribution.
+    solution: Twice residual times input gives 2 × (−2) × 1 = −4 and 2 × (−2) × 2 = −8 before averaging.
+  - id: gdp-average
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: You repeat every training sale twice. What happens to the MSE gradient at the same parameters?
+    options:
+      - id: a
+        text: It stays the same because contributions and count both double
+        correct: true
+      - id: b
+        text: It doubles because each contribution is now counted twice
+        correct: false
+        category: incorrect_reasoning
+        feedback: The denominator is also doubled, since the loss is a mean.
+      - id: c
+        text: It halves because the gradient is divided by more houses
+        correct: false
+        category: incorrect_reasoning
+        feedback: The numerator doubles too; the average contribution is unchanged.
+    solution:
+      Mean-loss gradients average across the examples, so repeating all the same evidence does
+      not change the slope.
+  - id: gdp-bias-slope
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: House residuals are −2 and −4. What is the MSE slope for a shared bias?
+    options:
+      - id: a
+        text: −6, twice the mean residual
+        correct: true
+      - id: b
+        text: −10, twice the input-weighted mean residual
+        correct: false
+        category: incorrect_reasoning
+        feedback: Input-weighting gives the weight slope for sizes 1 and 2, not the bias slope.
+      - id: c
+        text: +6, twice the mean absolute residual
+        correct: false
+        category: incorrect_reasoning
+        feedback: The derivative keeps the residual signs; absolute values would lose the downhill direction.
+    solution: A bias raises every prediction equally, giving slope 2 × (−2 − 4)/2 = −6.
+  - id: gdp-loop-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Which order gives one correct house-price training update?
+    options:
+      - id: a
+        text: Predict, compute residuals, compute all slopes, update parameters
+        correct: true
+      - id: b
+        text: Predict, update parameters, compute residuals, compute all slopes
+        correct: false
+        category: incorrect_reasoning
+        feedback: You need the current residuals and slopes before you can choose the parameter update.
+      - id: c
+        text: Compute residuals once, then repeatedly apply their first slopes
+        correct: false
+        category: incorrect_reasoning
+        feedback: Residuals change when parameters change, so they must be recomputed in every iteration.
+    solution:
+      All slopes should describe the same current parameters; after updating, begin again with
+      fresh predictions.
+  - id: gdp-bias-step-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The price-model bias is {{=b}} and the current mean residual is −{{=r}}. With MSE and
+      learning rate 0.1, what is the next bias?
+    params:
+      b:
+        min: 0
+        max: 4
+        step: 1
+      r:
+        min: 1
+        max: 6
+        step: 1
+    answer_expr: b+0.2*r
+    tolerance:
+      abs: 0.001
+    solution:
+      The bias slope is 2 × (−{{=r}}) = {{=-2*r}}. The new bias is {{=b}} − 0.1 × ({{=-2*r}}) =
+      {{=b+0.2*r}}.
+    common_wrong:
+      - answer_expr: b+0.1*r
+        category: math_error
+        feedback: The MSE derivative is twice the mean residual, so include the factor 2.
+  - id: gdp-code-gradient
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      Complete the vectorised MSE weight gradient. `X` has one row per sale, `r` is the current
+      residual array, and `y` contains the targets.
+    code: |
+      dw = ____
+    accept:
+      - 2 * X.T @ r / len(y)
+      - 2*X.T@r/len(y)
+      - (2 / len(y)) * X.T @ r
+    solution: "Use `2 * X.T @ r / len(y)`: the transpose adds each feature times its residual across
+      sales, and division averages over sales."
+  - id: gdp-code-update
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Complete the weight update. `dw` is the gradient at the current weights and `lr` is the
+      learning rate.
+    code: |
+      w = ____
+    accept:
+      - w - lr * dw
+      - w-lr*dw
+      - w - dw * lr
+    solution: Use `w - lr * dw` to move against the current gradient; adding it would move uphill.
+  - id: gdp-stale-errors
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The loop computes `r` once before the loop and reuses it for all 20 updates. What is the bug?
+    options:
+      - id: a
+        text: The slopes stop reflecting predictions from the current parameters
+        correct: true
+      - id: b
+        text: The learning rate is automatically reset on every update
+        correct: false
+        category: incorrect_reasoning
+        feedback: Reusing residuals does not reset the rate; it keeps using a stale direction.
+      - id: c
+        text: The mean loss becomes a sum because the loop has 20 steps
+        correct: false
+        category: incorrect_reasoning
+        feedback: The averaging formula is unchanged; the mistake is failing to refresh the errors.
+    solution: Each parameter update changes the predictions, so residuals and gradients must be
+      recalculated inside the loop.
+  - id: gdp-shape
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      For 200 sales and 5 features, `X` has shape `(200, 5)` and `r` has shape `(200,)`. What is
+      the shape of `X.T @ r`?
+    options:
+      - id: a
+        text: "`(5,)`, one entry per weight"
+        correct: true
+      - id: b
+        text: "`(200,)`, one entry per sale"
+        correct: false
+        category: incorrect_reasoning
+        feedback: The transpose has shape (5, 200); multiplication sums over sales and leaves features.
+      - id: c
+        text: "`(200, 5)`, one entry per input value"
+        correct: false
+        category: incorrect_reasoning
+        feedback: The product sums over the 200 residual contributions for each feature.
+    solution: The product has one accumulated residual-times-input contribution for each of the five weights.
+  - id: gd-explain-training
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt:
+      "Explain how you would fit the house-price model with gradient descent: where each update
+      comes from, what the loop recomputes, and how you would respond to slow or growing loss."
+    rubric:
+      - id: r1
+        criterion: Subtracts learning rate times current gradient and explains the sign and step-size roles
+        weight: 1
+        required: true
+      - id: r2
+        criterion:
+          Describes prediction, residual, mean weight and bias gradients, and updates followed by
+          recomputation
+        weight: 1
+        required: true
+      - id: r3
+        criterion: Distinguishes slow progress, shrinking oscillation and divergence using losses or
+          distances, and proposes cautious rate adjustment
+        weight: 1
+        required: true
+    exemplar: I predict the training prices and subtract actual prices to get residuals. For MSE I
+      average twice residual times each feature for its weight slope, and twice the residuals for
+      the bias slope, then subtract the learning rate times these gradients and recompute
+      predictions for the next step. A small rate can be slow; if a cautious increase helps without
+      instability I can keep it, whereas growing losses suggest reducing the rate; crossing the
+      minimum is not itself failure if distance and loss shrink.
+    solution: I predict the training prices and subtract actual prices to get residuals. For MSE I
+      average twice residual times each feature for its weight slope, and twice the residuals for
+      the bias slope, then subtract the learning rate times these gradients and recompute
+      predictions for the next step. A small rate can be slow; if a cautious increase helps without
+      instability I can keep it, whereas growing losses suggest reducing the rate; crossing the
+      minimum is not itself failure if distance and loss shrink.
