@@ -75,7 +75,7 @@ knowledge_points:
           <path d="M60 225 H180" stroke="#f59e0b" stroke-width="3"/>
           <path d="M100 205 A40 40 0 0 0 84 173" stroke="#737373" fill="#737373" fill-opacity="0"/>
           <path d="M165 205 V190 H180" stroke="#737373" fill="#737373" fill-opacity="0"/>
-          <text x="185" y="40">a = (3,4)</text><text x="85" y="164">b = (2,0)</text>
+          <text x="185" y="40">a = (3,4)</text><text x="145" y="180">b = (2,0)</text>
           <text x="105" y="187">θ</text><text x="65" y="248">projection along b = 3</text>
           <text x="220" y="140">first coordinate: right</text><text x="220" y="159">second coordinate: up</text>
         </g>
