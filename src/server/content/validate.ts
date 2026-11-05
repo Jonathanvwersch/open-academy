@@ -355,6 +355,46 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
         );
       }
     }
+    const outlinePosition = new Map<string, [number, number]>();
+    for (const week of curriculum.weeks) {
+      week.concepts.forEach((conceptId, index) => {
+        const current = outlinePosition.get(conceptId);
+        if (
+          !current ||
+          week.week < current[0] ||
+          (week.week === current[0] && index < current[1])
+        ) {
+          outlinePosition.set(conceptId, [week.week, index]);
+        }
+      });
+    }
+    for (const { value, file } of data.concepts) {
+      const conceptPosition = outlinePosition.get(value.id);
+      if (!conceptPosition) continue;
+      for (const prerequisite of value.prereqs) {
+        if (prerequisite.strength !== 'hard') continue;
+        const prerequisitePosition = outlinePosition.get(prerequisite.id);
+        if (!prerequisitePosition) {
+          addIssue(
+            issues,
+            file,
+            value.id,
+            `hard prerequisite "${prerequisite.id}" is missing from the curriculum outline`,
+          );
+        } else if (
+          prerequisitePosition[0] > conceptPosition[0] ||
+          (prerequisitePosition[0] === conceptPosition[0] &&
+            prerequisitePosition[1] > conceptPosition[1])
+        ) {
+          addIssue(
+            issues,
+            file,
+            value.id,
+            `hard prerequisite "${prerequisite.id}" appears later in the curriculum outline`,
+          );
+        }
+      }
+    }
   }
 
   validateKnowledgePointContent(data, issues);

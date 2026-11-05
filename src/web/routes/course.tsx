@@ -48,7 +48,9 @@ function CoursePage() {
                           <Badge variant="secondary">{topic.mastery}</Badge>
                           {topic.status !== 'not_started' ? (
                             <span className="text-xs text-muted-foreground">
-                              {COURSE_STATUS_LABEL[topic.status]}
+                              {topic.status === 'locked'
+                                ? `Needs ${topic.needs?.map((prerequisite) => prerequisite.title).join(', ')}`
+                                : COURSE_STATUS_LABEL[topic.status]}
                             </span>
                           ) : null}
                         </div>
@@ -76,7 +78,6 @@ function CoursePage() {
 }
 
 const COURSE_STATUS_LABEL = {
-  locked: 'Locked',
   not_started: 'Not started',
   in_progress: 'In progress',
   complete: 'Complete',

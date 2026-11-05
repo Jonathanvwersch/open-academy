@@ -1,4 +1,5 @@
 import type { ContentIndex, IndexedConcept, IndexedExercise } from '../content/types.js';
+import { compareOutlinePosition, masteryKey, prerequisiteMet } from './prerequisites.js';
 import type { MasteryRecord } from './types.js';
 import { masteryRank } from './types.js';
 
@@ -210,6 +211,17 @@ function packWeekday(
       )
       .map((run) => run.conceptId),
   );
+  const compareLearnCandidates = (left: Candidate, right: Candidate) => {
+    const leftInProgress = left.activity.conceptId === state.inProgressConceptId;
+    const rightInProgress = right.activity.conceptId === state.inProgressConceptId;
+    if (leftInProgress !== rightInProgress) return leftInProgress ? -1 : 1;
+    const outlineOrder = compareOutlinePosition(
+      left.activity.conceptId ?? '',
+      right.activity.conceptId ?? '',
+      content,
+    );
+    return outlineOrder || right.score - left.score;
+  };
   for (const candidate of candidates
     .filter(
       (entry) =>
@@ -217,7 +229,7 @@ function packWeekday(
         entry.activity.conceptId &&
         unfinishedLessonConcepts.has(entry.activity.conceptId),
     )
-    .sort((left, right) => right.score - left.score)) {
+    .sort(compareLearnCandidates)) {
     if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
     if (add(candidate)) newConceptCount += 1;
   }
@@ -250,11 +262,7 @@ function packWeekday(
 
   const learnCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'learn')
-    .sort((left, right) => {
-      if (left.activity.conceptId === state.inProgressConceptId) return -1;
-      if (right.activity.conceptId === state.inProgressConceptId) return 1;
-      return right.score - left.score;
-    });
+    .sort(compareLearnCandidates);
   for (const candidate of learnCandidates) {
     if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
     if (add(candidate)) newConceptCount += 1;
@@ -421,16 +429,9 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     );
     const prereqsReady = concept.prereqs
       .filter((prerequisite) => prerequisite.strength === 'hard')
-      .every((prerequisite) => {
-        const prerequisiteConcept = content.conceptsById.get(prerequisite.id);
-        return prerequisiteConcept?.dimensions.some((dimension) => {
-          const record = masteryByKey.get(masteryKey(prerequisite.id, dimension));
-          return (
-            record?.inferred ||
-            masteryRank(record?.state ?? 'not_assessed') >= masteryRank('assisted')
-          );
-        });
-      });
+      .every((prerequisite) =>
+        prerequisiteMet(prerequisite.id, masteryByKey, state.lessonRuns ?? [], content),
+      );
     const allNotAssessed = states.every((record) => !record || record.state === 'not_assessed');
     const isNew =
       prereqsReady && (allNotAssessed || states.some((record) => record?.state === 'introduced'));
@@ -1129,8 +1130,4 @@ function lastSeen(exerciseId: string, state: SchedulerState): number {
 
 function daysSince(iso: string, now: Date): number {
   return (now.getTime() - Date.parse(iso)) / 86_400_000;
-}
-
-function masteryKey(conceptId: string, dimension: string): string {
-  return `${conceptId}:${dimension}`;
 }

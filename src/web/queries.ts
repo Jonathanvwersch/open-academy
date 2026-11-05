@@ -59,6 +59,7 @@ export interface CoursePayload {
       hasLesson: boolean;
       status: 'locked' | 'not_started' | 'in_progress' | 'complete';
       mastery: 'Not started' | 'Attempted' | 'Familiar' | 'Proficient' | 'Mastered';
+      needs?: Array<{ id: string; title: string }>;
     }>;
   }>;
 }

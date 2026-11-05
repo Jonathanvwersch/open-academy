@@ -17,6 +17,7 @@ import {
   topicStatus,
 } from '../learning/course-status.js';
 import { deriveLessonState } from '../learning/lesson-runner.js';
+import { compareOutlinePosition, masteryKey, prerequisiteMet } from '../learning/prerequisites.js';
 import type { PlannedActivity } from '../learning/scheduler.js';
 import { planSession, type SessionKind, sessionBudget } from '../learning/scheduler.js';
 import {
@@ -243,18 +244,10 @@ function buildCourseWeeks(
     masteryByConcept.set(record.conceptId, records);
   }
   const runsByConcept = new Map(runs.map((run) => [run.conceptId, run]));
-  const completeByConcept = new Map<string, boolean>();
-  for (const concept of index.concepts) {
-    const dimensionStates = concept.dimensions.map(
-      (dimension) =>
-        masteryByConcept.get(concept.id)?.find((record) => record.dimension === dimension)?.state ??
-        'not_assessed',
-    );
-    completeByConcept.set(
-      concept.id,
-      topicIsComplete(runsByConcept.get(concept.id)?.status, dimensionStates),
-    );
-  }
+  const masteryByKey = new Map(
+    masteryRecords.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
+  const lessonRunState = runs.map(({ conceptId, status }) => ({ conceptId, status }));
   return (index.curriculum?.weeks ?? [])
     .slice()
     .sort((left, right) => left.week - right.week)
@@ -284,9 +277,20 @@ function buildCourseWeeks(
           dimensionStates,
           prerequisites: concept.prereqs.map((prerequisite) => ({
             strength: prerequisite.strength,
-            done: completeByConcept.get(prerequisite.id) ?? false,
+            done: prerequisiteMet(prerequisite.id, masteryByKey, lessonRunState, index),
           })),
         });
+        const needs = concept.prereqs
+          .filter(
+            (prerequisite) =>
+              prerequisite.strength === 'hard' &&
+              !prerequisiteMet(prerequisite.id, masteryByKey, lessonRunState, index),
+          )
+          .sort((left, right) => compareOutlinePosition(left.id, right.id, index))
+          .map((prerequisite) => ({
+            id: prerequisite.id,
+            title: index.conceptsById.get(prerequisite.id)?.title ?? prerequisite.id,
+          }));
         return {
           number: `${week.week}.${indexInWeek + 1}`,
           conceptId,
@@ -294,6 +298,7 @@ function buildCourseWeeks(
           hasLesson: index.lessonsByConcept.has(concept.id),
           status,
           mastery: masteryLabel(lowestMasteryState(dimensionStates)),
+          ...(status === 'locked' ? { needs } : {}),
         };
       }),
     }));
