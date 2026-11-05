@@ -2,21 +2,23 @@ concept: dot-product
 version: 2
 objective: |
   **Goal:** compute dot products and cosine similarity, explain when they measure similarity, and recognise weighted scores in linear models and attention.
+why: |
+  A house-price model must turn area and bedroom count into one score, while letting each feature matter differently. Simply adding the features treats an extra area unit like an extra bedroom; keeping separate weighted contributions still leaves no single score to compare. A dot product multiplies each feature by its weight and totals the contributions. The same operation measures how floor arrows align, giving a picture of how a buyer's preferences align with a house's features. When only direction matters, cosine similarity removes the reward for longer vectors. These ideas underpin matrices, linear-regression, perceptron, and attention.
 knowledge_points:
   - id: dot-weighted-total
     title: Turning matching entries into one score
     explain: |
-      You have recorded a house as a feature vector, but now you want one score rather than a list. Suppose you use floor area and bedroom count, giving each a chosen importance. Multiply each feature by its weight, then add the contributions.
+      You have recorded a house's area and bedroom count. **How can you turn them into one score with different importance for each feature?** Simply adding them treats one extra area unit like one extra bedroom. Instead, multiply each feature by its chosen weight, then add the contributions.
 
-      This is a **weighted sum**. The **dot product** does exactly this for two vectors: multiply matching entries and add the results. Unlike vector addition, which returns another vector, it returns one number.
+      This **weighted sum** is the **dot product** of the feature and weight vectors. This works because each weight controls its feature's contribution before the contributions accumulate. Why this way? Multiplying matching entries without adding leaves a list, not one score.
 
       For vectors $a$ and $b$ with $n$ entries each:
 
       $$a\cdot b=\sum_{i=1}^{n}a_i b_i.$$
 
-      The dot between vectors names the operation; between numbers it means ordinary multiplication. As in the vectors lesson, $i$ selects an entry and $\sum$ adds the products from entry one to entry $n$. You must keep the feature and weight orders matched.
+      The dot between vectors names the operation; between numbers it means multiplication. Here $i$ selects an entry and $\sum$ adds products from entry one to $n$. Keep feature and weight orders matched.
 
-      A **linear model** can use $w\cdot x$ as a score, where $w$ lists weights and $x$ lists features. Holding everything else fixed, raising feature $x_i$ by one changes the score by weight $w_i$. A negative weight lowers the score when its feature increases; a zero weight ignores that feature.
+      A **linear model** uses $w\cdot x$ as a score, where $w$ lists weights and $x$ lists features. With other features fixed, raising $x_i$ by one changes the score by $w_i$. Negative weights lower the score as their features increase; zero weights ignore them.
     worked: |
       This example shows how a house-price score adds feature contributions.
 
@@ -36,24 +38,24 @@ knowledge_points:
         dotp-model,
         dotp-order,
         dotp-negative-weight,
-        dotp-one-number,
+        dotp-why-total,
       ]
   - id: dot-arrow-alignment
     title: Reading the score as arrow alignment
     explain: |
-      You have two floor moves and want to know whether they head in similar directions. Comparing their horizontal entries alone misses the vertical part. The dot product combines both, and its sign tells you whether the arrows broadly agree.
+      You have two floor moves. **Do they head in similar directions?** Comparing lengths cannot tell: equal-length arrows can point opposite ways. The dot product combines matching entries, and its sign tells you whether the arrows broadly agree.
 
-      To see why, place both tails at the origin. The **angle** between them measures how far you turn from one arrow to the other, from zero to 180 degrees. **Cosine**, written $\cos$, assigns one at zero degrees, zero at 90 degrees and minus one at 180 degrees.
+      Place both tails at the origin. The **angle** measures the turn between them, from zero to 180 degrees. **Cosine**, written $\cos$, gives one at zero degrees, zero at 90 degrees and minus one at 180 degrees.
 
       For non-zero vectors $a$ and $b$:
 
       $$a\cdot b=\|a\|_2\|b\|_2\cos\theta.$$
 
-      Here $\theta$ (“theta”) is their angle, and the two norms are their lengths. An angle below 90 degrees gives a positive score; a right angle gives zero; an angle above 90 degrees gives a negative score. Right-angle vectors are **perpendicular**, also called **orthogonal**.
+      Here $\theta$ (“theta”) is their angle, and the norms are their lengths. Angles below 90 degrees give positive scores; right angles give zero; angles above 90 degrees give negative scores. Right-angle vectors are **perpendicular**, also called **orthogonal**.
 
-      Picture the shadow of one arrow on the line of the other. This signed length is its **projection**: forward is positive and backward negative.
+      This works because the dot product multiplies one arrow's signed shadow on the other's line by the other's length. That shadow is its **projection**: forward is positive and backward negative.
 
-      The dot product multiplies that projection by the other arrow's length. So it measures alignment, but longer arrows can also make its magnitude larger.
+      Why this way? Unlike comparing lengths alone, the signed projection distinguishes agreement from opposition. Longer arrows can still make the score's magnitude larger.
     worked: |
       This example shows how a projection explains a dot product.
 
@@ -92,22 +94,22 @@ knowledge_points:
         dotp-right-angle,
         dotp-projection,
         dotp-reverse,
-        dotp-longer,
+        dotp-why-not-lengths,
       ]
   - id: dot-direction-only
     title: Comparing directions without rewarding length
     explain: |
-      You want to compare the directions of two floor moves, but doubling one move doubles its dot product without turning it. A longer move could win a similarity comparison simply because it is longer. Divide out both lengths to remove that effect.
+      You are comparing two floor moves. **How can you compare direction without rewarding length?** A raw dot product doubles when you double one move without turning it. Divide out both lengths to remove that effect.
 
       This direction-only score is **cosine similarity**:
 
       $$\cos\theta=\frac{a\cdot b}{\|a\|_2\|b\|_2}.$$
 
-      The numerator is the dot product, and the denominator multiplies the two lengths. The score lies between minus one and one: one means the same direction, zero means perpendicular, and minus one means opposite directions. Either vector being zero makes the denominator zero, so cosine similarity is undefined there.
+      The numerator is the dot product; the denominator multiplies the lengths. This works because lengthening either arrow multiplies the numerator and denominator by the same factor, which cancels. The score ranges from minus one to one: one means the same direction, zero means perpendicular, and minus one means opposite directions. A zero vector makes the denominator zero, so cosine similarity is undefined there.
 
-      Multiplying a non-zero vector by a positive scalar changes its length but not its cosine similarity to another vector. A negative scalar reverses its direction and flips the sign instead. Raw dot products mix length and direction; cosine similarity compares direction only, not whether two points occupy the same position.
+      A positive scalar therefore leaves cosine similarity unchanged. A negative scalar reverses direction and flips its sign. Why this way? Choose cosine when length should not influence similarity; keep the raw dot product when the size of feature contributions matters. Matching directions do not mean matching positions.
 
-      The same distinction matters for feature vectors: a high score reflects the chosen representation, not a guarantee of real-world similarity. A buyer's preference vector can score a house by its features, but the raw dot product reflects both fit and vector length; cosine removes the length factor.
+      The floor arrows picture this choice in ML: a buyer's preference vector scores a house's features, but its dot product reflects fit and length. Cosine removes length, not the need to choose meaningful features and units; a high score cannot guarantee real-world similarity.
     worked: |
       This example shows how dividing out lengths isolates direction.
 
@@ -129,3 +131,5 @@ summary: |
   - A dot product multiplies matching entries and adds them; a linear score weights each feature this way.
   - The dot product is positive for broadly agreeing arrows, zero for perpendicular arrows and negative for opposing arrows; its size also depends on length.
   - Cosine similarity divides by both non-zero lengths to compare direction only, avoiding the length reward in raw similarity scores.
+
+  **Where you'll use this:** matrices combine weighted scores; linear-regression and perceptron score features; attention compares vector alignment.

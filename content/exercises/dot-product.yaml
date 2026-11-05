@@ -119,32 +119,32 @@ exercises:
           correct: false,
           feedback: "Only a zero weight would ignore extra minutes.",
         }
-  - id: dotp-one-number
+  - id: dotp-why-total
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "How do vector addition and a dot product differ?"
-    solution: "Addition sums matching entries into a new list. A dot product multiplies matching entries and adds all the products into one score."
+    prompt: "Why add the matching products instead of leaving them as a list when a house model needs one weighted score?"
+    solution: "For weights $(0.5,2)$ and features $(4,1)$, the matching products are $(2,2)$. Adding gives the single score 4; stopping at the products leaves two separate contributions."
     options:
       - {
           id: a,
-          text: "Addition returns a vector; a dot product returns a number",
+          text: "Adding combines the separate weighted contributions into one number",
           correct: true,
-          feedback: "Addition keeps components separate, while a dot product totals products.",
+          feedback: "Multiplication sets each contribution's size; addition totals them.",
         }
       - {
           id: b,
-          text: "Addition returns a number; a dot product returns a vector",
+          text: "A list of products already ranks every house with one number",
           correct: false,
-          feedback: "That reverses the two operations.",
+          feedback: "A list still has separate entries. It does not supply the requested single score.",
         }
       - {
           id: c,
-          text: "Both operations return vectors of matching products",
+          text: "Adding makes every feature equally important, regardless of its weight",
           correct: false,
-          feedback: "A dot product adds products rather than leaving them as a list.",
+          feedback: "Weights have already changed the contributions before addition. Adding does not undo that weighting.",
         }
   - id: dotp-sign
     dimension: conceptual
@@ -253,32 +253,32 @@ exercises:
           correct: false,
           feedback: "Reversing gives the opposite direction, not a right-angle turn.",
         }
-  - id: dotp-longer
+  - id: dotp-why-not-lengths
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A floor arrow is doubled without turning it. What happens to its dot product with a fixed arrow?"
-    solution: "Every matching product gains a factor of two, so their sum doubles. A dot-product similarity score therefore rewards length as well as direction."
+    prompt: "Why not decide whether two floor arrows agree in direction just by checking that their lengths match?"
+    solution: "The arrows $(2,0)$ and $(-2,0)$ both have length 2 but point opposite ways. Their dot product is $-4$, recording opposition that equal lengths cannot reveal."
     options:
       - {
           id: a,
-          text: "It doubles because every contribution doubles",
+          text: "Equal lengths can belong to opposite directions; the dot product records signed alignment",
           correct: true,
-          feedback: "Each entry in one vector has been multiplied by two.",
+          feedback: "Length measures how far an arrow reaches, not which way it points.",
         }
       - {
           id: b,
-          text: "It stays fixed because direction is unchanged",
+          text: "Equal lengths force the arrows to point the same way",
           correct: false,
-          feedback: "The raw dot product depends on length as well as direction.",
+          feedback: "Reversing an arrow preserves its length but gives the opposite direction.",
         }
       - {
           id: c,
-          text: "It quadruples because both lengths double",
+          text: "Multiplying the lengths gives a negative number for opposing arrows",
           correct: false,
-          feedback: "Only one arrow has been doubled.",
+          feedback: "Non-zero lengths are positive. Their product cannot record opposition without the angle cosine.",
         }
   - id: dotp-cosine
     dimension: math
@@ -310,7 +310,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A non-zero vector is multiplied by 3. What happens to its cosine similarity with a fixed non-zero vector?"
+    prompt: "Why does multiplying a non-zero vector by 3 leave its cosine similarity with a fixed non-zero vector unchanged?"
     solution: "The numerator and denominator both gain a factor of three. Cancelling that factor leaves cosine similarity unchanged."
     options:
       - {
