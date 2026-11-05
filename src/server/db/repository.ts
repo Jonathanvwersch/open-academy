@@ -120,6 +120,7 @@ export class LearnerRepository {
       this.db.select().from(lessonRuns).where(eq(lessonRuns.userId, this.userId)),
     ]);
     return {
+      timezone: user?.timezone ?? 'UTC',
       mastery: masteryRows,
       cards: cards.map((card) => ({
         conceptId: card.conceptId,

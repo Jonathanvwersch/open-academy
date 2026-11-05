@@ -748,6 +748,151 @@ test('Overdue reviews are scheduled', () => {
   expect(review?.reason.summary).toContain('~70% recall');
 });
 
+test('a due review is skipped on the attempt day and planned the next local day', () => {
+  const state = emptyState();
+  state.timezone = 'UTC';
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+  state.recentAttempts = [
+    {
+      conceptId: 'vectors',
+      exerciseId: 'vectors-magnitude',
+      dimension: 'math',
+      correct: 1,
+      itemRole: 'core',
+      createdAt: '2026-01-13T11:30:00.000Z',
+    },
+  ];
+
+  const sameDayPlan = planSession(state, content, new Date('2026-01-13T12:00:00.000Z'), 60);
+  expect(
+    sameDayPlan.activities.some(
+      (activity) => activity.kind === 'review' && activity.conceptId === 'vectors',
+    ),
+  ).toBe(false);
+
+  const nextDayPlan = planSession(state, content, new Date('2026-01-14T00:30:00.000Z'), 60);
+  expect(
+    nextDayPlan.activities.some(
+      (activity) => activity.kind === 'review' && activity.conceptId === 'vectors',
+    ),
+  ).toBe(true);
+});
+
+test('a prior-day London attempt does not suppress a review after local midnight', () => {
+  const state = emptyState();
+  state.timezone = 'Europe/London';
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-03-29T20:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+  state.recentAttempts = [
+    {
+      conceptId: 'vectors',
+      exerciseId: 'vectors-magnitude',
+      dimension: 'math',
+      correct: 1,
+      itemRole: 'core',
+      createdAt: '2026-03-29T22:30:00.000Z',
+    },
+  ];
+
+  const plan = planSession(state, content, new Date('2026-03-29T23:30:00.000Z'), 60);
+  expect(
+    plan.activities.some(
+      (activity) => activity.kind === 'review' && activity.conceptId === 'vectors',
+    ),
+  ).toBe(true);
+});
+
+test('due review prefers a fresh practice exercise over a recent review exercise', () => {
+  const vectorExercises = content.exercisesByConcept.get('vectors') ?? [];
+  const reviewExercise = required(
+    vectorExercises.find((exercise) => exercise.id === 'vectors-magnitude'),
+    'vectors-magnitude exercise',
+  );
+  const practiceExercise = required(
+    vectorExercises.find((exercise) => exercise.id === 'vectors-fixture-practice-1'),
+    'vectors-fixture-practice-1 exercise',
+  );
+  const exercisesByConcept = new Map(content.exercisesByConcept);
+  exercisesByConcept.set('vectors', [
+    { ...reviewExercise, role: 'review' as const },
+    { ...practiceExercise, role: 'practice' as const },
+  ]);
+  const reviewContent: ContentIndex = { ...content, exercisesByConcept };
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+  state.recentAttempts = [
+    {
+      conceptId: 'vectors',
+      exerciseId: reviewExercise.id,
+      dimension: 'math',
+      correct: 1,
+      itemRole: 'review',
+      createdAt: '2026-01-13T12:00:00.000Z',
+    },
+  ];
+
+  const review = planSession(state, reviewContent, now, 60).activities.find(
+    (activity) => activity.kind === 'review' && activity.conceptId === 'vectors',
+  );
+  expect(review?.exerciseIds[0]).toBe(practiceExercise.id);
+});
+
+test('due review falls back to a recent exercise when no fresh choice exists', () => {
+  const reviewExercise = required(
+    (content.exercisesByConcept.get('vectors') ?? []).find(
+      (exercise) => exercise.id === 'vectors-magnitude',
+    ),
+    'vectors-magnitude exercise',
+  );
+  const exercisesByConcept = new Map(content.exercisesByConcept);
+  exercisesByConcept.set('vectors', [{ ...reviewExercise, role: 'review' as const }]);
+  const reviewContent: ContentIndex = { ...content, exercisesByConcept };
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+  state.recentAttempts = [
+    {
+      conceptId: 'vectors',
+      exerciseId: reviewExercise.id,
+      dimension: 'math',
+      correct: 1,
+      itemRole: 'review',
+      createdAt: '2026-01-13T12:00:00.000Z',
+    },
+  ];
+
+  const review = planSession(state, reviewContent, now, 60).activities.find(
+    (activity) => activity.kind === 'review' && activity.conceptId === 'vectors',
+  );
+  expect(review?.exerciseIds[0]).toBe(reviewExercise.id);
+});
+
 test('due reviews use non-template practice exercises when no higher-priority role exists', () => {
   const practiceOnlyContent: ContentIndex = {
     ...content,

@@ -3,6 +3,7 @@ import type { ContentIndex, IndexedConcept, IndexedExercise } from '../content/t
 import { compareOutlinePosition, masteryKey, prerequisiteMet } from './prerequisites.js';
 import type { MasteryRecord } from './types.js';
 import { masteryRank } from './types.js';
+import { localDateKey } from './xp.js';
 
 export type SessionKind = 'weekday' | 'saturday' | 'sunday' | 'custom';
 
@@ -78,6 +79,7 @@ export interface PlannedActivity {
 }
 
 export interface SchedulerState {
+  timezone?: string;
   mastery: MasteryRecord[];
   cards: Array<{
     conceptId: string;
@@ -622,6 +624,17 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     if (Date.parse(card.dueAt) > now.getTime()) {
       continue;
     }
+    const timezone = state.timezone ?? 'UTC';
+    const localToday = localDateKey(now, timezone);
+    const attemptedToday = state.recentAttempts.some(
+      (attempt) =>
+        attempt.conceptId === card.conceptId &&
+        attempt.dimension === card.dimension &&
+        localDateKey(new Date(attempt.createdAt), timezone) === localToday,
+    );
+    if (attemptedToday) {
+      continue;
+    }
     const concept = content.conceptsById.get(card.conceptId);
     if (!concept || concept.status === 'stub') {
       continue;
@@ -782,15 +795,15 @@ function chooseExercise(
       !used.has(exercise.id) &&
       !isTemplate(exercise),
   );
+  const leastRecentlySeen = (exercises: IndexedExercise[]) =>
+    exercises.sort((left, right) => lastSeen(left.id, state) - lastSeen(right.id, state))[0];
+  for (const role of preferredRoles) {
+    const fresh = pool.filter((exercise) => exercise.role === role && !recent.has(exercise.id));
+    if (fresh.length > 0) return leastRecentlySeen(fresh);
+  }
   for (const role of preferredRoles) {
     const matching = pool.filter((exercise) => exercise.role === role);
-    if (matching.length > 0) {
-      const fresh = matching.filter((exercise) => !recent.has(exercise.id));
-      const candidates = fresh.length > 0 ? fresh : matching;
-      return candidates.sort(
-        (left, right) => lastSeen(left.id, state) - lastSeen(right.id, state),
-      )[0];
-    }
+    if (matching.length > 0) return leastRecentlySeen(matching);
   }
   return undefined;
 }
