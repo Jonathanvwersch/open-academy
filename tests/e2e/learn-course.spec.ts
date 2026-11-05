@@ -3,6 +3,8 @@ import { expect, type Page, test } from '@playwright/test';
 import { createDb } from '../../src/server/db/client.js';
 import {
   diagnosticRuns,
+  lessonRuns,
+  mastery,
   sessionActivities,
   studySessions,
   users,
@@ -125,6 +127,38 @@ test('a fresh post-diagnostic learner sees outline order and prerequisite needs'
   const secondTopic = page.locator('li').filter({ hasText: '1.2' });
   await expect(secondTopic).toContainText('Needs Vectors');
   await page.screenshot({ path: `${screenshotDir}/course-fresh.png`, fullPage: true });
+});
+
+test('Course marks completed lessons green and links the whole row', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await markDiagnosticComplete();
+  await db.insert(lessonRuns).values({
+    userId,
+    conceptId: 'vectors',
+    status: 'completed',
+    startedAt: new Date('2026-01-01T10:00:00.000Z'),
+    updatedAt: new Date('2026-01-01T10:10:00.000Z'),
+    completedAt: new Date('2026-01-01T10:10:00.000Z'),
+  });
+  await db.insert(mastery).values([
+    { userId, conceptId: 'vectors', dimension: 'conceptual', state: 'assisted' },
+    { userId, conceptId: 'vectors', dimension: 'math', state: 'assisted' },
+    { userId, conceptId: 'vectors', dimension: 'transfer', state: 'assisted' },
+  ]);
+  await page.goto('/course');
+  const completedRow = page.getByRole('link', { name: /1\.1.*Vectors/ });
+  await expect(completedRow).toContainText('Complete');
+  await expect(completedRow).toContainText('Familiar');
+  await expect(completedRow).toHaveClass(/emerald/);
+  await expect(
+    page.locator('[data-slot="sidebar"][aria-label="Tutor"] [data-slot="sidebar-container"]'),
+  ).toBeHidden();
+  await page.screenshot({
+    path: `${screenshotDir}/course-closed-1280x720.png`,
+  });
+  await page.screenshot({ path: `${screenshotDir}/course-complete-row.png`, fullPage: true });
+  await completedRow.click();
+  await expect(page).toHaveURL(/\/lessons\/vectors$/);
 });
 
 test('passing a knowledge point increases Learn XP after reload', async ({ page }) => {

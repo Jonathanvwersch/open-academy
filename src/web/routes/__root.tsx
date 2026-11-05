@@ -20,41 +20,41 @@ const navigation = [
 function RootLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-4 px-5">
-          <Link to="/" className="text-sm font-semibold tracking-tight">
-            Academy
-          </Link>
-          <nav aria-label="Main navigation" className="flex items-center gap-1">
-            {navigation.map((item) => (
-              <Button
-                key={item.to}
-                asChild
-                size="sm"
-                variant={
-                  pathname === item.to || (item.to !== '/' && pathname.startsWith(item.to))
-                    ? 'secondary'
-                    : 'ghost'
-                }
-              >
-                <Link to={item.to}>{item.label}</Link>
-              </Button>
-            ))}
-          </nav>
-        </div>
-      </header>
-      <TooltipProvider>
-        <TutorContextProvider
-          routeAllowed={!pathname.startsWith('/diagnostic')}
-          sessionRoute={pathname.startsWith('/session/')}
-        >
-          <main className="mx-auto max-w-3xl px-5 py-8">
+    <TooltipProvider>
+      <TutorContextProvider
+        routeAllowed={!pathname.startsWith('/diagnostic')}
+        sessionRoute={pathname.startsWith('/session/')}
+      >
+        <div className="min-h-screen bg-background text-foreground">
+          <header className="border-b bg-background">
+            <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-4 px-5">
+              <Link to="/" className="text-sm font-semibold tracking-tight">
+                Academy
+              </Link>
+              <nav aria-label="Main navigation" className="flex items-center gap-1">
+                {navigation.map((item) => (
+                  <Button
+                    key={item.to}
+                    asChild
+                    size="sm"
+                    variant={
+                      pathname === item.to || (item.to !== '/' && pathname.startsWith(item.to))
+                        ? 'secondary'
+                        : 'ghost'
+                    }
+                  >
+                    <Link to={item.to}>{item.label}</Link>
+                  </Button>
+                ))}
+              </nav>
+            </div>
+          </header>
+          <div className="mx-auto max-w-3xl px-5 py-8">
             <Outlet />
-          </main>
-        </TutorContextProvider>
-      </TooltipProvider>
-    </div>
+          </div>
+        </div>
+      </TutorContextProvider>
+    </TooltipProvider>
   );
 }
 
