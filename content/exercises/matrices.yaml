@@ -76,7 +76,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Can a $2\\times3$ matrix multiply a $2\\times4$ matrix in that order?"
+    prompt: "Why can't a $2\\times3$ matrix multiply a $2\\times4$ matrix in that order, even though both have two rows?"
     solution: "Each left row has three entries but each right column has two. Their dot product is undefined, so this matrix product is undefined."
     options:
       - {
@@ -203,32 +203,32 @@ exercises:
           correct: false,
           feedback: "That would require all-zero rows, not diagonal ones.",
         }
-  - id: matp-order
+  - id: matp-why-order
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "You want to apply transformation $B$ first, then $A$, to vector $x$. Which expression does that?"
-    solution: "First compute $Bx$, then apply $A$ to that result. The combined transformation is $AB$, not generally $BA$."
+    prompt: "Why can't you assume $ABx=BAx$ when both matrix products exist?"
+    solution: "The second transformation receives the first one's output. For a shear $A$ sending $(x,y)$ to $(x+2y,y)$ and a swap $B$, input $(1,0)$ gives $ABx=(2,1)$ but $BAx=(0,1)$."
     options:
       - {
           id: a,
-          text: "$ABx$, because the rightmost matrix acts first",
+          text: "Swapping the order changes the input received by the second transformation",
           correct: true,
-          feedback: "This is $A(Bx)$: B acts on x before A.",
+          feedback: "A shear after a swap need not agree with a swap after a shear.",
         }
       - {
           id: b,
-          text: "$BAx$, because the leftmost matrix acts first",
+          text: "The products must agree whenever the matrices are square",
           correct: false,
-          feedback: "This applies A first, then B.",
+          feedback: "Square shapes let both orders exist; they do not make the transformations agree.",
         }
       - {
           id: c,
-          text: "Either order, because the same rules appear",
+          text: "Both orders just multiply corresponding entries, so order cannot matter",
           correct: false,
-          feedback: "Matrix transformations need not agree in opposite orders.",
+          feedback: "That describes elementwise multiplication. Matrix multiplication takes row-column dot products and composes transformations.",
         }
   - id: matp-shear
     dimension: conceptual
@@ -380,32 +380,32 @@ exercises:
           correct: false,
           feedback: "The shorter array is reused for all five rows.",
         }
-  - id: matp-star
+  - id: matp-why-batch
     dimension: implementation
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two NumPy arrays A and B both have shape (2, 2). How does `A * B` differ from `A @ B`?"
-    solution: "The star operator multiplies matching entries without summing. The at operator uses matrix multiplication, taking a dot product for each output entry."
+    prompt: "Why use `X @ W` instead of a Python loop of separate house-score dot products, and why isn't `X * W` a substitute?"
+    solution: "A loop can compute the same scores, but `@` groups the row-column dot products for efficient numerical-library execution. For X row $(4,1)$ and W column $(0.5,2)$, the score is $4\\cdot0.5+1\\cdot2=4$. Elementwise multiplication does not sum those contributions."
     options:
       - {
           id: a,
-          text: "`*` multiplies entries; `@` sums row-column products",
+          text: "`@` groups the same dot products efficiently; `*` does not sum feature contributions",
           correct: true,
-          feedback: "Matching entries are not the same as row-column dot products.",
+          feedback: "The loop is mathematically valid, but `@` handles the repeated house-score calculation in the library.",
         }
       - {
           id: b,
-          text: "Both sum row-column products for square arrays",
+          text: "A loop cannot compute these scores correctly, regardless of how it is written",
           correct: false,
-          feedback: "Being square does not change what the operators mean.",
+          feedback: "Correctly written loops give the same scores. The benefit is organised, efficient execution, not different mathematics.",
         }
       - {
           id: c,
-          text: "`*` transposes B before multiplying entries",
+          text: "`*` gives the same scores as `@` whenever both arrays are square",
           correct: false,
-          feedback: "The multiplication operator does not transpose either array.",
+          feedback: "Square shapes do not change the operations: `*` multiplies corresponding entries without summing across features.",
         }
   - id: matp-transpose-product
     dimension: conceptual
