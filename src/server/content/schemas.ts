@@ -191,6 +191,7 @@ const KnowledgePointSchema = z
 const KnowledgePointLessonSchema = LessonFieldsSchema.extend({
   objective: z.string().min(1),
   knowledge_points: z.array(KnowledgePointSchema).min(2).max(4),
+  final: IdSchema,
   summary: z.string().min(1),
 }).strict();
 
@@ -199,16 +200,17 @@ export const LessonSchema = z.union([LegacyLessonSchema, KnowledgePointLessonSch
 export type LessonBlock = z.infer<typeof LessonBlockSchema>;
 export type KnowledgePoint = z.infer<typeof KnowledgePointSchema>;
 export type LessonInput = z.infer<typeof LessonSchema>;
+export type KnowledgePointLessonInput = z.infer<typeof KnowledgePointLessonSchema>;
 export type Lesson = Omit<z.infer<typeof LegacyLessonSchema>, 'fast_path'> & {
   fast_path: z.infer<typeof LegacyLessonSchema>['fast_path'];
   knowledge_points?: KnowledgePoint[];
+  final?: string;
 };
 
 export function normalizeLesson(
-  lesson: LessonInput,
+  lesson: KnowledgePointLessonInput,
   isTemplateProblem: (exerciseId: string) => boolean,
 ): Lesson {
-  if ('blocks' in lesson) return lesson;
   const blocks: LessonBlock[] = [{ kind: 'objective', md: lesson.objective }];
   for (const point of lesson.knowledge_points) {
     blocks.push({ kind: 'intuition', md: `### ${point.title}\n\n${point.explain}` });
@@ -216,10 +218,12 @@ export function normalizeLesson(
     const fixedProblem = point.problems.find((problemId) => !isTemplateProblem(problemId));
     if (fixedProblem) blocks.push({ kind: 'check', exercise: fixedProblem });
   }
+  blocks.push({ kind: 'check', exercise: lesson.final });
   blocks.push({ kind: 'summary', md: lesson.summary });
   return {
     concept: lesson.concept,
     version: lesson.version,
+    final: lesson.final,
     knowledge_points: lesson.knowledge_points,
     blocks,
     fast_path: ['objective', 'summary'],

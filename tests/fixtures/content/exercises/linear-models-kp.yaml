@@ -1,0 +1,116 @@
+concept: linear-models
+exercises:
+  - {
+      id: linear-models-fixture-practice-1,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: linear-models-fixture-practice-2,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: linear-models-fixture-practice-3,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: linear-models-fixture-practice-4,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: linear-models-fixture-practice-5,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: linear-models-fixture-practice-6,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - id: linear-models-fixture-final
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 1
+    est_minutes: 2
+    prompt: Explain how a linear model combines inputs.
+    hints: []
+    rubric:
+      - { id: weights, criterion: Explains weighted inputs, weight: 1, required: true }
+    exemplar: A linear model multiplies inputs by weights and combines the results.
+    solution: A linear model uses a weighted sum of its inputs to make a prediction.
+  - id: linear-models-fixture-template-1
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "If a = {{=a}}, what is 2a?"
+    hints: ["Double a."]
+    solution: "Double a: 2 × {{=a}} = {{=2*a}}."
+    params: { a: { min: 1, max: 5 } }
+    answer_expr: 2*a
+    tolerance: { abs: 0 }
+  - id: linear-models-fixture-template-2
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "If a = {{=a}}, what is 2a?"
+    hints: ["Double a."]
+    solution: "Double a: 2 × {{=a}} = {{=2*a}}."
+    params: { a: { min: 1, max: 5 } }
+    answer_expr: 2*a
+    tolerance: { abs: 0 }

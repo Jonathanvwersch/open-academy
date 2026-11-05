@@ -124,3 +124,705 @@ exercises:
         }
       - { id: r3, criterion: "Mentions that test should be used once / at the end", weight: 1 }
     exemplar: "We use the validation set over and over to pick hyperparameters and stopping points, so the chosen model is partly fitted to it and its validation score is optimistic. A separate test set that played no role in any decision gives an unbiased estimate of performance on new data, as long as we only use it at the end."
+  - id: ttsp-honest-estimate
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "You trained on 800 house sales and kept 200 sales out of training. Which number best estimates prices for new houses?"
+    options:
+      - { id: a, text: "Average squared error on the 200 held-out sales", correct: true }
+      - {
+          id: b,
+          text: "Average squared error on the 800 training sales",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The model was fitted to those sales, so their error can look too good for new houses.",
+        }
+      - {
+          id: c,
+          text: "Average of the training and held-out errors",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Including training error mixes in examples the model has already seen.",
+        }
+      - {
+          id: d,
+          text: "The smaller of the two average errors",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Picking whichever score is lower does not estimate performance on unseen houses.",
+        }
+    solution: "Use the held-out error because those sales were not used to fit the model. It is a more honest estimate of performance on new houses."
+  - id: ttsp-memoriser
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A house-price model has training error 0. What can you conclude about its prices for new houses?"
+    options:
+      - { id: a, text: "Nothing yet about how it prices unseen houses", correct: true }
+      - {
+          id: b,
+          text: "It is the best model for future house prices",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "A zero training error only describes sales the model already saw; compare held-out errors to judge new houses.",
+        }
+      - {
+          id: c,
+          text: "It will predict every new house price perfectly",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Fitting known sales perfectly does not show that the model handles unseen houses.",
+        }
+      - {
+          id: d,
+          text: "Its held-out error must also be zero",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Held-out houses were not used for training, so their error can differ from training error.",
+        }
+    solution: "A model can memorise its training sales and still do badly on houses it has not seen. Check its error on held-out sales before judging it."
+  - id: ttsp-pick-model
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: |
+      Two models predict delivery times. Their average squared errors are:
+
+      | Model | Training deliveries | Held-out deliveries |
+      |---|---:|---:|
+      | A | 40 | 110 |
+      | B | 55 | 48 |
+
+      Which model is the better choice for new deliveries?
+    options:
+      - {
+          id: a,
+          text: "Model A, because its training error is lower",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Training error can reward a model for fitting examples it has already seen; use held-out error to compare performance on new deliveries.",
+        }
+      - { id: b, text: "Model B, because its held-out error is lower", correct: true }
+      - {
+          id: c,
+          text: "Model A, because the two errors should be added",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Adding training error back in would let examples used for fitting influence the comparison.",
+        }
+      - {
+          id: d,
+          text: "Neither, because the two errors differ",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Training and held-out errors can differ; compare held-out errors to choose the model for new deliveries.",
+        }
+    solution: "Choose Model B because its held-out error is 48, compared with 110 for Model A. Held-out sales were not used for fitting, so that comparison better reflects new deliveries."
+  - id: ttsp-heldout-error
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: |
+      Three held-out houses have actual prices {{=y1}}, {{=y2}} and {{=y3}} thousand. Their predicted prices are {{=p1}}, {{=p2}} and {{=p3}} thousand.
+      What is the average squared error across these three houses?
+    hints:
+      ["Square each prediction minus its actual price, add the three results, then divide by 3."]
+    solution: |
+      The three squared errors are $({{=p1}}-{{=y1}})^2$, $({{=p2}}-{{=y2}})^2$ and $({{=p3}}-{{=y3}})^2$.
+      Add them and divide by 3 because each held-out house contributes equally to the average.
+    answer_expr: "((p1-y1)^2 + (p2-y2)^2 + (p3-y3)^2) / 3"
+    params:
+      p1: { min: 200, max: 250, step: 10 }
+      p2: { min: 200, max: 250, step: 10 }
+      p3: { min: 200, max: 250, step: 10 }
+      y1: { min: 200, max: 250, step: 10 }
+      y2: { min: 200, max: 250, step: 10 }
+      y3: { min: 200, max: 250, step: 10 }
+    constraints: ["p1 != y1"]
+    tolerance: { abs: 0.0051 }
+  - id: ttsp-exam-analogy
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Which study situation is most like measuring a model's error on its training data?"
+    options:
+      - { id: a, text: "A student marks a past paper whose answers they memorised", correct: true }
+      - {
+          id: b,
+          text: "A student sits a new paper with unfamiliar questions",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Unfamiliar questions are more like held-out data that the student has not practised.",
+        }
+      - {
+          id: c,
+          text: "A teacher compares mock papers to choose a study plan",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Using mock results to choose a plan is like using a validation set.",
+        }
+      - {
+          id: d,
+          text: "A student takes one unseen paper after choosing a plan",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "One unseen paper used at the end is more like a test set.",
+        }
+    solution: "Marking a memorised paper is like checking training error: the student has already seen the answers. It can look excellent without showing how they will do on new questions."
+  - id: ttsp-robot-heldout
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot learns to grasp objects from recorded attempts. You want to estimate how it will grasp objects it has never seen. What should you hold out?"
+    options:
+      - {
+          id: a,
+          text: "Several whole objects, keeping all their attempts out of training",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Random attempts, while the same objects stay in training",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "The robot would still see those objects during training, so this does not test new objects.",
+        }
+      - {
+          id: c,
+          text: "Late frames from each object, after training on early frames",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "Frames of the same objects still share information between training and test.",
+        }
+      - {
+          id: d,
+          text: "Random robot commands, while their objects stay in training",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "Holding out commands does not keep whole unseen objects separate from training.",
+        }
+    solution: "Hold out several whole objects and keep every attempt on them out of training. Then the test measures performance on objects the robot has not seen."
+  - id: ttsp-which-set-fit
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Which set supplies the examples whose prices are used to adjust a model's parameters?"
+    options:
+      - { id: a, text: "The training set, because it fits the parameters", correct: true }
+      - {
+          id: b,
+          text: "The validation set, because it fits the parameters",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The validation set compares trained versions; the model's parameters are fitted on training examples.",
+        }
+      - {
+          id: c,
+          text: "The test set, because it fits the parameters",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The test set is kept out of fitting and used only for the final check.",
+        }
+      - {
+          id: d,
+          text: "All three sets, because all prices are available",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Using validation or test prices to fit parameters would stop those sets being held out.",
+        }
+    solution: "The training set is used to fit the model's parameters. Validation and test examples must stay out of that fitting process."
+  - id: ttsp-which-set-choose
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "You trained three versions of a house-price model. Which set should you use to choose the version with the lowest error?"
+    options:
+      - {
+          id: a,
+          text: "The training set, because it ranks fitted versions",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Training error can favour a version that memorises the examples used to fit it.",
+        }
+      - { id: b, text: "The validation set, because it chooses between versions", correct: true }
+      - {
+          id: c,
+          text: "The test set, because it chooses between versions",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Choosing with test results uses the final check to make a decision, making its estimate optimistic.",
+        }
+      - {
+          id: d,
+          text: "Averaged training and test sets, because both rank versions",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The test set must stay out of selection, and training error is not a fair measure of new-house performance.",
+        }
+    solution: "Use validation error to choose between trained versions. Save the test set for a final estimate after the choice is made."
+  - id: ttsp-which-set-report
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "After selecting a version with validation data, which error should you report as the final estimate for new houses?"
+    options:
+      - {
+          id: a,
+          text: "Its training error, measured while fitting parameters",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Training error comes from examples used to fit the model and can flatter its performance.",
+        }
+      - {
+          id: b,
+          text: "Its validation error, used to select the version",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Repeatedly choosing with validation makes that score optimistic; use the untouched test set for the final estimate.",
+        }
+      - { id: c, text: "Its test error, measured once at the end", correct: true }
+      - {
+          id: d,
+          text: "The lowest error from all three sets",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Taking the lowest score mixes sets with different jobs and favours an optimistic result.",
+        }
+    solution: "Report the error on the test set after the version is chosen. It played no part in fitting or selection, so it gives a fairer final estimate."
+  - id: ttsp-split-counts
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "You have {{=N}} house sales and use a {{=100-2*validationPct}}/{{=validationPct}}/{{=validationPct}} train/validation/test split. How many sales go in the validation set?"
+    hints: ["Multiply the total number of sales by the validation percentage, then divide by 100."]
+    solution: "The validation set gets {{=validationPct}}% of {{=N}} sales, so {{=N}} × {{=validationPct}} ÷ 100 = {{=N*validationPct/100}} sales. Those sales are for comparing versions, not fitting them."
+    answer_expr: "N * validationPct / 100"
+    params:
+      N: { min: 400, max: 2000, step: 200 }
+      validationPct: { min: 10, max: 15, step: 5 }
+    tolerance: { abs: 0.000001 }
+  - id: ttsp-swap-after-test
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "You choose a version with validation error, test it once, then try three more versions on the test set and report the lowest test error. What went wrong?"
+    options:
+      - {
+          id: a,
+          text: "The test set was used to choose, so its score is now optimistic",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "The validation set was used to choose, so it is no longer useful",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Validation is the set intended for repeated choices; the mistake was using test results to make more choices.",
+        }
+      - {
+          id: c,
+          text: "The model should have been selected using training error",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Training error can reward fitting the examples already seen; validation is used to choose versions.",
+        }
+      - {
+          id: d,
+          text: "Nothing went wrong if the lowest test score is reported",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Choosing the lowest test score uses the test set as another validation set and makes the reported result optimistic.",
+        }
+    solution: "Once you compare versions on test data, the test set has helped make a choice. It is now acting like validation data, so its lowest score is no longer an untouched final estimate."
+  - id: ttsp-pick-version
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: |
+      You compare three house-price models:
+
+      | Inputs | Validation error | Test error |
+      |---|---:|---:|
+      | Size | 620 | not run |
+      | Size and bedrooms | 460 | 480 |
+      | Size, bedrooms and location | 510 | not run |
+
+      Which version should you select based on these results?
+    options:
+      - {
+          id: a,
+          text: "Size, because it uses fewer inputs than the others",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Model simplicity is not the selection rule in this lesson; compare validation errors to choose a version.",
+        }
+      - {
+          id: b,
+          text: "Size and bedrooms, because it has the lowest validation error",
+          correct: true,
+        }
+      - {
+          id: c,
+          text: "Size, bedrooms and location, because more inputs should fit better",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "More inputs do not guarantee better performance; this version's validation error is higher.",
+        }
+      - {
+          id: d,
+          text: "A new version, because the test error is higher than validation",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The test result is for the already selected version; do not use it to select another version.",
+        }
+    solution: "Select the size-and-bedrooms version because its validation error, 460, is the lowest. Its test error of 480 is then the final estimate to report."
+  - id: ttsp-param-or-hyper-w
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the house-price model, the training process adjusts $w_1$. Is $w_1$ a parameter or a hyperparameter?"
+    options:
+      - { id: a, text: "A parameter, because training learns its value", correct: true }
+      - {
+          id: b,
+          text: "A hyperparameter, because training learns its value",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A hyperparameter is chosen before training; a value adjusted by training is a parameter.",
+        }
+      - {
+          id: c,
+          text: "An input, because it describes each house",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "$w_1$ is an adjustable model value; house size is the input it multiplies.",
+        }
+      - {
+          id: d,
+          text: "A target, because it is predicted for each house",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The target is the house price; $w_1$ is a value the model learns during training.",
+        }
+    solution: "$w_1$ is a parameter because training adjusts its value from the training sales. A hyperparameter is a setting chosen before training."
+  - id: ttsp-param-or-hyper-inputs
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "An engineer decides before training whether a house-price model will use size, bedrooms or both. What kind of setting is this?"
+    options:
+      - { id: a, text: "A hyperparameter, because it is chosen before training", correct: true }
+      - {
+          id: b,
+          text: "A parameter, because it is chosen before training",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Parameters are learned during training; a setting chosen beforehand is a hyperparameter.",
+        }
+      - {
+          id: c,
+          text: "A target, because the model predicts it",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The target is the sale price, not the choice of inputs.",
+        }
+      - {
+          id: d,
+          text: "A training example, because it comes from sales",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "This is a model setting, not one of the sales used to fit the model.",
+        }
+    solution: "Choosing which inputs to include is a hyperparameter decision because the engineer makes it before training. Training then learns parameters for that chosen model."
+  - id: ttsp-why-not-train-choose
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Why should you not choose a hyperparameter just because it gives the lowest training error?"
+    options:
+      - { id: a, text: "It can favour a setting that memorises the training sales", correct: true }
+      - {
+          id: b,
+          text: "Training error has no house prices to compare",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Training examples include prices; the problem is that the model has already used them to fit its parameters.",
+        }
+      - {
+          id: c,
+          text: "Training error cannot be calculated before a test",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Training error can be calculated after fitting; it is not a fair way to choose settings for new-house performance.",
+        }
+      - {
+          id: d,
+          text: "Hyperparameters cannot be compared across models",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "You can compare settings; use validation error rather than training error to make the choice.",
+        }
+    solution: "Training error is measured on sales used to fit the parameters, so a setting that memorises them can win. Validation error gives a fairer basis for choosing hyperparameters."
+  - id: ttsp-best-of-20
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "You try 20 settings and keep the lowest validation error, 410. The chosen model's test error is 455. Why might the test error be higher?"
+    options:
+      - { id: a, text: "The best validation score partly won by luck", correct: true }
+      - {
+          id: b,
+          text: "The test score proves the model code has a bug",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "A higher test error can happen because selecting the best of many validation scores favours a lucky low score.",
+        }
+      - {
+          id: c,
+          text: "The test score should be ignored because it is higher",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The untouched test score is the final estimate; do not discard it just because it is less flattering.",
+        }
+      - {
+          id: d,
+          text: "The validation score should be reported instead",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The validation score was selected from 20 tries and can be optimistic; report the test result.",
+        }
+    solution: "When you keep the best of 20 validation scores, you also tend to keep some good luck. The untouched test result is a less flattering but fairer estimate."
+  - id: ttsp-gap-calc
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "The best validation error is {{=v}} and the final test error is {{=t}}. What is the test-minus-validation gap?"
+    hints: ["Subtract the validation error from the test error."]
+    solution: "The gap is test error minus validation error: {{=t}} − {{=v}} = {{=t-v}}. A positive gap is consistent with the chosen validation score being optimistic."
+    answer_expr: "t - v"
+    params:
+      v: { min: 300, max: 800, step: 10 }
+      t: { min: 310, max: 900, step: 10 }
+    constraints: ["t > v"]
+    tolerance: { abs: 0.000001 }
+  - id: ttsp-duplicate-leak
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "An exact copy of a house sale appears once in training and once in test. How can this affect the test error?"
+    options:
+      - {
+          id: a,
+          text: "It can make test error too low because the model saw a copy",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "It must make test error higher because rows repeat",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The model has already seen the duplicate's price in training, so that test prediction can be unusually accurate.",
+        }
+      - {
+          id: c,
+          text: "It cannot matter because the copied row is still in test",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The training copy gives the model information about a row that appears in test.",
+        }
+      - {
+          id: d,
+          text: "It changes training error but leaves test error fair",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The duplicate is in test too, so the model's prior exposure can make the test score misleading.",
+        }
+    solution: "The model has already seen the same sale during training, so it may predict the test copy unusually well. This makes test error too low for genuinely new houses."
+  - id: ttsp-fill-average
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Some house sizes are missing. Before splitting, you fill them using the average size of all 1,000 sales. What is the problem and the fix?"
+    options:
+      - {
+          id: a,
+          text: "Test sizes shaped the average; compute it from training sales only",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Only house prices can leak; keep using all sizes",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Test information can leak through inputs as well as prices; compute the imputation average from training data only.",
+        }
+      - {
+          id: c,
+          text: "The average is too simple; replace every size with the largest",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Changing the summary does not fix the leakage; the test sales must not help compute it.",
+        }
+      - {
+          id: d,
+          text: "Test sizes shaped the average; compute it from test sales only",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "That still uses test information in preprocessing; compute the average from training sales only.",
+        }
+    solution: "The test sales helped set a value used during preprocessing, even though their prices were not used. Split first, then compute the average size from training sales only."
+  - id: ttsp-same-house
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A house was sold in both 2019 and 2023. You want to test predictions for houses the model has never seen. How should you split these sales?"
+    options:
+      - { id: a, text: "Keep both sales of that house in the same set", correct: true }
+      - {
+          id: b,
+          text: "Put each sale in a random set, like other rows",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "Then the model could see one sale of that house in training and the other in test.",
+        }
+      - {
+          id: c,
+          text: "Put the newer sale in test and the older one in training",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "The model has seen the same house in training, so this does not test a new house.",
+        }
+      - {
+          id: d,
+          text: "Keep the prices together but split the house details",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The related records must stay together; separating their details does not prevent shared house information.",
+        }
+    solution: "Keep both records for the same house in one set. Otherwise a training sale gives information about a house that also appears in test."
+  - id: ttsp-robot-frames
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot dataset contains video frames from demonstrations. A random frame-level split puts neighbouring frames of one demonstration in both training and test. What is the risk, and how should you split?"
+    options:
+      - { id: a, text: "Near-duplicate frames leak; hold out whole demonstrations", correct: true }
+      - {
+          id: b,
+          text: "Frames are independent; hold out random frames as before",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "Neighbouring frames show nearly the same scene, so a random frame split can put near-duplicates in both sets.",
+        }
+      - {
+          id: c,
+          text: "The test set is too large; hold out fewer random frames",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The issue is that related frames cross the split, not how many random frames are held out.",
+        }
+      - {
+          id: d,
+          text: "Training needs more examples; duplicate the test frames",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Adding test frames to training would make the leakage worse; keep each demonstration in one set.",
+        }
+    solution: "Neighbouring frames are near-duplicates, so the model can effectively see test scenes during training. Split by whole demonstrations to keep related frames together."
+  - id: ttsp-spot-leak
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Which workflow avoids leakage when training and evaluating a house-price model?"
+    options:
+      - { id: a, text: "Split first, fit preprocessing on training, then test once", correct: true }
+      - {
+          id: b,
+          text: "Compute summaries on all sales, then split and train",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "Summaries from all sales include test information; compute preprocessing values from training sales only.",
+        }
+      - {
+          id: c,
+          text: "Split sale rows at random, even when houses repeat",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "Repeated sales of one house can land in both sets; keep related records together.",
+        }
+      - {
+          id: d,
+          text: "Try versions on test, then report the lowest error",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Choosing with test results turns the test set into validation data and makes its score optimistic.",
+        }
+    solution: "Split before fitting preprocessing, use training data to calculate summaries, and keep the test set untouched until the end. The other workflows let test information affect training or selection."
+  - id: ttsp-dup-error
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "There are 150 test sales. Of these, {{=k}} have duplicates in training and have squared error about 0; the other sales have average squared error {{=e}}. What is the resulting test average? Round to the nearest 0.001 where needed."
+    hints:
+      [
+        "The duplicate cases contribute about 0; multiply the other cases by their average error, then divide by 150.",
+      ]
+    solution: "The {{=k}} duplicate cases contribute about 0, so the total squared error is about (150 − {{=k}}) × {{=e}}. Divide by all 150 test sales to get {{=((150-k)*e/150)}}; the duplicates pull the reported average down."
+    answer_expr: "((150-k)*e)/150"
+    params:
+      k: { min: 5, max: 25, step: 5 }
+      e: { min: 400, max: 600, step: 20 }
+    tolerance: { abs: 0.00051 }
+    common_wrong:
+      - {
+          answer_expr: "e",
+          category: incorrect_reasoning,
+          feedback: "That treats every test sale as having error {{=e}}. The {{=k}} duplicate cases contribute almost zero, lowering the average.",
+        }

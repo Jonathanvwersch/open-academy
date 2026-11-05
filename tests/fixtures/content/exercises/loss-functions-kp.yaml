@@ -1,0 +1,116 @@
+concept: loss-functions
+exercises:
+  - {
+      id: loss-functions-fixture-practice-1,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: loss-functions-fixture-practice-2,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: loss-functions-fixture-practice-3,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: loss-functions-fixture-practice-4,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: loss-functions-fixture-practice-5,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - {
+      id: loss-functions-fixture-practice-6,
+      dimension: math,
+      type: numeric,
+      role: practice,
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: "Compute 1 + 1.",
+      hints: ["Add the numbers."],
+      solution: "1 + 1 = 2.",
+      answer: 2,
+      tolerance: { abs: 0 },
+    }
+  - id: loss-functions-fixture-final
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 1
+    est_minutes: 2
+    prompt: Explain what a loss measures.
+    hints: []
+    rubric:
+      - { id: error, criterion: Relates a loss to prediction error, weight: 1, required: true }
+    exemplar: A loss is a number that measures prediction error.
+    solution: A loss quantifies how wrong a prediction is.
+  - id: loss-functions-fixture-template-1
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "If a = {{=a}}, what is 2a?"
+    hints: ["Double a."]
+    solution: "Double a: 2 × {{=a}} = {{=2*a}}."
+    params: { a: { min: 1, max: 5 } }
+    answer_expr: 2*a
+    tolerance: { abs: 0 }
+  - id: loss-functions-fixture-template-2
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "If a = {{=a}}, what is 2a?"
+    hints: ["Double a."]
+    solution: "Double a: 2 × {{=a}} = {{=2*a}}."
+    params: { a: { min: 1, max: 5 } }
+    answer_expr: 2*a
+    tolerance: { abs: 0 }

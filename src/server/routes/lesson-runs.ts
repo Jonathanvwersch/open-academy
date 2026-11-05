@@ -286,11 +286,15 @@ export function registerLessonRunRoutes(
       const pointRows = problems.filter(
         (problem) => problem.knowledgePointId === point.id && problem.round === round,
       );
+      const usedSeeds = new Set(
+        problems.flatMap((problem) => (problem.seed === null ? [] : [problem.seed])),
+      );
       const selection = selectNextProblem(
         point,
         resolved.index.exercisesById,
         pointRows,
         Math.floor(Math.random() * 0x80000000),
+        usedSeeds,
       );
       if (!selection) return existing;
       await tx.insert(lessonProblems).values({

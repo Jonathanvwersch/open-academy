@@ -1,8 +1,28 @@
 concept: gradient-descent
-version: 1
-blocks:
-  - { kind: objective, md: "Update a parameter in the negative gradient direction." }
-  - { kind: worked, md: "With $w=1$, $\\eta=0.1$, and gradient $2$, the update is $0.8$." }
-  - { kind: check, exercise: gradient-descent-step }
-  - { kind: summary, md: "The learning rate controls the size of each update." }
-fast_path: [objective, summary]
+version: 2
+objective: Practice gradient descent updates.
+knowledge_points:
+  - id: gradient-descent-fixture-1
+    title: Update a parameter
+    explain: Gradient descent moves a parameter against its gradient.
+    worked: This example shows one gradient descent update.
+    problems:
+      [
+        gradient-descent-fixture-practice-1,
+        gradient-descent-fixture-practice-2,
+        gradient-descent-fixture-practice-3,
+        gradient-descent-fixture-template-1,
+      ]
+  - id: gradient-descent-fixture-2
+    title: Use the learning rate
+    explain: The learning rate scales the size of each parameter update.
+    worked: This example shows how the learning rate changes an update.
+    problems:
+      [
+        gradient-descent-fixture-practice-4,
+        gradient-descent-fixture-practice-5,
+        gradient-descent-fixture-practice-6,
+        gradient-descent-fixture-template-2,
+      ]
+final: gradient-descent-fixture-final
+summary: Gradient descent updates parameters against the gradient, scaled by the learning rate.

@@ -1,59 +1,214 @@
 concept: derivatives
-version: 1
-fast_path: [objective, summary]
-blocks:
-  - kind: objective
-    md: |
-      **Goal:** differentiate polynomials, exponentials, logs, products and quotients, and read a derivative as the sensitivity of the output to the input.
-  - kind: intuition
-    md: |
-      Suppose a model's loss is the square of one parameter. When the parameter is 3, the loss is 9; when it is 3.01, the loss is 9.0601. A nudge of 0.01 changes the loss by 0.0601, or about 6.01 per unit of nudge.
+version: 2
+objective: |
+  **Goal:** find the derivative of polynomials, $e^x$, $\ln x$, products and quotients, and use a derivative to estimate how much an output changes when you nudge its input.
+knowledge_points:
+  - id: der-speed-at-instant
+    title: Speed at one instant, as a slope
+    explain: |
+      A car pulls away from a junction. After $t$ seconds it has travelled $d(t) = t^2$ metres, so after 3 seconds it has gone 9 m. **How fast is it going at exactly 3 seconds?** Two positions only give you an average speed over a stretch of time.
 
-      The derivative $f'(x)$ answers: if I nudge $x$ a little, how much does $f(x)$ change per unit of nudge? For a model, it tells how changing a parameter changes its loss.
-  - kind: example
-    md: |
-      This example estimates an instantaneous rate of change by comparing nearby function values.
+      So measure the average speed over a short window starting at 3 seconds: distance gained divided by time taken. Make the window shorter and shorter, and the average settles on one number. That number is the speed at that instant.
 
-      $f(x) = x^2$. At $x = 3$, nudge to $3.01$: $f$ goes from $9$ to $9.0601$, a change of $0.0601$ for a nudge of $0.01$. The ratio is $\approx 6.01$, and the derivative $f'(x) = 2x$ gives exactly $6$ at $x = 3$.
-  - kind: math
-    md: |
-      $$f'(x) = \lim_{h\to0}\frac{f(x+h) - f(x)}{h}$$
-      Read the limit as: make the nudge $h$ smaller and smaller and see what the ratio approaches.
+      This settled rate is the **derivative**. For a function $f$ with input $x$, the derivative $f'(x)$ (read "f prime of x") is how much the output changes per unit change in the input, for a tiny nudge. On a graph it's the slope of the **tangent line**, the straight line that just touches the curve at that point.
 
-      The number $e$ is about 2.718. The natural logarithm $\ln x$ asks which power of $e$ gives $x$.
-      This table is a lookup of results that follow from the definition above.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" aria-label="Graph of the car's distance d equals t squared against time t. At 3 seconds a blue tangent line touches the curve with slope 6 metres per second. A dashed amber line from 3 to 4 seconds has average slope 7 metres per second.">
+        <line x1="60" y1="230" x2="580" y2="230" stroke="#d4d4d4" stroke-width="2"/>
+        <line x1="60" y1="230" x2="60" y2="20" stroke="#d4d4d4" stroke-width="2"/>
+        <text x="160" y="250" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">1</text>
+        <text x="260" y="250" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">2</text>
+        <text x="360" y="250" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">3</text>
+        <text x="460" y="250" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">4</text>
+        <text x="560" y="250" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">5</text>
+        <text x="580" y="272" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">time t (seconds)</text>
+        <text x="50" y="162" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">9</text>
+        <text x="50" y="34" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">25</text>
+        <text x="68" y="24" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">distance d (metres)</text>
+        <path d="M60 230 Q310 230 560 30" fill="#171717" fill-opacity="0" stroke="#171717" stroke-width="2.5"/>
+        <line x1="360" y1="158" x2="360" y2="230" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <line x1="240" y1="215.6" x2="480" y2="100.4" stroke="#3b82f6" stroke-width="2.5"/>
+        <line x1="360" y1="158" x2="460" y2="102" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="7 5"/>
+        <circle cx="460" cy="102" r="4" fill="#f59e0b"/>
+        <circle cx="360" cy="158" r="5" fill="#171717"/>
+        <text x="348" y="148" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">(3 s, 9 m)</text>
+        <line x1="90" y1="50" x2="120" y2="50" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="7 5"/>
+        <text x="128" y="55" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">average speed from 3 s to 4 s: 7 m/s</text>
+        <line x1="90" y1="76" x2="120" y2="76" stroke="#3b82f6" stroke-width="2.5"/>
+        <text x="128" y="81" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">tangent at 3 s: slope 6 m/s</text>
+      </svg>
+      ```
+
+      In symbols, with $h$ for the nudge to the input:
+
+      $$f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}$$
+
+      The top, $f(x+h) - f(x)$, is the change in output. $\lim_{h \to 0}$ (read "the limit as $h$ goes to 0") means: make $h$ smaller and smaller and see what the ratio approaches.
+
+      Because $f'(x)$ is a rate, it also estimates nearby values: $f(x+h) \approx f(x) + f'(x)\,h$ for small $h$, where $\approx$ means "approximately equal". A large $f'(x)$ means the output is very **sensitive** to its input.
+    worked: |
+      This example shows the average speed settling on the speed at 3 seconds, then using it to estimate a nearby distance.
+
+      The car's distance is $d(t) = t^2$, and $d(3) = 9$.
+
+      | window | distance gained | average speed |
+      |---|---|---|
+      | 3 s to 4 s | $16 - 9 = 7$ m | $7 \div 1 = 7$ m/s |
+      | 3 s to 3.1 s | $9.61 - 9 = 0.61$ m | $0.61 \div 0.1 = 6.1$ m/s |
+      | 3 s to 3.01 s | $9.0601 - 9 = 0.0601$ m | $0.0601 \div 0.01 = 6.01$ m/s |
+      | 3 s to 3.001 s | $9.006001 - 9 = 0.006001$ m | $6.001$ m/s |
+
+      The averages approach 6, so $d'(3) = 6$ m/s.
+
+      Now estimate the distance at 3.2 s: $d(3.2) \approx d(3) + d'(3) \times 0.2 = 9 + 6 \times 0.2 = 10.2$ m. The exact value is $3.2^2 = 10.24$ m, so the estimate is close.
+
+      The derivative is the rate at one instant, and multiplying it by a small nudge estimates the change in output.
+    problems:
+      - derp-meaning
+      - derp-average-speed
+      - derp-tangent
+      - derp-estimate
+      - derp-why-not-zero
+      - derp-robot-battery
+  - id: der-power-rule
+    title: Rules for powers, constants and sums
+    explain: |
+      Shrinking windows by hand works, but it's slow. You'd rather have the car's speed at every instant as one formula. Working the limit out once for each kind of function gives rules you can reuse.
+
+      For $d(t) = t^2$, the ratio is $\frac{(t+h)^2 - t^2}{h} = \frac{2th + h^2}{h} = 2t + h$. As $h$ shrinks to 0 this becomes $2t$. So the speed at any time is $d'(t) = 2t$, and at 3 seconds that's 6 m/s, as before.
+
+      The **power rule** generalises this. For $f(x) = x^n$, the derivative is $f'(x) = n\,x^{n-1}$: bring the power down in front, then lower the power by one. So $x^3$ becomes $3x^2$, and $x$ itself (which is $x^1$) becomes 1.
+
+      Three more rules let you differentiate any **polynomial**, a sum of powers of $x$ with number multipliers, like $3x^4 - 2x + 5$:
+
+      - **Constant multiple:** $c\,g(x)$ has derivative $c\,g'(x)$, for any number $c$. Doubling a function doubles its slope.
+      - **Sum:** $g(x) + k(x)$ has derivative $g'(x) + k'(x)$. Differentiate term by term.
+      - **Constants:** a number on its own, like 5, has derivative 0, because it never changes.
+
+      You'll also see $\frac{d}{dx}$, read "the derivative with respect to $x$ of". For example, $\frac{d}{dx}x^3 = 3x^2$.
+    worked: |
+      This example shows the power, constant-multiple and sum rules giving a speed formula.
+
+      A second car's distance after $t$ seconds is $d(t) = 0.5t^3 + 2t$ metres.
+
+      1. $0.5t^3$: the power rule gives $3t^2$, and the constant multiple keeps the 0.5, so $1.5t^2$.
+      2. $2t$: the derivative of $t$ is 1, so $2$.
+      3. Add the terms: $d'(t) = 1.5t^2 + 2$.
+
+      At $t = 2$ seconds the speed is $1.5 \times 4 + 2 = 8$ m/s.
+
+      The same steps on $f(x) = 3x^4 - 2x + 5$ give $12x^3 - 2$, because the constant 5 contributes 0.
+
+      With these rules you differentiate a polynomial one term at a time.
+    problems:
+      - derp-power-poly
+      - derp-power-value
+      - derp-power-cube
+      - derp-constant-term
+      - derp-drone-climb
+      - derp-power-fraction
+  - id: der-exp-log
+    title: Exponentials and the natural logarithm
+    explain: |
+      The power rule needs a fixed power, as in $x^3$. It doesn't apply to $2^x$ or $e^x$, where the input sits in the exponent. Quantities that grow in proportion to their own size, like money earning interest, behave this way.
+
+      - The number **$e$** is about 2.718. The function $e^x$ is special: its slope at every point equals its own value. So the derivative of $e^x$ is $e^x$.
+      - The **natural logarithm** $\ln x$ undoes $e^x$. It answers "which power of $e$ gives $x$?" For example, $\ln 1 = 0$ because $e^0 = 1$, and $\ln(e^2) = 2$. It's defined for $x > 0$, and its derivative is $\frac{1}{x}$. So $\ln x$ keeps rising, but more and more slowly.
+
+      If you've met sine and cosine as functions of an angle in radians, their derivatives come from the same limit. Here is the full lookup table:
+
       | $f(x)$ | $f'(x)$ |
       |---|---|
-      | $x^n$ | $n x^{n-1}$ |
+      | $x^n$ | $n\,x^{n-1}$ |
       | $e^x$ | $e^x$ |
       | $\ln x$ | $1/x$ |
       | $\sin x$ | $\cos x$ |
       | $\cos x$ | $-\sin x$ |
-      | $c\,g(x)$ | $c\,g'(x)$ |
-      | $g + h$ | $g' + h'$ |
-      | $g\,h$ | $g'h + gh'$ (product rule) |
-      | $g/h$ | $(g'h - gh')/h^2$ (quotient rule) |
-  - kind: worked
-    md: |
-      This worked example combines the power, constant-multiple, logarithm, and product rules.
+
+      The constant-multiple and sum rules still apply, so you can mix these with powers term by term.
+    worked: |
+      This example shows the new rules combining with the constant-multiple and sum rules.
 
       **Differentiate $f(x) = 3x^4 - 2x + \ln x$.**
 
       1. $3x^4 \to 12x^3$ (power rule times a constant).
       2. $-2x \to -2$.
-      3. $\ln x \to 1/x$.
+      3. $\ln x \to \frac{1}{x}$.
 
-      So $f'(x) = 12x^3 - 2 + 1/x$. At $x = 1$: $12 - 2 + 1 = 11$.
+      So $f'(x) = 12x^3 - 2 + \frac{1}{x}$. At $x = 1$: $12 - 2 + 1 = 11$.
 
-      **Product rule: $g(x) = x^2 e^x$.** Then $g' = 2x\,e^x + x^2 e^x = e^x(x^2 + 2x)$.
-  - kind: faded
-    md: |
-      **Partly done.** $f(x) = x^3 \ln x$. With the product rule, $u = x^3,\ u' = 3x^2,\ v = \ln x,\ v' = \;?$, so $f'(x) = u'v + uv' = \;?$
-    exercise: der-faded-product
-  - kind: check
-    exercise: der-check-power
-  - kind: summary
-    md: |
-      - $f'(x)$ is a local slope: the change in output per unit change in input.
-      - Know the core rules: power, exp, log, sum, product and quotient.
-      - For a function that depends on a parameter, its derivative describes how the output changes as that parameter changes.
+      **Differentiate $g(x) = 2e^x - 3\ln x$.** The constants stay in front: $g'(x) = 2e^x - \frac{3}{x}$. At $x = 1$ that's $2e - 3 \approx 2.44$.
+
+      Each special function has its own rule, and the constant-multiple and sum rules join them up.
+    problems:
+      - derp-exp-log-mix
+      - derp-ln-slope
+      - derp-exp-slope
+      - derp-ln-meaning
+      - derp-sin-cos
+      - derp-tank-level
+  - id: der-product-quotient
+    title: Products and quotients
+    explain: |
+      Some functions multiply two parts together, like $x^2 e^x$. The tempting shortcut is to multiply the two derivatives, $2x \cdot e^x$. That's wrong. Try it on $x \cdot x = x^2$: multiplying derivatives gives $1 \cdot 1 = 1$, but the true derivative is $2x$.
+
+      Think of a product $u \cdot v$ as the area of a rectangle with width $u$ and height $v$, where $\Delta u$ (read "delta u") means a small change in $u$:
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="A rectangle of width u and height v, with area u times v. Growing the width by delta u adds a strip of area delta u times v; growing the height by delta v adds a strip of area u times delta v; a tiny corner of area delta u times delta v is left over.">
+        <rect x="40" y="60" width="240" height="150" fill="#d4d4d4"/>
+        <rect x="282" y="60" width="50" height="150" fill="#f59e0b"/>
+        <rect x="40" y="18" width="240" height="40" fill="#10b981"/>
+        <rect x="282" y="18" width="50" height="40" fill="#737373"/>
+        <text x="160" y="140" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">area u · v</text>
+        <text x="307" y="140" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">Δu · v</text>
+        <text x="160" y="43" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">u · Δv</text>
+        <text x="160" y="232" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">u</text>
+        <text x="307" y="232" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Δu</text>
+        <text x="26" y="140" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">v</text>
+        <text x="22" y="43" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Δv</text>
+        <text x="360" y="60" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Grow u by Δu and v by Δv.</text>
+        <text x="360" y="86" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">New area = u·v + Δu·v + u·Δv + Δu·Δv</text>
+        <text x="360" y="122" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">The grey corner is tiny for small nudges,</text>
+        <text x="360" y="142" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">so the area grows at the rate</text>
+        <text x="360" y="172" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">u′ · v + u · v′</text>
+      </svg>
+      ```
+
+      The area grows for two reasons: the width changes while the height stays put, and the height changes while the width stays put. That gives the **product rule**:
+
+      $$(u\,v)' = u'\,v + u\,v'$$
+
+      For a fraction $\frac{u}{v}$, a similar argument gives the **quotient rule**:
+
+      $$\left(\frac{u}{v}\right)' = \frac{u'\,v - u\,v'}{v^2}$$
+
+      Watch the order on top: the derivative of the top comes first, and there's a minus sign.
+    worked: |
+      This example shows the product rule and the quotient rule, step by step.
+
+      **Product: $f(x) = x^2 e^x$.**
+
+      1. Name the parts: $u = x^2$, so $u' = 2x$; $v = e^x$, so $v' = e^x$.
+      2. Apply the rule: $f'(x) = u'v + uv' = 2x\,e^x + x^2 e^x = e^x(x^2 + 2x)$.
+      3. At $x = 1$: $e \times 3 \approx 8.15$.
+
+      **Quotient: $g(x) = \frac{x}{x + 1}$.**
+
+      1. Name the parts: $u = x$, so $u' = 1$; $v = x + 1$, so $v' = 1$.
+      2. Apply the rule: $g'(x) = \frac{1 \cdot (x+1) - x \cdot 1}{(x+1)^2} = \frac{1}{(x+1)^2}$.
+      3. At $x = 1$: $\frac{1}{4} = 0.25$.
+
+      Naming $u$, $v$ and their derivatives first keeps both rules mechanical.
+    problems:
+      - derp-product-expr
+      - derp-product-value
+      - derp-why-not-multiply
+      - derp-quotient-expr
+      - derp-which-rule
+      - derp-rectangle-rate
+final: der-explain
+summary: |
+  - The derivative $f'(x)$ is the rate of change of the output per unit of input at one point: the slope of the tangent, found as the limit of average rates over shrinking windows.
+  - The rules: power ($x^n \to n x^{n-1}$), constant multiple, sum, $e^x \to e^x$, $\ln x \to 1/x$, product ($u'v + uv'$) and quotient ($\frac{u'v - uv'}{v^2}$).
+  - A derivative measures sensitivity: for a small nudge $h$, $f(x+h) \approx f(x) + f'(x)\,h$.

@@ -26,10 +26,10 @@ export function prerequisiteMet(
       record?.inferred || masteryRank(record?.state ?? 'not_assessed') >= masteryRank('assisted')
     );
   });
-  const completedKnowledgePointLesson =
-    (content.lessonsByConcept.get(prereqId)?.knowledge_points?.length ?? 0) > 0 &&
-    lessonRuns.some((run) => run.conceptId === prereqId && run.status === 'completed');
-  return mastered || completedKnowledgePointLesson;
+  const completedLesson = lessonRuns.some(
+    (run) => run.conceptId === prereqId && run.status === 'completed',
+  );
+  return mastered || completedLesson;
 }
 
 export function outlinePosition(conceptId: string, content: ContentIndex): [number, number] {

@@ -149,30 +149,40 @@ export function selectNextProblem(
   exercises: ReadonlyMap<string, Exercise>,
   roundProblems: readonly Pick<LessonProblemRow, 'exerciseId' | 'seed' | 'position'>[],
   templateSeed: number,
+  usedSeeds: ReadonlySet<number> = new Set(),
 ): SelectedLessonProblem | undefined {
   if (roundProblems.length >= 5) return undefined;
-  const fixed: string[] = [];
+  const served = new Set(roundProblems.map((problem) => problem.exerciseId));
   const templates: string[] = [];
   for (const id of point.problems) {
     const exercise = exercises.get(id);
+    if (exercise?.type === 'numeric' && 'answer_expr' in exercise) templates.push(id);
+  }
+
+  const position = roundProblems.length + 1;
+  const newTemplate = (exerciseId: string): SelectedLessonProblem => {
+    const seeds = new Set([
+      ...usedSeeds,
+      ...roundProblems.flatMap((problem) => (problem.seed === null ? [] : [problem.seed])),
+    ]);
+    let seed = templateSeed;
+    while (seeds.has(seed)) seed = (seed + 1) % 0x80000000;
+    return { exerciseId, seed, position };
+  };
+
+  for (const id of point.problems) {
+    if (served.has(id)) continue;
+    const exercise = exercises.get(id);
     if (!exercise) continue;
-    if (exercise.type === 'numeric' && 'answer_expr' in exercise) templates.push(id);
-    else fixed.push(id);
+    if (exercise.type === 'numeric' && 'answer_expr' in exercise) return newTemplate(id);
+    return { exerciseId: id, seed: null, position };
   }
-  const served = new Set(roundProblems.map((problem) => problem.exerciseId));
-  const nextFixed = fixed.find((id) => !served.has(id));
-  if (nextFixed) {
-    return { exerciseId: nextFixed, seed: null, position: roundProblems.length + 1 };
-  }
+
   if (templates.length === 0) return undefined;
   const templateCount = roundProblems.filter((problem) =>
     templates.includes(problem.exerciseId),
   ).length;
   const nextTemplate = templates[templateCount % templates.length];
   if (!nextTemplate) return undefined;
-  return {
-    exerciseId: nextTemplate,
-    seed: templateSeed,
-    position: roundProblems.length + 1,
-  };
+  return newTemplate(nextTemplate);
 }

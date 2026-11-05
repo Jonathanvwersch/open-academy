@@ -1,8 +1,28 @@
 concept: loss-functions
-version: 1
-blocks:
-  - { kind: objective, md: "Calculate and interpret a loss value." }
-  - { kind: intuition, md: "A loss compresses prediction errors into a quantity to minimize." }
-  - { kind: check, exercise: loss-functions-mse }
-  - { kind: summary, md: "Mean squared error averages squared residuals." }
-fast_path: [objective, summary]
+version: 2
+objective: Practice measuring prediction error.
+knowledge_points:
+  - id: loss-functions-fixture-1
+    title: Calculate a loss
+    explain: A loss assigns a number to how wrong a prediction is.
+    worked: This example shows a simple squared error.
+    problems:
+      [
+        loss-functions-fixture-practice-1,
+        loss-functions-fixture-practice-2,
+        loss-functions-fixture-practice-3,
+        loss-functions-fixture-template-1,
+      ]
+  - id: loss-functions-fixture-2
+    title: Average losses
+    explain: Mean squared error averages squared errors across examples.
+    worked: This example shows how squared errors form a mean.
+    problems:
+      [
+        loss-functions-fixture-practice-4,
+        loss-functions-fixture-practice-5,
+        loss-functions-fixture-practice-6,
+        loss-functions-fixture-template-2,
+      ]
+final: loss-functions-fixture-final
+summary: Loss functions quantify error, and mean squared error averages squared errors.

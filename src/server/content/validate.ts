@@ -3,6 +3,118 @@ import { gradeNumeric } from '../grading/numeric.js';
 import { formatTemplateNumber, instantiateExercise, isTemplate } from './templates.js';
 import type { ContentIssue, ContentSourceData } from './types.js';
 
+const SVG_FENCE = /```svg[ \t]*\r?\n([\s\S]*?)```/gi;
+const CURRENCY_MARKERS = [
+  /(?<!\$)\$(?!\$)\d+(?:,\d{3})*(?:\.\d+)?(?=\s*(?:k\b|thousand\b|million\b|usd\b|dollars?\b))/i,
+  /(?<!\$)\$(?!\$)\{\{=[^{}]+\}\}(?=\s*(?:,|and\b|k\b|thousand\b|million\b|usd\b|dollars?\b))/i,
+];
+const SVG_COLOR_PROPERTIES = new Set([
+  'color',
+  'fill',
+  'stroke',
+  'stop-color',
+  'flood-color',
+  'lighting-color',
+  'solid-color',
+  'background-color',
+]);
+
+function svgIssue(source: string): string | null {
+  if (/<\s*(script|foreignObject)\b/i.test(source)) return 'forbidden element';
+  if (/\bon[a-z0-9_-]*\s*=/i.test(source)) return 'event attributes are forbidden';
+  if (/\b(?:xlink:)?href\s*=\s*(['"])(?!#)[\s\S]*?\1/i.test(source)) {
+    return 'external references are forbidden';
+  }
+  if (/\bvar\s*\(|--[a-z0-9_-]+\s*:/i.test(source)) return 'CSS variables are forbidden';
+  for (const [, style] of source.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
+    for (const [, property, color] of style.matchAll(
+      /\b(fill|stroke|color|stop-color|flood-color|lighting-color|solid-color|background-color)\s*:\s*([^;}\s]+)/gi,
+    )) {
+      if (!/^#(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$/i.test(color)) {
+        return `color "${property}" must be a hex value`;
+      }
+    }
+  }
+  const tokens =
+    source.match(/<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<(?:[^>"']|"[^"]*"|'[^']*')+>|[^<]+/g) ?? [];
+  if (tokens.join('') !== source) return 'malformed XML';
+  if (/&(?!amp;|lt;|gt;|apos;|quot;|#\d+;|#x[\da-f]+;)/i.test(source)) {
+    return 'malformed XML entity';
+  }
+  const stack: string[] = [];
+  let rootCount = 0;
+  for (const token of tokens) {
+    if (!token.startsWith('<') || token.startsWith('<!--') || token.startsWith('<?')) {
+      if (stack.length === 0 && token.trim()) return 'text outside root element';
+      continue;
+    }
+    if (token.startsWith('<!')) return 'XML declarations are forbidden';
+    const closing = token.match(/^<\/([A-Za-z_][\w:.-]*)\s*>$/);
+    if (closing) {
+      if (stack.pop() !== closing[1]) return 'mismatched closing tag';
+      continue;
+    }
+    const opening = token.match(/^<([A-Za-z_][\w:.-]*)([\s\S]*?)(\/?)>$/);
+    if (!opening) return 'malformed XML tag';
+    const [, name, rawAttrs, selfClosing] = opening;
+    if (stack.length === 0) {
+      rootCount += 1;
+      if (rootCount > 1 || name !== 'svg') return 'root element must be svg';
+    }
+    const attrPattern = /([A-Za-z_:][\w:.-]*)\s*=\s*(['"])(.*?)\2/g;
+    const attrs = [...rawAttrs.matchAll(attrPattern)];
+    const names = new Set<string>();
+    for (const [, key, , value] of attrs) {
+      if (names.has(key)) return 'duplicate XML attribute';
+      names.add(key);
+      if (/^on/i.test(key)) return 'event attributes are forbidden';
+      if (/^(?:xlink:)?href$/i.test(key) && value && !value.startsWith('#')) {
+        return 'external references are forbidden';
+      }
+      if (SVG_COLOR_PROPERTIES.has(key.toLowerCase())) {
+        if (!/^#(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$/i.test(value.trim())) {
+          return `color "${key}" must be a hex value`;
+        }
+      }
+      if (key.toLowerCase() === 'style') {
+        for (const declaration of value.split(';')) {
+          const [property, color] = declaration.split(':').map((part) => part.trim());
+          if (
+            property &&
+            SVG_COLOR_PROPERTIES.has(property.toLowerCase()) &&
+            color &&
+            !/^#(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$/i.test(color)
+          ) {
+            return `color "${property}" must be a hex value`;
+          }
+        }
+      }
+    }
+    if (rawAttrs.replace(attrPattern, '').trim()) return 'malformed XML attribute';
+    if (name === 'svg') {
+      const values = new Map(attrs.map(([, key, , value]) => [key, value]));
+      if (!values.get('viewBox')?.trim()) return 'root SVG needs a viewBox';
+      if (!values.get('aria-label')?.trim()) return 'root SVG needs a non-empty aria-label';
+    }
+    if (!selfClosing) stack.push(name);
+  }
+  if (stack.length || rootCount !== 1) return 'unclosed or missing root element';
+  return null;
+}
+
+function validateSvgText(text: string, file: string, id: string, issues: ContentIssue[]) {
+  for (const match of text.matchAll(SVG_FENCE)) {
+    const error = svgIssue(match[1] ?? '');
+    if (error) addIssue(issues, file, id, `invalid SVG: ${error}`);
+  }
+}
+
+function validateCurrencyText(text: string, file: string, id: string, issues: ContentIssue[]) {
+  if (CURRENCY_MARKERS.some((marker) => marker.test(text))) {
+    addIssue(issues, file, id, 'currency prices must not use a dollar sign before a number');
+  }
+}
+
 function addIssue(issues: ContentIssue[], file: string, id: string, message: string) {
   issues.push({ file, id: id || '<file>', message });
 }
@@ -196,6 +308,13 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
     { file: string; value: (typeof data.lessons)[number]['value'] }
   >();
   for (const { value, file } of data.lessons) {
+    if (!value.knowledge_points) {
+      addIssue(issues, file, value.concept, 'authored lessons must use knowledge_points');
+    }
+    for (const text of new Set(stringValues(value))) {
+      validateSvgText(text, file, value.concept, issues);
+      validateCurrencyText(text, file, value.concept, issues);
+    }
     if (lessonsByConcept.has(value.concept)) {
       addIssue(issues, file, value.concept, 'duplicate lesson for concept');
     }
@@ -409,6 +528,32 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
   const references = new Map<string, number>();
 
   for (const { value: lesson, file } of data.lessons) {
+    if (lesson.knowledge_points) {
+      const final = exercises.get(lesson.final ?? '');
+      if (!final) {
+        addIssue(issues, file, lesson.concept, `final exercise "${lesson.final}" does not exist`);
+      } else {
+        if (final.concept !== lesson.concept)
+          addIssue(
+            issues,
+            file,
+            lesson.concept,
+            'final exercise must belong to the lesson concept',
+          );
+        if (final.value.type !== 'explain')
+          addIssue(issues, file, lesson.concept, 'final exercise must be type explain');
+        if (final.value.role !== 'core')
+          addIssue(issues, file, lesson.concept, 'final exercise must have core role');
+      }
+      if (lesson.knowledge_points.some((point) => point.problems.includes(lesson.final ?? ''))) {
+        addIssue(
+          issues,
+          file,
+          lesson.concept,
+          'final exercise must not be listed in knowledge-point problems',
+        );
+      }
+    }
     if (
       lesson.knowledge_points &&
       (lesson.knowledge_points.length < 2 || lesson.knowledge_points.length > 4)
@@ -427,10 +572,29 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
       knowledgePointIds.add(point.id);
       if (!point.title.trim())
         addIssue(issues, file, point.id, 'knowledge-point title must not be empty');
+      if (point.title.includes('$'))
+        addIssue(issues, file, point.id, 'knowledge-point title must not contain "$"');
       if (!point.explain.trim())
         addIssue(issues, file, point.id, 'knowledge-point explain must not be empty');
+      const explanationWords = countKnowledgePointWords(point.explain);
+      if (explanationWords > 250) {
+        addIssue(
+          issues,
+          file,
+          point.id,
+          `knowledge-point explain has ${explanationWords} words; maximum is 250`,
+        );
+      }
       if (!point.worked.trim())
         addIssue(issues, file, point.id, 'knowledge-point worked must not be empty');
+      if (!point.worked.trimStart().startsWith('This example shows')) {
+        addIssue(
+          issues,
+          file,
+          point.id,
+          'knowledge-point worked must start with "This example shows"',
+        );
+      }
       if (point.problems.length < 3) {
         addIssue(issues, file, point.id, 'knowledge point must reference at least 3 problems');
       }
@@ -489,6 +653,10 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
   }
 
   for (const { value: exercise, file } of data.exercises) {
+    for (const text of stringValues(exercise)) {
+      validateSvgText(text, file, exercise.id, issues);
+      validateCurrencyText(text, file, exercise.id, issues);
+    }
     if (exercise.role === 'practice' && references.get(exercise.id) !== 1) {
       addIssue(
         issues,
@@ -568,6 +736,15 @@ function validateTemplate(
       'template must produce at least 3 distinct answers across seeds 0–99',
     );
   }
+}
+
+function countKnowledgePointWords(text: string): number {
+  return text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/\$\$[\s\S]*?\$\$|\$[^$\n]+\$/g, ' math ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
 }
 
 function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) {

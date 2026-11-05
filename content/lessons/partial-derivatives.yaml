@@ -1,41 +1,143 @@
 concept: partial-derivatives
-version: 1
-fast_path: [objective, summary]
-blocks:
-  - kind: objective
-    md: |
-      **Goal:** compute partial derivatives of functions of several variables.
-  - kind: intuition
-    md: |
-      The symbol $\partial$ is read "partial". Read $\partial f/\partial w$ as "the partial derivative of f with respect to w".
-      A function can depend on several variables at once. A **partial derivative** asks: *if I nudge only one variable and freeze all the others, how does the output change?* You differentiate with respect to that variable and treat every other variable as a constant.
-  - kind: example
-    md: |
-      This example shows each partial derivative varying one variable while holding the other fixed.
+version: 2
+objective: |
+  **Goal:** compute the partial derivative of a function of several variables with respect to any one of them, and read it as the rate of change when only that variable moves.
+knowledge_points:
+  - id: pd-hold-fixed
+    title: Change one input, hold the rest fixed
+    explain: |
+      An estate agent prices houses with a formula that uses two inputs: the size $s$, in tens of square metres, and the age $a$, in years. The estimated price, in thousands of pounds, is
 
-      $f(w, b) = w^2 b + 3b$.
+      $$P(s, a) = 30s - 2a - 0.1\,s\,a$$
 
-      - $\partial f/\partial w$: treat $b$ as a constant, so $2wb$.
-      - $\partial f/\partial b$: treat $w$ as a constant, so $w^2 + 3$.
-  - kind: math
-    md: |
-      $$\frac{\partial f}{\partial x_i}(x) = \lim_{h\to0}\frac{f(x_1,\dots,x_i + h,\dots,x_n) - f(x)}{h}$$
-      Read the limit as: nudge only $x_i$ by $h$, make $h$ smaller and smaller, and see what the ratio approaches.
-      Every single-variable rule still applies; the other variables simply behave like numbers.
-  - kind: worked
-    md: |
-      This worked example applies the partial-derivative rules to a function of two variables.
+      A 100 m² house ($s = 10$) that is 20 years old is priced at $P(10, 20) = 300 - 40 - 20 = 240$, so £240k. **How much does the price rise for a little more size, if the house stays the same age?** One derivative won't do, because the price depends on two inputs.
 
-      **A function of two variables.** $f(w, b) = (wx + b)^2$, where $x$ is held fixed.
+      So freeze the age at 20 and treat it as an ordinary number. The price now depends on size alone, and you can find its derivative in the usual way.
 
-      Let $q = wx + b$. Then:
-      - $\partial f/\partial w = 2q \cdot x$
-      - $\partial f/\partial b = 2q$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="A grid of houses by size and age. From the house at size 10 and age 20, a green arrow moves right along the size axis with age fixed, labelled partial P by partial s. An amber arrow moves up along the age axis with size fixed, labelled partial P by partial a.">
+        <line x1="70" y1="220" x2="420" y2="220" stroke="#d4d4d4" stroke-width="2"/>
+        <line x1="70" y1="220" x2="70" y2="20" stroke="#d4d4d4" stroke-width="2"/>
+        <line x1="70" y1="120" x2="420" y2="120" stroke="#d4d4d4" stroke-width="1" stroke-dasharray="4 4"/>
+        <line x1="220" y1="220" x2="220" y2="20" stroke="#d4d4d4" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="420" y="244" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">size s (tens of m²)</text>
+        <text x="78" y="28" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">age a (years)</text>
+        <text x="220" y="240" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">10</text>
+        <text x="60" y="125" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">20</text>
+        <line x1="220" y1="120" x2="340" y2="120" stroke="#10b981" stroke-width="3"/>
+        <polygon points="350,120 336,113 336,127" fill="#10b981"/>
+        <line x1="220" y1="120" x2="220" y2="50" stroke="#f59e0b" stroke-width="3"/>
+        <polygon points="220,40 213,54 227,54" fill="#f59e0b"/>
+        <circle cx="220" cy="120" r="6" fill="#171717"/>
+        <text x="212" y="142" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">£240k</text>
+        <text x="450" y="104" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#10b981">∂P/∂s: grow the size,</text>
+        <text x="450" y="124" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#10b981">age held at 20</text>
+        <text x="450" y="54" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#f59e0b">∂P/∂a: add years,</text>
+        <text x="450" y="74" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#f59e0b">size held at 10</text>
+      </svg>
+      ```
 
-      With $x = 2$, $w = 1$, and $b = 0$, $q = 2$, so $\partial f/\partial w = 8$ and $\partial f/\partial b = 4$.
-  - kind: check
-    exercise: pd-check-1
-  - kind: summary
-    md: |
-      - $\partial f/\partial x_i$: differentiate in $x_i$ and hold the other variables fixed.
-      - In a loss, the data are constants and the parameters are the variables.
+      The derivative of $P$ with $s$ moving and $a$ held fixed is the **partial derivative** of $P$ with respect to $s$. It's written $\frac{\partial P}{\partial s}$, read "partial P by partial s". The curly $\partial$ is a reminder that only one input moves.
+
+      In symbols, nudge $s$ by a small $h$ and keep $a$ exactly as it was:
+
+      $$\frac{\partial P}{\partial s} = \lim_{h \to 0} \frac{P(s + h, a) - P(s, a)}{h}$$
+
+      Swap the roles and you get $\frac{\partial P}{\partial a}$, the rate of change as the house ages with its size fixed. A function of two inputs has two partial derivatives.
+    worked: |
+      This example shows a partial derivative computed by freezing one input, then checked with a nudge.
+
+      Take the house with $s = 10$ and $a = 20$.
+
+      1. Freeze $a = 20$: $P = 30s - 40 - 2s = 28s - 40$.
+      2. Differentiate with respect to $s$: $\frac{\partial P}{\partial s} = 28$, so £28k per extra 10 m².
+      3. Check with a nudge of $h = 0.1$: $P(10.1, 20) = 303 - 40 - 20.2 = 242.8$. The price rose by $2.8$ for a nudge of $0.1$, a rate of $2.8 \div 0.1 = 28$.
+
+      Now freeze $s = 10$ instead: $P = 300 - 2a - a = 300 - 3a$, so $\frac{\partial P}{\partial a} = -3$. Each extra year takes about £3k off this house's price.
+
+      A partial derivative is an ordinary derivative taken while every other input is held fixed.
+    problems:
+      - pdp-meaning
+      - pdp-house-rate
+      - pdp-which-fixed
+      - pdp-sign
+      - pdp-nudge-check
+      - pdp-how-many
+  - id: pd-compute
+    title: Computing partials with the derivative rules
+    explain: |
+      Freezing an input by plugging in a number works, but you'd like a formula for the partial at every point. So keep the frozen input as a letter, and treat that letter exactly like a constant such as 5.
+
+      All the derivative rules still apply. For $\frac{\partial}{\partial x}$, read "the partial derivative with respect to $x$ of":
+
+      - A term with no $x$ in it, such as $3y$ or $e^y$, is a constant, so it contributes 0.
+      - A letter that multiplies an $x$ term stays in front, like a constant multiple. So $\frac{\partial}{\partial x}\,(x^2 y) = 2xy$.
+      - Sums still split into terms, and products of two parts that both contain $x$ still need the product rule.
+
+      Then do the same for each other input in turn, freezing all the rest.
+    worked: |
+      This example shows both partial derivatives of one function, computed term by term.
+
+      Let $f(w, b) = w^2 b + 3b$, with inputs $w$ and $b$.
+
+      **With respect to $w$** (treat $b$ as a constant):
+
+      1. $w^2 b$: $b$ is a constant multiple of $w^2$, giving $2wb$.
+      2. $3b$: no $w$ in it, giving 0.
+      3. So $\frac{\partial f}{\partial w} = 2wb$.
+
+      **With respect to $b$** (treat $w$ as a constant):
+
+      1. $w^2 b$: $w^2$ is a constant multiple of $b$, giving $w^2$.
+      2. $3b$: gives 3.
+      3. So $\frac{\partial f}{\partial b} = w^2 + 3$.
+
+      At $(w, b) = (2, 5)$: $\frac{\partial f}{\partial w} = 2 \cdot 2 \cdot 5 = 20$ and $\frac{\partial f}{\partial b} = 4 + 3 = 7$.
+
+      Decide which letters are frozen, and the rules you already know do the rest.
+    problems:
+      - pdp-compute-x
+      - pdp-value-template
+      - pdp-no-x-term
+      - pdp-exp-log
+      - pdp-product
+      - pdp-compute-y
+  - id: pd-many-inputs
+    title: A squared gap with many inputs
+    explain: |
+      Functions in practice often have many inputs. Suppose a price guess for a house of size $x$ is $wx + b$, where $w$ and $b$ are two dials you can turn. The house really sold for $y$, so the squared gap between guess and truth is
+
+      $$f(w, b) = (wx + b - y)^2$$
+
+      **Which way should you turn each dial to shrink the gap?** The partial derivatives tell you. Here the house's $x$ and $y$ are fixed numbers, and only the dials $w$ and $b$ are inputs.
+
+      Write $g = wx + b - y$ for the gap, so $f = g \cdot g$. The product rule gives $f' = g'g + gg' = 2g\,g'$. So each partial is $2g$ times the partial of the gap itself:
+
+      - $\frac{\partial g}{\partial w} = x$, so $\frac{\partial f}{\partial w} = 2(wx + b - y)\,x$.
+      - $\frac{\partial g}{\partial b} = 1$, so $\frac{\partial f}{\partial b} = 2(wx + b - y)$.
+
+      A positive partial means turning that dial up makes $f$ bigger, so you'd turn it down. With three or more inputs, such as $f(x, y, z)$, the recipe is the same: one partial per input, with all the others frozen.
+    worked: |
+      This example shows the partials of a squared gap at one setting of the dials.
+
+      A house has size $x = 3$ and sold for $y = 1$. The dials are at $w = 1$ and $b = 1$.
+
+      1. The gap: $g = 1 \cdot 3 + 1 - 1 = 3$, so $f = 9$.
+      2. $\frac{\partial f}{\partial w} = 2 \cdot 3 \cdot 3 = 18$.
+      3. $\frac{\partial f}{\partial b} = 2 \cdot 3 = 6$.
+
+      Both partials are positive, so turning either dial down shrinks the gap. The squared gap is 3 times as sensitive to $w$ as to $b$, because $w$ is multiplied by the size $x = 3$.
+
+      Each input gets its own partial, and comparing them shows which input the output is most sensitive to.
+    problems:
+      - pdp-gap-w
+      - pdp-gap-template
+      - pdp-gap-b
+      - pdp-data-fixed
+      - pdp-turn-dial
+      - pdp-three-inputs
+final: pd-explain
+summary: |
+  - A partial derivative such as $\frac{\partial P}{\partial s}$ is the rate of change of the output as one input moves while every other input is held fixed.
+  - To compute it, treat the frozen letters as constants and use the ordinary rules: terms without the moving input contribute 0, and frozen letters multiplying it stay in front.
+  - A function of $n$ inputs has $n$ partials, one per input, and they show which way to move each input and how sensitive the output is to it.

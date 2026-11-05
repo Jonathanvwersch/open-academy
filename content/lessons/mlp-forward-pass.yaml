@@ -1,48 +1,169 @@
 concept: mlp-forward-pass
-version: 1
-fast_path: [objective, summary]
-blocks:
-  - kind: objective
-    md: |
-      **Goal:** compute a two-layer forward pass by hand, count parameters, and track array shapes through a multilayer perceptron.
-  - kind: intuition
-    md: |
-      A multilayer perceptron (MLP) alternates linear layers with activations:
-      $$h = \phi(W_1 x + b_1), \qquad \hat y = W_2 h + b_2.$$
-      The hidden layer $h$ is a set of intermediate values, and the output layer combines them into a result. In code you can process a group of inputs at once, so each array has a leading dimension for the group.
-  - kind: example
-    md: |
-      This example follows a two-layer network from its inputs through hidden values to an output.
+version: 2
+objective: |
+  **Goal:** compute a two-layer forward pass by hand, count a layer's weights and biases, and track the shape of every array as a batch of examples moves through a multilayer perceptron.
+knowledge_points:
+  - id: mlp-layer-of-neurons
+    title: A layer is many neurons at once
+    explain: |
+      One neuron draws one straight boundary. To score a house on several things at once, you'd want several neurons, each with its own weights and bias, all reading the same inputs.
 
-      $x = (1, 2)$, $W_1 = \begin{pmatrix}1 & 0\\ -1 & 1\end{pmatrix}$, $b_1 = (0, -2)$, ReLU, $W_2 = (2, 3)$, $b_2 = 1$.
+      Take a house with size $x_1 = 1$ (hundreds of m²) and distance $x_2 = 2$ km, so $x = (1, 2)$. Two neurons read it:
 
-      1. $W_1x + b_1 = (1, 1) + (0, -2) = (1, -1)$.
-      2. ReLU gives $h = (1, 0)$.
-      3. $\hat y = 2\cdot1 + 3\cdot0 + 1 = 3$.
-  - kind: math
-    md: |
-      $B$ is the number of examples in a batch, $d_\text{in}$ is the number of inputs per example, and $d_\text{out}$ is the number of outputs.
+      - neuron 1 has weights $(1, 0)$ and bias $0$, so its score is $1 \cdot 1 + 0 \cdot 2 + 0 = 1$;
+      - neuron 2 has weights $(-1, 1)$ and bias $-2$, so its score is $-1 \cdot 1 + 1 \cdot 2 - 2 = -1$.
 
-      For one input stored as a column, the layer uses $W_1x$. In a batch, inputs are rows, so $XW^\top$ applies the same weights to every row. With $X \in \mathbb{R}^{B\times d_\text{in}}$ and $W \in \mathbb R^{d_\text{out}\times d_\text{in}}$, the output shape is $B\times d_\text{out}$.
+      Stack each neuron's weights as one row of a matrix $W_1$ and their biases into a vector $b_1$. Then a matrix-vector product computes every score in one go, because it dots each row with $x$:
 
-      Parameters per layer: $d_\text{in}\cdot d_\text{out} + d_\text{out}$.
-  - kind: worked
-    md: |
-      This worked example follows how array shapes and parameter counts change across two layers.
+      $$W_1 = \begin{pmatrix}1 & 0\\ -1 & 1\end{pmatrix}, \quad b_1 = (0, -2), \quad W_1 x + b_1 = (1, -1)$$
 
-      A two-layer network takes 2 inputs, has 2 hidden units, and returns 1 output. For a group of 3 examples:
+      Row $i$ of $W_1$ belongs to neuron $i$, and the entry in row $i$, column $j$ is the weight from input $j$ to neuron $i$.
 
-      | array | shape |
-      |---|---|
-      | input $X$ | (3, 2) |
-      | hidden values $H$ | (3, 2) |
-      | output $\hat Y$ | (3, 1) |
+      Finally apply an activation $\phi$ to each score. Here it's ReLU, giving $h = \phi(W_1 x + b_1) = (1, 0)$. This group of neurons is a **layer**. Its outputs $h$ are **hidden values**: the network computes them itself; they aren't in the data. So it's called a **hidden layer**.
 
-      Parameters: $2\cdot2 + 2 = 6$ in the first layer, plus $2\cdot1 + 1 = 3$ in the second, for a total of $9$.
-  - kind: check
-    exercise: mlp-check-forward
-  - kind: summary
-    md: |
-      - Linear, then activation, repeated, with a linear output layer.
-      - Each layer has $d_\text{in}d_\text{out} + d_\text{out}$ parameters.
-      - Track the group-of-examples dimension in every shape.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" aria-label="A small network: two inputs, x1 = 1 and x2 = 2, each connect to two hidden units h1 and h2 with weights 1 and 0 into h1 and minus 1 and 1 into h2. The hidden units have biases 0 and minus 2 and use ReLU. Both connect to one output with weights 2 and 3 and bias 1.">
+        <line x1="118" y1="70" x2="292" y2="70" stroke="#d4d4d4" stroke-width="2"/>
+        <text x="200" y="62" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">1</text>
+        <line x1="118" y1="190" x2="292" y2="70" stroke="#d4d4d4" stroke-width="2"/>
+        <text x="160" y="118" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">0</text>
+        <line x1="118" y1="70" x2="292" y2="190" stroke="#d4d4d4" stroke-width="2"/>
+        <text x="160" y="152" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">−1</text>
+        <line x1="118" y1="190" x2="292" y2="190" stroke="#d4d4d4" stroke-width="2"/>
+        <text x="200" y="210" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">1</text>
+        <line x1="348" y1="70" x2="512" y2="130" stroke="#d4d4d4" stroke-width="2"/>
+        <text x="440" y="88" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">2</text>
+        <line x1="348" y1="190" x2="512" y2="130" stroke="#d4d4d4" stroke-width="2"/>
+        <text x="440" y="186" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">3</text>
+        <circle cx="90" cy="70" r="28" fill="#ffffff" stroke="#3b82f6" stroke-width="3"/>
+        <text x="90" y="75" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">x₁ = 1</text>
+        <circle cx="90" cy="190" r="28" fill="#ffffff" stroke="#3b82f6" stroke-width="3"/>
+        <text x="90" y="195" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">x₂ = 2</text>
+        <circle cx="320" cy="70" r="28" fill="#ffffff" stroke="#10b981" stroke-width="3"/>
+        <text x="320" y="76" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">h₁</text>
+        <text x="320" y="118" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">b = 0, ReLU</text>
+        <circle cx="320" cy="190" r="28" fill="#ffffff" stroke="#10b981" stroke-width="3"/>
+        <text x="320" y="196" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">h₂</text>
+        <text x="320" y="238" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">b = −2, ReLU</text>
+        <circle cx="540" cy="130" r="28" fill="#ffffff" stroke="#f59e0b" stroke-width="3"/>
+        <text x="540" y="136" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">ŷ</text>
+        <text x="540" y="178" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">b = 1</text>
+        <text x="90" y="268" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">inputs</text>
+        <text x="320" y="268" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">hidden layer</text>
+        <text x="540" y="268" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">output</text>
+      </svg>
+      ```
+    worked: |
+      This example shows a layer of three neurons for one input.
+
+      $$W = \begin{pmatrix}2 & 1\\ 0 & -1\\ 1 & 1\end{pmatrix}, \quad b = (-1, 1, -4), \quad x = (1, 2)$$
+
+      1. **Row 1:** $2 \cdot 1 + 1 \cdot 2 = 4$, plus $-1$ gives $3$.
+      2. **Row 2:** $0 \cdot 1 + (-1) \cdot 2 = -2$, plus $1$ gives $-1$.
+      3. **Row 3:** $1 \cdot 1 + 1 \cdot 2 = 3$, plus $-4$ gives $-1$.
+      4. **ReLU:** $(3, -1, -1)$ becomes $h = (3, 0, 0)$.
+
+      Three rows means three neurons and three hidden values. Two columns means each neuron reads two inputs.
+    problems:
+      - mlpp-layer-values
+      - mlpp-unit-score-template
+      - mlpp-rows-neurons
+      - mlpp-weight-entry
+      - mlpp-why-activation
+      - mlpp-robot-layer
+  - id: mlp-two-layers
+    title: The forward pass through two layers
+    explain: |
+      The hidden values $h$ aren't the answer yet. You still need one number, say a score for how good the house is. So a second layer reads $h$ the same way the first read $x$:
+
+      $$h = \phi(W_1 x + b_1), \qquad \hat y = W_2 h + b_2$$
+
+      Here $W_2$ holds the output neuron's weights, $b_2$ its bias, and $\hat y$ ("y-hat") is the network's prediction. When the output is meant to be any number, like a price or a score, the output layer usually has no activation.
+
+      Running an input through every layer in order is the **forward pass**. A network built this way, layers of neurons with an activation between them, is a **multilayer perceptron** (MLP). The activation between the layers is what stops them collapsing into one weighted sum.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 140" aria-label="The forward pass as four steps left to right: input x = (1, 2); layer 1 scores W1 x + b1 = (1, minus 1); hidden values after ReLU h = (1, 0); output y-hat = W2 h + b2 = 3.">
+        <rect x="10" y="30" width="140" height="70" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="3"/>
+        <text x="80" y="58" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">x</text>
+        <text x="80" y="84" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">(1, 2)</text>
+        <line x1="152" y1="65" x2="172" y2="65" stroke="#737373" stroke-width="2"/>
+        <polygon points="178,65 170,60 170,70" fill="#737373"/>
+        <rect x="170" y="30" width="140" height="70" rx="8" fill="#ffffff" stroke="#737373" stroke-width="3"/>
+        <text x="240" y="58" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">W₁x + b₁</text>
+        <text x="240" y="84" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">(1, −1)</text>
+        <line x1="312" y1="65" x2="332" y2="65" stroke="#737373" stroke-width="2"/>
+        <polygon points="338,65 330,60 330,70" fill="#737373"/>
+        <rect x="330" y="30" width="140" height="70" rx="8" fill="#ffffff" stroke="#10b981" stroke-width="3"/>
+        <text x="400" y="58" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">h = ReLU(·)</text>
+        <text x="400" y="84" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">(1, 0)</text>
+        <line x1="472" y1="65" x2="492" y2="65" stroke="#737373" stroke-width="2"/>
+        <polygon points="498,65 490,60 490,70" fill="#737373"/>
+        <rect x="490" y="30" width="140" height="70" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="3"/>
+        <text x="560" y="58" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">ŷ = W₂h + b₂</text>
+        <text x="560" y="84" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">3</text>
+        <text x="80" y="125" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">input</text>
+        <text x="240" y="125" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">layer 1 scores</text>
+        <text x="400" y="125" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">hidden values</text>
+        <text x="560" y="125" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">output</text>
+      </svg>
+      ```
+    worked: |
+      This example shows a forward pass through the house network for a new house, $x = (3, 4)$.
+
+      Network: $W_1 = \begin{pmatrix}1 & 0\\ -1 & 1\end{pmatrix}$, $b_1 = (0, -2)$, ReLU, $W_2 = (2, 3)$, $b_2 = 1$.
+
+      1. **Layer 1 scores:** $W_1 x = (1 \cdot 3 + 0 \cdot 4,\ -1 \cdot 3 + 1 \cdot 4) = (3, 1)$. Add $b_1$: $(3, -1)$.
+      2. **Activation:** ReLU gives $h = (3, 0)$.
+      3. **Output:** $\hat y = 2 \cdot 3 + 3 \cdot 0 + 1 = 7$.
+
+      Without ReLU, step 3 would use $(3, -1)$ and give $2 \cdot 3 + 3 \cdot (-1) + 1 = 4$. The activation changed the answer.
+    problems:
+      - mlpp-forward-order
+      - mlpp-forward-template
+      - mlpp-forward-fixed
+      - mlpp-output-no-activation
+      - mlpp-hidden-meaning
+      - mlpp-robot-forward
+  - id: mlp-shapes
+    title: Shapes and parameter counts
+    explain: |
+      In code you rarely push one house through at a time. You stack many examples and process the whole group, called a **batch**, in one matrix product. Getting the shapes right is most of the work.
+
+      Write $B$ for the number of examples in the batch, $d_\text{in}$ for the number of inputs per example and $d_\text{out}$ for the number of neurons in the layer.
+
+      - $W$ has one row per neuron and one column per input, so $W \in \mathbb{R}^{d_\text{out} \times d_\text{in}}$.
+      - The batch $X$ stores one example per row: $X \in \mathbb{R}^{B \times d_\text{in}}$.
+      - $XW^\top + b$ applies the same weights to every row. $W^\top$ is $d_\text{in} \times d_\text{out}$, so the inner sizes match and the result is $B \times d_\text{out}$: one row of scores per example. The bias is added to every row.
+
+      Many libraries store the weights already transposed, as $d_\text{in} \times d_\text{out}$, and write `X @ W + b`. The result is the same shape.
+
+      Each layer has $d_\text{in} \cdot d_\text{out}$ weights plus $d_\text{out}$ biases. These are its **parameters**, the numbers training will adjust:
+
+      $$\text{parameters} = d_\text{in} \cdot d_\text{out} + d_\text{out}$$
+    worked: |
+      This example shows shapes and parameter counts through the house network for a batch of $B = 3$ houses.
+
+      The network takes 2 inputs, has 2 hidden neurons, and returns 1 output.
+
+      | array | shape | why |
+      |---|---|---|
+      | input $X$ | $3 \times 2$ | 3 houses, 2 inputs each |
+      | $W_1$ | $2 \times 2$ | 2 neurons, 2 inputs |
+      | hidden $H$ | $3 \times 2$ | $(3 \times 2)(2 \times 2)$ |
+      | $W_2$ | $1 \times 2$ | 1 neuron, 2 inputs |
+      | output $\hat Y$ | $3 \times 1$ | $(3 \times 2)(2 \times 1)$ |
+
+      Parameters: layer 1 has $2 \cdot 2 + 2 = 6$, layer 2 has $2 \cdot 1 + 1 = 3$, so the network has $9$. The batch size never appears in the count: the same 9 numbers are used for every house.
+    problems:
+      - mlpp-batch-shape
+      - mlpp-params-template
+      - mlpp-weight-shape
+      - mlpp-hidden-array-size
+      - mlpp-why-transpose
+      - mlpp-robot-shapes
+final: mlp-explain
+summary: |
+  - A layer computes $\phi(Wx + b)$: each row of $W$ is one neuron's weights, and the activation is applied to every score.
+  - The forward pass runs the layers in order: $h = \phi(W_1 x + b_1)$, then $\hat y = W_2 h + b_2$, usually with no activation on the output.
+  - For a batch $X$ of shape $B \times d_\text{in}$, a layer outputs $B \times d_\text{out}$ and has $d_\text{in} \cdot d_\text{out} + d_\text{out}$ parameters.

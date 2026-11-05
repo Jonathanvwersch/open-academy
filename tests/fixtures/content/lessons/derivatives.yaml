@@ -1,8 +1,28 @@
 concept: derivatives
-version: 1
-blocks:
-  - { kind: objective, md: "Differentiate a simple power function." }
-  - { kind: example, md: "For $f(x)=x^2$, the derivative is $2x$." }
-  - { kind: check, exercise: derivatives-power-rule }
-  - { kind: summary, md: "A derivative gives the local rate of change." }
-fast_path: [objective, summary]
+version: 2
+objective: Practice the central idea of derivatives.
+knowledge_points:
+  - id: derivatives-fixture-1
+    title: Derivative practice
+    explain: A derivative describes the local rate of change of a function.
+    worked: This example shows a simple derivative calculation.
+    problems:
+      [
+        derivatives-fixture-practice-1,
+        derivatives-fixture-practice-2,
+        derivatives-fixture-practice-3,
+        derivatives-fixture-template-1,
+      ]
+  - id: derivatives-fixture-2
+    title: Derivative transfer
+    explain: The derivative also gives the slope of the tangent at a point.
+    worked: This example shows how a derivative describes a tangent slope.
+    problems:
+      [
+        derivatives-fixture-practice-4,
+        derivatives-fixture-practice-5,
+        derivatives-fixture-practice-6,
+        derivatives-fixture-template-2,
+      ]
+final: derivatives-fixture-final
+summary: A derivative measures local change and gives a tangent slope.

@@ -298,7 +298,7 @@ export function createApiRoutes(deps: {
               inArray(attempts.activityId, activityIds),
             ),
           )
-          .orderBy(desc(attempts.createdAt))
+          .orderBy(desc(attempts.createdAt), desc(attempts.attemptNo))
       : [];
     return session
       ? context.json({
@@ -312,11 +312,17 @@ export function createApiRoutes(deps: {
               ? index.lessonsByConcept.has(activity.conceptId)
               : false,
             lastAttempt: activityAttempts
-              .filter((attempt) => attempt.activityId === activity.id)
+              .filter(
+                (attempt) =>
+                  attempt.activityId === activity.id &&
+                  activity.exerciseIds.includes(attempt.exerciseId),
+              )
               .map((attempt) => {
                 const feedback = attempt.feedback as Record<string, unknown>;
+                const answer = attempt.answer;
                 return {
                   exerciseId: attempt.exerciseId,
+                  status: feedback.status ?? 'graded',
                   correct: attempt.correct,
                   attemptNo: attempt.attemptNo,
                   retryAllowed:
@@ -325,6 +331,15 @@ export function createApiRoutes(deps: {
                   rubric: feedback.rubric,
                   exemplar: feedback.exemplar,
                   solution: feedback.solution,
+                  yourAnswer:
+                    (typeof feedback.yourAnswer === 'string' && feedback.yourAnswer) ||
+                    (typeof answer === 'object' &&
+                    answer !== null &&
+                    !Array.isArray(answer) &&
+                    'text' in answer &&
+                    typeof answer.text === 'string'
+                      ? answer.text
+                      : undefined),
                 };
               })[0],
           })),
@@ -349,6 +364,18 @@ export function createApiRoutes(deps: {
     const completed = body.data.complete === true;
     const { complete: _complete, ...progress } = body.data;
     const now = requestNow(context);
+    const lessonIndex =
+      body.data.lessonRunnerContinued === true &&
+      !completed &&
+      activity.kind === 'learn' &&
+      activity.conceptId
+        ? await content()
+        : null;
+    const lesson = activity.conceptId
+      ? lessonIndex?.lessonsByConcept.get(activity.conceptId)
+      : undefined;
+    const exerciseIds =
+      lesson?.knowledge_points?.length && lesson.final ? [lesson.final] : activity.exerciseIds;
     const [updated] = await db
       .update(sessionActivities)
       .set({
@@ -356,6 +383,7 @@ export function createApiRoutes(deps: {
         status: completed ? 'completed' : 'in_progress',
         startedAt: activity.startedAt ?? now,
         completedAt: completed ? now : null,
+        ...(exerciseIds !== activity.exerciseIds ? { exerciseIds } : {}),
       })
       .where(eq(sessionActivities.id, activity.id))
       .returning();
@@ -867,6 +895,8 @@ export function createApiRoutes(deps: {
       gradedBy,
       feedback: {
         message: result.feedback,
+        status: result.status,
+        ...('yourAnswer' in result ? { yourAnswer: result.yourAnswer } : {}),
         ...('rubric' in result ? { rubric: result.rubric } : {}),
         ...(exercise.type === 'explain'
           ? {
@@ -949,7 +979,10 @@ export function createApiRoutes(deps: {
       let learningGoalMet = false;
       if (activity.kind === 'learn' && activity.conceptId) {
         const mastery = masteryResult.mastery as MasteryRecord;
-        learningGoalMet = mastery.independentItemIds.length >= 2 && mastery.lastIndependentCorrect;
+        const finalExercise = index.lessonsByConcept.get(activity.conceptId)?.final === exercise.id;
+        learningGoalMet =
+          finalExercise ||
+          (mastery.independentItemIds.length >= 2 && mastery.lastIndependentCorrect);
         if (!learningGoalMet) {
           const recentIds = new Set(
             (await repo.recentAttempts(100))

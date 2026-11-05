@@ -150,10 +150,13 @@ export async function loadContent(
   const exercisesById = new Map(data.exercises.map(({ value }) => [value.id, value]));
   for (const lesson of lessonInputs) {
     data.lessons.push({
-      value: normalizeLesson(lesson.value, (exerciseId) => {
-        const exercise = exercisesById.get(exerciseId);
-        return exercise?.type === 'numeric' && 'answer_expr' in exercise;
-      }),
+      value:
+        'blocks' in lesson.value
+          ? lesson.value
+          : normalizeLesson(lesson.value, (exerciseId) => {
+              const exercise = exercisesById.get(exerciseId);
+              return exercise?.type === 'numeric' && 'answer_expr' in exercise;
+            }),
       file: lesson.file,
     });
   }

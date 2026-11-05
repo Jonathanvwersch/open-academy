@@ -82,3 +82,579 @@ exercises:
         }
       - { id: c, text: "$w = (1, -1)$, $b = 0$", correct: false, category: math_error }
     solution: "Scores for (0,0),(0,1),(1,0),(1,1): $-0.5, 0.5, 0.5, 1.5$, giving outputs $0, 1, 1, 1$."
+  - id: perc-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain in 2–4 sentences what a perceptron computes from its inputs, and why a single perceptron can't compute XOR of two yes/no inputs."
+    rubric:
+      - {
+          id: r1,
+          criterion: "Describes the weighted sum of the inputs plus a bias, passed through the step rule (1 if the score is positive, else 0)",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "Explains that the boundary where the score is zero is a straight line, and XOR's yes corners (0,1) and (1,0) are diagonally opposite, so no single line separates them from (0,0) and (1,1)",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r3,
+          criterion: "Mentions that the weights set the line's direction and the bias shifts it, or that AND and OR do work",
+          weight: 1,
+        }
+    exemplar: "A perceptron multiplies each input by its weight, adds the results and a bias to get a score, then outputs 1 if the score is above zero and 0 otherwise. The inputs that score exactly zero form a straight line (a hyperplane with more inputs), so the perceptron can only say yes on one side of a straight boundary; the weights set its direction and the bias slides it. XOR needs yes at (0,1) and (1,0) and no at (0,0) and (1,1). Those pairs are diagonally opposite corners of a square, so any straight line that puts both yes corners on one side also puts a no corner there."
+  - id: percp-output
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: |
+      A shortlisting neuron has weights $w = (1, -2)$ and bias $b = -0.5$, and uses the step rule: output 1 if the score is above 0, otherwise 0.
+
+      A house has size $x_1 = 2$ (200 m²) and is $x_2 = 0.5$ km from the station. What does the neuron output?
+    hints:
+      - "First compute the score $z = w_1 x_1 + w_2 x_2 + b$."
+      - "Then apply the step rule to the score."
+    answer: 1
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 0.5,
+          tolerance: { abs: 0.001 },
+          category: misunderstood_definition,
+          feedback: "0.5 is the score $z$. The output is the step rule applied to the score.",
+        }
+      - {
+          answer: 1.5,
+          tolerance: { abs: 0.001 },
+          category: math_error,
+          feedback: "That score leaves out the bias. Add $b = -0.5$ before applying the step rule.",
+        }
+    solution: "The score is $z = 1 \\cdot 2 + (-2) \\cdot 0.5 - 0.5 = 2 - 1 - 0.5 = 0.5$. It's above 0, so the step rule outputs 1: shortlist it."
+  - id: percp-score-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: |
+      A neuron has weights $w = ({{=w1}}, {{=w2}})$ and bias $b = {{=b}}$. A house has size $x_1 = {{=x1}}$ (hundreds of m²) and is $x_2 = {{=x2}}$ km from the station.
+
+      What is the score $z = w \cdot x + b$?
+    hints:
+      - "Multiply each input by its weight, add the two results, then add the bias."
+    solution: |
+      $z = {{=w1}} \cdot {{=x1}} + ({{=w2}}) \cdot {{=x2}} + ({{=b}}) = {{=w1*x1 + w2*x2 + b}}$.
+
+      The step rule then outputs 1 if this score is above 0 and 0 otherwise. The score itself says how far the house is from the bar.
+    answer_expr: "w1 * x1 + w2 * x2 + b"
+    params:
+      w1: { min: 1, max: 4 }
+      w2: { min: -3, max: -1 }
+      b: { min: -3, max: -1 }
+      x1: { min: 0.5, max: 2, step: 0.5 }
+      x2: { min: 0.5, max: 3, step: 0.5 }
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "w1 * x1 + w2 * x2",
+          category: incomplete_explanation,
+          feedback: "That's the weighted sum without the bias. Add $b$ to get the score.",
+        }
+      - {
+          answer_expr: "w1 * x1 - w2 * x2 + b",
+          category: math_error,
+          feedback: "The second weight is negative, so the distance term lowers the score.",
+        }
+  - id: percp-score-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A perceptron uses the step rule: output 1 if $z > 0$, otherwise 0. A house's score comes out at exactly $z = 0$. What does the perceptron output?"
+    options:
+      - { id: a, text: "0, because the rule needs a score above 0", correct: true }
+      - {
+          id: b,
+          text: "1, because a score of 0 reaches the bar",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The rule is strict: only a score greater than 0 gives 1.",
+        }
+      - {
+          id: c,
+          text: "0.5, because the house is halfway",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The step rule only ever outputs 0 or 1.",
+        }
+      - {
+          id: d,
+          text: "Nothing, because a score of 0 is undefined",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A score of 0 is fine. The rule says what to do with it: not above 0, so output 0.",
+        }
+    solution: "The step rule outputs 1 only when $z > 0$. A score of exactly 0 isn't above 0, so the output is 0. Such a house sits right on the boundary."
+  - id: percp-weight-sign
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A shortlisting neuron has score $z = 2x_1 - x_2 - 1$, where $x_2$ is the distance to the station in km. A house moves 1 km farther from the station with everything else the same. What happens to its score?"
+    options:
+      - { id: a, text: "It drops by 1, because the distance weight is $-1$", correct: true }
+      - {
+          id: b,
+          text: "It rises by 1, because the distance went up by 1",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The change is the weight times the change in input: $-1 \\times 1 = -1$.",
+        }
+      - {
+          id: c,
+          text: "It drops by 2, because 2 is the first weight",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The weight 2 belongs to size, which didn't change.",
+        }
+      - {
+          id: d,
+          text: "It stays the same, because only the bias sets the score",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Every input contributes its weight times its value to the score.",
+        }
+    solution: "The distance contributes $-1 \\cdot x_2$ to the score, so 1 more km lowers the score by 1. A negative weight means that input counts against a yes."
+  - id: percp-bias-role
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "You change a shortlisting neuron's bias from $b = -1$ to $b = -3$ and keep the weights. What changes?"
+    options:
+      - { id: a, text: "Every score drops by 2, so fewer houses get a yes", correct: true }
+      - {
+          id: b,
+          text: "Every score rises by 2, so more houses get a yes",
+          correct: false,
+          category: math_error,
+          feedback: "$-3$ is smaller than $-1$, so adding it gives each score 2 less.",
+        }
+      - {
+          id: c,
+          text: "Size starts to count three times as much as before",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "How much an input counts is its weight. The bias is added once, whatever the inputs are.",
+        }
+      - {
+          id: d,
+          text: "Nothing, because the bias doesn't affect the output",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The bias is part of the score, so it can move a house from one side of the bar to the other.",
+        }
+    solution: "The bias is added to every score, so lowering it by 2 lowers every score by 2. Some houses that scored just above 0 now score below 0, so the bar is higher."
+  - id: percp-robot-gripper
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A robot gripper closes when a neuron outputs 1. The neuron's score is $z = 3p - 2d - 1$, where $p$ is the pressure reading on the fingers and $d$ is the gap between them in cm. Which numbers are the neuron's weights?"
+    options:
+      - { id: a, text: "3 and $-2$", correct: true }
+      - {
+          id: b,
+          text: "$p$ and $d$",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "$p$ and $d$ are the inputs: they change every time the sensors are read.",
+        }
+      - {
+          id: c,
+          text: "$-1$ only",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "$-1$ is added on its own, not multiplied by an input, so it's the bias.",
+        }
+      - {
+          id: d,
+          text: "3, $-2$ and $-1$",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "$-1$ isn't multiplied by an input, so it's the bias rather than a weight.",
+        }
+    solution: "The weights multiply the inputs: 3 multiplies $p$ and $-2$ multiplies $d$. The $-1$ on its own is the bias, and $p$ and $d$ are the inputs."
+  - id: percp-boundary-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a perceptron's decision boundary?"
+    options:
+      - { id: a, text: "The inputs whose score $w \\cdot x + b$ is exactly 0", correct: true }
+      - {
+          id: b,
+          text: "The inputs for which the perceptron outputs 1",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That's the whole yes side. The boundary is where the yes side meets the no side.",
+        }
+      - {
+          id: c,
+          text: "The inputs whose score is as large as possible",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The score keeps growing as you move further into the yes side; the boundary is where it's 0.",
+        }
+      - {
+          id: d,
+          text: "The line through the origin in the direction of $w$",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The boundary is set by both the weights and the bias, and the bias moves it away from the origin.",
+        }
+    solution: "The boundary is $\\{x : w \\cdot x + b = 0\\}$, the inputs that score exactly 0. Inputs on one side score above 0 and get 1; inputs on the other side get 0."
+  - id: percp-crossing-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: |
+      A shortlisting neuron has weights $w = ({{=w1}}, {{=w2}})$ and bias $b = {{=b}}$, where $x_1$ is size (hundreds of m²) and $x_2$ is distance to the station (km).
+
+      Its decision boundary crosses the size axis, where $x_2 = 0$, at what value of $x_1$? Give at least two decimal places if it isn't whole.
+    hints:
+      - "On the boundary the score is 0."
+      - "Set $x_2 = 0$, so the score is $w_1 x_1 + b = 0$, and solve for $x_1$."
+    solution: |
+      With $x_2 = 0$ the boundary is ${{=w1}} x_1 + ({{=b}}) = 0$, so $x_1 = {{=-b}} / {{=w1}} = {{=-b/w1}}$.
+
+      A house of that size right at the station scores exactly 0.
+    answer_expr: "-b / w1"
+    params:
+      w1: { min: 1, max: 4 }
+      w2: { min: -3, max: -1 }
+      b: { min: -6, max: -1 }
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - {
+          answer_expr: "b / w1",
+          category: math_error,
+          feedback: "Check the sign: moving $b$ to the other side of $w_1 x_1 + b = 0$ gives $w_1 x_1 = -b$.",
+        }
+  - id: percp-which-side
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A neuron has $w = (2, -1)$ and $b = -1$, with $x_1$ the size in hundreds of m² and $x_2$ the distance in km. Which house lies on the yes side of its boundary?"
+    options:
+      - { id: a, text: "Size 1.5, 1.5 km away", correct: true }
+      - {
+          id: b,
+          text: "Size 0.5, 0.2 km away",
+          correct: false,
+          category: math_error,
+          feedback: "Its score is $1 - 0.2 - 1 = -0.2$, which is below 0.",
+        }
+      - {
+          id: c,
+          text: "Size 1.0, 1.2 km away",
+          correct: false,
+          category: math_error,
+          feedback: "Its score is $2 - 1.2 - 1 = -0.2$, which is below 0.",
+        }
+      - {
+          id: d,
+          text: "Size 0.6, 0.4 km away",
+          correct: false,
+          category: math_error,
+          feedback: "Its score is $1.2 - 0.4 - 1 = -0.2$, which is below 0.",
+        }
+    solution: "The house of size 1.5, 1.5 km away scores $3 - 1.5 - 1 = 0.5 > 0$, so it's on the yes side. The other three each score $-0.2$."
+  - id: percp-bias-shift
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A neuron's boundary is $2x_1 - x_2 - 1 = 0$. You change only the bias, from $-1$ to $-2$. What happens to the boundary line?"
+    options:
+      - { id: a, text: "It slides sideways without turning", correct: true }
+      - {
+          id: b,
+          text: "It turns around the point where it meets the origin",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The weights set the line's direction, and they didn't change.",
+        }
+      - {
+          id: c,
+          text: "It stays put and the yes and no sides swap",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The sides swap only if you flip the signs of all the weights and the bias together.",
+        }
+      - {
+          id: d,
+          text: "It bends into a curve",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "$w_1 x_1 + w_2 x_2 + b = 0$ is a straight line for any bias.",
+        }
+    solution: "The weights fix the direction of the line and the bias shifts it. With $b = -2$ the line crosses the size axis at $x_1 = 1$ instead of $0.5$, parallel to the old line."
+  - id: percp-hyperplane
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A shortlisting neuron now reads three inputs: size, distance to the station and the house's age. What shape is its decision boundary in the three-dimensional space of inputs?"
+    options:
+      - { id: a, text: "A flat plane", correct: true }
+      - {
+          id: b,
+          text: "A straight line",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A line is the boundary for two inputs. With three inputs, $w \\cdot x + b = 0$ is a plane.",
+        }
+      - {
+          id: c,
+          text: "A curved surface",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The score is a weighted sum, so the set where it's zero is flat, never curved.",
+        }
+      - {
+          id: d,
+          text: "A single point",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Many different inputs score exactly 0, and together they form a flat plane.",
+        }
+    solution: "With three inputs, $w_1 x_1 + w_2 x_2 + w_3 x_3 + b = 0$ is a flat plane. With more inputs it's a hyperplane, which is still flat."
+  - id: percp-no-curve
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A buyer wants every house within 1 km of a park, in any direction. The inputs are a house's position east and north of the park, in km. Can one perceptron say yes to exactly those houses?"
+    options:
+      - {
+          id: a,
+          text: "No, because its boundary is straight but this one is a circle",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Yes, if both weights are set to 1",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "With any weights the boundary $w_1 x_1 + w_2 x_2 + b = 0$ is a straight line.",
+        }
+      - {
+          id: c,
+          text: "Yes, if the bias is set to $-1$",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The bias only slides the line. It can't bend it into a circle.",
+        }
+      - {
+          id: d,
+          text: "No, because positions can be negative numbers",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Negative inputs are fine. The problem is the shape of the boundary.",
+        }
+    solution: "The yes region is a disc around the park, and its edge is a circle. A perceptron's boundary is always a straight line, so it can only split the map into two halves."
+  - id: percp-xor-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "With yes/no inputs $x_1$ (garden) and $x_2$ (near the station), why can no single perceptron output 1 for exactly one of the two, and 0 otherwise?"
+    options:
+      - {
+          id: a,
+          text: "The yes corners (0,1) and (1,0) are diagonal, so no straight line can split them from the no corners",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "A perceptron can't have negative weights, and this pattern needs them",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Negative weights are allowed. The limit is the straight boundary.",
+        }
+      - {
+          id: c,
+          text: "The pattern needs more than two inputs, and the perceptron only has two",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "XOR is defined on exactly these two inputs. The trouble is where its yes corners sit.",
+        }
+      - {
+          id: d,
+          text: "The step rule can only output 1 for one of the four houses at a time",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "OR outputs 1 for three of the four houses, so that isn't the limit.",
+        }
+    solution: "A perceptron's yes region is one side of a straight line. XOR wants yes at (0,1) and (1,0) and no at (0,0) and (1,1), and any line with both yes corners on one side also has a no corner there."
+  - id: percp-count-yes-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: |
+      A perceptron reads two yes/no inputs: $x_1 = 1$ if the house has a garden and $x_2 = 1$ if it's near the station, otherwise 0. It has weights $w = ({{=w1}}, {{=w2}})$, bias $b = {{=b}}$ and the step rule (output 1 if the score is above 0).
+
+      For how many of the four houses $(0,0), (0,1), (1,0), (1,1)$ does it output 1?
+    hints:
+      - "For $(0,0)$ the score is just $b$; for $(1,0)$ it's $w_1 + b$."
+      - "Compute all four scores and count the ones above 0."
+    solution: |
+      The four scores are:
+
+      - $(0,0)$: $b = {{=b}}$
+      - $(0,1)$: $w_2 + b = {{=w2 + b}}$
+      - $(1,0)$: $w_1 + b = {{=w1 + b}}$
+      - $(1,1)$: $w_1 + w_2 + b = {{=w1 + w2 + b}}$
+
+      {{=(b > 0) + (w1 + b > 0) + (w2 + b > 0) + (w1 + w2 + b > 0)}} of them are above 0, so that many houses get a 1.
+    answer_expr: "(b > 0) + (w2 + b > 0) + (w1 + b > 0) + (w1 + w2 + b > 0)"
+    params:
+      w1: { min: -2, max: 2, step: 0.5 }
+      w2: { min: -2, max: 2, step: 0.5 }
+      b: { min: -2, max: 1.5, step: 0.5 }
+    constraints: ["b != 0", "w1 + b != 0", "w2 + b != 0", "w1 + w2 + b != 0", "w1 != 0", "w2 != 0"]
+    tolerance: { abs: 0.001 }
+  - id: percp-or-bias
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A perceptron has weights $w = (1, 1)$ and the step rule, on yes/no inputs. Which bias makes it compute OR: 1 if at least one input is 1?"
+    options:
+      - { id: a, text: "$b = -0.5$", correct: true }
+      - {
+          id: b,
+          text: "$b = -1.5$",
+          correct: false,
+          category: math_error,
+          feedback: "The scores are $-1.5, -0.5, -0.5, 0.5$, so only (1,1) gets a 1. That's AND.",
+        }
+      - {
+          id: c,
+          text: "$b = 0.5$",
+          correct: false,
+          category: math_error,
+          feedback: "Then (0,0) scores 0.5 and gets a 1 too, so every house gets a yes.",
+        }
+      - {
+          id: d,
+          text: "$b = -2.5$",
+          correct: false,
+          category: math_error,
+          feedback: "The highest score is $2 - 2.5 = -0.5$, so no house gets a yes.",
+        }
+    solution: "With $b = -0.5$ the scores for (0,0), (0,1), (1,0), (1,1) are $-0.5, 0.5, 0.5, 1.5$, giving $0, 1, 1, 1$: OR."
+  - id: percp-nand-output
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A perceptron has weights $w = (-1, -1)$, bias $b = 1.5$ and the step rule. What does it output for the house with a garden that's also near the station, $x = (1, 1)$?"
+    answer: 0
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: -0.5,
+          tolerance: { abs: 0.001 },
+          category: misunderstood_definition,
+          feedback: "$-0.5$ is the score. Apply the step rule to it.",
+        }
+    solution: "The score is $-1 - 1 + 1.5 = -0.5$, which isn't above 0, so the output is 0. This perceptron says yes unless both inputs are 1."
+  - id: percp-which-pattern
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "On yes/no inputs $(x_1, x_2)$, which of these patterns can a single perceptron compute?"
+    options:
+      - { id: a, text: "Output 1 only for (0,0)", correct: true }
+      - {
+          id: b,
+          text: "Output 1 only for (0,1) and (1,0)",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That's XOR: its yes corners are diagonal, so no straight line splits them off.",
+        }
+      - {
+          id: c,
+          text: "Output 1 only for (0,0) and (1,1)",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "These yes corners are diagonal too, so no straight line splits them off.",
+        }
+      - {
+          id: d,
+          text: "None of these: two inputs are too few",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Two inputs are enough for AND and OR, and for cutting off one corner.",
+        }
+    solution: "A single corner can always be cut off by a straight line; for example $w = (-1, -1)$, $b = 0.5$ outputs 1 only for (0,0). The two diagonal patterns can't be split by one line."
+  - id: percp-robot-bumpers
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot has a left and a right bump sensor, each reading 1 when pressed and 0 otherwise. It should turn when exactly one sensor is pressed, and not when neither or both are. Can a single perceptron make this decision?"
+    options:
+      - { id: a, text: "No, because this is XOR and its yes cases are diagonal", correct: true }
+      - {
+          id: b,
+          text: "Yes, with weights $(1, 1)$ and bias $-0.5$",
+          correct: false,
+          category: math_error,
+          feedback: "That's OR: it also turns when both sensors are pressed.",
+        }
+      - {
+          id: c,
+          text: "Yes, with weights $(1, 1)$ and bias $-1.5$",
+          correct: false,
+          category: math_error,
+          feedback: "That's AND: it turns only when both sensors are pressed.",
+        }
+      - {
+          id: d,
+          text: "No, because sensor readings can't be inputs",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Any number can be an input. The problem is the pattern of yes cases.",
+        }
+    solution: "Turning for (0,1) and (1,0) but not (0,0) or (1,1) is XOR. Those yes cases are opposite corners of the square, so no straight boundary separates them."

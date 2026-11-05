@@ -109,13 +109,40 @@ test('wrong numeric answers offer one persisted retry', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Try again · 1 try left' })).toBeVisible();
 });
 
-test('knowledge-point lesson review shows explanations and worked examples without problems', async ({
+test('knowledge-point lesson review shows explanations, final check and summary without practice problems', async ({
   page,
 }) => {
   await page.goto('/lessons/supervised-learning');
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
   await expect(page.getByText('Worked example').first()).toBeVisible();
   await expect(page.getByTestId('lesson-problem')).toHaveCount(0);
+  await expect(page.getByText(/Pick any real problem you care about/)).toBeVisible();
+  const finalCheck = page.getByRole('heading', { name: 'Check yourself', exact: true });
+  const finalCheckCard = finalCheck.locator('xpath=../..');
+  const summary = page.getByRole('heading', { name: 'Key takeaways', exact: true });
+  await expect(finalCheck).toBeVisible();
+  await expect(finalCheckCard.getByRole('button', { name: 'Show answer' })).toBeVisible();
+  await finalCheckCard.getByRole('button', { name: 'Show answer' }).click();
+  await expect(
+    finalCheckCard.getByText('No answer is available for this check.', { exact: true }),
+  ).toBeVisible();
+  await expect(summary).toBeVisible();
+  expect(
+    await page.evaluate(() => {
+      const headings = [...document.querySelectorAll('h1, h2, h3, h4, h5, h6')];
+      const check = headings.find((heading) => heading.textContent?.trim() === 'Check yourself');
+      const takeaways = headings.find((heading) => heading.textContent?.trim() === 'Key takeaways');
+      const points = [...document.querySelectorAll('article h2')];
+      const lastPoint = points.at(-1);
+      return Boolean(
+        lastPoint &&
+          check &&
+          takeaways &&
+          (lastPoint.compareDocumentPosition(check) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 &&
+          (check.compareDocumentPosition(takeaways) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      );
+    }),
+  ).toBe(true);
   await page.screenshot({ path: `${screenshotDir}/knowledge-point-lesson.png`, fullPage: true });
 });
 
@@ -139,6 +166,10 @@ test('legacy lesson review presents labelled blocks as cards with checks inside'
             {
               kind: 'example',
               md: 'Keep copies of one sale together in the same split.',
+            },
+            {
+              kind: 'faded',
+              md: '```svg\n<svg viewBox="0 0 10 10" aria-label="Data split diagram"><rect x="1" y="1" width="8" height="8" fill="#abc"/></svg>\n```',
             },
             {
               kind: 'math',
@@ -171,17 +202,21 @@ test('legacy lesson review presents labelled blocks as cards with checks inside'
   );
   await page.goto('/lessons/train-test-split');
   await expect(page.getByRole('heading', { name: 'Training and evaluation splits' })).toBeVisible();
-  for (const label of [
-    'Goal',
-    'Example',
-    'Key formula',
-    'Check yourself',
-    'Fill in the steps',
-    'Key takeaways',
-  ]) {
+  await expect(page.getByRole('img', { name: 'Data split diagram' })).toBeVisible();
+  for (const [label, count] of [
+    ['Goal', 1],
+    ['Example', 1],
+    ['Key formula', 1],
+    ['Check yourself', 1],
+    ['Fill in the steps', 2],
+    ['Key takeaways', 1],
+  ] as const) {
     const title = page.getByRole('heading', { name: label, exact: true });
-    await expect(title).toBeVisible();
-    await expect(title.locator('xpath=../..')).toHaveAttribute('data-slot', 'card');
+    await expect(title).toHaveCount(count);
+    for (const heading of await title.all()) {
+      await expect(heading).toBeVisible();
+      await expect(heading.locator('xpath=../..')).toHaveAttribute('data-slot', 'card');
+    }
   }
   const intuition = page.getByText(
     'A model that has seen the answers will look better than it is.',

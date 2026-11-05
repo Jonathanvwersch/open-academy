@@ -1,8 +1,28 @@
 concept: linear-models
-version: 1
-blocks:
-  - { kind: objective, md: "Predict a target with a weighted sum of inputs." }
-  - { kind: example, md: "A one-feature model predicts $wx+b$." }
-  - { kind: check, exercise: linear-models-predict }
-  - { kind: summary, md: "Weights scale features and the bias shifts predictions." }
-fast_path: [objective, summary]
+version: 2
+objective: Practice predictions from linear models.
+knowledge_points:
+  - id: linear-models-fixture-1
+    title: Make a prediction
+    explain: A linear model multiplies each input by a weight and adds the results.
+    worked: This example shows a prediction from a linear model.
+    problems:
+      [
+        linear-models-fixture-practice-1,
+        linear-models-fixture-practice-2,
+        linear-models-fixture-practice-3,
+        linear-models-fixture-template-1,
+      ]
+  - id: linear-models-fixture-2
+    title: Interpret a coefficient
+    explain: A weight describes how its input changes the model's prediction.
+    worked: This example shows how one weight changes a prediction.
+    problems:
+      [
+        linear-models-fixture-practice-4,
+        linear-models-fixture-practice-5,
+        linear-models-fixture-practice-6,
+        linear-models-fixture-template-2,
+      ]
+final: linear-models-fixture-final
+summary: A linear model combines weighted inputs to make predictions.

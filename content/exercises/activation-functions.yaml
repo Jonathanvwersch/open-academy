@@ -110,3 +110,519 @@ exercises:
           weight: 1,
         }
     exemplar: "Stacking linear layers gives another linear layer, so without a nonlinearity a deep network is no more expressive than a single layer. During backprop each activation's derivative multiplies the gradient, and saturating functions such as sigmoid have derivatives at most 0.25, so gradients vanish over many layers. ReLU passes gradients with slope 1 when active, but units can die if they are always negative."
+  - id: act-explain-layers
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain in 2–4 sentences why a network needs a nonlinear activation between its layers, and what the slopes of ReLU and sigmoid tell you about how their outputs respond to a change in the score."
+    rubric:
+      - {
+          id: r1,
+          criterion: "Explains that a weighted sum plus bias fed into another weighted sum plus bias is still one weighted sum plus bias, so without a nonlinear activation extra layers add nothing",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "States that ReLU's slope is 1 for positive scores and 0 for negative ones, and that sigmoid's slope is at most 0.25 (at z = 0) and near 0 far from 0",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r3,
+          criterion: "Mentions saturation (a flat sigmoid barely responds) or dead ReLU units that always output 0",
+          weight: 1,
+        }
+    exemplar: "If you feed one weighted sum plus bias into another, you can multiply it out into a single weighted sum plus bias, so a stack of layers with nothing between them draws the same straight boundaries as one layer. A nonlinear activation such as ReLU or sigmoid bends each score, which stops the stack collapsing. ReLU's slope is 1 for a positive score, so changes pass through in full, and 0 for a negative score, so they're blocked; a unit that is always negative is dead. Sigmoid's slope is at most 0.25 at z = 0 and close to 0 far from it, where the curve is flat and the output barely responds."
+  - id: actp-stack-collapse
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A house score goes through two rules with nothing between them: $u = 4x + 2$, then $y = 3u - 1$. What kind of rule is $y$ in terms of $x$?"
+    options:
+      - { id: a, text: "A single straight-line rule, $y = 12x + 5$", correct: true }
+      - {
+          id: b,
+          text: "A curve, because two rules were applied one after the other",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Substitute: $3(4x + 2) - 1 = 12x + 5$. Applying straight-line rules in turn gives another straight line.",
+        }
+      - {
+          id: c,
+          text: "A straight line with slope $4 + 3 = 7$",
+          correct: false,
+          category: math_error,
+          feedback: "The slopes multiply, not add: each step of $x$ adds 4 to $u$, and each step of $u$ adds 3 to $y$, so $4 \\times 3 = 12$.",
+        }
+    solution: "$y = 3(4x + 2) - 1 = 12x + 6 - 1 = 12x + 5$. It's one straight line, so the second rule added no bend."
+  - id: actp-collapse-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: |
+      Two rules are stacked with no activation between them: $u = {{=a}}x + {{=c}}$, then $y = {{=d}}u + {{=e}}$.
+
+      The stack equals a single rule $y = mx + k$. What is the intercept $k$?
+    hints:
+      - "Substitute the first rule into the second and multiply out the bracket."
+    solution: |
+      $y = {{=d}}({{=a}}x + {{=c}}) + {{=e}} = {{=a*d}}x + {{=d*c}} + {{=e}}$, so $k = {{=d*c + e}}$.
+
+      The stack is one straight line, $y = {{=a*d}}x + {{=d*c + e}}$.
+    answer_expr: "d * c + e"
+    params:
+      a: { min: 2, max: 5 }
+      c: { min: 1, max: 5 }
+      d: { min: 2, max: 4 }
+      e: { min: 1, max: 6 }
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "c + e",
+          category: math_error,
+          feedback: "The second rule multiplies all of $u$ by its slope, including the first intercept. Multiply $c$ by $d$ before adding $e$.",
+        }
+      - {
+          answer_expr: "d * c",
+          category: incomplete_explanation,
+          feedback: "You've multiplied out the bracket but left out the second rule's own intercept. Add $e$.",
+        }
+  - id: actp-many-layers
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Network A has one layer of weighted sums plus biases. Network B stacks ten such layers with no activation between them. Both use two inputs and give a yes/no score. Which is true?"
+    options:
+      - { id: a, text: "Both can only draw a straight boundary between yes and no", correct: true }
+      - {
+          id: b,
+          text: "B can draw curved boundaries because it has more layers",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Without activations, the ten layers multiply out into one weighted sum plus bias, so B's boundary is still straight.",
+        }
+      - {
+          id: c,
+          text: "B can draw ten straight boundaries, one per layer",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The layers combine into a single rule, which has a single straight boundary.",
+        }
+    solution: "Ten stacked weighted sums plus biases collapse into one, so B is no more flexible than A: both draw one straight boundary."
+  - id: actp-what-bends
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "You want a stack of layers to be able to draw a curved boundary. What do you need to add?"
+    options:
+      - {
+          id: a,
+          text: "A function whose graph isn't a straight line, applied to each score between the layers",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "More layers of weighted sums plus biases",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Any number of these layers collapses into one, so the boundary stays straight.",
+        }
+      - {
+          id: c,
+          text: "A bias in every layer",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "A bias only shifts a line. A weighted sum plus bias is still a straight-line rule.",
+        }
+      - {
+          id: d,
+          text: "Larger weights",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Larger weights make a line steeper, but it's still a line.",
+        }
+    solution: "Only a nonlinear activation between the layers stops them multiplying out into a single straight-line rule."
+  - id: actp-linear-candidate
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "Which of these candidate activations $\\phi(z)$, placed between layers, would still leave the whole network a single straight-line rule?"
+    options:
+      - { id: a, text: "$\\phi(z) = 3z + 2$", correct: true }
+      - {
+          id: b,
+          text: "$\\phi(z) = 1$ if $z > 0$, else $0$ (the step rule)",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The step rule jumps at 0, so its graph isn't a straight line. It does bend the stack.",
+        }
+      - {
+          id: c,
+          text: "$\\phi(z) = z^2$",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "$z^2$ is a curve, so it would stop the layers collapsing.",
+        }
+    solution: "$3z + 2$ is itself a weighted sum plus bias, so feeding it into the next layer still multiplies out into one straight-line rule."
+  - id: actp-robot-linear
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A robot''s grip strength should rise slowly for light objects and sharply for heavy ones, a curved relationship. An engineer builds a controller from three layers of weighted sums plus biases, with no activation between them, and says "three layers is deep enough to learn the curve". What''s wrong?'
+    options:
+      - {
+          id: a,
+          text: "The three layers collapse into one straight-line rule, so it can't follow the curve",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Nothing; three layers are enough for a curve",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Depth only helps with a nonlinear activation between layers. Without it, the layers multiply out into one weighted sum plus bias.",
+        }
+      - {
+          id: c,
+          text: "It needs more layers of the same kind",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "More layers of the same kind still collapse into a single straight line.",
+        }
+    solution: "Without activations, the stack equals one weighted sum plus bias, so grip strength can only rise at a constant rate. Adding a nonlinear activation such as ReLU between the layers lets it bend."
+  - id: actp-relu-values
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Apply ReLU to each score in $z = (-3, 1.5, 0)$."
+    options:
+      - { id: a, text: "$(0, 1.5, 0)$", correct: true }
+      - {
+          id: b,
+          text: "$(3, 1.5, 0)$",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "ReLU doesn't flip negative scores to positive; it sets them to 0.",
+        }
+      - {
+          id: c,
+          text: "$(0, 1, 0)$",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That's the step rule. ReLU passes a positive score through unchanged, so $1.5$ stays $1.5$.",
+        }
+      - {
+          id: d,
+          text: "$(-3, 1.5, 0)$",
+          correct: false,
+          category: recall_failure,
+          feedback: "ReLU is $\\max(0, z)$, so $-3$ becomes $0$.",
+        }
+    solution: "$\\max(0, -3) = 0$, $\\max(0, 1.5) = 1.5$ and $\\max(0, 0) = 0$, giving $(0, 1.5, 0)$."
+  - id: actp-relu-sum-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: |
+      Three neurons have scores $z_1 = {{=z1}}$, $z_2 = {{=z2}}$ and $z_3 = {{=z3}}$. Each passes its score through ReLU.
+
+      What is the sum of the three outputs?
+    hints:
+      - "ReLU sets each negative score to 0 and keeps each positive score as it is. Then add."
+    solution: |
+      The outputs are $\max(0, {{=z1}}) = {{=max(0, z1)}}$, $\max(0, {{=z2}}) = {{=max(0, z2)}}$ and $\max(0, {{=z3}}) = {{=max(0, z3)}}$.
+
+      Their sum is ${{=max(0, z1) + max(0, z2) + max(0, z3)}}$.
+    answer_expr: "max(0, z1) + max(0, z2) + max(0, z3)"
+    params:
+      z1: { min: -4, max: -0.5, step: 0.5 }
+      z2: { min: 0.5, max: 4, step: 0.5 }
+      z3: { min: -3, max: 3, step: 0.5 }
+    constraints: ["z3 != 0"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "z1 + z2 + z3",
+          category: misunderstood_definition,
+          feedback: "You added the raw scores. ReLU turns each negative score into 0 first.",
+        }
+      - {
+          answer_expr: "abs(z1) + abs(z2) + abs(z3)",
+          category: misunderstood_definition,
+          feedback: "ReLU doesn't flip negative scores to positive; it sets them to 0.",
+        }
+  - id: actp-sigmoid-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: |
+      A neuron's score is $z = {{=z}}$. What is its sigmoid output $\sigma(z) = \dfrac{1}{1 + e^{-z}}$? Give 3 decimal places.
+    hints:
+      - "Work out $e^{-z}$ first (for $z = {{=z}}$ that's $e^{ {{=-z}} }$), add 1, then take 1 divided by the result."
+    solution: |
+      $e^{-({{=z}})} \approx {{=round(exp(-z), 4)}}$, so $\sigma({{=z}}) = \dfrac{1}{1 + {{=round(exp(-z), 4)}}} \approx {{=round(1 / (1 + exp(-z)), 3)}}$.
+
+      A positive score gives an output above 0.5 and a negative score gives one below 0.5.
+    answer_expr: "1 / (1 + exp(-z))"
+    params:
+      z: { min: -3, max: 3, step: 0.5 }
+    constraints: ["z != 0"]
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer_expr: "1 / (1 + exp(z))",
+          category: math_error,
+          feedback: "The exponent is $-z$, not $z$. With the sign flipped you get $1 - \\sigma(z)$, the wrong side of 0.5.",
+        }
+  - id: actp-relu-bend
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Two rules with ReLU between them: $u = x - 2$, then $y = 3\\,\\text{ReLU}(u) + 1$. What is $y$ when $x = 0$?"
+    answer: 1
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: -5,
+          tolerance: { abs: 0.001 },
+          category: misunderstood_definition,
+          feedback: "You skipped ReLU. $u = -2$ is negative, so ReLU gives 0 and $y = 3 \\times 0 + 1$.",
+        }
+      - {
+          answer: 7,
+          tolerance: { abs: 0.001 },
+          category: misunderstood_definition,
+          feedback: "ReLU doesn't flip $-2$ to $2$; it sets negative values to 0.",
+        }
+    hints: ["Find $u$ first, then apply ReLU, then the second rule."]
+    solution: "$u = 0 - 2 = -2$, $\\text{ReLU}(-2) = 0$, so $y = 3 \\times 0 + 1 = 1$. For every $x$ up to 2 the output stays at 1, then it rises by 3 per unit: a bend."
+  - id: actp-probability-pick
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A network's last neuron should output how likely an email is to be spam, a number that can be anything between 0 and 1. Which activation fits best?"
+    options:
+      - { id: a, text: "Sigmoid", correct: true }
+      - {
+          id: b,
+          text: "ReLU",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "ReLU has no upper limit, so it could output 7, which can't be a likelihood.",
+        }
+      - {
+          id: c,
+          text: "tanh",
+          correct: false,
+          category: recall_failure,
+          feedback: "tanh outputs between $-1$ and $1$, so it can go negative.",
+        }
+      - {
+          id: d,
+          text: "The step rule",
+          correct: false,
+          category: incomplete_explanation,
+          feedback: "The step rule only outputs 0 or 1, with nothing in between.",
+        }
+    solution: "Sigmoid's output always lies between 0 and 1 and can take any value in between, so it reads like a likelihood."
+  - id: actp-tanh-range
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "How does tanh differ from sigmoid?"
+    options:
+      - {
+          id: a,
+          text: "tanh outputs between $-1$ and $1$ with $\\tanh(0) = 0$; sigmoid outputs between 0 and 1 with $\\sigma(0) = 0.5$",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "tanh has a corner at 0 like ReLU",
+          correct: false,
+          category: recall_failure,
+          feedback: "tanh is a smooth S-shaped curve. ReLU is the one with a corner.",
+        }
+      - {
+          id: c,
+          text: "tanh has no upper limit",
+          correct: false,
+          category: recall_failure,
+          feedback: "tanh levels off at 1 for large scores. ReLU is the one with no upper limit.",
+        }
+    solution: "Both are S-shaped, but tanh is centred on 0 and runs from $-1$ to $1$, while sigmoid runs from 0 to 1 and is 0.5 at $z = 0$."
+  - id: actp-relu-slope
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is ReLU's slope at $z = 2.5$, and at $z = -1$?"
+    options:
+      - { id: a, text: "1 and 0", correct: true }
+      - {
+          id: b,
+          text: "2.5 and 0",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "2.5 is ReLU's output at $z = 2.5$. Its slope there is 1: each extra unit of $z$ adds one unit of output.",
+        }
+      - {
+          id: c,
+          text: "1 and $-1$",
+          correct: false,
+          category: recall_failure,
+          feedback: "For negative $z$ ReLU is flat at 0, so its slope is 0.",
+        }
+    solution: "For $z > 0$ ReLU is $z$ itself, slope 1. For $z < 0$ it's a constant 0, slope 0."
+  - id: actp-sigmoid-slope-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: |
+      At some score, a sigmoid neuron outputs $\sigma(z) = {{=s}}$. What is the sigmoid's slope $\sigma'(z)$ there?
+    hints:
+      - "Use $\\sigma'(z) = \\sigma(z)\\,(1 - \\sigma(z))$."
+    solution: |
+      $\sigma'(z) = {{=s}} \times (1 - {{=s}}) = {{=s}} \times {{=round(1 - s, 2)}} = {{=round(s * (1 - s), 4)}}$.
+
+      The slope is largest, 0.25, when the output is 0.5, and shrinks as the output nears 0 or 1.
+    answer_expr: "s * (1 - s)"
+    params:
+      s: { min: 0.1, max: 0.9, step: 0.1 }
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "s",
+          category: misunderstood_definition,
+          feedback: "That's the output, not the slope. Multiply it by $1 - \\sigma(z)$.",
+        }
+  - id: actp-nudge-estimate
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A sigmoid neuron has score $z = 0$, so it outputs 0.5 and its slope is 0.25. Its score rises by 0.2. Using the slope, estimate the new output."
+    answer: 0.55
+    tolerance: { abs: 0.002 }
+    common_wrong:
+      - {
+          answer: 0.7,
+          tolerance: { abs: 0.002 },
+          category: incorrect_reasoning,
+          feedback: "You added the whole nudge to the output. The output changes by slope × nudge, $0.25 \\times 0.2$.",
+        }
+      - {
+          answer: 0.05,
+          tolerance: { abs: 0.002 },
+          category: incomplete_explanation,
+          feedback: "That's the change in output. Add it to the starting output of 0.5.",
+        }
+    hints: ["Change in output ≈ slope × change in score."]
+    solution: "The output changes by about $0.25 \\times 0.2 = 0.05$, so it's about $0.5 + 0.05 = 0.55$. (The exact value is $\\sigma(0.2) \\approx 0.550$.)"
+  - id: actp-sigmoid-flat
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Where is the sigmoid's slope close to 0?"
+    options:
+      - { id: a, text: "Where the score $z$ is far from 0, in either direction", correct: true }
+      - {
+          id: b,
+          text: "At $z = 0$",
+          correct: false,
+          category: recall_failure,
+          feedback: "At $z = 0$ the slope is at its largest, 0.25.",
+        }
+      - {
+          id: c,
+          text: "Only for large positive $z$",
+          correct: false,
+          category: incomplete_explanation,
+          feedback: "The curve is flat at both ends: near 0 for very negative $z$ and near 1 for very positive $z$.",
+        }
+    solution: "$\\sigma'(z) = \\sigma(z)(1 - \\sigma(z))$ is near 0 when the output is near 0 or near 1, which happens when $z$ is far below or far above 0. There the sigmoid is saturated."
+  - id: actp-tanh-slope
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "At some score, $\\tanh(z) = 0.5$. Using $\\tanh'(z) = 1 - \\tanh^2(z)$, what is the slope there?"
+    answer: 0.75
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 0.5,
+          tolerance: { abs: 0.001 },
+          category: math_error,
+          feedback: "Square the output before subtracting: $1 - 0.5^2$, not $1 - 0.5$.",
+        }
+      - {
+          answer: 0.25,
+          tolerance: { abs: 0.001 },
+          category: incomplete_explanation,
+          feedback: "$0.25$ is $\\tanh^2(z)$. Subtract it from 1.",
+        }
+    hints: ["$\\tanh^2(z)$ means $\\tanh(z)$ squared."]
+    solution: "$1 - 0.5^2 = 1 - 0.25 = 0.75$."
+  - id: actp-dead-unit
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "In a robot's obstacle detector, one ReLU neuron has a large negative bias, so its score is negative for every sensor reading the robot ever sees. What happens to this neuron?"
+    options:
+      - {
+          id: a,
+          text: "It always outputs 0 and its slope is always 0, so small changes to its weights change nothing",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "It outputs negative values that cancel out other neurons",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "ReLU never outputs a negative value; negative scores become 0.",
+        }
+      - {
+          id: c,
+          text: "It saturates near 1, like a sigmoid",
+          correct: false,
+          category: recall_failure,
+          feedback: "ReLU doesn't level off at 1. For negative scores it's flat at 0.",
+        }
+    solution: "With every score negative, ReLU outputs 0 with slope 0, so nudging the neuron's weights or bias doesn't move its output. It's a dead unit."

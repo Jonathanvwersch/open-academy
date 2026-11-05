@@ -38,7 +38,7 @@ knowledge_points:
 
       **Square each error instead.** Squares are never negative, so nothing cancels, and big misses count more than small ones. This is the **squared-error loss**: $(\hat y - y)^2$.
     worked: |
-      This worked example shows why signed errors can cancel and how squaring prevents it.
+      This example shows why signed errors can cancel and how squaring prevents it.
 
       Three past sales:
 
@@ -73,7 +73,7 @@ knowledge_points:
 
       Read $\arg\min_\theta$ as "the $\theta$ that makes what follows as small as possible", and $\theta^\star$ ("theta star") as "the best parameters". The gradient descent lesson shows how training searches through all of them automatically.
     worked: |
-      This worked example compares two settings by their average squared error.
+      This example shows a comparison of two settings by their average squared error.
 
       | house | Setting A: squared error | Setting B predicts | Setting B: squared error |
       |---|---|---|---|
@@ -93,6 +93,8 @@ knowledge_points:
 
       Robots use the same setup. In learning from demonstrations, the input is what the robot's camera sees and the target is the action a human took.
     worked: |
+      This example shows how target types determine whether a problem is regression or classification.
+
       A house's sale price is a number, so predicting it is regression.
 
       A parcel's delivery status—today or tomorrow—is a category, so predicting it is classification.
@@ -104,6 +106,7 @@ knowledge_points:
       - slp-target-type-travel
       - slp-target-type-parcel
       - slp-low-training-loss
+final: sl-explain-setup
 summary: |
   - Five ingredients: inputs $x$, target $y$, a model $f_\theta$ with parameters $\theta$, a loss $L$, and a dataset of $(x, y)$ pairs.
   - The loss turns "how wrong" into a number. Squaring stops errors that are too high and too low from cancelling out.

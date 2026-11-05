@@ -80,6 +80,7 @@ export interface SessionActivity {
   progress: {
     lessonViewed?: boolean;
     lessonRunnerContinued?: boolean;
+    finalQuestionContinued?: boolean;
     completedExerciseIds?: string[];
     outcomes?: Record<string, 'correct' | 'incorrect'>;
   };
@@ -94,6 +95,7 @@ export interface SessionPayload {
 }
 
 export interface LessonPayload {
+  final?: string;
   blocks: Array<{ kind: LessonBlockKind; md?: string; exercise?: string }>;
   knowledge_points?: Array<{
     id: string;

@@ -1,5 +1,466 @@
 concept: matrices
 exercises:
+  - id: matp-shape
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A matrix has shape $2\\times3$ and another has shape $3\\times4$. What is the shape of their product in that order?"
+    solution: "Each of two left rows meets each of four right columns. This gives two rows and four columns of outputs."
+    options:
+      - {
+          id: a,
+          text: "$2\\times4$",
+          correct: true,
+          feedback: "The inner threes match; the outer counts remain.",
+        }
+      - {
+          id: b,
+          text: "$3\\times3$",
+          correct: false,
+          feedback: "The matching inner counts do not become the output shape.",
+        }
+      - {
+          id: c,
+          text: "$4\\times2$",
+          correct: false,
+          feedback: "Keep the left row count first and the right column count second.",
+        }
+  - id: matp-entry-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "The second row of $A$ is $({{=a}},{{=b}})$ and the first column of $B$ is $({{=c}},{{=d}})$. What is the entry in row 2, column 1 of $AB$?"
+    solution: "Dot the selected row with the selected column: ${{=a}}\\cdot{{=c}}+({{=b}})\\cdot{{=d}}={{=a*c+b*d}}$. One row-column pair produces one output entry."
+    tolerance: { abs: 0.000001 }
+    params:
+      a: { min: 1, max: 5 }
+      b: { min: -3, max: 3 }
+      c: { min: 1, max: 4 }
+      d: { min: 1, max: 4 }
+    answer_expr: "a*c+b*d"
+
+  - id: matp-vector
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A matrix has three rows and two columns. It multiplies a two-entry column vector. What comes out?"
+    solution: "The shapes are $(3\\times2)(2\\times1)$, giving $3\\times1$. There is one output entry per matrix row."
+    options:
+      - {
+          id: a,
+          text: "A column vector with three entries",
+          correct: true,
+          feedback: "Each matrix row produces one dot product.",
+        }
+      - {
+          id: b,
+          text: "A column vector with two entries",
+          correct: false,
+          feedback: "The input entry count is not the output entry count.",
+        }
+      - {
+          id: c,
+          text: "A single number from all six entries",
+          correct: false,
+          feedback: "Each row gives its own number, rather than one total for the matrix.",
+        }
+  - id: matp-invalid
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Can a $2\\times3$ matrix multiply a $2\\times4$ matrix in that order?"
+    solution: "Each left row has three entries but each right column has two. Their dot product is undefined, so this matrix product is undefined."
+    options:
+      - {
+          id: a,
+          text: "No, the inner counts 3 and 2 differ",
+          correct: true,
+          feedback: "A three-entry row cannot dot a two-entry column.",
+        }
+      - {
+          id: b,
+          text: "Yes, the two row counts match",
+          correct: false,
+          feedback: "Multiplication matches left columns with right rows, not both row counts.",
+        }
+      - {
+          id: c,
+          text: "Yes, the result has shape 3 by 4",
+          correct: false,
+          feedback: "An output shape is valid only after the inner counts match.",
+        }
+  - id: matp-entry
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "For $A=\\begin{bmatrix}2&0&1\\\\1&3&-1\\end{bmatrix}$ and $B=\\begin{bmatrix}1&2\\\\0&1\\\\4&0\\end{bmatrix}$, what is entry (row 2, column 1) of $AB$?"
+    solution: "Use row two $(1,3,-1)$ and column one $(1,0,4)$. Their dot product is $1\\cdot1+3\\cdot0+(-1)\\cdot4=1+0-4=-3$."
+    tolerance: { abs: 0.000001 }
+    answer: -3
+
+  - id: matp-batch-shape
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Five houses each have three features. Their $5\\times3$ table multiplies a $3\\times2$ weight table. What does the result hold?"
+    solution: "The inner feature count three matches, giving shape $5\\times2$. This is two scores for each of five houses."
+    options:
+      - {
+          id: a,
+          text: "Five house rows with two scores each",
+          correct: true,
+          feedback: "Each house row meets both weight columns.",
+        }
+      - {
+          id: b,
+          text: "Three feature rows with three scores each",
+          correct: false,
+          feedback: "Features are summed over, not retained as output rows.",
+        }
+      - {
+          id: c,
+          text: "Two house rows with five scores each",
+          correct: false,
+          feedback: "The left rows remain rows, not output columns.",
+        }
+  - id: matp-linear
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Which property describes a matrix acting as a linear transformation?"
+    solution: "A linear transformation preserves addition and scaling, so it treats combined moves consistently. It need not preserve their lengths."
+    options:
+      - {
+          id: a,
+          text: "Adding moves before or after transforming agrees",
+          correct: true,
+          feedback: "The transformation preserves vector addition and scaling.",
+        }
+      - {
+          id: b,
+          text: "Every move keeps exactly the same length",
+          correct: false,
+          feedback: "Stretching is linear even though it changes lengths.",
+        }
+      - {
+          id: c,
+          text: "The origin can move to any chosen point",
+          correct: false,
+          feedback: "A matrix alone sends the zero vector to zero.",
+        }
+  - id: matp-shear-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A shear sends $(x,y)$ to $(x+2y,y)$. For the floor point $({{=x}},{{=y}})$, what is the new horizontal coordinate?"
+    solution: "Add twice the height to the horizontal coordinate: ${{=x}}+2\\cdot{{=y}}={{=x+2*y}}$. The vertical coordinate stays ${{=y}}$."
+    tolerance: { abs: 0.000001 }
+    params:
+      x: { min: -3, max: 5 }
+      y: { min: 0, max: 4 }
+    answer_expr: "x+2*y"
+
+  - id: matp-identity
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What does $I=\\begin{bmatrix}1&0\\\\0&1\\end{bmatrix}$ do to $(3,-2)$?"
+    solution: "The rows give $1\\cdot3+0\\cdot(-2)=3$ and $0\\cdot3+1\\cdot(-2)=-2$. Identity leaves every input unchanged."
+    options:
+      - {
+          id: a,
+          text: "Leaves it at $(3,-2)$",
+          correct: true,
+          feedback: "Each row picks out the matching input entry.",
+        }
+      - {
+          id: b,
+          text: "Swaps it to $(-2,3)$",
+          correct: false,
+          feedback: "A swap matrix has ones off the diagonal instead.",
+        }
+      - {
+          id: c,
+          text: "Sends it to $(0,0)$",
+          correct: false,
+          feedback: "That would require all-zero rows, not diagonal ones.",
+        }
+  - id: matp-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "You want to apply transformation $B$ first, then $A$, to vector $x$. Which expression does that?"
+    solution: "First compute $Bx$, then apply $A$ to that result. The combined transformation is $AB$, not generally $BA$."
+    options:
+      - {
+          id: a,
+          text: "$ABx$, because the rightmost matrix acts first",
+          correct: true,
+          feedback: "This is $A(Bx)$: B acts on x before A.",
+        }
+      - {
+          id: b,
+          text: "$BAx$, because the leftmost matrix acts first",
+          correct: false,
+          feedback: "This applies A first, then B.",
+        }
+      - {
+          id: c,
+          text: "Either order, because the same rules appear",
+          correct: false,
+          feedback: "Matrix transformations need not agree in opposite orders.",
+        }
+  - id: matp-shear
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A floor shear maps $(x,y)$ to $(x+2y,y)$. What happens to points on the horizontal axis?"
+    solution: "On the horizontal axis, $y=0$. The output is $(x+2\\cdot0,0)=(x,0)$, so every such point stays fixed."
+    options:
+      - {
+          id: a,
+          text: "They stay fixed because their height is zero",
+          correct: true,
+          feedback: "With y equal to zero, the added horizontal amount is zero.",
+        }
+      - {
+          id: b,
+          text: "They all move two units to the right",
+          correct: false,
+          feedback: "The shift is twice the height, not a fixed two units.",
+        }
+      - {
+          id: c,
+          text: "They all move onto the vertical axis",
+          correct: false,
+          feedback: "The shear keeps height fixed and does not swap coordinates.",
+        }
+  - id: matp-swap
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Let $C=\\begin{bmatrix}1&2\\\\3&4\\end{bmatrix}$ and $P=\\begin{bmatrix}0&1\\\\1&0\\end{bmatrix}$. Which describes $CP$?"
+    solution: "Each row dots the columns $(0,1)$ then $(1,0)$ of P. This reverses the two entries of each row, swapping columns."
+    options:
+      - {
+          id: a,
+          text: "Its columns swap, giving $\\begin{bmatrix}2&1\\\\4&3\\end{bmatrix}$",
+          correct: true,
+          feedback: "Right multiplication by P selects the second column first.",
+        }
+      - {
+          id: b,
+          text: "Its rows swap, giving $\\begin{bmatrix}3&4\\\\1&2\\end{bmatrix}$",
+          correct: false,
+          feedback: "That is PC, with the swap matrix on the left.",
+        }
+      - {
+          id: c,
+          text: "Its entries stay at $\\begin{bmatrix}1&2\\\\3&4\\end{bmatrix}$",
+          correct: false,
+          feedback: "P is a swap matrix, not the identity.",
+        }
+  - id: matp-code
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In NumPy, X has shape (5, 3), W has shape (3, 2) and b has shape (2,). Which line gives two biased scores for every house?"
+    solution: "X rows dot W columns, giving shape (5, 2). Adding b broadcasts one bias per score across all five houses."
+    options:
+      - {
+          id: a,
+          text: "`Y = X @ W + b`",
+          correct: true,
+          feedback: "The product has shape (5, 2), and the two biases repeat across rows.",
+        }
+      - {
+          id: b,
+          text: "`Y = W @ X + b`",
+          correct: false,
+          feedback: "The inner counts two and five do not match in that order.",
+        }
+      - {
+          id: c,
+          text: "`Y = X @ W.T + b`",
+          correct: false,
+          feedback: "W.T has shape (2, 3), so its row count does not match X columns.",
+        }
+  - id: matp-bias-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A house row is $({{=a}},{{=b}})$, one weight column is $(2,-1)$, and its bias is {{=c}}. What is the biased score?"
+    solution: "First take the dot product: $2\\cdot{{=a}}-{{=b}}={{=2*a-b}}$. Add the bias to get ${{=2*a-b}}+({{=c}})={{=2*a-b+c}}$."
+    tolerance: { abs: 0.000001 }
+    params:
+      a: { min: 1, max: 8 }
+      b: { min: 1, max: 5 }
+      c: { min: -2, max: 4 }
+    answer_expr: "2*a-b+c"
+
+  - id: matp-transpose
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Weights are stored as three score rows with two features each, shape (3, 2). House rows have shape (5, 2). Which product gives the scores?"
+    solution: "Transpose swaps the weight rows into columns without changing their values. Then (5, 2) times (2, 3) gives (5, 3)."
+    options:
+      - {
+          id: a,
+          text: "`X @ W.T`, with shape (5, 3)",
+          correct: true,
+          feedback: "Transposing makes W shape (2, 3), matching the two features.",
+        }
+      - {
+          id: b,
+          text: "`X @ W`, with shape (5, 3)",
+          correct: false,
+          feedback: "Without transposing, the inner counts two and three differ.",
+        }
+      - {
+          id: c,
+          text: "`X.T @ W`, with shape (2, 2)",
+          correct: false,
+          feedback: "The inner counts five and three differ in that product.",
+        }
+  - id: matp-broadcast
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A NumPy product has shape (5, 2), and you add b with shape (2,). What does broadcasting do?"
+    solution: "NumPy reuses the two bias entries across the five rows. The output shape stays (5, 2)."
+    options:
+      - {
+          id: a,
+          text: "Adds the two biases to every row",
+          correct: true,
+          feedback: "Each score column receives its matching bias for every house.",
+        }
+      - {
+          id: b,
+          text: "Adds two new columns to every row",
+          correct: false,
+          feedback: "Bias addition changes values, not the number of score columns.",
+        }
+      - {
+          id: c,
+          text: "Adds biases only to the first row",
+          correct: false,
+          feedback: "The shorter array is reused for all five rows.",
+        }
+  - id: matp-star
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Two NumPy arrays A and B both have shape (2, 2). How does `A * B` differ from `A @ B`?"
+    solution: "The star operator multiplies matching entries without summing. The at operator uses matrix multiplication, taking a dot product for each output entry."
+    options:
+      - {
+          id: a,
+          text: "`*` multiplies entries; `@` sums row-column products",
+          correct: true,
+          feedback: "Matching entries are not the same as row-column dot products.",
+        }
+      - {
+          id: b,
+          text: "Both sum row-column products for square arrays",
+          correct: false,
+          feedback: "Being square does not change what the operators mean.",
+        }
+      - {
+          id: c,
+          text: "`*` transposes B before multiplying entries",
+          correct: false,
+          feedback: "The multiplication operator does not transpose either array.",
+        }
+  - id: matp-transpose-product
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A has shape $2\\times3$ and B has shape $3\\times4$. Which is $(AB)^\\top$?"
+    solution: "The product AB has shape two by four, so its transpose is four by two. Reversing the transposed factors gives (4 by 3)(3 by 2), the correct order and shape."
+    options:
+      - {
+          id: a,
+          text: "$B^\\top A^\\top$, shape $4\\times2$",
+          correct: true,
+          feedback: "Transpose reverses the order as well as swapping each shape.",
+        }
+      - {
+          id: b,
+          text: "$A^\\top B^\\top$, shape $4\\times2$",
+          correct: false,
+          feedback: "These factors have shapes three by two and four by three, so their inner counts differ.",
+        }
+      - {
+          id: c,
+          text: "$AB$, still with shape $2\\times4$",
+          correct: false,
+          feedback: "Transpose swaps the output rows and columns.",
+        }
+  - id: mat-explain-batch
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain how a matrix turns a vector into new coordinates, then how NumPy can compute two weighted scores for each of five houses with three features. State the weight and output shapes, and explain adding one bias per score."
+    rubric:
+      - {
+          id: rows,
+          criterion: "Each output coordinate is a matrix row dotted with the input; this linear transformation preserves addition and scaling",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: shapes,
+          criterion: "For X shape (5, 3), W has shape (3, 2) and X @ W has shape (5, 2), with matching inner feature counts",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: bias,
+          criterion: "A bias of shape (2,) is broadcast across the five house rows in X @ W + b",
+          weight: 1,
+        }
+    exemplar: "A matrix produces one dot product per row when acting on a column vector, transforming its coordinates while preserving addition and scaling. For five house rows with three features, X has shape (5, 3) and W needs shape (3, 2), so each house row dots two weight columns to produce shape (5, 2). In X @ W + b, the two-entry bias is reused across all five rows, adding one fixed amount per score."
+    solution: "Rows and columns specify which dot products to take, and matching inner counts make those dot products possible. Broadcasting adds a bias to each score without changing the output shape."
   - id: mat-check-shape
     dimension: math
     type: mc

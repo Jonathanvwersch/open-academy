@@ -554,21 +554,6 @@ test('unfinished knowledge-point lessons are prioritized regardless of mastery, 
   ).not.toBe('learn');
 });
 
-test('legacy lessons are not forced back to learn by a lesson-run status', () => {
-  const vectors = required(content.conceptsById.get('vectors'), 'vectors');
-  const state = emptyState();
-  state.mastery = vectors.dimensions.map((dimension) => ({
-    ...initialMastery(vectors.id, dimension),
-    state: 'independent',
-  }));
-  state.lessonRuns = [{ conceptId: vectors.id, status: 'needs_retry' }];
-  expect(
-    planSession(state, content, now, 60).activities.find(
-      (activity) => activity.conceptId === vectors.id,
-    )?.kind,
-  ).not.toBe('learn');
-});
-
 test('weekday plans avoid duplicate concepts, cap activities, and never add empty fillers', () => {
   const state = emptyState();
   state.cards = [{ conceptId: 'vectors', dimension: 'math', dueAt: '2026-01-14T11:00:00.000Z' }];

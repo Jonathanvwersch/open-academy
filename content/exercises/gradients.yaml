@@ -128,3 +128,429 @@ exercises:
         }
       - { id: r3, criterion: "Notes that this only holds locally, for small steps", weight: 1 }
     exemplar: "For a small step δ, the change in f is approximately ∇f·δ = |∇f||δ|cosθ. For a fixed step length this is most negative when cosθ = -1, i.e. δ points opposite the gradient. It is only a local, first-order statement, so big steps can overshoot."
+  - id: gradp-compute
+    dimension: math
+    type: text
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "For $f(x, y) = 2x^2 + xy$, what is $\\nabla f$ at $(1, 3)$? Answer as `(a, b)`."
+    accept: ["(7,1)", "(7, 1)", "7,1", "7, 1", "[7,1]", "[7, 1]"]
+    hints:
+      ["$\\frac{\\partial f}{\\partial x} = 4x + y$ and $\\frac{\\partial f}{\\partial y} = x$."]
+    solution: "$\\nabla f = (4x + y,\\ x)$, so at $(1, 3)$ it is $(4 + 3,\\ 1) = (7, 1)$."
+  - id: gradp-component
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $f(x, y) = {{=a}}x^2 + {{=b}}xy$, what is the first component of $\\nabla f$ (the partial in $x$) at $(x, y) = ({{=x0}}, {{=y0}})$?"
+    hints: ["The first component is $\\frac{\\partial f}{\\partial x} = {{=2*a}}x + {{=b}}y$."]
+    solution: "$\\frac{\\partial f}{\\partial x} = {{=2*a}}x + {{=b}}y = {{=2*a}} \\times {{=x0}} + {{=b}} \\times {{=y0}} = {{=2*a*x0+b*y0}}$."
+    answer_expr: "2*a*x0 + b*y0"
+    params:
+      a: { min: 1, max: 4, step: 1 }
+      b: { min: 1, max: 5, step: 1 }
+      x0: { min: 1, max: 4, step: 1 }
+      y0: { min: 1, max: 4, step: 1 }
+    constraints: ["b*x0 != 2*a*x0 + b*y0"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "b*x0",
+          category: misunderstood_definition,
+          feedback: "That is the second component, $\\frac{\\partial f}{\\partial y}$. The first component is the partial in $x$.",
+        }
+      - {
+          answer_expr: "2*a*x0",
+          category: math_error,
+          feedback: "The term ${{=b}}xy$ also contains $x$, so it contributes ${{=b}}y$.",
+        }
+  - id: gradp-is-vector
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "For a function $f(x, y)$, what kind of object is $\\nabla f$ at a point?"
+    options:
+      - id: a
+        text: 'A vector with two components, $\frac{\partial f}{\partial x}$ and $\frac{\partial f}{\partial y}$'
+        correct: true
+      - id: b
+        text: "A single number, the sum of the two partials"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The partials are kept side by side as components of a vector, not added together."
+      - id: c
+        text: "The height $f(x, y)$ at that point"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is the output. The gradient is built from its rates of change."
+      - id: d
+        text: "A single number, the steepest partial"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The gradient keeps every partial, one per input."
+    solution: "The gradient lists every partial derivative in order, so for two inputs it is a vector with two components."
+  - id: gradp-three-inputs
+    dimension: math
+    type: text
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "For $f(x, y, z) = x^2 + yz$, what is $\\nabla f$ at $(1, 2, 3)$? Answer as `(a, b, c)`."
+    accept: ["(2,3,2)", "(2, 3, 2)", "2,3,2", "2, 3, 2", "[2,3,2]", "[2, 3, 2]"]
+    hints: ["One partial per input: $2x$, $z$ and $y$."]
+    solution: "$\\nabla f = (2x,\\ z,\\ y)$, so at $(1, 2, 3)$ it is $(2, 3, 2)$. Three inputs give three components."
+  - id: gradp-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "For $h(x, y) = x^2 + 2y^2$, a classmate writes $\\nabla h(1.5, 1) = (4, 3)$. What went wrong?"
+    options:
+      - id: a
+        text: "The components are swapped; the partial in $x$ comes first, giving $(3, 4)$"
+        correct: true
+      - id: b
+        text: "Nothing; the order of components doesn't matter"
+        correct: false
+        category: misunderstood_definition
+        feedback: "$(4, 3)$ and $(3, 4)$ point in different directions. The components follow the order of the inputs."
+      - id: c
+        text: "The gradient should be a single number, 7"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The gradient is a vector of partials, not their sum."
+      - id: d
+        text: "Both components should be 0 because $h$ is a valley"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The gradient is only $(0, 0)$ at the valley floor, $(0, 0)$, not on the slope."
+    solution: "$\\frac{\\partial h}{\\partial x} = 2x = 3$ and $\\frac{\\partial h}{\\partial y} = 4y = 4$, and the components follow the order of the inputs: $(3, 4)$."
+  - id: gradp-exp-component
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $f(x, y) = x\\,e^y + \\ln x$, give the second component of $\\nabla f$, the partial in $y$ (write `exp(y)`)."
+    answer: "x*exp(y)"
+    variables: { x: [0.5, 3], y: [-1, 1] }
+    common_wrong:
+      - {
+          answer: "exp(y) + 1/x",
+          category: misunderstood_definition,
+          feedback: "That is the first component, the partial in $x$.",
+        }
+    solution: "Freeze $x$: $x\\,e^y \\to x\\,e^y$ and $\\ln x \\to 0$, so the second component is $x\\,e^y$."
+  - id: gradp-uphill
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "On a hillside, the gradient of the height at your position is $(2, -1)$. Which way does it point?"
+    options:
+      - id: a
+        text: "The direction in which the height increases fastest"
+        correct: true
+      - id: b
+        text: "Straight towards the lowest point of the hill"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The gradient only describes the slope where you stand. Its direction is the steepest way up."
+      - id: c
+        text: "Along a contour, where the height stays the same"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Steps along a contour are at right angles to the gradient."
+      - id: d
+        text: "The direction in which the height decreases fastest"
+        correct: false
+        category: incorrect_reasoning
+        feedback: 'That is $-\nabla h$. The gradient itself points uphill.'
+    solution: "For a small step $\\delta$ the height changes by about $\\nabla h \\cdot \\delta$, which is largest for steps along the gradient, so the gradient points steepest uphill."
+  - id: gradp-approx
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "At a point $p$, a function has $\\nabla f(p) = ({{=g1}}, {{=g2}})$. Estimate the change in $f$ for the small step $\\delta = ({{=d1}}, {{=d2}})$."
+    hints:
+      ["The change is about $\\nabla f \\cdot \\delta$.", "Multiply matching components and add."]
+    solution: "$\\nabla f \\cdot \\delta = ({{=g1}})({{=d1}}) + ({{=g2}})({{=d2}}) = {{=g1*d1+g2*d2}}$."
+    answer_expr: "g1*d1 + g2*d2"
+    params:
+      g1: { min: -5, max: 5, step: 1 }
+      g2: { min: -5, max: 5, step: 1 }
+      d1: { min: -0.2, max: 0.2, step: 0.1 }
+      d2: { min: -0.2, max: 0.2, step: 0.1 }
+    constraints:
+      [
+        "g1 != 0",
+        "g2 != 0",
+        "d1 != 0",
+        "d2 != 0",
+        "g1*d1 + g2*d2 != 0",
+        "g1*d2 + g2*d1 != g1*d1 + g2*d2",
+      ]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "g1*d2 + g2*d1",
+          category: math_error,
+          feedback: "Pair matching components: the first with the first, the second with the second.",
+        }
+  - id: gradp-contour
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "At a point, $\\nabla h = (3, 4)$. To first order, which small step leaves the height unchanged?"
+    options:
+      - { id: a, text: "$(0.08, -0.06)$", correct: true }
+      - id: b
+        text: "$(0.06, 0.08)$"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "This is along the gradient: $0.18 + 0.32 = 0.5$, the biggest climb."
+      - id: c
+        text: "$(-0.06, -0.08)$"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "This is opposite the gradient: the change is $-0.5$, the biggest drop."
+      - id: d
+        text: "$(0.1, 0)$"
+        correct: false
+        category: math_error
+        feedback: '$\nabla h \cdot \delta = 3 \times 0.1 = 0.3$, so the height rises.'
+    solution: "$\\nabla h \\cdot (0.08, -0.06) = 0.24 - 0.24 = 0$. The step is at right angles to the gradient, along a contour."
+  - id: gradp-length
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "On a hill, $\\nabla h = (1, 0)$ at point A and $(6, 8)$ at point B. What does this tell you?"
+    options:
+      - id: a
+        text: "The ground is steeper at B, because its gradient is longer"
+        correct: true
+      - id: b
+        text: "The ground is steeper at A, because its gradient points due east"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The direction says which way is uphill. The length says how steep it is."
+      - id: c
+        text: "B is higher up than A"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The gradient describes the slope, not the height itself."
+      - id: d
+        text: "Both are equally steep, because gradients always have length 1"
+        correct: false
+        category: misunderstood_definition
+        feedback: 'Gradient lengths vary: $\|(6, 8)\| = 10$ and $\|(1, 0)\| = 1$.'
+    solution: "$\\|(6, 8)\\| = 10$ and $\\|(1, 0)\\| = 1$, so the height changes 10 times as fast per unit step at B."
+  - id: gradp-predict-height
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "At $(2, 1)$, a valley has height $h = 6$ m and gradient $\\nabla h = (4, 4)$. Estimate the height after the small step $\\delta = (-0.1, 0.05)$."
+    answer: 5.8
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: -0.2,
+          category: incomplete_explanation,
+          feedback: "That is the change in height. Add it to the starting height of 6 m.",
+        }
+      - {
+          answer: 6.6,
+          category: math_error,
+          feedback: "Check the sign of the first component: $4 \\times (-0.1) = -0.4$.",
+        }
+    hints: ["$h(p + \\delta) \\approx h(p) + \\nabla h \\cdot \\delta$."]
+    solution: "$\\nabla h \\cdot \\delta = 4 \\times (-0.1) + 4 \\times 0.05 = -0.2$, so the height is about $6 - 0.2 = 5.8$ m."
+  - id: gradp-small-step
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "Why does $f(p + \\delta) \\approx f(p) + \\nabla f \\cdot \\delta$ only work for small steps?"
+    options:
+      - id: a
+        text: "The gradient describes the slope at $p$, and the slope can change as you move away"
+        correct: true
+      - id: b
+        text: "Dot products are only defined for short vectors"
+        correct: false
+        category: misunderstood_definition
+        feedback: "You can take the dot product of any two vectors of the same size."
+      - id: c
+        text: "Large steps always make $f$ smaller"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A large step can raise or lower $f$. The issue is that the prediction can be wrong."
+      - id: d
+        text: "It works for any step size"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "On $h = x^2 + 2y^2$ the gradient changes from point to point, so a long step uses an out-of-date slope."
+    solution: "The approximation treats the function as having the slope $\\nabla f(p)$ everywhere. That is only accurate close to $p$."
+  - id: gradp-descent-unit
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "At a point, $\\nabla f = (-5, 12)$, with length 13. Which step of length 1 decreases $f$ fastest, to first order?"
+    options:
+      - { id: a, text: '$\left(\frac{5}{13}, -\frac{12}{13}\right)$', correct: true }
+      - id: b
+        text: '$\left(-\frac{5}{13}, \frac{12}{13}\right)$'
+        correct: false
+        category: incorrect_reasoning
+        feedback: 'That is along $+\nabla f$, the direction of steepest increase.'
+      - id: c
+        text: "$(5, -12)$"
+        correct: false
+        category: misapplied_technique
+        feedback: 'Right direction, but its length is 13. Divide by $\|\nabla f\|$ to get a unit step.'
+      - id: d
+        text: "$(0, -1)$"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "This decreases $f$ at rate 12, but the best unit step gives 13."
+    solution: "Steepest descent is $-\\frac{\\nabla f}{\\|\\nabla f\\|} = \\frac{(5, -12)}{13}$, where $f$ falls at rate 13."
+  - id: gradp-steepest-rate
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "At a point, $\\nabla f = ({{=a}}, {{=b}})$. For a step of length 1 in the steepest-descent direction, about how much does $f$ change? Round to 2 decimal places."
+    hints:
+      [
+        "Along $-\\frac{\\nabla f}{\\|\\nabla f\\|}$, the change per unit step is $-\\|\\nabla f\\|$.",
+        "$\\|\\nabla f\\| = \\sqrt{a^2 + b^2}$.",
+      ]
+    solution: "$\\|\\nabla f\\| = \\sqrt{ {{=a^2}} + {{=b^2}} } \\approx {{=sqrt(a^2+b^2)}}$. Stepping opposite the gradient, $f$ changes by about $-{{=sqrt(a^2+b^2)}}$."
+    answer_expr: "-sqrt(a^2 + b^2)"
+    params:
+      a: { min: 1, max: 8, step: 1 }
+      b: { min: 1, max: 8, step: 1 }
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - {
+          answer_expr: "sqrt(a^2 + b^2)",
+          category: incorrect_reasoning,
+          feedback: "That is the rate going uphill. Stepping opposite the gradient makes $f$ go down.",
+        }
+      - {
+          answer_expr: "-(a + b)",
+          category: math_error,
+          feedback: "The length of a vector is $\\sqrt{a^2 + b^2}$, not $a + b$.",
+        }
+  - id: gradp-direction-rate
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "At a point, $\\nabla f = (3, 4)$. To first order, how much does $f$ change for the unit step $(-1, 0)$, due west?"
+    answer: -3
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - { answer: 3, category: math_error, feedback: "Check the sign: $3 \\times (-1) = -3$." }
+      - {
+          answer: -5,
+          category: incorrect_reasoning,
+          feedback: "$-5$ is the rate in the steepest-descent direction $(-0.6, -0.8)$. Due west is less steep.",
+        }
+    solution: "$\\nabla f \\cdot (-1, 0) = -3$. That is downhill, but less steep than the $-5$ you get opposite the gradient."
+  - id: gradp-why-180
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For steps $\\delta$ of a fixed small length, why is $\\nabla f \\cdot \\delta$ most negative when $\\delta$ points opposite $\\nabla f$?"
+    options:
+      - id: a
+        text: '$\nabla f \cdot \delta = \|\nabla f\|\,\|\delta\|\cos\theta$, and $\cos\theta$ is smallest, $-1$, at $\theta = 180^\circ$'
+        correct: true
+      - id: b
+        text: 'Because $\cos\theta$ is 0 at $\theta = 180^\circ$'
+        correct: false
+        category: recall_failure
+        feedback: '$\cos 180^\circ = -1$. The cosine is 0 at $90^\circ$, which gives no change.'
+      - id: c
+        text: "Because opposite steps are longer"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Every step here has the same length, so only the angle matters."
+      - id: d
+        text: "Because the gradient is always negative"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The gradient is a vector, and its components can have either sign."
+    solution: "With both lengths fixed, the change depends only on $\\cos\\theta$, which is smallest at $\\theta = 180^\\circ$, i.e. stepping exactly opposite the gradient."
+  - id: gradp-not-at-minimum
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "In the valley $h(x, y) = x^2 + 2y^2$ at $(1.5, 1)$, $-\\nabla h = (-3, -4)$. The floor is at $(0, 0)$, in the direction $(-1.5, -1)$ from you. What does this show?"
+    options:
+      - id: a
+        text: "The steepest way down right here need not point straight at the lowest point"
+        correct: true
+      - id: b
+        text: 'The gradient has been computed wrongly, because $-\nabla h$ always points at the minimum'
+        correct: false
+        category: misunderstood_definition
+        feedback: "The gradient only uses the slope where you stand. Here it is steeper in $y$, so it tilts towards $y$."
+      - id: c
+        text: 'Walking along $-\nabla h$ makes you go uphill'
+        correct: false
+        category: incorrect_reasoning
+        feedback: 'For a small step along $-\nabla h$ the height falls, at rate $\|\nabla h\| = 5$.'
+      - id: d
+        text: "The valley has no lowest point"
+        correct: false
+        category: incorrect_reasoning
+        feedback: 'The floor is at $(0, 0)$, where $h = 0$ and $\nabla h = (0, 0)$.'
+    solution: "Steepest descent is a local direction. The valley is twice as steep in $y$, so $-\\nabla h$ tilts more towards $y$ than the straight line to the floor does."
+  - id: gradp-descent-step
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "At $(1.5, 1)$ the valley has $h = 4.25$ and $\\nabla h = (3, 4)$. You take the small step $\\delta = -0.02\\,\\nabla h$. Estimate the new height."
+    answer: 3.75
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: -0.5,
+          category: incomplete_explanation,
+          feedback: "That is the change. Add it to the starting height 4.25.",
+        }
+      - {
+          answer: 4.75,
+          category: math_error,
+          feedback: "The step is opposite the gradient, so the height should go down.",
+        }
+    hints: ["$\\delta = (-0.06, -0.08)$.", "Change $\\approx \\nabla h \\cdot \\delta$."]
+    solution: "$\\delta = (-0.06, -0.08)$, so $\\nabla h \\cdot \\delta = -0.18 - 0.32 = -0.5$ and the height is about $4.25 - 0.5 = 3.75$ m."

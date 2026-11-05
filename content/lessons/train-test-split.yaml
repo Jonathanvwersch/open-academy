@@ -1,33 +1,140 @@
 concept: train-test-split
-version: 1
-fast_path: [objective, summary]
-blocks:
-  - kind: objective
-    md: |
-      **Goal:** explain what training, validation and test sets are each for, and spot data leakage.
-  - kind: intuition
-    md: |
-      A model that has seen the answers will look better than it is. To estimate performance on new data, you must evaluate on data the model, *and your decisions about the model*, never touched.
+version: 2
+objective: |
+  **Goal:** explain what training, validation and test sets are each for, and spot data leakage.
+knowledge_points:
+  - id: tts-why-hold-out
+    title: Why test on houses the model hasn't seen
+    explain: |
+      You have 1,000 past house sales and you've trained a model to predict prices. Before you trust it, you need to know one thing: **how well will it price a house it has never seen?** That's the only job it will ever do for real.
 
-      - **Train:** fit the parameters.
-      - **Validation:** choose settings and decide when to stop. You look at it many times, so it slowly becomes optimistic.
-      - **Test:** touched once at the end, for an honest estimate.
+      The obvious check is to ask the model to price the same houses it trained on, then measure the error. But that check is rigged. A model can learn the training sales by heart without learning anything that carries over to new houses, like a student who memorises last year's exam answers.
 
-      A **hyperparameter** is a setting you choose yourself rather than training, such as how many features to use.
+      So you keep some sales back. The model never trains on them. When you measure the error on those **held-out** sales, you see how the model does on houses it hasn't seen. That number is an honest estimate of how it will do on new houses.
+    worked: |
+      This example shows that training error can look perfect while error on new houses is bad.
 
-      **Leakage** is any path by which information from the evaluation data reaches training: duplicate rows, averages computed from the full table before splitting, or copies of the same sale landing in both splits.
-  - kind: example
-    md: |
-      This example shows why duplicate sales must stay together when splitting data.
+      Two models are trained on 800 sales. Another 200 sales are held out.
 
-      A table has 100 house sales, but some rows are copies of the same sale. If a copy appears in both the training and test sets, the test can look better than it should because the model has already seen that sale. Keep copies of one sale together in the same split.
-  - kind: math
-    md: |
-      If the test set resembles the data the model will face later, its error gives a useful estimate of future error. Each time you use that set to choose something, the estimate becomes too optimistic for the chosen model.
-  - kind: check
-    exercise: tts-check-purpose
-  - kind: summary
-    md: |
-      - Train to fit, validate to choose, test once to report.
-      - Calculate data summaries, such as means and scales, using the training set only.
-      - Keep related records together when splitting, such as multiple measurements of the same house.
+      - **Model A** memorises: for any house it trained on, it returns that house's exact sale price. For any other house, it returns the price of the most similar house it remembers.
+      - **Model B** is a line: $\hat y = w_1 \cdot \text{size} + w_2 \cdot \text{bedrooms} + b$.
+
+      Average squared error:
+
+      | | 800 training sales | 200 held-out sales |
+      |---|---|---|
+      | Model A | 0 | 2,500 |
+      | Model B | 400 | 450 |
+
+      On training sales Model A looks perfect. On held-out sales it is more than five times worse than Model B. Only the held-out column tells you which model to use.
+    problems:
+      - ttsp-honest-estimate
+      - ttsp-memoriser
+      - ttsp-heldout-error
+      - ttsp-pick-model
+      - ttsp-exam-analogy
+      - ttsp-robot-heldout
+  - id: tts-three-splits
+    title: Training, validation and test sets
+    explain: |
+      In practice you don't train just one model. You try a few versions and keep the best. That gives the held-out data two jobs: **choosing** between versions, and **reporting** how good the chosen one is. One set can't do both honestly, so you split the data three ways.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 124" aria-label="1,000 house sales split into 700 training, 150 validation and 150 test sales">
+        <rect x="0" y="4" width="444" height="44" rx="6" fill="#10b981"/>
+        <rect x="448" y="4" width="94" height="44" rx="6" fill="#f59e0b"/>
+        <rect x="546" y="4" width="94" height="44" rx="6" fill="#3b82f6"/>
+        <text x="222" y="32" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#ffffff">Training 70%</text>
+        <text x="495" y="32" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">15%</text>
+        <text x="593" y="32" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#ffffff">15%</text>
+        <rect x="0" y="72" width="12" height="12" rx="2" fill="#10b981"/>
+        <text x="20" y="83" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Train: 700 sales</text>
+        <text x="20" y="104" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">learn the parameters</text>
+        <rect x="220" y="72" width="12" height="12" rx="2" fill="#f59e0b"/>
+        <text x="240" y="83" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Validation: 150 sales</text>
+        <text x="240" y="104" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">choose a version</text>
+        <rect x="440" y="72" width="12" height="12" rx="2" fill="#3b82f6"/>
+        <text x="460" y="83" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Test: 150 sales</text>
+        <text x="460" y="104" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">final check, used once</text>
+      </svg>
+      ```
+
+      - **Training set:** the model sees these sales, prices included, and adjusts its parameters to fit them.
+      - **Validation set:** you price these sales with each trained version and compare the errors. The version with the lowest validation error wins.
+      - **Test set:** you use it once, at the very end, on the version you picked. It played no part in training or choosing, so its error is your honest estimate for new houses.
+
+      The 70/15/15 split is a common choice, not a rule.
+    worked: |
+      This example shows each set doing its one job.
+
+      You train three versions of the house-price model on the 700 training sales, then price the 150 validation sales with each one:
+
+      | version | average squared error on validation |
+      |---|---|
+      | uses size only | 620 |
+      | uses size and bedrooms | 460 |
+      | uses size, bedrooms and location | 510 |
+
+      "Size and bedrooms" has the lowest validation error, so you pick it. Only now do you price the 150 test sales with it, once. The error is 480, and that's the number you report.
+
+      You don't go back and swap versions because of the test result. If you did, the test set would turn into a second validation set.
+    problems:
+      - ttsp-which-set-fit
+      - ttsp-split-counts
+      - ttsp-which-set-choose
+      - ttsp-which-set-report
+      - ttsp-swap-after-test
+      - ttsp-pick-version
+  - id: tts-hyperparameters
+    title: Hyperparameters, and why picking the best flatters it
+    explain: |
+      The model has two kinds of numbers.
+
+      - **Parameters** are learned from the training data, like $w_1$, $w_2$ and $b$ in the line.
+      - **Hyperparameters** are settings you choose before training, like which inputs the model uses. Training can't choose them for you, because it only ever sees the training sales.
+
+      You choose hyperparameters by trying several settings and comparing validation errors. There's a catch. Some of each validation error is luck: which 150 houses happened to land in the validation set. If you try 20 settings and keep the best, you're partly keeping the luckiest one. So the winner's validation error is usually a bit **too optimistic**.
+
+      That's why the test set has to stay untouched. It hasn't been used to pick anything, so luck in the choice can't flatter it.
+    worked: |
+      This example shows why the best validation score is optimistic.
+
+      You try 20 hyperparameter settings. Their validation errors range from 410 to 700, and you keep the setting that scored 410.
+
+      On the 150 test sales that setting scores 455. The gap of 45 isn't a mistake. Some of the 410 came from that setting happening to suit those particular 150 validation houses. The 455 from the untouched test set is the honest estimate.
+    problems:
+      - ttsp-param-or-hyper-w
+      - ttsp-param-or-hyper-inputs
+      - ttsp-why-not-train-choose
+      - ttsp-best-of-20
+      - ttsp-gap-calc
+  - id: tts-leakage
+    title: Leakage, when test information sneaks into training
+    explain: |
+      The test score is only honest if nothing about the test sales reached the model during training. When information from the validation or test data does reach training, that's called **leakage**. Leakage makes the model look better than it really is.
+
+      It usually happens by accident, in one of three ways:
+
+      - **Duplicate rows:** the same sale appears twice, and one copy lands in training and the other in test. The model has already seen the answer.
+      - **Summaries computed on all the data:** for example, filling in missing house sizes with the average size of *all* 1,000 sales, before splitting. The test sales helped compute that average. Compute it from the training sales only.
+      - **Related records split apart:** the same house sold in 2019 and in 2023, with one sale in training and one in test. Keep related records together in the same set.
+
+      Robots have the same problem. Neighbouring frames of one demonstration are near-copies, so you split by whole demonstrations, not by frames.
+    worked: |
+      This example shows how duplicates make a test score look too good.
+
+      A table has 1,000 sales, but 100 of them are exact copies of other rows. After a random split, about 15 of the 150 test sales have a copy in the training set.
+
+      The model prices those 15 almost perfectly, because it trained on the identical row. That pulls the test error down from 480 to around 430. After you remove the duplicates and split again, the test error goes back up to 480, which is the honest number.
+    problems:
+      - ttsp-duplicate-leak
+      - ttsp-fill-average
+      - ttsp-dup-error
+      - ttsp-same-house
+      - ttsp-robot-frames
+      - ttsp-spot-leak
+final: tts-explain
+summary: |
+  - Training error flatters a model. Judge it on sales it never trained on.
+  - Train to learn the parameters, validate to choose between versions and hyperparameters, test once at the end to report.
+  - Leakage, meaning duplicates, summaries computed on all the data, or related records split apart, makes the test score too optimistic.

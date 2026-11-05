@@ -1,4 +1,5 @@
 import type { FormEvent, KeyboardEvent, ReactNode, RefObject } from 'react';
+import * as React from 'react';
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
@@ -34,6 +35,39 @@ export function Markdown({ children }: { children: string }) {
   return (
     <div className="markdown max-w-[70ch] text-base leading-7 text-foreground">
       <ReactMarkdown
+        components={{
+          code({ className, children: codeChildren, ...props }) {
+            if (/\blanguage-svg\b/.test(className ?? '')) {
+              const svg = plainText(codeChildren).replace(/\n$/, '');
+              const label = svg.match(/\baria-label\s*=\s*["']([^"']+)["']/)?.[1] ?? '';
+              return (
+                <figure className="my-6 flex max-w-full justify-center">
+                  <img
+                    src={`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`}
+                    alt={label}
+                    className="max-w-full"
+                    style={{ maxWidth: '70ch' }}
+                  />
+                </figure>
+              );
+            }
+            return (
+              <code className={className} {...props}>
+                {codeChildren}
+              </code>
+            );
+          },
+          pre({ children: preChildren }) {
+            const child = React.Children.only(preChildren);
+            if (
+              React.isValidElement<{ className?: string }>(child) &&
+              /language-svg/.test(child.props.className ?? '')
+            ) {
+              return child;
+            }
+            return <pre>{preChildren}</pre>;
+          },
+        }}
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex, rehypeHighlight]}
       >
@@ -41,6 +75,15 @@ export function Markdown({ children }: { children: string }) {
       </ReactMarkdown>
     </div>
   );
+}
+
+function plainText(children: ReactNode): string {
+  if (typeof children === 'string' || typeof children === 'number') return String(children);
+  if (Array.isArray(children)) return children.map(plainText).join('');
+  if (React.isValidElement<{ children?: ReactNode }>(children)) {
+    return plainText(children.props.children);
+  }
+  return '';
 }
 
 export type LessonBlockKind =
