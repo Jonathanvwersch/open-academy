@@ -22,8 +22,14 @@ import {
   inferPrerequisite,
   recordLessonViewed,
 } from '../src/server/learning/mastery.js';
-import type { SchedulerState } from '../src/server/learning/scheduler.js';
-import { planSession, replan } from '../src/server/learning/scheduler.js';
+import {
+  compareOutlinePosition,
+  masteryKey,
+  outlinePosition,
+  prerequisiteMet,
+} from '../src/server/learning/prerequisites.js';
+import type { PlannedActivity, SchedulerState } from '../src/server/learning/scheduler.js';
+import { planSession, replan, SCHEDULER_CONFIG } from '../src/server/learning/scheduler.js';
 import { initialMastery } from '../src/server/learning/types.js';
 
 const now = new Date('2026-01-14T12:00:00.000Z');
@@ -371,6 +377,142 @@ test('learn duration uses the concept estimate', () => {
   expect(learn?.plannedMinutes).toBe(concept.est_minutes);
 });
 
+test('new lessons follow outline order even when a later candidate has a higher score', async () => {
+  const fullContent = await loadContent();
+  const ids = new Set(['vectors', 'derivatives', 'probability-basics', 'supervised-learning']);
+  const probabilityExerciseTemplate = fullContent.exercisesByConcept
+    .get('supervised-learning')
+    ?.find((exercise) => exercise.dimension === 'conceptual' && exercise.role === 'core');
+  if (!probabilityExerciseTemplate) throw new Error('Missing supervised-learning core exercise');
+  const probabilityExercise = {
+    ...probabilityExerciseTemplate,
+    id: 'probability-basics-order-test',
+    concept: 'probability-basics',
+  };
+  const concepts = fullContent.concepts
+    .filter((concept) => ids.has(concept.id))
+    .map((concept) => {
+      if (concept.id === 'supervised-learning') return { ...concept, goal_weight: 100 };
+      if (concept.id === 'probability-basics') return { ...concept, status: 'authored' as const };
+      return concept;
+    });
+  const conceptsById = new Map(concepts.map((concept) => [concept.id, concept]));
+  const exercises = [
+    ...fullContent.exercises.filter((exercise) => ids.has(exercise.concept)),
+    probabilityExercise,
+  ];
+  const curriculum = fullContent.curriculum;
+  if (!curriculum) throw new Error('Missing curriculum outline');
+  const outlineWeek = curriculum.weeks.find((week) => week.week === 1);
+  if (!outlineWeek) throw new Error('Missing first curriculum week');
+  const rankedContent: ContentIndex = {
+    ...fullContent,
+    curriculum: {
+      ...curriculum,
+      weeks: [
+        {
+          ...outlineWeek,
+          concepts: outlineWeek.concepts.filter((conceptId) => ids.has(conceptId)),
+        },
+      ],
+    },
+    concepts,
+    conceptsById,
+    exercises,
+    exercisesById: new Map(exercises.map((exercise) => [exercise.id, exercise])),
+    exercisesByConcept: new Map(
+      concepts.map((concept) => [
+        concept.id,
+        concept.id === 'probability-basics'
+          ? [probabilityExercise]
+          : (fullContent.exercisesByConcept.get(concept.id) ?? []),
+      ]),
+    ),
+    lessons: fullContent.lessons.filter((lesson) => ids.has(lesson.concept)),
+    lessonsByConcept: new Map(
+      [...fullContent.lessonsByConcept].filter(([conceptId]) => ids.has(conceptId)),
+    ),
+  };
+  const state = emptyState();
+  state.mastery = [{ ...initialMastery('vectors', 'conceptual'), inferred: true }];
+  const masteryByKey = new Map(
+    state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
+  expect(
+    [...ids].every((id) =>
+      (conceptsById.get(id)?.prereqs ?? [])
+        .filter((prerequisite) => prerequisite.strength === 'hard')
+        .every((prerequisite) => prerequisiteMet(prerequisite.id, masteryByKey, [], rankedContent)),
+    ),
+  ).toBe(true);
+
+  const plansByConcept = new Map(
+    [...ids].map((conceptId) => [
+      conceptId,
+      planSession({ ...state, inProgressConceptId: conceptId }, rankedContent, now, 60),
+    ]),
+  );
+  expect(
+    [...plansByConcept].every(([conceptId, plan]) =>
+      plan.activities.some(
+        (activity) => activity.kind === 'learn' && activity.conceptId === conceptId,
+      ),
+    ),
+  ).toBe(true);
+  const plan = planSession(state, rankedContent, now, 60);
+  const learnIds = plan.activities
+    .filter((activity) => activity.kind === 'learn')
+    .map((activity) => activity.conceptId);
+
+  expect(conceptsById.get('supervised-learning')?.goal_weight).toBeGreaterThan(
+    conceptsById.get('derivatives')?.goal_weight ?? 0,
+  );
+  expect(learnIds).toEqual(['vectors', 'derivatives']);
+  const score = (activity: PlannedActivity | undefined) => {
+    if (!activity) throw new Error('Expected a planned lesson');
+    const weighted = Object.entries(activity.reason.terms).reduce(
+      (total, [term, value]) =>
+        total + value * SCHEDULER_CONFIG.weights[term as keyof typeof SCHEDULER_CONFIG.weights],
+      0,
+    );
+    return weighted / Math.sqrt(activity.plannedMinutes);
+  };
+  expect(
+    score(
+      plansByConcept
+        .get('supervised-learning')
+        ?.activities.find((activity) => activity.conceptId === 'supervised-learning'),
+    ),
+  ).toBeGreaterThan(
+    score(plan.activities.find((activity) => activity.conceptId === 'derivatives')),
+  );
+});
+
+test('outline positions place missing concepts last', async () => {
+  const fullContent = await loadContent();
+  expect(outlinePosition('vectors', fullContent)).toEqual([1, 0]);
+  expect(compareOutlinePosition('vectors', 'not-in-outline', fullContent)).toBeLessThan(0);
+});
+
+test('a completed KP lesson satisfies a prerequisite despite introduced mastery', async () => {
+  const fullContent = await loadContent();
+  const masteryByKey = new Map([
+    [
+      masteryKey('supervised-learning', 'conceptual'),
+      { ...initialMastery('supervised-learning', 'conceptual'), state: 'introduced' as const },
+    ],
+  ]);
+
+  expect(
+    prerequisiteMet(
+      'supervised-learning',
+      masteryByKey,
+      [{ conceptId: 'supervised-learning', status: 'completed' }],
+      fullContent,
+    ),
+  ).toBe(true);
+});
+
 test('unfinished knowledge-point lessons are prioritized regardless of mastery, but completed ones are not relearned', () => {
   const concept = required(content.conceptsById.get('supervised-learning'), 'supervised-learning');
   const base = emptyState();
@@ -602,6 +744,7 @@ test('Project prerequisites receive a priority term', () => {
     ...initialMastery('vectors', dimension),
     state: 'assisted',
   }));
+  state.inProgressConceptId = 'linear-models';
   const plan = planSession(state, content, new Date('2026-01-06T12:00:00.000Z'), 60);
   const prerequisite = plan.activities.find((activity) => activity.conceptId === 'linear-models');
   expect(prerequisite?.reason.terms.project).toBe(3);

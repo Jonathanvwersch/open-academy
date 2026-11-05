@@ -77,6 +77,8 @@ test('Learn shows XP and tasks, starts a session, and Course links to lessons', 
   await expect(page.getByRole('heading', { name: 'Learn', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Learn' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
+  const lessonTasks = page.locator('li').filter({ has: page.getByText('Lesson', { exact: true }) });
+  await expect(lessonTasks.first()).toContainText('Vectors');
   await expect(page.getByText('10 / 60 XP')).toBeVisible();
   await expect(page.getByText('Total XP').locator('..')).toContainText('45');
   await expect(page.getByRole('button', { name: 'Start learning' })).toBeEnabled();
@@ -85,6 +87,7 @@ test('Learn shows XP and tasks, starts a session, and Course links to lessons', 
   await page.getByRole('link', { name: 'View course' }).click();
   await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();
   await expect(page.getByText('1.1', { exact: true })).toBeVisible();
+  await expect(page.locator('li').filter({ hasText: '1.2' })).toContainText('Needs Vectors');
   await page.screenshot({ path: `${screenshotDir}/course.png`, fullPage: true });
   await page.getByRole('link', { name: 'View lesson' }).first().click();
   await expect(page).toHaveURL(/\/lessons\/vectors$/);
@@ -101,6 +104,27 @@ test('a fresh learner sees Learn onboarding without XP', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Welcome to Academy' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Start diagnostic' })).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/learn-fresh.png`, fullPage: true });
+});
+
+test('a fresh post-diagnostic learner sees outline order and prerequisite needs', async ({
+  page,
+}) => {
+  await markDiagnosticComplete();
+  await page.goto('/');
+  const firstLessonTask = page
+    .locator('li')
+    .filter({ has: page.getByText('Lesson', { exact: true }) })
+    .first();
+  await expect(firstLessonTask).toContainText('Vectors');
+  await page.screenshot({
+    path: `${screenshotDir}/learn-fresh-outline.png`,
+    fullPage: true,
+  });
+
+  await page.goto('/course');
+  const secondTopic = page.locator('li').filter({ hasText: '1.2' });
+  await expect(secondTopic).toContainText('Needs Vectors');
+  await page.screenshot({ path: `${screenshotDir}/course-fresh.png`, fullPage: true });
 });
 
 test('passing a knowledge point increases Learn XP after reload', async ({ page }) => {

@@ -134,6 +134,42 @@ test('lessons start with an objective and end with a summary', () => {
   );
 });
 
+test('hard prerequisites must precede concepts in the curriculum outline', async () => {
+  const data = await notationFixture();
+  const week = data.curriculum?.value.weeks[0];
+  if (!week) throw new Error('Missing fixture curriculum week');
+  week.concepts = [
+    'derivatives',
+    'vectors',
+    ...week.concepts.filter((id) => !['vectors', 'derivatives'].includes(id)),
+  ];
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'derivatives',
+        message: 'hard prerequisite "vectors" appears later in the curriculum outline',
+      }),
+    ]),
+  );
+});
+
+test('an outlined concept requires its hard prerequisites in the outline', async () => {
+  const data = await notationFixture();
+  const week = data.curriculum?.value.weeks[0];
+  if (!week) throw new Error('Missing fixture curriculum week');
+  week.concepts = week.concepts.filter((id) => id !== 'vectors');
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'derivatives',
+        message: 'hard prerequisite "vectors" is missing from the curriculum outline',
+      }),
+    ]),
+  );
+});
+
 test('notation used without an introducing hard prerequisite is an issue', async () => {
   const data = await notationFixture();
   addNotationTerm(data);
@@ -614,6 +650,9 @@ async function notationFixture(): Promise<ContentSourceData> {
 
 function sourceDataFromIndex(content: ContentIndex): ContentSourceData {
   return {
+    ...(content.curriculum
+      ? { curriculum: { value: content.curriculum, file: 'curriculum.yaml' } }
+      : {}),
     concepts: content.concepts.map(({ domain, contentVersion, ...value }) => ({
       value,
       domain,

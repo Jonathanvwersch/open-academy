@@ -15,6 +15,8 @@ import {
   xpEvents,
 } from '../src/server/db/schema.js';
 import { env } from '../src/server/env.js';
+import { prerequisiteMet } from '../src/server/learning/prerequisites.js';
+import type { MasteryRecord } from '../src/server/learning/types.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000092';
@@ -22,7 +24,7 @@ let app: ReturnType<typeof createApp>;
 let content: ContentIndex;
 
 beforeAll(async () => {
-  content = await loadContent('tests/fixtures/content');
+  content = await loadContent();
   app = createApp({ db, content, tutorProvider: null });
 });
 
@@ -101,14 +103,48 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
 
   const courseResponse = await get('/course');
   expect(courseResponse.status).toBe(200);
-  const course = await courseResponse.json();
+  const course: {
+    weeks: Array<{
+      topics: Array<{
+        number: string;
+        conceptId: string;
+        title: string;
+        hasLesson: boolean;
+        status: string;
+        mastery: string;
+        needs?: Array<{ id: string; title: string }>;
+      }>;
+    }>;
+  } = await courseResponse.json();
   expect(course.weeks[0].topics[0]).toMatchObject({
     number: '1.1',
     conceptId: 'vectors',
-    title: 'Vectors',
+    title: 'Vectors and vector operations',
     status: expect.stringMatching(/^(locked|not_started|in_progress|complete)$/),
     mastery: 'Not started',
   });
+  const dotProduct = course.weeks
+    .flatMap((week) => week.topics)
+    .find((topic) => topic.conceptId === 'dot-product');
+  expect(dotProduct).toMatchObject({
+    needs: [{ id: 'vectors', title: 'Vectors and vector operations' }],
+  });
+  const masteryByKey = new Map<string, Pick<MasteryRecord, 'state' | 'inferred'>>();
+  const lessonRuns: Array<{
+    conceptId: string;
+    status: 'in_progress' | 'needs_retry' | 'completed';
+  }> = [];
+  for (const topic of course.weeks.flatMap((week) => week.topics)) {
+    const concept = content.conceptsById.get(topic.conceptId);
+    const locked = Boolean(
+      concept?.prereqs.some(
+        (prerequisite) =>
+          prerequisite.strength === 'hard' &&
+          !prerequisiteMet(prerequisite.id, masteryByKey, lessonRuns, content),
+      ),
+    );
+    expect(topic.status === 'locked').toBe(locked);
+  }
   expect(await rowCounts()).toEqual(before);
 });
 
@@ -190,13 +226,13 @@ test('active-session tasks, done-today activity, and local-date KP XP are return
     activityKind: 'learn',
     label: 'Lesson',
     conceptId: 'supervised-learning',
-    title: 'Supervised learning',
+    title: 'Supervised learning setup',
     xp: expect.any(Number),
   });
   expect(learn.doneToday).toEqual([
     {
       label: 'Practice',
-      title: 'Vectors',
+      title: 'Vectors and vector operations',
       xp: 12,
       completedAt: '2026-01-07T11:30:00.000Z',
     },
