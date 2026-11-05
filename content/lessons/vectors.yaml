@@ -1,61 +1,65 @@
 concept: vectors
 version: 2
 objective: |
-  **Goal:** read a feature vector as a point in space, add and scale vectors, and compute L2 lengths and distances.
+  **Goal:** describe a robot's position with numbers, combine its movements, and calculate distances. Use the same kind of list to describe a house for a model.
 why: |
-  A delivery robot needs to combine floor moves and judge how far it is from a target. A house-price model needs to handle area, bedrooms and age together. You could write a separate rule for every coordinate or measurement, but those rules become unwieldy for images with thousands of pixel values, and mixing up their order changes their meaning. Vectors keep related numbers in a fixed order, so the same addition, scaling and distance rules work for robot positions and model inputs. The floor arrows here give you a picture of those operations before you apply them to data. You'll need them for dot product, matrices, linear regression, gradients, and coordinate frames.
+  A warehouse robot must collect a parcel and return to its charging dock. If it is 3 metres east and 4 metres north of the dock, recording only “7 metres away” would lose the direction and give the wrong straight-line distance. A vector keeps both numbers in a fixed order, so the robot can combine movements and work out how far it is from its destination. The same idea lets a house-price model keep area, bedroom count and age together, rather than lose their separate meanings in one total. You'll use vectors in dot product, matrices, linear regression, gradients, and coordinate frames to handle several related numbers with one consistent set of rules.
 knowledge_points:
   - id: vec-points-moves
-    title: Points and moves as ordered numbers
+    title: Recording where a warehouse robot is
     explain: |
-      You are recording moves on a floor grid. **Where do two moves take you?** Adding all their numbers into one total loses which way you moved. Use metres, with right positive and up positive: $(3,4)$ means three right and four up from the origin, the starting point $(0,0)$.
+      A warehouse robot leaves its charging dock to collect a parcel. It travels 1 metre east and 2 north, then 3 east and 1 south. **Where should it look for the parcel?** Adding all the distances into one total would lose which direction each journey took.
 
-      This ordered list is a **vector**; each entry is a **component**. Picture it as a point, or an arrow from the origin to that point. Negative entries mean left or down.
+      Record each movement as an ordered pair: $(1,2)$, then $(3,-1)$, in metres east and north. A negative first number means west; a negative second number means south. An ordered list like this is a **vector**, and each number is a **component**.
 
-      **Vector addition** combines moves by adding matching components. This works because horizontal travel accumulates independently of vertical travel. Picture the second arrow's tail at the first arrow's tip. Why this way? Mixing entries would mix directions rather than total each one. The entries must match in meaning and units.
+      **Vector addition** adds components with matching meanings and units. This works because travelling north does not change how far east the robot is. Why this way? Adding an eastward distance to a northward one would lose that separation.
 
-      A **feature vector** $(120,3,15)$ records a house's area in square metres, bedrooms and age in years. These three coordinates describe measurements, not a floor position.
+      Draw each movement as an arrow. Place the second arrow's start at the first arrow's end; the combined arrow reaches the final position. The dock is the **origin**, written $(0,0)$. The numbers describing a position are its **coordinates**.
 
-      Write $x \in \mathbb{R}^n$ to say vector $x$ has $n$ real-number entries; $\in$ means “belongs to”, and $n$ counts the entries. The notation $x_i$ means entry number $i$ of $x$.
+      A model can also use a **feature vector**, a list of measurements about one example. For a house, $(120,3,15)$ can mean area in square metres, bedrooms, and age in years. Its coordinates are measurements, not compass directions.
+
+      Write $x\in\mathbb{R}^n$ for a vector of $n$ real numbers, which can include fractions and negative numbers. The symbol $\in$ means “belongs to”; $x_i$ means entry number $i$.
     worked: |
-      This example shows how two moves become one arrow.
+      This example shows where the robot arrives after its two journeys.
 
-      Call the moves $a=(1,2)$ and $b=(3,-1)$, both in metres.
+      Call the movements $a=(1,2)$ and $b=(3,-1)$, both in metres east and north.
 
-      1. Add horizontal entries: $1+3=4$.
-      2. Add vertical entries: $2+(-1)=1$.
-      3. Keep the original order: $a+b=(4,1)$.
+      1. The robot travels a total of $1+3=4$ metres east.
+      2. It travels $2+(-1)=1$ metre north, because the second journey goes south.
+      3. Its final position relative to the dock is $a+b=(4,1)$.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 220" aria-label="Tip-to-tail addition of (1,2) and (3,-1) gives (4,1)">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 220" aria-label="A robot travels (1,2) then (3,-1) metres east and north from its dock, arriving at (4,1)">
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
       <path d="M50 180 H470 M50 180 V20" stroke="#d4d4d4" fill="#d4d4d4" fill-opacity="0"/>
       <path d="M50 180 L140 60" stroke="#10b981" stroke-width="3"/><path d="M140 60 L126 68 L138 75 Z" fill="#10b981"/>
       <path d="M140 60 L410 120" stroke="#f59e0b" stroke-width="3"/><path d="M410 120 L396 110 L394 123 Z" fill="#f59e0b"/>
       <path d="M50 180 L410 120" stroke="#3b82f6" stroke-width="3"/><path d="M410 120 L395 116 L397 129 Z" fill="#3b82f6"/>
-      <text x="20" y="202">(0,0)</text><text x="55" y="85">a = (1,2)</text><text x="250" y="50">b = (3,-1)</text><text x="235" y="168">a + b = (4,1)</text><text x="440" y="202">right</text><text x="15" y="18">up</text>
+      <text x="5" y="202">dock (0,0)</text><text x="55" y="85">a = (1,2)</text><text x="250" y="50">b = (3,-1)</text><text x="235" y="168">a + b = (4,1)</text><text x="440" y="202">east</text><text x="15" y="18">north</text>
       </g>
       </svg>
       ```
 
-      The combined move ends four metres right and one metre up from where you started.
+      The parcel is 4 metres east and 1 metre north of the dock.
     problems: [vecp-add, vecp-add-template, vecp-feature, vecp-order, vecp-new-moves, vecp-entry]
   - id: vec-change-move
-    title: Making a move longer or reversing it
+    title: Sending the robot farther or back again
     explain: |
-      Your move is $(1,2)$. **How can you travel twice as far without turning?** Doubling only the first entry turns the arrow. Instead, multiply every entry by two to get $(2,4)$.
+      The robot's usual journey is 1 metre east and 2 north, written $(1,2)$. A parcel is twice as far away along the same direction. **What instruction should the robot receive?** Doubling only the eastward distance would send it towards a different place.
 
-      Multiplying every component by the same number is **scaling**; that number is a **scalar**. In $c x$, scalar $c$ multiplies every entry of vector $x$. This works because equal scaling preserves the proportions of horizontal and vertical travel. Why this way? Adding two to each entry need not preserve those proportions.
+      Multiply both numbers by two to get $(2,4)$. Multiplying every component by the same number is **scaling**. That number is a **scalar**; in $cx$, the scalar $c$ multiplies every entry of vector $x$.
 
-      A positive scalar keeps the direction and multiplies the length by that amount. Zero makes the zero vector, whose entries are all zero and which has no direction.
+      This works because the robot still travels twice as far north as east. The arrow gets longer without turning. Why this way? Adding two to both entries would give $(3,4)$, which does not keep the same balance between east and north.
 
-      A negative scalar also reverses the arrow. Multiplying by $-1$ retraces your route.
+      A positive scalar keeps the direction and multiplies the length by that amount. Multiplying by one half halves the distance. Multiplying by zero gives the **zero vector**, whose entries are all zero. It means no movement and has no direction.
 
-      **Vector subtraction** adds a reversed arrow, so subtract matching entries. For $3a-b$, scale first, then subtract.
+      A negative scalar reverses the direction as well. Multiplying $(1,2)$ by $-1$ gives $(-1,-2)$: travel 1 metre west and 2 south to retrace the journey.
+
+      **Vector subtraction** means adding the opposite of a vector. Subtract each matching entry. To calculate $3a-b$, first triple movement $a$, then subtract movement $b$.
     worked: |
-      This example shows how scaling and subtraction change a move.
+      This example shows how to extend a robot's journey and calculate the movement needed to undo another journey.
 
-      Use the same moves $a=(1,2)$ and $b=(3,-1)$.
+      Use $a=(1,2)$ and $b=(3,-1)$, in metres east and north.
 
       1. Double each entry: $2a=(2\cdot1,2\cdot2)=(2,4)$.
       2. Reverse each entry: $-a=(-1,-2)$.
@@ -63,66 +67,67 @@ knowledge_points:
       4. Subtract matching entries: $(3,6)-(3,-1)=(3-3,6-(-1))=(0,7)$.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 220" aria-label="Scaling a to twice its length and reversing a">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 220" aria-label="Robot movements in metres east and north: a is (1,2), twice a is (2,4), and the return journey is (-1,-2)">
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
       <path d="M20 150 H470 M170 210 V10" stroke="#d4d4d4" fill="#d4d4d4" fill-opacity="0"/><path d="M170 150 L270 20" stroke="#3b82f6" stroke-width="3"/><path d="M270 20 L256 27 L268 35 Z" fill="#3b82f6"/><path d="M170 150 L220 85" stroke="#10b981" stroke-width="5"/><path d="M220 85 L206 92 L218 100 Z" fill="#10b981"/><path d="M170 150 L120 215" stroke="#ef4444" stroke-width="3"/><path d="M120 215 L134 208 L122 200 Z" fill="#ef4444"/>
-      <text x="278" y="35">2a = (2,4)</text><text x="230" y="100">a = (1,2)</text><text x="15" y="195">-a = (-1,-2)</text><text x="178" y="172">(0,0)</text>
+      <text x="278" y="35">2a = (2,4)</text><text x="230" y="100">a = (1,2)</text><text x="15" y="195">return: -a = (-1,-2)</text><text x="178" y="172">dock (0,0)</text><text x="440" y="170">east</text><text x="180" y="15">north</text>
       </g>
       </svg>
       ```
 
-      Scaling changes every component, and subtracting a negative component adds its positive value.
+      The result $(0,7)$ means no change east or west and a total of 7 metres north. Subtracting a negative entry adds its positive value.
     problems:
       [vecp-why-scale-all, vecp-scale-template, vecp-negative, vecp-zero, vecp-subtract, vecp-half]
   - id: vec-length-distance
-    title: Length and distance from squared steps
+    title: Finding the straight-line distance to the dock
     explain: |
-      You move three metres right and four up. **How far away is your starting point?** Adding absolute steps gives the 7 m right-then-up route, not the 5 m straight line. Pythagoras gives the straight line: square both steps, add them, then take the square root.
+      The robot is 3 metres east and 4 north of its dock. Its battery is low. **How far is the direct journey home?** Adding 3 and 4 gives the 7-metre route along two sides, not the straight line. It must still check whether shelves block the direct route.
 
-      This length is the **L2 norm**, written $\|x\|_2$ for vector $x$. For any number of entries:
+      The two compass directions meet at a right angle. Pythagoras' rule for a right triangle says that its squared diagonal length equals the sum of the squared side lengths. The diagonal is the robot's straight-line journey. The square-root sign $\sqrt{\phantom{a}}$ undoes squaring, giving $\sqrt{3^2+4^2}=5$ metres.
+
+      This length is the **L2 norm**, written $\|x\|_2$. For a vector $x$ with $n$ entries:
 
       $$\|x\|_2=\sqrt{\sum_{i=1}^{n}x_i^2}.$$
 
-      The square-root sign $\sqrt{\phantom{a}}$ undoes squaring. The symbol $\sum_{i=1}^{n}$ means “add for entry numbers $i$ from one to $n$”; $x_i^2$ means square entry $i$.
+      Here $x_i^2$ means square entry $i$. The symbol $\sum_{i=1}^{n}$ means “add for entry numbers $i$ from one to $n$”.
 
-      This works because the arrow is the right triangle's diagonal. Why this way? Pythagoras gives squared length; the root turns square metres back into metres. Squaring prevents opposite signs cancelling.
+      This works by applying Pythagoras to the coordinate directions. Why this way? Adding absolute distances measures the two-sided route. Pythagoras gives squared straight-line length, and the root turns square metres back into metres. Squaring also prevents opposite signs cancelling.
 
-      To measure the **Euclidean distance** between points $p$ and $q$, subtract their coordinates, then take the length: $\text{dist}(p,q)=\|p-q\|_2$. The symbol $\text{dist}$ means distance; reversing the subtraction gives the same length.
+      The **Euclidean distance** between positions $p$ and $q$ is this straight-line distance: $\text{dist}(p,q)=\|p-q\|_2$. Subtract their coordinates first, then find that vector's length. Reversing the subtraction gives the same distance.
 
-      The robot's distance rule also lets an ML model compare house vectors. An area gap of 50 square metres contributes $50^2=2500$, while two bedrooms contribute $2^2=4$. Large numerical ranges can dominate similarity.
+      A machine-learning model can compare houses with the same calculation. But an area difference of 50 adds $2500$ to the squared total, while two bedrooms add only 4. Rescale features to comparable ranges first. A distance mixing bedroom counts and area is not a physical length in metres.
 
-      Rescale features to comparable ranges. Mixed-unit distance is calculable, but is not a physical length in metres.
     worked: |
-      This example shows length and distance using the same square-add-root steps.
+      This example shows how to find a robot's distance and then compare two houses using the same calculation.
 
-      For the move $b=(3,-1)$:
+      The robot travels $b=(3,-1)$ metres east and north from its dock.
 
       1. Square each entry: $3^2=9$ and $(-1)^2=1$.
       2. Add: $9+1=10$.
       3. Take the square root: $\|b\|_2=\sqrt{10}\approx3.16$ metres, where $\approx$ means “approximately”.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 220" aria-label="Pythagoras gives an arrow length of 5 metres from sides 3 and 4">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 220" aria-label="A robot 3 metres east and 4 metres north of its dock is 5 metres away in a straight line">
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
       <path d="M60 175 H330 V35" stroke="#d4d4d4" stroke-width="2" fill="#d4d4d4" fill-opacity="0"/><path d="M315 175 V160 H330" stroke="#737373" fill="#d4d4d4" fill-opacity="0"/><path d="M60 175 L330 35" stroke="#3b82f6" stroke-width="3"/><path d="M330 35 L314 37 L320 49 Z" fill="#3b82f6"/>
-      <text x="175" y="200">3 m right</text><text x="345" y="110">4 m up</text><text x="95" y="70">length = √(9 + 16) = 5 m</text>
+      <text x="175" y="200">3 m east</text><text x="345" y="110">4 m north</text><text x="95" y="70">distance = √(9 + 16) = 5 m</text>
       </g>
       </svg>
       ```
 
-      For houses $p=(2,5,1)$ and $q=(4,1,1)$, with entries (rooms, kilometres to centre, floors):
+      Now compare houses $p=(2,5,1)$ and $q=(4,1,1)$. Their features are room count, kilometres to the town centre, and number of storeys, in that order.
 
       1. Subtract: $p-q=(2-4,5-1,1-1)=(-2,4,0)$.
       2. Square and add: $(-2)^2+4^2+0^2=4+16+0=20$.
       3. Take the square root: $\text{dist}(p,q)=\sqrt{20}\approx4.47$.
 
-      Length and distance use the same calculation, but feature units determine what the comparison means.
+      This numerical house distance is not measured in metres. Changing the units of a feature changes how strongly it affects the comparison.
     problems:
       [vecp-norm, vecp-norm-template, vecp-distance, vecp-why-root, vecp-units, vecp-zero-length]
 final: vec-explain
 summary: |
-  - A vector is an ordered list: a point or arrow for coordinates, or a point with one coordinate per feature for data; add matching entries.
-  - Scale every entry by the same scalar; a negative scalar reverses the arrow, and subtraction adds a reversed arrow.
-  - The L2 norm squares, adds and takes a square root; distance is the norm of a difference, and feature units can dominate it.
+  - A vector is an ordered list of numbers. It can record a robot's position or measurements about a house. Add entries with matching meanings and units.
+  - Scaling multiplies every entry by the same number. A negative number reverses the arrow. Subtracting a vector means adding its opposite.
+  - The L2 norm is the square root of the sum of squared entries. To find distance, subtract coordinates first. For house measurements, choose comparable ranges so that large numbers do not overwhelm the comparison.
 
-  **Where you'll use this:** dot product, matrices, linear regression, gradients, and coordinate frames build on these operations for model inputs, weight changes and robot positions.
+  **Where you'll use this:** dot product, matrices, linear regression, gradients, and coordinate frames use vectors to organise model inputs, changes to model weights, and robot positions.
