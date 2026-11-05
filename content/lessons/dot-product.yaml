@@ -1,34 +1,36 @@
 concept: dot-product
 version: 2
 objective: |
-  **Goal:** compute dot products and cosine similarity, explain when they measure similarity, and recognise weighted scores in linear models and attention.
+  **Goal:** turn two vectors into one number, see how that number measures agreement between arrows, and compare directions without rewarding length.
+why: |
+  A film app needs to recommend something you will enjoy. It records your taste for action, comedy and romance as (3, 0, 1), and a film's scores for those categories as (2, 1, 0). Adding the film's scores alone would ignore your tastes. A dot product pairs each film score with how much you care about that category, then adds the results to give one number for ranking films. Cosine similarity lets you compare the balance of categories without rewarding larger numbers alone. The same calculations appear in matrices, linear regression, the perceptron, and attention, where a model compares numerical descriptions to decide what matters.
 knowledge_points:
   - id: dot-weighted-total
-    title: Turning matching entries into one score
+    title: Combining two lists into one number
     explain: |
-      You have recorded a house as a feature vector, but now you want one score rather than a list. Suppose you use floor area and bedroom count, giving each a chosen importance. Multiply each feature by its weight, then add the contributions.
+      **How can two lists of numbers give one total, with each entry allowed to matter differently?** A useful calculation should pair entries with the same meaning. Doubling an entry in either list should double that pair's contribution. Adding a list's entries alone would ignore the other list.
 
-      This is a **weighted sum**. The **dot product** does exactly this for two vectors: multiply matching entries and add the results. Unlike vector addition, which returns another vector, it returns one number.
+      Multiply matching entries, then add. For $a=(3,0,1)$ and $b=(2,1,0)$, this gives $3\cdot2+0\cdot1+1\cdot0=6$. This is the **dot product**, written $a\cdot b$. The dot between numbers means multiplication; between vectors it names the whole calculation.
 
-      For vectors $a$ and $b$ with $n$ entries each:
+      For vectors with $n$ entries, $i$ selects an entry and $\sum$ adds from entry one to $n$:
 
       $$a\cdot b=\sum_{i=1}^{n}a_i b_i.$$
 
-      The dot between vectors names the operation; between numbers it means ordinary multiplication. As in the vectors lesson, $i$ selects an entry and $\sum$ adds the products from entry one to entry $n$. You must keep the feature and weight orders matched.
+      Picture one contribution from each matching pair. The contributions are 6, 0 and 0 here. Multiplication sets their sizes, and addition combines them into one number. Why this way? Multiplying without adding leaves a list, not the requested total. Both vectors must keep the same entry order.
 
-      A **linear model** can use $w\cdot x$ as a score, where $w$ lists weights and $x$ lists features. Holding everything else fixed, raising feature $x_i$ by one changes the score by weight $w_i$. A negative weight lowers the score when its feature increases; a zero weight ignores that feature.
+      When one list controls how much each measurement matters, its entries are **weights** and the total is a **weighted sum**. A zero weight ignores a measurement; a negative weight reverses its contribution. A **linear model** uses this calculation to score input measurements, called **features**. For a film app, weights $(3,0,1)$ can describe interest in action, comedy and romance, while $(2,1,0)$ describes a film.
     worked: |
-      This example shows how a house-price score adds feature contributions.
+      This example shows why a film's action score matters more to this viewer than its comedy score.
 
-      Use features $x=(4,1)$: floor area in units of 25 square metres, then bedrooms. Choose weights $w=(0.5,2)$; this is a toy score, not a price in pounds.
+      Use taste weights $w=(3,0,1)$ and film scores $x=(2,1,0)$, always in the order (action, comedy, romance).
 
-      1. Area contributes $0.5\cdot4=2$.
-      2. Bedrooms contribute $2\cdot1=2$.
-      3. Add the contributions: $w\cdot x=2+2=4$.
-      4. One extra bedroom gives $x=(4,2)$ and score $0.5\cdot4+2\cdot2=2+4=6$, a rise of $6-4=2$.
-      5. One extra area unit instead gives $x=(5,1)$ and score $0.5\cdot5+2\cdot1=2.5+2=4.5$, a rise of $4.5-4=0.5$.
+      1. Action adds $3\cdot2=6$ to the score.
+      2. Comedy adds $0\cdot1=0$, and romance adds $1\cdot0=0$.
+      3. The total is $w\cdot x=6+0+0=6$.
+      4. Increasing the film's action score to 3 gives $3\cdot3+0\cdot1+1\cdot0=9$.
+      5. Increasing only its comedy score instead leaves the total at 6, because the comedy weight is zero.
 
-      Each weight tells you how much one extra unit of its feature changes the score.
+      The app can rank films by this number. That ranking is only as useful as the category scores and taste weights it uses.
     problems:
       [
         dotp-total,
@@ -36,36 +38,34 @@ knowledge_points:
         dotp-model,
         dotp-order,
         dotp-negative-weight,
-        dotp-one-number,
+        dotp-why-total,
       ]
   - id: dot-arrow-alignment
-    title: Reading the score as arrow alignment
+    title: Measuring how much two arrows point the same way
     explain: |
-      You have two floor moves and want to know whether they head in similar directions. Comparing their horizontal entries alone misses the vertical part. The dot product combines both, and its sign tells you whether the arrows broadly agree.
+      **How much do two arrows point the same way?** We want a positive number when they point roughly together, zero when they meet at a right angle, and a negative number when they point against each other. Comparing lengths alone cannot tell these cases apart.
 
-      To see why, place both tails at the origin. The **angle** between them measures how far you turn from one arrow to the other, from zero to 180 degrees. **Cosine**, written $\cos$, assigns one at zero degrees, zero at 90 degrees and minus one at 180 degrees.
+      Try $a=(3,4)$ and $b=(2,0)$, both drawn from $(0,0)$. Their dot product is $3\cdot2+4\cdot0=6$. Reversing $b$ gives $-6$. Replacing it by $(4,-3)$ gives $12-12=0$.
 
-      For non-zero vectors $a$ and $b$:
+      Why does this work? Drop a perpendicular line from $a$'s tip onto the line along $b$. **Perpendicular** means meeting at a right angle; **orthogonal** means the same thing. The resulting shadow is the **projection** of $a$ onto that line. Its signed length is positive along $b$ and negative against it. Here the shadow reaches 3 units right. Multiplying by $b$'s length, 2, gives 6.
+
+      The **angle** $\theta$ (“theta”) measures the turn between the arrows, from zero to 180 degrees. **Cosine**, written $\cos$, is the projection's signed length divided by $a$'s length. Thus:
 
       $$a\cdot b=\|a\|_2\|b\|_2\cos\theta.$$
 
-      Here $\theta$ (“theta”) is their angle, and the two norms are their lengths. An angle below 90 degrees gives a positive score; a right angle gives zero; an angle above 90 degrees gives a negative score. Right-angle vectors are **perpendicular**, also called **orthogonal**.
-
-      Picture the shadow of one arrow on the line of the other. This signed length is its **projection**: forward is positive and backward negative.
-
-      The dot product multiplies that projection by the other arrow's length. So it measures alignment, but longer arrows can also make its magnitude larger.
+      Cosine is one at zero degrees, zero at 90, and minus one at 180. Why this way? The shadow records direction, while multiplying by the other length makes both arrows' sizes count. In a model, this lets a score measure agreement as well as size.
     worked: |
-      This example shows how a projection explains a dot product.
+      This example shows why multiplying a projection by the other arrow's length gives the dot product.
 
-      Use floor moves $a=(3,4)$ and $b=(2,0)$, both in metres.
+      Draw $a=(3,4)$ and $b=(2,0)$ from the origin. The first coordinate measures distance right and the second measures distance up.
 
       1. Multiply and add: $a\cdot b=3\cdot2+4\cdot0=6+0=6$.
       2. Find the lengths: $\|a\|_2=\sqrt{9+16}=5$ and $\|b\|_2=\sqrt{4+0}=2$.
-      3. The projection of $a$ onto the horizontal direction of $b$ is three metres.
-      4. Multiply that signed projection by $b$'s length: $3\cdot2=6$, the same score.
+      3. The projection of $a$ onto the horizontal line along $b$ has signed length 3.
+      4. Multiplying that projection by $b$'s length gives $3\cdot2=6$, the same score.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 260" aria-label="Arrow a at an angle theta to horizontal arrow b, with a three-metre horizontal projection">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 260" aria-label="Arrows a=(3,4) and b=(2,0) from the origin; a's projection onto the line along b has signed length 3">
         <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
           <path d="M60 205 H420 M180 45 V205" stroke="#d4d4d4" stroke-width="2" fill="#d4d4d4" fill-opacity="0" stroke-dasharray="5 5"/>
           <path d="M60 205 L180 45" stroke="#10b981" stroke-width="3"/>
@@ -75,16 +75,14 @@ knowledge_points:
           <path d="M60 225 H180" stroke="#f59e0b" stroke-width="3"/>
           <path d="M100 205 A40 40 0 0 0 84 173" stroke="#737373" fill="#737373" fill-opacity="0"/>
           <path d="M165 205 V190 H180" stroke="#737373" fill="#737373" fill-opacity="0"/>
-          <text x="185" y="40">a = (3,4)</text><text x="85" y="164">b = (2,0)</text>
-          <text x="105" y="187">θ</text><text x="65" y="248">projection = 3 m</text>
-          <text x="220" y="140">shadow falls</text><text x="220" y="159">on the horizontal line</text>
+          <text x="185" y="40">a = (3,4)</text><text x="145" y="180">b = (2,0)</text>
+          <text x="105" y="187">θ</text><text x="65" y="248">projection along b = 3</text>
+          <text x="220" y="140">first coordinate: right</text><text x="220" y="159">second coordinate: up</text>
         </g>
       </svg>
       ```
 
-      Reversing $b$ gives $(-2,0)$ and score $3\cdot(-2)+4\cdot0=-6$.
-
-      The sign records agreement or opposition, while the size also depends on arrow length.
+      Reverse $b$ to $(-2,0)$. The projection now points against $b$, so its signed length is $-3$. The dot product is $(-3)\cdot2=-6$.
     problems:
       [
         dotp-sign,
@@ -92,26 +90,28 @@ knowledge_points:
         dotp-right-angle,
         dotp-projection,
         dotp-reverse,
-        dotp-longer,
+        dotp-why-not-lengths,
       ]
   - id: dot-direction-only
     title: Comparing directions without rewarding length
     explain: |
-      You want to compare the directions of two floor moves, but doubling one move doubles its dot product without turning it. A longer move could win a similarity comparison simply because it is longer. Divide out both lengths to remove that effect.
+      **How can we compare directions without rewarding longer arrows?** The answer should stay the same when either arrow doubles without turning. The dot product alone fails this test: $(1,1)\cdot(1,0)=1$, but $(1,1)\cdot(2,0)=2$.
 
-      This direction-only score is **cosine similarity**:
+      Divide the dot product by both lengths. The result is **cosine similarity**:
 
       $$\cos\theta=\frac{a\cdot b}{\|a\|_2\|b\|_2}.$$
 
-      The numerator is the dot product, and the denominator multiplies the two lengths. The score lies between minus one and one: one means the same direction, zero means perpendicular, and minus one means opposite directions. Either vector being zero makes the denominator zero, so cosine similarity is undefined there.
+      For $a=(1,1)$ and $b=(1,0)$, the lengths are $\sqrt2$ and 1, so the result is $1/\sqrt2\approx0.707$. Doubling $b$ gives $2/(\sqrt2\cdot2)$, the same number.
 
-      Multiplying a non-zero vector by a positive scalar changes its length but not its cosine similarity to another vector. A negative scalar reverses its direction and flips the sign instead. Raw dot products mix length and direction; cosine similarity compares direction only, not whether two points occupy the same position.
+      Picture shortening or lengthening both arrows until each has length one. Their directions stay fixed, and their dot product is now just the signed projection. This explains why dividing by the original lengths removes size. A vector of length one is a **unit vector**.
 
-      The same distinction matters for feature vectors: a high score reflects the chosen representation, not a guarantee of real-world similarity. A buyer's preference vector can score a house by its features, but the raw dot product reflects both fit and vector length; cosine removes the length factor.
+      The score ranges from minus one to one: one means the same direction, zero means perpendicular, and minus one means opposite. A zero vector has no direction, and its zero length makes the division undefined. Multiplying by a negative number reverses an arrow and flips the score's sign.
+
+      Why this way? Use cosine similarity when direction matters but size should not. In a film model, $(1,1)$ and $(10,10)$ give action and comedy the same relative importance. Cosine treats those tastes as identical in direction, not identical in ratings. Use the unadjusted dot product if rating strength should count too.
     worked: |
       This example shows how dividing out lengths isolates direction.
 
-      Start with floor moves $a=(1,1)$ and $b=(1,0)$.
+      Start with arrows $a=(1,1)$ and $b=(1,0)$.
 
       1. Dot product: $a\cdot b=1\cdot1+1\cdot0=1$.
       2. Lengths: $\|a\|_2=\sqrt{1+1}=\sqrt2$ and $\|b\|_2=\sqrt{1+0}=1$.
@@ -121,11 +121,13 @@ knowledge_points:
 
       For $a=(3,4)$ and $b=(4,3)$, the dot product is $3\cdot4+4\cdot3=12+12=24$. Both lengths are $\sqrt{9+16}=5$, so cosine similarity is $24/(5\cdot5)=24/25=0.96$.
 
-      Cosine similarity stays unchanged when you lengthen an arrow without turning it.
+      Multiplying either arrow by a positive number leaves its direction, and therefore its cosine similarity, unchanged. For taste vectors this compares the balance of interests, not how large the ratings are.
     problems:
       [dotp-cosine, dotp-cosine-template, dotp-scaling, dotp-zero, dotp-attention, dotp-position]
 final: dot-explain
 summary: |
-  - A dot product multiplies matching entries and adds them; a linear score weights each feature this way.
-  - The dot product is positive for broadly agreeing arrows, zero for perpendicular arrows and negative for opposing arrows; its size also depends on length.
-  - Cosine similarity divides by both non-zero lengths to compare direction only, avoiding the length reward in raw similarity scores.
+  - A dot product multiplies matching entries and adds the results. When one vector contains weights, it gives a weighted total of the other vector's measurements.
+  - For arrows, the dot product is a signed projection multiplied by the other arrow's length. It is positive below a right angle, zero at a right angle, and negative above a right angle.
+  - Cosine similarity divides by both non-zero lengths. It compares directions without rewarding longer arrows. A model can use it to compare the balance of interests without rewarding larger ratings alone.
+
+  **Where you'll use this:** matrices, linear regression, the perceptron, and attention reuse these ways of calculating and comparing scores from lists of numbers.
