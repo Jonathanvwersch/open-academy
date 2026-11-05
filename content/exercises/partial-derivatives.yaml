@@ -40,7 +40,7 @@ exercises:
       - {
           answer: 6,
           category: math_error,
-          feedback: "You dropped the inner factor $x = 3$. By the chain rule, $\\partial L/\\partial w = 2r \\cdot x$.",
+          feedback: "You dropped the inner factor $x = 3$: $\\partial f/\\partial w = 2r \\cdot x$.",
         }
       - { answer: 9, category: math_error, feedback: "Don't forget the factor 2 from the square." }
     hints:
@@ -82,3 +82,443 @@ exercises:
           category: misunderstood_definition,
         }
     solution: "A partial derivative varies one variable; everything else, data and other parameters alike, is held fixed."
+  - id: pd-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "A house price formula $P(s, a)$ uses size $s$ (tens of m²) and age $a$ (years). At one house, $\\frac{\\partial P}{\\partial s} = 28$ and $\\frac{\\partial P}{\\partial a} = -3$, in thousands of pounds. Explain in 2–4 sentences what each number means and why the other input must be held fixed."
+    rubric:
+      - {
+          id: r1,
+          criterion: "Says $\\partial P/\\partial s = 28$ means the price rises about £28k per extra 10 m² when the age stays the same",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "Says $\\partial P/\\partial a = -3$ means the price falls about £3k per extra year when the size stays the same",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r3,
+          criterion: "Explains that holding the other input fixed isolates the effect of one input, so the two changes aren't mixed up",
+          weight: 1,
+        }
+    exemplar: "∂P/∂s = 28 means that, keeping the house the same age, each extra 10 m² adds about £28k to the price. ∂P/∂a = -3 means that, keeping the size the same, each extra year takes about £3k off. Holding the other input fixed isolates the effect of one input; if both moved at once you couldn't tell which caused the change."
+  - id: pdp-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "For a price formula $P(s, a)$ with size $s$ and age $a$, what does $\\frac{\\partial P}{\\partial s}$ measure?"
+    options:
+      - id: a
+        text: "How fast the price changes as the size grows, with the age held fixed"
+        correct: true
+      - id: b
+        text: "How fast the price changes when size and age both grow together"
+        correct: false
+        category: misunderstood_definition
+        feedback: "A partial derivative moves one input only. The age stays exactly where it was."
+      - id: c
+        text: "The price of a house of size $s$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is $P$ itself. The partial derivative is a rate of change."
+      - id: d
+        text: "How fast the size changes as the price grows"
+        correct: false
+        category: misunderstood_definition
+        feedback: "It is the other way round: the change in price per unit change in size."
+    solution: "$\\frac{\\partial P}{\\partial s}$ nudges the size and keeps the age fixed, so it is the rate of change of price with size alone."
+  - id: pdp-house-rate
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A price formula is $P(s, a) = {{=c}}s - {{=d}}a - 0.1\\,s\\,a$, with size $s$ in tens of m², age $a$ in years and price in thousands of pounds. What is $\\frac{\\partial P}{\\partial s}$ for a house aged $a = {{=a0}}$?"
+    hints: ["Treat $a$ as a constant.", "$\\frac{\\partial P}{\\partial s} = {{=c}} - 0.1a$."]
+    solution: "Holding $a$ fixed, $\\frac{\\partial P}{\\partial s} = {{=c}} - 0.1a = {{=c}} - {{=0.1*a0}} = {{=c-0.1*a0}}$, so each extra 10 m² adds about £{{=c-0.1*a0}}k."
+    answer_expr: "c - 0.1 * a0"
+    params:
+      c: { min: 20, max: 40, step: 1 }
+      d: { min: 1, max: 5, step: 1 }
+      a0: { min: 10, max: 50, step: 10 }
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "c",
+          category: math_error,
+          feedback: "The term $-0.1\\,s\\,a$ also contains $s$, so it contributes $-0.1a$.",
+        }
+      - {
+          answer_expr: "-d - 0.1 * a0",
+          category: misunderstood_definition,
+          feedback: "That mixes in the age term. $-{{=d}}a$ has no $s$ in it, so it contributes 0.",
+        }
+  - id: pdp-which-fixed
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "When you compute $\\frac{\\partial f}{\\partial y}$ for $f(x, y, z)$, what do you do with $x$ and $z$?"
+    options:
+      - { id: a, text: "Treat both as constants", correct: true }
+      - id: b
+        text: "Set both to 0"
+        correct: false
+        category: misunderstood_definition
+        feedback: "They are held fixed at whatever values they have, not set to 0."
+      - id: c
+        text: "Differentiate them too and add the results"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Only $y$ moves. Adding all the changes would mix up the effects of different inputs."
+      - id: d
+        text: "Hold $x$ fixed but let $z$ change"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Every input except $y$ is held fixed."
+    solution: "A partial derivative moves one input; every other input is frozen as a constant at its current value."
+  - id: pdp-sign
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "For a price formula $P(s, a)$, a house has $\\frac{\\partial P}{\\partial a} = -3$ (thousands of pounds per year). What happens to its estimated price if it is one year older and the same size?"
+    options:
+      - { id: a, text: "It falls by about £3k", correct: true }
+      - id: b
+        text: "It rises by about £3k"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A negative partial means the output goes down as that input goes up."
+      - id: c
+        text: "It becomes £3k"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The partial derivative is a rate of change, not the price."
+      - id: d
+        text: 'You can''t tell without also knowing $\partial P / \partial s$'
+        correct: false
+        category: incorrect_reasoning
+        feedback: 'The size isn''t changing, so only $\partial P / \partial a$ matters here.'
+    solution: "With the size fixed, the price changes by about $-3$ per extra year, so it falls by about £3k."
+  - id: pdp-nudge-check
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $f(x, y) = x^2 y$, $f(3, 2) = 18$ and $f(3.01, 2) = 18.1202$. Estimate $\\frac{\\partial f}{\\partial x}$ at $(3, 2)$ from these values."
+    answer: 12.02
+    tolerance: { abs: 0.05 }
+    common_wrong:
+      - {
+          answer: 0.1202,
+          category: math_error,
+          feedback: "That is the change in output. Divide it by the nudge 0.01 to get a rate.",
+        }
+    hints:
+      [
+        "Rate = change in output ÷ nudge in $x$.",
+        "$y$ stayed at 2, so this estimates the partial in $x$.",
+      ]
+    solution: "$(18.1202 - 18) \\div 0.01 = 12.02$, close to the exact value $2xy = 12$."
+  - id: pdp-how-many
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A delivery cost $C$ depends on distance, parcel weight and time of day. How many partial derivatives does $C$ have?"
+    options:
+      - { id: a, text: "3, one for each input", correct: true }
+      - id: b
+        text: "1, because there is one output"
+        correct: false
+        category: misunderstood_definition
+        feedback: "There is one partial for each input you can move on its own."
+      - id: c
+        text: "6, one for each pair of inputs"
+        correct: false
+        category: misunderstood_definition
+        feedback: "A partial moves a single input, so you need one per input."
+      - id: d
+        text: "0, because derivatives need a single input"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Partial derivatives are exactly how you differentiate functions with several inputs."
+    solution: "Each of the 3 inputs can be nudged on its own while the others are held fixed, giving 3 partials."
+  - id: pdp-compute-x
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "For $f(x, y) = 3x^2 y - 5xy + y^2$, give $\\frac{\\partial f}{\\partial x}$."
+    answer: "6*x*y - 5*y"
+    variables: { x: [-2, 2], y: [-2, 2] }
+    common_wrong:
+      - {
+          answer: "6*x*y - 5*y + 2*y",
+          category: misunderstood_definition,
+          feedback: "$y^2$ has no $x$ in it, so it is a constant here and contributes 0.",
+        }
+      - {
+          answer: "3*x^2 - 5*x + 2*y",
+          category: misunderstood_definition,
+          feedback: "That is $\\partial f/\\partial y$. Here $y$ is the constant.",
+        }
+    hints: ["Treat $y$ as a constant number."]
+    solution: "$3x^2 y \\to 6xy$, $-5xy \\to -5y$ and $y^2 \\to 0$, so $\\frac{\\partial f}{\\partial x} = 6xy - 5y$."
+  - id: pdp-value-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $f(x, y) = {{=a}}x^2 y + {{=b}}y$, what is $\\frac{\\partial f}{\\partial x}$ at $(x, y) = ({{=x0}}, {{=y0}})$?"
+    hints: ["Treat $y$ as a constant: $\\frac{\\partial f}{\\partial x} = {{=2*a}}xy$."]
+    solution: "$\\frac{\\partial f}{\\partial x} = {{=2*a}}xy$, because ${{=b}}y$ has no $x$. At $({{=x0}}, {{=y0}})$ that is ${{=2*a}} \\times {{=x0}} \\times {{=y0}} = {{=2*a*x0*y0}}$."
+    answer_expr: "2 * a * x0 * y0"
+    params:
+      a: { min: 1, max: 5, step: 1 }
+      b: { min: 2, max: 9, step: 1 }
+      x0: { min: 1, max: 4, step: 1 }
+      y0: { min: 1, max: 4, step: 1 }
+    constraints: ["a * x0^2 + b != 2 * a * x0 * y0"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "a * x0^2 + b",
+          category: misunderstood_definition,
+          feedback: "That is $\\partial f/\\partial y$. For $\\partial f/\\partial x$, $y$ is the constant.",
+        }
+      - {
+          answer_expr: "2 * a * x0 * y0 + b",
+          category: misunderstood_definition,
+          feedback: "${{=b}}y$ has no $x$ in it, so it contributes 0.",
+        }
+  - id: pdp-no-x-term
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In $f(x, y) = x^3 + e^y$, what does the term $e^y$ contribute to $\\frac{\\partial f}{\\partial x}$?"
+    options:
+      - { id: a, text: "0", correct: true }
+      - id: b
+        text: "$e^y$"
+        correct: false
+        category: misapplied_technique
+        feedback: "$e^y$ is its own derivative with respect to $y$. With $y$ frozen it is a constant."
+      - id: c
+        text: '$x\,e^y$'
+        correct: false
+        category: misapplied_technique
+        feedback: "Nothing in $e^y$ depends on $x$, so it doesn't change as $x$ moves."
+      - id: d
+        text: "1"
+        correct: false
+        category: misapplied_technique
+        feedback: "A constant term has derivative 0, not 1."
+    solution: "With $y$ held fixed, $e^y$ is just a number, and the derivative of a constant is 0."
+  - id: pdp-exp-log
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $g(x, y) = y\\,e^x + x\\ln y$, give $\\frac{\\partial g}{\\partial y}$ (write `exp(x)` and `log(y)`)."
+    answer: "exp(x) + x/y"
+    variables: { x: [-1, 1], y: [0.5, 3] }
+    common_wrong:
+      - {
+          answer: "y*exp(x) + log(y)",
+          category: misunderstood_definition,
+          feedback: "That is $\\partial g/\\partial x$. Here $x$ is the constant.",
+        }
+    hints: ["$e^x$ and $x$ are constants here.", "$\\ln y \\to \\frac1y$."]
+    solution: "$y\\,e^x \\to e^x$ and $x\\ln y \\to \\frac{x}{y}$, so $\\frac{\\partial g}{\\partial y} = e^x + \\frac{x}{y}$."
+  - id: pdp-product
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "For $f(x, y) = x^2 e^x y$, give $\\frac{\\partial f}{\\partial x}$ (write `exp(x)`)."
+    answer: "y*exp(x)*(2*x + x^2)"
+    variables: { x: [-1, 1], y: [-2, 2] }
+    common_wrong:
+      - {
+          answer: "2*x*exp(x)*y",
+          category: misunderstood_definition,
+          feedback: "Both $x^2$ and $e^x$ contain $x$, so you need the product rule $u'v + uv'$.",
+        }
+    hints: ["$y$ is a constant multiple.", "Use the product rule on $x^2 e^x$."]
+    solution: "Keep $y$ in front and use the product rule on $x^2 e^x$: $y(2x e^x + x^2 e^x) = y\\,e^x(2x + x^2)$."
+  - id: pdp-compute-y
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $f(x, y) = 4x^3 y^2 + 2x - 7y$, give $\\frac{\\partial f}{\\partial y}$."
+    answer: "8*x^3*y - 7"
+    variables: { x: [-2, 2], y: [-2, 2] }
+    common_wrong:
+      - {
+          answer: "8*x^3*y + 2 - 7",
+          category: misunderstood_definition,
+          feedback: "$2x$ has no $y$ in it, so it contributes 0.",
+        }
+    solution: "$4x^3 y^2 \\to 8x^3 y$, $2x \\to 0$ and $-7y \\to -7$, so $\\frac{\\partial f}{\\partial y} = 8x^3 y - 7$."
+  - id: pdp-gap-w
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For the squared gap $f(w, b) = (wx + b - y)^2$, where $x$ and $y$ are fixed numbers, give $\\frac{\\partial f}{\\partial w}$ in terms of $w$, $b$, $x$ and $y$."
+    answer: "2*(w*x + b - y)*x"
+    variables: { w: [-2, 2], b: [-2, 2], x: [-2, 2], y: [-2, 2] }
+    common_wrong:
+      - {
+          answer: "2*(w*x + b - y)",
+          category: math_error,
+          feedback: "That is $\\partial f/\\partial b$. The partial of the gap with respect to $w$ is $x$, not 1.",
+        }
+    hints:
+      [
+        "Write $g = wx + b - y$, so $f = g \\cdot g$ and $f' = 2g\\,g'$.",
+        "$\\frac{\\partial g}{\\partial w} = x$.",
+      ]
+    solution: "With $g = wx + b - y$, the product rule gives $2g \\cdot \\frac{\\partial g}{\\partial w} = 2(wx + b - y)\\,x$."
+  - id: pdp-gap-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Let $f(w, b) = (wx + b - y)^2$ with $x = {{=x}}$ and $y = {{=y}}$. At $w = {{=w}}$, $b = {{=b}}$, what is $\\frac{\\partial f}{\\partial w}$?"
+    hints:
+      ["First compute the gap $g = wx + b - y$.", "$\\frac{\\partial f}{\\partial w} = 2g\\,x$."]
+    solution: "The gap is ${{=w}} \\times {{=x}} + {{=b}} - {{=y}} = {{=w*x+b-y}}$, so $\\frac{\\partial f}{\\partial w} = 2 \\times {{=w*x+b-y}} \\times {{=x}} = {{=2*(w*x+b-y)*x}}$."
+    answer_expr: "2 * (w*x + b - y) * x"
+    params:
+      x: { min: 2, max: 5, step: 1 }
+      y: { min: 1, max: 9, step: 1 }
+      w: { min: 1, max: 3, step: 1 }
+      b: { min: 0, max: 4, step: 1 }
+    constraints: ["w*x + b - y != 0", "x != 1"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "2 * (w*x + b - y)",
+          category: math_error,
+          feedback: "You dropped the factor $x = {{=x}}$: the partial of the gap with respect to $w$ is $x$.",
+        }
+      - {
+          answer_expr: "(w*x + b - y) * x",
+          category: math_error,
+          feedback: "Don't forget the factor 2 from the square.",
+        }
+  - id: pdp-gap-b
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Let $f(w, b) = (wx + b - y)^2$ with $x = 2$ and $y = 9$. At $w = 3$, $b = 1$, what is $\\frac{\\partial f}{\\partial b}$?"
+    answer: -4
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 4,
+          category: math_error,
+          feedback: "Check the sign of the gap: $6 + 1 - 9 = -2$.",
+        }
+      - {
+          answer: -8,
+          category: math_error,
+          feedback: "The partial of the gap with respect to $b$ is 1, so there is no factor $x$ here.",
+        }
+    hints: ["The gap is $g = 3 \\cdot 2 + 1 - 9$.", "$\\frac{\\partial f}{\\partial b} = 2g$."]
+    solution: "The gap is $6 + 1 - 9 = -2$, so $\\frac{\\partial f}{\\partial b} = 2 \\times (-2) = -4$."
+  - id: pdp-data-fixed
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "In $f(w, b) = (wx + b - y)^2$, why are $x$ and $y$ treated as constants?"
+    options:
+      - id: a
+        text: "They describe one house that has already sold, so only the dials $w$ and $b$ can move"
+        correct: true
+      - id: b
+        text: "Because $x$ and $y$ are always 0"
+        correct: false
+        category: misunderstood_definition
+        feedback: "They are held at their actual values, such as $x = 3$ and $y = 1$, not set to 0."
+      - id: c
+        text: "Because letters near the end of the alphabet are always constants"
+        correct: false
+        category: misunderstood_definition
+        feedback: "What counts as an input depends on the problem, not the letter."
+      - id: d
+        text: 'They aren''t; you also need $\partial f / \partial x$ to shrink the gap'
+        correct: false
+        category: incorrect_reasoning
+        feedback: "You can't change the house's size or sale price, so their partials don't help you choose the dials."
+    solution: "The size and sale price are fixed facts about the house. The partials you need are for the dials you can turn, $w$ and $b$."
+  - id: pdp-turn-dial
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "For a squared gap $f(w, b)$, you find $\\frac{\\partial f}{\\partial w} = 18$ and $\\frac{\\partial f}{\\partial b} = 6$. Which small change to one dial shrinks $f$ the most?"
+    options:
+      - { id: a, text: "Turn $w$ down a little", correct: true }
+      - id: b
+        text: "Turn $w$ up a little"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A positive partial means turning $w$ up makes $f$ bigger."
+      - id: c
+        text: "Turn $b$ down a little"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "That helps, but $f$ is 3 times as sensitive to $w$, so the same nudge to $w$ shrinks it more."
+      - id: d
+        text: "Turn $b$ up a little"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A positive partial means turning $b$ up makes $f$ bigger."
+    solution: "Both partials are positive, so turning a dial down shrinks $f$. The partial for $w$ is larger, so a small nudge to $w$ changes $f$ the most."
+  - id: pdp-three-inputs
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $f(x, y, z) = x y z + 2y^2 - z$, give $\\frac{\\partial f}{\\partial z}$."
+    answer: "x*y - 1"
+    variables: { x: [-2, 2], y: [-2, 2], z: [-2, 2] }
+    common_wrong:
+      - {
+          answer: "x*y + 4*y - 1",
+          category: misunderstood_definition,
+          feedback: "$2y^2$ has no $z$ in it, so it contributes 0.",
+        }
+    solution: "Freeze $x$ and $y$: $xyz \\to xy$, $2y^2 \\to 0$ and $-z \\to -1$, so $\\frac{\\partial f}{\\partial z} = xy - 1$."

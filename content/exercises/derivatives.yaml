@@ -57,18 +57,14 @@ exercises:
       - {
           answer: "1/(2*x)",
           category: misunderstood_definition,
-          feedback: "You cannot differentiate the denominator separately. Use the quotient rule, or the chain rule on $(1 + x^2)^{-1}$.",
+          feedback: "You cannot differentiate the denominator separately. Use the quotient rule with $u = 1$ and $v = 1 + x^2$.",
         }
       - {
           answer: "2*x/(1+x^2)^2",
           category: math_error,
           feedback: "Check the sign: $f$ decreases for $x > 0$, so $f'(x)$ must be negative there.",
         }
-    hints:
-      [
-        "Write it as $(1 + x^2)^{-1}$, or use the quotient rule with $g = 1$, $h = 1 + x^2$.",
-        "$g' = 0$ and $h' = 2x$.",
-      ]
+    hints: ["Use the quotient rule with $u = 1$ and $v = 1 + x^2$.", "$u' = 0$ and $v' = 2x$."]
     solution: "$(0\\cdot(1+x^2) - 1\\cdot 2x)/(1+x^2)^2 = -2x/(1+x^2)^2$."
   - id: der-value
     dimension: math
@@ -104,7 +100,589 @@ exercises:
       - {
           answer: 2.04,
           category: incorrect_reasoning,
-          feedback: "A negative derivative means the loss *decreases* as $x$ increases.",
+          feedback: "A negative derivative means the output *decreases* as $x$ increases.",
         }
     hints: ["Linear approximation: $f(x + h) \\approx f(x) + f'(x)\\,h$."]
     solution: "$f(5.1) \\approx 2.0 + (-0.4)(0.1) = 1.96$. The slope at 5 helps estimate a nearby value."
+  - id: der-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "A function has $f(3) = 9$ and $f'(3) = 6$. Explain in 2–4 sentences what $f'(3) = 6$ tells you about $f$ near $x = 3$, and use it to estimate $f(3.1)$."
+    rubric:
+      - {
+          id: r1,
+          criterion: "Says $f'(3)$ is the rate of change of the output per unit change of input at $x = 3$ (the slope of the tangent there)",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "Estimates $f(3.1) \\approx f(3) + f'(3) \\times 0.1 = 9.6$",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r3,
+          criterion: "Notes the estimate is only reliable for small nudges, because the slope can change away from 3",
+          weight: 1,
+        }
+    exemplar: "f'(3) = 6 means that near x = 3 the output rises about 6 for every unit the input rises; it is the slope of the tangent line at 3. For a nudge of 0.1 the output rises by about 6 × 0.1 = 0.6, so f(3.1) ≈ 9 + 0.6 = 9.6. This works only for small nudges, because the slope itself can change as you move away from 3."
+  - id: derp-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A function has $f'(4) = 3$. What does this tell you?"
+    options:
+      - id: a
+        text: "Near $x = 4$, the output rises about 3 for each unit the input rises"
+        correct: true
+      - id: b
+        text: "The output at $x = 4$ is 3"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That would be $f(4) = 3$. The derivative is a rate of change, not the value."
+      - id: c
+        text: "The output rises by 3 in total between $x = 0$ and $x = 4$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That describes an average over a long stretch. The derivative is the rate at the single point $x = 4$."
+      - id: d
+        text: "The output at $x = 4$ is three times the input"
+        correct: false
+        category: misunderstood_definition
+        feedback: "A derivative compares a change in output with a change in input, not the output with the input."
+    solution: "$f'(4)$ is the slope of the tangent at $x = 4$: a small nudge to the input changes the output by about 3 times that nudge."
+  - id: derp-average-speed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A car has travelled $d(t) = t^2$ metres after $t$ seconds. What is its average speed, in m/s, between $t = {{=a}}$ and $t = {{=a+0.1}}$ seconds?"
+    hints:
+      [
+        "Average speed = distance gained ÷ time taken.",
+        "Compute $d({{=a+0.1}}) - d({{=a}})$, then divide by 0.1.",
+      ]
+    solution: "The car gains ${{=(a+0.1)^2}} - {{=a^2}} = {{=(a+0.1)^2-a^2}}$ m in 0.1 s, so its average speed is ${{=(a+0.1)^2-a^2}} \\div 0.1 = {{=2*a+0.1}}$ m/s. That is close to the instant speed $2 \\times {{=a}} = {{=2*a}}$ m/s, because the window is short."
+    answer_expr: "((a+0.1)^2 - a^2) / 0.1"
+    params:
+      a: { min: 1, max: 8, step: 1 }
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "(a+0.1)^2 - a^2",
+          category: math_error,
+          feedback: "That is the distance gained. Divide it by the 0.1 s it took to get a speed.",
+        }
+      - {
+          answer_expr: "2*a",
+          category: misunderstood_definition,
+          feedback: "That is the speed at the instant $t = {{=a}}$. The question asks for the average over the 0.1 s window.",
+        }
+  - id: derp-tangent
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "On a graph of $f$, what does $f'(2)$ measure?"
+    options:
+      - id: a
+        text: "The slope of the tangent line that touches the curve at $x = 2$"
+        correct: true
+      - id: b
+        text: "The height of the curve above the axis at $x = 2$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The height is $f(2)$. The derivative is how steeply the curve rises there."
+      - id: c
+        text: "The slope of the straight line from $(0, 0)$ to the point at $x = 2$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is an average rate over a long stretch. The tangent uses only an instant at $x = 2$."
+      - id: d
+        text: "The slope of the line joining the points at $x = 2$ and $x = 3$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is an average rate over a window of width 1. The derivative is what this approaches as the window shrinks to 0."
+    solution: "The derivative at a point is the slope of the tangent there, the limit of average slopes over shrinking windows."
+  - id: derp-estimate
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A function has $f({{=x}}) = {{=y}}$ and $f'({{=x}}) = {{=s}}$. Use the derivative to estimate $f({{=x+0.1}})$."
+    hints: ["For a small nudge $h$, $f(x + h) \\approx f(x) + f'(x)\\,h$.", "Here $h = 0.1$."]
+    solution: "$f({{=x+0.1}}) \\approx {{=y}} + ({{=s}}) \\times 0.1 = {{=y+0.1*s}}$. The slope times the nudge estimates the change in output."
+    answer_expr: "y + 0.1 * s"
+    params:
+      x: { min: 1, max: 5, step: 1 }
+      y: { min: 10, max: 30, step: 1 }
+      s: { min: -6, max: 6, step: 1 }
+    constraints: ["s != 0"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "y + s",
+          category: math_error,
+          feedback: "Multiply the slope by the size of the nudge, 0.1, before adding it.",
+        }
+      - {
+          answer_expr: "y - 0.1 * s",
+          category: math_error,
+          feedback: "Check the sign: add $f'(x) \\times 0.1$, so a positive slope raises the output.",
+        }
+  - id: derp-why-not-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "In $\\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}$, why don't you simply put $h = 0$?"
+    options:
+      - id: a
+        text: "The ratio becomes $0/0$, which has no value, so you watch what it approaches instead"
+        correct: true
+      - id: b
+        text: "Putting $h = 0$ gives the output $f(x)$ instead of the rate"
+        correct: false
+        category: misunderstood_definition
+        feedback: "With $h = 0$ the top is $f(x) - f(x) = 0$ and the bottom is 0, so you get $0/0$, not $f(x)$."
+      - id: c
+        text: "A nudge of 0 would make the derivative equal to 0"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The derivative is often not 0. The issue is that $0/0$ is undefined, so you use the limit."
+      - id: d
+        text: "The limit only works when $h$ is a whole number"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The nudge $h$ shrinks through smaller and smaller values like 0.1, 0.01 and 0.001."
+    solution: "At $h = 0$ both the change in output and the nudge are 0. The limit asks what the ratio gets closer to as $h$ shrinks, such as 6.1, 6.01, 6.001 approaching 6."
+  - id: derp-robot-battery
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A delivery robot's battery charge after $t$ minutes is $b(t)$ percent, and $b'(10) = -0.5$. What does this mean?"
+    options:
+      - id: a
+        text: "At 10 minutes the charge is falling by about 0.5 percentage points per minute"
+        correct: true
+      - id: b
+        text: "At 10 minutes the battery holds 0.5 percent charge"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That would be $b(10) = 0.5$. The derivative is the rate of change of charge."
+      - id: c
+        text: "Over the first 10 minutes the charge fell by 0.5 percentage points"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is a total change over a long stretch. $b'(10)$ is the rate at the 10-minute mark."
+      - id: d
+        text: "At 10 minutes the charge is rising by about 0.5 percentage points per minute"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A negative derivative means the output is going down as time goes up."
+    solution: "$b'(10)$ is the rate of change of charge at $t = 10$. The minus sign means it is going down, by about 0.5 points per minute."
+  - id: derp-power-poly
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Differentiate $f(x) = 4x^3 - 5x^2 + 2x - 7$ with respect to $x$."
+    answer: "12*x^2 - 10*x + 2"
+    variables: { x: [-3, 3] }
+    common_wrong:
+      - {
+          answer: "12*x^2 - 10*x",
+          category: math_error,
+          feedback: "The derivative of $2x$ is 2, not 0. Only the lone constant $-7$ disappears.",
+        }
+      - {
+          answer: "12*x^2 - 10*x + 2 - 7",
+          category: misunderstood_definition,
+          feedback: "A constant never changes, so its derivative is 0. Drop the $-7$.",
+        }
+    hints: ["Differentiate term by term with the power rule $x^n \\to n x^{n-1}$."]
+    solution: "Term by term: $4x^3 \\to 12x^2$, $-5x^2 \\to -10x$, $2x \\to 2$, and $-7 \\to 0$. So $f'(x) = 12x^2 - 10x + 2$."
+  - id: derp-power-value
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Let $f(x) = {{=a}}x^{{=n}} + {{=b}}x$. What is $f'({{=x0}})$?"
+    hints:
+      [
+        "First find $f'(x)$ with the power, constant-multiple and sum rules.",
+        "Then substitute $x = {{=x0}}$.",
+      ]
+    solution: "$f'(x) = {{=a*n}}x^{{=n-1}} + {{=b}}$, so $f'({{=x0}}) = {{=a*n}} \\times {{=x0^(n-1)}} + {{=b}} = {{=a*n*x0^(n-1)+b}}$."
+    answer_expr: "a * n * x0^(n-1) + b"
+    params:
+      a: { min: 2, max: 5, step: 1 }
+      n: { min: 2, max: 4, step: 1 }
+      b: { min: 1, max: 9, step: 1 }
+      x0: { min: 2, max: 3, step: 1 }
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "a * n * x0^n + b",
+          category: math_error,
+          feedback: "After bringing the power down, lower it by one: $x^n \\to n x^{n-1}$.",
+        }
+      - {
+          answer_expr: "a * n * x0^(n-1)",
+          category: math_error,
+          feedback: "Don't drop the $x$ term: the derivative of ${{=b}}x$ is ${{=b}}$.",
+        }
+  - id: derp-power-cube
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is the derivative of $x^3$?"
+    options:
+      - { id: a, text: "$3x^2$", correct: true }
+      - id: b
+        text: "$3x^3$"
+        correct: false
+        category: misapplied_technique
+        feedback: "Bring the 3 down, then lower the power by one."
+      - id: c
+        text: "$x^2$"
+        correct: false
+        category: misapplied_technique
+        feedback: "You lowered the power but forgot to bring the old power down in front."
+      - id: d
+        text: "$3x^4$"
+        correct: false
+        category: misapplied_technique
+        feedback: "The power goes down by one, not up."
+    solution: "Power rule: bring the 3 down and lower the power to 2, so $\\frac{d}{dx}x^3 = 3x^2$."
+  - id: derp-constant-term
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A classmate differentiates $f(x) = x^2 + 10$ and writes $2x + 10$. What went wrong?"
+    options:
+      - id: a
+        text: "The constant 10 never changes, so its derivative is 0"
+        correct: true
+      - id: b
+        text: "The 10 should have been multiplied by $2x$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The sum rule differentiates each term on its own. Nothing multiplies the 10."
+      - id: c
+        text: "The derivative of $x^2$ is $x$, not $2x$"
+        correct: false
+        category: recall_failure
+        feedback: "The power rule does give $2x$. The error is in the constant term."
+      - id: d
+        text: "Nothing; constants pass through unchanged"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Constants pass through when they *multiply* a function. A constant added on its own has derivative 0."
+    solution: "A number on its own doesn't change as $x$ changes, so its rate of change is 0. The answer is $f'(x) = 2x$."
+  - id: derp-drone-climb
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A drone's height after $t$ seconds is $h(t) = 2t^3 - 3t^2 + 6t$ metres. Give its climbing speed $h'(t)$, in metres per second."
+    answer: "6*t^2 - 6*t + 6"
+    variables: { t: [0, 4] }
+    hints: ["Differentiate each term with the power rule."]
+    solution: "$2t^3 \\to 6t^2$, $-3t^2 \\to -6t$ and $6t \\to 6$, so $h'(t) = 6t^2 - 6t + 6$."
+  - id: derp-power-fraction
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Differentiate $f(x) = \\frac{x^4}{2} - 6x^2$."
+    answer: "2*x^3 - 12*x"
+    variables: { x: [-3, 3] }
+    common_wrong:
+      - {
+          answer: "4*x^3 - 12*x",
+          category: math_error,
+          feedback: "Keep the constant multiple: $\\frac{x^4}{2}$ is $\\frac12 \\cdot x^4$, so its derivative is $\\frac12 \\cdot 4x^3$.",
+        }
+    hints: ["$\\frac{x^4}{2}$ is the constant $\\frac12$ times $x^4$."]
+    solution: "$\\frac12 \\cdot 4x^3 = 2x^3$ and $-6 \\cdot 2x = -12x$, so $f'(x) = 2x^3 - 12x$."
+  - id: derp-exp-log-mix
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Differentiate $f(x) = 4e^x + 5\\ln x - x^2$ (write `exp(x)` for $e^x$)."
+    answer: "4*exp(x) + 5/x - 2*x"
+    variables: { x: [0.5, 3] }
+    common_wrong:
+      - {
+          answer: "4*exp(x) + 5*log(x) - 2*x",
+          category: recall_failure,
+          feedback: "The derivative of $\\ln x$ is $\\frac1x$, not $\\ln x$. Only $e^x$ is its own derivative.",
+        }
+    hints: ["$e^x \\to e^x$ and $\\ln x \\to \\frac1x$; keep the constants in front."]
+    solution: "$4e^x \\to 4e^x$, $5\\ln x \\to \\frac5x$ and $-x^2 \\to -2x$, so $f'(x) = 4e^x + \\frac5x - 2x$."
+  - id: derp-ln-slope
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Let $f(x) = {{=a}}\\ln x$. What is the slope $f'({{=x0}})$? Round to 2 decimal places if needed."
+    hints: ["The derivative of $\\ln x$ is $\\frac1x$, and the constant stays in front."]
+    solution: "$f'(x) = \\frac{ {{=a}} }{x}$, so $f'({{=x0}}) = {{=a}} \\div {{=x0}} = {{=a/x0}}$."
+    answer_expr: "a / x0"
+    params:
+      a: { min: 2, max: 9, step: 1 }
+      x0: { min: 1, max: 5, step: 1 }
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - {
+          answer_expr: "a * log(x0)",
+          category: misunderstood_definition,
+          feedback: "That is the value $f({{=x0}})$. The slope uses the derivative $\\frac{ {{=a}} }{x}$.",
+        }
+  - id: derp-exp-slope
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is the slope of $f(x) = e^x$ at $x = 2$?"
+    options:
+      - { id: a, text: '$e^2 \approx 7.39$', correct: true }
+      - id: b
+        text: '$2e \approx 5.44$'
+        correct: false
+        category: misapplied_technique
+        feedback: "The power rule needs a fixed power. Here $x$ is the exponent, and $e^x$ is its own derivative."
+      - id: c
+        text: '$e \approx 2.72$'
+        correct: false
+        category: misapplied_technique
+        feedback: "The derivative of $e^x$ is $e^x$, so evaluate it at $x = 2$."
+      - id: d
+        text: "$2$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is the input. The slope of $e^x$ equals its value, $e^2$."
+    solution: "The derivative of $e^x$ is $e^x$, so the slope at 2 equals the value there: $e^2 \\approx 7.39$."
+  - id: derp-ln-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A calculator says $\\ln 20 \\approx 3$. What does that tell you?"
+    options:
+      - { id: a, text: '$e^3 \approx 20$', correct: true }
+      - id: b
+        text: '$20^3 \approx e$'
+        correct: false
+        category: misunderstood_definition
+        feedback: '$\ln x$ asks which power of $e$ gives $x$, so the base is $e$.'
+      - id: c
+        text: '$3^e \approx 20$'
+        correct: false
+        category: misunderstood_definition
+        feedback: "The 3 is the power, not the base. The base is always $e$."
+      - id: d
+        text: '$3e \approx 20$'
+        correct: false
+        category: misunderstood_definition
+        feedback: "A logarithm undoes a power, not a multiplication."
+    solution: "$\\ln 20$ is the power of $e$ that gives 20, so $e^3 \\approx 20$ (in fact $e^3 \\approx 20.09$)."
+  - id: derp-sin-cos
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Differentiate $f(x) = 3\\sin x + 2\\cos x$ (write `sin(x)` and `cos(x)`)."
+    answer: "3*cos(x) - 2*sin(x)"
+    variables: { x: [-3, 3] }
+    common_wrong:
+      - {
+          answer: "3*cos(x) + 2*sin(x)",
+          category: recall_failure,
+          feedback: "Check the sign: the derivative of $\\cos x$ is $-\\sin x$.",
+        }
+    solution: "$\\sin x \\to \\cos x$ and $\\cos x \\to -\\sin x$, so $f'(x) = 3\\cos x - 2\\sin x$."
+  - id: derp-tank-level
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A water tank's level after $t$ hours is $L(t) = 10 - 2\\ln t$ metres, for $t \\geq 1$. Give the rate of change $L'(t)$ in metres per hour."
+    answer: "-2/t"
+    variables: { t: [1, 5] }
+    common_wrong:
+      - {
+          answer: "10 - 2/t",
+          category: misunderstood_definition,
+          feedback: "The constant 10 never changes, so its derivative is 0.",
+        }
+    solution: "The 10 contributes 0 and $-2\\ln t \\to -\\frac2t$, so $L'(t) = -\\frac2t$. The level falls, and more slowly as time goes on."
+  - id: derp-product-expr
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "Differentiate $f(x) = (x^2 + 1)\\ln x$ (write `log(x)` for $\\ln x$)."
+    answer: "2*x*log(x) + (x^2 + 1)/x"
+    variables: { x: [0.5, 3] }
+    common_wrong:
+      - {
+          answer: "2*x/x",
+          category: misunderstood_definition,
+          feedback: "That multiplies the two derivatives. The product rule is $u'v + uv'$.",
+        }
+    hints: ["Take $u = x^2 + 1$ and $v = \\ln x$.", "$u' = 2x$ and $v' = \\frac1x$."]
+    solution: "$u'v + uv' = 2x\\ln x + (x^2 + 1)\\cdot\\frac1x$, so $f'(x) = 2x\\ln x + \\frac{x^2 + 1}{x}$."
+  - id: derp-product-value
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "At $x = 2$, a function $u$ has $u(2) = {{=a}}$ and $u'(2) = {{=b}}$, and a function $v$ has $v(2) = {{=c}}$ and $v'(2) = {{=d}}$. Let $f(x) = u(x)\\,v(x)$. What is $f'(2)$?"
+    hints: ["Product rule: $f' = u'v + uv'$."]
+    solution: "$f'(2) = u'(2)\\,v(2) + u(2)\\,v'(2) = {{=b}} \\times {{=c}} + {{=a}} \\times {{=d}} = {{=b*c+a*d}}$."
+    answer_expr: "b * c + a * d"
+    params:
+      a: { min: 1, max: 6, step: 1 }
+      b: { min: 1, max: 6, step: 1 }
+      c: { min: 1, max: 6, step: 1 }
+      d: { min: 1, max: 6, step: 1 }
+    constraints: ["b * d != b * c + a * d", "a * c != b * c + a * d"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "b * d",
+          category: misunderstood_definition,
+          feedback: "That multiplies the two derivatives. The product rule is $u'v + uv'$.",
+        }
+      - {
+          answer_expr: "a * c",
+          category: misunderstood_definition,
+          feedback: "That is the value $f(2) = u(2)\\,v(2)$, not its rate of change.",
+        }
+  - id: derp-why-not-multiply
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A classmate says the derivative of $x^2 e^x$ is $2x \\cdot e^x$. What went wrong?"
+    options:
+      - id: a
+        text: "They multiplied the derivatives; the product rule also needs the term $x^2 e^x$"
+        correct: true
+      - id: b
+        text: "Nothing; the derivative of a product is the product of the derivatives"
+        correct: false
+        category: misunderstood_definition
+        feedback: 'Test it on $x \cdot x = x^2$: multiplying derivatives gives 1, but the true derivative is $2x$.'
+      - id: c
+        text: "They should have added the derivatives to get $2x + e^x$"
+        correct: false
+        category: misapplied_technique
+        feedback: "Adding derivatives is the sum rule, for $u + v$. A product needs $u'v + uv'$."
+      - id: d
+        text: 'The derivative of $e^x$ should have been $x\,e^{x-1}$'
+        correct: false
+        category: misapplied_technique
+        feedback: "The power rule does not apply when $x$ is the exponent. $e^x$ is its own derivative."
+    solution: "With $u = x^2$ and $v = e^x$, $u'v + uv' = 2x e^x + x^2 e^x$. Multiplying derivatives misses the second term."
+  - id: derp-quotient-expr
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "Differentiate $f(x) = \\frac{x^2}{x + 1}$."
+    answer: "(x^2 + 2*x)/(x + 1)^2"
+    variables: { x: [0, 3] }
+    common_wrong:
+      - {
+          answer: "2*x",
+          category: misunderstood_definition,
+          feedback: "You can't divide the derivative of the top by the derivative of the bottom. Use $\\frac{u'v - uv'}{v^2}$.",
+        }
+      - {
+          answer: "-(x^2 + 2*x)/(x + 1)^2",
+          category: math_error,
+          feedback: "Check the order on top: $u'v$ comes first, then subtract $uv'$.",
+        }
+    hints: ["Take $u = x^2$ and $v = x + 1$.", "$u'v - uv' = 2x(x + 1) - x^2 \\cdot 1$."]
+    solution: "$\\frac{2x(x+1) - x^2}{(x+1)^2} = \\frac{x^2 + 2x}{(x+1)^2}$."
+  - id: derp-which-rule
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Which of these functions needs the product rule?"
+    options:
+      - { id: a, text: "$x^3 e^x$", correct: true }
+      - id: b
+        text: "$5x^3$"
+        correct: false
+        category: misapplied_technique
+        feedback: "The 5 is a constant, so the constant-multiple rule is enough: $15x^2$."
+      - id: c
+        text: "$x^3 + e^x$"
+        correct: false
+        category: misapplied_technique
+        feedback: "This is a sum, so differentiate term by term: $3x^2 + e^x$."
+      - id: d
+        text: "$3e^x$"
+        correct: false
+        category: misapplied_technique
+        feedback: "A constant times $e^x$ only needs the constant-multiple rule: $3e^x$."
+    solution: "Only $x^3 e^x$ multiplies two parts that both change with $x$. A constant multiplier or a sum has its own simpler rule."
+  - id: derp-rectangle-rate
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A rectangle is 4 m wide and 3 m tall. Its width is growing at 0.5 m per second and its height at 0.2 m per second. How fast is its area growing, in square metres per second?"
+    answer: 2.3
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 0.1,
+          category: misunderstood_definition,
+          feedback: "That multiplies the two rates. The area grows from both strips: $u'v + uv'$.",
+        }
+      - {
+          answer: 1.5,
+          category: incomplete_explanation,
+          feedback: "That is only the strip from the growing width. Add the strip from the growing height too.",
+        }
+    hints: ["Area is width × height, so use the product rule $u'v + uv'$."]
+    solution: "$u'v + uv' = 0.5 \\times 3 + 4 \\times 0.2 = 1.5 + 0.8 = 2.3$ square metres per second."
