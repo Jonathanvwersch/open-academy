@@ -2,23 +2,25 @@ concept: activation-functions
 version: 2
 objective: |
   **Goal:** evaluate ReLU, sigmoid and tanh and their slopes, and explain why a network needs a nonlinear activation between its layers.
+why: |
+  A model rates houses to help you decide which to visit. Another 10 m² might matter more in a 50 m² flat than in a 150 m² house. You could feed one neuron's score into another, hoping the second would treat small and large houses differently. But without a nonlinear activation, a function whose graph is not straight, those calculations simplify to one straight-line rule. Each extra square metre still adds the same amount. Activations let the model change its response for different house sizes. Their slopes also tell us whether a small weight change can affect the answer. You will use both ideas in Layers and the forward pass, Backpropagation, and Initialization and normalization.
 knowledge_points:
   - id: act-stacking-stays-straight
     title: Stacking straight-line rules gives a straight line
     explain: |
-      A single neuron can only draw a straight boundary. A natural idea is to stack them: feed the score of one weighted sum into another weighted sum, hoping the second can bend what the first drew.
+      A house-rating program should value another 10 m² more in a small flat than in a large house. **Can two weighted-sum rules make that happen?** Try feeding the first rule's answer into the second.
 
-      Try it with one input, a house's size $x$ (hundreds of m²). The first rule gives $u = 3x + 1$. The second rule takes $u$ and gives $y = 2u + 5$. Substitute:
+      Let $x$ be size in hundreds of m². The first rule gives $u = 3x + 1$, then the second gives $y = 2u + 5$. Replace $u$ with the first calculation:
 
       $$y = 2(3x + 1) + 5 = 6x + 7$$
 
-      That's just another straight line, with slope $6$ and intercept $7$. Stacking didn't add anything a single rule couldn't do.
+      Each extra 100 m² still adds exactly 6 to the rating $y$. The second rule has not made size matter differently for small and large houses.
 
-      The same happens with any number of inputs and any number of stacked rules: a weighted sum plus a bias, fed into another weighted sum plus a bias, is still one weighted sum plus a bias. Ten such layers are no more flexible than one.
+      Why does this happen? Both rules only multiply and add. Combining their multipliers and added constants gives another rule of the same kind, whatever numbers you choose.
 
-      To get a bend, you have to put a function whose graph **isn't** a straight line between the rules. Applied to each score, that function is the neuron's **activation function** $\phi$, and because its graph isn't a straight line it's called a **nonlinear activation**. The perceptron's step rule is one example. The next point covers the ones networks use most.
+      Instead put a **nonlinear activation** $\phi$, a function whose graph is not straight, between them. This works because its slope changes across inputs, so an extra square metre need not always have the same effect. Why not use larger weights? They change a straight line's slope but cannot give it a bend.
     worked: |
-      This example shows that two stacked rules with nothing between them behave exactly like one.
+      This example shows why passing a house's size through two straight-line rules does not change how each extra 100 m² affects its rating.
 
       With $u = 3x + 1$ and then $y = 2u + 5$:
 
@@ -28,22 +30,22 @@ knowledge_points:
       | 2 | 7 | 19 | 19 |
       | 3 | 10 | 25 | 25 |
 
-      Each extra 100 m² adds exactly 6 to $y$, every time. The two-step rule and the one-step rule $6x + 7$ agree on every input, so the stack is a straight line.
+      Each extra 100 m² adds exactly 6 to $y$. The two-step calculation and the single rule $6x + 7$ agree for every house size. The program still cannot make extra space matter more for a small flat than for a large house.
     problems:
       - actp-stack-collapse
       - actp-collapse-template
-      - actp-many-layers
+      - actp-why-not-more-layers
       - actp-what-bends
       - actp-linear-candidate
       - actp-robot-linear
   - id: act-relu-sigmoid-tanh
     title: ReLU, sigmoid and tanh
     explain: |
-      Which bend should go between the layers? Three activation functions cover most networks. Each takes a score $z$ and returns one number.
+      The house model produces scores $-2$, $0.5$ and $3$. **Which activation should it use?** The step rule loses differences between scores on the same side of zero.
 
-      - **ReLU** ("rectified linear unit"): $\text{ReLU}(z) = \max(0, z)$. Negative scores become 0 and positive scores pass through unchanged. It's the cheapest to compute and has no upper limit.
-      - **Sigmoid**, written $\sigma$ ("sigma"): $\sigma(z) = \dfrac{1}{1 + e^{-z}}$, where $e \approx 2.718$. Its output is always between 0 and 1, and $\sigma(0) = 0.5$, so it suits an output that should read like a probability.
-      - **tanh**: output between $-1$ and $1$, with $\tanh(0) = 0$. It's centred on zero, so its outputs fall above and below 0.
+      - **ReLU** ("rectified linear unit") is $\text{ReLU}(z) = \max(0, z)$. Negative scores become 0, while positive scores stay unchanged.
+      - **Sigmoid**, $\sigma$ ("sigma"), is $\sigma(z) = \dfrac{1}{1 + e^{-z}}$, where $e \approx 2.718$. Outputs lie between 0 and 1, with $\sigma(0) = 0.5$.
+      - **tanh** gives outputs between $-1$ and $1$, with $\tanh(0) = 0$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 235" aria-label="Graphs of three activation functions for z from minus 4 to 4: ReLU is flat at 0 then rises as a straight line; sigmoid rises smoothly from 0 to 1 through 0.5 at z = 0; tanh rises smoothly from minus 1 to 1 through 0.">
@@ -72,9 +74,9 @@ knowledge_points:
       </svg>
       ```
 
-      ReLU's graph has a corner at 0, and the other two are S-shaped curves. None is a straight line, so any of them stops stacked layers collapsing into one.
+      These work because their changing slopes introduce bends. Why often choose ReLU between neurons? It is cheap to calculate and preserves changes in positive scores instead of squeezing large values toward a limit. Sigmoid instead fits an output meaning "how likely", between 0 and 1. Tanh also allows negative outputs.
     worked: |
-      This example shows all three activation functions on the same scores, then adds a ReLU bend between two rules.
+      This example shows how three activations change the house model's scores, then uses ReLU to make its rating change differently for small and large houses.
 
       | score $z$ | $-2$ | $0.5$ | $3$ |
       |---|---|---|---|
@@ -84,28 +86,28 @@ knowledge_points:
 
       For sigmoid at $z = -2$: $e^{2} \approx 7.389$, so $\sigma(-2) = 1/(1 + 7.389) \approx 0.119$.
 
-      Now put ReLU between two rules: $u = x - 1$, then $y = 2\,\text{ReLU}(u) + 1$.
+      Now let $x$ be house size in hundreds of m². Put ReLU between two rules: $u = x - 1$, then $y = 2\,\text{ReLU}(u) + 1$.
 
-      - $x = 0$: $u = -1$, ReLU gives 0, $y = 1$.
-      - $x = 1$: $u = 0$, $y = 1$.
-      - $x = 3$: $u = 2$, $y = 5$.
+      - At $x = 0.5$, the first score is $u = -0.5$. ReLU gives 0, so $y = 1$.
+      - At $x = 1$, the first score is $u = 0$, so $y = 1$ again.
+      - At $x = 3$, the first score is $u = 2$. ReLU keeps it, so $y = 5$.
 
-      The output is flat until $x = 1$, then rises: a corner no single straight line can make.
+      The rating stays at 1 until size reaches 100 m², then rises with size. This change creates a corner that no single straight line can follow. This particular rule rewards extra space only in larger houses; the bend allows different responses but does not by itself choose the right preference.
     problems:
       - actp-relu-values
       - actp-relu-sum-template
       - actp-sigmoid-template
       - actp-relu-bend
-      - actp-probability-pick
+      - actp-why-sigmoid-output
       - actp-tanh-range
   - id: act-slopes
     title: The slope of each activation
     explain: |
-      Later lessons train networks by nudging their numbers and watching how the output responds. So you need to know: if a score $z$ changes a little, how much does the activation's output change? That's its derivative, $\phi'(z)$, the slope of its graph.
+      The house model uses sigmoid. A weight change raises its score from 0 to 0.01. **How much will its output change?** A large test jump could miss what happens near this score. Use the derivative $\phi'(z)$, the slope there. This works because slope estimates output change for a small input change.
 
-      - **ReLU:** the slope is $1$ for $z > 0$ and $0$ for $z < 0$. A positive score passes changes through one-for-one; a negative score blocks them.
-      - **Sigmoid:** $\sigma'(z) = \sigma(z)\,\big(1 - \sigma(z)\big)$. It's largest at $z = 0$, where it's $0.5 \times 0.5 = 0.25$, and close to 0 when $z$ is far from 0 in either direction. There the curve is flat, or **saturated**.
-      - **tanh:** $\tanh'(z) = 1 - \tanh^2(z)$, which is 1 at $z = 0$ and also near 0 far from it.
+      - **ReLU** has slope $1$ for $z > 0$ and $0$ for $z < 0$. Its derivative is undefined at the corner, $z = 0$.
+      - **Sigmoid** has slope $\sigma'(z) = \sigma(z)\,\big(1 - \sigma(z)\big)$. Its maximum is $0.25$ at $z = 0$. Far from zero, one factor approaches zero, so the curve flattens, or **saturates**.
+      - **tanh** has slope $\tanh'(z) = 1 - \tanh^2(z)$. It is 1 at zero and near 0 far away.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="The sigmoid curve with two tangent lines: a steep one at z = 0 with slope 0.25, and an almost flat one at z = 4 with slope about 0.018. Far from zero the curve is flat in both directions.">
@@ -124,24 +126,26 @@ knowledge_points:
       </svg>
       ```
 
-      One ReLU problem: a neuron whose score is negative for every input always outputs 0 and always has slope 0, so nudging its numbers changes nothing. It's called a **dead** unit.
+      Why not always ReLU? A neuron with negative scores for every house always outputs 0. Small weight changes leave it unchanged, so it is called **dead**.
     worked: |
-      This example shows sigmoid's slope at two scores and checks one with a small nudge.
+      This example shows how much a small change in the house model's score affects a sigmoid output.
 
       1. **At $z = 0$:** $\sigma(0) = 0.5$, so $\sigma'(0) = 0.5 \times (1 - 0.5) = 0.25$.
-      2. **Check with a nudge:** $\sigma(0.01) \approx 0.502500$. The output rose by $0.0025$ for a nudge of $0.01$, a ratio of $0.25$.
+      2. **Check with a small change:** $\sigma(0.01) \approx 0.502500$. The output rose by $0.0025$ when the score rose by $0.01$, a ratio of $0.25$.
       3. **At $z = 4$:** $\sigma(4) \approx 0.982$, so $\sigma'(4) \approx 0.982 \times 0.018 \approx 0.018$.
 
-      At $z = 4$ the same nudge moves the output about 14 times less than at $z = 0$. A ReLU with a positive score would pass it through in full, with slope 1.
+      At $z = 4$, the same small score increase changes the output by about one fourteenth as much as at $z = 0$. For a positive ReLU score, the output would rise by the full amount because its slope is 1.
     problems:
       - actp-relu-slope
       - actp-sigmoid-slope-template
       - actp-nudge-estimate
-      - actp-sigmoid-flat
+      - actp-why-saturation
       - actp-tanh-slope
       - actp-dead-unit
 final: act-explain-layers
 summary: |
   - Stacked weighted sums with nothing between them collapse into one weighted sum, so a network needs a nonlinear activation between its layers.
   - ReLU is $\max(0, z)$; sigmoid $\sigma(z) = 1/(1 + e^{-z})$ lies between 0 and 1; tanh lies between $-1$ and $1$, centred on 0.
-  - Slopes: ReLU's is 1 for positive scores and 0 for negative ones; sigmoid's is $\sigma(1 - \sigma)$, at most 0.25 and near 0 far from $z = 0$.
+  - ReLU's slope is 1 for positive scores and 0 for negative ones. Sigmoid's slope is $\sigma(1 - \sigma)$, at most 0.25 and near 0 when the score is far from zero.
+
+  **Where you'll use this:** In Layers and the forward pass you will combine activations with weighted sums. Backpropagation uses their slopes, and Initialization and normalization helps keep neurons responsive to changes.

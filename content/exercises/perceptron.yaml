@@ -234,37 +234,41 @@ exercises:
           feedback: "Every input contributes its weight times its value to the score.",
         }
     solution: "The distance contributes $-1 \\cdot x_2$ to the score, so 1 more km lowers the score by 1. A negative weight means that input counts against a yes."
-  - id: percp-bias-role
+  - id: percp-why-bias
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "You change a shortlisting neuron's bias from $b = -1$ to $b = -3$ and keep the weights. What changes?"
+    prompt: "Why does a neuron choosing houses to visit need a bias as well as weights when you want to make a yes harder without changing how much size or distance matters?"
     options:
-      - { id: a, text: "Every score drops by 2, so fewer houses get a yes", correct: true }
+      - {
+          id: a,
+          text: "The bias shifts every score equally without changing how much either input counts",
+          correct: true,
+        }
       - {
           id: b,
-          text: "Every score rises by 2, so more houses get a yes",
+          text: "The bias multiplies both inputs so larger houses matter more",
           correct: false,
-          category: math_error,
-          feedback: "$-3$ is smaller than $-1$, so adding it gives each score 2 less.",
+          category: misunderstood_definition,
+          feedback: "Weights multiply inputs. The bias is added once and does not change either input's weight.",
         }
       - {
           id: c,
-          text: "Size starts to count three times as much as before",
+          text: "The bias lets the straight boundary bend around exceptions",
           correct: false,
           category: misunderstood_definition,
-          feedback: "How much an input counts is its weight. The bias is added once, whatever the inputs are.",
+          feedback: "Adding a constant can only shift a straight boundary; it cannot introduce a bend.",
         }
       - {
           id: d,
-          text: "Nothing, because the bias doesn't affect the output",
+          text: "The bias stores a separate yes/no answer for every house",
           correct: false,
           category: misunderstood_definition,
-          feedback: "The bias is part of the score, so it can move a house from one side of the bar to the other.",
+          feedback: "One bias is shared across all houses. The inputs and weights determine how their scores differ.",
         }
-    solution: "The bias is added to every score, so lowering it by 2 lowers every score by 2. Some houses that scored just above 0 now score below 0, so the bar is higher."
+    solution: "Lowering the bias from $-1$ to $-3$ subtracts 2 from every score while keeping both weights fixed. A house scoring 1 would now score $-1$ and switch to no; the trade-off between size and distance is unchanged."
   - id: percp-robot-gripper
     dimension: transfer
     type: mc
@@ -418,37 +422,41 @@ exercises:
           feedback: "$w_1 x_1 + w_2 x_2 + b = 0$ is a straight line for any bias.",
         }
     solution: "The weights fix the direction of the line and the bias shifts it. With $b = -2$ the line crosses the size axis at $x_1 = 1$ instead of $0.5$, parallel to the old line."
-  - id: percp-hyperplane
+  - id: percp-why-straight
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A shortlisting neuron now reads three inputs: size, distance to the station and the house's age. What shape is its decision boundary in the three-dimensional space of inputs?"
+    prompt: "Why can't changing a single perceptron's weights and bias turn its boundary in a size-versus-distance plot into a closed circle?"
     options:
-      - { id: a, text: "A flat plane", correct: true }
+      - {
+          id: a,
+          text: "The boundary is where the weighted sum plus bias equals zero, and that equation still describes a straight line",
+          correct: true,
+        }
       - {
           id: b,
-          text: "A straight line",
+          text: "It could, if both weights were made large enough",
           correct: false,
           category: misunderstood_definition,
-          feedback: "A line is the boundary for two inputs. With three inputs, $w \\cdot x + b = 0$ is a plane.",
+          feedback: "Larger coefficients change the line's direction or position, not the type of equation. It is still straight.",
         }
       - {
           id: c,
-          text: "A curved surface",
+          text: "Only the bias must change; shifting a line repeatedly makes a circle",
           correct: false,
           category: misunderstood_definition,
-          feedback: "The score is a weighted sum, so the set where it's zero is flat, never curved.",
+          feedback: "Each bias setting gives one straight line. Moving that line does not combine its old positions into a new boundary.",
         }
       - {
           id: d,
-          text: "A single point",
+          text: "The step rule rounds each input to 0 or 1, losing the positions needed for a circle",
           correct: false,
           category: misunderstood_definition,
-          feedback: "Many different inputs score exactly 0, and together they form a flat plane.",
+          feedback: "The step rule acts on the combined score, not on each input. The weighted-sum score is what imposes the straight boundary.",
         }
-    solution: "With three inputs, $w_1 x_1 + w_2 x_2 + w_3 x_3 + b = 0$ is a flat plane. With more inputs it's a hyperplane, which is still flat."
+    solution: "With two inputs the boundary is $w_1 x_1 + w_2 x_2 + b = 0$. Nonzero weights describe a line, whatever their values. They can turn the line and the bias can slide it, but neither creates a closed curve."
   - id: percp-no-curve
     dimension: transfer
     type: mc
