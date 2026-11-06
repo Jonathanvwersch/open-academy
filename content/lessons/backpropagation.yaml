@@ -10,9 +10,7 @@ knowledge_points:
     explain: |
       **What backpropagation is.** It is a backward calculation that applies the chain rule through a network to find the loss derivative for each weight and bias.
 
-      **How it works.** A forward pass computes the house price and stores intermediate scores and activations. Starting from the loss, the backward pass propagates its derivative through each operation. Shared values are computed once, rather than rebuilding a separate derivative expression for every weight.
-
-      Why store forward values? The local derivatives, such as the ReLU slope, depend on them.
+      **How it works.** A forward pass computes the house price and stores intermediate scores and activations. Starting from the loss, the backward pass propagates its derivative through each operation. Shared values are computed once, rather than rebuilding a separate derivative expression for every weight. Stored forward values supply the inputs to local derivatives, including the ReLU slope.
 
       **Why this is useful.** Backpropagation supplies all slopes needed to train the same house-price network without repeating the full calculation for each parameter.
     worked: |
@@ -24,9 +22,7 @@ knowledge_points:
     explain: |
       **What a backward pass is.** It propagates a derivative from the loss toward earlier operations, multiplying by each local derivative.
 
-      **How it works.** Use $z=wa$ with area $a=12$, $h=\operatorname{ReLU}(z)$, $\hat y=15h+306.5$, and $L=(\hat y-330)^2$. At $w=0.1$, the forward values are $z=h=1.2$ and $\hat y=324.5$. Then $dL/d\hat y=-11$, $dL/dh=-11(15)=-165$, and $dL/dw=-165(1)(12)=-1980$.
-
-      Why multiply in reverse order? Each step passes the loss sensitivity to its immediate input.
+      **How it works.** Use $z=wa$ with area $a=12$, $h=\operatorname{ReLU}(z)$, $\hat y=15h+306.5$, and $L=(\hat y-330)^2$. At $w=0.1$, the forward values are $z=h=1.2$ and $\hat y=324.5$. Then $dL/d\hat y=-11$, $dL/dh=-11(15)=-165$, and $dL/dw=-165(1)(12)=-1980$. Multiplying local derivatives in reverse order passes the loss sensitivity to each operation's immediate input.
 
       **Why this is useful.** The resulting weight slope tells gradient descent how this house's error changes when the network weight changes.
     worked: |
@@ -46,9 +42,11 @@ knowledge_points:
     explain: |
       **What a batch gradient is.** It is the combined gradient from several training houses processed together.
 
-      **How it works.** For input matrix $X$ with shape $B\times d_{\rm in}$ and output error matrix $G$ with shape $B\times d_{\rm out}$, a dense layer's weight gradient is $dW=X^\top G$, shape $d_{\rm in}\times d_{\rm out}$. Bias gradients sum $G$ across the $B$ houses. The ReLU derivative masks inactive units with the indicator $\mathbf{1}[z>0]$; $\odot$ means multiply matching entries element by element.
+      **How it works.** A batch contains $B$ houses. Let $d_{\rm in}$ be the number of input features and $d_{\rm out}$ the number of outputs. Define matrix $X$ with one input row per house, and matrix $G$ with one output-error row per house. Their shapes are $B\times d_{\rm in}$ and $B\times d_{\rm out}$.
 
-      Why sum the bias gradients? The same bias is used for every house in the batch.
+      The weight-gradient matrix $dW$ is $X^\top G$, where $X^\top$ means $X$ with its rows and columns swapped. Its shape changes from $B\times d_{\rm in}$ to $d_{\rm in}\times B$. The inner dimensions then match in $(d_{\rm in}\times B)(B\times d_{\rm out})$, so $dW$ has shape $d_{\rm in}\times d_{\rm out}$, matching the weights. Summing each column of $G$ gives the bias gradients because the same bias is used for every house.
+
+      Let $z$ be a unit's score before ReLU. ReLU has slope 1 where $z>0$ and 0 elsewhere. The indicator $\mathbf{1}[z>0]$ records those slopes for all units, and $\odot$ multiplies matching entries to apply the mask entry by entry.
 
       **Why this is useful.** Matrix backpropagation computes house-network gradients for many sales without a separate manual calculation for each row.
     worked: |
@@ -68,9 +66,7 @@ knowledge_points:
     explain: |
       **What a gradient check is.** It compares a calculated derivative with a finite-difference estimate from nearby parameter values.
 
-      **How it works.** For one house-model weight $w$, estimate $\partial L/\partial w$ with $[L(w+h)-L(w-h)]/(2h)$ for a small $h$. Compare that value with backpropagation's result. Use the same inputs, loss and parameters in both calculations.
-
-      Why use a central difference? It samples on both sides of the parameter and is usually more accurate than a one-sided nudge.
+      **How it works.** For one house-model weight $w$, estimate $\partial L/\partial w$ with $[L(w+h)-L(w-h)]/(2h)$ for a small $h$. Compare that value with backpropagation's result. Use the same inputs, loss and parameters in both calculations. A central difference samples both sides of the parameter and is usually more accurate than a one-sided nudge.
 
       **Why this is useful.** A gradient check catches implementation mistakes before they affect training on house sales.
     worked: |

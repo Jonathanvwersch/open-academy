@@ -12,7 +12,7 @@ knowledge_points:
 
       **How it works.** Fit the weights using training houses, then predict prices for separate test houses without updating the model from their sale prices. Compare each prediction with its known sale. If the model memorised the training examples, its training error can be small while test error remains large.
 
-      Why must test sale prices stay hidden during training? Using them to adjust weights would make the test no longer independent.
+      Test sale prices must stay hidden during training because adjusting weights with them would make the test dependent.
 
       **Why this is useful.** A held-out score checks whether house-price predictions work beyond the sales used to fit the weights.
     worked: |
@@ -54,7 +54,7 @@ knowledge_points:
 
       **How it works.** Train each candidate on the training houses and compare their validation errors. Select settings using validation data, then evaluate the selected model once on test houses. If many candidates are tried, the best validation score may partly reflect luck in that particular split.
 
-      Why should test error not choose the number of hidden units? That would turn test examples into part of model selection.
+      Choosing the number of hidden units from test error would make test examples part of model selection.
 
       **Why this is useful.** Validation data helps choose house-model settings while keeping the final test score meaningful.
     worked: |
@@ -75,7 +75,7 @@ knowledge_points:
 
       **How it works.** Keep every record for the same house in one split. Calculate preprocessing values, such as a mean used to fill a missing area, from training houses only, then apply that value to validation and test houses. Otherwise held-out information can make the score look better than real future predictions.
 
-      Why can duplicate records cause leakage? The same sale in both training and test lets the model see the answer before evaluation.
+      Duplicate records can leak information because the same sale in training and test lets the model see the answer before evaluation.
 
       **Why this is useful.** Preventing leakage keeps house-price test errors representative of genuinely unseen sales.
     worked: |

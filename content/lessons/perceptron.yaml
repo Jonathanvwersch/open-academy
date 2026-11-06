@@ -12,7 +12,7 @@ knowledge_points:
 
       **How it works.** Let $x=(12,3,20)$ record area, bedrooms and age. The score is $z=w\cdot x+b$. For weights $(0.2,0.1,-0.02)$ and bias $-2.5$, $z=2.4+0.3-0.4-2.5=-0.2$, so the step output is 0. The output can represent a yes/no label such as “sale above asking.”
 
-      Why use a threshold after the score? It converts a continuous number into one of two decisions.
+      A threshold converts the continuous score into one of two decisions.
 
       **Why this is useful.** This is the smallest neural decision rule for classifying house sales before the course builds a price-predicting network.
     worked: |
@@ -37,7 +37,7 @@ knowledge_points:
 
       **How it works.** For three house features, the equation $w\cdot x+b=0$ describes a plane in three-dimensional input space. On one side the score is positive and the output is 1; on the other it is non-positive and the output is 0. Changing weights tilts the plane; changing the bias shifts it.
 
-      Why is the boundary flat? The score is a weighted sum, so setting it to zero gives a linear equation.
+      The boundary is flat because setting the weighted-sum score to zero gives a linear equation.
 
       **Why this is useful.** The boundary shows which combinations of area, bedrooms and age change the model's yes/no house-sale decision.
     worked: |
@@ -59,7 +59,7 @@ knowledge_points:
 
       **How it works.** The four inputs are $(0,0),(0,1),(1,0),(1,1)$. For AND, only $(1,1)$ is positive; for OR, only $(0,0)$ is negative. A line can separate each pair of output groups. For XOR, the positive corners $(0,1)$ and $(1,0)$ alternate with the negative corners, so no single straight boundary separates them.
 
-      Why does this matter for a perceptron? Its one linear boundary cannot represent every possible pattern.
+      A perceptron's single linear boundary cannot represent every possible pattern, which is why it cannot model XOR.
 
       **Why this is useful.** XOR gives a precise reason the neural model needs multiple neurons and nonlinear activations.
     worked: |

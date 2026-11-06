@@ -10,9 +10,7 @@ knowledge_points:
     explain: |
       **What a linear layer is.** It maps an input vector to weighted sums plus a bias, such as $z=Wx+b$.
 
-      **How it works.** If two layers contain only weighted sums, then $W_2(W_1x+b_1)+b_2=(W_2W_1)x+(W_2b_1+b_2)$, which is still one affine rule. Adding more such layers cannot make the house-price relationship curved.
-
-      Why do extra layers not help by themselves? Matrix multiplication and addition preserve linear structure.
+      **How it works.** If two layers contain only weighted sums, then $W_2(W_1x+b_1)+b_2=(W_2W_1)x+(W_2b_1+b_2)$, which is still one affine rule. Matrix multiplication and addition preserve affine structure, so adding more such layers cannot make the house-price relationship curved.
 
       **Why this is useful.** This tells us why a deeper house-price model must place a nonlinear operation between its weighted-sum layers.
     worked: |
@@ -34,8 +32,6 @@ knowledge_points:
 
       **How it works.** ReLU returns $\max(0,z)$; sigmoid returns $1/(1+e^{-z})$ between 0 and 1; tanh returns a value between $-1$ and 1. At house-model score $z=0.5$, ReLU gives 0.5, sigmoid gives about 0.62 and tanh about 0.46. Each changes the score differently.
 
-      Why can sigmoid suit an output interpreted as a probability? Its values stay between 0 and 1.
-
       **Why this is useful.** ReLU lets hidden house-price units represent bends, while sigmoid can express a bounded yes-or-no probability when the task calls for one.
     worked: |
       This example shows the calculation.
@@ -54,9 +50,7 @@ knowledge_points:
     explain: |
       **What an activation slope is.** It is the derivative of the activation output with respect to its input score.
 
-      **How it works.** ReLU has slope 1 when $z>0$ and 0 when $z<0$. Sigmoid has slope $\sigma(z)(1-\sigma(z))$, which is at most 0.25 and gets close to zero for large positive or negative scores. Tanh has slope $1-\tanh^2(z)$. These slopes tell gradient calculations how a score change affects the next layer.
-
-      Why can a nearly flat sigmoid slow learning? A small slope passes only a small gradient backward.
+      **How it works.** ReLU has slope 1 when $z>0$ and 0 when $z<0$. Sigmoid has slope $\sigma(z)(1-\sigma(z))$, which is at most 0.25 and gets close to zero for large positive or negative scores. Tanh has slope $1-\tanh^2(z)$. These slopes tell gradient calculations how a score change affects the next layer. The small slope of a nearly flat sigmoid passes only a small gradient backward, which can slow learning.
 
       **Why this is useful.** Activation derivatives let the training process calculate how hidden house-price units contribute to prediction error.
     worked: |

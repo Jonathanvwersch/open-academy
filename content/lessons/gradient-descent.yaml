@@ -39,9 +39,7 @@ knowledge_points:
     explain: |
       **What the learning rate is.** The learning rate $\eta$ is the positive scale that sets how far each gradient-descent update moves.
 
-      **How it works.** In the house example the area and age features are 12 and 20, so their partial derivatives multiply the error by those values. That makes their slopes large; even a modest learning rate could move a weight too far and raise the loss. A small rate makes the update cautious. If it is too small, improvement is slow; if too large, the loss can overshoot and rise.
-
-      Why can the same rate move two weights by different amounts? Each change is the rate times that parameter's own slope.
+      **How it works.** Each parameter changes by the learning rate times its own slope, so area and age weights move more than the bedroom weight. With $\eta=0.01$, the same update gives $w=(29.8,11.2,7)$ and $b=0.4$, prediction $531.6$, error $201.6$, and loss $201.6^2=40{,}642.56$, up from $400$. With $\eta=0.0001$, the KP1 update gives loss $316.270656\approx316.27$. The area-12 and age-20 features make their slopes large, so the larger rate overshoots and raises loss; a rate that is too small improves slowly.
 
       **Why this is useful.** Choosing a cautious rate prevents the large area- and age-feature slopes from destabilising house-price training.
     worked: |
@@ -61,9 +59,7 @@ knowledge_points:
     explain: |
       **What a parameter gradient is.** It is the loss's partial derivative with respect to one adjustable weight or bias.
 
-      **How it works.** For squared error $L=(w\cdot x+b-y)^2$, let $e=\hat y-y$. The chain rule gives $\partial L/\partial w_j=2e x_j$ and $\partial L/\partial b=2e$. Thus the house with error $-20$ and features $(12,3,20)$ has weight slopes $(-480,-120,-800)$ and bias slope $-40$. The features scale the same prediction error differently.
-
-      Why does the age weight have a larger-magnitude slope than the bedroom weight here? The age feature is 20, compared with 3 bedrooms.
+      **How it works.** For squared error $L=(w\cdot x+b-y)^2$, let $e=\hat y-y$. The partial-derivatives lesson found $\partial L/\partial w_j=2e x_j$ and $\partial L/\partial b=2e$. Thus the house with error $-20$ and features $(12,3,20)$ has weight slopes $(-480,-120,-800)$ and bias slope $-40$. The age slope has larger magnitude than the bedroom slope because its feature is 20, compared with 3 bedrooms.
 
       **Why this is useful.** The feature-scaled slopes tell training how each house measurement should change its own weight.
     worked: |
@@ -88,9 +84,7 @@ knowledge_points:
     explain: |
       **What a training loop is.** It is the repeated sequence of predicting, measuring loss, calculating gradients and updating parameters.
 
-      **How it works.** For each pass over the training houses, compute current predictions and losses, find the average loss gradient, and apply one gradient-descent update. Then calculate new predictions from the changed parameters. Reusing the old gradient would move according to slopes at the wrong point.
-
-      Why calculate fresh predictions after an update? The updated weights define a different model, so its errors and slopes have changed.
+      **How it works.** For each pass over the training houses, compute current predictions and losses, find the average loss gradient, and apply one gradient-descent update. Then calculate new predictions from the changed parameters. Reusing the old gradient would move according to slopes at the wrong point because the updated weights define a different model with new errors and slopes.
 
       **Why this is useful.** Repeating this loop lets the house-price model improve across many observed sales rather than making a single adjustment.
     worked: |

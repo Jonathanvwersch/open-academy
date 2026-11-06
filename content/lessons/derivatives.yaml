@@ -15,15 +15,21 @@ knowledge_points:
       $$L'(w)=\lim_{h\to0}\frac{L(w+h)-L(w)}{h}.$$
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 180" role="img" aria-label="The squared loss curve near weight 25, with a tangent descending at slope minus 720">
-        <line x1="45" y1="145" x2="410" y2="145" stroke="#64748b" stroke-width="2"/>
-        <line x1="45" y1="20" x2="45" y2="145" stroke="#64748b" stroke-width="2"/>
-        <path d="M55 30 C125 32 180 112 275 145 C345 120 360 32 395 30" fill="#ffffff" stroke="#2563eb" stroke-width="4"/>
-        <line x1="150" y1="85" x2="285" y2="164" stroke="#dc2626" stroke-width="3"/>
-        <circle cx="235" cy="135" r="6" fill="#dc2626"/>
-        <text x="65" y="165" font-size="13" fill="#334155">weight w</text>
-        <text x="14" y="28" font-size="13" fill="#334155">loss</text>
-        <text x="250" y="112" font-size="13" fill="#334155">w = 25</text>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 270" role="img" aria-label="Parabola of squared house-price loss from weight 22 to 33, marked at weight 25 with slope minus 720 and minimum at 27.5">
+        <path d="M55 45 Q237.5 355 420 45" fill="#ffffff" stroke="#2563eb" stroke-width="4"/>
+        <line x1="55" y1="200" x2="420" y2="200" stroke="#64748b" stroke-width="2"/>
+        <line x1="55" y1="45" x2="55" y2="200" stroke="#64748b" stroke-width="2"/>
+        <line x1="55" y1="91.116" x2="196.023" y2="200" stroke="#dc2626" stroke-width="3"/>
+        <circle cx="154.545" cy="167.975" r="6" fill="#dc2626"/>
+        <circle cx="237.5" cy="200" r="4" fill="#16a34a"/>
+        <line x1="55" y1="200" x2="55" y2="205" stroke="#64748b" stroke-width="2"/>
+        <line x1="420" y1="200" x2="420" y2="205" stroke="#64748b" stroke-width="2"/>
+        <text x="165" y="145" font-size="12" fill="#334155">w = 25, slope −720</text>
+        <text x="200" y="222" font-size="12" fill="#334155">w = 27.5, loss 0</text>
+        <text x="49" y="220" font-size="12" fill="#334155">22</text>
+        <text x="412" y="220" font-size="12" fill="#334155">33</text>
+        <text x="198" y="250" font-size="13" fill="#334155">weight w</text>
+        <text transform="rotate(-90 18 125)" x="18" y="125" font-size="13" fill="#334155">loss</text>
       </svg>
       ```
 
@@ -60,9 +66,7 @@ knowledge_points:
 
       $$L'(w)=288w-7920.$$
 
-      At $w=25$, this is $7200-7920=-720$, matching the local-rate calculation. The rule follows by expanding $(w+h)^n$: after division by $h$, every term with a higher power of $h$ vanishes as $h$ approaches zero.
-
-      Why does a constant contribute zero? Its value does not change when $w$ changes, so its slope is zero.
+      At $w=25$, this is $7200-7920=-720$, matching the local-rate calculation. The rule follows by expanding $(w+h)^n$: after division by $h$, every term with a higher power of $h$ vanishes as $h$ approaches zero. A constant contributes zero because its value does not change when $w$ changes.
 
       **Why this is useful.** The rule gives a quick exact slope for the house model's squared loss instead of testing many nearby weights.
     worked: |
@@ -88,11 +92,9 @@ knowledge_points:
     explain: |
       **What exponential and logarithm functions are.** The exponential $e^x$ has base $e\approx2.718$. The natural logarithm $\ln x$ asks which power of $e$ equals $x$; it is defined for positive $x$.
 
-      **How it works.** Their derivatives are $(e^x)'=e^x$ and $(\ln x)'=1/x$. The first function's rate equals its value. The logarithm undoes the exponential, so its rate gets smaller as $x$ grows. For example, $\ln 1=0$ because $e^0=1$.
+      **How it works.** Their derivatives are $(e^x)'=e^x$ and $(\ln x)'=1/x$. The first function's rate equals its value. The logarithm undoes the exponential, so its rate gets smaller as $x$ grows. For example, $\ln 1=0$ because $e^0=1$. For positive $w$, $1/w$ decreases as $w$ grows, so the derivative of $\ln w$ gets smaller too.
 
       Sine and cosine are functions of an angle. Their derivatives are $(\sin x)'=\cos x$ and $(\cos x)'=-\sin x$. These rules can be used term by term in sums.
-
-      Why does the derivative of $\ln w$ get smaller as $w$ grows? Its slope is $1/w$, which decreases for positive $w$.
 
       **Why this is useful.** A later network can use an exponential formula to turn a score into a probability; its derivative is needed to train that output.
     worked: |

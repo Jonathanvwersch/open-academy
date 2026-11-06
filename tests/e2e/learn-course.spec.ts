@@ -207,9 +207,13 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   await page.goto('/lessons/derivatives');
   await hideTutorLauncher(page);
   const derivativeDiagram = page.getByRole('img', {
-    name: 'The squared loss curve near weight 25, with a tangent descending at slope minus 720',
+    name: 'Parabola of squared house-price loss from weight 22 to 33, marked at weight 25 with slope minus 720 and minimum at 27.5',
   });
   await expect(derivativeDiagram).toBeVisible();
+  await derivativeDiagram.evaluate((image) => {
+    image.style.width = '800px';
+    image.style.maxWidth = 'none';
+  });
   await derivativeDiagram.screenshot({
     path: `${courseStructureBatch3ScreenshotDir}/derivatives-kp1.png`,
   });

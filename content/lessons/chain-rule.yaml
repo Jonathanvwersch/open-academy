@@ -10,9 +10,7 @@ knowledge_points:
     explain: |
       **What the chain rule is.** It finds the derivative of a nested calculation by multiplying the derivative at each step.
 
-      **How it works.** For functions $f$ and $g$, $g\circ f$ means apply $f$ first, then $g$. In a small house network, area $a$ sets score $z=0.1a$, the hidden value is $h=\max(0,z)$, and the predicted price is $\hat y=15h+306.5$. At $a=12$, $z=h=1.2$. The local rates are $dh/dz=1$, $d\hat y/dh=15$, and $dz/da=0.1$, so $d\hat y/da=15\cdot1\cdot0.1=1.5$ thousand pounds per feature unit.
-
-      Why multiply these rates? Each rate converts a small change into the units of the next quantity.
+      **How it works.** For functions $f$ and $g$, $g\circ f$ means apply $f$ first, then $g$. In a small house network, area $a$ sets score $z=0.1a$, the hidden value is $h=\max(0,z)$, and the predicted price is $\hat y=15h+306.5$. At $a=12$, $z=h=1.2$. The local rates are $dh/dz=1$, $d\hat y/dh=15$, and $dz/da=0.1$, so $d\hat y/da=15\cdot1\cdot0.1=1.5$ thousand pounds per feature unit. Multiplying the rates works because each converts a change into the units of the next quantity.
 
       **Why this is useful.** The product tells how a house input affects the network's final price through its hidden computation.
     worked: |
@@ -38,7 +36,7 @@ knowledge_points:
 
       $$\frac{dL}{da}=2(\hat y-330)\cdot15\cdot1\cdot0.1=-16.5.$$
 
-      Why include the max-operation derivative? It describes how the hidden value responds to its score.
+      Including the max-operation derivative accounts for how the hidden value responds to its score.
 
       **Why this is useful.** The chain rule connects the house's final price error to an early network weight or input.
     worked: |
@@ -58,9 +56,7 @@ knowledge_points:
     explain: |
       **What a route is.** It is one sequence of operations through which an input affects an output.
 
-      **How it works.** Suppose area contributes to two hidden values, $h_1=0.1a$ and $h_2=0.05a$, and the price score is $\hat y=15h_1+10h_2+306.5$. The two route rates are $15(0.1)=1.5$ and $10(0.05)=0.5$. Since both routes change the same output, add them: $d\hat y/da=2$.
-
-      Why add the route rates? A small area change affects the output through both hidden values.
+      **How it works.** Suppose area contributes to two hidden values, $h_1=0.1a$ and $h_2=0.05a$, and the price score is $\hat y=15h_1+10h_2+306.5$. The two route rates are $15(0.1)=1.5$ and $10(0.05)=0.5$. Since both routes change the same output, add them: $d\hat y/da=2$. The route rates add because a small area change affects the output through both hidden values.
 
       **Why this is useful.** Adding paths accounts for every way a house feature can influence the predicted price.
     worked: |

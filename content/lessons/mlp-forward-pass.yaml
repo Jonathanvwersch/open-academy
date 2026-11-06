@@ -13,7 +13,7 @@ knowledge_points:
       **How it works.** For house input $x=(12,3,20)$, take
       $W_1=\begin{pmatrix}0.1&0&0\\0&0.1&0.05\end{pmatrix}$ and $b_1=(0,0)$. Then $z_1=W_1x+b_1=(1.2,1.3)$ and ReLU gives hidden values $h=(1.2,1.3)$. Each row is one unit's weights.
 
-      Why compute the rows together? Matrix multiplication applies the same layer rule to all its neurons without changing the input order.
+      Matrix multiplication applies the same layer rule to every neuron without changing the input order, so computing the rows together keeps the layer consistent.
 
       **Why this is useful.** The hidden layer gives the house-price model several learned intermediate features instead of one direct weighted sum.
     worked: |
@@ -35,7 +35,7 @@ knowledge_points:
 
       **How it works.** Continue with hidden values $h=(1.2,1.3)$. Let output weights be $(15,5)$ and output bias 300, all in units that make the result thousands of pounds. Then $\hat y=15(1.2)+5(1.3)+300=324.5$. The final layer is linear because a house price is not restricted to a fixed interval.
 
-      Why must the layers run in order? The output layer needs the hidden values produced by the previous layer.
+      The output layer needs the hidden values produced by the previous layer, so the layers must run in order.
 
       **Why this is useful.** A forward pass combines the house's area, bedrooms and age into one price prediction that can be compared with its sale.
     worked: |
@@ -60,7 +60,7 @@ knowledge_points:
 
       **How it works.** For $B$ houses with three input features, $X$ has shape $B\times3$. The first layer uses a $3\times2$ weight matrix and produces $B\times2$ hidden values. The output weights have shape $2\times1$, producing $B\times1$ prices. This multiplication works because each inner dimension matches.
 
-      Why share weights across rows? Every row is a different house evaluated by the same model.
+      Every row is a different house evaluated by the same model, so the same weights are applied to each row.
 
       **Why this is useful.** Shape checks prevent errors when applying the house-price network to many sales at once.
     worked: |

@@ -46,9 +46,7 @@ knowledge_points:
 
       $$\Delta L\approx\nabla L\cdot\delta=-4.8-1.2-8-0.4=-14.4.$$
 
-      This first-order approximation uses the slopes at the starting point. It works because a smooth loss changes almost linearly in a small region around that point.
-
-      Why does a dot product estimate the change? Each partial derivative gives one parameter's rate; multiplying by that parameter's small step and adding counts all parameter changes.
+      This first-order approximation uses the slopes at the starting point. It works because a smooth loss changes almost linearly in a small region around that point. The dot product adds each parameter's slope multiplied by its own small step.
 
       **Why this is useful.** The estimate lets us check whether a proposed small update to house-model weights should lower the loss.
     worked: |
