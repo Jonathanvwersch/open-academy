@@ -112,7 +112,7 @@ exercises:
         }
       - {
           id: r2,
-          criterion: "Loss matches the target type (e.g. squared error for a numeric target)",
+          criterion: "Loss matches the target type (e.g. squared error for a numeric target, with $L(x)=x^2$ as a simple example)",
           weight: 2,
           required: true,
         }

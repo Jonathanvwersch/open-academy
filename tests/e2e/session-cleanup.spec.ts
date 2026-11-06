@@ -260,6 +260,9 @@ test('explain tutor feedback shows rubric and model answer, and survives reload'
   await expect(
     page.getByText('Inputs and targets are clearly identified', { exact: false }),
   ).toBeVisible();
+  const rubricList = page.getByRole('status').locator('ul');
+  await expect(rubricList.locator('.katex')).toBeVisible();
+  await expect(rubricList).not.toContainText('$');
   await page.screenshot({ path: `${screenshotDir}/explain-rubric-feedback.png`, fullPage: true });
   await page.reload();
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
@@ -297,6 +300,13 @@ test('fallback explain flow reveals the model answer before the self-check step'
               credit: 0.5,
               graded_by: 'self',
               feedback: 'Compare your explanation with the criteria.',
+              rubric: [
+                {
+                  id: 'norms',
+                  criterion: 'States $a\\cdot b = \\|a\\|\\|b\\|\\cos\\theta$.',
+                  judgement: 'met',
+                },
+              ],
               exemplar: 'A model maps inputs to a target.',
             },
       ),
@@ -321,5 +331,9 @@ test('fallback explain flow reveals the model answer before the self-check step'
   await expect(page.getByRole('checkbox').nth(1)).toHaveAttribute('aria-checked', 'true');
   await page.getByRole('button', { name: 'Submit self-check' }).click();
   await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
+  const rubricList = page.getByRole('status').locator('ul');
+  await expect(rubricList.locator('.katex')).toBeVisible();
+  await expect(rubricList).not.toContainText('$');
+  await expect(rubricList.locator('.katex-html')).toContainText('∥');
   await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
 });

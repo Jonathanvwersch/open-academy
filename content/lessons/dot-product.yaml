@@ -45,46 +45,59 @@ knowledge_points:
   - id: dot-arrow-alignment
     title: Measuring how much two arrows point the same way
     explain: |
-      **How much do two arrows point the same way?** We want a positive number when they point roughly together, zero when they meet at a right angle, and a negative number when they point against each other. Comparing lengths alone cannot tell these cases apart.
+      **How can one number say whether two arrows point the same way?** We want it to be positive when they point roughly together, zero when they meet at a right angle (called **perpendicular**), and negative when they point roughly opposite ways. Lengths alone can't tell these cases apart.
 
-      Try $a=(3,4)$ and $b=(2,0)$, both drawn from $(0,0)$. Their dot product is $3\cdot2+4\cdot0=6$. Reversing $b$ gives $-6$. Replacing it by $(4,-3)$ gives $12-12=0$.
+      Start with the easiest case: $b=(1,0)$, an arrow of length 1 pointing right. For any arrow $a=(a_1,a_2)$,
 
-      Why does this work? Drop a perpendicular line from $a$'s tip onto the line along $b$. **Perpendicular** means meeting at a right angle; **orthogonal** means the same thing. The resulting shadow is the **projection** of $a$ onto that line. Its signed length is positive along $b$ and negative against it. Here the shadow reaches 3 units right. Multiplying by $b$'s length, 2, gives 6.
+      $$a\cdot b=a_1\cdot1+a_2\cdot0=a_1.$$
 
-      The **angle** $\theta$ (“theta”) measures the turn between the arrows, from zero to 180 degrees. **Cosine**, written $\cos$, is the projection's signed length divided by $a$'s length. Thus:
-
-      $$a\cdot b=\|a\|_2\|b\|_2\cos\theta.$$
-
-      Cosine is one at zero degrees, zero at 90, and minus one at 180. Why this way? The shadow records direction, while multiplying by the other length makes both arrows' sizes count. In a model, this lets a score measure agreement as well as size.
-    worked: |
-      This example shows why multiplying a projection by the other arrow's length gives the dot product.
-
-      Draw $a=(3,4)$ and $b=(2,0)$ from the origin. The first coordinate measures distance right and the second measures distance up.
-
-      1. Multiply and add: $a\cdot b=3\cdot2+4\cdot0=6+0=6$.
-      2. Find the lengths: $\|a\|_2=\sqrt{9+16}=5$ and $\|b\|_2=\sqrt{4+0}=2$.
-      3. The projection of $a$ onto the horizontal line along $b$ has signed length 3.
-      4. Multiplying that projection by $b$'s length gives $3\cdot2=6$, the same score.
+      So the dot product is just how far $a$ goes to the right, which is how far it goes in $b$'s direction. The up part never counts, because $b$ has no up part to pair with it.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 260" aria-label="Arrows a=(3,4) and b=(2,0) from the origin; a's projection onto the line along b has signed length 3">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 290" aria-label="b=(1,0) points right. (3,4) goes 3 right, so a·b=3. (0,4) goes straight up, so a·b=0. (-3,4) goes 3 left, so a·b=-3.">
+        <defs>
+          <marker id="hg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
+          <marker id="hk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
+          <marker id="hr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker>
+          <marker id="hb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="3.5" markerHeight="3.5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+        </defs>
         <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <path d="M60 205 H420 M180 45 V205" stroke="#d4d4d4" stroke-width="2" fill="#d4d4d4" fill-opacity="0" stroke-dasharray="5 5"/>
-          <path d="M60 205 L180 45" stroke="#10b981" stroke-width="3"/>
-          <path d="M180 45 L167 52 L178 60 Z" fill="#10b981"/>
-          <path d="M60 205 H140" stroke="#3b82f6" stroke-width="4"/>
-          <path d="M140 205 L126 198 V212 Z" fill="#3b82f6"/>
-          <path d="M60 225 H180" stroke="#f59e0b" stroke-width="3"/>
-          <path d="M100 205 A40 40 0 0 0 84 173" stroke="#737373" fill="#737373" fill-opacity="0"/>
-          <path d="M165 205 V190 H180" stroke="#737373" fill="#737373" fill-opacity="0"/>
-          <text x="185" y="40">a = (3,4)</text><text x="145" y="180">b = (2,0)</text>
-          <text x="105" y="187">θ</text><text x="65" y="248">projection along b = 3</text>
-          <text x="220" y="140">first coordinate: right</text><text x="220" y="159">second coordinate: up</text>
+          <path d="M100 230 H470" stroke="#d4d4d4" stroke-width="2"/>
+          <path d="M400 70 V230 M160 70 V230" stroke="#a3a3a3" stroke-width="1.5" stroke-dasharray="5 5"/>
+          <path d="M280 230 L400 70" stroke="#10b981" stroke-width="3" marker-end="url(#hg)"/>
+          <path d="M280 230 V70" stroke="#737373" stroke-width="3" marker-end="url(#hk)"/>
+          <path d="M280 230 L160 70" stroke="#ef4444" stroke-width="3" marker-end="url(#hr)"/>
+          <path d="M280 230 H320" stroke="#3b82f6" stroke-width="5" marker-end="url(#hb)"/>
+          <path d="M280 250 H400" stroke="#10b981" stroke-width="4"/>
+          <path d="M160 250 H280" stroke="#ef4444" stroke-width="4"/>
+          <text x="408" y="66">(3,4): a·b = 3</text>
+          <text x="288" y="56">(0,4): a·b = 0</text>
+          <text x="152" y="66" text-anchor="end">(−3,4): a·b = −3</text>
+          <text x="326" y="222" fill="#3b82f6">b = (1,0)</text>
+          <text x="340" y="272" text-anchor="middle" fill="#10b981">3 right</text>
+          <text x="220" y="272" text-anchor="middle" fill="#ef4444">3 left</text>
         </g>
       </svg>
       ```
 
-      Reverse $b$ to $(-2,0)$. The projection now points against $b$, so its signed length is $-3$. The dot product is $(-3)\cdot2=-6$.
+      In the picture, $(3,4)$ goes 3 right and scores 3, so it points partly with $b$. $(0,4)$ goes straight up and scores 0: it is perpendicular to $b$. $(-3,4)$ goes 3 left and scores $-3$, so it points partly against $b$.
+
+      Now lengthen $b$ to $(2,0)$. Each score doubles, to 6, 0 and $-6$. So the dot product is the distance $a$ goes in $b$'s direction, times $b$'s length. That distance is called the **projection** of $a$ onto $b$. Its sign answers the direction question, and the lengths set the size.
+
+      Nothing here needs $b$ to point right. Turning both arrows together changes their coordinates but not their dot product (the rotation matrices lesson shows why), so you can always picture $b$ pointing right. For example, $(3,4)\cdot(4,-3)=12-12=0$, so those two arrows are perpendicular.
+
+    worked: |
+      This example shows the dot product as "distance along $b$ times $b$'s length" for an arrow that doesn't point right.
+
+      Take $a=(3,4)$ and $b=(6,8)$. Both go 3 right for every 4 up, so they point the same way.
+
+      1. Multiply and add: $a\cdot b=3\cdot6+4\cdot8=18+32=50$.
+      2. Find the lengths: $\|a\|_2=\sqrt{9+16}=5$ and $\|b\|_2=\sqrt{36+64}=10$.
+      3. $a$ points exactly along $b$, so the distance it goes in $b$'s direction is its whole length, 5.
+      4. Multiply that distance by $b$'s length: $5\cdot10=50$, the same answer.
+
+      Now reverse $b$ to $(-6,-8)$. $a$ goes 5 against $b$'s direction, so the distance is $-5$ and the dot product is $-5\cdot10=-50$. Check: $3\cdot(-6)+4\cdot(-8)=-18-32=-50$.
+
     problems:
       [
         dotp-sign,
@@ -103,13 +116,15 @@ knowledge_points:
 
       $$\cos\theta=\frac{a\cdot b}{\|a\|_2\|b\|_2}.$$
 
+      Here $\theta$ ("theta") is the angle between the arrows. The **cosine**, written $\cos$, is a trigonometry function that turns an angle into a number: 1 at $0^\circ$, 0 at $90^\circ$ and $-1$ at $180^\circ$. Rearranged, $a\cdot b=\|a\|_2\|b\|_2\cos\theta$.
+
       For $a=(1,1)$ and $b=(1,0)$, the lengths are $\sqrt2$ and 1, so the result is $1/\sqrt2\approx0.707$. Doubling $b$ gives $2/(\sqrt2\cdot2)$, the same number.
 
-      Picture shortening or lengthening both arrows until each has length one. Their directions stay fixed, and their dot product is now just the signed projection. This explains why dividing by the original lengths removes size. A vector of length one is a **unit vector**.
+      Picture shortening or lengthening both arrows until each has length one. Their directions stay fixed, and their dot product is now just the projection: the distance one goes along the other. This explains why dividing by the original lengths removes size. A vector of length one is a **unit vector**.
 
-      The score ranges from minus one to one: one means the same direction, zero means perpendicular, and minus one means opposite. A zero vector has no direction, and its zero length makes the division undefined. Multiplying by a negative number reverses an arrow and flips the score's sign.
+      The score ranges from minus one to one: one means the same direction, zero means perpendicular, and minus one means opposite. A zero vector has no direction, and its zero length makes the division undefined.
 
-      Why this way? Robot movements $(1,1)$ and $(10,10)$ have the same heading, meaning direction of travel, but different lengths. Cosine compares their headings without rewarding distance. When comparing house feature directions instead, first put features on comparable scales, as in the vectors lesson. Otherwise the choice of units can dominate the angle. Use the unadjusted dot product when size should count too.
+      Why this way? Robot movements $(1,1)$ and $(10,10)$ have the same heading, meaning direction of travel, but different lengths. Cosine compares their headings without rewarding distance. Before comparing house features this way, put them on comparable scales, as in the vectors lesson. Use the unadjusted dot product when size should count too.
     worked: |
       This example shows how dividing out lengths isolates direction.
 

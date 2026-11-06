@@ -152,26 +152,26 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two non-zero arrows start at $(0,0)$ and form an angle greater than 90 degrees. What sign is their dot product?"
-    solution: "The dot product is the product of two positive lengths and the angle cosine. Above 90 degrees the cosine is negative, so the score is negative."
+    prompt: "Arrow $b=(1,0)$ points right. Arrow $a$ points up and to the left. What sign is $a\\cdot b$?"
+    solution: "With $b=(1,0)$, $a\\cdot b$ is $a$'s first coordinate: how far $a$ goes to the right. Going left makes that negative, so the dot product is negative."
     options:
       - {
           id: a,
-          text: "It is negative because the projection points against the other arrow.",
+          text: "It is negative because $a$ goes left, against $b$'s direction.",
           correct: true,
-          feedback: "Cosine is negative for angles above 90 degrees.",
+          feedback: "The distance $a$ goes along $b$ is negative, so the dot product is too.",
         }
       - {
           id: b,
           text: "It is positive because both arrows have positive lengths.",
           correct: false,
-          feedback: "Positive lengths multiply a negative cosine.",
+          feedback: "The lengths are positive, but the distance $a$ goes along $b$ is negative.",
         }
       - {
           id: c,
-          text: "It is zero because the arrows are different.",
+          text: "It is zero because the arrows point different ways.",
           correct: false,
-          feedback: "Only a right angle gives zero for non-zero arrows.",
+          feedback: "Zero needs a right angle. This arrow also goes left, against $b$.",
         }
   - id: dotp-alignment-template
     dimension: math
@@ -195,13 +195,13 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: "Two non-zero arrows have dot product zero. What does this tell you about their directions?"
-    solution: "With both lengths non-zero, a zero dot product means $\\cos\\theta=0$. The arrows are perpendicular, also called orthogonal."
+    solution: "Both lengths are non-zero, so the distance one arrow goes along the other must be zero. That happens only at a right angle: the arrows are perpendicular, also called orthogonal."
     options:
       - {
           id: a,
           text: "The arrows meet at a right angle.",
           correct: true,
-          feedback: "Non-zero lengths mean the angle cosine must be zero.",
+          feedback: "Zero distance along the other arrow means they meet at a right angle.",
         }
       - {
           id: b,
@@ -221,8 +221,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Two arrows are $a=(3,4)$ and $b=(2,0)$. The projection of $a$, its signed shadow along $b$'s direction, has length 3. What is $a\\cdot b$?"
-    solution: "Multiply the signed projection by the other arrow length: $3\\cdot2=6$. Direct multiplication agrees: $3\\cdot2+4\\cdot0=6$."
+    prompt: "Two arrows are $a=(3,4)$ and $b=(2,0)$. The projection of $a$ onto $b$, the distance $a$ goes in $b$'s direction, is 3. What is $a\\cdot b$?"
+    solution: "Multiply the projection by $b$'s length: $3\\cdot2=6$. Direct multiplication agrees: $3\\cdot2+4\\cdot0=6$."
     tolerance: { abs: 0.000001 }
     answer: 6
 
@@ -233,7 +233,7 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: "Two arrows have dot product 6. Reverse the second arrow without changing its length. What is their new dot product?"
-    solution: "Reversing one vector negates each matching product. Their sum becomes $-6$, reflecting the reversed projection."
+    solution: "Reversing one vector negates each matching product. Their sum becomes $-6$, because $a$ now goes against the reversed arrow's direction."
     options:
       - {
           id: a,
@@ -245,7 +245,7 @@ exercises:
           id: b,
           text: "It stays plus 6 because both lengths stay fixed.",
           correct: false,
-          feedback: "The length is unchanged, but the projection now points against the reversed arrow.",
+          feedback: "The length is unchanged, but $a$ now goes against the reversed arrow's direction.",
         }
       - {
           id: c,
@@ -278,7 +278,7 @@ exercises:
           id: c,
           text: "Multiplying the lengths gives a negative number for opposite arrows.",
           correct: false,
-          feedback: "Non-zero lengths are positive. Their product cannot record opposition without the angle cosine.",
+          feedback: "Non-zero lengths are positive, so their product is always positive and cannot show opposite directions.",
         }
   - id: dotp-cosine
     dimension: math
