@@ -244,6 +244,51 @@ test('an outlined concept requires its hard prerequisites in the outline', async
   );
 });
 
+test('a concept cannot appear in multiple curriculum weeks', async () => {
+  const data = await notationFixture();
+  const curriculum = data.curriculum?.value;
+  const firstWeek = curriculum?.weeks[0];
+  if (!curriculum || !firstWeek?.concepts.includes('vectors')) {
+    throw new Error('Missing fixture curriculum week');
+  }
+  curriculum.weeks.push({
+    ...firstWeek,
+    week: firstWeek.week + 1,
+    concepts: ['vectors'],
+  });
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'vectors',
+        message: `concept listed more than once in the curriculum (weeks ${firstWeek.week} and ${firstWeek.week + 1})`,
+      }),
+    ]),
+  );
+});
+
+test('an outlined concept must match its week field', async () => {
+  const data = await notationFixture();
+  const concept = data.concepts.find(({ value }) => value.id === 'vectors');
+  const week = data.curriculum?.value.weeks.find(({ concepts }) => concepts.includes('vectors'));
+  if (!concept || !week) throw new Error('Missing fixture vectors concept or curriculum week');
+  concept.value.week = week.week + 1;
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'vectors',
+        message: `concept week field (${week.week + 1}) does not match curriculum week (${week.week})`,
+      }),
+    ]),
+  );
+});
+
+test('real content has no duplicate or mismatched curriculum weeks', async () => {
+  const content = await loadContent('content');
+  expect(content.curriculum).toBeDefined();
+});
+
 test('notation used without an introducing hard prerequisite is an issue', async () => {
   const data = await notationFixture();
   addNotationTerm(data);
