@@ -80,9 +80,7 @@ export function createApiRoutes(deps: {
   tutorProvider?: TutorProvider | null;
 }) {
   const api = new Hono<ApiEnv>();
-  const contentPromise = deps.content
-    ? Promise.resolve(deps.content)
-    : loadContent(undefined, { validate: false });
+  const contentPromise = deps.content ? Promise.resolve(deps.content) : loadContent();
   const db = deps.db;
   const tutorProvider =
     deps.tutorProvider === undefined

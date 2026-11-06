@@ -18,8 +18,12 @@ import { env } from '../../src/server/env.js';
 const db = createDb(env.TEST_DATABASE_URL);
 const screenshotDir = '/home/ubuntu/screenshots/learn-course';
 const courseStructureScreenshotDir = '/home/ubuntu/screenshots/course-structure';
+const courseStructureBatch1ScreenshotDir = `${courseStructureScreenshotDir}/batch1`;
+const courseStructureBatch2ScreenshotDir = `${courseStructureScreenshotDir}/batch2`;
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(courseStructureScreenshotDir, { recursive: true });
+mkdirSync(courseStructureBatch1ScreenshotDir, { recursive: true });
+mkdirSync(courseStructureBatch2ScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async ({ page }) => {
@@ -122,42 +126,93 @@ test('Learn shows XP and tasks, starts a session, and Course links to lessons', 
 });
 
 test('authored course-structure lessons render their diagrams', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 1000 });
   await mockLessonReview(
     page,
     'what-is-ml',
     'What machine learning is, and how this course fits together',
   );
   await page.goto('/lessons/what-is-ml');
+  await hideTutorLauncher(page);
   await expect(page.locator('article > h2').nth(1)).toContainText('2.');
-  await expect(
-    page.getByRole('img', {
-      name: 'The seven steps of the house-price model, each taught by a Week 1 lesson',
-    }),
-  ).toBeVisible();
-  await page.screenshot({
-    path: `${courseStructureScreenshotDir}/what-is-ml-kp2.png`,
-    fullPage: true,
+  const roadmap = page.getByRole('img', {
+    name: 'The seven steps of the house-price model, each taught by a Week 1 lesson',
   });
+  await expect(roadmap).toBeVisible();
+  await roadmap.evaluate((image) => {
+    image.style.width = '800px';
+    image.style.maxWidth = 'none';
+  });
+  await roadmap.screenshot({ path: `${courseStructureBatch1ScreenshotDir}/what-is-ml-kp2.png` });
 
   await mockLessonReview(page, 'matrices', 'Matrices');
   await page.goto('/lessons/matrices');
+  await hideTutorLauncher(page);
   await expect(page.locator('article > h2').first()).toContainText('1.');
-  await expect(
-    page.getByRole('img', {
-      name: 'Each row of the matrix is dotted with the vector to give one output entry',
-    }),
-  ).toBeVisible();
-  await page.screenshot({
-    path: `${courseStructureScreenshotDir}/matrices-kp1.png`,
-    fullPage: true,
+  const matrixDiagram = page.getByRole('img', {
+    name: 'Two panels show row one and row two dotted with the same vector to produce outputs 5 and 1',
   });
+  await expect(matrixDiagram).toBeVisible();
+  await matrixDiagram.evaluate((image) => {
+    image.style.width = '800px';
+    image.style.maxWidth = 'none';
+  });
+  await matrixDiagram.screenshot({
+    path: `${courseStructureBatch1ScreenshotDir}/matrices-kp1.png`,
+  });
+
+  for (const [conceptId, title] of [
+    ['supervised-learning', 'Supervised learning'],
+    ['vectors', 'Vectors'],
+    ['dot-product', 'Dot product'],
+  ]) {
+    const knowledgePointCount = await mockLessonReview(page, conceptId, title);
+    await page.goto(`/lessons/${conceptId}`);
+    await hideTutorLauncher(page);
+    const knowledgePoints = page.locator('article');
+    await expect(knowledgePoints).toHaveCount(knowledgePointCount);
+    for (let index = 0; index < (await knowledgePoints.count()); index += 1) {
+      const knowledgePoint = knowledgePoints.nth(index);
+      await expect(knowledgePoint.locator(':scope > h2')).toContainText(`${index + 1}.`);
+      await knowledgePoint.screenshot({
+        path: `${courseStructureBatch1ScreenshotDir}/${conceptId}-kp${index + 1}.png`,
+      });
+    }
+  }
+
+  for (const [conceptId, title] of [
+    ['linear-regression', 'Linear regression'],
+    ['derivatives', 'Derivatives'],
+    ['loss-functions', 'Loss functions'],
+    ['partial-derivatives', 'Partial derivatives'],
+    ['gradients', 'Gradients'],
+  ]) {
+    const knowledgePointCount = await mockLessonReview(page, conceptId, title);
+    await page.goto(`/lessons/${conceptId}`);
+    await hideTutorLauncher(page);
+    const knowledgePoints = page.locator('article');
+    await expect(knowledgePoints).toHaveCount(knowledgePointCount);
+    for (let index = 0; index < (await knowledgePoints.count()); index += 1) {
+      const knowledgePoint = knowledgePoints.nth(index);
+      await expect(knowledgePoint.locator(':scope > h2')).toContainText(`${index + 1}.`);
+      await knowledgePoint.screenshot({
+        path: `${courseStructureBatch2ScreenshotDir}/${conceptId}-kp${index + 1}.png`,
+      });
+    }
+  }
 });
 
-async function mockLessonReview(page: Page, conceptId: string, conceptTitle: string) {
+async function mockLessonReview(
+  page: Page,
+  conceptId: string,
+  conceptTitle: string,
+): Promise<number> {
   const source = await readFile(`content/lessons/${conceptId}.yaml`, 'utf8');
   const parsed = LessonSchema.parse(parse(source));
   if (!('knowledge_points' in parsed)) throw new Error('Expected a knowledge-point lesson');
   const lesson = normalizeLesson(parsed, () => false);
+  const knowledgePoints = lesson.knowledge_points;
+  if (!knowledgePoints) throw new Error('Expected normalized knowledge points');
   await page.route(`**/api/lessons/${conceptId}/review`, (route) =>
     route.fulfill({
       contentType: 'application/json',
@@ -179,6 +234,13 @@ async function mockLessonReview(page: Page, conceptId: string, conceptTitle: str
       contentType: 'application/json',
       body: JSON.stringify({ id, type: 'explain', prompt: 'Final check.' }),
     });
+  });
+  return knowledgePoints.length;
+}
+
+async function hideTutorLauncher(page: Page) {
+  await page.addStyleTag({
+    content: 'button[aria-label="Open tutor"] { display: none !important; }',
   });
 }
 

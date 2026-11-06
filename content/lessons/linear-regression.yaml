@@ -1,79 +1,53 @@
 concept: linear-regression
-version: 2
+version: 3
 objective: |
   **Goal:** write a linear house-price model in vector form, interpret its weights and bias, and make vectorised NumPy predictions for a batch of houses.
 where_this_fits: |
-  An estate agent needs an asking price for a 100 m² house with 2 bedrooms. Looking up an identical house rarely works, and drawing a line through two sales lets an unusually high or low price dictate the rule. Linear regression gives you one prediction rule that can be fitted across many sales instead. Its weights are numbers that describe how each house detail affects the predicted price, such as the amount added for an extra square metre. This makes it a simple starting model to compare more complicated models against. Loss functions will measure its mistakes, gradient descent will adjust its weights, and the perceptron lesson will reuse its weighted sum and bias inside a different prediction rule.
+  In the matrices lesson, one multiplication used the same weights to predict prices for several houses. That gave us the batch calculation, but not yet the full rule for one house or what each adjustable number means. This lesson writes the prediction as a weighted sum plus a bias, then applies it to a batch. The next lesson asks how to change the weights to reduce prediction error.
 knowledge_points:
   - id: lr-add-contributions
     title: Build a price from weighted house features
     explain: |
-      An estate agent needs an asking price for a 100 m² house with 2 bedrooms. **How can past sales help you price it?** The obvious idea is to copy the price of an identical house that sold recently. But an exact match rarely exists, so you need a rule that works for any house.
+      **What a linear regression model is.** It predicts a number by multiplying each input feature by a weight, adding the contributions, then adding a bias. A feature is a recorded input; a weight is its adjustable multiplier; a bias is a shared offset.
 
-      Use area and bedroom count as **features**, the facts given to the model. A **linear regression** model multiplies each feature by a **weight**, a number setting its price contribution. It adds those contributions and a fixed amount called the **bias**. Our rule is $3\cdot\text{area}+10\cdot\text{bedrooms}+50$, with prices in thousands of pounds.
+      **How it works.** For the house $x=(12,3,20)$, the entries are area in tens of square metres, bedrooms and age in years. With $w=(25,10,-1)$ and $b=0$, the prediction in thousands of pounds is
 
-      Collect the features in vector $x=(\text{area},\text{bedrooms})$ and the matching weights in $w=(3,10)$. Write $b=50$ for the bias and $\hat y$ for the predicted price. The dot product multiplies each feature by its matching weight and adds the results:
+      $$\hat y=w\cdot x+b=25\cdot12+10\cdot3+(-1)\cdot20=310.$$
 
-      $$\hat y=w\cdot x+b.$$
+      The dot product pairs entries in order. The bias is added once, after those products; it lets every prediction shift by the same amount. A linear model assumes each feature has a fixed per-unit effect while the other features stay fixed.
 
-      Why does this work? Each detail gets its own fixed price per unit, so you can price a house you have never seen by adding up its details. Every extra square metre adds 3 thousand pounds, so price against area is a straight line when the bedroom count stays the same.
-
-      Why add a bias? Without it, a house with zero area and zero bedrooms would have to be predicted at exactly zero. The bias shifts every price by the same amount, so the line can sit where the sales are. These weights are given for practice; training chooses them from past sales.
+      **Why this is useful.** The house-price model turns several measurements into one price using a rule that can be fitted from past sales.
     worked: |
-      This example shows how each feature contributes to one house's price.
+      This example shows how the three house measurements contribute to one prediction.
 
-      The house has area 100 m² and 2 bedrooms, so its feature vector is $x=(100,2)$.
+      1. Area contributes $25\cdot12=300$ thousand pounds.
+      2. Bedrooms contribute $10\cdot3=30$ thousand pounds.
+      3. Age contributes $-1\cdot20=-20$ thousand pounds.
+      4. Add the contributions and bias: $300+30-20+0=310$.
 
-      1. Multiply the area by its weight: $3\times100=300$.
-      2. Multiply the bedroom count by its weight: $10\times2=20$.
-      3. Add the two price contributions: $300+20=320$.
-      4. Add the bias once: $320+50=370$, meaning £370,000.
-
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 190" aria-label="Area contributes 300 and bedrooms contribute 20, then a bias of 50 gives a house-price prediction of 370 thousand pounds">
-        <rect x="4" y="15" width="210" height="50" rx="6" fill="#3b82f6" fill-opacity="0.12"/>
-        <rect x="4" y="105" width="210" height="50" rx="6" fill="#3b82f6" fill-opacity="0.12"/>
-        <path d="M216 40 H267 V85 H295 M216 130 H267 V85" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2"/>
-        <path d="M287 79 L295 85 L287 91 M433 85 H455 M447 79 L455 85 L447 91" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2"/>
-        <rect x="298" y="58" width="133" height="55" rx="6" fill="#f59e0b" fill-opacity="0.18"/>
-        <rect x="458" y="58" width="158" height="55" rx="6" fill="#10b981" fill-opacity="0.18"/>
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
-          <text x="18" y="46">Area: 100 × 3 = 300</text><text x="18" y="136">Bedrooms: 2 × 10 = 20</text><text x="309" y="91">Sum + bias 50</text><text x="475" y="91">Prediction: 370</text><text x="7" y="182">All price contributions are in thousands of pounds.</text>
-        </g>
-      </svg>
-      ```
-
-      The area must multiply the area weight, and the bedroom count must multiply the bedroom weight. Add the bias once after adding those two contributions.
+      The model predicts £310,000 for this house.
     problems:
       [lrp-why-bias, lrp-price-template, lrp-dot-template, lrp-order, lrp-bias-once, lrp-new-task]
   - id: lr-interpret-weights
     title: Read each weight in its own units
     explain: |
-      A buyer asks why the model adds £10,000 for an extra bedroom but £3,000 for an extra square metre. **Does that make bedrooms more important than area?** Comparing 10 with 3 overlooks that a bedroom and a square metre are different amounts of different things.
+      **What a weight means.** A weight is the prediction change for a one-unit increase in its feature, with every other feature held fixed. Its units combine the price unit with the feature unit.
 
-      A **weight** tells you how much the prediction changes for one extra unit of its feature, **with the other features held fixed**, meaning they stay the same. One extra square metre adds 3 thousand pounds if bedroom count stays unchanged. One extra bedroom adds 10 thousand pounds if area stays unchanged.
+      **How it works.** In this model, area has weight 25 thousand pounds per ten square metres. If area rises by 2 tens of square metres while bedrooms and age stay the same, the prediction rises by $25\cdot2=50$ thousand pounds. The bedroom weight is 10 thousand pounds per bedroom; the age weight is −1 thousand pounds per year.
 
-      Write $w_j$ for the weight of feature number $j$. The Greek letter $\Delta$ ("delta") means a change. If only that feature changes by an amount $\Delta x_j$, the prediction changes by $w_j\Delta x_j$. Why does this work? When you subtract one prediction from the other, every contribution that didn't change cancels, and so does the bias. Only the changed feature's contribution is left.
+      These are effects in the model, not proof that changing a real house causes the same price change. Comparing weight numbers alone is misleading if their feature units differ.
 
-      A negative weight means the prediction falls as that feature grows. Why this way? Read each weight with its units, because the number depends on how you measure the feature. Measuring area in hundreds of square metres changes its weight from 3 to 300 without changing any price.
-
-      These are statements about the model's predictions, not proof that changing a real house causes the same price change.
+      **Why this is useful.** Reading units lets us check whether a fitted house-price model's changes have a sensible scale.
     worked: |
-      This example shows why you must hold other features fixed when reading a weight.
+      This example shows the effect of changing one house feature while holding the others fixed.
 
-      | House | Area (m²) | Bedrooms | Calculation | Predicted price (thousands of pounds) |
-      |---|---|---|---|---|
-      | A | 100 | 2 | $300+20+50$ | 370 |
-      | B | 100 | 3 | $300+30+50$ | 380 |
-      | C | 110 | 3 | $330+30+50$ | 410 |
+      Start with $x=(12,3,20)$ and $w=(25,10,-1)$.
 
-      Houses A and B have the same area, but B has one more bedroom. Its predicted price is higher by $10(3-2)=10$ thousand pounds.
+      1. Add one bedroom: its contribution changes by $10\cdot1=10$ thousand pounds.
+      2. Add one year of age: its contribution changes by $-1\cdot1=-1$ thousand pounds.
+      3. Increase area by 2 tens of square metres: its contribution changes by $25\cdot2=50$ thousand pounds.
 
-      House C has both more area and more bedrooms than A. Its predicted price is higher by $3(110-100)+10(3-2)=30+10=40$ thousand pounds.
-
-      If we measure area in hundreds of square metres, house A's area becomes 1. We must change the area weight to 300 to keep its price unchanged: $300\times1+10\times2+50=370$.
-
-      The same prediction can use an area weight of 3 or 300, depending on the unit. Comparing the weight numbers alone cannot tell you which house detail matters more.
+      Each calculation changes one feature only, so the corresponding weight gives the prediction change.
     problems:
       [
         lrp-why-hold-fixed,
@@ -86,38 +60,30 @@ knowledge_points:
   - id: lr-batch-predictions
     title: Predict every row with one matrix operation
     explain: |
-      The estate agent now needs prices for 200 houses. **How can you apply the same rule to all of them?** Repeating the calculations by hand invites mistakes. A Python loop works, but a matrix lets you write the shared calculation once.
+      **What a batch prediction is.** A batch is several houses processed together. Put each house's feature vector in one row of an input matrix $X$.
 
-      Put each house's features in one row of the **input matrix** $X$. Write $n$ for the number of houses and $d$ for the number of features. Then $X$ has $n$ rows and $d$ columns. The weight vector $w$ has $d$ numbers, and the prediction vector $\hat y$ has $n$ numbers. A **ones vector** $\mathbf 1$ contains $n$ ones, so $b\mathbf 1$ repeats the bias for every house:
+      **How it works.** If there are $n$ houses and $d$ features, $X$ has shape $(n,d)$ and $w$ has $d$ entries. Multiplying $Xw$ computes one dot product per row, producing $n$ predictions. The bias is added to each one:
 
       $$\hat y=Xw+b\mathbf 1.$$
 
-      Why does this work? The dot product of each row with $w$ multiplies that house's features by the weights and adds them. No other house's numbers enter its prediction.
+      Here $\mathbf 1$ is a vector of $n$ ones. In NumPy, `X @ w + b` broadcasts the single bias across all rows. Each row uses the same weights, but no row's measurements enter another house's prediction.
 
-      In NumPy, write `X @ w + b`. If `X` has shape `(n, d)` and `w` has shape `(d,)`, the result has shape `(n,)`. Adding the single number `b` to every prediction is called **broadcasting**.
-
-      Why this way? A loop over houses does the same arithmetic, but the matrix form says in one line that every house shares the same weights, and NumPy runs it in fast compiled code, which matters once there are thousands of houses.
+      **Why this is useful.** One matrix operation applies the same house-price rule to an entire sales dataset without writing a separate calculation for each house.
     worked: |
-      This example shows three house predictions with one matrix multiplication.
+      This example shows two house predictions using one matrix multiplication.
 
       ```python
       import numpy as np
-      X = np.array([[100., 2.], [80., 1.], [150., 4.]])
-      w = np.array([3., 10.])
-      b = 50.
+      X = np.array([[12., 3., 20.], [8., 2., 5.]])
+      w = np.array([25., 10., -1.])
+      b = 0.
       y_hat = X @ w + b
-      # array([370., 300., 540.]), shape (3,)
+      # array([310., 215.]), shape (2,)
       ```
 
-      - The first house has area 100 m² and 2 bedrooms. Its feature contributions add to $100\times3+2\times10=320$. Adding 50 gives a price of 370 thousand pounds.
-      - The second house has area 80 m² and 1 bedroom. Its feature contributions add to $80\times3+1\times10=250$. Adding 50 gives a price of 300 thousand pounds.
-      - The third house has area 150 m² and 4 bedrooms. Its feature contributions add to $150\times3+4\times10=490$. Adding 50 gives a price of 540 thousand pounds.
+      The first row gives $25\cdot12+10\cdot3-20=310$. The second gives $25\cdot8+10\cdot2-5=215$. Both prices are in thousands of pounds.
 
-      To include the bias as a feature, add a third column containing 1 for every house. The first row becomes $(100,2,1)$ and the weights become $(3,10,50)$. The matrix now has three columns, and the weight vector has three numbers. The first dot product is $300+20+50=370$, so the prediction is unchanged.
-
-      This is another way to use one dot product for the whole rule. The new column already adds the bias, so do not add it separately again.
-
-      Each row gives one price, whether you add the bias separately or include it as a constant feature.
+      The matrix has shape $(2,3)$, the weight vector has shape $(3,)$, and the result has shape $(2,)$.
     problems:
       [
         lrp-why-matrix-product,
@@ -130,7 +96,7 @@ knowledge_points:
 final: lr-explain-model
 summary: |
   - A linear price model adds matching weight-times-feature contributions and one bias: $\hat y=w\cdot x+b$.
-  - Each weight describes a per-unit prediction change with other inputs fixed; units matter, and weights alone do not rank importance.
-  - Use `X @ w + b` for one prediction per row, or append a constant-1 column and a bias weight without adding the bias twice.
+  - Each weight gives a per-unit prediction change while other features stay fixed; its units matter.
+  - Use `X @ w + b` for one prediction per house in a batch.
 
-  **Where you'll use this:** gradient descent fits these weights from past sales, and the perceptron reuses the same weighted sum and bias.
+  **Next:** Derivatives show how nudging one weight changes the house-price model's loss and by how much.

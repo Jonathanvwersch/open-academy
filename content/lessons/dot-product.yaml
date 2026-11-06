@@ -1,16 +1,18 @@
 concept: dot-product
-version: 2
+version: 3
 objective: |
   **Goal:** turn two vectors into one number, see how that number measures agreement between arrows, and compare directions without rewarding length.
 where_this_fits: |
-  A house-price model needs to combine area, bedrooms and age into one prediction. Adding those measurements would mix units and treat every feature as equally important. Instead, record area in tens of square metres, bedrooms, and age in years as x = (12, 3, 20). Weights w = (25, 10, -1), in thousand pounds per feature unit, give contributions of 300, 30 and minus 20 thousand pounds. The dot product adds them to predict 310 thousand pounds. Each weight controls how much its feature matters; the negative age weight lowers the price. You'll use this calculation in matrices, linear regression, the perceptron, and attention, where models combine measurements or compare vectors.
+  The vectors lesson kept a house's area, bedrooms and age together as $x=(12,3,20)$. Now we need one prediction from those three measurements. This lesson pairs each feature with a weight, multiplies matching entries and adds the contributions to estimate the sale price.
 knowledge_points:
   - id: dot-weighted-total
     title: Combining two lists into one number
     explain: |
-      **How can two lists of numbers give one total, with each entry allowed to matter differently?** A useful calculation should pair entries with the same meaning. Doubling an entry in either list should double that pair's contribution. Adding a list's entries alone would ignore the other list.
+      **What the dot product is.** The dot product multiplies matching entries of two vectors and adds the products to make one number.
 
-      A **feature** is an input measurement. For a house, let $x=(12,3,20)$ list area in tens of square metres, bedrooms, and age in years. **Weights** say how much each feature contributes. Use $w=(25,10,-1)$ in thousand pounds per feature unit: 25 per ten square metres, 10 per bedroom, and minus one per year.
+      **How it works.** A **feature** is an input measurement. Its weight is the adjustable multiplier that sets its contribution to the prediction.
+
+      For this house, $x=(12,3,20)$ lists area in tens of square metres, bedrooms and age in years, in that order. Use weights $w=(25,10,-1)$ in thousand pounds per feature unit: 25 per ten square metres, 10 per bedroom and minus one per year.
 
       Multiply matching entries, then add: $25\cdot12+10\cdot3+(-1)\cdot20=300+30-20=310$ thousand pounds. This **weighted sum** is the **dot product**, written $w\cdot x$. A dot between numbers means multiplication; between vectors it names the whole calculation.
 
@@ -21,6 +23,8 @@ knowledge_points:
       Picture the contributions on a number line: 300 forward, 30 forward, then 20 back. This works because each weight first converts its measurement into the same output units. The negative age weight lowers the price. Why this way? Multiplying without adding leaves separate contributions, not one prediction. Keep both vectors in the same feature order.
 
       A **linear model** predicts a value using these weighted contributions. With other features fixed, one extra bedroom adds 10 thousand pounds in this model. These example weights illustrate the calculation, not a reliable valuation.
+
+      **Why this is useful.** A house-price model needs one prediction from several measurements; the dot product combines their separately weighted contributions without mixing their units.
     worked: |
       This example shows how differently weighted house measurements become one price prediction.
 
@@ -45,7 +49,7 @@ knowledge_points:
   - id: dot-arrow-alignment
     title: Measuring how much two arrows point the same way
     explain: |
-      **How can one number say whether two arrows point the same way?** We want it to be positive when they point roughly together, zero when they meet at a right angle (called **perpendicular**), and negative when they point roughly opposite ways. Lengths alone can't tell these cases apart.
+      **How can one number say whether two arrows point the same way?** We want it positive when they point together, zero when they are perpendicular, and negative when they point opposite ways. Lengths do not show alignment.
 
       Start with the easiest case: $b=(1,0)$, an arrow of length 1 pointing right. For any arrow $a=(a_1,a_2)$,
 
@@ -80,11 +84,13 @@ knowledge_points:
       </svg>
       ```
 
-      In the picture, $(3,4)$ goes 3 right and scores 3, so it points partly with $b$. $(0,4)$ goes straight up and scores 0: it is perpendicular to $b$. $(-3,4)$ goes 3 left and scores $-3$, so it points partly against $b$.
+      The scores are 3, 0 and $-3$: right, perpendicular and left relative to $b$.
 
       Now lengthen $b$ to $(2,0)$. Each score doubles, to 6, 0 and $-6$. So the dot product is the distance $a$ goes in $b$'s direction, times $b$'s length. That distance is called the **projection** of $a$ onto $b$. Its sign answers the direction question, and the lengths set the size.
 
       Nothing here needs $b$ to point right. Turning both arrows together changes their coordinates but not their dot product (the rotation matrices lesson shows why), so you can always picture $b$ pointing right. For example, $(3,4)\cdot(4,-3)=12-12=0$, so those two arrows are perpendicular.
+
+      **Why this is useful.** The sign of a dot product tells you whether two vectors agree, and its size says how strongly. The next step turns this into a score that compares directions alone.
 
     worked: |
       This example shows the dot product as "distance along $b$ times $b$'s length" for an arrow that doesn't point right.
@@ -110,9 +116,9 @@ knowledge_points:
   - id: dot-direction-only
     title: Comparing directions without rewarding length
     explain: |
-      **How can we compare directions without rewarding longer arrows?** The answer should stay the same when either arrow doubles without turning. The dot product alone fails this test: $(1,1)\cdot(1,0)=1$, but $(1,1)\cdot(2,0)=2$.
+      **What cosine similarity is.** Cosine similarity is a number that compares two non-zero vectors' directions without rewarding their lengths.
 
-      Divide the dot product by both lengths. The result is **cosine similarity**:
+      **How it works.** Divide the dot product by both lengths:
 
       $$\cos\theta=\frac{a\cdot b}{\|a\|_2\|b\|_2}.$$
 
@@ -124,7 +130,7 @@ knowledge_points:
 
       The score ranges from minus one to one: one means the same direction, zero means perpendicular, and minus one means opposite. A zero vector has no direction, and its zero length makes the division undefined.
 
-      Why this way? Robot movements $(1,1)$ and $(10,10)$ have the same heading, meaning direction of travel, but different lengths. Cosine compares their headings without rewarding distance. Before comparing house features this way, put them on comparable scales, as in the vectors lesson. Use the unadjusted dot product when size should count too.
+      **Why this is useful.** Search engines and recommendation systems use cosine similarity to find items that are alike regardless of size. In Week 4, transformers compare words the same way.
     worked: |
       This example shows how dividing out lengths isolates direction.
 
@@ -147,4 +153,4 @@ summary: |
   - For arrows, the dot product is a signed projection multiplied by the other arrow's length. It is positive below a right angle, zero at a right angle, and negative above a right angle.
   - Cosine similarity divides by both non-zero lengths. It compares directions without rewarding longer arrows. For house vectors, first put the features on comparable scales so the units do not dominate the comparison.
 
-  **Where you'll use this:** matrices, linear regression, the perceptron, and attention reuse these ways of calculating and comparing scores from lists of numbers.
+  **Next:** Matrices apply the same dot products to every house at once and can calculate both price and rent predictions.
