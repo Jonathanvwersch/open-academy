@@ -8,7 +8,7 @@ concepts:
     week: 1
     goal_weight: 3
     dimensions: [conceptual, math, implementation, transfer]
-    prereqs: [{ id: vectors }]
+    prereqs: [{ id: vectors }, { id: supervised-learning, strength: soft }]
     related: [loss-functions]
     objectives:
       - { text: Make a prediction with a linear model, dimension: math }
@@ -56,7 +56,7 @@ concepts:
     week: 1
     goal_weight: 3
     dimensions: [conceptual, math]
-    prereqs: []
+    prereqs: [{ id: vectors, strength: soft }]
     related: [linear-models]
     objectives:
       - { text: "Identify inputs, targets, and model settings", dimension: conceptual }

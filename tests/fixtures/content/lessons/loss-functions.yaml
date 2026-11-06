@@ -1,12 +1,15 @@
 concept: loss-functions
 version: 2
 objective: Practice measuring prediction error.
-why: |
+where_this_fits: |
   A model needs a measurable signal for whether its predictions are useful. Looking at a list of predictions and targets is not enough to compare two models or guide training. A loss turns each prediction error into a number, and an average combines those numbers across examples. The choice of loss determines which mistakes matter most, so understanding its calculation helps explain what training is trying to improve and how a model can be evaluated.
 knowledge_points:
   - id: loss-functions-fixture-1
     title: Calculate a loss
-    explain: A loss assigns a number to how wrong a prediction is.
+    explain: |
+      A loss assigns a number to how wrong a prediction is.
+
+      **Why this is useful.** A number lets us compare settings for predicting house prices.
     worked: This example shows a simple squared error.
     problems:
       [
@@ -17,7 +20,10 @@ knowledge_points:
       ]
   - id: loss-functions-fixture-2
     title: Average losses
-    explain: Mean squared error averages squared errors across examples.
+    explain: |
+      Mean squared error averages squared errors across examples.
+
+      **Why this is useful.** Averaging compares a model across many past house sales.
     worked: This example shows how squared errors form a mean.
     problems:
       [
@@ -29,4 +35,4 @@ knowledge_points:
 final: loss-functions-fixture-final
 summary: |
   Loss functions quantify error, and mean squared error averages squared errors.
-  **Where you'll use this:** training minimizes a loss chosen to reflect the task's mistakes.
+  **Next:** training minimizes a loss chosen to reflect the task's mistakes.

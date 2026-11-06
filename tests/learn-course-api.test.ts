@@ -24,7 +24,7 @@ let app: ReturnType<typeof createApp>;
 let content: ContentIndex;
 
 beforeAll(async () => {
-  content = await loadContent();
+  content = await loadContent(undefined, { validate: false });
   app = createApp({ db, content, tutorProvider: null });
 });
 
@@ -105,6 +105,8 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
   expect(courseResponse.status).toBe(200);
   const course: {
     weeks: Array<{
+      intro: string;
+      project: { id: string; title: string } | null;
       topics: Array<{
         number: string;
         conceptId: string;
@@ -113,15 +115,35 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
         status: string;
         mastery: string;
         needs?: Array<{ id: string; title: string }>;
+        buildsOn: Array<{ id: string; title: string }>;
+        leadsTo: Array<{ id: string; title: string }>;
+        leadsToMore: number;
       }>;
     }>;
   } = await courseResponse.json();
   expect(course.weeks[0].topics[0]).toMatchObject({
     number: '1.1',
-    conceptId: 'vectors',
-    title: 'Vectors and vector operations',
+    conceptId: 'what-is-ml',
+    title: 'What machine learning is, and how this course fits together',
     status: expect.stringMatching(/^(locked|not_started|in_progress|complete)$/),
     mastery: 'Not started',
+  });
+  expect(course.weeks[0]).toMatchObject({
+    intro:
+      "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales. The maths topics are the tools this model needs, taught in the order it needs them.",
+    project: { id: 'linreg-numpy', title: expect.any(String) },
+  });
+  expect(
+    course.weeks[0].topics.find((topic) => topic.conceptId === 'supervised-learning'),
+  ).toMatchObject({
+    buildsOn: [
+      {
+        id: 'what-is-ml',
+        title: 'What machine learning is, and how this course fits together',
+      },
+    ],
+    leadsTo: expect.arrayContaining([expect.objectContaining({ id: 'linear-regression' })]),
+    leadsToMore: expect.any(Number),
   });
   const dotProduct = course.weeks
     .flatMap((week) => week.topics)

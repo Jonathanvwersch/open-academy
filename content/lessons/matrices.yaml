@@ -1,118 +1,133 @@
 concept: matrices
-version: 2
+version: 3
 objective: |
-  **Goal:** organise several weighted calculations in a grid of numbers, multiply these grids, and predict the size of the result. Use them to adjust robot coordinates and score several houses together in Python.
-why: |
-  A housing app needs two scores for each listing, such as suitability for a family and for a single buyer. A house with 300 square metres and one bedroom might suit those buyers differently. You could calculate a separate weighted total for every house and buyer, but repeating that code makes it easy to mix up measurements. A matrix stores the numbers in rows and columns so one multiplication organises all those totals. The same rule can correct a warehouse robot's map by calculating new east and north coordinates together. You'll use matrices in linear regression, the perceptron, attention, and rotation matrices to organise model calculations and robot coordinates.
+  **Goal:** use matrix products to turn house measurements into predictions for one or many houses, reason about shapes, and implement batch scoring in NumPy.
+where_this_fits: |
+  In the last lesson, the dot product turned one house's measurements into one predicted price. A real dataset has hundreds of houses, and writing out one dot product per house is slow and easy to get wrong. A matrix holds all the houses in one grid, so a single multiplication prices every house at once.
 knowledge_points:
   - id: mat-rows-shapes
-    title: One dot product for each output
+    title: What a matrix is, and multiplying by a vector
     explain: |
-      **How can one calculation turn a vector into several numbers instead of just one?** Each output should be a weighted sum of the same input entries, but with its own weights. One dot product gives only one output, so arrange several weight lists in a grid.
+      **What a matrix is.** A **matrix** is a rectangular grid of numbers. A **row** runs across and a **column** runs down. Its **shape** is the number of rows, then the number of columns, so this matrix is $2\times3$:
 
-      This grid is a **matrix**. A **row** runs across; a **column** runs down. Its **shape** gives the number of rows, then columns. Write $A\in\mathbb{R}^{m\times n}$ for a matrix $A$ of real numbers with $m$ rows and $n$ columns. Here $\times$ separates those counts.
+      $$\begin{bmatrix}1&2&3\\4&5&6\end{bmatrix}$$
 
-      Square brackets display the grid. For $A=\begin{bmatrix}1&2\\0&1\end{bmatrix}$ and input $(3,1)$ written as one column, the outputs are $1\cdot3+2\cdot1=5$ and $0\cdot3+1\cdot1=1$.
+      A vector can be written as a matrix with one column.
 
-      Picture each row reading the same input column. Each row's dot product fills one output position. This works because the rows can use different weights without changing which input each weight receives.
+      **Multiplying a matrix by a vector.** Take each row of the matrix, find its dot product with the vector, and stack the answers in order:
 
-      For two matrices, pair every left row with every right column. Why this way? Multiplying matching entries alone leaves separate contributions, not weighted totals. The left column count must equal the right row count. These are the **inner dimensions**: $(m\times n)(n\times p)$ gives $m\times p$, where $p$ counts right columns.
+      $$\begin{bmatrix}1&2\\0&1\end{bmatrix}\begin{bmatrix}3\\1\end{bmatrix}=\begin{bmatrix}1\cdot3+2\cdot1\\0\cdot3+1\cdot1\end{bmatrix}=\begin{bmatrix}5\\1\end{bmatrix}.$$
 
-      The entry $A_{ik}$ is in row $i$, column $k$. In the product with matrix $B$, $j$ selects an output column and $k$ runs over matching entries. The sum totals their products:
-
-      $$(AB)_{ij}=\sum_{k=1}^{n}A_{ik}B_{kj}.$$
-
-      A housing model can use one row per buyer's weights to calculate several suitability scores from the same house measurements.
-
-    worked: |
-      This example shows how the app scores one house for two buyers, then how the same multiplication rule works for two columns.
-
-      The first buyer's weights are $(1,2)$ for area and bedrooms; the second buyer's weights are $(0,1)$. The house has 300 square metres and one bedroom, recorded as $(3,1)$.
-
-      $$A=\begin{bmatrix}1&2\\0&1\end{bmatrix},\qquad x=\begin{bmatrix}3\\1\end{bmatrix}.$$
-
-      1. Row one gives $1\cdot3+2\cdot1=3+2=5$.
-      2. Row two gives $0\cdot3+1\cdot1=0+1=1$.
-      3. Stack the results: $Ax=\begin{bmatrix}5\\1\end{bmatrix}$, with shape $2\times1$.
-
-      For $B=\begin{bmatrix}0&1\\1&0\end{bmatrix}$, calculate all four entries:
-
-      $$AB=\begin{bmatrix}1\cdot0+2\cdot1&1\cdot1+2\cdot0\\0\cdot0+1\cdot1&0\cdot1+1\cdot0\end{bmatrix}
-      =\begin{bmatrix}2&1\\1&0\end{bmatrix}.$$
+      Row 1 gives 5 and row 2 gives 1. Each row produces one number, so a matrix with $m$ rows turns a vector into $m$ numbers. Each row must have as many entries as the vector, otherwise some entries have nothing to pair with.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" aria-label="Two by three times three by four gives two by four; inner threes match">
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717">
-          <text x="20" y="35">left: 2 × 3</text><text x="205" y="35">right: 3 × 4</text><text x="405" y="35">result: 2 × 4</text>
-          <path d="M110 48 V66 H275 V48" stroke="#10b981" stroke-width="3" fill="#10b981" fill-opacity="0"/>
-          <text x="130" y="93" font-size="14">inner counts match</text><text x="400" y="93" font-size="14">outer counts remain</text>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 190" aria-label="Each row of the matrix is dotted with the vector to give one output entry">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+          <text x="55" y="28" font-weight="700">A</text><text x="195" y="28" font-weight="700">x</text><text x="405" y="28" font-weight="700">Ax</text>
+          <rect x="40" y="42" width="44" height="38" rx="4" fill="#d1fae5" stroke="#10b981"/>
+          <rect x="84" y="42" width="44" height="38" rx="4" fill="#d1fae5" stroke="#10b981"/>
+          <rect x="40" y="80" width="44" height="38" rx="4" fill="#dbeafe" stroke="#3b82f6"/>
+          <rect x="84" y="80" width="44" height="38" rx="4" fill="#dbeafe" stroke="#3b82f6"/>
+          <text x="60" y="67">1</text><text x="104" y="67">2</text>
+          <text x="60" y="105">0</text><text x="104" y="105">1</text>
+          <rect x="180" y="42" width="44" height="38" rx="4" fill="#ffffff" stroke="#d4d4d4"/>
+          <rect x="180" y="80" width="44" height="38" rx="4" fill="#ffffff" stroke="#d4d4d4"/>
+          <text x="198" y="67">3</text><text x="198" y="105">1</text>
+          <text x="250" y="66" fill="#10b981">row 1: 1·3 + 2·1</text>
+          <text x="250" y="104" fill="#3b82f6">row 2: 0·3 + 1·1</text>
+          <path d="M220 61 H376" stroke="#10b981" stroke-width="2" marker-end="url(#row-one)"/>
+          <path d="M220 99 H376" stroke="#3b82f6" stroke-width="2" marker-end="url(#row-two)"/>
+          <rect x="390" y="42" width="50" height="38" rx="4" fill="#d1fae5" stroke="#10b981"/>
+          <rect x="390" y="80" width="50" height="38" rx="4" fill="#dbeafe" stroke="#3b82f6"/>
+          <text x="409" y="67">5</text><text x="409" y="105">1</text>
         </g>
+        <defs>
+          <marker id="row-one" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
+          <marker id="row-two" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+        </defs>
       </svg>
       ```
 
-      Each output has one row for each buyer's weights. With several input columns, each column receives its own scores. The number of output rows and columns comes from the two counts outside the matching pair.
+      **Why this is useful.** Put each house's measurements in one row and the model's weights in the vector. One multiplication then gives every house's predicted price: row 1 gives house 1's price, row 2 gives house 2's, and so on. The next lesson, linear regression, makes predictions for a whole dataset this way, and a layer of a neural network does the same calculation.
+    worked: |
+      This example shows three houses priced with one multiplication.
+
+      Rows (12,3,20), (8,2,5), (15,4,30); weights $w=(25,10,−1)$.
+
+      1. Row 1: $25\cdot12 + 10\cdot3 − 1\cdot20 = 300 + 30 − 20 = 310$.
+      2. Row 2: $25\cdot8 + 10\cdot2 − 1\cdot5 = 200 + 20 − 5 = 215$.
+      3. Row 3: $25\cdot15 + 10\cdot4 − 1\cdot30 = 375 + 40 − 30 = 385$.
+
+      So $Xw=(310, 215, 385)$: a $3\times3$ matrix times a 3-entry vector gives 3 prices, one per house.
     problems:
-      [matp-shape, matp-entry-template, matp-vector, matp-invalid, matp-entry, matp-batch-shape]
-  - id: mat-change-space
-    title: Changing a whole grid with one rule
+      [matp-vector, matp-vector-shape, matp-vector-entry, matp-vector-template, matp-why-rows]
+  - id: mat-matrix-products
+    title: Multiplying matrices and matching shapes
     explain: |
-      **What happens if we apply the same matrix to every point in a grid?** We want one consistent rule, not an unrelated instruction for each point. Knowing where a few points go is not enough unless the rule also tells us how their combinations behave.
+      **What a matrix product is.** A **matrix product** combines a left matrix and a right matrix to make a new grid. For each output entry, take one row from the left matrix and one column from the right matrix, multiply matching entries, and add them; this is their dot product.
 
-      Take $A=\begin{bmatrix}1&2\\0&1\end{bmatrix}$. It sends $(3,1)$ to $(5,1)$: add twice the second coordinate to the first and keep the second unchanged.
+      **How it works.**
+      1. If the left matrix has shape $m\times n$ and the right has shape $n\times p$, their **inner dimensions** are the matching counts $n$.
+      2. The matching entries let each row-column pair form a dot product. The product has shape $m\times p$: the outer counts remain, while the inner count is summed over.
+      3. For example, $(2\times3)(3\times2)$ gives a $2\times2$ result. But $(2\times3)(2\times4)$ is undefined because 3 and 2 do not match.
 
-      Picture each horizontal row of grid points sliding sideways. At height zero nothing moves; at height one points shift two units right. This is a **shear**, a sideways shift proportional to height. This works because fixed row weights apply the same coordinate rule everywhere.
+      The rule works because each feature in a house row is paired with exactly one weight for each score. The inner feature count is consumed by the sum; one output remains for each left row and right column.
 
-      A matrix defines a **linear transformation**, meaning it preserves addition and scaling. Transforming two arrows then adding agrees with adding first then transforming, because multiplication distributes over addition. The origin stays at the origin.
-
-      The **identity matrix** $I$ has ones on its diagonal, from top left to bottom right, and zeros elsewhere. It leaves every vector unchanged: $Ix=x$.
-
-      Applying two rules in sequence is **composition**. To apply $B$ first, then $A$, write $ABx=A(Bx)$. Why this way? The second rule receives the first rule's output. Reversing them changes that input, so $AB$ and $BA$ need not agree.
-
-      A **permutation matrix** reorders entries: on the right it reorders columns; on the left, rows. A robot can use such rules to correct map coordinates or reorder measurements consistently.
+      **Why this is useful.** Put each house's measurements in a row of $X$ and each set of buyer weights in a column of $W$. If $X$ has shape $n\times d$ and $W$ has shape $d\times k$, then $XW$ has shape $n\times k$: one score for each of $n$ houses and $k$ sets of weights.
     worked: |
-      This example shows a shear of a grid and why changing the order of two rules matters.
+      This example shows two sets of weights scoring two houses together.
 
-      Coordinates measure right and up. The shear keeps $(1,0)$ fixed: $(1+2\cdot0,0)=(1,0)$. It sends $(0,1)$ to $(0+2\cdot1,1)=(2,1)$.
+      The rows of $X$ are two houses' area and bedroom measurements. The columns of $W$ are two sets of buyer weights:
 
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 220" aria-label="A shear changes a square grid cell into a parallelogram, keeping (1,0) fixed and sending (0,1) to (2,1)">
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <path d="M35 170 H195 M35 170 V50 M35 110 H95 V170" stroke="#d4d4d4" fill="#d4d4d4" fill-opacity="0"/>
-          <path d="M35 170 V110" stroke="#10b981" stroke-width="3"/><path d="M35 110 L29 122 H41 Z" fill="#10b981"/>
-          <path d="M35 170 H95" stroke="#3b82f6" stroke-width="3"/><path d="M95 170 L83 164 V176 Z" fill="#3b82f6"/>
-          <text x="35" y="25">Before: right, up</text><text x="45" y="100">(0,1)</text><text x="80" y="195">(1,0)</text>
-          <path d="M300 170 H550 M300 170 V50 M300 170 L420 110 H480 L360 170" stroke="#d4d4d4" fill="#d4d4d4" fill-opacity="0"/>
-          <path d="M300 170 L420 110" stroke="#10b981" stroke-width="3"/><path d="M420 110 L406 111 L412 122 Z" fill="#10b981"/>
-          <path d="M300 170 H360" stroke="#3b82f6" stroke-width="3"/><path d="M360 170 L348 164 V176 Z" fill="#3b82f6"/>
-          <text x="300" y="25">After: right + 2 × up, up</text><text x="420" y="98">(2,1)</text><text x="340" y="195">(1,0)</text>
-        </g>
-      </svg>
-      ```
+      $$X=\begin{bmatrix}4&1\\2&3\end{bmatrix},\qquad W=\begin{bmatrix}0.5&1\\2&-1\end{bmatrix}.$$
 
-      Now use $C=\begin{bmatrix}1&2\\3&4\end{bmatrix}$ and a rule that swaps the two coordinates, $P=\begin{bmatrix}0&1\\1&0\end{bmatrix}$. Where that swap happens matters:
+      1. Both matrices have shape $2\times2$, so the inner counts match and the output has shape $2\times2$.
+      2. House 1 with weights 1: $4\cdot0.5+1\cdot2=4$; with weights 2: $4\cdot1+1\cdot(-1)=3$.
+      3. House 2 with weights 1: $2\cdot0.5+3\cdot2=7$; with weights 2: $2\cdot1+3\cdot(-1)=-1$.
 
-      1. Right multiplication gives $CP=\begin{bmatrix}1\cdot0+2\cdot1&1\cdot1+2\cdot0\\3\cdot0+4\cdot1&3\cdot1+4\cdot0\end{bmatrix}=\begin{bmatrix}2&1\\4&3\end{bmatrix}$: columns swap.
-      2. Left multiplication gives $PC=\begin{bmatrix}0\cdot1+1\cdot3&0\cdot2+1\cdot4\\1\cdot1+0\cdot3&1\cdot2+0\cdot4\end{bmatrix}=\begin{bmatrix}3&4\\1&2\end{bmatrix}$: rows swap.
+      $$XW=\begin{bmatrix}4&3\\7&-1\end{bmatrix}.$$
 
-      Swapping the input coordinates changes which measurement each weight receives. Swapping the output coordinates instead changes where the results are stored. They are different operations.
+      Each crossing of a house row and weight column is one dot product, so the result keeps one row per house and one column per set of weights.
+    problems: [matp-shape, matp-entry-template, matp-invalid, matp-entry, matp-batch-shape]
+  - id: mat-change-space
+    title: Matrices transform coordinates and compose rules
+    explain: |
+      **What a matrix transformation is.** A **transformation** is a rule that changes a vector's coordinates. A matrix transformation is **linear**: it preserves addition and scaling, so transforming two vectors and then adding gives the same result as adding first and transforming once.
+
+      **How it works.**
+      1. A **shear** sends $(x,y)$ to $(x+2y,y)$. It adds twice the second coordinate to the first, while leaving the second unchanged.
+      2. The **identity matrix** $I=\begin{bmatrix}1&0\\0&1\end{bmatrix}$ leaves every vector unchanged: $Ix=x$.
+      3. **Composition** means applying two transformations in sequence. $ABx=A(Bx)$ means $B$ acts first and $A$ acts second. In general, $AB\ne BA$: the second rule receives a different input when the order changes.
+
+      For example, with $A=\begin{bmatrix}1&1\\0&1\end{bmatrix}$ and $B=\begin{bmatrix}1&0\\1&1\end{bmatrix}$, $AB=\begin{bmatrix}2&1\\1&1\end{bmatrix}$ but $BA=\begin{bmatrix}1&1\\1&2\end{bmatrix}$. Matrix multiplication records the order because each output applies the next rule to the previous rule's result.
+
+      **Why this is useful.** A house-price model can apply one consistent matrix transformation to every house's feature vector before scoring it. Robots use the same composition rule when changing coordinates between frames.
+    worked: |
+      This example shows a shear, the identity, and why transformation order matters.
+
+      The shear matrix is $S=\begin{bmatrix}1&2\\0&1\end{bmatrix}$, so $S(x,y)=(x+2y,y)$.
+
+      1. The identity keeps $(1,0)$ fixed: $I(1,0)=(1,0)$.
+      2. The shear keeps $(1,0)$ fixed and sends $(0,1)$ to $(2,1)$.
+      3. Let $A=\begin{bmatrix}1&1\\0&1\end{bmatrix}$ and $B=\begin{bmatrix}1&0\\1&1\end{bmatrix}$. Then $AB=\begin{bmatrix}2&1\\1&1\end{bmatrix}$, while $BA=\begin{bmatrix}1&1\\1&2\end{bmatrix}$.
+
+      Thus $AB$ and $BA$ are different: doing $B$ and then $A$ does not generally give the same result as doing $A$ and then $B$.
     problems:
       [matp-linear, matp-shear-template, matp-identity, matp-why-order, matp-shear, matp-swap]
   - id: mat-batches-transpose
-    title: Scoring many houses in NumPy
+    title: Scoring many houses with NumPy
     explain: |
-      **How can the same weighted calculation handle many vectors at once?** The answer should give the same results as separate dot products, while keeping each input's outputs together. A loop works, but makes us manage every repeated calculation.
+      **What a NumPy array is.** **NumPy** is a Python library for calculations on arrays, which are collections of numbers with a shape. A table $X$ with $n$ house rows and $d$ measurements per house has shape $(n,d)$.
 
-      Put input vectors in rows of $X$ and weights in columns of $W$. For row $(4,1)$ and weight column $(0.5,2)$, the result is $4\cdot0.5+1\cdot2=4$. Picture every input row meeting every weight column: their crossing marks one output. This works because each crossing performs the same dot product we would calculate separately.
+      **How it works.**
+      1. Store every house as a row of $X$. Store $k$ sets of weights as columns of $W$, shape $(d,k)$; `X @ W` gives shape $(n,k)$.
+      2. The `@` operator performs matrix multiplication, so each output is a dot product. The `*` operator multiplies matching entries without adding them, so it does not produce weighted sums.
+      3. A **bias** $b$ is a fixed amount added to each score. In `X @ W + b`, if `b` has shape $(k,)$, **broadcasting** reuses its $k$ amounts for every house row.
+      4. `.shape` reports dimensions. The **transpose**, written `.T`, swaps rows and columns; it changes orientation without changing the numbers.
 
-      A group of examples processed together is a **batch**. For $n$ houses, $d$ features and $k$ buyer scores, $(n\times d)(d\times k)$ gives $n\times k$. Here the grid calculation lets a model score many houses together.
+      These steps work because all house rows share the same feature order and weight columns. NumPy performs the repeated dot products together, then adds the same buyer-specific bias to each row.
 
-      If weights arrive as rows, use the **transpose**, written $A^\top$ (“A transpose”), to swap rows and columns without changing the numbers. For example, $\begin{bmatrix}1&2&3\\4&5&6\end{bmatrix}^\top=\begin{bmatrix}1&4\\2&5\\3&6\end{bmatrix}$ changes shape from $2\times3$ to $3\times2$.
-
-      Transposing a product also reverses the order: $(AB)^\top=B^\top A^\top$.
-
-      **NumPy** is a Python library for calculations on **arrays**, collections of numbers. Use `@` for matrix multiplication, `.T` to transpose, and `.shape` for dimensions. Why this way? `@` lets the library run the repeated dot products efficiently. `*` only multiplies matching entries, without summing the contributions.
-
-      A **bias** is a fixed amount added to a score. In `X @ W + b`, **broadcasting** reuses the bias array `b` for every house row.
+      **Why this is useful.** One expression, `X @ W + b`, scores many houses for several sets of weights without writing a separate loop for every house. The output still has one row per house and one column per score, making the house-price calculations easy to check.
     worked: |
       This example shows how the app scores two houses for two buyers, then adds a fixed amount to each buyer's score.
 
@@ -140,9 +155,7 @@ knowledge_points:
       3. Second house, first score: $2\cdot0.5+3\cdot2+1=1+6+1=8$.
       4. Second house, second score: $2\cdot1+3\cdot(-1)+10=2-3+10=9$.
 
-      The two biases are reused for each house, and `weights_as_rows.T` would restore the columns needed for the product.
-
-      One matrix product computes a score for every house and buyer. Adding `b` then adjusts every row by the same two fixed amounts.
+      The two biases are reused for each house, and `weights_as_rows.T` restores the columns needed for the product.
     problems:
       [
         matp-code,
@@ -154,8 +167,8 @@ knowledge_points:
       ]
 final: mat-explain-batch
 summary: |
-  - A matrix stores numbers in rows and columns. In a product, each left row meets each right column in a dot product. The left column count must match the right row count.
-  - A matrix can adjust robot coordinates consistently while preserving vector addition and scaling. When applying two matrices, the rightmost acts first. Reversing the order can change the result.
-  - Transposing swaps rows and columns. NumPy uses `@` to multiply matrices. In `X @ W + b`, adding a short bias array reuses its fixed score adjustments for every house.
+  - A matrix stores values in rows and columns. Multiplying by a vector takes one dot product per row; multiplying matrices pairs each left row with each right column, and the inner dimensions must match.
+  - Matrices can represent transformations such as shears and the identity. Composition applies the rightmost matrix first, and $AB$ does not generally equal $BA$.
+  - NumPy uses `@` to score many houses at once. In `X @ W + b`, the bias is broadcast across house rows.
 
-  **Where you'll use this:** linear regression, the perceptron, and attention use matrix products for many weighted scores; rotation matrices transform robot coordinates.
+  **Next:** Linear regression uses these matrix operations to predict prices for all houses and compare them with their sale prices.

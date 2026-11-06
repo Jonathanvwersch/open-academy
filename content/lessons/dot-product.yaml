@@ -2,7 +2,7 @@ concept: dot-product
 version: 2
 objective: |
   **Goal:** turn two vectors into one number, see how that number measures agreement between arrows, and compare directions without rewarding length.
-why: |
+where_this_fits: |
   A house-price model needs to combine area, bedrooms and age into one prediction. Adding those measurements would mix units and treat every feature as equally important. Instead, record area in tens of square metres, bedrooms, and age in years as x = (12, 3, 20). Weights w = (25, 10, -1), in thousand pounds per feature unit, give contributions of 300, 30 and minus 20 thousand pounds. The dot product adds them to predict 310 thousand pounds. Each weight controls how much its feature matters; the negative age weight lowers the price. You'll use this calculation in matrices, linear regression, the perceptron, and attention, where models combine measurements or compare vectors.
 knowledge_points:
   - id: dot-weighted-total

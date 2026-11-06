@@ -1,5 +1,8 @@
 import { mkdirSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { expect, type Page, test } from '@playwright/test';
+import { parse } from 'yaml';
+import { LessonSchema, normalizeLesson } from '../../src/server/content/schemas.js';
 import { createDb } from '../../src/server/db/client.js';
 import {
   diagnosticRuns,
@@ -14,7 +17,9 @@ import { env } from '../../src/server/env.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const screenshotDir = '/home/ubuntu/screenshots/learn-course';
+const courseStructureScreenshotDir = '/home/ubuntu/screenshots/course-structure';
 mkdirSync(screenshotDir, { recursive: true });
+mkdirSync(courseStructureScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async ({ page }) => {
@@ -90,6 +95,22 @@ test('Learn shows XP and tasks, starts a session, and Course links to lessons', 
   await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();
   await expect(page.getByText('1.1', { exact: true })).toBeVisible();
   await expect(page.locator('li').filter({ hasText: '1.2' })).toContainText('Needs Vectors');
+  await expect(
+    page.getByText(
+      "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales.",
+      { exact: false },
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/^Project: /).first()).toBeVisible();
+  const supervisedRow = page
+    .getByRole('listitem')
+    .filter({ has: page.getByText('Supervised learning', { exact: true }) });
+  await expect(supervisedRow).toContainText('Builds on: Vectors');
+  await expect(supervisedRow).toContainText('Leads to: Linear models');
+  await page.screenshot({
+    path: `${courseStructureScreenshotDir}/course-week-1.png`,
+    fullPage: true,
+  });
   await page.screenshot({ path: `${screenshotDir}/course.png`, fullPage: true });
   await page.getByRole('link', { name: 'View lesson' }).first().click();
   await expect(page).toHaveURL(/\/lessons\/vectors$/);
@@ -99,6 +120,67 @@ test('Learn shows XP and tasks, starts a session, and Course links to lessons', 
   await page.getByRole('button', { name: 'Start learning' }).click();
   await expect(page).toHaveURL(/\/session\//);
 });
+
+test('authored course-structure lessons render their diagrams', async ({ page }) => {
+  await mockLessonReview(
+    page,
+    'what-is-ml',
+    'What machine learning is, and how this course fits together',
+  );
+  await page.goto('/lessons/what-is-ml');
+  await expect(page.locator('article > h2').nth(1)).toContainText('2.');
+  await expect(
+    page.getByRole('img', {
+      name: 'The seven steps of the house-price model, each taught by a Week 1 lesson',
+    }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `${courseStructureScreenshotDir}/what-is-ml-kp2.png`,
+    fullPage: true,
+  });
+
+  await mockLessonReview(page, 'matrices', 'Matrices');
+  await page.goto('/lessons/matrices');
+  await expect(page.locator('article > h2').first()).toContainText('1.');
+  await expect(
+    page.getByRole('img', {
+      name: 'Each row of the matrix is dotted with the vector to give one output entry',
+    }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `${courseStructureScreenshotDir}/matrices-kp1.png`,
+    fullPage: true,
+  });
+});
+
+async function mockLessonReview(page: Page, conceptId: string, conceptTitle: string) {
+  const source = await readFile(`content/lessons/${conceptId}.yaml`, 'utf8');
+  const parsed = LessonSchema.parse(parse(source));
+  if (!('knowledge_points' in parsed)) throw new Error('Expected a knowledge-point lesson');
+  const lesson = normalizeLesson(parsed, () => false);
+  await page.route(`**/api/lessons/${conceptId}/review`, (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        lesson: {
+          where_this_fits: lesson.where_this_fits,
+          final: lesson.final,
+          blocks: lesson.blocks,
+          knowledge_points: lesson.knowledge_points,
+        },
+        checkAnswers: {},
+        conceptTitle,
+      }),
+    }),
+  );
+  await page.route('**/api/exercises/**', (route) => {
+    const id = new URL(route.request().url()).pathname.split('/').at(-1);
+    return route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ id, type: 'explain', prompt: 'Final check.' }),
+    });
+  });
+}
 
 test('a fresh learner sees Learn onboarding without XP', async ({ page }) => {
   await page.goto('/');

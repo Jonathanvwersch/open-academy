@@ -2,7 +2,7 @@ concept: mlp-forward-pass
 version: 2
 objective: |
   **Goal:** compute a two-layer forward pass by hand, count a layer's weights and biases, and track the shape of every array as a batch of examples moves through a multilayer perceptron.
-why: |
+where_this_fits: |
   A model uses a house's size, say 100 m², and its distance from the station, say 2 km, to produce a rating. Several neurons can calculate different scores from those measurements. You could write each calculation separately, but repeating that code for hundreds of neurons makes mistakes hard to find. Instead, arrange neurons in groups called layers. Matrix multiplication calculates a group's scores together, activations change those scores, and the next group combines the results. This ordered calculation is the forward pass. Counting rows and columns helps you check that the right numbers reach each neuron. You will build on this in Backpropagation, PyTorch fundamentals, and Stochastic and minibatch gradient descent.
 knowledge_points:
   - id: mlp-layer-of-neurons

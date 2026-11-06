@@ -2,7 +2,7 @@ concept: gradients
 version: 2
 objective: |
   **Goal:** compute the gradient $\nabla f$ of a function of several inputs, use it to estimate how the output changes for a small step, and explain why the negative gradient is the direction of steepest descent.
-why: |
+where_this_fits: |
   A robot predicts that an object is 2 metres away, but a measurement puts it at 1.8 metres. To improve the prediction, you adjust the model's weights, the numbers that control its calculation. Trying one weight at a time can help, but a coordinated change may reduce the error more for the same total amount of adjustment. A gradient collects the rate of change for every weight and uses them together to find that direction. Think of prediction error as height in a valley and the weights as your position: you want the quickest way downhill from where you stand. This idea is used in gradient descent, backpropagation, and momentum and Adam.
 knowledge_points:
   - id: grad-vector-of-partials

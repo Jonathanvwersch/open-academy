@@ -2,7 +2,7 @@ concept: perceptron
 version: 2
 objective: |
   **Goal:** compute a neuron's output from its weights, bias and inputs, and explain why one neuron can only split its inputs with a straight boundary, so it can't compute XOR.
-why: |
+where_this_fits: |
   A program helps you choose houses to visit. Should a 120 m² house, 0.5 km from the station, make your list? Separate limits on size and distance miss the possibility that more space could justify a longer walk. A perceptron gives each measurement a weight, a number controlling how much it counts, and combines them into one score. Adding a fixed number, called the bias, makes a yes easier or harder without changing those weights. This gives you an adjustable decision rule rather than a growing list of exceptions. Its limits explain why we need several such units working together in Activation functions, Layers and the forward pass, and Backpropagation.
 knowledge_points:
   - id: perc-score-and-step

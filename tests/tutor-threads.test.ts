@@ -50,7 +50,7 @@ const provider: TutorProvider = {
 let app: ReturnType<typeof createApp>;
 
 beforeAll(async () => {
-  content = await loadContent('content');
+  content = await loadContent('content', { validate: false });
   app = createApp({ db, content, tutorProvider: provider });
 });
 beforeEach(async () => {
@@ -349,7 +349,7 @@ test('session page context uses the answered lesson problem KP and sanitized aut
   const initialContext = captured.at(-1);
   const pageContent = initialContext?.page_content ?? '';
   expect(initialContext?.page).toBe('session');
-  expect(pageContent).toContain(lesson.why);
+  expect(pageContent).toContain(lesson.where_this_fits);
   expect(pageContent).toContain(`Current step (1 of ${points.length}): ${firstPoint.title}`);
   expect(pageContent).toContain(sanitizePageContent(firstPoint.explain));
   expect(pageContent).toContain(firstPoint.worked);
@@ -424,6 +424,9 @@ test('course page context includes outline topics and statuses', async () => {
   expect((await send('What should I study next?', undefined, { page: 'course' })).status).toBe(200);
   const pageContent = captured.at(-1)?.page_content ?? '';
   expect(pageContent).toMatch(/^## Week \d+ · .+$/m);
+  expect(pageContent).toContain(
+    "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales. The maths topics are the tools this model needs, taught in the order it needs them.",
+  );
   expect(pageContent).toMatch(/^- .+ — .+$/m);
 });
 

@@ -36,14 +36,30 @@ function CoursePage() {
       <div className="space-y-4">
         {data.weeks.map((week) => (
           <Card key={week.week}>
-            <CardHeader>
+            <CardHeader className="space-y-2">
               <CardTitle>
                 Week {week.week} · {week.title}
               </CardTitle>
+              {week.intro ? <p className="text-sm text-muted-foreground">{week.intro}</p> : null}
+              {week.project ? (
+                <p className="text-sm text-muted-foreground">Project: {week.project.title}</p>
+              ) : null}
             </CardHeader>
             <CardContent className="p-0">
               <ol className="divide-y">
                 {week.topics.map((topic) => {
+                  const contextLine = [
+                    topic.status !== 'locked' && topic.buildsOn.length > 0
+                      ? `Builds on: ${topic.buildsOn.map((item) => item.title).join(', ')}`
+                      : null,
+                    topic.leadsTo.length > 0
+                      ? `Leads to: ${topic.leadsTo.map((item) => item.title).join(', ')}${
+                          topic.leadsToMore > 0 ? ` +${topic.leadsToMore} more` : ''
+                        }`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ');
                   const row = (
                     <>
                       <div className="flex min-w-0 items-start gap-3">
@@ -52,6 +68,9 @@ function CoursePage() {
                         </span>
                         <div className="min-w-0 space-y-1">
                           <p className="font-medium">{topic.title}</p>
+                          {contextLine ? (
+                            <p className="text-xs text-muted-foreground">{contextLine}</p>
+                          ) : null}
                           <div className="flex flex-wrap items-center gap-2">
                             <Badge
                               variant="secondary"

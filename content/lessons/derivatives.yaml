@@ -2,7 +2,7 @@ concept: derivatives
 version: 2
 objective: |
   **Goal:** find derivatives of common functions and use them to tell how a small input nudge changes an output, including a model's loss when its weight changes.
-why: |
+where_this_fits: |
   Training a model means choosing weights that make its loss small. When a loss depends on a weight, you need to know whether nudging that weight upward will raise or lower the loss, and by how much. The obvious approach is to try many nearby values and compare the losses, but that is slow and noisy—and impossible to repeat for millions of weights. A derivative gives the local change as a formula, so one calculation tells you the direction and strength of the effect. This idea is needed for partial derivatives, gradients, gradient descent, and backpropagation.
 knowledge_points:
   - id: der-speed-at-instant

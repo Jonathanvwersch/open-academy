@@ -2,7 +2,7 @@ concept: backpropagation
 version: 2
 objective: |
   **Goal:** explain why training needs every gradient and why the backward pass reuses forward values, compute gradients through a small network by hand, write a backward pass in NumPy, and diagnose common gradient bugs.
-why: |
+where_this_fits: |
   A robot uses a neural network, a model made of connected layers of calculations, to predict where to place its gripper. Suppose one prediction takes 10 milliseconds and the model has a million adjustable weights. Training needs to know how each weight affects the prediction error. Changing one weight and repeating the prediction for every weight would take about 2.8 hours for just one training step. Backpropagation avoids those separate trials. It calculates the prediction once, saves the answers from each layer, and then works backwards to find every weight's effect on the error. Automatic differentiation, PyTorch fundamentals, and debugging training runs build on this method to calculate derivatives and check whether training code is correct.
 knowledge_points:
   - id: bp-why-backprop

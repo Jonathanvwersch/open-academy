@@ -2,7 +2,7 @@ concept: activation-functions
 version: 2
 objective: |
   **Goal:** evaluate ReLU, sigmoid and tanh and their slopes, and explain why a network needs a nonlinear activation between its layers.
-why: |
+where_this_fits: |
   A model rates houses to help you decide which to visit. Another 10 m² might matter more in a 50 m² flat than in a 150 m² house. You could feed one neuron's score into another, hoping the second would treat small and large houses differently. But without a nonlinear activation, a function whose graph is not straight, those calculations simplify to one straight-line rule. Each extra square metre still adds the same amount. Activations let the model change its response for different house sizes. Their slopes also tell us whether a small weight change can affect the answer. You will use both ideas in Layers and the forward pass, Backpropagation, and Initialization and normalization.
 knowledge_points:
   - id: act-stacking-stays-straight

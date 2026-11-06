@@ -1,5 +1,24 @@
 domain: classical-ml
 concepts:
+  - id: what-is-ml
+    title: What machine learning is, and how this course fits together
+    description: What learning from examples means, the house-price problem behind Weeks 1–2, and how the course leads to robot learning.
+    difficulty: 1
+    est_minutes: 15
+    week: 1
+    goal_weight: 3
+    dimensions: [conceptual]
+    prereqs: []
+    objectives:
+      - {
+          text: "Explain what machine learning is and how it differs from writing rules by hand",
+          dimension: conceptual,
+        }
+      - {
+          text: "Describe how the steps of the house-price model connect the Week 1 topics",
+          dimension: conceptual,
+        }
+    status: authored
   - id: supervised-learning
     title: Supervised learning setup
     description: Inputs, targets, a model family, a loss, and learning from examples.
@@ -8,7 +27,7 @@ concepts:
     week: 1
     goal_weight: 3
     dimensions: [conceptual]
-    prereqs: []
+    prereqs: [{ id: what-is-ml, strength: soft }]
     objectives:
       - {
           text: "Identify inputs, targets, model, loss and training data in a problem",

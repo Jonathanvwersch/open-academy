@@ -2,7 +2,7 @@ concept: supervised-learning
 version: 3
 objective: |
   **Goal:** identify the inputs, targets, model, loss and training data in any supervised problem, and explain why training means making the average loss small.
-why: |
+where_this_fits: |
   A family needs an estimate before offering 350 thousand pounds for a house. A computer could use a rule such as "larger houses cost more", but someone still has to choose how much more. Guessing a separate rule for every size and bedroom count quickly becomes unmanageable. Past sales give us both the house details and the actual prices. Supervised learning uses these examples to choose a model, a rule for making predictions, by measuring its mistakes. That lets us compare possible rules rather than trust our guesses. Linear regression, loss functions, gradient descent, and training and evaluation splits develop this approach. Behavioral cloning uses the same idea to teach robots from recorded human actions.
 knowledge_points:
   - id: sl-inputs-targets

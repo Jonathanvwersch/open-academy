@@ -2,7 +2,7 @@ concept: loss-functions
 version: 2
 objective: |
   **Goal:** compute MSE and MAE, explain how their slopes treat large errors, and choose the best constant prediction for each loss.
-why: |
+where_this_fits: |
   You have two house-price models and need to decide which one to improve. Eyeballing a few predictions is unreliable across thousands of sales. Averaging raw errors seems fair, but overpricing one house can cancel underpricing another, making a bad model look perfect. A loss turns the misses into one score without that cancellation. It lets you compare models on the same sales and gives a training algorithm a slope that tells which small changes reduce the score. Choosing the loss also decides how strongly a huge pricing mistake matters. Gradient descent uses this score to improve predictions; backpropagation carries its effects back to model weights.
 knowledge_points:
   - id: loss-measure-misses

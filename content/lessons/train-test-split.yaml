@@ -2,7 +2,7 @@ concept: train-test-split
 version: 2
 objective: |
   **Goal:** explain what training, validation and test sets are each for, and spot data leakage.
-why: |
+where_this_fits: |
   An estate agent has 1,000 past house sales and wants to trust a model's suggested asking prices. Checking its predictions on those same sales seems sensible, but a model could remember every answer and still price the next house badly. Keeping some sales out of training gives it questions it could not memorise. You also need separate sales for comparing versions, because repeatedly choosing the best score can reward a lucky result. Training, validation and test sets separate learning, choosing and reporting, so your final score better reflects the job you actually need done. You'll use these checks in evaluation metrics to score predictions, in overfitting and underfitting to compare training with new-data results, and in debugging training runs to investigate misleading scores.
 knowledge_points:
   - id: tts-why-hold-out

@@ -1,12 +1,15 @@
 concept: gradients
 version: 2
 objective: Practice gradients and their components.
-why: |
+where_this_fits: |
   Training a model means changing parameters to reduce its loss. When several inputs affect that loss, you need to know how each one contributes before choosing an update. Looking only at the loss value does not show which parameter matters or which direction helps. A gradient collects those separate rates of change into one vector. It lets you compare sensitivity across parameters and is the starting point for deciding how to adjust them during gradient descent.
 knowledge_points:
   - id: gradients-fixture-1
     title: Read a gradient
-    explain: A gradient collects the partial derivatives of a function.
+    explain: |
+      A gradient collects the partial derivatives of a function.
+
+      **Why this is useful.** It shows how each model weight affects the loss.
     worked: This example shows a gradient with two components.
     problems:
       [
@@ -17,7 +20,10 @@ knowledge_points:
       ]
   - id: gradients-fixture-2
     title: Use the gradient
-    explain: The gradient points toward the direction of steepest increase.
+    explain: |
+      The gradient points toward the direction of steepest increase.
+
+      **Why this is useful.** Moving against it gives a direction for reducing prediction error.
     worked: This example shows how a gradient describes change.
     problems:
       [
@@ -29,4 +35,4 @@ knowledge_points:
 final: gradients-fixture-final
 summary: |
   A gradient collects partial derivatives and describes steepest increase.
-  **Where you'll use this:** gradients guide parameter updates in gradient descent.
+  **Next:** gradients guide parameter updates in gradient descent.

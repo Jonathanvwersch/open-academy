@@ -52,6 +52,8 @@ export interface CoursePayload {
   weeks: Array<{
     week: number;
     title: string;
+    intro: string;
+    project: { id: string; title: string } | null;
     topics: Array<{
       number: string;
       conceptId: string;
@@ -60,6 +62,9 @@ export interface CoursePayload {
       status: 'locked' | 'not_started' | 'in_progress' | 'complete';
       mastery: 'Not started' | 'Attempted' | 'Familiar' | 'Proficient' | 'Mastered';
       needs?: Array<{ id: string; title: string }>;
+      buildsOn: Array<{ id: string; title: string }>;
+      leadsTo: Array<{ id: string; title: string }>;
+      leadsToMore: number;
     }>;
   }>;
 }
@@ -95,7 +100,7 @@ export interface SessionPayload {
 }
 
 export interface LessonPayload {
-  why?: string;
+  where_this_fits?: string;
   final?: string;
   blocks: Array<{ kind: LessonBlockKind; md?: string; exercise?: string }>;
   knowledge_points?: Array<{
@@ -119,7 +124,7 @@ export interface LessonRunPayload {
   run: null | {
     id: string;
     status: 'in_progress' | 'needs_retry' | 'completed';
-    why?: string;
+    where_this_fits?: string;
     points: Array<{
       id: string;
       status: 'passed' | 'failed' | 'active' | 'locked';

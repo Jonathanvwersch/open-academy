@@ -55,26 +55,29 @@ weeks:
       week: 1,
       title: ML fundamentals,
       project: linreg-numpy,
+      intro: "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales. The maths topics are the tools this model needs, taught in the order it needs them.",
       concepts:
         [
+          what-is-ml,
+          supervised-learning,
           vectors,
           dot-product,
           matrices,
+          linear-regression,
           derivatives,
+          loss-functions,
           partial-derivatives,
           gradients,
-          probability-basics,
-          supervised-learning,
-          linear-regression,
-          loss-functions,
           gradient-descent,
           train-test-split,
+          probability-basics,
         ],
     }
   - {
       week: 2,
       title: Neural networks,
       project: nn-from-scratch,
+      intro: "A straight-line model can't capture every pattern. You'll build a neural network from neurons and layers, and learn backpropagation, the method that trains every modern network.",
       concepts:
         [
           perceptron,
@@ -92,6 +95,7 @@ weeks:
       week: 3,
       title: Deep learning practice,
       project: image-classifier,
+      intro: "Training real networks well: faster optimisers, avoiding overfitting, measuring results honestly, and recognising images with convolutional networks.",
       concepts:
         [
           sgd-minibatch,
@@ -115,6 +119,7 @@ weeks:
       week: 4,
       title: Transformers and LLMs,
       project: char-transformer,
+      intro: "The model design behind ChatGPT and many robot models: tokens, embeddings and attention, built up into a small language model.",
       concepts:
         [
           tokenization,
@@ -132,6 +137,7 @@ weeks:
       week: 5,
       title: Robotics foundations,
       project: planar-arm,
+      intro: "How robots describe where things are: coordinate frames, rotations and transforms, then working out where an arm's hand is from its joint angles, and back.",
       concepts:
         [
           coordinate-frames,
@@ -149,6 +155,7 @@ weeks:
       week: 6,
       title: Robotics control and perception,
       project: control-sim,
+      intro: "How a robot senses the world and acts on it: sensors, cameras, feedback control and basic dynamics.",
       concepts:
         [
           robot-state-observation-action,
@@ -163,6 +170,7 @@ weeks:
       week: 7,
       title: Imitation learning,
       project: bc-policy,
+      intro: "Teaching a robot by showing it: learning a policy from human demonstrations, why it breaks when the robot drifts off course, and how to fix that.",
       concepts:
         [
           demonstrations,
@@ -177,6 +185,7 @@ weeks:
       week: 8,
       title: Reinforcement learning,
       project: rl-sim,
+      intro: "Learning by trial and error from rewards instead of demonstrations: decision problems, value functions, Q-learning and policy gradients.",
       concepts:
         [
           mdp,
@@ -195,6 +204,7 @@ weeks:
       week: 9,
       title: Modern multimodal AI,
       project: vision-policy,
+      intro: "Models that connect images and text, and how they let a robot act on what its camera sees.",
       concepts:
         [
           vision-encoders,
@@ -209,6 +219,7 @@ weeks:
       week: 10,
       title: Advanced robot learning,
       project: chunking-policy,
+      intro: "The methods behind current robot foundation models: action chunking, diffusion policies, transformer policies and vision-language-action models.",
       concepts:
         [
           action-chunking,
@@ -224,6 +235,7 @@ weeks:
       week: 11,
       title: End-to-end robot learning,
       project: capstone,
+      intro: "Running a robot-learning project properly: data pipelines, evaluation, failure analysis and statistics.",
       concepts:
         [
           data-pipelines-robotics,
@@ -237,6 +249,7 @@ weeks:
       week: 12,
       title: Capstone and final assessment,
       project: capstone,
+      intro: "Designing a complete ML system, reading research papers and judging models critically.",
       concepts: [system-design-ml, reading-papers, critical-evaluation],
     }
 goals:

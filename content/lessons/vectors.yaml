@@ -2,7 +2,7 @@ concept: vectors
 version: 2
 objective: |
   **Goal:** describe points and arrows with ordered numbers, add and scale vectors, and calculate lengths and distances. Use the same kind of list to describe a house for a model.
-why: |
+where_this_fits: |
   A warehouse robot must collect a parcel and return to its charging dock. If it is 3 metres east and 4 metres north of the dock, recording only “7 metres away” would lose the direction and give the wrong straight-line distance. A vector keeps both numbers in a fixed order, so the robot can combine movements and work out how far it is from its destination. The same idea lets a house-price model keep area, bedroom count and age together, rather than lose their separate meanings in one total. You'll use vectors in dot product, matrices, linear regression, gradients, and coordinate frames to handle several related numbers with one consistent set of rules.
 knowledge_points:
   - id: vec-points-moves

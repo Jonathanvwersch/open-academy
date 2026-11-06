@@ -2,7 +2,7 @@ concept: linear-regression
 version: 2
 objective: |
   **Goal:** write a linear house-price model in vector form, interpret its weights and bias, and make vectorised NumPy predictions for a batch of houses.
-why: |
+where_this_fits: |
   An estate agent needs an asking price for a 100 m² house with 2 bedrooms. Looking up an identical house rarely works, and drawing a line through two sales lets an unusually high or low price dictate the rule. Linear regression gives you one prediction rule that can be fitted across many sales instead. Its weights are numbers that describe how each house detail affects the predicted price, such as the amount added for an extra square metre. This makes it a simple starting model to compare more complicated models against. Loss functions will measure its mistakes, gradient descent will adjust its weights, and the perceptron lesson will reuse its weighted sum and bias inside a different prediction rule.
 knowledge_points:
   - id: lr-add-contributions

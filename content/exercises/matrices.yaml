@@ -70,6 +70,98 @@ exercises:
           correct: false,
           feedback: "Each row gives its own number, rather than one total for the matrix.",
         }
+  - id: matp-vector-shape
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A house has three measurements and a buyer has one weight for each measurement. If the three weights are arranged as one matrix row, how many output numbers does the matrix-vector product produce?"
+    options:
+      - { id: a, text: "One score for the house", correct: true }
+      - {
+          id: b,
+          text: "Three scores, one for each measurement",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The matrix has one row, so it produces one output entry.",
+        }
+      - {
+          id: c,
+          text: "No output until there are two houses",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A single row can produce a score for one house.",
+        }
+      - {
+          id: d,
+          text: "One output for every weight and measurement pair",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The matching products are added into one dot product.",
+        }
+    solution: "One row makes one dot product with the house's measurement vector, producing one score."
+  - id: matp-vector-entry
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A house's measurements are $(4,1)$ and the model weights are $(2,-1)$. What score does their matrix-vector product give?"
+    solution: "Multiply matching entries and add: $4\\cdot2+1\\cdot(-1)=8-1=7$."
+    answer: 7
+    tolerance: { abs: 0.000001 }
+  - id: matp-vector-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: |
+      A house has measurements $({{=u}},{{=v}})$ and the model's weights are $({{=a}},{{=b}})$. What score does the row-vector product give?
+    solution: "Multiply matching entries and add: ${{=u}}\\cdot{{=a}}+{{=v}}\\cdot{{=b}}={{=u*a+v*b}}$."
+    tolerance: { abs: 0.000001 }
+    params:
+      u: { min: 1, max: 10 }
+      v: { min: 1, max: 5 }
+      a: { min: 1, max: 4 }
+      b: { min: 1, max: 3 }
+    answer_expr: "u*a+v*b"
+  - id: matp-why-rows
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why does each row of a matrix produce one output when it multiplies a vector?"
+    options:
+      - {
+          id: a,
+          text: "Each row is a set of weights, and its dot product with the same input gives one output.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Each column is copied directly into the output.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The output is computed from the rows paired with the input vector.",
+        }
+      - {
+          id: c,
+          text: "All matrix entries are added together before the vector is used.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Each row is multiplied with the vector separately.",
+        }
+      - {
+          id: d,
+          text: "The matrix's columns determine the number of output entries.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The number of rows determines the number of output entries.",
+        }
+    solution: "Each matrix row has its own weights, so its dot product with the input produces one output number."
   - id: matp-invalid
     dimension: conceptual
     type: mc

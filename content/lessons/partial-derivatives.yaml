@@ -2,7 +2,7 @@ concept: partial-derivatives
 version: 2
 objective: |
   **Goal:** compute the partial derivative of a function of several variables with respect to any one of them, and read it as the rate of change when only that variable moves.
-why: |
+where_this_fits: |
   A house-price model estimates £240,000 for a 100 m² house aged 20. An estate agent wants to know how much an extra room would add to that estimate. Comparing it with a larger, younger house mixes the effects of size and age. A partial derivative answers the question by changing size while keeping age fixed. The same idea helps improve the model itself. Its weights are adjustable numbers in its prediction formula; changing them all together hides which change helped. Partial derivatives show how each weight affects the prediction error while the others stay fixed. You'll need this idea for gradients, gradient descent, the chain rule, and backpropagation.
 knowledge_points:
   - id: pd-hold-fixed

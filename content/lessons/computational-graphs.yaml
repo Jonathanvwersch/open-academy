@@ -2,7 +2,7 @@ concept: computational-graphs
 version: 2
 objective: |
   **Goal:** draw the computational graph of a calculation, find the local derivative at each node, and chain them to see how the result changes with any input.
-why: |
+where_this_fits: |
   A house-price model predicts 700 thousand pounds for a house that sold for 500 thousand. Before changing its settings, we want to know how each setting affects that mistake. We could expand the complete error formula and differentiate it by hand. That is manageable for a small model, but a larger model may reuse the same calculation many times, making the expanded formula long and hard to check. A computational graph records each small calculation and shows where its answer is used. We can then find derivatives one operation at a time and reuse answers we have already calculated. Backpropagation and automatic differentiation build on this representation to calculate how every model setting affects its final error.
 knowledge_points:
   - id: cg-drawing-graphs

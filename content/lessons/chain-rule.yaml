@@ -2,7 +2,7 @@ concept: chain-rule
 version: 2
 objective: |
   **Goal:** differentiate a formula inside a formula with the chain rule, and combine the effects when one input changes the result through several calculations.
-why: |
+where_this_fits: |
   A robot estimates that a wall is 2 metres away when it is actually 1.8 metres away. Its model makes that prediction through several calculations. You want to adjust a weight, a number used in one calculation, to reduce the final error. Expanding the whole model into one formula would work, but becomes difficult as more calculations are added. The chain rule lets you work through them separately and combine their rates of change. It's the same reasoning as finding fuel used per hour from driving speed and fuel used per kilometre. If one weight affects the error in two ways, both effects count. You'll use this in computational graphs, backpropagation, and autodiff.
 knowledge_points:
   - id: cr-rates-multiply

@@ -2,7 +2,7 @@ concept: gradient-descent
 version: 2
 objective: |
   **Goal:** take gradient-descent steps by hand, choose and diagnose a learning rate, and implement a loop that fits a linear house-price model.
-why: |
+where_this_fits: |
   Your house-price model predicts too little for the houses in its training data. You can measure its loss, but how should you change its weights to make the prices better? Trying a grid of values works for one weight, but with ten choices for each weight, every extra weight multiplies the number of combinations by ten. Random nudges also spend trials moving uphill. Gradient descent uses the current loss slopes to choose a downhill step, then repeats from the new setting. This turns fitting a model into a repeatable calculation rather than a search through every possible setting. Later, stochastic and minibatch gradient descent make these updates practical on large datasets, momentum and Adam refine the step, and backpropagation supplies the slopes for neural networks.
 knowledge_points:
   - id: gd-downhill-update

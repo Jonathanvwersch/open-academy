@@ -84,7 +84,7 @@ test('explain exercises can use their exemplar without a separate solution', asy
 });
 
 test('client-safe template views hide expressions and sampling ranges', async () => {
-  const content = await loadContent();
+  const content = await loadContent(undefined, { validate: false });
   const template = required(content.exercisesById.get('slp-predict'), 'parameterised exercise');
   const serialized = serializeExercise(template);
   expect(serialized).not.toHaveProperty('answer_expr');
@@ -138,24 +138,24 @@ test('lessons start with an objective and end with a summary', () => {
   );
 });
 
-test('knowledge-point lesson why counts words after removing math and fenced blocks', async () => {
+test('knowledge-point lesson opening counts words after removing math and fenced blocks', async () => {
   const data = await notationFixture();
   const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
   if (!lesson) throw new Error('Missing derivatives fixture');
   const fencedWords = Array.from({ length: 100 }, () => 'ignored').join(' ');
-  lesson.value.why = `${Array.from({ length: 58 }, () => 'word').join(' ')} $x + 1$ \n\`\`\`text\n${fencedWords}\n\`\`\``;
+  lesson.value.where_this_fits = `${Array.from({ length: 28 }, () => 'word').join(' ')} $x + 1$ \n\`\`\`text\n${fencedWords}\n\`\`\``;
 
   expect(validateContent(data)).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
         id: 'derivatives',
-        message: 'lesson why has 59 words; expected 60–140',
+        message: 'lesson where_this_fits has 29 words; expected 30–90',
       }),
     ]),
   );
 });
 
-test('knowledge-point lesson summary requires the Where you will use this line', async () => {
+test('knowledge-point lesson summary requires the Next line', async () => {
   const data = await notationFixture();
   const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
   if (!lesson) throw new Error('Missing derivatives fixture');
@@ -165,7 +165,44 @@ test('knowledge-point lesson summary requires the Where you will use this line',
     expect.arrayContaining([
       expect.objectContaining({
         id: 'derivatives',
-        message: 'lesson summary must contain a line starting with "**Where you\'ll use this:**"',
+        message: 'lesson summary must contain a line starting with "**Next:**"',
+      }),
+    ]),
+  );
+});
+
+test('every knowledge-point explanation needs a Why this is useful line', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
+  if (!lesson?.value.knowledge_points?.[0]) throw new Error('Missing derivatives knowledge point');
+  lesson.value.knowledge_points[0].explain = 'A definition without an application line.';
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: lesson.value.knowledge_points[0].id,
+        message:
+          'knowledge-point explain must contain a line starting with "**Why this is useful.**"',
+      }),
+    ]),
+  );
+});
+
+test('knowledge-point lessons may include check-role exercises', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'vectors');
+  const point = lesson?.value.knowledge_points?.[0];
+  const exercise = point
+    ? data.exercises.find(({ value }) => value.id === point.problems[0])?.value
+    : undefined;
+  if (!point || !exercise) throw new Error('Missing vectors exercise fixture');
+  exercise.role = 'check';
+
+  expect(validateContent(data)).not.toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: point.id,
+        message: expect.stringContaining('must have practice or check role'),
       }),
     ]),
   );
@@ -287,7 +324,8 @@ test('knowledge-point Markdown participates in notation checks', async () => {
     {
       id: 'kp-needle-use',
       title: 'Rates',
-      explain: 'This uses needle notation.',
+      explain:
+        'This uses needle notation.\n\n**Why this is useful.** It connects the idea to the next calculation.',
       worked: 'Work.',
       problems: [],
     },
@@ -312,7 +350,7 @@ test('an introducing lesson may teach notation in a knowledge point', async () =
     {
       id: 'kp-needle-intro',
       title: 'Needle notation',
-      explain: 'A definition.',
+      explain: 'A definition.\n\n**Why this is useful.** It helps recognize the notation.',
       worked: 'An example.',
       problems: [],
     },
@@ -333,17 +371,23 @@ test('knowledge-point lessons derive the legacy block shape', () => {
     concept: 'vectors',
     version: 3,
     objective: 'Learn the idea.',
-    why: 'This explains why the idea exists.',
+    where_this_fits: 'This explains where the idea fits.',
     final: 'final-explain',
     knowledge_points: [
       {
         id: 'kp-one',
         title: 'First',
-        explain: 'Explain.',
+        explain: 'Explain.\n\n**Why this is useful.** It supports the next calculation.',
         worked: 'Work.',
         problems: ['template', 'fixed'],
       },
-      { id: 'kp-two', title: 'Second', explain: 'Explain.', worked: 'Work.', problems: ['fixed'] },
+      {
+        id: 'kp-two',
+        title: 'Second',
+        explain: 'Explain.\n\n**Why this is useful.** It supports the next calculation.',
+        worked: 'Work.',
+        problems: ['fixed'],
+      },
     ],
     summary: 'Finish.',
   });
@@ -351,10 +395,16 @@ test('knowledge-point lessons derive the legacy block shape', () => {
   const lesson = normalizeLesson(input, (id) => id === 'template');
   expect(lesson.blocks).toEqual([
     { kind: 'objective', md: 'Learn the idea.' },
-    { kind: 'intuition', md: '### First\n\nExplain.' },
+    {
+      kind: 'intuition',
+      md: '### First\n\nExplain.\n\n**Why this is useful.** It supports the next calculation.',
+    },
     { kind: 'worked', md: 'Work.' },
     { kind: 'check', exercise: 'fixed' },
-    { kind: 'intuition', md: '### Second\n\nExplain.' },
+    {
+      kind: 'intuition',
+      md: '### Second\n\nExplain.\n\n**Why this is useful.** It supports the next calculation.',
+    },
     { kind: 'worked', md: 'Work.' },
     { kind: 'check', exercise: 'fixed' },
     { kind: 'check', exercise: 'final-explain' },
@@ -450,14 +500,14 @@ test('a valid knowledge-point lesson with a parameterised practice problem passe
     {
       id: 'kp-valid-one',
       title: 'A valid point',
-      explain: 'A concise explanation.',
+      explain: 'A concise explanation.\n\n**Why this is useful.** It supports the next step.',
       worked: 'This example shows a complete worked example.',
       problems: ['kp-template-one', 'kp-fixed-one', 'kp-fixed-two'],
     },
     {
       id: 'kp-valid-two',
       title: 'Another valid point',
-      explain: 'A concise explanation.',
+      explain: 'A concise explanation.\n\n**Why this is useful.** It supports the next step.',
       worked: 'This example shows another complete worked example.',
       problems: ['kp-template-two', 'kp-fixed-three', 'kp-fixed-four'],
     },
@@ -534,12 +584,12 @@ test('knowledge-point rules reject short, duplicate, missing, non-practice, and 
       'knowledge point must reference at least 3 problems',
       expect.stringContaining('problem "practice-one" is listed more than once'),
       expect.stringContaining('references missing problem "missing"'),
-      expect.stringContaining('problem "vectors-magnitude" must have practice role'),
+      expect.stringContaining('problem "vectors-magnitude" must have practice or check role'),
       expect.stringContaining('problem "derivatives-explain" belongs to "derivatives"'),
       expect.stringContaining(
         'problem "practice-one" is listed more than once across knowledge points',
       ),
-      expect.stringContaining('knowledge point needs 5 fixed problems or at least 1 template'),
+      expect.stringContaining('knowledge point needs 3 fixed problems or at least 1 template'),
       'practice exercise is not referenced by a knowledge point',
       expect.stringContaining(
         'practice exercise must be referenced by exactly one knowledge point',
