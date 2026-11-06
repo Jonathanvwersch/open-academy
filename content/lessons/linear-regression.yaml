@@ -37,7 +37,7 @@ knowledge_points:
 
       These are effects in the model, not proof that changing a real house causes the same price change. Comparing weight numbers alone is misleading if their feature units differ.
 
-      **Why this is useful.** Reading units lets us check whether a fitted house-price model's changes have a sensible scale.
+      **Why this is useful.** Reading a weight in its units is how you check a trained model makes sense: an area weight of 25 thousand pounds per ten square metres is plausible, and 25 million would mean something went wrong.
     worked: |
       This example shows the effect of changing one house feature while holding the others fixed.
 

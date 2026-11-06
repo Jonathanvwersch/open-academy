@@ -15,7 +15,7 @@ test('lesson Markdown renders GFM tables', () => {
 });
 
 test('all authored lesson Markdown and exercise prompts render without errors', async () => {
-  const content = await loadContent(undefined, { validate: false });
+  const content = await loadContent();
   const samples = [
     ...content.lessons.flatMap((lesson) => [
       ...lesson.blocks.flatMap((block) =>

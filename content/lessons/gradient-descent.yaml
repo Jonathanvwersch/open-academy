@@ -1,52 +1,30 @@
 concept: gradient-descent
-version: 2
+version: 3
 objective: |
-  **Goal:** take gradient-descent steps by hand, choose and diagnose a learning rate, and implement a loop that fits a linear house-price model.
+  **Goal:** use the gradient to update every house-model parameter in a direction that lowers loss.
 where_this_fits: |
-  Your house-price model predicts too little for the houses in its training data. You can measure its loss, but how should you change its weights to make the prices better? Trying a grid of values works for one weight, but with ten choices for each weight, every extra weight multiplies the number of combinations by ten. Random nudges also spend trials moving uphill. Gradient descent uses the current loss slopes to choose a downhill step, then repeats from the new setting. This turns fitting a model into a repeatable calculation rather than a search through every possible setting. Later, stochastic and minibatch gradient descent make these updates practical on large datasets, momentum and Adam refine the step, and backpropagation supplies the slopes for neural networks.
+  Gradients collected one loss slope for each weight and the bias. A gradient tells us which way loss rises fastest at the current parameters, but it does not itself change the model. Gradient descent takes a small step in the opposite direction, then recomputes the slopes at the new parameters.
 knowledge_points:
   - id: gd-downhill-update
-    title: Change the price weight in the downhill direction
+    title: Update the house model opposite its gradient
     explain: |
-      You have a house-price model, but its current weight gives poor prices. **How should you change the weight?** The obvious attempt is to try many weights and keep the best, but every trial costs a loss calculation, and the number of trials explodes once there are many weights. You need a repeatable way to improve the current setting using the slope of its loss.
+      **What gradient descent is.** Gradient descent repeatedly subtracts a scaled loss gradient from the model parameters.
 
-      For one 100 m² house sold for £300,000, measure size in hundreds of square metres and price in hundreds of thousands of pounds. The input is $x=1$, the target is $y=3$, and the model predicts $\hat y=wx$ with adjustable weight $w$ and no bias. Its squared-error loss is $L(w)=(w-3)^2$, where $L$ names the loss. The derivative $L'(w)=2(w-3)$ tells you which way increases loss.
+      **How it works.** For $x=(12,3,20)$, $y=330$, $w=(25,10,-1)$ and $b=0$, the prediction is 310 and $\nabla L=(-480,-120,-800,-40)$. With learning rate $\eta=0.0001$, update weights and bias together:
 
-      **Gradient descent** moves the other way. The **learning rate** $\eta$ ("eta") scales the step. Here $t$ counts updates, $w_t$ is the current weight and $w_{t+1}$ is the next one:
+      $$w'=w-\eta\nabla_w L=(25.048,10.012,-0.92),\qquad b'=b-\eta\frac{\partial L}{\partial b}=0.004.$$
 
-      $$w_{t+1}=w_t-\eta L'(w_t).$$
+      The new prediction is 312.216 and the loss falls from $400$ to $(312.216-330)^2=316.270656$. Why subtract the gradient? Its direction is steepest local increase, so the opposite points toward a local decrease.
 
-      A negative slope makes the weight increase; a positive slope makes it decrease. Why does this work? A slope describes the curve's local tilt, so moving against that tilt takes you down rather than up, provided the step is small enough.
-
-      With several parameters collected in $\theta$ ("theta"), use their gradient $\nabla L(\theta)$, the vector of loss slopes:
-
-      $$\theta\leftarrow\theta-\eta\nabla L(\theta).$$
-
-      The arrow means "replace with". Why this way? One slope calculation gives the downhill direction for every weight at once, whereas trial nudges need extra loss calculations for each weight.
+      **Why this is useful.** This update gives a precise way to improve the same house-price model from its current prediction error.
     worked: |
-      This example shows three updates improving the price of the same house.
+      This example shows the calculation.
+      Start with $L=(w\cdot x+b-y)^2$ and error $310-330=-20$, so the gradient is $(-480,-120,-800,-40)$.
 
-      Start at $w_0=0$ with $\eta=0.25$.
-
-      | Update | Current slope | Next weight | New loss |
-      |---|---|---|---|
-      | 1 | $2(0-3)=-6$ | $0-0.25(-6)=1.5$ | $(1.5-3)^2=2.25$ |
-      | 2 | $2(1.5-3)=-3$ | $1.5-0.25(-3)=2.25$ | $(2.25-3)^2=0.5625$ |
-      | 3 | $2(2.25-3)=-1.5$ | $2.25-0.25(-1.5)=2.625$ | $(2.625-3)^2=0.140625$ |
-
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 260" aria-label="Three gradient-descent steps move down a loss curve towards the best price weight of 3">
-        <path d="M50 25 V220 H565" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
-        <path d="M80 45 Q280 382 480 45" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="3"/>
-        <path d="M80 45 L180 172 L230 204 L255 212" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="3"/>
-        <circle cx="80" cy="45" r="5" fill="#10b981"/><circle cx="180" cy="172" r="5" fill="#10b981"/><circle cx="230" cy="204" r="5" fill="#10b981"/><circle cx="255" cy="212" r="5" fill="#10b981"/>
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <text x="10" y="18">Loss</text><text x="84" y="35">Start: 0</text><text x="110" y="158">1.5</text><text x="189" y="195">2.25</text><text x="274" y="197">2.625</text><text x="267" y="241">3: best weight</text><text x="495" y="241">Weight</text>
-        </g>
-      </svg>
-      ```
-
-      Each update halves the distance to the best weight, so the predictions approach the actual price.
+      1. Multiply the weight slopes by $\eta$: $-0.0001(-480,-120,-800)=(0.048,0.012,0.08)$.
+      2. Add that change to the weights: $w'=(25.048,10.012,-0.92)$.
+      3. Update bias: $b'=0-0.0001(-40)=0.004$.
+      4. Predict: $12(25.048)+3(10.012)+20(-0.92)+0.004=312.216$.
     problems:
       [
         gdp-why-negative-slope,
@@ -57,41 +35,18 @@ knowledge_points:
         gdp-repeat,
       ]
   - id: gd-step-size
-    title: Choose a step that gets closer rather than overshooting
+    title: Keep the learning rate small enough
     explain: |
-      Three updates still left the weight short of 3. **Why not take bigger steps to get there faster?** The slope only describes the loss near the current weight, so a big step can jump past the best weight and land with a larger error. The learning rate decides how far you trust it.
+      **What the learning rate is.** The learning rate $\eta$ is the positive scale that sets how far each gradient-descent update moves.
 
-      Successive weights are called **iterates**. They **converge** when they approach the best weight, written $w^\star$ ("w star"). They **diverge** when they move farther away.
+      **How it works.** In the house example the area and age features are 12 and 20, so their partial derivatives multiply the error by those values. That makes their slopes large; even a modest learning rate could move a weight too far and raise the loss. A small rate makes the update cautious. If it is too small, improvement is slow; if too large, the loss can overshoot and rise.
 
-      For a bowl-shaped loss $L(w)=a(w-w^\star)^2$, the positive number $a$ controls how steep the bowl is. Our house example has $a=1$ and $w^\star=3$.
+      Why can the same rate move two weights by different amounts? Each change is the rate times that parameter's own slope.
 
-      Substitute its slope $2a(w-w^\star)$ into the update and subtract the best weight from both sides:
-
-      $$w_{t+1}-w^\star=(1-2a\eta)(w_t-w^\star).$$
-
-      Why does this work? Each update multiplies the gap to the best weight by the same factor, $1-2a\eta$. A negative factor means you jumped to the other side of the bottom, which is fine as long as the gap got smaller:
-
-      - Between 0 and 1: approach from the same side, called **monotonic** approach.
-      - Between −1 and 0: cross sides but get closer, called **damped oscillation**.
-      - Magnitude greater than 1: get farther away and diverge.
-
-      Thus $0<\eta<1/(2a)$ approaches monotonically; $1/(2a)<\eta<1/a$ oscillates but converges. At $\eta=1/(2a)$ this exact bowl reaches the minimum in one step; at $\eta=1/a$ it keeps crossing without improving unless already at the minimum.
-
-      Why this way? Scaling by the slope makes steps shrink as this bowl flattens near its minimum.
+      **Why this is useful.** Choosing a cautious rate prevents the large area- and age-feature slopes from destabilising house-price training.
     worked: |
-      This example shows why crossing the best house-price weight is not always a failure.
-
-      Use $L(w)=(w-3)^2$, starting at 0.
-
-      | Rate | First weight | Second weight | Losses, including start |
-      |---|---|---|---|
-      | 0.1 | $0-0.1(-6)=0.6$ | $0.6-0.1(-4.8)=1.08$ | $9,\ 5.76,\ 3.6864$ |
-      | 0.75 | $0-0.75(-6)=4.5$ | $4.5-0.75(3)=2.25$ | $9,\ 2.25,\ 0.5625$ |
-      | 1.1 | $0-1.1(-6)=6.6$ | $6.6-1.1(7.2)=-1.32$ | $9,\ 12.96,\ 18.6624$ |
-
-      Read a **loss curve** as loss plotted against update count: a smooth fall shows progress, a plateau shows little change, and rapidly growing loss suggests an unstable rate. A plateau alone does not prove the rate is too small; you might already be near the minimum. Exploding calculations can reach NaN, meaning "not a number".
-
-      Crossing the minimum can still improve loss; crossing with increasing distance is the warning sign.
+      This example shows the calculation.
+      The area and age contributions to the gradient are $-480$ and $-800$. Multiplying by the learning rate and subtracting gives changes $+0.048$ and $+0.08$. Their different sizes come from the different feature values.
     problems:
       [
         gdp-rate-choice,
@@ -102,33 +57,23 @@ knowledge_points:
         gdp-why-learning-rate,
       ]
   - id: gd-price-gradients
-    title: Work out the slopes from house-price errors
+    title: Each feature sets its own weight slope
     explain: |
-      Real training uses many sales, not one. Suppose you have two: a 100 m² house sold for £200,000 and a 200 m² house sold for £400,000. In the same scaled units, their input and target pairs are $(1,2)$ and $(2,4)$. **How do the two errors tell you which way to move the weight?** The obvious attempt is to average the errors. But that ignores a difference between the houses: when the weight changes, the bigger house's prediction changes twice as much.
+      **What a parameter gradient is.** It is the loss's partial derivative with respect to one adjustable weight or bias.
 
-      Keep the model $\hat y=wx$ without a bias. For one house with size $x$ and price $y$, expanding its squared error gives $w^2x^2-2wxy+y^2$. Treat $x$ and $y$ as fixed numbers. Differentiating with respect to $w$ gives $2wx^2-2xy=2x(wx-y)$.
+      **How it works.** For squared error $L=(w\cdot x+b-y)^2$, let $e=\hat y-y$. The chain rule gives $\partial L/\partial w_j=2e x_j$ and $\partial L/\partial b=2e$. Thus the house with error $-20$ and features $(12,3,20)$ has weight slopes $(-480,-120,-800)$ and bias slope $-40$. The features scale the same prediction error differently.
 
-      The **residual** $r_i=\hat y_i-y_i$ is just the prediction error for house $i$. For $n$ houses, average their slope contributions:
+      Why does the age weight have a larger-magnitude slope than the bedroom weight here? The age feature is 20, compared with 3 bedrooms.
 
-      $$\frac{\partial L}{\partial w}=\frac{2}{n}\sum_{i=1}^n x_i r_i.$$
-
-      The partial-derivative symbol means the loss slope when you change this weight and keep anything else fixed. Each $x_i$ is a size and each $r_i$ its residual; the sum adds all houses.
-
-      Why does this work? A weight nudge changes a house's prediction by that nudge times its size. Why this way? Multiplying by the input accounts for that extra sensitivity. A bias $b$ adds equally to every prediction, so its slope is twice the mean residual.
+      **Why this is useful.** The feature-scaled slopes tell training how each house measurement should change its own weight.
     worked: |
-      This example shows one full weight update from the two sales.
+      This example shows the calculation.
+      With $e=-20$ and $x=(12,3,20)$:
 
-      Start at $w=0$ and use rate $\eta=0.1$.
-
-      1. Predictions: $0\times1=0$ and $0\times2=0$.
-      2. Residuals: $0-2=-2$ and $0-4=-4$.
-      3. Multiply by inputs: $1(-2)=-2$ and $2(-4)=-8$.
-      4. Average doubled contributions: $(2/2)(-2-8)=-10$.
-      5. Update: $w_{\text{new}}=0-0.1(-10)=1$; the subscript "new" means the value after the step.
-
-      From $w=1$ instead, the residuals are −1 and −2, the slope is $(2/2)(-1-4)=-5$, and the next weight is $1-0.1(-5)=1.5$.
-
-      Both steps increase the weight because both houses are underpriced.
+      - $\partial L/\partial w_1=2(-20)(12)=-480$.
+      - $\partial L/\partial w_2=2(-20)(3)=-120$.
+      - $\partial L/\partial w_3=2(-20)(20)=-800$.
+      - $\partial L/\partial b=2(-20)=-40$.
     problems:
       [
         gdp-why-input-factor,
@@ -139,42 +84,18 @@ knowledge_points:
         gdp-bias-slope,
       ]
   - id: gd-training-loop
-    title: Repeat prediction, error, slope and update
+    title: Repeat prediction, loss, gradient and update
     explain: |
-      One update moved the weight from 0 to 1, but the best weight is 2, so you need many updates. **Can you work out the slope once and reuse it?** No. After each update the predictions change, so the residuals change, and so does the slope. Reusing the first residuals would keep pushing as hard as at the start, even as the model gets close.
+      **What a training loop is.** It is the repeated sequence of predicting, measuring loss, calculating gradients and updating parameters.
 
-      A **training loop** repeats four jobs: predict, calculate errors, calculate slopes, then update the parameters. Why does this work? Recalculating slopes is like checking the tilt under your feet after moving down a curved hill: the old tilt no longer describes where you stand.
+      **How it works.** For each pass over the training houses, compute current predictions and losses, find the average loss gradient, and apply one gradient-descent update. Then calculate new predictions from the changed parameters. Reusing the old gradient would move according to slopes at the wrong point.
 
-      Store the house inputs in matrix $X$, with one row per house and one column per feature. If there are $n$ houses and $d$ features, `X` has shape `(n, d)`, the weight vector `w` has shape `(d,)`, and the target array `y` has shape `(n,)`. The bias `b` is one number.
+      Why calculate fresh predictions after an update? The updated weights define a different model, so its errors and slopes have changed.
 
-      In NumPy, `X @ w + b` predicts every price. Store residuals in array `r`. The transpose `X.T` turns columns into rows, so `X.T @ r` adds each feature times its residual over houses. Its shape is `(d,)`, one slope per weight. Dividing by `len(y)` averages over houses, not features. Why this way? Calculate all slopes before changing any parameter, so they all describe the same model. Check the loss after each step for divergence.
+      **Why this is useful.** Repeating this loop lets the house-price model improve across many observed sales rather than making a single adjustment.
     worked: |
-      This example shows a loop that handles every house at once with array operations, for the same two house sales, now allowing a bias.
-
-      ```python
-      import numpy as np
-      X = np.array([[1.], [2.]])
-      y = np.array([2., 4.])
-      w = np.array([0.])
-      b = 0.
-      lr = 0.1  # learning rate
-      steps = 20
-      for step in range(steps):
-          y_hat = X @ w + b
-          r = y_hat - y
-          dw = 2 * X.T @ r / len(y)
-          db = 2 * r.mean()
-          w = w - lr * dw
-          b = b - lr * db
-          new_r = X @ w + b - y
-          print((new_r ** 2).mean())
-      ```
-
-      On the first step, `r` is `[-2, -4]`, `dw` is `[-10]` and `db` is $2(-2-4)/2=-6$. The new weight is 1 and the new bias is $0-0.1(-6)=0.6$.
-
-      New predictions are $1+0.6=1.6$ and $2+0.6=2.6$. The loss falls from $(4+16)/2=10$ to $(0.16+1.96)/2=1.06$.
-
-      Recompute the errors next time: both parameters have changed what the model predicts.
+      This example shows the calculation.
+      After the first update, the prediction is 312.216 and the error is $-17.784$. The next gradient is $2(-17.784)(12,3,20,1)=(-426.816,-106.704,-711.36,-35.568)$, so the next pass must use fresh slopes.
     problems:
       [
         gdp-loop-order,
@@ -186,8 +107,8 @@ knowledge_points:
       ]
 final: gd-explain-training
 summary: |
-  - Subtract the learning rate times the current loss gradient, then recompute it at the new parameters.
-  - Too-small rates can give slow progress; too-large rates can overshoot and diverge. Check the loss curve and whether distances shrink.
-  - For a linear price model, average error-times-input contributions for weights and errors for the bias, then repeat prediction, error, slope and update.
+  - Gradient descent subtracts a scaled gradient from every weight and the bias.
+  - Large feature values can create large slopes, so the learning rate must keep updates controlled.
+  - Training repeats prediction, loss, gradient and update with fresh values.
 
-  **Where you'll use this:** stochastic and minibatch gradient descent take these steps on small batches of data, momentum and Adam refine the step, and backpropagation computes the slopes for neural networks.
+  **Next:** Training and test splits show whether these updates generalise to houses the model has not seen.

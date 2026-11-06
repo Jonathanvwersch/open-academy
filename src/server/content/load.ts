@@ -57,7 +57,6 @@ export function resolveContentDirectory(directory = process.env.CONTENT_DIR ?? '
 
 export async function loadContent(
   directory = process.env.CONTENT_DIR ?? 'content',
-  options: { validate?: boolean } = {},
 ): Promise<ContentIndex> {
   const root = resolveContentDirectory(directory);
   const data: ContentSourceData = { concepts: [], lessons: [], exercises: [], projects: [] };
@@ -199,7 +198,7 @@ export async function loadContent(
     }
   }
 
-  if (options.validate !== false) issues.push(...validateContent(data));
+  issues.push(...validateContent(data));
   if (issues.length > 0) {
     throw new ContentValidationError(issues);
   }

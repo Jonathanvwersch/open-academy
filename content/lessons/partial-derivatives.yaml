@@ -56,7 +56,7 @@ knowledge_points:
 
       For our house, $e=-20$, so $\partial L/\partial b=-40$. The data values $x$ and $y$ stay fixed: they describe the recorded house and sale, not settings the model can tune.
 
-      **Why this is useful.** Keeping data fixed lets training attribute each loss change to an adjustable model parameter.
+      **Why this is useful.** The bias is trained the same way as the weights, so the full set of slopes the next lesson collects has one entry per weight plus one for the bias.
     worked: |
       This example shows the weight and bias partials for the house sold for 330 thousand pounds.
 

@@ -50,7 +50,7 @@ const provider: TutorProvider = {
 let app: ReturnType<typeof createApp>;
 
 beforeAll(async () => {
-  content = await loadContent('content', { validate: false });
+  content = await loadContent('content');
   app = createApp({ db, content, tutorProvider: provider });
 });
 beforeEach(async () => {

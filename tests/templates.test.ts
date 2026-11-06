@@ -8,7 +8,7 @@ import {
 } from '../src/server/content/templates.js';
 
 test('template instantiation is deterministic and samples different seeds', async () => {
-  const content = await loadContent(undefined, { validate: false });
+  const content = await loadContent();
   const template = content.exercisesById.get('slp-predict');
   if (!template || !isTemplate(template)) throw new Error('Missing prediction template');
   expect(instantiateExercise(template, 13)).toEqual(instantiateExercise(template, 13));
@@ -18,7 +18,7 @@ test('template instantiation is deterministic and samples different seeds', asyn
 });
 
 test('template constraints hold for sampled seeds', async () => {
-  const content = await loadContent(undefined, { validate: false });
+  const content = await loadContent();
   const template = content.exercisesById.get('slp-error-sum');
   if (!template || !isTemplate(template)) throw new Error('Missing constrained template');
   for (let seed = 0; seed < 20; seed += 1) {

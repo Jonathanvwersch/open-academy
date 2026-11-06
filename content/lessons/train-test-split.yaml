@@ -1,152 +1,99 @@
 concept: train-test-split
-version: 2
+version: 3
 objective: |
-  **Goal:** explain what training, validation and test sets are each for, and spot data leakage.
+  **Goal:** separate house sales used to fit a model from sales used to choose it and evaluate it fairly.
 where_this_fits: |
-  An estate agent has 1,000 past house sales and wants to trust a model's suggested asking prices. Checking its predictions on those same sales seems sensible, but a model could remember every answer and still price the next house badly. Keeping some sales out of training gives it questions it could not memorise. You also need separate sales for comparing versions, because repeatedly choosing the best score can reward a lucky result. Training, validation and test sets separate learning, choosing and reporting, so your final score better reflects the job you actually need done. You'll use these checks in evaluation metrics to score predictions, in overfitting and underfitting to compare training with new-data results, and in debugging training runs to investigate misleading scores.
+  Gradient descent adjusted the house-price model to reduce errors on observed sales. A low training loss alone does not show that the model predicts new houses well, because it may have fitted details of those examples. We need to hold out sales and check prediction errors on houses the model has not seen.
 knowledge_points:
   - id: tts-why-hold-out
-    title: Why test on houses the model hasn't seen
+    title: Test on houses the model has not seen
     explain: |
-      An estate agent has 1,000 past house sales and wants a model to suggest asking prices. **How can you check whether it will price a new house well?**
+      **What a held-out test is.** A test set is a group of house sales kept separate from fitting so it can estimate how well a trained model predicts unseen houses.
 
-      The obvious check is to measure its errors on those same sales. But a model can learn the training prices by heart, like a student who memorises last year's exam answers. Low error on familiar houses does not show that it can price new ones.
+      **How it works.** Fit the weights using training houses, then predict prices for separate test houses without updating the model from their sale prices. Compare each prediction with its known sale. If the model memorised the training examples, its training error can be small while test error remains large.
 
-      Keep 200 sales out of training. These are **held-out data**, examples reserved for checking predictions. Why does this work? Their prices could not guide the model's training, so remembering training answers cannot help it pass this check.
+      Why must test sale prices stay hidden during training? Using them to adjust weights would make the test no longer independent.
 
-      Why this way? Error on held-out houses is a fairer estimate for new houses like them than error on houses used for training.
+      **Why this is useful.** A held-out score checks whether house-price predictions work beyond the sales used to fit the weights.
     worked: |
-      This example shows that training error can look perfect while error on new houses is bad.
-
-      From the 1,000 sales, use 800 to train two models and keep 200 out of training.
-
-      - **Model A** memorises: for any house it trained on, it returns that house's exact sale price. For any other house, it returns the price of the most similar house it remembers.
-      - **Model B** adds contributions from house size and bedroom count: $\hat y = w_1 \cdot \text{size} + w_2 \cdot \text{bedrooms} + b$. Here $\hat y$ is the predicted price, $w_1$ and $w_2$ are learned multipliers, and $b$ is a fixed amount added to each prediction.
-
-      Measure price in thousands of pounds. Square each prediction error and average over the sales:
-
-      | | 800 training sales | 200 held-out sales |
-      |---|---|---|
-      | Model A | 0 | 2,500 |
-      | Model B | 400 | 450 |
-
-      Model A has no error on its training sales. Its average squared error on the 200 unfamiliar houses is more than five times Model B's. The held-out results therefore give a reason to prefer Model B, despite its higher training error. Use these sales to compare the models, not as a final test after choosing one.
+      This example shows the calculation.
+      Suppose a model fits 700 sales and predicts 150 different sales. If it predicts those held-out prices with small errors, that is evidence of generalisation; the fitting error alone cannot provide that evidence.
     problems:
-      - ttsp-honest-estimate
-      - ttsp-memoriser
-      - ttsp-heldout-error
-      - ttsp-pick-model
-      - ttsp-why-hold-out
-      - ttsp-robot-heldout
+      [
+        ttsp-honest-estimate,
+        ttsp-memoriser,
+        ttsp-heldout-error,
+        ttsp-pick-model,
+        ttsp-why-hold-out,
+        ttsp-robot-heldout,
+      ]
   - id: tts-three-splits
-    title: Training, validation and test sets
+    title: Separate training, validation and test houses
     explain: |
-      You want to compare three house-price models using your 1,000 sales. **Can you choose the best version and report its error using the same held-out houses?** Choosing the lowest error favours whichever version happened to suit those particular houses. Instead, divide the sales into three sets, each a separate collection of examples.
+      **What the three splits are.** Training data fits model parameters; validation data chooses between model versions or settings; test data gives the final evaluation.
 
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 124" aria-label="1,000 house sales split into 700 training, 150 validation and 150 test sales">
-        <rect x="0" y="4" width="444" height="44" rx="6" fill="#10b981"/>
-        <rect x="448" y="4" width="94" height="44" rx="6" fill="#f59e0b"/>
-        <rect x="546" y="4" width="94" height="44" rx="6" fill="#3b82f6"/>
-        <text x="222" y="32" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#ffffff">Training 70%</text>
-        <text x="495" y="32" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">15%</text>
-        <text x="593" y="32" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#ffffff">15%</text>
-        <rect x="0" y="72" width="12" height="12" rx="2" fill="#10b981"/>
-        <text x="20" y="83" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Train: 700 sales</text>
-        <text x="20" y="104" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">learn the parameters</text>
-        <rect x="220" y="72" width="12" height="12" rx="2" fill="#f59e0b"/>
-        <text x="240" y="83" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Validation: 150 sales</text>
-        <text x="240" y="104" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">choose a version</text>
-        <rect x="440" y="72" width="12" height="12" rx="2" fill="#3b82f6"/>
-        <text x="460" y="83" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Test: 150 sales</text>
-        <text x="460" y="104" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">final check, used once</text>
-      </svg>
-      ```
+      **How it works.** Split house sales before fitting. Use training sales to calculate gradients and update weights. Compare alternatives on validation sales, but do not fit weights on them. After choosing, report the selected model's score once on the test sales. Why keep test houses separate from model selection? Repeatedly choosing by their scores indirectly fits the model to them.
 
-      - **Training set:** use these sales to learn the model's parameters, its adjustable numbers.
-      - **Validation set:** compare trained versions using their prediction errors on these sales.
-      - **Test set:** check the chosen version once, after all decisions are finished.
-
-      Why does this work? Each set answers its question using sales that played no part in the earlier steps. The validation houses didn't set the parameters, and the test houses didn't influence which version you picked, so the test score is like a first look at genuinely new houses.
-
-      Why this way? The separate test set checks your choice on houses that have not guided it. The 70/15/15 proportions shown above are an example, not a rule.
+      **Why this is useful.** Three separate groups let you tune a house-price model without making its final score optimistic.
     worked: |
-      This example shows each set doing its one job.
-
-      You train three versions of the house-price model on the 700 training sales, then price the 150 validation sales with each one:
-
-      | version | average squared error on validation |
-      |---|---|
-      | uses size only | 620 |
-      | uses size and bedrooms | 460 |
-      | uses size, bedrooms and location | 510 |
-
-      "Size and bedrooms" has the lowest validation error, so you pick it. Only now do you price the 150 test sales with it, once. The error is 480, and that's the number you report.
-
-      You don't go back and swap versions because of the test result. If you did, the test set would turn into a second validation set.
+      This example shows the calculation.
+      From 1,000 house sales, one split might use 700 for training, 150 for validation and 150 for test. Only training sales update weights; validation selects a version; test evaluates the chosen version.
     problems:
-      - ttsp-which-set-fit
-      - ttsp-split-counts
-      - ttsp-which-set-choose
-      - ttsp-why-separate-test
-      - ttsp-swap-after-test
-      - ttsp-pick-version
+      [
+        ttsp-which-set-fit,
+        ttsp-split-counts,
+        ttsp-which-set-choose,
+        ttsp-why-separate-test,
+        ttsp-swap-after-test,
+        ttsp-pick-version,
+      ]
   - id: tts-hyperparameters
-    title: Hyperparameters, and why the best score can look too good
+    title: Choose settings without tuning on the test set
     explain: |
-      You try 20 versions of the house-price model on 150 validation sales. **Why might the winning score look better than the model really is?** Choosing the lowest error seems fair, but it also rewards luck in which houses were reserved.
+      **What a hyperparameter is.** It is a model setting chosen outside the fitted weights, such as the number of hidden units.
 
-      - **Parameters** are numbers learned from training sales, such as the multipliers in the price rule.
-      - **Hyperparameters** are settings chosen before training, such as whether to use size, bedrooms or both.
+      **How it works.** Train each candidate on the training houses and compare their validation errors. Select settings using validation data, then evaluate the selected model once on test houses. If many candidates are tried, the best validation score may partly reflect luck in that particular split.
 
-      Compare hyperparameters on validation sales. Why does this work? Those houses did not set the learned parameters, so their errors check predictions beyond the training examples. However, the winning version may happen to suit these particular houses unusually well. Its validation error can be **optimistic**, meaning lower than you should expect on other new houses.
+      Why should test error not choose the number of hidden units? That would turn test examples into part of model selection.
 
-      Why this way? Keep the test set untouched by these comparisons, so it can check the chosen model on different houses.
+      **Why this is useful.** Validation data helps choose house-model settings while keeping the final test score meaningful.
     worked: |
-      This example shows why the best validation score is optimistic.
-
-      You try 20 hyperparameter settings. Their validation errors range from 410 to 700, and you keep the setting that scored 410.
-
-      On the 150 test sales that setting scores 455. The difference is $455-410=45$. This does not by itself show a mistake in the program. Some of the low validation error may reflect a lucky match to those particular houses. Report 455 because these test houses played no part in choosing the setting, rather than selecting whichever score looks better.
+      This example shows the calculation.
+      If house-price models have different numbers of hidden units, fit each on the same training split, select using validation error, and reserve test houses for the final check.
     problems:
-      - ttsp-param-or-hyper-w
-      - ttsp-param-or-hyper-inputs
-      - ttsp-why-not-train-choose
-      - ttsp-why-best-of-many
-      - ttsp-gap-calc
+      [
+        ttsp-param-or-hyper-w,
+        ttsp-param-or-hyper-inputs,
+        ttsp-why-not-train-choose,
+        ttsp-why-best-of-many,
+        ttsp-gap-calc,
+      ]
   - id: tts-leakage
-    title: Leakage, when test information sneaks into training
+    title: Prevent information leakage across house splits
     explain: |
-      Your table has 1,000 house sales, including repeated records and missing sizes. **Is splitting the rows at random enough for a fair test?** No: information about the test houses can still enter training. This is **data leakage**.
+      **What data leakage is.** Leakage happens when information from held-out examples influences fitting or model selection before final evaluation.
 
-      - **Duplicate rows** are copies of the same sale. Remove exact copies before splitting, or keep them in one set.
-      - **Related records** include a house sold in both 2019 and 2023. Keep that house's sales together when testing on houses never seen before.
-      - **Preprocessing** means preparing inputs before training, such as filling missing sizes with an average. Split first, then calculate that average from training sales only. Use that same value to fill missing sizes in every set.
+      **How it works.** Keep every record for the same house in one split. Calculate preprocessing values, such as a mean used to fill a missing area, from training houses only, then apply that value to validation and test houses. Otherwise held-out information can make the score look better than real future predictions.
 
-      Why does this work? Keeping copies and related sales together stops a training answer revealing a test house's price. Using only training sales for the average stops test sizes shaping the model's inputs.
+      Why can duplicate records cause leakage? The same sale in both training and test lets the model see the answer before evaluation.
 
-      Why this way? Hiding test prices alone is not enough; test information can also arrive through house details.
+      **Why this is useful.** Preventing leakage keeps house-price test errors representative of genuinely unseen sales.
     worked: |
-      This example shows how duplicates make a test score look too good.
-
-      A table has 1,000 sales, but 100 of them are exact copies of other rows. After a random split, about 15 of the 150 test sales have a copy in the training set.
-
-      Suppose the model makes zero error on those 15 copies, while its average squared error on the other 135 sales is 480. Its reported average becomes $(15\times0+135\times480)/150=432$. The copies made it look better without improving predictions for new houses. Remove exact copies or keep them together before assigning the sets. Then train and evaluate again; the new score need not be exactly 480.
-
-      A robot can have the same problem. A **demonstration** is one recorded attempt to perform a task, such as picking up a parcel. Suppose each attempt contains 300 **video frames**, the individual pictures in the recording. Neighbouring pictures look almost identical. Keep each complete attempt in one set when testing on new attempts, rather than randomly splitting its pictures.
-
-      If you want to predict the robot's performance next week, use earlier complete attempts for training and later ones for validation and testing. A random split could let later recordings help predict earlier ones, which would not match that future job. Choose the split to match what will be new when the robot is used.
+      This example shows the calculation.
+      If two rows describe the same house sale, assign both to training or both to test, never one to each. Compute a missing-area fill value from training sales only.
     problems:
-      - ttsp-duplicate-leak
-      - ttsp-fill-average
-      - ttsp-dup-error
-      - ttsp-same-house
-      - ttsp-robot-frames
-      - ttsp-why-training-average
+      [
+        ttsp-duplicate-leak,
+        ttsp-fill-average,
+        ttsp-dup-error,
+        ttsp-same-house,
+        ttsp-robot-frames,
+        ttsp-why-training-average,
+      ]
 final: tts-explain
 summary: |
-  - Training error can look too good when a model remembers the examples. Check predictions on houses kept out of training.
-  - Train to learn the parameters, validate to choose between versions and hyperparameters, test once at the end to report.
-  - Leakage, meaning duplicates, summaries computed on all the data, or related records split apart, makes the test score too optimistic.
+  - Test predictions on sales the model did not use for fitting.
+  - Use training to fit, validation to choose, and test once for final evaluation.
+  - Keep duplicates and preprocessing information within the correct split to prevent leakage.
 
-  **Where you'll use this:** in evaluation metrics, you'll score held-out predictions; in debugging training runs, you'll compare training and new-data results to investigate misleading scores.
+  **Next:** Probability basics describes uncertainty in data and model predictions.

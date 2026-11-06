@@ -404,7 +404,7 @@ test('learn duration uses the concept estimate', () => {
 });
 
 test('new lessons follow outline order even when a later candidate has a higher score', async () => {
-  const fullContent = await loadContent(undefined, { validate: false });
+  const fullContent = await loadContent();
   const ids = new Set(['vectors', 'derivatives', 'probability-basics', 'supervised-learning']);
   const probabilityExerciseTemplate = fullContent.exercisesByConcept
     .get('supervised-learning')
@@ -519,13 +519,13 @@ test('new lessons follow outline order even when a later candidate has a higher 
 });
 
 test('outline positions place missing concepts last', async () => {
-  const fullContent = await loadContent(undefined, { validate: false });
+  const fullContent = await loadContent();
   expect(outlinePosition('vectors', fullContent)).toEqual([1, 2]);
   expect(compareOutlinePosition('vectors', 'not-in-outline', fullContent)).toBeLessThan(0);
 });
 
 test('a completed KP lesson satisfies a prerequisite despite introduced mastery', async () => {
-  const fullContent = await loadContent(undefined, { validate: false });
+  const fullContent = await loadContent();
   const masteryByKey = new Map([
     [
       masteryKey('supervised-learning', 'conceptual'),

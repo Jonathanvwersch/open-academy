@@ -20,10 +20,12 @@ const screenshotDir = '/home/ubuntu/screenshots/learn-course';
 const courseStructureScreenshotDir = '/home/ubuntu/screenshots/course-structure';
 const courseStructureBatch1ScreenshotDir = `${courseStructureScreenshotDir}/batch1`;
 const courseStructureBatch2ScreenshotDir = `${courseStructureScreenshotDir}/batch2`;
+const courseStructureBatch3ScreenshotDir = `${courseStructureScreenshotDir}/batch3`;
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(courseStructureScreenshotDir, { recursive: true });
 mkdirSync(courseStructureBatch1ScreenshotDir, { recursive: true });
 mkdirSync(courseStructureBatch2ScreenshotDir, { recursive: true });
+mkdirSync(courseStructureBatch3ScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async ({ page }) => {
@@ -200,6 +202,17 @@ test('authored course-structure lessons render their diagrams', async ({ page })
       });
     }
   }
+
+  await mockLessonReview(page, 'derivatives', 'Derivatives');
+  await page.goto('/lessons/derivatives');
+  await hideTutorLauncher(page);
+  const derivativeDiagram = page.getByRole('img', {
+    name: 'The squared loss curve near weight 25, with a tangent descending at slope minus 720',
+  });
+  await expect(derivativeDiagram).toBeVisible();
+  await derivativeDiagram.screenshot({
+    path: `${courseStructureBatch3ScreenshotDir}/derivatives-kp1.png`,
+  });
 });
 
 async function mockLessonReview(

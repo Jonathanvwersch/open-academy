@@ -25,7 +25,7 @@ let app: ReturnType<typeof createApp>;
 let content: ContentIndex;
 
 beforeAll(async () => {
-  content = await loadContent('content', { validate: false });
+  content = await loadContent('content');
   app = createApp({ db, content, tutorProvider: new FakeProvider() });
 });
 

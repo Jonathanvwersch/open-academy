@@ -84,7 +84,7 @@ test('explain exercises can use their exemplar without a separate solution', asy
 });
 
 test('client-safe template views hide expressions and sampling ranges', async () => {
-  const content = await loadContent(undefined, { validate: false });
+  const content = await loadContent();
   const template = required(content.exercisesById.get('slp-predict'), 'parameterised exercise');
   const serialized = serializeExercise(template);
   expect(serialized).not.toHaveProperty('answer_expr');

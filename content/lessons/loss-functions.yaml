@@ -10,9 +10,9 @@ knowledge_points:
     explain: |
       **What a loss is.** A loss is a non-negative score for how far a model's prediction is from the true price. Mean squared error (MSE) squares each miss and averages; mean absolute error (MAE) takes each miss's absolute value and averages.
 
-      **How it works.** The error is predicted price minus sale price. For three houses with errors $10,10,-20$ thousand pounds, the signed average is zero even though none is exact. Squaring or taking absolute values prevents opposite errors from cancelling:
-
       For $n$ houses, $\hat y_i$ is house $i$'s predicted price and $y_i$ its sale price. Absolute value, written with bars, is distance from zero, so $|-20|=20$.
+
+      **How it works.** The error is predicted price minus sale price. For three houses with errors $10,10,-20$ thousand pounds, the signed average is zero even though none is exact. Squaring or taking absolute values prevents opposite errors from cancelling. The formulas are:
 
       $$\text{MSE}=\frac{1}{n}\sum_{i=1}^n(\hat y_i-y_i)^2,\qquad \text{MAE}=\frac{1}{n}\sum_{i=1}^n|\hat y_i-y_i|.$$
 
