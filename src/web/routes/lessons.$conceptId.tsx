@@ -64,7 +64,7 @@ function LessonReviewPage() {
       {lesson.knowledge_points?.length ? (
         <div className="space-y-5">
           {objectiveBlock ? <LessonBlock kind="objective" md={objectiveBlock.md} /> : null}
-          {lesson.why ? <LessonBlock kind="why" md={lesson.why} /> : null}
+          {lesson.where_this_fits ? <LessonBlock kind="fits" md={lesson.where_this_fits} /> : null}
           {lesson.knowledge_points.map((point, index) => (
             <article key={point.id} className="space-y-4">
               <h2 className="text-xl font-semibold">

@@ -1,190 +1,80 @@
 concept: chain-rule
-version: 2
+version: 3
 objective: |
-  **Goal:** differentiate a formula inside a formula with the chain rule, and combine the effects when one input changes the result through several calculations.
-why: |
-  A robot estimates that a wall is 2 metres away when it is actually 1.8 metres away. Its model makes that prediction through several calculations. You want to adjust a weight, a number used in one calculation, to reduce the final error. Expanding the whole model into one formula would work, but becomes difficult as more calculations are added. The chain rule lets you work through them separately and combine their rates of change. It's the same reasoning as finding fuel used per hour from driving speed and fuel used per kilometre. If one weight affects the error in two ways, both effects count. You'll use this in computational graphs, backpropagation, and autodiff.
+  **Goal:** use the chain rule to find how a house-network parameter changes the final price loss.
+where_this_fits: |
+  The MLP forward pass turned the house features into a price through hidden values and an output layer. To train it, we must find how changing an early weight affects the final loss through every later calculation. The chain rule multiplies the local rates along that sequence.
 knowledge_points:
   - id: cr-rates-multiply
     title: Rates along a chain multiply
     explain: |
-      **How do we find a rate of change through two successive calculations?** The answer must account for both: how much the first output changes, and how much that change affects the final output. Its units must also match the rate we want.
+      **What the chain rule is.** It finds the derivative of a nested calculation by multiplying the derivative at each step.
 
-      Suppose driving time determines distance at 60 km per hour, and distance determines fuel use at 0.08 litres per km. One extra hour adds 60 km, each using 0.08 litres. Multiplication gives $60 \times 0.08 = 4.8$ litres per hour. Adding the rates would mix incompatible units.
+      **How it works.** For functions $f$ and $g$, $g\circ f$ means apply $f$ first, then $g$. In a small house network, area $a$ sets score $z=0.1a$, the hidden value is $h=\max(0,z)$, and the predicted price is $\hat y=15h+306.5$. At $a=12$, $z=h=1.2$. The local rates are $dh/dz=1$, $d\hat y/dh=15$, and $dz/da=0.1$, so $d\hat y/da=15\cdot1\cdot0.1=1.5$ thousand pounds per feature unit. Multiplying the rates works because each converts a change into the units of the next quantity.
 
-      This works because a small increase passes through each step in turn. In the picture, the added time first becomes added distance; that distance then becomes added fuel. Each step multiplies the change it receives.
-
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 130" aria-label="A chain from time to distance to fuel. Distance grows by 60 km per hour and fuel by 0.08 litres per km, so fuel grows by 4.8 litres per hour">
-        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3b82f6"/></marker></defs>
-        <rect x="2" y="20" width="150" height="50" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="245" y="20" width="150" height="50" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="488" y="20" width="150" height="50" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <text x="77" y="50" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">time t (hours)</text>
-        <text x="320" y="50" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">distance s (km)</text>
-        <text x="563" y="50" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">fuel F (litres)</text>
-        <line x1="154" y1="45" x2="241" y2="45" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow)"/>
-        <line x1="397" y1="45" x2="484" y2="45" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow)"/>
-        <text x="198" y="36" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 60</text>
-        <text x="198" y="64" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">km per hour</text>
-        <text x="441" y="36" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 0.08</text>
-        <text x="441" y="64" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">litres per km</text>
-        <text x="320" y="112" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#10b981">fuel per hour = 0.08 × 60 = 4.8 litres per hour</text>
-      </svg>
-      ```
-
-      Write $t$ for hours, $s$ for distance in km and $F$ for fuel in litres:
-
-      $$\frac{dF}{dt} = \frac{dF}{ds}\cdot\frac{ds}{dt} = 0.08 \times 60 = 4.8$$
-
-      This is the **chain rule**. If $x$ changes $u$, which changes $y$, then
-
-      $$\frac{dy}{dx} = \frac{dy}{du}\cdot\frac{du}{dx}.$$
-
-      For changing rates, use the derivatives at the current values. In a model, this lets us find how an early weight affects a later prediction without expanding every calculation into one formula.
+      **Why this is useful.** The product tells how a house input affects the network's final price through its hidden computation.
     worked: |
-      This example shows how six extra minutes affect your fuel budget.
+      This example shows the calculation.
+      For $a=12$, $z$ is positive, so the max operation has slope $dh/dz=1$:
 
-      Increase the driving time by 0.1 hours, which is 6 minutes.
-
-      1. You travel $0.1 \times 60 = 6$ km farther.
-      2. That distance uses $6 \times 0.08 = 0.48$ more litres.
-      3. Dividing by the added time gives $0.48 \div 0.1 = 4.8$ litres per hour.
-
-      That matches $\frac{dF}{ds}\cdot\frac{ds}{dt} = 0.08 \times 60 = 4.8$. The distance increase is multiplied by fuel per kilometre, so both rates matter.
+      $$\frac{d\hat y}{da}=\frac{d\hat y}{dh}\frac{dh}{dz}\frac{dz}{da}=15\cdot1\cdot0.1=1.5.$$
     problems:
-      - crp-total-rate
-      - crp-rate-product
-      - crp-why-multiply
-      - crp-local-meaning
-      - crp-robot-wheel
-      - crp-three-steps
+      [
+        crp-total-rate,
+        crp-rate-product,
+        crp-why-multiply,
+        crp-local-meaning,
+        crp-robot-wheel,
+        crp-three-steps,
+      ]
   - id: cr-nested-formulas
-    title: Differentiating a formula inside a formula
+    title: Differentiate a formula inside a formula
     explain: |
-      **How do we differentiate a function inside another function?** We need the outer function's slope at the value it actually receives. We also need to account for how quickly that value changes with the original input.
+      **What a composite function is.** It is a function whose input is first transformed by another function.
 
-      Take $y = (3x + 1)^2$. Expanding works, but becomes cumbersome for powers such as $(3x + 1)^{10}$. Instead, separate the calculations:
+      **How it works.** For the house network, let $z=0.1a$, $h=\max(0,z)$, $\hat y=15h+306.5$, and $L=(\hat y-330)^2$. At $a=12$, $\hat y=324.5$. The loss slope with respect to area multiplies each local derivative:
 
-      - The **inner function**, $u = 3x + 1$, turns $x$ into $u$.
-      - The **outer function**, $y = u^2$, squares that result.
+      $$\frac{dL}{da}=2(\hat y-330)\cdot15\cdot1\cdot0.1=-16.5.$$
 
-      At $x = 0$, we have $u = 1$. The inner derivative is 3 and the outer derivative is $2u = 2$, so $dy/dx = 2 \times 3 = 6$.
+      Including the max-operation derivative accounts for how the hidden value responds to its score.
 
-      This works because a small increase in $x$ becomes an increase three times as large in $u$. Near $u = 1$, squaring approximately doubles that increase. Following the arrows below therefore multiplies the two rates.
-
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 130" aria-label="x goes into the inner function u = 3x + 1, which goes into the outer function y = u squared. The local rates are 3 and 2u, so dy/dx = 2u times 3">
-        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3b82f6"/></marker></defs>
-        <rect x="2" y="20" width="110" height="50" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="230" y="20" width="160" height="50" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
-        <rect x="508" y="20" width="130" height="50" rx="8" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
-        <text x="57" y="50" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">x</text>
-        <text x="310" y="50" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">u = 3x + 1</text>
-        <text x="573" y="50" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">y = u²</text>
-        <text x="310" y="90" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">inner function</text>
-        <text x="573" y="90" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">outer function</text>
-        <line x1="114" y1="45" x2="226" y2="45" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow)"/>
-        <line x1="392" y1="45" x2="504" y2="45" stroke="#3b82f6" stroke-width="2" marker-end="url(#arrow)"/>
-        <text x="170" y="36" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">du/dx = 3</text>
-        <text x="448" y="36" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">dy/du = 2u</text>
-        <text x="320" y="120" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#10b981">dy/dx = 2u × 3 = 6(3x + 1)</text>
-      </svg>
-      ```
-
-      The derivatives are $du/dx = 3$ and $dy/du = 2u$, giving
-
-      $$\frac{dy}{dx} = \frac{dy}{du}\cdot\frac{du}{dx} = 2u \cdot 3 = 6(3x + 1)$$
-
-      Putting one function inside another is **composition**. Write $f(g(x))$ or $(f\circ g)(x)$, read "$f$ after $g$", for applying $g$ then $f$:
-
-      $$(f\circ g)'(x) = f'\big(g(x)\big)\cdot g'(x).$$
-
-      Omitting the inner derivative would ignore how quickly $u$ changes. For a robot model, $3x + 1$ could be a prediction error and $y$ its square; the derivative tells us how adjusting $x$ affects that squared error.
+      **Why this is useful.** The chain rule connects the house's final price error to an early network weight or input.
     worked: |
-      This example shows the same method for another nested formula, $y = (x^2 + 1)^3$, at $x = 1$.
-
-      1. Name the inner function: $u = x^2 + 1$, so $du/dx = 2x$.
-      2. Differentiate the outer function: $y = u^3$, so $dy/du = 3u^2$.
-      3. Multiply and put $u$ back: $dy/dx = 3(x^2 + 1)^2 \cdot 2x = 6x(x^2 + 1)^2$.
-
-      At $x = 1$, $u = 2$, so $dy/du = 3 \cdot 2^2 = 12$ and $du/dx = 2$. That gives $dy/dx = 12 \cdot 2 = 24$.
-
-      Forgetting the inner derivative would give 12, which is wrong by exactly the factor $du/dx = 2$.
+      This example shows the calculation.
+      At $a=12$, the loss error is $324.5-330=-5.5$ and the max-operation slope is 1. Therefore $dL/da=2(-5.5)(15)(1)(0.1)=-16.5$. For the weight $0.1$, the final factor is $dz/dw=a=12$, giving $dL/dw=-1980$.
     problems:
-      - crp-diff-cube
-      - crp-nested-slope
-      - crp-why-inner-factor
-      - crp-inner-outer
-      - crp-compose-notation
-      - crp-diff-log
+      [
+        crp-diff-cube,
+        crp-nested-slope,
+        crp-why-inner-factor,
+        crp-inner-outer,
+        crp-compose-notation,
+        crp-diff-log,
+      ]
   - id: cr-two-routes
-    title: When the input reaches the output by two routes
+    title: Add derivatives when an input has two routes
     explain: |
-      **What if one input changes the output in two different ways?** We must include both effects without counting either twice. Following only one sequence of calculations would miss part of the change.
+      **What a route is.** It is one sequence of operations through which an input affects an output.
 
-      For example, a trip's cost $C$, in pounds, includes fuel $F$ at £1.50 per litre and driving time $H$ at £12 per hour:
+      **How it works.** Suppose area contributes to two hidden values, $h_1=0.1a$ and $h_2=0.05a$, and the price score is $\hat y=15h_1+10h_2+306.5$. The two route rates are $15(0.1)=1.5$ and $10(0.05)=0.5$. Since both routes change the same output, add them: $d\hat y/da=2$. The route rates add because a small area change affects the output through both hidden values.
 
-      $$C = 1.5F + 12H$$
-
-      Both depend on distance $s$ in km: $F = 0.08s$ litres and $H = s/60$ hours at 60 km per hour. Each sequence from distance to cost is called a route.
-
-      - Fuel adds 1.5 pounds per litre × 0.08 litres per km = 0.12 pounds per km.
-      - Wages add 12 pounds per hour × $\tfrac{1}{60}$ hours per km = 0.20 pounds per km.
-
-      Together they add $0.12 + 0.20 = 0.32$ pounds per km.
-
-      This works because the same distance increase travels down both arrows in the picture. It produces extra fuel and extra driving time, whose costs join on one bill. Multiply within each route, then add their contributions.
-
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 210" aria-label="Distance s reaches cost C by two routes: through fuel F with rates 0.08 and 1.5, and through hours H with rates 1/60 and 12. The routes give 0.12 and 0.20, which add to 0.32">
-        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#737373"/></marker></defs>
-        <rect x="2" y="70" width="120" height="46" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="260" y="6" width="120" height="46" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
-        <rect x="260" y="134" width="120" height="46" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
-        <rect x="518" y="70" width="120" height="46" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <text x="62" y="98" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">distance s</text>
-        <text x="320" y="34" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">fuel F</text>
-        <text x="320" y="162" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">hours H</text>
-        <text x="578" y="98" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">cost C</text>
-        <line x1="122" y1="82" x2="256" y2="36" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
-        <line x1="122" y1="104" x2="256" y2="152" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
-        <line x1="380" y1="36" x2="514" y2="82" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
-        <line x1="380" y1="152" x2="514" y2="104" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
-        <text x="176" y="44" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#f59e0b">× 0.08</text>
-        <text x="464" y="44" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#f59e0b">× 1.5</text>
-        <text x="176" y="152" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 1/60</text>
-        <text x="464" y="152" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 12</text>
-        <text x="320" y="202" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#10b981">dC/ds = 0.12 (via fuel) + 0.20 (via hours) = 0.32</text>
-      </svg>
-      ```
-
-      The partial $\partial C/\partial F = 1.5$ holds hours fixed. The **multivariable chain rule** combines the rates:
-
-      $$\frac{dC}{ds} = \frac{\partial C}{\partial F}\cdot\frac{dF}{ds} + \frac{\partial C}{\partial H}\cdot\frac{dH}{ds}$$
-
-      In ML, a model weight may change prediction error through several calculations, just as distance changes both charges. Every effect counts.
+      **Why this is useful.** Adding paths accounts for every way a house feature can influence the predicted price.
     worked: |
-      This example shows the two-route rule on a formula, then checks the answer another way.
-
-      Let $f = u \cdot v$, where $u = x^2$ and $v = 3x$. Find $df/dx$ at $x = 2$, where $u = 4$ and $v = 6$.
-
-      1. For the route through $u$, $\partial f/\partial u = v = 6$ and $du/dx = 2x = 4$. Multiplying gives $6 \times 4 = 24$.
-      2. For the route through $v$, $\partial f/\partial v = u = 4$ and $dv/dx = 3$. Multiplying gives $4 \times 3 = 12$.
-      3. Add both effects to get $df/dx = 24 + 12 = 36$.
-
-      Check: $f = x^2 \cdot 3x = 3x^3$, so $df/dx = 9x^2 = 36$ at $x = 2$. Leaving out either route gives a wrong answer.
+      This example shows the calculation.
+      Route 1 contributes $(d\hat y/dh_1)(dh_1/da)=15(0.1)=1.5$. Route 2 contributes $10(0.05)=0.5$. Their sum is $2$ thousand pounds per area-feature unit.
     problems:
-      - crp-sum-routes
-      - crp-trip-cost
-      - crp-why-both-routes
-      - crp-routes-expression
-      - crp-partial-meaning
-      - crp-robot-routes
+      [
+        crp-sum-routes,
+        crp-trip-cost,
+        crp-why-both-routes,
+        crp-routes-expression,
+        crp-partial-meaning,
+        crp-robot-routes,
+      ]
 final: cr-explain
 summary: |
-  - Rates along a chain multiply: $\frac{dy}{dx} = \frac{dy}{du}\cdot\frac{du}{dx}$, just as km per hour × litres per km gives litres per hour.
-  - For a formula inside a formula, $(f\circ g)'(x) = f'(g(x))\cdot g'(x)$: differentiate the outer function, then multiply by the inner function's derivative.
-  - When an input affects the output through several sequences of calculations, multiply the rates within each sequence, then add the results.
+  - The chain rule multiplies local derivatives along a route through nested functions.
+  - If an input reaches an output by several routes, add the route products.
+  - These rules connect house-network parameters to the final price loss.
 
-  **Where you'll use this:** computational graphs show which calculations depend on which others. Backpropagation combines their rates of change to find how weights affect error. Autodiff performs these derivative calculations automatically.
+  **Next:** Computational graphs draw the operations and routes before calculating their derivatives.

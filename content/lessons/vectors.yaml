@@ -1,27 +1,28 @@
 concept: vectors
-version: 2
+version: 3
 objective: |
   **Goal:** describe points and arrows with ordered numbers, add and scale vectors, and calculate lengths and distances. Use the same kind of list to describe a house for a model.
-why: |
-  A warehouse robot must collect a parcel and return to its charging dock. If it is 3 metres east and 4 metres north of the dock, recording only “7 metres away” would lose the direction and give the wrong straight-line distance. A vector keeps both numbers in a fixed order, so the robot can combine movements and work out how far it is from its destination. The same idea lets a house-price model keep area, bedroom count and age together, rather than lose their separate meanings in one total. You'll use vectors in dot product, matrices, linear regression, gradients, and coordinate frames to handle several related numbers with one consistent set of rules.
+where_this_fits: |
+  Supervised learning named a house's measurements as inputs. Now we need to keep area, bedrooms and age together in a fixed order without mixing their meanings. This lesson introduces vectors as ordered lists and shows how to add, scale and measure them. The next lesson uses a vector of weights with the house vector to calculate a price.
 knowledge_points:
   - id: vec-points-moves
     title: Describing points and adding arrows
     explain: |
-      **Where do you end up after following two arrows?** A useful answer must keep the two directions separate. Adding every number into one total would lose where the endpoint is.
+      **What a vector is.** A vector is an ordered list of numbers. A **feature vector** is a vector of input measurements. For the running house example, $x=(12,3,20)$ records area in tens of square metres, bedroom count and age in years, in that fixed order.
 
-      Start at the **origin**, $(0,0)$. The arrow $(1,2)$ means 1 unit right and 2 up. Follow it with $(3,-1)$: 3 right and 1 down. The total is $(1+3,2+(-1))=(4,1)$.
+      **How it works.** Each entry is a **component**; its position and label give it meaning. On a two-dimensional diagram, the **origin** is $(0,0)$, and the arrow to $(1,2)$ means 1 unit right and 2 up. Follow it with $(3,-1)$ to reach $(1+3,2+(-1))=(4,1)$.
 
-      An ordered list of numbers is a **vector**. Each entry is a **component**; numbers locating a point are its **coordinates**. Negative entries mean left or down here. A vector can describe either the endpoint or the arrow from the origin to it.
+      The numbers locating a point are its **coordinates**. Negative entries mean left or down in this diagram. A vector can describe the endpoint or the arrow from the origin to it.
 
-      Picture placing the second arrow's start at the first arrow's end. The arrow from your original start to the final endpoint is their sum. **Vector addition** adds matching components. This works because upward movement does not change your rightward position. Why this way? Mixing the entries would mix directions instead of tracking each one.
-
-      A warehouse robot can use the same rule with metres east and north. A model uses a **feature vector**, a list of measurements about one example: $(120,3,15)$ can mean a house's area in square metres, bedrooms, and age in years. Keep those meanings in a fixed order too.
+      Place the second arrow's start at the first arrow's end. The arrow from the original start to the final endpoint is their sum. **Vector addition** adds matching components because moving up does not change the rightward coordinate. Why keep the entries in order? Mixing them would mix directions or house measurements with different meanings.
 
       Write $x\in\mathbb{R}^n$ for a vector of $n$ real numbers, including fractions and negative numbers. The symbol $\in$ means “belongs to”; $x_i$ means entry number $i$.
-    worked: |
-      This example shows how two arrows add to one arrow with the same final endpoint.
 
+      **Why this is useful.** Every model in this course takes its inputs as a vector. Writing the house as $x=(12,3,20)$ means the model always knows the first number is area, the second bedrooms and the third age, so the next lesson can pair each one with its own weight.
+    worked: |
+      This example shows the house's measurements as an ordered vector, then pictures the same ordering rule with arrows.
+
+      The house has 120 square metres, 3 bedrooms and is 20 years old, so its feature vector is $x=(12,3,20)$ in the lesson's fixed order.
       Call the arrows $a=(1,2)$ and $b=(3,-1)$, with right first and up second.
 
       1. The combined rightward distance is $1+3=4$ units.
@@ -45,9 +46,9 @@ knowledge_points:
   - id: vec-change-move
     title: Changing length without changing direction
     explain: |
-      **How can an arrow become twice as long without turning?** Its endpoint must stay on the same line through the origin, on the same side. Changing just one coordinate usually turns the arrow instead.
+      **What scaling is.** Scaling multiplies every component of a vector by the same number, called a **scalar**.
 
-      Start with $(1,2)$. Doubling both entries gives $(2,4)$. Multiplying every component by the same number is **scaling**; that number is a **scalar**. In $cx$, the scalar $c$ multiplies every entry of vector $x$.
+      **How it works.** Multiplying every coordinate by the same positive number lengthens the arrow without changing its direction. Its endpoint stays on the same line through the origin. For $(1,2)$, doubling both entries gives $(2,4)$. In $cx$, scalar $c$ multiplies every entry of vector $x$.
 
       Picture two copies of $(1,2)$ placed end to end. Their sum reaches $(2,4)$ along the original line. This works because the upward distance is still twice the rightward distance. Why this way? Adding two to both entries gives $(3,4)$, which changes that proportion and therefore the direction.
 
@@ -55,7 +56,7 @@ knowledge_points:
 
       A negative scalar also reverses direction. For example, $-1$ times $(1,2)$ is $(-1,-2)$, an equally long arrow pointing back. **Vector subtraction** adds this opposite arrow: subtract matching entries. For $3a-b$, triple $a$ first, then add the opposite of $b$.
 
-      A robot can use scaling to travel farther along a chosen direction and negation to retrace a journey. A model can use the same operation to adjust all entries of a vector by one common factor.
+      **Why this is useful.** Training changes a model's weights by adding a scaled vector: gradient descent, later in this week, replaces $w$ with $w-0.1\,g$, where $g$ is a vector that says which way to change each weight. That one step uses both scaling and subtraction.
     worked: |
       This example shows how scaling and subtraction change arrows.
 
@@ -81,19 +82,21 @@ knowledge_points:
   - id: vec-length-distance
     title: Measuring an arrow's length and the distance between points
     explain: |
-      **How long is an arrow from $(0,0)$ to $(3,4)$?** We want the direct distance, not the route right then up. Reversing the arrow should not change its length either.
+      **What the L2 norm is.** The **L2 norm** of a vector is its straight-line length, written $\|x\|_2$.
 
-      The two coordinate directions form a right angle. Pythagoras' rule says that a right triangle's squared diagonal length equals the sum of its squared side lengths. The square-root sign $\sqrt{\phantom{a}}$ undoes squaring, so the answer is $\sqrt{3^2+4^2}=5$, not $3+4=7$.
+      **How it works.** For an arrow from $(0,0)$ to $(3,4)$, the two coordinate directions form a right angle. Pythagoras' rule says the squared diagonal equals the sum of the squared sides, so its length is $\sqrt{3^2+4^2}=5$, not $3+4=7$. The square-root sign $\sqrt{\phantom{a}}$ undoes squaring.
 
       Picture the arrow as the diagonal across that triangle. This is why the squared coordinates add to its squared length. Why this way? Adding absolute distances gives the two-sided route. The root recovers the straight-line length; for metre coordinates, it turns square metres back into metres. Squaring also stops opposite signs cancelling.
 
-      This length is the **L2 norm**, written $\|x\|_2$. For $n$ entries, $x_i^2$ squares entry $i$, and $\sum_{i=1}^{n}$ adds from entry one to $n$:
+      For $n$ entries, $x_i^2$ squares entry $i$, and $\sum_{i=1}^{n}$ adds from entry one to $n$:
 
       $$\|x\|_2=\sqrt{\sum_{i=1}^{n}x_i^2}.$$
 
       The **Euclidean distance** between points $p$ and $q$ is $\text{dist}(p,q)=\|p-q\|_2$. Here $\text{dist}$ means distance. Subtract coordinates to find the arrow joining them, then measure its length. Reversing the subtraction gives the same distance.
 
-      A robot uses this to estimate direct travel, though shelves may block that route. A model can compare house vectors too. But an area gap of 50 contributes $2500$, while two bedrooms contribute only 4. Rescale features to comparable ranges; a mixed-unit house distance is not a physical length in metres.
+      **Why this is useful.** Length tells you how big a vector is. During training, a short gradient vector means the weights have almost stopped changing, so the length is how you tell that training has nearly finished.
+
+      A model can compare house vectors, but area, bedrooms and age have different units and ranges. Rescale them before treating this mixed-unit norm as a meaningful similarity; it is not a physical length in metres.
 
     worked: |
       This example shows how to measure an arrow and then compare two houses using the same calculation.
@@ -115,11 +118,11 @@ knowledge_points:
       </svg>
       ```
 
-      Now compare houses $p=(2,5,1)$ and $q=(4,1,1)$. Their features are room count, kilometres to the town centre, and number of storeys, in that order.
+      Now compare houses $p=(12,3,20)$ and $q=(8,2,5)$, with area in tens of square metres, bedrooms, and age in years.
 
-      1. Subtract: $p-q=(2-4,5-1,1-1)=(-2,4,0)$.
-      2. Square and add: $(-2)^2+4^2+0^2=4+16+0=20$.
-      3. Take the square root: $\text{dist}(p,q)=\sqrt{20}\approx4.47$.
+      1. Subtract: $p-q=(12-8,3-2,20-5)=(4,1,15)$.
+      2. Square and add: $4^2+1^2+15^2=16+1+225=242$.
+      3. Take the square root: $\text{dist}(p,q)=\sqrt{242}\approx15.56$.
 
       This numerical house distance is not measured in metres. Changing the units of a feature changes how strongly it affects the comparison.
     problems:
@@ -130,4 +133,4 @@ summary: |
   - Scaling multiplies every entry by the same number. A negative number reverses the arrow. Subtracting a vector means adding its opposite.
   - The L2 norm is the square root of the sum of squared entries. To find distance, subtract coordinates first. For house measurements, choose comparable ranges so that large numbers do not overwhelm the comparison.
 
-  **Where you'll use this:** dot product, matrices, linear regression, gradients, and coordinate frames use vectors to organise model inputs, changes to model weights, and robot positions.
+  **Next:** The dot-product lesson pairs the house vector with weights to turn its measurements into a predicted price.

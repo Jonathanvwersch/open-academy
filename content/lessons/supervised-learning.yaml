@@ -1,16 +1,16 @@
 concept: supervised-learning
-version: 3
+version: 4
 objective: |
   **Goal:** identify the inputs, targets, model, loss and training data in any supervised problem, and explain why training means making the average loss small.
-why: |
-  A family needs an estimate before offering 350 thousand pounds for a house. A computer could use a rule such as "larger houses cost more", but someone still has to choose how much more. Guessing a separate rule for every size and bedroom count quickly becomes unmanageable. Past sales give us both the house details and the actual prices. Supervised learning uses these examples to choose a model, a rule for making predictions, by measuring its mistakes. That lets us compare possible rules rather than trust our guesses. Linear regression, loss functions, gradient descent, and training and evaluation splits develop this approach. Behavioral cloning uses the same idea to teach robots from recorded human actions.
+where_this_fits: |
+  The introduction showed that machine learning learns a rule from examples, using house details to predict sale prices. We now need names for the inputs, target and model, and a way to measure a model's mistakes. This lesson names those parts and explains how known sale prices let us compare possible rules before using them on new houses.
 knowledge_points:
   - id: sl-inputs-targets
     title: Inputs, targets and the model
     explain: |
-      A family is considering a 100 m² house with 2 bedrooms. **How can a computer estimate a fair price before they make an offer?** You could write a rule yourself, but you would still need to guess how much size and bedroom count should matter. Instead, collect past sales, each with the house's details and the price it actually sold for, and let the computer find a rule that fits them. Learning from examples with known answers is **supervised learning**.
+      **What supervised learning is.** Supervised learning fits a model to examples that include both input measurements and known answers. For house prices, each example pairs a house's details with its sale price.
 
-      Every supervised problem has the same five ingredients:
+      **How it works.** A supervised problem has five ingredients:
 
       1. **Inputs** $x$: what you know when you make the prediction (the house's size and number of bedrooms).
       2. **Target** $y$: the answer you want to predict (the sale price).
@@ -19,6 +19,8 @@ knowledge_points:
       5. **Dataset**: the past examples, each one an $(x, y)$ pair.
 
       This works because each known sale price gives us an answer to compare with the model's prediction. We can judge its settings by the size of those mistakes rather than by whether a rule sounds plausible.
+
+      **Why this is useful.** Known sale prices let us compare a house-price model's predictions with real outcomes and adjust its parameters rather than hand-writing a separate rule for every house.
     worked: |
       This example shows that a model is a rule with adjustable settings, and different settings give different predictions.
 
@@ -36,13 +38,13 @@ knowledge_points:
   - id: sl-measuring-error
     title: "Measuring how wrong: squared error"
     explain: |
-      The first house sold for 360 thousand pounds, but Setting A predicted 370. That is an **error**, the prediction minus the true price, of +10. Another house might have an error of −10. **Why not just average the errors to judge the model?** These two errors average to zero, even though both predictions are wrong. Being too high on one house does not make up for being too low on another.
+      **What squared-error loss is.** It is the square of the prediction minus the true value: $(\hat y-y)^2$.
 
-      Instead, square each error. The **squared-error loss** is $(\hat y - y)^2$. This works because both $10^2$ and $(-10)^2$ equal 100. Every wrong prediction contributes a positive amount, so opposite errors cannot cancel.
+      **How it works.** Suppose a model, called Setting A, predicts 370 thousand pounds for a house that sold for 360. Its **error** (prediction minus true price) is +10. An error of −10 on another house would cancel it in an ordinary average. Squaring makes both losses 100, so opposite errors cannot cancel.
 
-      Why square rather than use the error's absolute value, its distance from zero? Both prevent cancellation. Squaring makes an error of 20 count four times as much as an error of 10, rather than twice as much. That is useful when we especially want to avoid very large pricing mistakes. However, one unusual sale can then have a much larger influence on the score than the other sales.
+      Squaring makes an error of 20 count four times as much as an error of 10, rather than twice as much. Why square instead of using the error's absolute value? Both prevent cancellation, but squaring gives extra weight to large mistakes.
 
-      Squared error also changes smoothly as the prediction changes. Later, when we use derivatives to find how changing a model setting changes the loss, that smooth curve is easier to work with than the sharp corner of absolute error at zero.
+      **Why this is useful.** The house-price model needs a score that penalises both overestimates and underestimates; squared error also makes a large pricing miss count more heavily.
     worked: |
       This example shows why signed errors can cancel and how squaring prevents it.
 
@@ -61,9 +63,9 @@ knowledge_points:
   - id: sl-training-loss
     title: Training chooses the smallest average loss
     explain: |
-      Setting A has squared errors of 100, 100 and 400 on our three sales. **How should we judge the setting as a whole?** Choosing only its best house would hide the other mistakes, so we average the losses. This works because every sale contributes to the score. Average squared error is called **mean squared error (MSE)**. We divide by the number of houses so that the score describes error per house, rather than growing just because we collected more sales.
+      **What mean squared error (MSE) is.** MSE is the average of the squared losses across the examples.
 
-      The worked example is exactly what the standard formula says. Here it is, one piece at a time.
+      **How it works.** Setting A has squared errors 100, 100 and 400 on three house sales. Average them so every sale contributes; dividing by the number of houses means the score is error per house, not a total that grows with dataset size.
 
       **The loss on one house.** The small number $i$ below a symbol identifies the house. House $i$ has inputs $x_i$, true price $y_i$ and prediction $f_\theta(x_i)$. Its loss is $L\big(f_\theta(x_i), y_i\big)$, which is $\big(f_\theta(x_i) - y_i\big)^2$ for squared error.
 
@@ -78,6 +80,8 @@ knowledge_points:
       $$\theta^\star = \arg\min_\theta \frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(x_i), y_i\big)$$
 
       Read $\arg\min_\theta$ as "the settings that make this average smallest". The symbol $\theta^\star$ ("theta star") names those settings. Gradient descent explains how to search for them automatically.
+
+      **Why this is useful.** Comparing average loss gives one fair score for each candidate house-price model, even when the training sets contain different numbers of sales.
     worked: |
       This example shows two settings compared by their average squared error.
 
@@ -93,19 +97,17 @@ knowledge_points:
   - id: sl-new-data-targets
     title: New houses and two kinds of target
     explain: |
-      Our model predicts 370 thousand pounds for a house that sold for 360. We can measure that mistake, but the family wants a price for a different house. **Does doing well on known sales show that the model will help them?** Not necessarily: a model could remember those sale prices without learning a rule that works elsewhere.
+      **What regression and classification are.** **Regression** predicts a number, such as a house's sale price. **Classification** predicts a category, such as whether that sale was above its asking price.
 
-      We therefore also test on sales that were not used to choose its settings. This works because the model has to predict their prices without having used those answers during training. The lesson on training and evaluation splits explains how to keep these examples separate.
+      **How it works.** The house details are inputs in either case. The known sale price is a numerical target for regression; the above-asking label is a category target for classification. The model is trained on known examples and evaluated on sales whose targets were not used to choose its settings. Why not use squared error for category names? A category has no numerical difference to square.
 
-      A sale price is a numerical **target**, so predicting it is called **regression**. A target can instead be a category, such as "spam" or "not spam" for an email. Predicting a category is called **classification**. The inputs, model and training examples still have the same jobs, but the loss must suit the target. Why not use squared error for category names? There is no numerical difference to square between the words "spam" and "not spam".
-
-      A robot can learn from recorded examples in the same way. A human might show it when to grasp an object and when to release it. The camera image is the input, and the human's chosen action is the target.
+      **Why this is useful.** The target tells us what kind of prediction and loss the house model needs, while testing on new sales checks whether its learned rule works beyond examples it has already seen.
     worked: |
-      This example shows two targets and identifies which ones are categories.
+      This example shows numerical and category targets for the same house-price model.
 
-      A delivery service tells a customer whether a parcel will arrive today or tomorrow. These are two possible labels, so predicting which label applies is classification. Predicting the number of hours until arrival would instead be regression.
-
-      A robot chooses between the actions "grasp" and "release" when handling a parcel. These are also two labels, so this choice is classification. Predicting how far its gripper should move, in centimetres, would instead be regression.
+      1. Predicting a house's sale price in thousands of pounds is regression because the target is a number.
+      2. Predicting whether the house sold above its asking price is classification because the target is one of two labels.
+      3. Use only training sales to choose model settings. Compare predictions with separate evaluation sales to check performance on new examples.
     problems:
       - slp-new-houses
       - slp-regression-classification
@@ -118,4 +120,4 @@ summary: |
   - The loss turns "how wrong" into a number. Squaring stops errors that are too high and too low from cancelling out.
   - Training picks the parameters with the smallest average loss on the training data, but what matters is performance on new data.
 
-  **Where you'll use this:** linear regression, loss functions, gradient descent, training and evaluation splits, and behavioral cloning, where demonstration actions become targets for a robot.
+  **Next:** Vectors give us a fixed-order way to hold a house's input measurements together before we combine them into predictions.

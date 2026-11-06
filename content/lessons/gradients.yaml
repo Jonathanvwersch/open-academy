@@ -1,171 +1,101 @@
 concept: gradients
-version: 2
+version: 3
 objective: |
   **Goal:** compute the gradient $\nabla f$ of a function of several inputs, use it to estimate how the output changes for a small step, and explain why the negative gradient is the direction of steepest descent.
-why: |
-  A robot predicts that an object is 2 metres away, but a measurement puts it at 1.8 metres. To improve the prediction, you adjust the model's weights, the numbers that control its calculation. Trying one weight at a time can help, but a coordinated change may reduce the error more for the same total amount of adjustment. A gradient collects the rate of change for every weight and uses them together to find that direction. Think of prediction error as height in a valley and the weights as your position: you want the quickest way downhill from where you stand. This idea is used in gradient descent, backpropagation, and momentum and Adam.
+where_this_fits: |
+  The partial-derivatives lesson gave us one loss slope for each house-model weight, with the other weights held fixed. Looking at those numbers separately does not show the combined direction in which the loss rises fastest. The gradient puts the partial derivatives in one vector, so its opposite points toward the steepest local decrease. The next lesson uses that direction to update the weights repeatedly.
 knowledge_points:
   - id: grad-vector-of-partials
     title: The gradient collects every partial derivative
     explain: |
-      **How can we describe all the slopes of a function at one point?** One partial derivative describes only one input. A useful answer must keep every input's rate of change and preserve which rate belongs to which input. Adding the rates would lose that information.
+      **What a gradient is.** The gradient is an ordered vector of partial derivatives, one for each adjustable model parameter.
 
-      Take the height of a valley, in metres:
+      **How it works.** For $x=(12,3,20)$, sale price $y=330$, weights $w=(25,10,-1)$ and bias $b=0$, the prediction is 310 and the error is $e=-20$. The loss is $L=(w\cdot x+b-y)^2$. The previous lesson found each partial; put them in parameter order:
 
-      $$h(x, y) = x^2 + 2y^2$$
+      $$\nabla L=\left(\frac{\partial L}{\partial w_1},\frac{\partial L}{\partial w_2},\frac{\partial L}{\partial w_3},\frac{\partial L}{\partial b}\right)=2e(12,3,20,1)=(-480,-120,-800,-40).$$
 
-      Position $(x, y)$ is measured in hundreds of metres east and north of the lowest point. At $(1.5, 1)$ the height is 4.25 m. The eastward slope is $2x = 3$ and the northward slope is $4y = 4$.
+      Each component is the loss slope for its matching weight or bias. The order must match the order of the parameters.
 
-      Collect these rates in a vector, an ordered list of numbers. This is the **gradient**, written $\nabla h$ and read "grad h":
-
-      $$\nabla h = \left(\frac{\partial h}{\partial x},\ \frac{\partial h}{\partial y}\right)$$
-
-      Here $\nabla h = (3, 4)$. This works because each number is the slope of a slice through the surface: one slice runs east–west, the other north–south. Together they describe the hillside around this point.
-
-      The symbol $\nabla$ is called "nabla". For $n$ inputs there are $n$ components, meaning numbers in the vector, in input order. For a model, these numbers describe how prediction error changes with each weight.
+      **Why this is useful.** Training can use one vector to track how every adjustable part of a house-price model affects its loss.
     worked: |
-      This example shows the gradient computed one partial at a time, then evaluated at a point.
+      This example shows the four partials for the same house.
 
-      **First find the slopes for our walk, using $h(x, y) = x^2 + 2y^2$ at $(1.5, 1)$.**
+      The prediction is $12\cdot25+3\cdot10+20(-1)+0=310$, so $e=-20$.
 
-      1. $\frac{\partial h}{\partial x} = 2x$ (treat $y$ as a constant).
-      2. $\frac{\partial h}{\partial y} = 4y$ (treat $x$ as a constant).
-      3. So $\nabla h = (2x, 4y)$, and at $(1.5, 1)$ it is $(3, 4)$.
+      1. Area weight: $2e\cdot12=-480$.
+      2. Bedroom weight: $2e\cdot3=-120$.
+      3. Age weight: $2e\cdot20=-800$.
+      4. Bias: $2e=-40$.
 
-      **Another function: $f(w_1, w_2) = w_1^2 w_2 + \sin w_2$ at $(1, 0)$**, with inputs $w_1$ and $w_2$.
-
-      1. $\frac{\partial f}{\partial w_1} = 2w_1 w_2$, which is 0 at $(1, 0)$.
-      2. $\frac{\partial f}{\partial w_2} = w_1^2 + \cos w_2$, which is $1 + 1 = 2$ at $(1, 0)$.
-      3. So $\nabla f(1, 0) = (0, 2)$.
-
-      For $h$, the two numbers describe eastward and northward changes. For $f$, they describe changes in $w_1$ and $w_2$ instead.
+      Thus $\nabla L=(-480,-120,-800,-40)$.
     problems:
-      - gradp-compute
-      - gradp-component
-      - gradp-why-vector
-      - gradp-three-inputs
-      - gradp-order
-      - gradp-exp-component
+      [
+        gradp-compute,
+        gradp-component,
+        gradp-why-vector,
+        gradp-three-inputs,
+        gradp-order,
+        gradp-exp-component,
+      ]
   - id: grad-points-uphill
-    title: The gradient points uphill
+    title: The gradient predicts a small loss change
     explain: |
-      **How do the separate slopes combine when several inputs change together?** An estimate must include each input's contribution and give the usual slope-times-distance answer when only one input changes.
+      **What a directional change is.** It is the approximate output change caused by moving several inputs a small amount together.
 
-      At $p = (1.5, 1)$, the valley has $\nabla h = (3, 4)$. Write a displacement as $\delta = (\delta_x, \delta_y)$, read "delta", recording the eastward and northward changes. For $\delta = (0.06, 0.08)$, the estimated height change is $3(0.06) + 4(0.08) = 0.5$ m. This sum is a dot product:
+      **How it works.** At the same house and weights, $\nabla L=(-480,-120,-800,-40)$. For the small step $\delta=(0.01,0.01,0.01,0.01)$, the dot product estimates the change:
 
-      $$h(p + \delta) \approx h(p) + \nabla h \cdot \delta$$
+      $$\Delta L\approx\nabla L\cdot\delta=-4.8-1.2-8-0.4=-14.4.$$
 
-      This is a **first-order approximation**: an estimate using the slopes at the starting point $p$.
+      This first-order approximation uses the slopes at the starting point. It works because a smooth loss changes almost linearly in a small region around that point. The dot product adds each parameter's slope multiplied by its own small step.
 
-      This works because a smooth surface is nearly flat close to one point. That flat approximation is its **tangent plane**. On this plane, the eastward and northward height changes add exactly; on the curved hillside, small displacements give close estimates.
-
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Contour lines of the valley h equals x squared plus 2 y squared, drawn as ellipses of equal height. At the point (1.5, 1) a blue gradient arrow points straight across the contours, away from the valley floor. A green arrow points the opposite way, downhill. A dashed grey line runs along the contour, where the height doesn't change.">
-        <ellipse cx="220" cy="150" rx="60" ry="42" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
-        <ellipse cx="220" cy="150" rx="124" ry="87.5" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2"/>
-        <ellipse cx="220" cy="150" rx="180" ry="127" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
-        <circle cx="220" cy="150" r="4" fill="#737373"/>
-        <text x="220" y="172" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">floor</text>
-        <line x1="270" y1="60" x2="350" y2="120" stroke="#737373" stroke-width="2" stroke-dasharray="6 5"/>
-        <line x1="310" y1="90" x2="346" y2="42" stroke="#3b82f6" stroke-width="3"/>
-        <polygon points="352,34 338,40 349,48" fill="#3b82f6"/>
-        <line x1="310" y1="90" x2="274" y2="138" stroke="#10b981" stroke-width="3"/>
-        <polygon points="268,146 271,131 282,139" fill="#10b981"/>
-        <circle cx="310" cy="90" r="5" fill="#171717"/>
-        <text x="430" y="60" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">∇h = (3, 4): uphill</text>
-        <text x="430" y="90" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#10b981">−∇h: downhill</text>
-        <text x="430" y="120" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">along the contour:</text>
-        <text x="430" y="140" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">no change in height</text>
-        <text x="430" y="180" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">Each ellipse joins points</text>
-        <text x="430" y="198" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">of equal height h.</text>
-      </svg>
-      ```
-
-      In the picture, each **contour line** joins points of equal height. The gradient crosses these lines uphill. A displacement at right angles to it gives zero dot product and no predicted height change. In ML, the same estimate predicts how a small change in several weights affects error.
+      **Why this is useful.** The estimate lets us check whether a proposed small update to house-model weights should lower the loss.
     worked: |
-      This example shows the approximation predicting the height change for three small steps from $(1.5, 1)$, where $h = 4.25$ and $\nabla h = (3, 4)$.
+      This example shows the calculation.
+      This example compares the estimate with the actual loss after the four-parameter step.
 
-      | step $\delta$ | $\nabla h \cdot \delta$ | predicted height |
-      |---|---|---|
-      | $(0.1, 0)$, east | $3 \times 0.1 + 4 \times 0 = 0.3$ | $4.55$ m |
-      | $(0.06, 0.08)$, along $\nabla h$ | $0.18 + 0.32 = 0.5$ | $4.75$ m |
-      | $(0.08, -0.06)$, along the contour | $0.24 - 0.24 = 0$ | $4.25$ m |
+      Initially the prediction is 310 and $L=400$. The estimated change is $-14.4$, so the estimated loss is 385.6.
 
-      Check the first one exactly: $h(1.6, 1) = 2.56 + 2 = 4.56$ m, very close to the predicted $4.55$ m.
-
-      All three displacements have length 0.1. The one along the gradient gives the largest predicted climb, while the one at right angles has no predicted climb. The actual ground curves, so the estimate is not exact.
-
-      The dot product of the gradient with a small step predicts the change in output.
+      After the step, $w=(25.01,10.01,-0.99)$ and $b=0.01$. The prediction is $310.36$, so the actual loss is $(-19.64)^2=385.7296$. Its change, $-14.2704$, is close to the estimate.
     problems:
-      - gradp-uphill
-      - gradp-approx
-      - gradp-contour
-      - gradp-length
-      - gradp-predict-height
-      - gradp-small-step
+      [
+        gradp-uphill,
+        gradp-approx,
+        gradp-contour,
+        gradp-length,
+        gradp-predict-height,
+        gradp-small-step,
+      ]
   - id: grad-steepest-descent
     title: The negative gradient is steepest descent
     explain: |
-      **Which direction makes the output decrease fastest?** A fair comparison must use equal small distances. Otherwise a longer move could give a larger decrease simply by going farther.
+      **What steepest descent means.** It is the direction that lowers a function fastest per unit distance for a small step.
 
-      At $(1.5, 1)$, the gradient is $(3, 4)$ with length 5. Due south, $(0, -1)$, the dot product is $-4$. Opposite the gradient, in direction $(-0.6, -0.8)$, it is $3(-0.6) + 4(-0.8) = -5$. Both direction vectors have length 1, so the second gives a greater decrease per unit distance.
+      **How it works.** For the house loss, the gradient is $(-480,-120,-800,-40)$, so the opposite direction is $(480,120,800,40)$. Divide by its length to compare unit steps. Let $\theta$ be the angle between the gradient and a unit step $u$. The dot product formula is
 
-      For any displacement $\delta$, write $\theta$ for its angle with the gradient and $\|\cdot\|$ for length:
+      $$\nabla L\cdot u=\|\nabla L\|\|u\|\cos\theta.$$
 
-      $$\nabla h \cdot \delta = \|\nabla h\|\,\|\delta\|\cos\theta$$
+      With both lengths fixed, the smallest cosine is −1, so the negative gradient gives the steepest local decrease. The gradient length is $\sqrt{480^2+120^2+800^2+40^2}=40\sqrt{554}$.
 
-      This works because, with both lengths fixed, only the angle can change the result. The cosine is smallest, $-1$, at $180^\circ$. On the picture's circle, that means the arrow opposite the gradient. This is the **steepest-descent direction**, $-\nabla h$.
-
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Unit-length steps from one point, with the gradient (3, 4) in blue. The step opposite the gradient, in green, changes the height by minus 5. A step south changes it by minus 4, a step east by plus 3, and a step at right angles to the gradient by 0.">
-        <circle cx="200" cy="150" r="100" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
-        <line x1="200" y1="150" x2="256" y2="75" stroke="#3b82f6" stroke-width="3"/>
-        <polygon points="260,70 247,74 257,82" fill="#3b82f6"/>
-        <line x1="200" y1="150" x2="144" y2="225" stroke="#10b981" stroke-width="3"/>
-        <polygon points="140,230 143,217 153,225" fill="#10b981"/>
-        <line x1="200" y1="150" x2="294" y2="150" stroke="#f59e0b" stroke-width="2.5"/>
-        <polygon points="300,150 288,144 288,156" fill="#f59e0b"/>
-        <line x1="200" y1="150" x2="200" y2="244" stroke="#f59e0b" stroke-width="2.5"/>
-        <polygon points="200,250 194,238 206,238" fill="#f59e0b"/>
-        <line x1="200" y1="150" x2="276" y2="207" stroke="#737373" stroke-width="2.5"/>
-        <polygon points="280,210 267,208 274,199" fill="#737373"/>
-        <circle cx="200" cy="150" r="5" fill="#171717"/>
-        <text x="266" y="66" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#3b82f6">∇h = (3, 4)</text>
-        <text x="306" y="155" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#f59e0b">+3</text>
-        <text x="288" y="222" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">0</text>
-        <text x="200" y="270" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#f59e0b">−4</text>
-        <text x="132" y="248" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#10b981">−5</text>
-        <text x="380" y="80" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Estimated change per unit distance:</text>
-        <text x="380" y="110" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#f59e0b">east (1, 0): +3</text>
-        <text x="380" y="135" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">along the contour (0.8, −0.6): 0</text>
-        <text x="380" y="160" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#f59e0b">south (0, −1): −4</text>
-        <text x="380" y="185" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#10b981">opposite ∇h (−0.6, −0.8): −5</text>
-      </svg>
-      ```
-
-      Dividing by the gradient's length gives a direction vector of length 1: $-\frac{\nabla h}{\|\nabla h\|}$. Gradient descent uses this downhill idea to reduce prediction error by adjusting weights. It is a guide for small changes, not a promise about a distant minimum, because slopes change as you move.
+      **Why this is useful.** Gradient descent uses the negative gradient to update house-model weights toward a lower price loss.
     worked: |
-      This example shows the steepest-descent step and its rate at $(1.5, 1)$, where $\nabla h = (3, 4)$.
+      This example shows the steepest local decrease for the same house loss.
 
-      1. The gradient has length $\|\nabla h\| = \sqrt{3^2 + 4^2} = \sqrt{25} = 5$.
-      2. Divide the negative gradient by 5 to get length 1: $-\frac{(3, 4)}{5} = (-0.6, -0.8)$.
-      3. The dot product gives $\nabla h \cdot (-0.6, -0.8) = -1.8 - 3.2 = -5$. At this point, the height falls at 5 m per unit distance, where one unit is 100 m on the ground.
-      4. Compare stepping due south, $(0, -1)$: $\nabla h \cdot (0, -1) = -4$. That's downhill too, but less steeply.
+      The gradient is $(-480,-120,-800,-40)$ and its length is $40\sqrt{554}$.
 
-      For a small step of length 0.1 along $(-0.6, -0.8)$, the height drops by about $0.1 \times 5 = 0.5$ m.
-
-      Of all steps of the same small length, the one opposite the gradient lowers the output the most, at rate $\|\nabla h\|$.
+      Its opposite unit direction is $(12,3,20,1)/\sqrt{554}$. The predicted loss change per unit step is $-40\sqrt{554}$.
     problems:
-      - gradp-descent-unit
-      - gradp-steepest-rate
-      - gradp-direction-rate
-      - gradp-why-180
-      - gradp-not-at-minimum
-      - gradp-descent-step
+      [
+        gradp-descent-unit,
+        gradp-steepest-rate,
+        gradp-direction-rate,
+        gradp-why-180,
+        gradp-not-at-minimum,
+        gradp-descent-step,
+      ]
 final: grad-explain
 summary: |
-  - The gradient $\nabla f$ is the vector of all partial derivatives of $f$, one component per input.
-  - For a small displacement $\delta$, estimate the new value using $f(p + \delta) \approx f(p) + \nabla f \cdot \delta$. This uses the slopes at the starting position $p$, so it becomes less reliable as you move farther away.
-  - For equal small distances, walking opposite the gradient gives the largest decrease. This direction is $-\nabla f$, and its rate of decrease is $\|\nabla f\|$. At right angles to the gradient, the estimate predicts no change.
+  - The gradient is the vector of all partial derivatives, one component per model parameter.
+  - Its dot product with a small parameter step estimates the resulting house-loss change.
+  - For equal small steps, the negative gradient gives the steepest local decrease.
 
-  **Where you'll use this:** gradient descent uses gradients to adjust model weights and reduce error. Backpropagation calculates those gradients through a model. Momentum and Adam build on these weight adjustments.
+  **Next:** Gradient descent uses the negative gradient to step house-model weights toward lower loss.

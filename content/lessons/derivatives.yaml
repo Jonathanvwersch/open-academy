@@ -1,228 +1,150 @@
 concept: derivatives
-version: 2
+version: 3
 objective: |
   **Goal:** find derivatives of common functions and use them to tell how a small input nudge changes an output, including a model's loss when its weight changes.
-why: |
-  Training a model means choosing weights that make its loss small. When a loss depends on a weight, you need to know whether nudging that weight upward will raise or lower the loss, and by how much. The obvious approach is to try many nearby values and compare the losses, but that is slow and noisy—and impossible to repeat for millions of weights. A derivative gives the local change as a formula, so one calculation tells you the direction and strength of the effect. This idea is needed for partial derivatives, gradients, gradient descent, and backpropagation.
+where_this_fits: |
+  Linear regression gave us a house-price model whose weights and bias we must choose. We can calculate its prediction, but still need to know which way a small change to one weight moves the loss, and how fast. A derivative gives that local rate of change. The next lesson uses these slopes to compare squared and absolute loss for house-price mistakes.
 knowledge_points:
   - id: der-speed-at-instant
-    title: Speed at one instant, as a slope
+    title: The derivative is a local rate of change
     explain: |
-      A car pulls away from a junction. After $t$ seconds it has travelled $d(t) = t^2$ metres, so after 3 seconds it has gone 9 m. **How fast is it going at exactly 3 seconds?** Two positions only give you an average speed over a stretch of time.
+      **What a derivative is.** A derivative is the rate at which a function's output changes per unit of its input at one point. It is the slope of the tangent line, the line that touches the curve there with the same local slope. A car's speed is another rate of change: distance per unit time.
 
-      So measure the average speed over a short window starting at 3 seconds: distance gained divided by time taken. Make the window shorter and shorter, and the average settles on one number. That number is the speed at that instant.
+      **How it works.** Use the one-weight house model with area 12 and sale price 330 thousand pounds. Its squared loss is $L(w)=(12w-330)^2$. At $w=25$, prediction is 300 and loss is 900. Increasing $w$ by $h$ changes the loss; divide that change by $h$. A prime, as in $L'(w)$, denotes the derivative with respect to $w$. As $h$ shrinks toward zero, the average rate approaches the derivative:
 
-      This works because the straight line joining two nearby points on a smooth curve approaches the tangent as the points move together. Its slope therefore approaches the curve's instantaneous rate of change.
-
-      This settled rate is the **derivative**. For a function $f$ with input $x$, the derivative $f'(x)$ (read "f prime of x") is how much the output changes per unit change in the input, for a tiny nudge. On a graph it's the slope of the **tangent line**, the straight line that just touches the curve at that point.
+      $$L'(w)=\lim_{h\to0}\frac{L(w+h)-L(w)}{h}.$$
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" aria-label="Graph of the car's distance d equals t squared against time t. At 3 seconds a blue tangent line touches the curve with slope 6 metres per second. A dashed amber line from 3 to 4 seconds has average slope 7 metres per second.">
-        <line x1="60" y1="230" x2="580" y2="230" stroke="#d4d4d4" stroke-width="2"/>
-        <line x1="60" y1="230" x2="60" y2="20" stroke="#d4d4d4" stroke-width="2"/>
-        <text x="160" y="250" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">1</text>
-        <text x="260" y="250" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">2</text>
-        <text x="360" y="250" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">3</text>
-        <text x="460" y="250" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">4</text>
-        <text x="560" y="250" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">5</text>
-        <text x="580" y="272" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">time t (seconds)</text>
-        <text x="50" y="162" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">9</text>
-        <text x="50" y="34" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">25</text>
-        <text x="68" y="24" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">distance d (metres)</text>
-        <path d="M60 230 Q310 230 560 30" fill="#171717" fill-opacity="0" stroke="#171717" stroke-width="2.5"/>
-        <line x1="360" y1="158" x2="360" y2="230" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="4 4"/>
-        <line x1="240" y1="215.6" x2="480" y2="100.4" stroke="#3b82f6" stroke-width="2.5"/>
-        <line x1="360" y1="158" x2="460" y2="102" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="7 5"/>
-        <circle cx="460" cy="102" r="4" fill="#f59e0b"/>
-        <circle cx="360" cy="158" r="5" fill="#171717"/>
-        <text x="348" y="148" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">(3 s, 9 m)</text>
-        <line x1="90" y1="50" x2="120" y2="50" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="7 5"/>
-        <text x="128" y="55" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">average speed from 3 s to 4 s: 7 m/s</text>
-        <line x1="90" y1="76" x2="120" y2="76" stroke="#3b82f6" stroke-width="2.5"/>
-        <text x="128" y="81" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">tangent at 3 s: slope 6 m/s</text>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 270" role="img" aria-label="Parabola of squared house-price loss from weight 22 to 33, marked at weight 25 with slope minus 720 and minimum at 27.5">
+        <path d="M55 45 Q237.5 355 420 45" fill="#ffffff" stroke="#2563eb" stroke-width="4"/>
+        <line x1="55" y1="200" x2="420" y2="200" stroke="#64748b" stroke-width="2"/>
+        <line x1="55" y1="45" x2="55" y2="200" stroke="#64748b" stroke-width="2"/>
+        <line x1="55" y1="91.116" x2="196.023" y2="200" stroke="#dc2626" stroke-width="3"/>
+        <circle cx="154.545" cy="167.975" r="6" fill="#dc2626"/>
+        <circle cx="237.5" cy="200" r="4" fill="#16a34a"/>
+        <line x1="55" y1="200" x2="55" y2="205" stroke="#64748b" stroke-width="2"/>
+        <line x1="420" y1="200" x2="420" y2="205" stroke="#64748b" stroke-width="2"/>
+        <text x="165" y="145" font-size="12" fill="#334155">w = 25, slope −720</text>
+        <text x="200" y="222" font-size="12" fill="#334155">w = 27.5, loss 0</text>
+        <text x="49" y="220" font-size="12" fill="#334155">22</text>
+        <text x="412" y="220" font-size="12" fill="#334155">33</text>
+        <text x="198" y="250" font-size="13" fill="#334155">weight w</text>
+        <text transform="rotate(-90 18 125)" x="18" y="125" font-size="13" fill="#334155">loss</text>
       </svg>
       ```
 
-      In symbols, with $h$ for the nudge to the input:
+      With $h=0.01$, $L(25.01)=(300.12-330)^2=29.88^2=892.8144$, so the average rate is $(892.8144-900)/0.01=-718.56$. A smaller $h$ brings that rate closer to $-720$. A negative slope means a small increase in the weight lowers this house's loss.
 
-      $$f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}$$
-
-      The top, $f(x+h) - f(x)$, is the change in output. $\lim_{h \to 0}$ (read "the limit as $h$ goes to 0") means: make $h$ smaller and smaller and see what the ratio approaches.
-
-      Because $f'(x)$ is a rate, it also estimates nearby values: $f(x+h) \approx f(x) + f'(x)\,h$ for small $h$, where $\approx$ means "approximately equal". A large $f'(x)$ means the output is very **sensitive** to its input.
+      **Why this is useful.** The derivative tells us whether to raise or lower a house model's weight to reduce its loss.
     worked: |
-      This example shows the average speed settling on the speed at 3 seconds, then using it to estimate a nearby distance.
+      This example shows average loss changes approaching the derivative at $w=25$.
 
-      The car's distance is $d(t) = t^2$, and $d(3) = 9$.
+      The loss is $L(w)=(12w-330)^2$, and $L(25)=900$.
 
-      | window | distance gained | average speed |
-      |---|---|---|
-      | 3 s to 4 s | $16 - 9 = 7$ m | $7 \div 1 = 7$ m/s |
-      | 3 s to 3.1 s | $9.61 - 9 = 0.61$ m | $0.61 \div 0.1 = 6.1$ m/s |
-      | 3 s to 3.01 s | $9.0601 - 9 = 0.0601$ m | $0.0601 \div 0.01 = 6.01$ m/s |
-      | 3 s to 3.001 s | $9.006001 - 9 = 0.006001$ m | $6.001$ m/s |
+      | nudge $h$ | average rate |
+      |---|---|
+      | 1 | $(L(26)-900)/1=(324-900)=-576$ |
+      | 0.1 | $(L(25.1)-900)/0.1=(829.44-900)/0.1=-705.6$ |
+      | 0.01 | $(L(25.01)-900)/0.01=(892.8144-900)/0.01=-718.56$ |
 
-      The averages approach 6, so $d'(3) = 6$ m/s.
-
-      Now estimate the distance at 3.2 s: $d(3.2) \approx d(3) + d'(3) \times 0.2 = 9 + 6 \times 0.2 = 10.2$ m. The exact value is $3.2^2 = 10.24$ m, so the estimate is close.
-
-      The derivative is the rate at one instant, and multiplying it by a small nudge estimates the change in output.
+      These rates approach $L'(25)=-720$.
     problems:
-      - derp-meaning
-      - derp-average-speed
-      - derp-tangent
-      - derp-estimate
-      - derp-why-not-zero
-      - derp-robot-battery
+      [
+        derp-meaning,
+        derp-average-speed,
+        derp-tangent,
+        derp-estimate,
+        derp-why-not-zero,
+        derp-robot-battery,
+      ]
   - id: der-power-rule
     title: Rules for powers, constants and sums
     explain: |
-      Shrinking windows by hand works, but it's slow. You'd rather have the car's speed at every instant as one formula. Working the limit out once for each kind of function gives rules you can reuse.
+      **What the power rule is.** For a fixed power $n$, the derivative of $x^n$ is $nx^{n-1}$. A polynomial is a sum of powers multiplied by constants.
 
-      For $d(t) = t^2$, the ratio is $\frac{(t+h)^2 - t^2}{h} = \frac{2th + h^2}{h} = 2t + h$. As $h$ shrinks to 0 this becomes $2t$. So the speed at any time is $d'(t) = 2t$, and at 3 seconds that's 6 m/s, as before.
+      **How it works.** Expand the house loss: $L(w)=(12w-330)^2=144w^2-7920w+108900$. Differentiate each term: bring the power down, lower it by one, keep a constant multiplier, and add the results:
 
-      The **power rule** generalises this. For $f(x) = x^n$, the derivative is $f'(x) = n\,x^{n-1}$: bring the power down in front, then lower the power by one. So $x^3$ becomes $3x^2$, and $x$ itself (which is $x^1$) becomes 1.
+      $$L'(w)=288w-7920.$$
 
-      Why does the rule work? Expanding $(x+h)^n$ gives the first changing term $n x^{n-1}h$ plus terms with higher powers of $h$. After dividing by $h$, those higher-power terms vanish as $h$ shrinks to 0, leaving $n x^{n-1}$.
+      At $w=25$, this is $7200-7920=-720$, matching the local-rate calculation. The rule follows by expanding $(w+h)^n$: after division by $h$, every term with a higher power of $h$ vanishes as $h$ approaches zero. A constant contributes zero because its value does not change when $w$ changes.
 
-      Three more rules let you differentiate any **polynomial**, a sum of powers of $x$ with number multipliers, like $3x^4 - 2x + 5$:
-
-      - **Constant multiple:** $c\,g(x)$ has derivative $c\,g'(x)$, for any number $c$. Doubling a function doubles its slope.
-      - **Sum:** $g(x) + k(x)$ has derivative $g'(x) + k'(x)$. Differentiate term by term.
-      - **Constants:** a number on its own, like 5, has derivative 0, because it never changes.
-
-      You'll also see $\frac{d}{dx}$, read "the derivative with respect to $x$ of". For example, $\frac{d}{dx}x^3 = 3x^2$.
+      **Why this is useful.** The rule gives a quick exact slope for the house model's squared loss instead of testing many nearby weights.
     worked: |
-      This example shows the power, constant-multiple and sum rules giving a speed formula.
+      This example shows the power, constant-multiple and sum rules on the house loss.
 
-      A second car's distance after $t$ seconds is $d(t) = 0.5t^3 + 2t$ metres.
+      1. Write $L(w)=144w^2-7920w+108900$.
+      2. Differentiate $144w^2$ to get $288w$.
+      3. Differentiate $-7920w$ to get $-7920$; the constant contributes 0.
+      4. Thus $L'(w)=288w-7920$, and $L'(25)=-720$.
 
-      1. $0.5t^3$: the power rule gives $3t^2$, and the constant multiple keeps the 0.5, so $1.5t^2$.
-      2. $2t$: the derivative of $t$ is 1, so $2$.
-      3. Add the terms: $d'(t) = 1.5t^2 + 2$.
-
-      At $t = 2$ seconds the speed is $1.5 \times 4 + 2 = 8$ m/s.
-
-      The same steps on $f(x) = 3x^4 - 2x + 5$ give $12x^3 - 2$, because the constant 5 contributes 0.
-
-      With these rules you differentiate a polynomial one term at a time.
+      The negative slope says increasing $w$ slightly reduces the loss at this point.
     problems:
-      - derp-power-poly
-      - derp-power-value
-      - derp-power-cube
-      - derp-constant-term
-      - derp-drone-climb
-      - derp-power-fraction
+      [
+        derp-power-poly,
+        derp-power-value,
+        derp-power-cube,
+        derp-constant-term,
+        derp-drone-climb,
+        derp-power-fraction,
+      ]
   - id: der-exp-log
     title: Exponentials and the natural logarithm
     explain: |
-      The power rule needs a fixed power, as in $x^3$. It doesn't apply to $2^x$ or $e^x$, where the input sits in the exponent. Quantities that grow in proportion to their own size, like money earning interest, behave this way.
+      **What exponential and logarithm functions are.** The exponential $e^x$ has base $e\approx2.718$. The natural logarithm $\ln x$ asks which power of $e$ equals $x$; it is defined for positive $x$.
 
-      - The number **$e$** is about 2.718. The function $e^x$ is special: its slope at every point equals its own value. So the derivative of $e^x$ is $e^x$.
-      - The **natural logarithm** $\ln x$ undoes $e^x$. It answers "which power of $e$ gives $x$?" For example, $\ln 1 = 0$ because $e^0 = 1$, and $\ln(e^2) = 2$. It's defined for $x > 0$, and its derivative is $\frac{1}{x}$. So $\ln x$ keeps rising, but more and more slowly.
+      **How it works.** Their derivatives are $(e^x)'=e^x$ and $(\ln x)'=1/x$. The first function's rate equals its value. The logarithm undoes the exponential, so its rate gets smaller as $x$ grows. For example, $\ln 1=0$ because $e^0=1$. For positive $w$, $1/w$ decreases as $w$ grows, so the derivative of $\ln w$ gets smaller too.
 
-      Why does $e^x$ have its own slope? Exponential growth is proportional to the current amount, and base $e$ makes that proportionality constant 1. The rate of change is therefore exactly the function's value.
+      Sine and cosine are functions of an angle. Their derivatives are $(\sin x)'=\cos x$ and $(\cos x)'=-\sin x$. These rules can be used term by term in sums.
 
-      If you've met sine and cosine as functions of an angle in radians, their derivatives come from the same limit. Here is the full lookup table:
-
-      | $f(x)$ | $f'(x)$ |
-      |---|---|
-      | $x^n$ | $n\,x^{n-1}$ |
-      | $e^x$ | $e^x$ |
-      | $\ln x$ | $1/x$ |
-      | $\sin x$ | $\cos x$ |
-      | $\cos x$ | $-\sin x$ |
-
-      The constant-multiple and sum rules still apply, so you can mix these with powers term by term.
+      **Why this is useful.** A later network can use an exponential formula to turn a score into a probability; its derivative is needed to train that output.
     worked: |
-      This example shows the new rules combining with the constant-multiple and sum rules.
+      This example shows the exponential and logarithm rules on functions of a model weight.
 
-      **Differentiate $f(x) = 3x^4 - 2x + \ln x$.**
+      1. For $f(w)=e^w$, $f'(w)=e^w$, so at $w=0$ the slope is 1.
+      2. For $g(w)=\ln w$, $g'(w)=1/w$, so at $w=2$ the slope is $1/2$.
+      3. For $q(w)=e^w+\ln w$, add the two derivatives: $q'(w)=e^w+1/w$. At $w=1$, the slope is $e+1$.
 
-      1. $3x^4 \to 12x^3$ (power rule times a constant).
-      2. $-2x \to -2$.
-      3. $\ln x \to \frac{1}{x}$.
-
-      So $f'(x) = 12x^3 - 2 + \frac{1}{x}$. At $x = 1$: $12 - 2 + 1 = 11$.
-
-      **Differentiate $g(x) = 2e^x - 3\ln x$.** The constants stay in front: $g'(x) = 2e^x - \frac{3}{x}$. At $x = 1$ that's $2e - 3 \approx 2.44$.
-
-      Each special function has its own rule, and the constant-multiple and sum rules join them up.
+      Each term uses its own rule; the sum rule combines them.
     problems:
-      - derp-exp-log-mix
-      - derp-ln-slope
-      - derp-exp-slope
-      - derp-ln-meaning
-      - derp-sin-cos
-      - derp-tank-level
+      [
+        derp-exp-log-mix,
+        derp-ln-slope,
+        derp-exp-slope,
+        derp-ln-meaning,
+        derp-sin-cos,
+        derp-tank-level,
+      ]
   - id: der-product-quotient
     title: Products and quotients
     explain: |
-      Some functions multiply two parts together, like $x^2 e^x$. The tempting shortcut is to multiply the two derivatives, $2x \cdot e^x$. That's wrong. Try it on $x \cdot x = x^2$: multiplying derivatives gives $1 \cdot 1 = 1$, but the true derivative is $2x$.
+      **What the product and quotient rules are.** The product rule differentiates two changing factors: $(uv)'=u'v+uv'$. The quotient rule differentiates a ratio: $(u/v)'=(u'v-uv')/v^2$.
 
-      Think of a product $u \cdot v$ as the area of a rectangle with width $u$ and height $v$, where $\Delta u$ (read "delta u") means a small change in $u$:
+      **How it works.** The house loss is the product of two equal errors, $L(w)=r(w)r(w)$, where $r(w)=12w-330$. Its derivative is $r'r+rr'=12r+12r=24r$. At $w=25$, this gives $24(-30)=-720$. Both factors change, so both contributions count.
 
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="A rectangle of width u and height v, with area u times v. Growing the width by delta u adds a strip of area delta u times v; growing the height by delta v adds a strip of area u times delta v; a tiny corner of area delta u times delta v is left over.">
-        <rect x="40" y="60" width="240" height="150" fill="#d4d4d4"/>
-        <rect x="282" y="60" width="50" height="150" fill="#f59e0b"/>
-        <rect x="40" y="18" width="240" height="40" fill="#10b981"/>
-        <rect x="282" y="18" width="50" height="40" fill="#737373"/>
-        <text x="160" y="140" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">area u · v</text>
-        <text x="307" y="140" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">Δu · v</text>
-        <text x="160" y="43" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">u · Δv</text>
-        <text x="160" y="232" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">u</text>
-        <text x="307" y="232" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Δu</text>
-        <text x="26" y="140" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">v</text>
-        <text x="22" y="43" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Δv</text>
-        <text x="360" y="60" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">Grow u by Δu and v by Δv.</text>
-        <text x="360" y="86" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">New area = u·v + Δu·v + u·Δv + Δu·Δv</text>
-        <text x="360" y="122" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">The grey corner is tiny for small nudges,</text>
-        <text x="360" y="142" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">so the area grows at the rate</text>
-        <text x="360" y="172" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">u′ · v + u · v′</text>
-      </svg>
-      ```
+      The quotient rule matters when a prediction error is divided by a changing quantity. It keeps the change in both numerator and denominator; multiplying their derivatives would be wrong.
 
-      The area grows for two reasons: the width changes while the height stays put, and the height changes while the width stays put. That gives the **product rule**:
-
-      The remaining corner has area $\Delta u\,\Delta v$, which shrinks faster than either side's change. After dividing by a small input nudge and taking the limit, that corner contributes nothing; the two strips give the product rule.
-
-      $$(u\,v)' = u'\,v + u\,v'$$
-
-      For a fraction $\frac{u}{v}$, a similar argument gives the **quotient rule**:
-
-      $$\left(\frac{u}{v}\right)' = \frac{u'\,v - u\,v'}{v^2}$$
-
-      Watch the order on top: the derivative of the top comes first, and there's a minus sign.
+      **Why this is useful.** The product rule gives the slope of squared house-price error by accounting for both copies of the price miss.
     worked: |
-      This example shows the product rule and the quotient rule, step by step.
+      This example shows the product rule on squared house-price error.
 
-      **Product: $f(x) = x^2 e^x$.**
+      For $L(w)=(12w-330)(12w-330)$, name both factors $u=v=12w-330$. Then $u'=v'=12$.
 
-      1. Name the parts: $u = x^2$, so $u' = 2x$; $v = e^x$, so $v' = e^x$.
-      2. Apply the rule: $f'(x) = u'v + uv' = 2x\,e^x + x^2 e^x = e^x(x^2 + 2x)$.
-      3. At $x = 1$: $e \times 3 \approx 8.15$.
+      $$L'(w)=u'v+uv'=12(12w-330)+(12w-330)12=24(12w-330).$$
 
-      **Quotient: $g(x) = \frac{x}{x + 1}$.**
-
-      1. Name the parts: $u = x$, so $u' = 1$; $v = x + 1$, so $v' = 1$.
-      2. Apply the rule: $g'(x) = \frac{1 \cdot (x+1) - x \cdot 1}{(x+1)^2} = \frac{1}{(x+1)^2}$.
-      3. At $x = 1$: $\frac{1}{4} = 0.25$.
-
-      Naming $u$, $v$ and their derivatives first keeps both rules mechanical.
-
-      **A model weight:** let the loss be $L(w) = (2w - 6)^2$. Expanding gives $L(w) = 4w^2 - 24w + 36$, so $L'(w) = 8w - 24$. At $w = 2$, the slope is $-8$: a small increase in the weight lowers the loss by about 8 times that increase.
+      At $w=25$, this is $24(-30)=-720$. The product rule agrees with differentiating the expanded polynomial.
     problems:
-      - derp-product-expr
-      - derp-product-value
-      - derp-why-not-multiply
-      - derp-quotient-expr
-      - derp-which-rule
-      - derp-rectangle-rate
+      [
+        derp-product-expr,
+        derp-product-value,
+        derp-why-not-multiply,
+        derp-quotient-expr,
+        derp-which-rule,
+        derp-rectangle-rate,
+      ]
 final: der-explain
 summary: |
-  - The derivative $f'(x)$ is the rate of change of the output per unit of input at one point: the slope of the tangent, found as the limit of average rates over shrinking windows.
-  - The rules: power ($x^n \to n x^{n-1}$), constant multiple, sum, $e^x \to e^x$, $\ln x \to 1/x$, product ($u'v + uv'$) and quotient ($\frac{u'v - uv'}{v^2}$).
-  - A derivative measures sensitivity: for a small nudge $h$, $f(x+h) \approx f(x) + f'(x)\,h$.
+  - A derivative is a local rate of change, found as the limit of average rates over smaller input nudges.
+  - Power, exponential, logarithm, product and quotient rules give exact derivatives for common functions.
+  - For the house loss $L(w)=(12w-330)^2$, the slope at $w=25$ is $-720$.
 
-  **Where you'll use this:** partial derivatives and gradients measure weight effects; gradient descent and backpropagation use them to reduce a model's loss.
+  **Next:** Loss functions compare how squared and absolute price errors respond to different house-price mistakes.

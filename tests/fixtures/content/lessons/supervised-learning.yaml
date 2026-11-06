@@ -2,7 +2,7 @@ concept: supervised-learning
 version: 3
 objective: |
   **Goal:** identify the inputs, targets, model, loss and training data in any supervised problem, and explain why training means making the average loss small.
-why: |
+where_this_fits: |
   Many useful tasks start with examples whose correct answers are already known: past house sales, labelled photos, or recorded delivery times. Writing a separate rule for every new case does not scale, and memorizing the examples will not handle new ones. Supervised learning uses those input-answer pairs to fit a model, then measures its mistakes with a loss. Training adjusts the model so that its average loss on examples becomes small and predictions work on unseen cases.
 knowledge_points:
   - id: sl-inputs-targets
@@ -19,6 +19,8 @@ knowledge_points:
       5. **Dataset**: the past examples, each one an $(x, y)$ pair.
 
       The rest of this lesson goes through them in order, using house prices.
+
+      **Why this is useful.** Naming the pieces shows what training can change and what it learns from.
     worked: |
       This example shows that a model is a rule with adjustable settings, and different settings give different predictions.
 
@@ -39,6 +41,8 @@ knowledge_points:
       **Why not just average the errors?** Errors that are too high and too low can cancel each other out, making a model look perfect even when it gets every house wrong.
 
       **Square each error instead.** Squares are never negative, so nothing cancels, and big misses count more than small ones. This is the **squared-error loss**: $(\hat y - y)^2$.
+
+      **Why this is useful.** A nonnegative error lets us compare how well settings price the same houses.
     worked: |
       This example shows why signed errors can cancel and how squaring prevents it.
 
@@ -74,6 +78,8 @@ knowledge_points:
       $$\theta^\star = \arg\min_\theta \frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(x_i), y_i\big)$$
 
       Read $\arg\min_\theta$ as "the $\theta$ that makes what follows as small as possible", and $\theta^\star$ ("theta star") as "the best parameters". The gradient descent lesson shows how training searches through all of them automatically.
+
+      **Why this is useful.** The average gives training one score for comparing parameter settings across all sales.
     worked: |
       This example shows a comparison of two settings by their average squared error.
 
@@ -94,6 +100,8 @@ knowledge_points:
       **Two kinds of target.** When the target $y$ is a number, like a price, the problem is called **regression**. When $y$ is a category, like "spam" or "not spam", it is called **classification**. The five ingredients are the same either way. What changes is the loss, because "how wrong" means something different for a category than for a number.
 
       Robots use the same setup. In learning from demonstrations, the input is what the robot's camera sees and the target is the action a human took.
+
+      **Why this is useful.** Testing on unseen houses checks whether the learned rule generalizes beyond its training sales.
     worked: |
       This example shows how target types determine whether a problem is regression or classification.
 
@@ -114,4 +122,4 @@ summary: |
   - The loss turns "how wrong" into a number. Squaring stops errors that are too high and too low from cancelling out.
   - Training picks the parameters with the smallest average loss on the training data, but what matters is performance on new data.
 
-  **Where you'll use this:** supervised learning frames prediction tasks across classification and regression.
+  **Next:** supervised learning frames prediction tasks across classification and regression.

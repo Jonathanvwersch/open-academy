@@ -57,6 +57,7 @@ export const CurriculumSchema = z
             title: z.string().min(1),
             concepts: z.array(IdSchema),
             project: IdSchema.optional(),
+            intro: z.string().optional(),
             saturday: z.string().optional(),
             sunday: z.string().optional(),
           })
@@ -190,7 +191,7 @@ const KnowledgePointSchema = z
 
 const KnowledgePointLessonSchema = LessonFieldsSchema.extend({
   objective: z.string().min(1),
-  why: z.string().min(1),
+  where_this_fits: z.string().min(1),
   knowledge_points: z.array(KnowledgePointSchema).min(2).max(4),
   final: IdSchema,
   summary: z.string().min(1),
@@ -206,7 +207,7 @@ export type Lesson = Omit<z.infer<typeof LegacyLessonSchema>, 'fast_path'> & {
   fast_path: z.infer<typeof LegacyLessonSchema>['fast_path'];
   knowledge_points?: KnowledgePoint[];
   final?: string;
-  why?: string;
+  where_this_fits?: string;
   summary?: string;
 };
 
@@ -226,7 +227,7 @@ export function normalizeLesson(
   return {
     concept: lesson.concept,
     version: lesson.version,
-    why: lesson.why,
+    where_this_fits: lesson.where_this_fits,
     summary: lesson.summary,
     final: lesson.final,
     knowledge_points: lesson.knowledge_points,

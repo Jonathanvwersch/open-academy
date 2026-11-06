@@ -3,6 +3,7 @@ import type { ContentIndex, IndexedLesson } from '../content/types.js';
 export interface CourseOutlineWeek {
   week: number;
   title: string;
+  intro?: string;
   topics: Array<{ title: string; status: string }>;
 }
 
@@ -50,6 +51,7 @@ export function buildTutorPageContent(input: {
       (courseWeeks ?? [])
         .flatMap((week) => [
           `## Week ${week.week} · ${week.title}`,
+          ...(week.intro ? [week.intro] : []),
           ...week.topics.map((topic) => `- ${topic.title} — ${topic.status}`),
         ])
         .join('\n'),
@@ -70,7 +72,10 @@ export function buildTutorPageContent(input: {
       section('Prerequisites', prerequisites),
       `Lesson available: ${lesson ? 'yes' : 'no'}`,
       ...(lesson
-        ? [section('Why this exists', lesson.why ?? ''), section('Summary', summaryFor(lesson))]
+        ? [
+            section('Where this fits', lesson.where_this_fits ?? ''),
+            section('Summary', summaryFor(lesson)),
+          ]
         : []),
     ];
     return sanitizePageContent(sections.filter(Boolean).join('\n\n'));
@@ -83,10 +88,12 @@ export function buildTutorPageContent(input: {
     const pointIndex = knowledgePointId
       ? points.findIndex((point) => point.id === knowledgePointId)
       : -1;
-    const why = section('Why this exists', lesson.why ?? '');
+    const whereThisFits = section('Where this fits', lesson.where_this_fits ?? '');
     if (pointIndex < 0) {
       return sanitizePageContent(
-        [`# ${title}`, why, section('Summary', summaryFor(lesson))].filter(Boolean).join('\n\n'),
+        [`# ${title}`, whereThisFits, section('Summary', summaryFor(lesson))]
+          .filter(Boolean)
+          .join('\n\n'),
       );
     }
 
@@ -95,7 +102,7 @@ export function buildTutorPageContent(input: {
     return sanitizePageContent(
       [
         `# ${title}`,
-        why,
+        whereThisFits,
         `## Current step (${pointIndex + 1} of ${points.length}): ${point.title}`,
         point.explain,
         section('Worked example', point.worked),
@@ -110,7 +117,7 @@ export function buildTutorPageContent(input: {
     return sanitizePageContent(
       [
         `# ${title}`,
-        section('Why this exists', lesson.why ?? ''),
+        section('Where this fits', lesson.where_this_fits ?? ''),
         ...points.flatMap((point) => [
           `## ${point.title}`,
           point.explain,

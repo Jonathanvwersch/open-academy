@@ -70,6 +70,98 @@ exercises:
           correct: false,
           feedback: "Each row gives its own number, rather than one total for the matrix.",
         }
+  - id: matp-vector-shape
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A house has three measurements and the model has one weight for each measurement. If the three weights are arranged as one matrix row, how many output numbers does the matrix-vector product produce?"
+    options:
+      - { id: a, text: "One score for the house", correct: true }
+      - {
+          id: b,
+          text: "Three scores, one for each measurement",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The matrix has one row, so it produces one output entry.",
+        }
+      - {
+          id: c,
+          text: "No output until there are two houses",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A single row can produce a score for one house.",
+        }
+      - {
+          id: d,
+          text: "One output for every weight and measurement pair",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The matching products are added into one dot product.",
+        }
+    solution: "One row makes one dot product with the house's measurement vector, producing one score."
+  - id: matp-vector-entry
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A house has area 4 tens of square metres and 1 bedroom. A simplified model uses weights $(2,-1)$ thousand pounds per unit. What sale-price prediction does their matrix-vector product give, in thousands of pounds?"
+    solution: "Multiply matching entries and add: $4\\cdot2+1\\cdot(-1)=8-1=7$."
+    answer: 7
+    tolerance: { abs: 0.000001 }
+  - id: matp-vector-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: |
+      A house has measurements $({{=u}},{{=v}})$ and the model's weights are $({{=a}},{{=b}})$. What score does the row-vector product give?
+    solution: "Multiply matching entries and add: ${{=u}}\\cdot{{=a}}+{{=v}}\\cdot{{=b}}={{=u*a+v*b}}$."
+    tolerance: { abs: 0.000001 }
+    params:
+      u: { min: 1, max: 10 }
+      v: { min: 1, max: 5 }
+      a: { min: 1, max: 4 }
+      b: { min: 1, max: 3 }
+    answer_expr: "u*a+v*b"
+  - id: matp-why-rows
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why does each row of a matrix produce one output when it multiplies a vector?"
+    options:
+      - {
+          id: a,
+          text: "Each row is a set of weights, and its dot product with the same input gives one output.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Each column is copied directly into the output.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The output is computed from the rows paired with the input vector.",
+        }
+      - {
+          id: c,
+          text: "All matrix entries are added together before the vector is used.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Each row is multiplied with the vector separately.",
+        }
+      - {
+          id: d,
+          text: "The matrix's columns determine the number of output entries.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The number of rows determines the number of output entries.",
+        }
+    solution: "Each matrix row has its own weights, so its dot product with the input produces one output number."
   - id: matp-invalid
     dimension: conceptual
     type: mc
@@ -114,12 +206,12 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Five houses each have three features. Their $5\\times3$ table multiplies a $3\\times2$ weight table. What does the result hold?"
-    solution: "The inner feature count three matches, giving shape $5\\times2$. This is two scores for each of five houses."
+    prompt: "Five houses each have three measurements. Their $5\\times3$ table multiplies a $3\\times2$ weight table whose columns predict sale price and monthly rent. What does the result hold?"
+    solution: "The inner measurement count three matches, giving shape $5\\times2$. Each of the five house rows contains a sale-price and a monthly-rent prediction."
     options:
       - {
           id: a,
-          text: "The result has five house rows with two scores each.",
+          text: "The result has five house rows with a sale-price and monthly-rent prediction.",
           correct: true,
           feedback: "Each house row meets both weight columns.",
         }
@@ -135,162 +227,13 @@ exercises:
           correct: false,
           feedback: "The left rows remain rows, not output columns.",
         }
-  - id: matp-linear
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "Which property describes a matrix acting as a linear transformation?"
-    solution: "A linear transformation preserves addition and scaling, so it treats combined moves consistently. It need not preserve their lengths."
-    options:
-      - {
-          id: a,
-          text: "Adding two arrows before transforming gives the same result as transforming each and then adding.",
-          correct: true,
-          feedback: "The transformation preserves vector addition and scaling.",
-        }
-      - {
-          id: b,
-          text: "Every arrow must keep exactly the same length.",
-          correct: false,
-          feedback: "Stretching is linear even though it changes lengths.",
-        }
-      - {
-          id: c,
-          text: "The origin can move to any chosen point.",
-          correct: false,
-          feedback: "A matrix alone sends the zero vector to zero.",
-        }
-  - id: matp-shear-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "A shear sends $(x,y)$ to $(x+2y,y)$, with right first and up second. For point $({{=x}},{{=y}})$, what is the new first coordinate?"
-    solution: "Add twice the second coordinate to the first: ${{=x}}+2\\cdot{{=y}}={{=x+2*y}}$. The second coordinate stays ${{=y}}$."
-    tolerance: { abs: 0.000001 }
-    params:
-      x: { min: -3, max: 5 }
-      y: { min: 0, max: 4 }
-    answer_expr: "x+2*y"
-
-  - id: matp-identity
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "What does $I=\\begin{bmatrix}1&0\\\\0&1\\end{bmatrix}$ do to $(3,-2)$?"
-    solution: "The rows give $1\\cdot3+0\\cdot(-2)=3$ and $0\\cdot3+1\\cdot(-2)=-2$. Identity leaves every input unchanged."
-    options:
-      - {
-          id: a,
-          text: "It leaves the vector at $(3,-2)$.",
-          correct: true,
-          feedback: "Each row picks out the matching input entry.",
-        }
-      - {
-          id: b,
-          text: "It swaps the entries to give $(-2,3)$.",
-          correct: false,
-          feedback: "A swap matrix has ones off the diagonal instead.",
-        }
-      - {
-          id: c,
-          text: "It sends the vector to $(0,0)$.",
-          correct: false,
-          feedback: "That would require all-zero rows, not diagonal ones.",
-        }
-  - id: matp-why-order
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "Why can't you assume $ABx=BAx$ when both matrix products exist?"
-    solution: "The second transformation receives the first one's output. For a shear $A$ sending $(x,y)$ to $(x+2y,y)$ and a swap $B$, input $(1,0)$ gives $ABx=(2,1)$ but $BAx=(0,1)$."
-    options:
-      - {
-          id: a,
-          text: "Swapping the order changes the input received by the second transformation.",
-          correct: true,
-          feedback: "A shear after a swap need not agree with a swap after a shear.",
-        }
-      - {
-          id: b,
-          text: "The products must agree whenever both matrices have the same number of rows as columns.",
-          correct: false,
-          feedback: "Square shapes let both orders exist; they do not make the transformations agree.",
-        }
-      - {
-          id: c,
-          text: "Both orders just multiply matching entries, so order cannot matter.",
-          correct: false,
-          feedback: "Multiplying matching entries is called elementwise multiplication. A matrix product instead takes dot products and applies the two transformations in sequence.",
-        }
-  - id: matp-shear
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "A shear sends $(x,y)$ to $(x+2y,y)$. What happens to points on the horizontal axis, where $y=0$?"
-    solution: "On the horizontal axis, $y=0$. The output is $(x+2\\cdot0,0)=(x,0)$, so every such point stays fixed."
-    options:
-      - {
-          id: a,
-          text: "They stay fixed because their second coordinate is zero.",
-          correct: true,
-          feedback: "With y equal to zero, the added horizontal amount is zero.",
-        }
-      - {
-          id: b,
-          text: "They all move two units to the right.",
-          correct: false,
-          feedback: "The shift is twice the height, not a fixed two units.",
-        }
-      - {
-          id: c,
-          text: "They all move onto the vertical axis.",
-          correct: false,
-          feedback: "The shear keeps height fixed and does not swap coordinates.",
-        }
-  - id: matp-swap
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "Let $C=\\begin{bmatrix}1&2\\\\3&4\\end{bmatrix}$ and $P=\\begin{bmatrix}0&1\\\\1&0\\end{bmatrix}$. Which describes $CP$?"
-    solution: "Each row dots the columns $(0,1)$ then $(1,0)$ of P. This reverses the two entries of each row, swapping columns."
-    options:
-      - {
-          id: a,
-          text: "Its columns swap, giving $\\begin{bmatrix}2&1\\\\4&3\\end{bmatrix}$.",
-          correct: true,
-          feedback: "Right multiplication by P selects the second column first.",
-        }
-      - {
-          id: b,
-          text: "Its rows swap, giving $\\begin{bmatrix}3&4\\\\1&2\\end{bmatrix}$.",
-          correct: false,
-          feedback: "That is PC, with the swap matrix on the left.",
-        }
-      - {
-          id: c,
-          text: "Its entries stay at $\\begin{bmatrix}1&2\\\\3&4\\end{bmatrix}$.",
-          correct: false,
-          feedback: "P is a swap matrix, not the identity.",
-        }
   - id: matp-code
     dimension: implementation
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A housing model stores five houses with three measurements each in NumPy array X, shape (5, 3). W holds weights for two buyer scores, shape (3, 2), and b holds two fixed score adjustments, shape (2,). Which line gives both adjusted scores for every house?"
+    prompt: "A model stores five houses with three measurements each in NumPy array X, shape (5, 3). W holds weights for sale price and monthly rent, shape (3, 2), and b holds one fixed adjustment for each output, shape (2,). Which line gives both adjusted predictions for every house?"
     solution: "X rows dot W columns, giving shape (5, 2). Adding b broadcasts one bias per score across all five houses."
     options:
       - {
@@ -317,7 +260,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A house row is $({{=a}},{{=b}})$ for area in hundreds of square metres and bedroom count. One buyer's weight column is $(2,-1)$, and the fixed amount added to their score is {{=c}}. What is the final score?"
+    prompt: "A house has area ${{=a}}$ tens of square metres and ${{=b}}$ bedrooms. A simplified sale-price model uses weights $(2,-1)$ thousand pounds per feature unit and adds a bias of {{=c}} thousand pounds. What is its predicted sale price, in thousands of pounds?"
     solution: "First take the dot product: $2\\cdot{{=a}}-{{=b}}={{=2*a-b}}$. Add the bias to get ${{=2*a-b}}+({{=c}})={{=2*a-b+c}}$."
     tolerance: { abs: 0.000001 }
     params:
@@ -332,26 +275,26 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "W stores three buyers' weights as rows, with two measurements per buyer, shape (3, 2). X stores five houses with those same measurements, shape (5, 2). Which product gives every buyer's score for every house?"
-    solution: "Transpose swaps the weight rows into columns without changing their values. Then (5, 2) times (2, 3) gives (5, 3)."
+    prompt: "W stores the sale-price and monthly-rent weights as rows, with three measurements per output, shape (2, 3). X stores five houses with the same measurements, shape (5, 3). Which product gives both predictions for every house?"
+    solution: "Transpose swaps the two weight rows into columns without changing their values. Then (5, 3) times (3, 2) gives (5, 2)."
     options:
       - {
           id: a,
-          text: "`X @ W.T`, with shape (5, 3)",
+          text: "`X @ W.T`, with shape (5, 2)",
           correct: true,
-          feedback: "Transposing makes W shape (2, 3), matching the two features.",
+          feedback: "Transposing makes W shape (3, 2), matching the three house measurements.",
         }
       - {
           id: b,
-          text: "`X @ W`, with shape (5, 3)",
+          text: "`X @ W`, which is undefined",
           correct: false,
-          feedback: "Without transposing, the inner counts two and three differ.",
+          feedback: "Without transposing, the inner counts three and two differ.",
         }
       - {
           id: c,
-          text: "`X.T @ W`, with shape (2, 2)",
+          text: "`X.T @ W`, which is undefined",
           correct: false,
-          feedback: "The inner counts five and three differ in that product.",
+          feedback: "The inner counts five and two differ in that product.",
         }
   - id: matp-broadcast
     dimension: implementation
@@ -359,7 +302,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A NumPy product holds two buyer scores for each of five houses, shape (5, 2). You add b, an array of two fixed score adjustments, shape (2,). What does broadcasting do?"
+    prompt: "A NumPy product holds sale-price and monthly-rent predictions for five houses, shape (5, 2). You add b, an array of two fixed adjustments, shape (2,). What does broadcasting do?"
     solution: "NumPy reuses the two bias entries across the five rows. The output shape stays (5, 2)."
     options:
       - {
@@ -387,7 +330,7 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: "Why use `X @ W` instead of a Python loop of separate house-score dot products, and why isn't `X * W` a substitute?"
-    solution: "A loop can compute the same scores, but `@` groups the row-column dot products for efficient numerical-library execution. For X row $(4,1)$ and W column $(0.5,2)$, the score is $4\\cdot0.5+1\\cdot2=4$. Elementwise multiplication does not sum those contributions."
+    solution: "A loop can compute the same predictions, but `@` groups the row-column dot products for efficient numerical-library execution. For house row $(12,3,20)$ and price weights $(25,10,-1)$, the prediction is $12\\cdot25+3\\cdot10+20\\cdot(-1)=310$. Elementwise multiplication does not sum those contributions."
     options:
       - {
           id: a,
@@ -440,17 +383,17 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Explain how a matrix turns $(3,1)$ into $(5,1)$ using rows $(1,2)$ and $(0,1)$. Then describe how NumPy can compute two buyer scores for each of five houses with three measurements. State the weight and output shapes, and explain adding one fixed amount per score."
+    prompt: "For houses with area in tens of square metres, bedroom count and age in years, explain how NumPy can predict both sale price and monthly rent for five houses. State the shapes of $X$, $W$ and $XW$, and explain adding one fixed amount per output."
     rubric:
       - {
           id: rows,
-          criterion: "Each output coordinate is a matrix row dotted with the input; this linear transformation preserves addition and scaling",
+          criterion: "Each output entry is one house row dotted with one output-weight column",
           weight: 2,
           required: true,
         }
       - {
           id: shapes,
-          criterion: "For X shape (5, 3), W has shape (3, 2) and X @ W has shape (5, 2), with matching inner feature counts",
+          criterion: "For X shape (5, 3), W has shape (3, 2) and X @ W has shape (5, 2), with matching inner measurement counts",
           weight: 2,
           required: true,
         }
@@ -459,8 +402,8 @@ exercises:
           criterion: "A bias of shape (2,) is broadcast across the five house rows in X @ W + b",
           weight: 1,
         }
-    exemplar: "A matrix produces one dot product per row when acting on a column vector, transforming its coordinates while preserving addition and scaling. For five house rows with three features, X has shape (5, 3) and W needs shape (3, 2), so each house row dots two weight columns to produce shape (5, 2). In X @ W + b, the two-entry bias is reused across all five rows, adding one fixed amount per score."
-    solution: "Rows and columns specify which dot products to take, and matching inner counts make those dot products possible. Broadcasting adds a bias to each score without changing the output shape."
+    exemplar: "Each output entry is one house row dotted with one output-weight column. Five houses with three measurements give X shape (5, 3). Sale-price and monthly-rent weights give W shape (3, 2), so X @ W has shape (5, 2). Adding b with shape (2,) reuses one fixed adjustment for each output across all five rows."
+    solution: "Each house row meets both output-weight columns. The matching inner measurement counts produce two predictions per house, and broadcasting adds one fixed adjustment per output without changing the shape."
   - id: mat-check-shape
     dimension: math
     type: mc
@@ -560,24 +503,3 @@ exercises:
     accept: ["X @ W + b", "np.dot(X, W) + b", "np.matmul(X, W) + b", "X.dot(W) + b", "b + X @ W"]
     hints: ["Which order of `X` and `W` makes the inner dimensions match?"]
     solution: "`Y = X @ W + b`: $(n\\times d)(d \\times k) = n \\times k$, and `b` broadcasts across the `n` rows."
-  - id: mat-review-order
-    dimension: conceptual
-    type: mc
-    role: review
-    difficulty: 2
-    est_minutes: 2
-    prompt: "$R$ turns each arrow 90 degrees anticlockwise. $S$ doubles its first coordinate and keeps its second unchanged. Is $SRx$ (turn, then stretch) always equal to $RSx$ (stretch, then turn)?"
-    options:
-      - {
-          id: a,
-          text: "No. Applying the two rules in opposite orders can give different endpoints.",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "Yes. Both apply the same two transformations.",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Try $x = (1, 0)$: rotate then stretch gives $(0, 1)$; stretch then rotate gives $(0, 2)$.",
-        }
-    solution: "With $x = (1,0)$: $SRx = S(0,1) = (0,1)$ but $RSx = R(2,0) = (0,2)$."

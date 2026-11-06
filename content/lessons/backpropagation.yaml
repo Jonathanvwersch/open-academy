@@ -1,232 +1,90 @@
 concept: backpropagation
-version: 2
+version: 3
 objective: |
-  **Goal:** explain why training needs every gradient and why the backward pass reuses forward values, compute gradients through a small network by hand, write a backward pass in NumPy, and diagnose common gradient bugs.
-why: |
-  A robot uses a neural network, a model made of connected layers of calculations, to predict where to place its gripper. Suppose one prediction takes 10 milliseconds and the model has a million adjustable weights. Training needs to know how each weight affects the prediction error. Changing one weight and repeating the prediction for every weight would take about 2.8 hours for just one training step. Backpropagation avoids those separate trials. It calculates the prediction once, saves the answers from each layer, and then works backwards to find every weight's effect on the error. Automatic differentiation, PyTorch fundamentals, and debugging training runs build on this method to calculate derivatives and check whether training code is correct.
+  **Goal:** explain and compute how backpropagation finds loss gradients for all parameters in a house-price network.
+where_this_fits: |
+  Computational graphs represented the house network as operations with local derivatives. Applying the chain rule separately to every weight repeats much of the same work. Backpropagation reuses each forward value and passes derivatives backward through the graph to compute all parameter gradients efficiently.
 knowledge_points:
   - id: bp-why-backprop
-    title: Why you need every gradient, and fast
+    title: Training needs one gradient for every parameter
     explain: |
-      A robot predicts where to place its gripper using a network with a million adjustable numbers, called **parameters**. Training changes these numbers to reduce the **loss**, a score measuring prediction error. For each parameter $\theta$, training needs $\partial L/\partial \theta$, which tells us how changing that parameter changes the loss. Together these derivatives are the **gradient**. **How can we calculate a million derivatives quickly?**
+      **What backpropagation is.** It is a backward calculation that applies the chain rule through a network to find the loss derivative for each weight and bias.
 
-      The obvious approach is to change one parameter slightly and run the network again to compare losses. That needs one extra prediction per parameter. If a prediction takes 10 milliseconds, a million such trials take about 2.8 hours for a single training step.
+      **How it works.** A forward pass computes the house price and stores intermediate scores and activations. Starting from the loss, the backward pass propagates its derivative through each operation. Shared values are computed once, rather than rebuilding a separate derivative expression for every weight. Stored forward values supply the inputs to local derivatives, including the ReLU slope.
 
-      **Backpropagation** calculates all the derivatives with two passes through the computational graph, the model's operations connected by arrows:
-
-      1. **Forward pass:** compute every intermediate value, from the input to the loss, and keep them all in memory.
-      2. **Backward pass:** walk the graph from the loss back towards the parameters, applying the chain rule at each node.
-
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" aria-label="A tiny network as four nodes: z = w1 x, h = ReLU(z), y hat = w2 h, and L = (y hat - y) squared. A blue arrow left to right is the forward pass that computes and keeps every value. A red arrow right to left is the backward pass that applies the chain rule">
-        <defs>
-          <marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3b82f6"/></marker>
-          <marker id="red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#ef4444"/></marker>
-          <marker id="grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#737373"/></marker>
-        </defs>
-        <text x="320" y="18" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">forward pass: compute and keep every value</text>
-        <line x1="40" y1="30" x2="600" y2="30" stroke="#3b82f6" stroke-width="2" marker-end="url(#blue)"/>
-        <rect x="2" y="50" width="130" height="46" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="171" y="50" width="130" height="46" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="340" y="50" width="130" height="46" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="508" y="50" width="130" height="46" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <text x="67" y="78" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">z = w₁x</text>
-        <text x="236" y="78" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">h = ReLU(z)</text>
-        <text x="405" y="78" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">ŷ = w₂h</text>
-        <text x="573" y="78" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">L = (ŷ − y)²</text>
-        <line x1="132" y1="73" x2="167" y2="73" stroke="#737373" stroke-width="2" marker-end="url(#grey)"/>
-        <line x1="301" y1="73" x2="336" y2="73" stroke="#737373" stroke-width="2" marker-end="url(#grey)"/>
-        <line x1="470" y1="73" x2="504" y2="73" stroke="#737373" stroke-width="2" marker-end="url(#grey)"/>
-        <line x1="600" y1="116" x2="40" y2="116" stroke="#ef4444" stroke-width="2" marker-end="url(#red)"/>
-        <text x="320" y="142" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#ef4444">backward pass: chain rule from L back to w₂ and w₁</text>
-      </svg>
-      ```
-
-      This works because many parameters affect the loss through the same later calculations. We calculate the loss's derivative for each of those results once, then reuse it when working back to earlier inputs. Saved forward values provide the numbers needed by the local derivative rules. Storing them uses memory, but avoids repeating their calculations. The backward pass takes a small multiple of the work of the forward pass, rather than a separate pass for each parameter.
+      **Why this is useful.** Backpropagation supplies all slopes needed to train the same house-price network without repeating the full calculation for each parameter.
     worked: |
-      This example shows how the cost of the two approaches grows with the number of parameters.
-
-      Suppose calculating one prediction takes 10 milliseconds (ms), and calculating all its derivatives backwards takes about as long. The table compares different models, each assumed to have that same 10 ms prediction time. A real larger model will usually take longer per prediction; the point here is to compare the number of repeated predictions each method needs.
-
-      | parameters | nudging: forward passes | nudging: time | backprop: time |
-      |---|---|---|---|
-      | 2 | 3 | 30 ms | about 20 ms |
-      | 1,000 | 1,001 | 10 s | about 20 ms |
-      | 1,000,000 | 1,000,001 | about 2.8 hours | about 20 ms |
-
-      Changing parameters one at a time needs one run for the starting loss plus one per parameter. Backpropagation needs one forward and one backward pass. The work within a pass grows with the model, but the number of passes does not grow with its parameter count. That difference makes training large networks practical.
-    problems:
-      - bpp-why-every
-      - bpp-nudge-time
-      - bpp-keep-values
-      - bpp-cost
-      - bpp-exact
+      This example shows the calculation.
+      The forward pass stores $z=1.2$, $h=1.2$, $\hat y=324.5$ and $L=30.25$. The backward pass starts with $dL/d\hat y=2(324.5-330)=-11$ and uses the stored values to continue toward earlier weights.
+    problems: [bpp-why-every, bpp-nudge-time, bpp-keep-values, bpp-cost, bpp-exact]
   - id: bp-by-hand
-    title: The backward pass by hand
+    title: Compute one weight gradient backward
     explain: |
-      We want to improve a small network that prices a house from its size. Size is in hundreds of m² and price in hundreds of thousands of pounds. The house has size $x = 1$ and sold for $y = 4$, and the weights are $w_1 = 2$ and $w_2 = 3$:
+      **What a backward pass is.** It propagates a derivative from the loss toward earlier operations, multiplying by each local derivative.
 
-      $$z = w_1 x, \qquad h = \mathrm{ReLU}(z), \qquad \hat y = w_2 h, \qquad L = (\hat y - y)^2$$
+      **How it works.** Use $z=wa$ with area $a=12$, $h=\operatorname{ReLU}(z)$, $\hat y=15h+306.5$, and $L=(\hat y-330)^2$. At $w=0.1$, the forward values are $z=h=1.2$ and $\hat y=324.5$. Then $dL/d\hat y=-11$, $dL/dh=-11(15)=-165$, and $dL/dw=-165(1)(12)=-1980$. Multiplying local derivatives in reverse order passes the loss sensitivity to each operation's immediate input.
 
-      The forward pass gives $z = 2$, $h = 2$, $\hat y = 6$ and $L = 4$. The prediction is too high. **How strongly does each weight push the loss up?**
-
-      If we started at the first multiplication, we would know its own derivative but not yet how its answer affects the loss. We therefore start at the loss and work backwards:
-
-      - **Start at the loss** with $\partial L/\partial L = 1$, because a quantity changes one-for-one with itself.
-      - **Visit nodes in reverse order.** The **upstream gradient** is the loss's derivative with respect to this node's output. Multiply it by the node's local derivative for each input to find the loss's derivative for that input.
-      - **Add** the gradients that arrive at a value from more than one node.
-
-      This works because each node uses the derivatives already calculated for the operations after it. When a value is used in two calculations, changing it affects both, so their contributions add.
-
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 176" aria-label="The tiny network with forward values above each node (z = 2, h = 2, y hat = 6, L = 4) and backward gradients below (dL/dz = 12, dL/dh = 12, dL/dy hat = 4, dL/dL = 1), plus dL/dw1 = 12 and dL/dw2 = 8">
-        <defs><marker id="grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#737373"/></marker></defs>
-        <text x="67" y="28" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">z = 2</text>
-        <text x="236" y="28" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">h = 2</text>
-        <text x="405" y="28" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">ŷ = 6</text>
-        <text x="573" y="28" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">L = 4</text>
-        <rect x="2" y="40" width="130" height="46" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="171" y="40" width="130" height="46" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="340" y="40" width="130" height="46" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="508" y="40" width="130" height="46" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <text x="67" y="68" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">z = w₁x</text>
-        <text x="236" y="68" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">h = ReLU(z)</text>
-        <text x="405" y="68" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">ŷ = w₂h</text>
-        <text x="573" y="68" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">L = (ŷ − y)²</text>
-        <line x1="132" y1="63" x2="167" y2="63" stroke="#737373" stroke-width="2" marker-end="url(#grey)"/>
-        <line x1="301" y1="63" x2="336" y2="63" stroke="#737373" stroke-width="2" marker-end="url(#grey)"/>
-        <line x1="470" y1="63" x2="504" y2="63" stroke="#737373" stroke-width="2" marker-end="url(#grey)"/>
-        <text x="67" y="110" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#ef4444">∂L/∂z = 12</text>
-        <text x="236" y="110" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#ef4444">∂L/∂h = 12</text>
-        <text x="405" y="110" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#ef4444">∂L/∂ŷ = 4</text>
-        <text x="573" y="110" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#ef4444">∂L/∂L = 1</text>
-        <text x="67" y="134" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#10b981">∂L/∂w₁ = 12</text>
-        <text x="405" y="134" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#10b981">∂L/∂w₂ = 8</text>
-        <text x="320" y="166" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">blue: forward values · red: gradients passed back · green: weight gradients</text>
-      </svg>
-      ```
+      **Why this is useful.** The resulting weight slope tells gradient descent how this house's error changes when the network weight changes.
     worked: |
-      This example shows the backward pass through the tiny network, one node at a time, from the loss back to the weights.
-
-      We write ReLU's derivative as $\mathbf{1}[z > 0]$. This means "1 if $z$ is positive, and 0 otherwise". At zero, ReLU has a corner and no derivative; our code chooses 0 there. Multiplying by this expression acts like a gate that either allows the gradient through or sets it to zero.
-
-      ReLU outputs $z$ when $z$ is positive and 0 otherwise. Its derivative therefore allows the gradient through for positive inputs and gives 0 for negative inputs.
-
-      1. Loss node: $\partial L/\partial \hat y = 2(\hat y - y) = 2(6 - 4) = 4$.
-      2. At $\hat y = w_2 h$, the upstream gradient is 4. The local derivative for $w_2$ is the other input, $h = 2$, so $\partial L/\partial w_2 = 4 \cdot 2 = 8$.
-      3. At the same node, the local derivative for $h$ is $w_2 = 3$, so $\partial L/\partial h = 4 \cdot 3 = 12$.
-      4. ReLU node: $\partial L/\partial z = 12 \cdot \mathbf{1}[z > 0] = 12 \cdot 1 = 12$, because $z = 2 > 0$.
-      5. At $z = w_1 x$, the upstream gradient is 12 and the local derivative for $w_1$ is $x = 1$. Their product gives $\partial L/\partial w_1 = 12$.
-
-      Every step used one upstream gradient and one saved forward value. Both weight gradients are positive, so a sufficiently small decrease in either weight lowers the loss. The same small change in $w_1$ has a larger effect here because its gradient is 12 rather than 8.
+      This example shows the calculation.
+      $$\frac{\partial L}{\partial w}=\frac{\partial L}{\partial\hat y}\frac{\partial\hat y}{\partial h}\frac{\partial h}{\partial z}\frac{\partial z}{\partial w}=(-11)(15)(1)(12)=-1980.$$
     problems:
-      - bpp-upstream-rule
-      - bpp-w2-template
-      - bpp-gate-closed
-      - bpp-reverse-order
-      - bpp-w1-template
-      - bpp-branch-sum
+      [
+        bpp-upstream-rule,
+        bpp-w2-template,
+        bpp-gate-closed,
+        bpp-reverse-order,
+        bpp-w1-template,
+        bpp-branch-sum,
+      ]
   - id: bp-arrays
-    title: Whole layers at once, in NumPy
+    title: Backpropagate a batch with matrix operations
     explain: |
-      A house-price network processes 64 houses together, using 100 input numbers per house and 32 units in its first layer. A **unit** is one calculation in a layer, and a **batch** is a group of examples processed together. **How can we calculate all their gradients without writing a separate calculation for every number?** We use arrays, tables of numbers that NumPy can calculate with together.
+      **What a batch gradient is.** It is the combined gradient from several training houses processed together.
 
-      Store the inputs as `X` with shape $(B, d)$, meaning $B$ rows and $d$ columns. Here $B = 64$ and $d = 100$. The weights `W1` have shape $(d, H)$, where $H = 32$ is the number of units. The calculation `Z = X @ W1 + b1` uses matrix multiplication (`@`) and adds a bias `b1`, an adjustable starting amount for each unit.
+      **How it works.** A batch contains $B$ houses. Let $d_{\rm in}$ be the number of input features and $d_{\rm out}$ the number of outputs. Define matrix $X$ with one input row per house, and matrix $G$ with one output-error row per house. Their shapes are $B\times d_{\rm in}$ and $B\times d_{\rm out}$.
 
-      Write $G_Z$ for the loss's derivatives with respect to the entries of `Z`. Each weight's derivative is its input times the upstream gradient, added over houses. Matrix multiplication performs exactly those products and sums, so the weight gradient is $X^\top G_Z$. This works because it combines the same contributions we would calculate house by house, without changing the derivative rules.
+      The weight-gradient matrix $dW$ is $X^\top G$, where $X^\top$ means $X$ with its rows and columns swapped. Its shape changes from $B\times d_{\rm in}$ to $d_{\rm in}\times B$. The inner dimensions then match in $(d_{\rm in}\times B)(B\times d_{\rm out})$, so $dW$ has shape $d_{\rm in}\times d_{\rm out}$, matching the weights. Summing each column of $G$ gives the bias gradients because the same bias is used for every house.
 
-      ReLU treats each entry separately. We therefore multiply each gradient by its matching ReLU derivative, not by a whole matrix. A bias is used in every row, so we add all the rows' contributions to its gradient. The worked example gives the notation and code.
+      Let $z$ be a unit's score before ReLU. ReLU has slope 1 where $z>0$ and 0 elsewhere. The indicator $\mathbf{1}[z>0]$ records those slopes for all units, and $\odot$ multiplies matching entries to apply the mask entry by entry.
 
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 190" aria-label="Shape check for the weight gradient: X transposed with shape 100 by 64, times G with shape 64 by 32, gives dW with shape 100 by 32, the same shape as W">
-        <rect x="20" y="20" width="77" height="120" rx="4" fill="#3b82f6"/>
-        <text x="58" y="85" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#ffffff">X.T</text>
-        <text x="58" y="166" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">(100, 64)</text>
-        <text x="132" y="86" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" fill="#171717">@</text>
-        <rect x="165" y="20" width="38" height="77" rx="4" fill="#ef4444"/>
-        <text x="184" y="64" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#ffffff">G</text>
-        <text x="184" y="166" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">(64, 32)</text>
-        <text x="245" y="86" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" fill="#171717">=</text>
-        <rect x="285" y="20" width="38" height="120" rx="4" fill="#10b981"/>
-        <text x="304" y="85" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#ffffff">dW</text>
-        <text x="304" y="166" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">(100, 32)</text>
-        <text x="370" y="60" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">inner sizes match: 64 and 64</text>
-        <text x="370" y="90" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">result is (100, 32), like W</text>
-        <text x="370" y="120" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">100 inputs, batch of 64, 32 units</text>
-      </svg>
-      ```
+      **Why this is useful.** Matrix backpropagation computes house-network gradients for many sales without a separate manual calculation for each row.
     worked: |
-      This example shows a forward and backward pass for a two-layer network in NumPy, with the shape of every array.
-
-      A gradient has one entry for every number it differentiates. Thus `dW1` has shape $(100, 32)$, the same as `W1`. The product $X^\top G_Z$ has shape $(100, 64)(64, 32) = (100, 32)$, which is a useful check. Matching shapes alone do not show that the values are correct: an array of zeros could have that shape too.
-
-      The symbol $\odot$ means multiplying matching entries: $(2, 3) \odot (4, 5) = (8, 15)$. For the ReLU outputs `H`, $G_H$ contains the loss's derivatives with respect to those outputs. We calculate $G_Z = G_H \odot \mathbf{1}[Z > 0]$, where the indicator is 1 at positive entries of `Z` and 0 elsewhere. Here `H` in an array name means the layer's outputs; the number of units was also labelled $H$ above.
-
-      ```python
-      # forward: keep z1 and h1 for the backward pass
-      z1 = X @ W1 + b1                  # (B, H)
-      h1 = np.maximum(0, z1)            # (B, H)  ReLU
-      y_hat = h1 @ W2 + b2              # (B, 1)
-      loss = ((y_hat - y) ** 2).mean()
-
-      # backward
-      g_y = 2 * (y_hat - y) / len(y)    # (B, 1)  the mean divides by B
-      dW2 = h1.T @ g_y                  # (H, 1)  shape rule
-      db2 = g_y.sum(axis=0)             # (1,)    bias: add up the rows
-      g_h1 = g_y @ W2.T                 # (B, H)  pass back to h1
-      g_z1 = g_h1 * (z1 > 0)            # (B, H)  ReLU gate uses the kept z1
-      dW1 = X.T @ g_z1                  # (d, H)
-      db1 = g_z1.sum(axis=0)            # (H,)
-      ```
-
-      In NumPy, `*` multiplies matching entries, so `g_h1 * (z1 > 0)` is $G_H \odot \mathbf{1}[Z > 0]$. The matrix products calculate the weight gradients and the gradients for the previous layer. ReLU multiplies each entry by its own derivative, and each bias receives the sum of the rows' contributions.
+      This example shows the calculation.
+      With $B=2$, $d_{\rm in}=3$ house features and $d_{\rm out}=2$ hidden units, $X^\top$ has shape $3\times2$ and $G$ has shape $2\times2$. Thus $dW=X^\top G$ has shape $3\times2$, matching $W$.
     problems:
-      - bpp-grad-shape
-      - bpp-hadamard-template
-      - bpp-bias-code
-      - bpp-weight-code
-      - bpp-pass-back
-      - bpp-why-bias-sum
+      [
+        bpp-grad-shape,
+        bpp-hadamard-template,
+        bpp-bias-code,
+        bpp-weight-code,
+        bpp-pass-back,
+        bpp-why-bias-sum,
+      ]
   - id: bp-checking
-    title: Checking gradients and fixing common bugs
+    title: Check gradients against small parameter nudges
     explain: |
-      Your house-price network reports a weight gradient of 8. The loss falls when you train it, which looks encouraging. **Does that prove the gradient is right?** No: even an incorrect gradient can sometimes lower the loss. We need a check that does not reuse the backward calculation.
+      **What a gradient check is.** It compares a calculated derivative with a finite-difference estimate from nearby parameter values.
 
-      Compare the reported gradient with a separate estimate. Change one parameter $\theta$ up and down by a small amount $\epsilon$ ("epsilon", such as 0.01) and measure how the loss changes:
+      **How it works.** For one house-model weight $w$, estimate $\partial L/\partial w$ with $[L(w+h)-L(w-h)]/(2h)$ for a small $h$. Compare that value with backpropagation's result. Use the same inputs, loss and parameters in both calculations. A central difference samples both sides of the parameter and is usually more accurate than a one-sided nudge.
 
-      $$\frac{\partial L}{\partial \theta} \approx \frac{L(\theta + \epsilon) - L(\theta - \epsilon)}{2\epsilon}$$
-
-      This is a **gradient check**, also called a finite-difference check. It works because two nearby loss values estimate the same slope that backpropagation calculates with derivative rules. Why try both sides? On a smooth curve, the slope may increase across the interval. Using equally spaced points on either side balances that change better than using only points on one side. If the answers agree, we have evidence for that parameter at those input values. Other parameters or inputs may still reveal a bug. Checking a few is affordable; checking millions would be too slow.
-
+      **Why this is useful.** A gradient check catches implementation mistakes before they affect training on house sales.
     worked: |
-      This example shows a gradient check on $w_2$ in the tiny network ($x = 1$, $w_1 = 2$, $y = 4$).
-
-      With $w_1$ and $x$ fixed, $h = 2$, so $L = (2w_2 - 4)^2$. Take $\epsilon = 0.01$:
-
-      1. $L(3.01) = (6.02 - 4)^2 = 2.02^2 = 4.0804$
-      2. $L(2.99) = (5.98 - 4)^2 = 1.98^2 = 3.9204$
-      3. Estimate: $(4.0804 - 3.9204) \div 0.02 = 0.16 \div 0.02 = 8$
-
-      Backprop gave $\partial L/\partial w_2 = 8$, so they agree. If your backward pass had given 4, half the check's value, you'd look for a step that dropped the factor 2 from the squared error.
-
-      Other patterns can help you find the mistake:
-
-      - If only a bias gradient is too small by exactly the batch size, check whether you averaged the rows instead of adding them.
-      - If every gradient has the correct size but the opposite sign, check whether the loss derivative uses $y - \hat y$ instead of $\hat y - y$.
-      - If a ReLU unit with a negative input receives a non-zero gradient, check whether the multiplication by `(z1 > 0)` is missing.
-      - If an array has the wrong number of rows or columns, a transpose may be missing or in the wrong place. Compare the gradient's shape with its parameter's shape.
-      - If a value is used twice but its gradient is too small, check whether you included both paths to the loss.
+      This example shows the calculation.
+      For a smooth loss, reduce $h$ and compare the finite-difference estimate with the backward derivative. Agreement to a small tolerance supports the implementation; a sign or shape mismatch points to a bug.
     problems:
-      - bpp-why-check-nudges
-      - bpp-check-template
-      - bpp-sign-bug
-      - bpp-gate-bug
-      - bpp-batch-bug
-      - bpp-check-w1
+      [
+        bpp-why-check-nudges,
+        bpp-check-template,
+        bpp-sign-bug,
+        bpp-gate-bug,
+        bpp-batch-bug,
+        bpp-check-w1,
+      ]
 final: bp-explain
 summary: |
-  - Training needs the loss's derivative for every adjustable parameter. Backpropagation calculates them with a forward pass that saves intermediate answers and a backward pass that reuses those answers.
-  - Start the backward pass at $\partial L/\partial L = 1$. At each node, multiply the upstream gradient by the local derivative. Add the contributions when the same value is used in several calculations. ReLU allows gradients through for positive inputs and sets them to zero for negative inputs.
-  - A gradient array has the same shape as the parameter array it describes. ReLU multiplies matching entries, written $\odot$, and each shared bias receives the sum of the rows' contributions. Check selected gradients by comparing them with slopes estimated from nearby loss values.
+  - Backpropagation reuses forward values and applies the chain rule from loss to every parameter.
+  - Matrix operations compute gradients for whole batches of houses.
+  - Finite differences can check that a backward implementation gives the right slopes.
 
-  **Where you'll use this:** automatic differentiation, PyTorch fundamentals, and debugging training runs automate these derivatives and help you diagnose incorrect training code.
+  **Next:** Automatic differentiation lets software compute these same derivatives for larger models.

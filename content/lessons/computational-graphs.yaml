@@ -1,177 +1,74 @@
 concept: computational-graphs
-version: 2
+version: 3
 objective: |
-  **Goal:** draw the computational graph of a calculation, find the local derivative at each node, and chain them to see how the result changes with any input.
-why: |
-  A house-price model predicts 700 thousand pounds for a house that sold for 500 thousand. Before changing its settings, we want to know how each setting affects that mistake. We could expand the complete error formula and differentiate it by hand. That is manageable for a small model, but a larger model may reuse the same calculation many times, making the expanded formula long and hard to check. A computational graph records each small calculation and shows where its answer is used. We can then find derivatives one operation at a time and reuse answers we have already calculated. Backpropagation and automatic differentiation build on this representation to calculate how every model setting affects its final error.
+  **Goal:** represent a house-network calculation as operations and use local derivatives to trace its loss.
+where_this_fits: |
+  The chain rule multiplied local derivatives along each route from a house feature to the price loss. An MLP can contain many repeated operations and routes, so it helps to make the calculation explicit. A computational graph records each value and shows which later operation uses it.
 knowledge_points:
   - id: cg-drawing-graphs
-    title: Breaking a calculation into simple steps
+    title: Break the house calculation into operation nodes
     explain: |
-      A house has size $x = 2$ in hundreds of m². We predict its price with $\hat y = wx + b$, where $w = 3$ multiplies the size and $b = 1$ is an amount added afterwards. Prices are in hundreds of thousands of pounds, so $\hat y = 7$ means 700 thousand pounds. The house actually sold for $y = 5$, so the squared error is $L = (wx + b - y)^2 = 4$. **How would changing $w$ change this error?**
+      **What a computational graph is.** It is a directed diagram of values and operations, with an arrow from each input value to the operation that uses it.
 
-      We could expand the formula before differentiating it, but that becomes hard to follow when a model has many repeated calculations. Instead, give each small calculation a name:
+      **How it works.** For the running house, let $z=0.1(12)=1.2$, $h=\max(0,z)=1.2$ (zero for a negative score, otherwise the score), $\hat y=15h+306.5=324.5$, and $L=(\hat y-330)^2=30.25$. Draw one node for each multiply, maximum, add and square; arrows show the order of dependence. Separate operation nodes make each local derivative simple to calculate.
 
-      1. $m = w \cdot x$ (multiply)
-      2. $\hat y = m + b$ (add)
-      3. $r = \hat y - y$ (subtract: how far off the prediction is)
-      4. $L = r^2$ (square)
-
-      Now draw it. Each operation is a **node**. An arrow carries a value into the node that uses it. Inputs sit on the left and the final result on the right. This picture is a **computational graph**.
-
-      This works because every arrow tells us exactly where an earlier answer is needed. If two later calculations need the same answer, we can draw two arrows from it rather than calculate it twice.
-
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" aria-label="Computational graph of the squared error. w = 3 and x = 2 feed a multiply node giving m = 6. m and b = 1 feed an add node giving y hat = 7. y hat and y = 5 feed a subtract node giving r = 2. A square node gives L = 4">
-        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#737373"/></marker></defs>
-        <text x="20" y="50" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">w = 3</text>
-        <text x="20" y="122" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">x = 2</text>
-        <line x1="70" y1="50" x2="90" y2="70" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
-        <line x1="70" y1="112" x2="90" y2="92" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
-        <rect x="92" y="60" width="56" height="40" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
-        <text x="120" y="86" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717">×</text>
-        <line x1="148" y1="80" x2="220" y2="80" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
-        <text x="184" y="70" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">m = 6</text>
-        <rect x="222" y="60" width="56" height="40" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
-        <text x="250" y="86" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717">+</text>
-        <text x="250" y="170" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">b = 1</text>
-        <line x1="250" y1="152" x2="250" y2="102" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
-        <line x1="278" y1="80" x2="350" y2="80" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
-        <text x="314" y="70" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">ŷ = 7</text>
-        <rect x="352" y="60" width="56" height="40" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
-        <text x="380" y="86" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717">−</text>
-        <text x="380" y="170" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">y = 5</text>
-        <line x1="380" y1="152" x2="380" y2="102" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
-        <line x1="408" y1="80" x2="465" y2="80" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
-        <text x="437" y="70" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">r = 2</text>
-        <rect x="467" y="60" width="76" height="40" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
-        <text x="505" y="85" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">square</text>
-        <line x1="543" y1="80" x2="575" y2="80" stroke="#737373" stroke-width="2" marker-end="url(#arrow)"/>
-        <text x="608" y="86" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#10b981">L = 4</text>
-        <text x="320" y="196" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">values flow left to right; each box does one operation</text>
-      </svg>
-      ```
-
-      Calculate the answers from left to right. A node can run only after all its inputs have been calculated.
+      **Why this is useful.** A graph makes every dependency in the house-price calculation visible before computing its gradients.
     worked: |
-      This example shows the graph being evaluated one node at a time.
-
-      We use the same house and settings: size $x = 2$, sale price $y = 5$, multiplying setting $w = 3$ and added amount $b = 1$.
-
-      | step | node | inputs | value |
-      |---|---|---|---|
-      | 1 | multiply | $w = 3$, $x = 2$ | $m = 6$ |
-      | 2 | add | $m = 6$, $b = 1$ | $\hat y = 7$ |
-      | 3 | subtract | $\hat y = 7$, $y = 5$ | $r = 2$ |
-      | 4 | square | $r = 2$ | $L = 4$ |
-
-      Each step only needed values that earlier steps had already produced, and the last node gives the squared error, $L = 4$.
+      This example shows the calculation.
+      $$a=12\longrightarrow z=0.1a=1.2\longrightarrow h=\max(0,z)=1.2\longrightarrow\hat y=15h+306.5=324.5\longrightarrow L=(\hat y-330)^2=30.25.$$
     problems:
-      - cgp-steps-for-expression
-      - cgp-forward-value
-      - cgp-arrow-meaning
-      - cgp-why-order
-      - cgp-node-count
-      - cgp-shared-input
+      [
+        cgp-steps-for-expression,
+        cgp-forward-value,
+        cgp-arrow-meaning,
+        cgp-why-order,
+        cgp-node-count,
+        cgp-shared-input,
+      ]
   - id: cg-local-derivatives
-    title: Each node has its own simple derivative
+    title: Each graph operation has a local derivative
     explain: |
-      Our house-price calculation multiplies $w = 3$ by $x = 2$ before adding the other terms. **How much does that multiplication's answer change when we change $w$?** Looking only at the complete error formula hides this small step. We can understand it by keeping $x = 2$ fixed and changing only $w$.
+      **What a local derivative is.** It is the rate at one operation's output with respect to one of its inputs, holding the other inputs fixed.
 
-      A node's **local derivative** measures how its output changes per unit change in one input, with the others fixed. It is the partial derivative of that one operation. The same few rules apply wherever that operation appears:
+      **How it works.** In the house graph, $d(0.1a)/da=0.1$, the maximum operation has slope 1 for this positive score, $d(15h+306.5)/dh=15$, and $d(\hat y-330)^2/d\hat y=2(\hat y-330)=-11$. These are small rules attached to their operation nodes. The forward values provide the current error $\hat y-330$ needed to differentiate the square.
 
-      | node | output | local derivatives |
-      |---|---|---|
-      | add | $a + b$ | $1$ for $a$, $1$ for $b$ |
-      | subtract | $a - b$ | $1$ for $a$, $-1$ for $b$ |
-      | multiply | $a \cdot b$ | $b$ for $a$, $a$ for $b$ |
-      | square | $a^2$ | $2a$ |
-
-      This works because holding the other inputs fixed lets us measure one input's effect without mixing in other changes. For $a + b$, increasing $a$ by 0.1 increases the answer by 0.1. For $a \cdot b$ with $b = 4$, the same increase in $a$ increases the answer by 0.4.
-
-      Why save answers such as $r = 2$? The derivative of $r^2$ needs that value to calculate $2r = 4$. Saving it uses memory, but avoids repeating all the calculations that produced $r$.
+      **Why this is useful.** Local derivatives reduce a large house-network gradient calculation to familiar rules for each operation.
     worked: |
-      This example shows every local derivative in the house graph, using the values from evaluating it ($w = 3$, $x = 2$, $m = 6$, $\hat y = 7$, $r = 2$).
-
-      | node | local derivatives | values |
-      |---|---|---|
-      | $m = w \cdot x$ | $\partial m/\partial w = x$, $\partial m/\partial x = w$ | $2$ and $3$ |
-      | $\hat y = m + b$ | $\partial \hat y/\partial m = 1$, $\partial \hat y/\partial b = 1$ | $1$ and $1$ |
-      | $r = \hat y - y$ | $\partial r/\partial \hat y = 1$, $\partial r/\partial y = -1$ | $1$ and $-1$ |
-      | $L = r^2$ | $dL/dr = 2r$ | $4$ |
-
-      Each derivative uses one operation's rule and its saved inputs. We do not need to differentiate the complete price-error formula to fill in this table.
-
-      For $\max(0, a)$, the output is whichever is larger: 0 or $a$. When $a = -3$, a small change leaves the output at 0, so the derivative is 0. When $a = 3$, the output changes by the same amount as $a$, so the derivative is 1. At zero the graph has a corner, so there is no derivative there.
-
-      An exponential node calculates $e^a$. Its derivative is also $e^a$, so its saved output already gives the local derivative.
+      This example shows the calculation.
+      At $\hat y=324.5$, the last operation gives $dL/d\hat y=2(324.5-330)=-11$. The output multiply gives $d\hat y/dh=15$.
     problems:
-      - cgp-multiply-local
-      - cgp-multiply-nudge
-      - cgp-square-local
-      - cgp-why-store-values
-      - cgp-subtract-local
-      - cgp-max-node
+      [
+        cgp-multiply-local,
+        cgp-multiply-nudge,
+        cgp-square-local,
+        cgp-why-store-values,
+        cgp-subtract-local,
+        cgp-max-node,
+      ]
   - id: cg-chaining-paths
-    title: Chaining local derivatives back to an input
+    title: Multiply derivatives backward along a path
     explain: |
-      For our house, increasing $w$ by 0.01 increases the multiplication result $m$ by 0.02 because $x = 2$. **Does that tell us how much the final error changes?** Not yet: the changed value still goes through addition, subtraction and squaring. We must include each of those operations, not stop at the first derivative.
+      **What a backward path is.** It follows the graph from the final loss toward an earlier input, multiplying the local derivatives along the way.
 
-      Follow the arrows from $w$ to $L$ and multiply the local derivatives. This works because each operation changes the amount it receives from the previous operation. Here addition and subtraction each multiply the change by 1. Squaring, at $r = 2$, multiplies it by about 4.
+      **How it works.** From loss back to area weight $w$, the factors are $dL/d\hat y=-11$, $d\hat y/dh=15$, $dh/dz=1$, and $dz/dw=12$. Their product is $dL/dw=-1980$. If a value feeds two later paths, add their contributions. The derivative at the weight is the loss slope needed to update that parameter.
 
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 130" aria-label="The path from w to L through m, y hat and r. The local derivatives along it are 2, 1, 1 and 4, which multiply to dL/dw = 8">
-        <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#10b981"/></marker></defs>
-        <rect x="2" y="20" width="70" height="44" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="144" y="20" width="70" height="44" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="286" y="20" width="70" height="44" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="428" y="20" width="70" height="44" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <rect x="568" y="20" width="70" height="44" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
-        <text x="37" y="47" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">w</text>
-        <text x="179" y="47" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">m</text>
-        <text x="321" y="47" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">ŷ</text>
-        <text x="463" y="47" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">r</text>
-        <text x="603" y="47" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">L</text>
-        <line x1="74" y1="52" x2="140" y2="52" stroke="#10b981" stroke-width="2" marker-end="url(#arrow)"/>
-        <line x1="216" y1="52" x2="282" y2="52" stroke="#10b981" stroke-width="2" marker-end="url(#arrow)"/>
-        <line x1="358" y1="52" x2="424" y2="52" stroke="#10b981" stroke-width="2" marker-end="url(#arrow)"/>
-        <line x1="500" y1="52" x2="564" y2="52" stroke="#10b981" stroke-width="2" marker-end="url(#arrow)"/>
-        <text x="108" y="38" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 2</text>
-        <text x="250" y="38" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 1</text>
-        <text x="392" y="38" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 1</text>
-        <text x="532" y="38" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">× 4</text>
-        <text x="320" y="112" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#10b981">∂L/∂w = 4 × 1 × 1 × 2 = 8</text>
-      </svg>
-      ```
-
-      $$\frac{\partial L}{\partial w} = \frac{dL}{dr}\cdot\frac{\partial r}{\partial \hat y}\cdot\frac{\partial \hat y}{\partial m}\cdot\frac{\partial m}{\partial w} = 4 \cdot 1 \cdot 1 \cdot 2 = 8$$
-
-      So nudging $w$ up by 0.01 raises the squared error by about $8 \times 0.01 = 0.08$.
-
-      Sometimes the same input is used by two later operations. Then there are two paths, or sequences of arrows, from that input to the result. Calculate the derivative along each path and add the two contributions. A change in the input affects the result through both calculations, so neither can be ignored.
-
-      For our house-price model, we now know how the setting $w$ affects the final error. Backpropagation organises this calculation for every model setting.
+      **Why this is useful.** The graph organizes the route from each house-network weight to the prediction loss.
     worked: |
-      This example shows adding paths when one input is used twice.
-
-      A robot cart receives the same movement command $b = -3$ for two one-second intervals. It travels $a \cdot b$ centimetres in the first interval and $c \cdot b$ centimetres in the second, where $a = 2$ and $c = 4$ describe how strongly it responds in each interval. Negative distances mean travelling backwards. The total distance with direction is $f = a \cdot b + c \cdot b$. We want to know how changing the command affects that total. The graph first calculates $p = a \cdot b$ and $q = c \cdot b$, then adds them as $f = p + q$.
-
-      1. Path through $p$: $\frac{\partial f}{\partial p}\cdot\frac{\partial p}{\partial b} = 1 \cdot a = 2$.
-      2. Path through $q$: $\frac{\partial f}{\partial q}\cdot\frac{\partial q}{\partial b} = 1 \cdot c = 4$.
-      3. Adding the two contributions gives $\partial f/\partial b = 2 + 4 = 6$.
-
-      We can check by rewriting $f = (a + c) \cdot b$. Its derivative with respect to $b$ is $a + c = 6$. Using only one path would give 2 or 4 and would miss part of the setting's effect on the robot's calculated movement.
+      This example shows the calculation.
+      $$\frac{dL}{dw}=\frac{dL}{d\hat y}\frac{d\hat y}{dh}\frac{dh}{dz}\frac{dz}{dw}=(-11)(15)(1)(12)=-1980.$$
     problems:
-      - cgp-path-product
-      - cgp-chain-template
-      - cgp-one-path-only
-      - cgp-used-twice
-      - cgp-why-multiply-path
-      - cgp-robot-error
+      [
+        cgp-path-product,
+        cgp-chain-template,
+        cgp-one-path-only,
+        cgp-used-twice,
+        cgp-why-multiply-path,
+        cgp-robot-error,
+      ]
 final: cg-explain
 summary: |
-  - A computational graph breaks a calculation into nodes that each do one simple operation, and arrows carry each value to the node that uses it.
-  - A local derivative describes one operation's response to a change in one input. For addition it is 1, for multiplication it is the other input, and for squaring it is twice the input.
-  - Multiply derivatives along each path from an input to the result. If several paths exist, add their contributions because changing that input affects every route.
+  - A computational graph records each operation and the values it depends on.
+  - Local derivatives attach a simple slope to each operation.
+  - Multiplying along paths and adding shared routes gives the loss slope for a house-network parameter.
 
-  **Where you'll use this:** backpropagation and automatic differentiation reuse these node rules and stored values to find how model settings affect a final loss.
+  **Next:** Backpropagation applies these graph calculations efficiently to every network weight.

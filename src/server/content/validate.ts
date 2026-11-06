@@ -551,20 +551,25 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
 
   for (const { value: lesson, file } of data.lessons) {
     if (lesson.knowledge_points) {
-      const whyWords = countKnowledgePointWords(lesson.why ?? '');
-      if (whyWords < 60 || whyWords > 140) {
-        addIssue(issues, file, lesson.concept, `lesson why has ${whyWords} words; expected 60–140`);
+      const openingWords = countKnowledgePointWords(lesson.where_this_fits ?? '');
+      if (openingWords < 30 || openingWords > 90) {
+        addIssue(
+          issues,
+          file,
+          lesson.concept,
+          `lesson where_this_fits has ${openingWords} words; expected 30–90`,
+        );
       }
       if (
         !(lesson.summary ?? '')
           .split(/\r?\n/)
-          .some((line) => line.trimStart().startsWith("**Where you'll use this:**"))
+          .some((line) => line.trimStart().startsWith('**Next:**'))
       ) {
         addIssue(
           issues,
           file,
           lesson.concept,
-          'lesson summary must contain a line starting with "**Where you\'ll use this:**"',
+          'lesson summary must contain a line starting with "**Next:**"',
         );
       }
       const final = exercises.get(lesson.final ?? '');
@@ -623,6 +628,18 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
           `knowledge-point explain has ${explanationWords} words; maximum is 250`,
         );
       }
+      if (
+        !point.explain
+          .split(/\r?\n/)
+          .some((line) => line.trimStart().startsWith('**Why this is useful.**'))
+      ) {
+        addIssue(
+          issues,
+          file,
+          point.id,
+          'knowledge-point explain must contain a line starting with "**Why this is useful.**"',
+        );
+      }
       if (!point.worked.trim())
         addIssue(issues, file, point.id, 'knowledge-point worked must not be empty');
       if (!point.worked.trimStart().startsWith('This example shows')) {
@@ -647,12 +664,12 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
       if (fixedProblems.length < 1) {
         addIssue(issues, file, point.id, 'knowledge point must include at least 1 fixed problem');
       }
-      if (fixedProblems.length < 5 && !hasTemplate) {
+      if (fixedProblems.length < 3 && !hasTemplate) {
         addIssue(
           issues,
           file,
           point.id,
-          'knowledge point needs 5 fixed problems or at least 1 template',
+          'knowledge point needs 3 fixed problems or at least 1 template',
         );
       }
       const listed = new Set<string>();
@@ -683,8 +700,13 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
             `problem "${problemId}" belongs to "${problem.concept}"`,
           );
         }
-        if (problem.value.role !== 'practice') {
-          addIssue(issues, file, point.id, `problem "${problemId}" must have practice role`);
+        if (problem.value.role !== 'practice' && problem.value.role !== 'check') {
+          addIssue(
+            issues,
+            file,
+            point.id,
+            `problem "${problemId}" must have practice or check role`,
+          );
         }
       }
     }

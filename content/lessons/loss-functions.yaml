@@ -1,34 +1,30 @@
 concept: loss-functions
-version: 2
+version: 3
 objective: |
   **Goal:** compute MSE and MAE, explain how their slopes treat large errors, and choose the best constant prediction for each loss.
-why: |
-  You have two house-price models and need to decide which one to improve. Eyeballing a few predictions is unreliable across thousands of sales. Averaging raw errors seems fair, but overpricing one house can cancel underpricing another, making a bad model look perfect. A loss turns the misses into one score without that cancellation. It lets you compare models on the same sales and gives a training algorithm a slope that tells which small changes reduce the score. Choosing the loss also decides how strongly a huge pricing mistake matters. Gradient descent uses this score to improve predictions; backpropagation carries its effects back to model weights.
+where_this_fits: |
+  The derivatives lesson showed how a small change to one house-model weight changes a loss. We still need to choose what loss to calculate: signed errors can cancel, and a very large price miss may deserve more attention than a small one. This lesson compares mean squared error and mean absolute error, then finds the best constant-price baseline. The next lesson separates the loss slope for each of a model's weights.
 knowledge_points:
   - id: loss-measure-misses
     title: Two ways to measure a missed price
     explain: |
-      You predict three house prices in thousands of pounds: 370, 300 and 540. They sell for 360, 290 and 560. **How do you turn these misses into one score?** The obvious attempt is to average the errors, +10, +10 and −20. That average is zero, yet you have not priced any house correctly: opposite errors cancel.
+      **What a loss is.** A loss is a non-negative score for how far a model's prediction is from the true price. Mean squared error (MSE) squares each miss and averages; mean absolute error (MAE) takes each miss's absolute value and averages.
 
-      One fix is to square each error, then average. This is **mean squared error (MSE)**. Another is to remove each error's sign, then average. This is **mean absolute error (MAE)**. Absolute value, written with bars, means distance from zero: $|-20|=20$. Why does this work? Both turn every miss into a positive cost, so an overpriced house can no longer hide an underpriced one.
+      For $n$ houses, $\hat y_i$ is house $i$'s predicted price and $y_i$ its sale price. Absolute value, written with bars, is distance from zero, so $|-20|=20$.
 
-      Write $\hat y_i$ for house $i$'s predicted price, $y_i$ for its actual price, and $n$ for the number of houses. The subscript $i$ identifies a house; $\sum_{i=1}^n$ means add across all houses:
+      **How it works.** The error is predicted price minus sale price. For three houses with errors $10,10,-20$ thousand pounds, the signed average is zero even though none is exact. Squaring or taking absolute values prevents opposite errors from cancelling. The formulas are:
 
       $$\text{MSE}=\frac{1}{n}\sum_{i=1}^n(\hat y_i-y_i)^2,\qquad \text{MAE}=\frac{1}{n}\sum_{i=1}^n|\hat y_i-y_i|.$$
 
-      Why not just count wrong prices? A price is almost never exactly right, so a house off by 1 and a house off by 100 each count as one miss, and the count can't show that a change made things better. Averaging keeps the scale unchanged if you repeat the same sales. MAE is in thousands of pounds; MSE is in squared thousands, so their numbers are not directly comparable.
+      MSE is in squared thousands of pounds; MAE is in thousands of pounds.
+
+      **Why this is useful.** Averaging the house-price losses gives one score that can compare models without overpricing cancelling underpricing.
     worked: |
-      This example shows every step of calculating both losses.
+      This example shows both losses for three house sales.
 
-      | Prediction | Actual price | Error | Squared error | Absolute error |
-      |---|---|---|---|---|
-      | 370 | 360 | $370-360=10$ | $10^2=100$ | $\lvert10\rvert=10$ |
-      | 300 | 290 | $300-290=10$ | $10^2=100$ | $\lvert10\rvert=10$ |
-      | 540 | 560 | $540-560=-20$ | $(-20)^2=400$ | $\lvert-20\rvert=20$ |
+      The errors are $10,10,-20$ thousand pounds. Their squared errors are $100,100,400$, so MSE is $600/3=200$. Their absolute errors are $10,10,20$, so MAE is $40/3\approx13.33$.
 
-      MSE is $(100+100+400)/3=200$. MAE is $(10+10+20)/3\approx13.33$.
-
-      Repeating all rows gives MSE $1200/6=200$ and MAE $80/6\approx13.33$: the averages stay the same, unlike the totals.
+      Repeating each sale does not change either average because both the total and the house count double.
     problems:
       [
         lossp-why-not-count,
@@ -41,42 +37,19 @@ knowledge_points:
   - id: loss-large-errors
     title: Why a large miss pulls harder under squared error
     explain: |
-      Suppose your house-price errors are 1, 1 and 9 thousand pounds. **Should the last sale cost nine times as much as either small miss, or 81 times as much?** Choosing a loss means choosing which mistakes matter most.
+      **What changes when an error is large.** Squared loss makes a large miss count disproportionately more; absolute loss increases at a constant rate as the miss grows.
 
-      Squared error makes large misses disproportionately costly. An **outlier** is an unusually distant value, such as a sale price recorded with an extra zero. Under MSE, that one sale can outweigh many ordinary ones. Why? A square multiplies the error by itself, so each extra unit of error costs more than the one before: 9 costs 81 while 1 costs 1. MAE charges the same extra amount for each extra unit.
+      **How it works.** For one house with area 12 and sale price 330, the one-weight model has prediction $12w$ and squared loss $L(w)=(12w-330)^2=144w^2-7920w+108900$. Its derivative is $288w-7920$, which is $-720$ at $w=25$. There, the MAE is $330-12w$, so its slope is $-12$. Above the exact price its slope is $+12$, and at the exact price it has a corner with no ordinary derivative.
 
-      Let $r=\hat y-y$ be one house's error, with prediction $\hat y$ and target $y$. Write $\ell$ ("ell") for its loss. For $\ell=r^2$, the prediction's slope is $d\ell/d\hat y=2r$.
+      A nine-thousand-pound miss contributes 81 to squared error but 9 to absolute error. This is why a wrongly recorded extreme sale can dominate MSE; MAE limits its pull.
 
-      For $\ell=|r|$, the slope is +1 above the target and −1 below it. This is $\operatorname{sign}(r)$ away from zero. At zero, absolute error has a corner and no ordinary derivative.
-
-      Why this way? Neither loss is always better. Squared error's slope is proportional to the miss, so it shows how far off you are and fades smoothly to zero at the target. Absolute error's slope has size 1 however large the miss, so one misrecorded price can't dominate: prefer MAE when outliers are likely.
-
-      For a mean loss over $n$ houses, divide each house's contribution by $n$.
-
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 220" aria-label="Squared error has a smooth bowl whose slopes steepen away from zero; absolute error has straight sides and a corner at zero">
-        <path d="M30 25 V175 H275 M325 25 V175 H570" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
-        <path d="M55 55 Q155 285 255 55" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="3"/>
-        <path d="M350 55 L450 170 L550 55" fill="#171717" fill-opacity="0" stroke="#f59e0b" stroke-width="3"/>
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <text x="50" y="18">Squared error: changing slope</text><text x="340" y="18">Absolute error: fixed slope size</text><text x="145" y="195">0</text><text x="440" y="195">0</text><text x="200" y="213">Price error</text><text x="495" y="213">Price error</text>
-        </g>
-      </svg>
-      ```
+      **Why this is useful.** Choose MAE for house sales when an extreme or misrecorded price should not dominate the model's fit.
     worked: |
-      This example shows the cost and slope of a large house-price error.
+      This example shows how error size changes each house-price loss.
 
-      For errors 1, 1 and 9, MSE is $(1+1+81)/3=83/3\approx27.67$. MAE is $(1+1+9)/3=11/3\approx3.67$.
+      For a miss of 1 thousand pounds, squared error is $1^2=1$ and absolute error is 1. For a miss of 9, squared error is $9^2=81$ and absolute error is 9.
 
-      | Individual error | Squared-error slope | Absolute-error slope |
-      |---|---|---|
-      | 1 | $2\times1=2$ | +1 |
-      | 9 | $2\times9=18$ | +1 |
-      | −9 | $2\times(-9)=-18$ | −1 |
-
-      If each listed error belonged to a three-house average, its squared-error slope contribution would be $2/3$, $18/3=6$ or $-18/3=-6$ respectively; its absolute-error contribution would be $1/3$, $1/3$ or $-1/3$.
-
-      If a large error comes from a wrongly recorded sale price, fix the record too: changing the loss reduces that sale's influence but does not correct it.
+      MSE gives the larger miss 81 times the squared-error cost; MAE gives it 9 times the cost. Thus MSE emphasizes large misses more strongly.
     problems:
       [
         lossp-outlier,
@@ -89,26 +62,21 @@ knowledge_points:
   - id: loss-constant-choice
     title: Which single price should you predict
     explain: |
-      Before building a real model, it helps to know how well the simplest possible model does: one that predicts the same price for every house. This is called a **baseline**, and any real model must beat it. Your three sales are 290, 300 and 560 thousand pounds. **Which single price should you predict?** No single price gets all three right. Picking one of the sales, say 300, makes the other two errors whatever they happen to be, so you need a rule for the best compromise.
+      **What a baseline is.** A baseline is a simple model used to check whether a more detailed house-price model is useful. A constant baseline predicts the same price for every house.
 
-      Under MSE, the best constant is the **mean**: add the prices and divide by their count. Here it is $(290+300+560)/3\approx383.33$. Why does this work? Each sale pulls the prediction towards itself with a slope proportional to its error, so the expensive sale pulls hardest. At the mean, the upward and downward pulls exactly balance.
+      **How it works.** The mean is the arithmetic average; the median is the middle value after prices are sorted. Under MSE, the best constant is the mean because squared-error slopes balance at the average. Under MAE, a median minimizes the total absolute distance because at least half the prices lie on each side.
 
-      Under MAE, the best constant is a **median**: order the prices and choose the middle value, here 300. Every sale pulls with the same strength, so only how many prices lie on each side matters. Moving above 300 increases the distances to 290 and 300 while only reducing the distance to 560.
+      For sale prices 290, 300 and 560 thousand pounds, the mean is about 383.33 and the median is 300. The mean is pulled toward the high sale; the median is not. For an even number of prices, any value between the middle pair minimizes MAE.
 
-      Why this way? Neither choice is universally right. Use the mean when a large miss really is much worse. Use the median when typical distance matters and extreme or misrecorded prices shouldn't drag the answer.
-
-      For an even count, any value between the two middle prices minimises MAE; their average is a conventional median.
+      **Why this is useful.** Comparing a fitted model with the mean-price baseline shows whether its house features improve on predicting one average price.
     worked: |
-      This example shows how the loss changes the best constant house price.
+      This example shows why the mean and median win under different losses.
 
-      Measure prices in tens of thousands of pounds to shorten the arithmetic: the targets are 29, 30 and 55. Their mean is $(29+30+55)/3=38$; their median is 30.
+      For prices 290, 300 and 560, the mean is $(290+300+560)/3=383.33$ and the median is 300.
 
-      | Constant | Squared-error total | Absolute-error total |
-      |---|---|---|
-      | 38 | $9^2+8^2+(-17)^2=81+64+289=434$ | $9+8+17=34$ |
-      | 30 | $1^2+0^2+(-25)^2=1+0+625=626$ | $1+0+25=26$ |
+      At 383.33, the squared-error total is approximately $93.33^2+83.33^2+(-176.67)^2=46{,}866.67$. At 300, it is $10^2+0^2+(-260)^2=67{,}700$.
 
-      Dividing each total by 3 preserves the comparison: the mean wins under MSE, while the median wins under MAE.
+      At 383.33, the absolute-error total is about 353.33. At 300, it is $10+0+260=270$. The mean minimizes squared error; the median minimizes absolute error.
     problems:
       [
         lossp-why-median,
@@ -120,8 +88,8 @@ knowledge_points:
       ]
 final: loss-explain-choice
 summary: |
-  - MSE averages squared errors; MAE averages absolute errors. Both prevent cancellation and stay on the same scale when data is repeated.
-  - Squared-error slopes grow with the error; absolute-error slopes have constant magnitude away from zero, so outliers pull less under MAE.
-  - The best constant is the mean for MSE and a median for MAE; choose the loss according to which mistakes matter.
+  - MSE averages squared house-price errors; MAE averages their absolute values.
+  - Squared loss pulls more strongly on large errors, while MAE is less affected by an extreme sale.
+  - The mean is the best constant under MSE; a median is best under MAE.
 
-  **Where you'll use this:** gradient descent reduces the loss; backpropagation finds its effects on model weights.
+  **Next:** Partial derivatives find the loss slope for each weight while holding the others fixed.

@@ -1,161 +1,83 @@
 concept: perceptron
-version: 2
+version: 3
 objective: |
-  **Goal:** compute a neuron's output from its weights, bias and inputs, and explain why one neuron can only split its inputs with a straight boundary, so it can't compute XOR.
-why: |
-  A program helps you choose houses to visit. Should a 120 m² house, 0.5 km from the station, make your list? Separate limits on size and distance miss the possibility that more space could justify a longer walk. A perceptron gives each measurement a weight, a number controlling how much it counts, and combines them into one score. Adding a fixed number, called the bias, makes a yes easier or harder without changing those weights. This gives you an adjustable decision rule rather than a growing list of exceptions. Its limits explain why we need several such units working together in Activation functions, Layers and the forward pass, and Backpropagation.
+  **Goal:** explain how a perceptron turns house features into a simple yes-or-no decision.
+where_this_fits: |
+  Training and test splits showed how to check price predictions on unseen houses. Week 2 turns the same house measurements into a neural model, beginning with one perceptron. Its thresholded score can answer a yes-or-no question, such as whether a sale exceeds its asking price; later layers will predict the same sale price directly.
 knowledge_points:
   - id: perc-score-and-step
-    title: A weighted score, then a yes or no
+    title: A weighted score followed by a yes-or-no output
     explain: |
-      You need to choose houses to visit. **Should a 120 m² house, 0.5 km from the station, make your list?** Separate limits on size and distance cannot let extra space justify a longer walk.
+      **What a perceptron is.** A perceptron multiplies each input feature by a weight, adds a bias, then applies the step activation $\phi(z)$: it outputs 1 when the score is positive and 0 otherwise.
 
-      Write $x_1$ for size in hundreds of m² and $x_2$ for distance in km. This house has inputs $x = (1.2, 0.5)$.
+      **How it works.** Let $x=(12,3,20)$ record area, bedrooms and age. The score is $z=w\cdot x+b$. For weights $(0.2,0.1,-0.02)$ and bias $-2.5$, $z=2.4+0.3-0.4-2.5=-0.2$, so the step output is 0. The output can represent a yes/no label such as “sale above asking.”
 
-      A **weight** multiplies an input to set its influence. With weights $w = (w_1, w_2)$, combine the inputs into a **score** $z$. Add a **bias** $b$, a fixed number that raises or lowers the score:
+      A threshold converts the continuous score into one of two decisions.
 
-      $$z = w \cdot x + b = w_1 x_1 + w_2 x_2 + b$$
-
-      This works because size can add to the score while distance subtracts. Why include a bias? It changes how hard it is to get a yes without changing the weights.
-
-      The **step rule** outputs 1 if $z > 0$ and 0 otherwise. This is the **activation function** $\phi$ ("phi"), with output $a = \phi(z)$. A weighted sum plus bias followed by an activation is a **neuron**. Using the step rule makes it a **perceptron**.
+      **Why this is useful.** This is the smallest neural decision rule for classifying house sales before the course builds a price-predicting network.
     worked: |
-      This example shows a neuron deciding which of three houses should make your list.
+      This example shows the calculation.
+      For $x=(12,3,20)$, weights $(0.2,0.1,-0.02)$ and bias $-2.5$:
 
-      Take $w = (2, -1)$ and $b = -1$: each 100 m² adds 2 to the score, each km from the station takes 1 away.
-
-      | house | size $x_1$ | distance $x_2$ | score $z = 2x_1 - x_2 - 1$ | output $\phi(z)$ |
-      |---|---|---|---|---|
-      | A | 1.2 | 0.5 | $2.4 - 0.5 - 1 = 0.9$ | 1 |
-      | B | 0.8 | 1.5 | $1.6 - 1.5 - 1 = -0.9$ | 0 |
-      | C | 1.0 | 1.0 | $2 - 1 - 1 = 0$ | 0 |
-
-      House C scores exactly 0, and the rule says 1 only for $z > 0$, so it gets a no. The score tells you how much the house exceeds or falls short of the required value. The step rule keeps only the yes or no.
+      1. Compute $z=0.2(12)+0.1(3)-0.02(20)-2.5=-0.2$.
+      2. Since $z$ is not positive, the perceptron outputs 0.
     problems:
-      - percp-output
-      - percp-score-template
-      - percp-score-zero
-      - percp-weight-sign
-      - percp-why-bias
-      - percp-robot-gripper
+      [
+        percp-output,
+        percp-score-template,
+        percp-score-zero,
+        percp-weight-sign,
+        percp-why-bias,
+        percp-robot-gripper,
+      ]
   - id: perc-straight-boundary
-    title: The yes/no boundary is a straight line
+    title: The decision boundary is a plane
     explain: |
-      **Which houses will this rule accept?** With score $z = 2x_1 - x_2 - 1$, house A scores 0.9 and B scores $-0.9$. Checking houses individually cannot show every possible decision.
+      **What a decision boundary is.** It is the set of inputs where the perceptron's score is exactly zero. In three feature dimensions, this plane is also called a hyperplane.
 
-      Instead find the **decision boundary**, where the answer changes from yes to no:
+      **How it works.** For three house features, the equation $w\cdot x+b=0$ describes a plane in three-dimensional input space. On one side the score is positive and the output is 1; on the other it is non-positive and the output is 0. Changing weights tilts the plane; changing the bias shifts it.
 
-      $$\{x : w \cdot x + b = 0\}$$
+      The boundary is flat because setting the weighted-sum score to zero gives a linear equation.
 
-      Read this as "all inputs $x$ whose score is zero". This works because the score changes smoothly and must cross zero to switch between positive and negative. With two inputs and nonzero weights, this equation describes a straight line.
-
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Houses plotted by size and distance to the station. The straight line where the score 2 x1 minus x2 minus 1 equals zero separates yes houses below it from no houses above it.">
-        <line x1="70" y1="270" x2="610" y2="270" stroke="#d4d4d4" stroke-width="2"/>
-        <line x1="70" y1="270" x2="70" y2="30" stroke="#d4d4d4" stroke-width="2"/>
-        <text x="340" y="315" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373">size x1 (hundreds of m²)</text>
-        <text x="20" y="150" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#737373" transform="rotate(-90 20 150)">distance x2 (km)</text>
-        <text x="70" y="290" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">0</text>
-        <text x="340" y="290" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">1</text>
-        <text x="610" y="290" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">2</text>
-        <text x="56" y="194" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">1</text>
-        <text x="56" y="114" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">2</text>
-        <text x="56" y="34" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">3</text>
-        <line x1="205" y1="270" x2="610" y2="30" stroke="#3b82f6" stroke-width="3"/>
-        <text x="465" y="110" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#3b82f6">score = 0</text>
-        <circle cx="394" cy="230" r="8" fill="#10b981"/>
-        <text x="408" y="235" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">A</text>
-        <circle cx="520" cy="190" r="8" fill="#10b981"/>
-        <circle cx="286" cy="150" r="8" fill="#ef4444"/>
-        <text x="300" y="155" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">B</text>
-        <circle cx="160" cy="110" r="8" fill="#ef4444"/>
-        <circle cx="340" cy="190" r="8" fill="#ef4444"/>
-        <text x="354" y="182" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">C (on the line)</text>
-        <text x="110" y="60" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#ef4444">score &lt; 0: output 0</text>
-        <text x="470" y="255" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#10b981">score &gt; 0: output 1</text>
-      </svg>
-      ```
-
-      Why not adjust the bias to curve the boundary? Adding a constant moves a line without bending it. Three inputs give a flat plane. With more inputs, this flat boundary is called a **hyperplane**.
+      **Why this is useful.** The boundary shows which combinations of area, bedrooms and age change the model's yes/no house-sale decision.
     worked: |
-      This example shows how to locate the boundary and how the bias moves it.
-
-      With $w = (2, -1)$ and $b = -1$ the boundary is $2x_1 - x_2 - 1 = 0$.
-
-      1. **Where it crosses the size axis:** set $x_2 = 0$. Then $2x_1 - 1 = 0$, so $x_1 = 0.5$: a 50 m² house right at the station sits on the line.
-      2. **Another point:** set $x_1 = 1$. Then $2 - x_2 - 1 = 0$, so $x_2 = 1$. That's house C.
-      3. **Change the bias to $b = -2$:** now $2x_1 - 2 = 0$ gives $x_1 = 1$ on the size axis. The line has moved right by 0.5 without turning, and a house needs to be bigger to get a yes.
-
-      Changing the weights can turn the line. Changing only the bias moves it without turning it.
+      This example shows the calculation.
+      With score $z=0.2a+0.1r-0.02g-2.5$, the boundary is $0.2a+0.1r-0.02g-2.5=0$. If age $g$ stays fixed, this is a straight line in area $a$ and bedroom count $r$.
     problems:
-      - percp-boundary-meaning
-      - percp-crossing-template
-      - percp-which-side
-      - percp-bias-shift
-      - percp-why-straight
-      - percp-no-curve
+      [
+        percp-boundary-meaning,
+        percp-crossing-template,
+        percp-which-side,
+        percp-bias-shift,
+        percp-why-straight,
+        percp-no-curve,
+      ]
   - id: perc-and-or-xor
-    title: AND and OR work, XOR is impossible
+    title: One boundary cannot separate XOR
     explain: |
-      You want a garden or a nearby station, but do not want to pay for both. **Can one neuron choose these houses?** Let $x_1 = 1$ mean a garden and $x_2 = 1$ mean near the station, otherwise 0. The four combinations $(0,0), (0,1), (1,0), (1,1)$ form a square.
+      **What XOR is.** XOR outputs 1 when exactly one of two binary inputs is 1, and 0 when both inputs match.
 
-      Try adjusting weights and bias. That works for **AND**, accepting only $(1,1)$, and **OR**, accepting everything except $(0,0)$. It works because a straight line can separate the accepted houses from the others.
+      **How it works.** The four inputs are $(0,0),(0,1),(1,0),(1,1)$. For AND, only $(1,1)$ is positive; for OR, only $(0,0)$ is negative. A line can separate each pair of output groups. For XOR, the positive corners $(0,1)$ and $(1,0)$ alternate with the negative corners, so no single straight boundary separates them.
 
-      Your preference is **XOR** ("exclusive or"): accept **exactly one** feature, $(0,1)$ or $(1,0)$. The accepted points are opposite corners, as are the rejected points. Any line putting both accepted points on one side also includes a rejected point.
+      A perceptron's single linear boundary cannot represent every possible pattern, which is why it cannot model XOR.
 
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 290" aria-label="Two unit squares. On the left, AND: a straight line cuts off the single yes corner (1,1). On the right, XOR: yes corners (0,1) and (1,0) are diagonal, so no straight line separates them from the no corners.">
-        <text x="150" y="24" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">AND: one line works</text>
-        <rect x="70" y="70" width="160" height="160" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
-        <line x1="140" y1="60" x2="280" y2="200" stroke="#3b82f6" stroke-width="3"/>
-        <circle cx="70" cy="230" r="10" fill="#ef4444"/>
-        <circle cx="70" cy="70" r="10" fill="#ef4444"/>
-        <circle cx="230" cy="230" r="10" fill="#ef4444"/>
-        <circle cx="230" cy="70" r="10" fill="#10b981"/>
-        <text x="70" y="256" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(0,0)</text>
-        <text x="70" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(0,1)</text>
-        <text x="230" y="256" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(1,0)</text>
-        <text x="230" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(1,1)</text>
-        <text x="490" y="24" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">XOR: no single line works</text>
-        <rect x="410" y="70" width="160" height="160" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
-        <line x1="380" y1="200" x2="600" y2="100" stroke="#737373" stroke-width="2" stroke-dasharray="6 6"/>
-        <circle cx="410" cy="230" r="10" fill="#ef4444"/>
-        <circle cx="410" cy="70" r="10" fill="#10b981"/>
-        <circle cx="570" cy="230" r="10" fill="#10b981"/>
-        <circle cx="570" cy="70" r="10" fill="#ef4444"/>
-        <text x="410" y="256" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(0,0)</text>
-        <text x="410" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(0,1)</text>
-        <text x="570" y="256" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(1,0)</text>
-        <text x="570" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">(1,1)</text>
-        <text x="320" y="284" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">green = output 1, red = output 0</text>
-      </svg>
-      ```
-
-      Why not keep adjusting the bias? It only moves the line. Later lessons combine several neurons to solve what one straight boundary cannot.
+      **Why this is useful.** XOR gives a precise reason the neural model needs multiple neurons and nonlinear activations.
     worked: |
-      This example shows one neuron computing AND, and how changing only the bias turns it into OR.
-
-      Take $w = (1, 1)$ and $b = -1.5$, with the step rule:
-
-      | house $(x_1, x_2)$ | score $x_1 + x_2 - 1.5$ | output |
-      |---|---|---|
-      | $(0,0)$ | $-1.5$ | 0 |
-      | $(0,1)$ | $-0.5$ | 0 |
-      | $(1,0)$ | $-0.5$ | 0 |
-      | $(1,1)$ | $0.5$ | 1 |
-
-      Only a house with both gets a yes: that's **AND**. Change the bias to $b = -0.5$ and the scores become $-0.5, 0.5, 0.5, 1.5$, so the outputs are $0, 1, 1, 1$: that's **OR**. The bias slid the line past two more corners.
+      This example shows the calculation.
+      Label $(0,1)$ and $(1,0)$ as 1, and $(0,0)$ and $(1,1)$ as 0. The labels alternate around the square, so no single line can put both positive corners on one side and both negative corners on the other.
     problems:
-      - percp-xor-why
-      - percp-count-yes-template
-      - percp-or-bias
-      - percp-nand-output
-      - percp-which-pattern
-      - percp-robot-bumpers
+      [
+        percp-xor-why,
+        percp-count-yes-template,
+        percp-or-bias,
+        percp-nand-output,
+        percp-which-pattern,
+        percp-robot-bumpers,
+      ]
 final: perc-explain
 summary: |
-  - A neuron computes a score $z = w \cdot x + b$ and applies an activation $\phi$; a perceptron uses the step rule, outputting 1 if $z > 0$ and 0 otherwise.
-  - Its decision boundary, where $w \cdot x + b = 0$, is a straight line (a plane or hyperplane with more inputs). The weights set its direction and the bias shifts it.
-  - One straight boundary can compute AND and OR, but not XOR, whose yes corners are diagonally opposite.
+  - A perceptron computes a weighted score and thresholds it into a yes-or-no result.
+  - Its linear decision boundary separates feature combinations with different outputs.
+  - A single boundary cannot represent XOR, motivating layers with nonlinear activations.
 
-  **Where you'll use this:** In Activation functions you will give neurons more flexible responses. Layers and the forward pass will combine neurons, and Backpropagation will show how to adjust their weights.
+  **Next:** Activation functions add the nonlinear step needed to represent more than one straight boundary.
