@@ -50,6 +50,13 @@
       "when": 1793828515022,
       "tag": "0006_vengeful_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794005500000,
+      "tag": "0007_paper_reader",
+      "breakpoints": true
     }
   ]
 }

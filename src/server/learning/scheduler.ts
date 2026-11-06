@@ -34,7 +34,8 @@ export type ActivityKind =
   | 'lab'
   | 'reflect'
   | 'teachback'
-  | 'diagnostic';
+  | 'diagnostic'
+  | 'paper';
 
 export const SCHEDULER_CONFIG = {
   weights: { goal: 1, week_fit: 1, project: 1, unlock: 1, gap: 1, review: 1, cost: 1 },
@@ -101,6 +102,7 @@ export interface SchedulerState {
     status?: 'open' | 'resolved';
   }>;
   projectProgress: Array<{ projectId: string; status: string }>;
+  completedPaperIds: string[];
   startDate: string;
   currentProjectId?: string;
   inProgressConceptId?: string;
@@ -827,8 +829,21 @@ function planSaturday(
   }
   const warmupMinutes = dueReview ? Math.min(10, budget) : 0;
   const reflectionMinutes = budget >= 20 ? 10 : 0;
-  const projectMinutes = Math.max(0, budget - warmupMinutes - reflectionMinutes);
   const week = currentCurriculumWeek(state.startDate, now);
+  const remainingMinutes = Math.max(0, budget - warmupMinutes - reflectionMinutes);
+  const hasUnreadPaper = (content.papersByWeek.get(week) ?? []).some(
+    (paper) => !state.completedPaperIds.includes(paper.id),
+  );
+  const paperMinutes = hasUnreadPaper ? Math.min(90, remainingMinutes) : 0;
+  if (paperMinutes >= 30) {
+    plan.push({
+      kind: 'paper',
+      exerciseIds: [],
+      plannedMinutes: paperMinutes,
+      reason: staticReason(`Saturday paper reading for week ${week}.`),
+    });
+  }
+  const projectMinutes = Math.max(0, remainingMinutes - (paperMinutes >= 30 ? paperMinutes : 0));
   const currentProject =
     state.currentProjectId ??
     content.curriculum?.weeks.find((entry) => entry.week === week)?.project ??

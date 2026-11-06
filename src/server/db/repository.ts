@@ -14,6 +14,7 @@ import {
   lessonRuns,
   mastery,
   masteryEvents,
+  paperProgress,
   projectProgress,
   remediationFlags,
   reviewCards,
@@ -103,22 +104,26 @@ export class LearnerRepository {
 
   async schedulerState(now: Date): Promise<SchedulerState> {
     const [user] = await this.db.select().from(users).where(eq(users.id, this.userId)).limit(1);
-    const [masteryRows, cards, recentAttempts, flags, projects, lessonRunRows] = await Promise.all([
-      this.masteryRecords(),
-      this.db.select().from(reviewCards).where(eq(reviewCards.userId, this.userId)),
-      this.db
-        .select()
-        .from(attempts)
-        .where(eq(attempts.userId, this.userId))
-        .orderBy(desc(attempts.createdAt))
-        .limit(100),
-      this.db
-        .select()
-        .from(remediationFlags)
-        .where(and(eq(remediationFlags.userId, this.userId), eq(remediationFlags.status, 'open'))),
-      this.db.select().from(projectProgress).where(eq(projectProgress.userId, this.userId)),
-      this.db.select().from(lessonRuns).where(eq(lessonRuns.userId, this.userId)),
-    ]);
+    const [masteryRows, cards, recentAttempts, flags, projects, lessonRunRows, paperRows] =
+      await Promise.all([
+        this.masteryRecords(),
+        this.db.select().from(reviewCards).where(eq(reviewCards.userId, this.userId)),
+        this.db
+          .select()
+          .from(attempts)
+          .where(eq(attempts.userId, this.userId))
+          .orderBy(desc(attempts.createdAt))
+          .limit(100),
+        this.db
+          .select()
+          .from(remediationFlags)
+          .where(
+            and(eq(remediationFlags.userId, this.userId), eq(remediationFlags.status, 'open')),
+          ),
+        this.db.select().from(projectProgress).where(eq(projectProgress.userId, this.userId)),
+        this.db.select().from(lessonRuns).where(eq(lessonRuns.userId, this.userId)),
+        this.db.select().from(paperProgress).where(eq(paperProgress.userId, this.userId)),
+      ]);
     return {
       timezone: user?.timezone ?? 'UTC',
       mastery: masteryRows,
@@ -145,6 +150,9 @@ export class LearnerRepository {
         projectId: project.projectId,
         status: project.status,
       })),
+      completedPaperIds: paperRows
+        .filter((row) => row.completedAt !== null)
+        .map((row) => row.paperId),
       lessonRuns: lessonRunRows.map((run) => ({
         conceptId: run.conceptId,
         status: run.status,

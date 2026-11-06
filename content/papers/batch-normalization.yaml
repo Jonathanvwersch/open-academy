@@ -1,0 +1,47 @@
+id: batch-normalization
+title: "Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift"
+authors: Ioffe and Szegedy
+year: 2015
+week: 3
+est_minutes: 75
+source:
+  arxiv: 1502.03167v3
+concepts:
+  - weight-init-normalization
+  - sgd-minibatch
+  - debugging-training
+why_this_week: This week covers weight initialisation and normalisation, which are what make deep networks trainable at all. Batch normalisation was the breakthrough that let networks train much faster with higher learning rates. It is also a good lesson in reading papers critically, because the paper's explanation of why it works is now widely doubted.
+how_to_read: Read the introduction and the section that defines internal covariate shift. Read the algorithm box and make sure you understand what happens at training time versus test time. Read the ImageNet results for the headline speed-up. Skim the MNIST experiment.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What does the paper claim slows down training of deep networks, and what does it propose?
+  - id: method
+    kind: method
+    prompt: "Describe the algorithm: what is normalised, using which statistics, and what are the two learned parameters for? What changes at test time?"
+  - id: evidence
+    kind: evidence
+    prompt: What evidence shows batch normalisation speeds up training? Look at the ImageNet comparison.
+  - id: limitations
+    kind: limitations
+    prompt: Later work argued that batch normalisation helps by smoothing the loss surface rather than by reducing internal covariate shift. What in this paper actually tests the internal covariate shift explanation?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: States the problem (training deep networks is slow and needs low learning rates and careful initialisation) and the proposal to normalise layer inputs
+      weight: 2
+      required: true
+    - id: r2
+      criterion: "Explains the mechanism: normalise each feature using the mini-batch mean and variance, then scale and shift with learned parameters; use running averages at test time"
+      weight: 2
+      required: true
+    - id: r3
+      criterion: Describes the evidence, e.g. reaching the baseline's ImageNet accuracy in far fewer training steps
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. the internal covariate shift explanation is not directly tested, or dependence on batch size
+      weight: 1
+      required: false
+  exemplar: Ioffe and Szegedy argue that deep networks train slowly because each layer's input distribution keeps changing as earlier layers learn, which they call internal covariate shift. Batch normalisation normalises each feature in a layer using the mean and variance of the current mini-batch, then applies a learned scale and shift so the layer can still represent anything. At test time it uses running averages collected during training instead of batch statistics. On ImageNet, their network with batch normalisation matched the original accuracy in far fewer training steps and allowed much higher learning rates. A limitation is that the paper never directly measures whether reducing internal covariate shift is the reason it works, and later work suggests it is not.

@@ -7,6 +7,18 @@ export interface CourseOutlineWeek {
   topics: Array<{ title: string; status: string }>;
 }
 
+export interface PaperTutorContext {
+  title: string;
+  authors: string;
+  year: number;
+  whyThisWeek: string;
+  questions: Array<{ kind: string; prompt: string }>;
+  notes: Record<string, string>;
+  summary?: string | null;
+  feedback?: unknown;
+  pages: Array<{ page: number; text: string }>;
+}
+
 const PAGE_CONTENT_LIMIT = 12_000;
 const TRUNCATION_SUFFIX = '\n…[truncated]';
 
@@ -33,14 +45,40 @@ function section(title: string, content: string): string {
 }
 
 export function buildTutorPageContent(input: {
-  page?: 'session' | 'lesson' | 'course' | 'map';
+  page?: 'session' | 'lesson' | 'course' | 'map' | 'paper';
   index: ContentIndex;
   conceptId?: string | null;
   knowledgePointId?: string;
   courseWeeks?: CourseOutlineWeek[];
+  paper?: PaperTutorContext;
+  paperId?: string;
+  pageNumber?: number;
+  selection?: string;
 }): string {
   const { page, index, conceptId, knowledgePointId, courseWeeks } = input;
   if (!page) return '';
+
+  if (page === 'paper') {
+    const paper = input.paper;
+    if (!paper) return '';
+    const notes = Object.entries(paper.notes)
+      .filter(([, text]) => text.trim())
+      .map(([id, text]) => `### ${id}\n\n${text}`)
+      .join('\n\n');
+    const content = [
+      input.selection ? `## Selected passage\n\n${input.selection}` : '',
+      `## Paper\n\n${paper.title}\n\n${paper.authors} · ${paper.year}\n\n${paper.whyThisWeek}`,
+      `## Reading guide questions\n\n${paper.questions.map((question) => `- **${question.kind}:** ${question.prompt}`).join('\n')}`,
+      section("Learner's notes", notes),
+      paper.summary
+        ? `## Learner's summary\n\n${paper.summary}${paper.feedback ? `\n\n## Summary feedback\n\n${JSON.stringify(paper.feedback)}` : ''}`
+        : '',
+      ...paper.pages.map(({ page: number, text }) => `## Page ${number} text\n\n${text}`),
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+    return sanitizePageContent(content);
+  }
 
   const concept = conceptId ? index.conceptsById.get(conceptId) : undefined;
   const lesson = conceptId ? index.lessonsByConcept.get(conceptId) : undefined;

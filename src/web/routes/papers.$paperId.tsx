@@ -1,0 +1,582 @@
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { z } from 'zod';
+import { Button } from '@/ui/button.js';
+import { Textarea } from '@/ui/textarea.js';
+import { FeedbackPanel, Markdown } from '../components.js';
+import { paperQueryOptions } from '../queries.js';
+import { RouteLoadError } from '../route-error.js';
+import { useTutorSidebar } from '../tutor/TutorSidebar.js';
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
+
+const searchSchema = z.object({
+  from: z.string().optional(),
+  activity: z.string().optional(),
+});
+
+type PaperSummaryJudgement = {
+  feedback_md?: string;
+  criteria?: Array<{
+    id: string;
+    judgement: 'met' | 'partial' | 'missing';
+    evidence: string | null;
+  }>;
+};
+
+type PaperSummaryRubric = {
+  id: string;
+  criterion: string;
+  weight: number;
+  required: boolean;
+};
+
+function paperFeedbackResult(
+  judgement: PaperSummaryJudgement,
+  rubric: PaperSummaryRubric[],
+): Record<string, unknown> {
+  const decisions = new Map(judgement.criteria?.map((criterion) => [criterion.id, criterion]));
+  const requiredMissing = rubric.some(
+    (criterion) => criterion.required && decisions.get(criterion.id)?.judgement === 'missing',
+  );
+  const totalWeight = rubric.reduce((total, criterion) => total + criterion.weight, 0);
+  const earnedWeight = rubric.reduce((total, criterion) => {
+    const decision = decisions.get(criterion.id)?.judgement;
+    return total + criterion.weight * (decision === 'met' ? 1 : decision === 'partial' ? 0.5 : 0);
+  }, 0);
+  return {
+    status: 'graded',
+    correct: requiredMissing || totalWeight === 0 ? 0 : earnedWeight / totalWeight,
+    graded_by: 'llm',
+    feedback: judgement.feedback_md ?? '',
+    rubric: rubric.map((criterion) => ({
+      id: criterion.id,
+      criterion: criterion.criterion,
+      judgement: decisions.get(criterion.id)?.judgement ?? 'missing',
+    })),
+  };
+}
+
+export const Route = createFileRoute('/papers/$paperId')({
+  validateSearch: searchSchema,
+  loader: ({ context, params }) =>
+    context.queryClient.ensureQueryData(paperQueryOptions(params.paperId)),
+  errorComponent: () => (
+    <RouteLoadError
+      message="This paper could not be loaded."
+      className="text-sm text-destructive"
+    />
+  ),
+  component: PaperReaderPage,
+});
+
+function LazyPage({
+  pageNumber,
+  width,
+  aspectRatio,
+}: {
+  pageNumber: number;
+  width: number;
+  aspectRatio: number;
+}) {
+  const [visible, setVisible] = useState(false);
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const node = host.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisible(true);
+        }
+      },
+      { rootMargin: '500px 0px' },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <div
+      ref={host}
+      className="relative mx-auto mb-5 overflow-hidden shadow-md"
+      style={{ width, height: width * aspectRatio }}
+    >
+      {visible ? (
+        <Page pageNumber={pageNumber} width={width} renderTextLayer renderAnnotationLayer />
+      ) : null}
+    </div>
+  );
+}
+
+function PaperReaderPage() {
+  const { paperId } = Route.useParams();
+  const { from, activity } = Route.useSearch();
+  const { data } = useSuspenseQuery(paperQueryOptions(paperId));
+  const queryClient = useQueryClient();
+  const tutor = useTutorSidebar();
+  const [pageCount, setPageCount] = useState(0);
+  const [pageAspectRatios, setPageAspectRatios] = useState<Record<number, number>>({});
+  const [pageWidth, setPageWidth] = useState(0);
+  const [pageNumber, setPageNumber] = useState(data.progress?.lastPage ?? 1);
+  const [zoom, setZoom] = useState(100);
+  const [guideOpen, setGuideOpen] = useState(true);
+  const [pdfError, setPdfError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [notes, setNotes] = useState<Record<string, string>>(data.progress?.notes ?? {});
+  const [noteStatuses, setNoteStatuses] = useState<Record<string, 'saving' | 'saved'>>({});
+  const [summary, setSummary] = useState(data.progress?.summary ?? '');
+  const [judgement, setJudgement] = useState(
+    data.progress?.summaryJudgement as PaperSummaryJudgement | null,
+  );
+  const [rubric, setRubric] = useState(data.paper.summary.rubric ?? []);
+  const [gradingReason, setGradingReason] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(Boolean(data.progress?.summary));
+  const [submitting, setSubmitting] = useState(false);
+  const [selected, setSelected] = useState<{
+    text: string;
+    rect: { left: number; top: number; bottom: number; width: number };
+  } | null>(null);
+  const [askTutorPosition, setAskTutorPosition] = useState<{ left: number; top: number } | null>(
+    null,
+  );
+  const notesRef = useRef(notes);
+  const viewer = useRef<HTMLDivElement>(null);
+  const askTutorButton = useRef<HTMLButtonElement>(null);
+  const progressCreated = useRef(Boolean(data.progress));
+  const initialPage = useRef(data.progress?.lastPage ?? 1);
+  const initialScrollDone = useRef(false);
+  const boundedPage = Math.max(1, Math.min(pageNumber, pageCount || Number.MAX_SAFE_INTEGER));
+
+  useEffect(() => {
+    notesRef.current = notes;
+  }, [notes]);
+
+  useLayoutEffect(() => {
+    const element = viewer.current;
+    if (!element) return;
+    const updatePageWidth = () => {
+      setPageWidth(Math.max(1, element.clientWidth - 32));
+    };
+    updatePageWidth();
+    const resizeObserver = new ResizeObserver(updatePageWidth);
+    resizeObserver.observe(element);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  useLayoutEffect(() => {
+    const button = askTutorButton.current;
+    if (!selected || !button) return;
+    const { width, height } = button.getBoundingClientRect();
+    const aboveTop = selected.rect.top - height - 8;
+    const top = aboveTop >= 8 ? aboveTop : selected.rect.bottom + 8;
+    const maxTop = Math.max(8, window.innerHeight - height - 8);
+    setAskTutorPosition({
+      left: Math.max(
+        8,
+        Math.min(
+          selected.rect.left + selected.rect.width / 2 - width / 2,
+          window.innerWidth - width - 8,
+        ),
+      ),
+      top: Math.min(top, maxTop),
+    });
+  }, [selected]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void fetch(`/api/papers/${encodeURIComponent(paperId)}/progress`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ lastPage: boundedPage }),
+      }).then((response) => {
+        if (response.ok && !progressCreated.current) {
+          progressCreated.current = true;
+          void queryClient.invalidateQueries({ queryKey: ['papers'] });
+        }
+      });
+    }, 1000);
+    return () => window.clearTimeout(timeout);
+  }, [boundedPage, paperId, queryClient]);
+
+  useEffect(() => {
+    const timers = data.paper.questions.map((question) => {
+      const text = notes[question.id];
+      if (text === undefined || text === (data.progress?.notes[question.id] ?? ''))
+        return undefined;
+      return window.setTimeout(() => {
+        setNoteStatuses((current) => ({ ...current, [question.id]: 'saving' }));
+        void fetch(`/api/papers/${encodeURIComponent(paperId)}/progress`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ notes: { [question.id]: text } }),
+        })
+          .then((response) => {
+            setNoteStatuses((current) => {
+              if (notesRef.current[question.id] !== text) return current;
+              if (!response.ok) {
+                const next = { ...current };
+                delete next[question.id];
+                return next;
+              }
+              return { ...current, [question.id]: 'saved' };
+            });
+            if (response.ok) {
+              if (!progressCreated.current) {
+                progressCreated.current = true;
+                void queryClient.invalidateQueries({ queryKey: ['papers'] });
+              }
+              void queryClient.invalidateQueries({ queryKey: ['paper', paperId] });
+            }
+          })
+          .catch(() => {
+            setNoteStatuses((current) => {
+              if (notesRef.current[question.id] !== text) return current;
+              const next = { ...current };
+              delete next[question.id];
+              return next;
+            });
+          });
+      }, 700);
+    });
+    return () => {
+      for (const timer of timers) {
+        if (timer) window.clearTimeout(timer);
+      }
+    };
+  }, [data.paper.questions, data.progress?.notes, notes, paperId, queryClient]);
+
+  useEffect(() => {
+    tutor.setContext({
+      page: 'paper',
+      paperId,
+      pageNumber: boundedPage,
+      pageLabel: `${data.paper.title} · page ${boundedPage} of ${pageCount || '?'}`,
+      allowed: true,
+      enabled: true,
+    });
+    return () => tutor.clearContext();
+  }, [boundedPage, data.paper.title, pageCount, paperId, tutor.setContext, tutor.clearContext]);
+
+  useEffect(() => {
+    if (tutor.isOpen) setGuideOpen(false);
+  }, [tutor.isOpen]);
+
+  const updatePageFromScroll = useCallback(() => {
+    const element = viewer.current;
+    if (!element) return;
+    const top = element.getBoundingClientRect().top;
+    const currentPage = Array.from(element.querySelectorAll<HTMLElement>('[data-page]')).find(
+      (page) => page.getBoundingClientRect().bottom > top + 32,
+    );
+    const nextPage = Number(currentPage?.dataset.page);
+    if (nextPage > 0) setPageNumber(nextPage);
+  }, []);
+
+  useEffect(() => {
+    const element = viewer.current;
+    if (!element) return;
+    element.addEventListener('scroll', updatePageFromScroll, { passive: true });
+    return () => element.removeEventListener('scroll', updatePageFromScroll);
+  }, [updatePageFromScroll]);
+
+  useEffect(() => {
+    if (pageCount === 0 || initialScrollDone.current) return;
+    initialScrollDone.current = true;
+    window.requestAnimationFrame(() => {
+      viewer.current
+        ?.querySelector(`[data-page="${Math.max(1, Math.min(initialPage.current, pageCount))}"]`)
+        ?.scrollIntoView({ block: 'start' });
+    });
+  }, [pageCount]);
+
+  const onSelection = () => {
+    const selection = window.getSelection();
+    const text = selection?.toString().trim() ?? '';
+    const node = selection?.anchorNode?.parentElement;
+    if (!text || text.length > 2000 || !node?.closest('.react-pdf__Page__textContent')) {
+      setSelected(null);
+      return;
+    }
+    const rect = selection?.rangeCount ? selection.getRangeAt(0).getBoundingClientRect() : null;
+    if (rect) {
+      setSelected({
+        text,
+        rect: {
+          left: rect.left,
+          top: rect.top,
+          bottom: rect.bottom,
+          width: rect.width,
+        },
+      });
+      setAskTutorPosition(null);
+    }
+  };
+
+  const submitSummary = async () => {
+    setSubmitting(true);
+    const response = await fetch(`/api/papers/${encodeURIComponent(paperId)}/summary`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ summary, ...(activity ? { activityId: activity } : {}) }),
+    });
+    const result = (await response.json()) as {
+      judgement: PaperSummaryJudgement | null;
+      rubric?: PaperSummaryRubric[];
+      reason?: string;
+      error?: string;
+    };
+    if (!response.ok) {
+      setGradingReason(result.error ?? 'Summary could not be saved.');
+      setSubmitting(false);
+      return;
+    }
+    setJudgement(result.judgement);
+    setRubric(result.rubric ?? []);
+    setGradingReason(result.reason ?? null);
+    setSubmitted(true);
+    setSubmitting(false);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['paper', paperId] }),
+      queryClient.invalidateQueries({ queryKey: ['papers'] }),
+    ]);
+  };
+
+  const original = data.originalUrl;
+  const file = `/api/papers/${encodeURIComponent(paperId)}/pdf?retry=${retry}`;
+  const pageSlots = useMemo(
+    () => Array.from({ length: pageCount }, (_, index) => index + 1),
+    [pageCount],
+  );
+
+  return (
+    <section className="flex h-[calc(100dvh-3.5rem)] min-h-0 w-full min-w-0 flex-col md:h-[calc(100dvh-4.5rem)]">
+      <header className="flex shrink-0 flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-2">
+        {from ? (
+          <Link
+            className="cursor-pointer text-sm underline"
+            to="/session/$id"
+            params={{ id: from }}
+            search={activity ? { activity } : {}}
+          >
+            ← Back to session
+          </Link>
+        ) : (
+          <Link className="cursor-pointer text-sm underline" to="/course">
+            ← Back to Course
+          </Link>
+        )}
+        <h1 className="text-xl font-semibold">
+          <Markdown inline>{data.paper.title}</Markdown>
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          <Markdown inline>{data.paper.authors}</Markdown> · {data.paper.year} · ~
+          {data.paper.est_minutes} min
+        </p>
+      </header>
+      <div className="sticky top-0 z-20 flex shrink-0 flex-wrap items-center gap-2 border-y bg-background px-4 py-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setZoom((value) => Math.max(50, value - 10))}
+        >
+          −
+        </Button>
+        <span className="min-w-10 text-center">{zoom}%</span>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label="Zoom in"
+          onClick={() => setZoom((value) => Math.min(200, value + 10))}
+        >
+          +
+        </Button>
+        <label className="ml-3 flex items-center gap-2 text-sm">
+          Page
+          <input
+            aria-label="Go to page"
+            className="w-16 rounded border px-2 py-1"
+            type="number"
+            min={1}
+            max={pageCount || undefined}
+            value={boundedPage}
+            onChange={(event) => {
+              const next = Number(event.target.value);
+              if (!Number.isInteger(next) || next < 1) return;
+              const targetPage = pageCount > 0 ? Math.min(next, pageCount) : next;
+              setPageNumber(targetPage);
+              viewer.current
+                ?.querySelector(`[data-page="${targetPage}"]`)
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          />
+          of {pageCount || '…'}
+        </label>
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto"
+          onClick={() => setGuideOpen((open) => !open)}
+        >
+          Guide
+        </Button>
+      </div>
+      <div className="flex min-h-0 min-w-0 flex-1 gap-4 overflow-hidden px-4 pb-4">
+        <section
+          ref={viewer}
+          onMouseUp={onSelection}
+          aria-label="PDF reader"
+          className="min-h-0 min-w-0 flex-1 overflow-auto px-4"
+        >
+          {pdfError ? (
+            <div className="rounded-md border p-5">
+              <p>The PDF could not be opened.</p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setPdfError(false);
+                  setPageCount(0);
+                  setPageAspectRatios({});
+                  setRetry((value) => value + 1);
+                }}
+              >
+                Retry
+              </Button>
+              <a
+                className="ml-3 cursor-pointer underline"
+                href={original}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open original
+              </a>
+            </div>
+          ) : (
+            <Document
+              key={retry}
+              file={file}
+              onLoadSuccess={async (document) => {
+                const aspects = await Promise.all(
+                  Array.from({ length: document.numPages }, async (_, index) => {
+                    const page = await document.getPage(index + 1);
+                    const viewport = page.getViewport({ scale: 1 });
+                    return [index + 1, viewport.height / viewport.width] as const;
+                  }),
+                );
+                setPageAspectRatios(Object.fromEntries(aspects));
+                setPageCount(document.numPages);
+              }}
+              onLoadError={() => setPdfError(true)}
+              loading={<div className="aspect-[1/1.414] rounded bg-muted" />}
+            >
+              {pageSlots.map((page) => (
+                <div key={page} data-page={page}>
+                  <LazyPage
+                    pageNumber={page}
+                    width={(pageWidth * zoom) / 100}
+                    aspectRatio={pageAspectRatios[page] ?? Math.SQRT2}
+                  />
+                </div>
+              ))}
+            </Document>
+          )}
+        </section>
+        {guideOpen ? (
+          <aside className="min-h-0 w-[380px] max-w-[40vw] shrink-0 space-y-4 overflow-y-auto border-l pl-4">
+            <section>
+              <h2 className="font-semibold">Why this paper</h2>
+              <Markdown>{data.paper.why_this_week}</Markdown>
+            </section>
+            <section>
+              <h2 className="font-semibold">How to read it</h2>
+              <Markdown>{data.paper.how_to_read}</Markdown>
+            </section>
+            {data.paper.questions.map((question) => (
+              <section key={question.id} className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground">
+                  {question.kind[0]?.toUpperCase()}
+                  {question.kind.slice(1)}
+                </p>
+                <h3 className="font-medium">
+                  <Markdown inline>{question.prompt}</Markdown>
+                </h3>
+                <Textarea
+                  aria-label={`${question.kind} note`}
+                  value={notes[question.id] ?? ''}
+                  maxLength={4000}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    notesRef.current = { ...notesRef.current, [question.id]: value };
+                    setNotes((current) => ({ ...current, [question.id]: value }));
+                    setNoteStatuses((current) => {
+                      const next = { ...current };
+                      const saved = data.progress?.notes[question.id];
+                      if (value === (saved ?? '')) {
+                        if (saved === undefined) delete next[question.id];
+                        else next[question.id] = 'saved';
+                        return next;
+                      }
+                      return { ...current, [question.id]: 'saving' };
+                    });
+                  }}
+                />
+                {noteStatuses[question.id] ? (
+                  <span className="text-xs text-muted-foreground">
+                    {noteStatuses[question.id] === 'saving' ? 'Saving…' : 'Saved'}
+                  </span>
+                ) : null}
+              </section>
+            ))}
+            <section className="space-y-2">
+              <h2 className="font-semibold">Summary</h2>
+              <Markdown>{data.paper.summary.prompt}</Markdown>
+              <Textarea
+                aria-label="Paper summary"
+                value={summary}
+                maxLength={4000}
+                onChange={(event) => setSummary(event.target.value)}
+              />
+              <Button disabled={submitting || !summary.trim()} onClick={() => void submitSummary()}>
+                Submit summary
+              </Button>
+              {judgement ? <FeedbackPanel result={paperFeedbackResult(judgement, rubric)} /> : null}
+              {gradingReason ? (
+                <p className="text-sm text-muted-foreground">{gradingReason}</p>
+              ) : null}
+              {submitted ? <p role="status">Summary saved.</p> : null}
+            </section>
+          </aside>
+        ) : null}
+      </div>
+      {selected ? (
+        <Button
+          ref={askTutorButton}
+          className="fixed z-50"
+          style={askTutorPosition ? askTutorPosition : { left: 8, top: 8, visibility: 'hidden' }}
+          onClick={() => {
+            setGuideOpen(false);
+            tutor.openConversation({
+              page: 'paper',
+              paperId,
+              pageNumber: boundedPage,
+              selection: selected.text,
+              pageLabel: `${data.paper.title} · page ${boundedPage} of ${pageCount || '?'} · selected passage`,
+              allowed: true,
+              enabled: true,
+            });
+            setSelected(null);
+            setAskTutorPosition(null);
+          }}
+        >
+          Ask tutor
+        </Button>
+      ) : null}
+    </section>
+  );
+}

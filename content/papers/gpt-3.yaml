@@ -1,0 +1,46 @@
+id: gpt-3
+title: Language Models are Few-Shot Learners
+authors: Brown et al.
+year: 2020
+week: 4
+est_minutes: 90
+source:
+  arxiv: 2005.14165v4
+concepts:
+  - pretraining
+  - autoregressive-lm
+why_this_week: "This week you learn how an autoregressive language model is pretrained. GPT-3 showed what happens when you scale that recipe to 175 billion parameters: the model can do new tasks from a few examples written in the prompt, without any weight updates. That idea, in-context learning, is a foundation of the VLAs in Week 10."
+how_to_read: The paper is about 75 pages, so be selective. Read the introduction and the approach section closely, especially the figure comparing zero-shot, one-shot and few-shot prompting with fine-tuning. Pick two task families from the results section and read those. Read the limitations section in full. Skip the rest of the results, the broader impacts and the appendices.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What is the main claim about what a large enough language model can do without fine-tuning?
+  - id: method
+    kind: method
+    prompt: Explain zero-shot, one-shot and few-shot prompting as the paper defines them. What changes between them, and what does not change?
+  - id: evidence
+    kind: evidence
+    prompt: What evidence supports the claim? Look at how few-shot performance changes with model size.
+  - id: limitations
+    kind: limitations
+    prompt: What tasks does GPT-3 still do poorly on, and what does the paper say about test data that may have appeared in its training data?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: States the claim that a large enough language model can perform new tasks from a few examples in its prompt, with no weight updates
+      weight: 2
+      required: true
+    - id: r2
+      criterion: "Explains zero-, one- and few-shot prompting correctly: examples go in the input text, and the weights stay fixed"
+      weight: 2
+      required: true
+    - id: r3
+      criterion: "Describes the evidence: results across many benchmarks, and few-shot performance improving with model size"
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. weak results on some reasoning or comparison tasks, cost, or possible test-set contamination
+      weight: 1
+      required: false
+  exemplar: Brown and colleagues ask whether a large enough language model can do new tasks without fine-tuning. GPT-3 is a 175-billion-parameter transformer trained only to predict the next token, and at test time it is given a task description and a few examples in the prompt, with no weight updates. They call this few-shot, or in-context, learning. Across dozens of benchmarks, few-shot performance improves steadily with model size, and on some tasks it approaches fine-tuned models. Limitations include weak results on some tasks that compare two sentences, very high training cost, and the risk that benchmark test data appeared in the training data.

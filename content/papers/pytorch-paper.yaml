@@ -1,0 +1,46 @@
+id: pytorch-paper
+title: "PyTorch: An Imperative Style, High-Performance Deep Learning Library"
+authors: Paszke et al.
+year: 2019
+week: 2
+est_minutes: 60
+source:
+  arxiv: 1912.01703v1
+concepts:
+  - pytorch-basics
+  - autodiff
+why_this_week: "This week you start writing models in PyTorch. This paper, by the people who built it, explains the design choices you are using: ordinary Python code that runs line by line, gradients recorded automatically as the code runs, and the engineering that still makes it fast on GPUs."
+how_to_read: Read the introduction, the design principles section and the usability section closely. Read the part on automatic differentiation and relate it to this week's autodiff lesson. Skim the performance sections (the memory allocator and multiprocessing) for the main idea only. Read the evaluation section's conclusions and skip the detailed benchmark setup.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What did the authors want PyTorch to be, and what did earlier libraries make hard for researchers?
+  - id: method
+    kind: method
+    prompt: How does PyTorch record the operations it needs to compute gradients while ordinary Python code runs?
+  - id: evidence
+    kind: evidence
+    prompt: What evidence do the authors give that this design is fast enough and that people want it?
+  - id: limitations
+    kind: limitations
+    prompt: Running code line by line in Python has costs. Which ones do the authors admit, and which ones do they leave out?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: States that PyTorch aims to make deep learning feel like ordinary Python (code that runs line by line) while staying fast
+      weight: 2
+      required: true
+    - id: r2
+      criterion: Explains the key mechanism, e.g. autograd records operations as they execute and replays them backwards, plus fast C++/GPU kernels underneath
+      weight: 2
+      required: true
+    - id: r3
+      criterion: Describes the evidence, e.g. throughput comparisons with other libraries or growth in adoption by researchers
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. Python overhead, harder whole-program optimisation, or that the authors evaluate their own tool
+      weight: 1
+      required: false
+  exemplar: PyTorch's authors wanted a library where a model is just ordinary Python code that runs line by line, because earlier libraries made you build a fixed graph first, which was hard to write and debug. As the code runs, PyTorch's autograd records each operation, then walks the record backwards to compute gradients, so loops and if-statements just work. Speed comes from running each operation in optimised C++ and GPU code, sending GPU work without waiting, and reusing GPU memory with a caching allocator. They show its training speed is close to the fastest libraries of the time and that researchers adopted it quickly. A limitation is that they benchmark their own tool, and running Python line by line makes some whole-program optimisations harder.

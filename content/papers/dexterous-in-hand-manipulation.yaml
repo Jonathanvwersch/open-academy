@@ -1,0 +1,47 @@
+id: dexterous-in-hand-manipulation
+title: Learning Dexterous In-Hand Manipulation
+authors: OpenAI (Andrychowicz et al.)
+year: 2018
+week: 5
+est_minutes: 75
+source:
+  arxiv: 1808.00177v5
+concepts:
+  - robot-joints
+  - coordinate-frames
+  - rotation-matrices
+why_this_week: This week is about describing robots with coordinate frames, rotations and joints. In this paper a five-fingered robot hand with 24 joints learns to turn a block to any target orientation. Reading it shows why orientations and joint angles matter, and previews the simulation and reinforcement learning ideas of Week 8.
+how_to_read: "Read the introduction and the task description: how the hand, the block and the target orientation are represented. Read the overview of the system and its figure. Skim the reinforcement learning details, which you will understand after Week 8. Read the results on the real robot and the section on behaviours the policy learned."
+questions:
+  - id: claim
+    kind: claim
+    prompt: What did the authors achieve, and why was it hard for a robot hand?
+  - id: method
+    kind: method
+    prompt: How is the system built? Describe the simulation, the randomisation of the simulator, the policy and the vision system that estimates the block's pose.
+  - id: evidence
+    kind: evidence
+    prompt: What evidence shows the policy works on the real hand? How is success measured, and how many rotations does it achieve in a row?
+  - id: limitations
+    kind: limitations
+    prompt: How much compute and engineering did this need, and what does it say about how general the method is?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: "States the achievement: a policy trained only in simulation turns a block to target orientations on a real 24-joint robot hand"
+      weight: 2
+      required: true
+    - id: r2
+      criterion: "Explains the method: randomise many simulator properties so the policy copes with the real world, train with reinforcement learning, estimate the block pose from cameras"
+      weight: 2
+      required: true
+    - id: r3
+      criterion: "Describes the evidence: counts of consecutive successful rotations on the real hand, with and without randomisation"
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. a huge amount of simulated experience and compute, or a single task and object
+      weight: 1
+      required: false
+  exemplar: OpenAI trained a five-fingered, 24-joint robot hand to rotate a block in its palm to any target orientation, which is hard because the hand has many joints and constant changing contacts. The policy is trained entirely in simulation with reinforcement learning. Many simulator properties, such as friction, object size and delays, are randomised, so the policy has to work across all of them, which helps it work on the real hand. A neural network estimates the block's position and orientation from three cameras. On the real hand the policy achieves many consecutive successful rotations, far more than without randomisation, but it needed an enormous amount of simulated experience for one task.

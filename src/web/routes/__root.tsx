@@ -19,10 +19,18 @@ const navigation = [
 
 function RootLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isPaperReader = pathname.startsWith('/papers/');
   return (
     <TooltipProvider>
-      <TutorContextProvider routeAllowed={!pathname.startsWith('/diagnostic')}>
-        <div className="min-h-screen bg-background text-foreground">
+      <TutorContextProvider
+        routeAllowed={!pathname.startsWith('/diagnostic')}
+        pushSidebar={isPaperReader}
+      >
+        <div
+          className={`flex min-w-0 flex-col bg-background text-foreground ${
+            isPaperReader ? 'min-h-0 flex-1' : 'min-h-screen'
+          }`}
+        >
           <header className="border-b bg-background">
             <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-4 px-5">
               <Link to="/" className="text-sm font-semibold tracking-tight">
@@ -46,7 +54,13 @@ function RootLayout() {
               </nav>
             </div>
           </header>
-          <div className="mx-auto max-w-3xl px-5 py-8">
+          <div
+            className={
+              isPaperReader
+                ? 'flex w-full min-h-0 min-w-0 flex-1 px-0 py-0'
+                : 'mx-auto max-w-3xl px-5 py-8'
+            }
+          >
             <Outlet />
           </div>
         </div>

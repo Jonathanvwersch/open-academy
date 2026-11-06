@@ -1,7 +1,12 @@
 import { resolve } from 'node:path';
 import { expect, test } from 'vitest';
 import { loadContent } from '../src/server/content/load.js';
-import { ExerciseSchema, LessonSchema, normalizeLesson } from '../src/server/content/schemas.js';
+import {
+  ExerciseSchema,
+  LessonSchema,
+  normalizeLesson,
+  PaperSchema,
+} from '../src/server/content/schemas.js';
 import { serializeExercise } from '../src/server/content/serialize.js';
 import type { ContentIndex, ContentSourceData } from '../src/server/content/types.js';
 import { validateContent } from '../src/server/content/validate.js';
@@ -13,6 +18,12 @@ function required<T>(value: T | undefined, label: string): T {
   return value;
 }
 
+function firstPaper(data: ContentSourceData) {
+  const [paper] = data.papers;
+  if (!paper) throw new Error('Missing paper fixture');
+  return paper;
+}
+
 test('loads the fixture graph and builds lookup indexes', async () => {
   const content = await loadContent('tests/fixtures/content');
 
@@ -22,6 +33,7 @@ test('loads the fixture graph and builds lookup indexes', async () => {
   );
   expect(content.conceptsById.get('matrix-products')?.status).toBe('stub');
   expect(content.projectsById.has('linreg-numpy')).toBe(true);
+  expect(content.papersByWeek.get(1)).toHaveLength(2);
   expect(content.diagnostic?.domains).toHaveLength(2);
   expect(content.edges).toContainEqual({
     conceptId: 'gradient-descent',
@@ -44,6 +56,72 @@ test('loads the fixture graph and builds lookup indexes', async () => {
     ]),
   );
   expect(content.concepts[0]?.contentVersion).toMatch(/^[a-f0-9]{12}$/);
+});
+
+test('real authored paper content loads and indexes by ID and week', async () => {
+  const content = await loadContent('content');
+
+  expect(content.papers.length).toBeGreaterThan(0);
+  expect(content.papersById.size).toBe(content.papers.length);
+  expect([...content.papersByWeek.values()].flat()).toHaveLength(content.papers.length);
+});
+
+test('paper validation rejects unsafe sources, malformed identifiers, invalid question sets, and unknown references', async () => {
+  const data = await notationFixture();
+  const base = data.papers[0];
+  if (!base) throw new Error('Missing paper fixture');
+  expect(PaperSchema.safeParse({ ...base.value, source: { arxiv: 'bad-id' } }).success).toBe(false);
+
+  const invalidUrl = structuredClone(data);
+  firstPaper(invalidUrl).value.source = { url: 'http://example.com/paper.pdf' };
+  expect(
+    validateContent(invalidUrl).some((issue) => issue.message.includes('paper URL must be')),
+  ).toBe(true);
+
+  const wrongHost = structuredClone(data);
+  firstPaper(wrongHost).value.source = { url: 'https://example.com/paper.pdf' };
+  expect(
+    validateContent(wrongHost).some((issue) => issue.message.includes('paper URL must be')),
+  ).toBe(true);
+
+  const missingKind = structuredClone(data);
+  firstPaper(missingKind).value.questions.pop();
+  expect(
+    validateContent(missingKind).some((issue) =>
+      issue.message.includes('exactly one "limitations"'),
+    ),
+  ).toBe(true);
+
+  const duplicateKind = structuredClone(data);
+  const duplicateQuestions = firstPaper(duplicateKind).value.questions;
+  const fourthQuestion = duplicateQuestions[3];
+  if (!fourthQuestion) throw new Error('Missing fourth paper question');
+  fourthQuestion.kind = 'claim';
+  expect(
+    validateContent(duplicateKind).some((issue) =>
+      issue.message.includes('exactly one "limitations"'),
+    ),
+  ).toBe(true);
+
+  const unknownConcept = structuredClone(data);
+  firstPaper(unknownConcept).value.concepts = ['missing-concept'];
+  expect(
+    validateContent(unknownConcept).some((issue) => issue.message.includes('unknown concept')),
+  ).toBe(true);
+
+  const missingWeek = structuredClone(data);
+  firstPaper(missingWeek).value.week = 99;
+  expect(
+    validateContent(missingWeek).some((issue) =>
+      issue.message.includes('week 99 is not in the curriculum'),
+    ),
+  ).toBe(true);
+
+  const duplicateId = structuredClone(data);
+  duplicateId.papers.push({ ...firstPaper(duplicateId), file: 'papers/duplicate.yaml' });
+  expect(validateContent(duplicateId).some((issue) => issue.message === 'duplicate paper id')).toBe(
+    true,
+  );
 });
 
 test('client-safe exercise views omit keys, hints, and rubric weights', async () => {
@@ -118,6 +196,7 @@ test('lessons start with an objective and end with a summary', () => {
     ],
     exercises: [],
     projects: [],
+    papers: [],
   });
 
   expect(issues).toEqual(
@@ -819,6 +898,10 @@ function sourceDataFromIndex(content: ContentIndex): ContentSourceData {
     projects: content.projects.map(({ contentVersion, ...value }) => ({
       value,
       file: `projects/${value.id}.yaml`,
+    })),
+    papers: content.papers.map(({ contentVersion, ...value }) => ({
+      value,
+      file: `papers/${value.id}.yaml`,
     })),
   };
 }

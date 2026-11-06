@@ -1,0 +1,47 @@
+id: resnet
+title: Deep Residual Learning for Image Recognition
+authors: He, Zhang, Ren and Sun
+year: 2015
+week: 3
+est_minutes: 75
+source:
+  arxiv: 1512.03385v1
+concepts:
+  - convolutions
+  - debugging-training
+  - weight-init-normalization
+why_this_week: "This week ends with convolutions and debugging training. ResNet answers a puzzle you can now understand: why does adding more layers sometimes make a network worse, even on its training data? Its fix, the skip connection, is now in almost every deep network, including transformers."
+how_to_read: Read the introduction and look hard at the figure showing a deeper plain network with higher training error. Read the section on residual learning and the figure of a residual block. Read the ImageNet results and the comparison of plain and residual networks. Skim the CIFAR-10 and object detection results.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What problem do the authors show happens when plain networks get deeper, and why is it not overfitting?
+  - id: method
+    kind: method
+    prompt: What is a residual block? Explain why learning F(x) and outputting F(x) + x should be easier than learning the whole mapping directly.
+  - id: evidence
+    kind: evidence
+    prompt: What experiments show that residual connections solve the problem? Compare the plain and residual training curves.
+  - id: limitations
+    kind: limitations
+    prompt: Does the paper explain why plain deep networks fail to optimise, or only show that residual ones don't? What remains unexplained?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: "States the degradation problem: deeper plain networks get higher training error, which is an optimisation problem, not overfitting"
+      weight: 2
+      required: true
+    - id: r2
+      criterion: "Explains the residual block: layers learn a change F(x) that is added to the input x through a skip connection, so doing nothing is easy"
+      weight: 2
+      required: true
+    - id: r3
+      criterion: Describes the evidence, e.g. 34-layer residual beats 18-layer residual while plain 34 is worse than plain 18, plus ImageNet results
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. it does not fully explain why plain networks fail, or very deep (1000+ layer) versions do not help further
+      weight: 1
+      required: false
+  exemplar: "He and colleagues show that making a plain convolutional network deeper can raise its error on the training data itself, so the problem is optimisation, not overfitting. Their fix is the residual block: a few layers compute a change F(x) and a skip connection adds the input back, so the block outputs F(x) + x. If extra layers are not useful, they can learn F(x) near zero, which is easier than learning to copy the input exactly. With residual connections, a 34-layer network beats an 18-layer one, the reverse of what happens with plain networks, and very deep ResNets won ImageNet 2015. A limitation is that the paper shows the fix works without fully explaining why plain deep networks are hard to optimise."

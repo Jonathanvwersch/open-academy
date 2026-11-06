@@ -1,0 +1,46 @@
+id: adam
+title: "Adam: A Method for Stochastic Optimization"
+authors: Kingma and Ba
+year: 2014
+week: 3
+est_minutes: 60
+source:
+  arxiv: 1412.6980v9
+concepts:
+  - momentum-adam
+  - sgd-minibatch
+why_this_week: This week you study momentum and Adam, the optimiser behind most deep learning. This short paper introduces Adam. It is a good first real paper because the algorithm fits in a box, and you can check every line against what you have just learned.
+how_to_read: Read the introduction and the algorithm box closely, and make sure you can say what each line does. Read the section on bias correction. Skip the convergence proof; it was later found to have an error. Read the experiments section for the main plots only.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What problem with stochastic gradient descent does Adam set out to solve?
+  - id: method
+    kind: method
+    prompt: What two running averages does Adam keep, and how does it use them to set the step for each weight? Why does it need bias correction?
+  - id: evidence
+    kind: evidence
+    prompt: Which experiments do the authors use to show Adam works, and what do the plots compare it against?
+  - id: limitations
+    kind: limitations
+    prompt: The convergence proof was later shown to be flawed, and later work found cases where Adam generalises worse than SGD with momentum. What does this tell you about reading the theory section?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: States that Adam aims to make stochastic optimisation work well with little tuning, by adapting the step size for each parameter
+      weight: 2
+      required: true
+    - id: r2
+      criterion: "Explains the mechanism: running averages of gradients (momentum) and squared gradients (scale), with bias correction for early steps"
+      weight: 2
+      required: true
+    - id: r3
+      criterion: Describes the evidence, e.g. comparisons with SGD, AdaGrad and RMSProp on logistic regression, multilayer networks and CNNs
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. the flawed convergence proof, or cases where Adam generalises worse than SGD
+      weight: 1
+      required: false
+  exemplar: Adam tackles the difficulty of picking one learning rate that suits every weight in a large, noisy optimisation problem. It keeps a running average of each weight's gradient, like momentum, and a running average of its squared gradient, which measures how large that gradient usually is. Each step moves the weight by the first average divided by the square root of the second, so weights with large, noisy gradients take smaller steps. Bias correction fixes the fact that both averages start at zero. Experiments on logistic regression, multilayer networks and CNNs show it trains as fast as or faster than the alternatives, but its convergence proof was later found to be wrong.

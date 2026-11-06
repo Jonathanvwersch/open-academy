@@ -55,6 +55,7 @@ function emptyState(): SchedulerState {
     recentAttempts: [],
     remediationFlags: [],
     projectProgress: [],
+    completedPaperIds: [],
     startDate: '2026-01-05T00:00:00.000Z',
   };
 }
@@ -1069,6 +1070,31 @@ test('Saturday plans an extension after a project is complete', () => {
       (activity) => activity.kind === 'practice' || activity.kind === 'remediate',
     ),
   ).toBe(true);
+});
+
+test('Saturday reserves up to 90 minutes for the current week paper', () => {
+  const state = { ...emptyState(), startDate: '2026-01-12T00:00:00.000Z' };
+  const plan = planSession(state, content, now, 200, 'saturday');
+  const paper = plan.activities.find((activity) => activity.kind === 'paper');
+  expect(paper?.plannedMinutes).toBe(90);
+  expect(paper?.reason.summary).toBe('Saturday paper reading for week 1.');
+  expect(plan.activities.find((activity) => activity.kind === 'lab')?.plannedMinutes).toBe(100);
+});
+
+test('Saturday omits paper reading when all current-week papers are completed', () => {
+  const state = {
+    ...emptyState(),
+    startDate: '2026-01-12T00:00:00.000Z',
+    completedPaperIds: (content.papersByWeek.get(1) ?? []).map((paper) => paper.id),
+  };
+  const plan = planSession(state, content, now, 200, 'saturday');
+  expect(plan.activities.some((activity) => activity.kind === 'paper')).toBe(false);
+});
+
+test('Saturday omits paper reading when less than 30 minutes remain', () => {
+  const state = { ...emptyState(), startDate: '2026-01-12T00:00:00.000Z' };
+  const plan = planSession(state, content, now, 35, 'saturday');
+  expect(plan.activities.some((activity) => activity.kind === 'paper')).toBe(false);
 });
 
 test('Sunday creates a full cumulative assessment plan with interleaved no-hint items', () => {

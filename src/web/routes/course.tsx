@@ -3,7 +3,8 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { Badge } from '@/ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
-import { courseQueryOptions } from '../queries.js';
+import { Markdown } from '../components.js';
+import { courseQueryOptions, paperStatusLabel } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
 import { useTutorSidebar } from '../tutor/TutorSidebar.js';
 
@@ -130,6 +131,38 @@ function CoursePage() {
                   );
                 })}
               </ol>
+              {week.papers.length > 0 ? (
+                <section className="border-t px-4 py-4" aria-label="Papers">
+                  <h3 className="mb-2 font-semibold">Papers</h3>
+                  <ul className="divide-y">
+                    {week.papers.map((paper) => (
+                      <li key={paper.id}>
+                        <Link
+                          to="/papers/$paperId"
+                          params={{ paperId: paper.id }}
+                          className="block cursor-pointer rounded px-2 py-3 hover:bg-muted/60"
+                        >
+                          <Markdown inline>{paper.title}</Markdown>
+                          <p className="text-sm text-muted-foreground">
+                            <Markdown inline>{paper.authors}</Markdown> · {paper.year} · ~
+                            {paper.estMinutes} min
+                          </p>
+                          <Badge
+                            variant="secondary"
+                            className={
+                              paper.status === 'completed'
+                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                : ''
+                            }
+                          >
+                            {paperStatusLabel(paper.status)}
+                          </Badge>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
             </CardContent>
           </Card>
         ))}

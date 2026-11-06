@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Eye, Plus, Sparkles, X } from 'lucide-react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile.js';
 import { Markdown } from '../components.js';
 import {
   type TutorThreadDetail,
@@ -36,8 +37,11 @@ export interface TutorRequestContext {
   activityId?: string;
   exerciseId?: string;
   lessonProblemId?: string;
-  page?: 'session' | 'lesson' | 'course' | 'map';
+  page?: 'session' | 'lesson' | 'course' | 'map' | 'paper';
   knowledgePointId?: string;
+  paperId?: string;
+  pageNumber?: number;
+  selection?: string;
   pageLabel?: string;
   allowed: boolean;
   enabled: boolean;
@@ -49,6 +53,8 @@ interface TutorContextValue {
   setContext: (context: TutorRequestContext) => void;
   clearContext: () => void;
   open: (context?: Partial<TutorRequestContext>) => void;
+  openConversation: (context?: Partial<TutorRequestContext>) => void;
+  isOpen: boolean;
 }
 
 const TutorContext = createContext<TutorContextValue | null>(null);
@@ -142,11 +148,15 @@ function ReadingLine({ pageLabel }: { pageLabel?: string }) {
 export function TutorContextProvider({
   children,
   routeAllowed = true,
+  pushSidebar = false,
 }: {
   children: React.ReactNode;
   routeAllowed?: boolean;
+  pushSidebar?: boolean;
 }) {
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
+  const shouldPushSidebar = pushSidebar && !isMobile;
   const [context, setContext] = useState<TutorRequestContext>({
     allowed: true,
     enabled: false,
@@ -158,6 +168,7 @@ export function TutorContextProvider({
   );
   const [newChatSelected, setNewChatSelected] = useState(false);
   const [selectionChecked, setSelectionChecked] = useState(false);
+  const [focusComposerOnOpen, setFocusComposerOnOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [pendingSend, setPendingSend] = useState<PendingTutorMessage | null>(null);
@@ -182,6 +193,14 @@ export function TutorContextProvider({
     if (selectedId) localStorage.setItem(THREAD_KEY, selectedId);
     else localStorage.removeItem(THREAD_KEY);
   }, [selectedId]);
+  useEffect(() => {
+    if (!focusComposerOnOpen || !open || view !== 'conversation' || !routeAllowed) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.querySelector<HTMLTextAreaElement>('[aria-label="Ask the tutor"]')?.focus();
+      setFocusComposerOnOpen(false);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusComposerOnOpen, open, routeAllowed, view]);
   useEffect(() => {
     if (
       selectionChecked ||
@@ -225,6 +244,9 @@ export function TutorContextProvider({
           lessonProblemId: requestContext.lessonProblemId,
           page: requestContext.page,
           knowledgePointId: requestContext.knowledgePointId,
+          paperId: requestContext.paperId,
+          pageNumber: requestContext.pageNumber,
+          selection: requestContext.selection,
         }),
       });
       const payload = (await response.json().catch(() => ({}))) as TutorSendResponse;
@@ -294,22 +316,50 @@ export function TutorContextProvider({
   const clearContext = useCallback(() => {
     setContext({ allowed: true, enabled: false });
   }, []);
+  const clearSelection = useCallback(() => {
+    setContext((current) => ({
+      ...current,
+      selection: undefined,
+      pageLabel: current.pageLabel?.replace(/ · selected passage$/, ''),
+    }));
+  }, []);
+  const openTutor = useCallback((next?: Partial<TutorRequestContext>) => {
+    if (next) setContext((current) => ({ ...current, ...next }));
+    setOpen(true);
+  }, []);
+  const openConversation = useCallback(
+    (next?: Partial<TutorRequestContext>) => {
+      if (next) setContext((current) => ({ ...current, ...next }));
+      setError('');
+      if (view !== 'conversation') {
+        setDraft('');
+        setNewChatSelected(true);
+        setSelectedId('');
+        setView('conversation');
+      }
+      setFocusComposerOnOpen(true);
+      setOpen(true);
+    },
+    [view],
+  );
   const value = useMemo<TutorContextValue>(
     () => ({
       setContext,
       clearContext,
-      open: (next) => {
-        if (next) setContext((current) => ({ ...current, ...next }));
-        setOpen(true);
-      },
+      open: openTutor,
+      openConversation,
+      isOpen: open,
     }),
-    [clearContext],
+    [clearContext, open, openConversation, openTutor],
   );
   const messages = detail.data?.messages ?? [];
   const selectedThread =
     threads.data?.find((thread) => thread.id === selectedId) ?? detail.data?.thread;
   const visiblePendingSend = pendingSend?.threadId === selectedId ? pendingSend : null;
   const threadGroups = groupThreads(threads.data ?? []);
+  const selectionPreview = context.selection
+    ? `${context.selection.slice(0, 120)}${context.selection.length > 120 ? '…' : ''}`
+    : null;
   const activeConceptTitle = newChatSelected
     ? context.conceptTitle
     : (selectedThread?.conceptTitle ??
@@ -339,6 +389,7 @@ export function TutorContextProvider({
       context,
       optimisticId,
     });
+    if (context.selection) clearSelection();
   };
   return (
     <SidebarProvider
@@ -348,8 +399,14 @@ export function TutorContextProvider({
     >
       <TutorContext.Provider value={value}>
         <SidebarInset className="min-w-0">{children}</SidebarInset>
-        {routeAllowed ? (
-          <Sidebar side="right" collapsible="offcanvas" role="complementary" aria-label="Tutor">
+        {routeAllowed && (!shouldPushSidebar || open) ? (
+          <Sidebar
+            side="right"
+            collapsible={shouldPushSidebar ? 'none' : 'offcanvas'}
+            className={shouldPushSidebar ? 'h-svh min-h-0' : undefined}
+            role="complementary"
+            aria-label="Tutor"
+          >
             {enabled && context.allowed ? (
               view === 'list' ? (
                 <>
@@ -551,6 +608,22 @@ export function TutorContextProvider({
                     </Conversation>
                   </SidebarContent>
                   <SidebarFooter className="border-t p-4">
+                    {selectionPreview ? (
+                      <div className="flex items-start gap-2 rounded-md border bg-background p-2">
+                        <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+                          Selected: “{selectionPreview}”
+                        </p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Clear selected passage"
+                          onClick={clearSelection}
+                        >
+                          <X aria-hidden="true" />
+                        </Button>
+                      </div>
+                    ) : null}
                     <PromptInput
                       className="w-full space-y-2"
                       onSubmit={(event) => {

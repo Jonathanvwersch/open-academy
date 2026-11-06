@@ -1,0 +1,47 @@
+id: droid
+title: "DROID: A Large-Scale In-The-Wild Robot Manipulation Dataset"
+authors: Khazatsky et al.
+year: 2024
+week: 11
+est_minutes: 60
+source:
+  arxiv: 2403.12945v2
+concepts:
+  - data-pipelines-robotics
+  - experimental-design
+  - robot-foundation-models
+why_this_week: "This week covers data pipelines and experimental design. DROID took the opposite approach to pooling: one standard robot setup, shipped to many institutions, used to collect demonstrations in hundreds of real homes, offices and labs. Reading it shows what a well-designed data collection effort looks like and how to test whether more diverse data actually helps."
+how_to_read: "Read the introduction and the section on the hardware setup and collection protocol. Read the dataset analysis: number of scenes, tasks and viewpoints compared with other datasets. Read the policy learning experiments and how they measure whether DROID improves performance and robustness. Skim the appendices."
+questions:
+  - id: claim
+    kind: claim
+    prompt: What does DROID provide that earlier robot datasets lacked?
+  - id: method
+    kind: method
+    prompt: How was data collected? Describe the hardware, the number of collectors and institutions, and what was standardised.
+  - id: evidence
+    kind: evidence
+    prompt: What experiments show DROID's diversity helps policies, and how were they designed?
+  - id: limitations
+    kind: limitations
+    prompt: One robot type and mostly short tasks were used. What does this dataset not help with, and what could bias the evaluation?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: States that DROID provides much more diverse real-world manipulation data, in many real scenes, than earlier datasets
+      weight: 2
+      required: true
+    - id: r2
+      criterion: "Explains the collection design: one standardised robot setup used by many collectors across many institutions and scenes"
+      weight: 2
+      required: true
+    - id: r3
+      criterion: "Describes the evidence: policies co-trained with DROID do better and are more robust in tests across varied scenes and tasks"
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. a single robot type, or demonstrations of mostly short tasks
+      weight: 1
+      required: false
+  exemplar: DROID addresses the lack of diversity in real robot manipulation data, which mostly came from a few lab scenes. The team gave the same standardised robot arm and camera setup to collectors at many institutions, who recorded about 76,000 demonstrations, roughly 350 hours, across 564 scenes and 86 tasks over a year. Their analysis shows far more variety in scenes and viewpoints than earlier datasets. Policies co-trained with DROID performed better and were more robust in new settings than policies trained without it. A limitation is that it covers one robot type, so it does not help with transferring across robot bodies.

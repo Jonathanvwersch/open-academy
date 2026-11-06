@@ -1,6 +1,7 @@
 import {
   bigint,
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -32,6 +33,7 @@ export const activityKindEnum = pgEnum('activity_kind', [
   'reflect',
   'teachback',
   'diagnostic',
+  'paper',
 ]);
 export const activityStatusEnum = pgEnum('activity_status', [
   'planned',
@@ -449,4 +451,45 @@ export const llmCalls = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => [index('llm_calls_user_created_idx').on(table.userId, table.createdAt)],
+);
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
+
+export const paperFiles = pgTable('paper_files', {
+  paperId: text('paper_id').primaryKey(),
+  bytes: bytea('bytes').notNull(),
+  sha256: text('sha256').notNull(),
+  fetchedAt: timestamp('fetched_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+});
+
+export const paperPages = pgTable(
+  'paper_pages',
+  {
+    paperId: text('paper_id').notNull(),
+    page: integer('page').notNull(),
+    text: text('text').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.paperId, table.page] })],
+);
+
+export const paperProgress = pgTable(
+  'paper_progress',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    paperId: text('paper_id').notNull(),
+    lastPage: integer('last_page').notNull().default(1),
+    notes: jsonb('notes').$type<Record<string, string>>().notNull().default({}),
+    summary: text('summary'),
+    summaryJudgement: jsonb('summary_judgement').$type<
+      import('../tutor/schemas.js').RubricJudgement | null
+    >(),
+    completedAt: timestamp('completed_at', { withTimezone: true, mode: 'date' }),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.paperId] }),
+    uniqueIndex('paper_progress_user_paper_unique').on(table.userId, table.paperId),
+  ],
 );

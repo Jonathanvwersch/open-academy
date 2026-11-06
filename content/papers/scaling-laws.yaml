@@ -1,0 +1,46 @@
+id: scaling-laws
+title: Scaling Laws for Neural Language Models
+authors: Kaplan et al.
+year: 2020
+week: 4
+est_minutes: 75
+source:
+  arxiv: 2001.08361v1
+concepts:
+  - pretraining
+  - autoregressive-lm
+why_this_week: This week ends with pretraining a language model to predict the next token. This paper asks how much better such a model gets as you add parameters, data and compute, and finds smooth, predictable trends. It is the reason labs started training ever larger models, including the vision-language models robots now use.
+how_to_read: Read the introduction and its summary of findings closely. Look at the first figure, which shows loss against compute, dataset size and parameters on log-log axes. Read the section on how loss depends on model size and data. Skim the derivations and the appendices.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What is the paper's main claim about how language model loss depends on model size, data and compute?
+  - id: method
+    kind: method
+    prompt: How did the authors measure this? Describe the range of model sizes and what they varied while holding other things fixed.
+  - id: evidence
+    kind: evidence
+    prompt: What does a straight line on a log-log plot mean here, and which figures give the strongest evidence?
+  - id: limitations
+    kind: limitations
+    prompt: Later work (the Chinchilla paper, 2022) concluded that models should be trained on far more data than this paper suggests. What in this paper's setup could explain the disagreement?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: "States the main claim: test loss falls as a smooth power law in parameters, data and compute over many orders of magnitude"
+      weight: 2
+      required: true
+    - id: r2
+      criterion: Explains a key finding, e.g. shape details like depth vs width matter little, or larger models learn more from each example
+      weight: 2
+      required: true
+    - id: r3
+      criterion: "Describes the evidence: training many models across a wide size range and fitting straight lines on log-log plots"
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. the compute-optimal recommendation was later revised toward more data, or results are for one model family and loss
+      weight: 1
+      required: false
+  exemplar: Kaplan and colleagues ask how a language model's loss changes as you scale up parameters, data and compute. Training many transformers across a huge range of sizes, they find the test loss falls as a power law in each, showing up as straight lines on log-log plots across several orders of magnitude. Details like the ratio of depth to width matter much less than total size, and larger models learn more from each example. They conclude that, for a fixed compute budget, it is best to train a very large model and stop before it has fully converged. A limitation is that the later Chinchilla study found models should be trained on much more data than this paper recommends.

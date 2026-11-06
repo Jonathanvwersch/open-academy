@@ -1,0 +1,48 @@
+id: attention-is-all-you-need
+title: Attention Is All You Need
+authors: Vaswani et al.
+year: 2017
+week: 4
+est_minutes: 90
+source:
+  arxiv: 1706.03762v7
+concepts:
+  - attention
+  - multi-head-attention
+  - positional-encoding
+  - transformer-block
+why_this_week: "This week you build the transformer piece by piece: attention, multi-head attention, positional encoding and the transformer block. This is the paper that introduced it. After this week you will be able to read nearly every line, and almost every later paper in this course, from GPT-3 to π0, builds on it."
+how_to_read: "Read the introduction and background briefly. Read the model architecture section closely with the architecture figure next to it: scaled dot-product attention, multi-head attention, the feed-forward layers and positional encoding. Read the section on why self-attention. Skim the training details and read the translation results table."
+questions:
+  - id: claim
+    kind: claim
+    prompt: What did the authors claim about recurrent networks, and what did they propose instead?
+  - id: method
+    kind: method
+    prompt: Explain scaled dot-product attention in your own words, including what the queries, keys and values are and why the scores are divided by the square root of the key size.
+  - id: evidence
+    kind: evidence
+    prompt: What results show the transformer works? Look at both translation quality and training cost.
+  - id: limitations
+    kind: limitations
+    prompt: What does the paper leave open? Think about cost as sequences get long, and about the positional encoding choice.
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: States that the paper replaces recurrence with attention alone, so sequences can be processed in parallel
+      weight: 2
+      required: true
+    - id: r2
+      criterion: "Explains attention correctly: each position scores every other position by query-key dot products, softmaxes them and takes a weighted sum of values; multiple heads do this in parallel"
+      weight: 2
+      required: true
+    - id: r3
+      criterion: "Describes the evidence: better BLEU on WMT 2014 English-German and English-French translation at a fraction of the training cost"
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. attention cost grows with the square of sequence length, or results are only on translation and parsing
+      weight: 1
+      required: false
+  exemplar: "Vaswani and colleagues argue that recurrent networks are slow to train because they process a sequence one step at a time. The transformer replaces recurrence with attention: each position builds a query, compares it with every position's key using a scaled dot product, and takes a softmax-weighted average of their values. Multi-head attention runs several of these in parallel, and positional encodings add word-order information that attention alone lacks. On English-German and English-French translation it beat the best previous models while costing much less to train. A limitation is that attention compares every pair of positions, so its cost grows with the square of the sequence length."
