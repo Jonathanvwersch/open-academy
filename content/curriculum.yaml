@@ -111,6 +111,7 @@ weeks:
           debugging-training,
           images-as-tensors,
           convolutions,
+          autoencoders,
           gaussian-distribution,
           maximum-likelihood,
         ],
@@ -195,6 +196,7 @@ weeks:
           exploration,
           policy-gradients,
           ppo,
+          world-models,
           simulation-for-rl,
           reward-design,
           bc-vs-rl,
@@ -224,11 +226,15 @@ weeks:
         [
           action-chunking,
           diffusion-policies,
+          flow-matching,
           transformer-policies,
           gpu-inference-basics,
           vla-models,
+          vla-action-heads,
           robot-foundation-models,
+          video-world-models,
           embodiment-gap,
+          landmark-robot-learning-papers,
         ],
     }
   - {

@@ -170,6 +170,29 @@ concepts:
     objectives:
       - { text: "Compute softmax and cross-entropy for a logit vector", dimension: math }
     status: stub
+  - {
+      id: autoencoders,
+      title: "Autoencoders and latent representations",
+      description: "Compressing an input into a short latent vector and reconstructing it; the latent space that world models and policies predict in.",
+      difficulty: 3,
+      est_minutes: 30,
+      week: 3,
+      goal_weight: 2,
+      dimensions: [conceptual, math],
+      prereqs: [{ id: mlp-forward-pass }, { id: images-as-tensors }],
+      objectives:
+        [
+          {
+            text: "Explain how an encoder compresses an input into a latent representation and a decoder reconstructs it",
+            dimension: conceptual,
+          },
+          {
+            text: "Compare input and latent-vector dimensions in a simple autoencoder",
+            dimension: math,
+          },
+        ],
+      status: stub,
+    }
   - id: gpu-inference-basics
     title: GPUs and fast inference
     description: Why GPUs are fast, memory-bound vs compute-bound work, batching, half precision and quantisation, and inference latency on a robot.

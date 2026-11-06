@@ -30,7 +30,7 @@ concepts:
   - {
       id: action-chunking,
       title: Action chunking,
-      description: "Predicting sequences of future actions (ACT); temporal ensembling.",
+      description: "Predicting a short sequence of future actions at once (ACT, Zhao et al. 2023, trained on the ALOHA arms); temporal ensembling.",
       difficulty: 3,
       est_minutes: 30,
       week: 10,
@@ -45,7 +45,7 @@ concepts:
   - {
       id: diffusion-policies,
       title: Diffusion policies,
-      description: "Denoising diffusion over action sequences; multimodal action distributions.",
+      description: "Denoising diffusion over action sequences; multimodal action distributions (Diffusion Policy, Chi et al. 2023).",
       difficulty: 4,
       est_minutes: 40,
       week: 10,
@@ -58,6 +58,26 @@ concepts:
             text: "Explain why diffusion handles multimodal demonstrations",
             dimension: conceptual,
           },
+        ],
+      status: stub,
+    }
+  - {
+      id: flow-matching,
+      title: Flow matching,
+      description: "Learning a velocity field that carries noise to data along near-straight paths; fewer sampling steps than diffusion for continuous actions (Lipman et al. 2023).",
+      difficulty: 4,
+      est_minutes: 35,
+      week: 10,
+      goal_weight: 2,
+      dimensions: [conceptual, math],
+      prereqs: [{ id: diffusion-policies }],
+      objectives:
+        [
+          {
+            text: "Explain how a velocity field transports noise to data along a near-straight path",
+            dimension: conceptual,
+          },
+          { text: "Interpret a velocity vector along a flow-matching path", dimension: math },
         ],
       status: stub,
     }
@@ -76,8 +96,8 @@ concepts:
     }
   - {
       id: vla-models,
-      title: Vision-language-action models,
-      description: "VLMs fine-tuned to output actions (RT-2, OpenVLA, pi0).",
+      title: "VLA architecture: vision-language models that output actions",
+      description: "Turning a pretrained vision-language model into a robot policy by writing actions as tokens (RT-2, 2023; OpenVLA, 2024).",
       difficulty: 4,
       est_minutes: 35,
       week: 10,
@@ -93,22 +113,68 @@ concepts:
       status: stub,
     }
   - {
+      id: vla-action-heads,
+      title: "VLA action heads and training mixtures",
+      description: "Continuous actions from a flow-matching action expert (π0, 2024; π0.5, 2025) and co-training on robot, web and human data.",
+      difficulty: 4,
+      est_minutes: 35,
+      week: 10,
+      goal_weight: 3,
+      dimensions: [conceptual, transfer],
+      prereqs: [{ id: vla-models }, { id: flow-matching }],
+      objectives:
+        [
+          {
+            text: "Explain how a flow-matching action expert produces continuous robot actions",
+            dimension: conceptual,
+          },
+          {
+            text: "Describe how robot, web and human data can be mixed during co-training",
+            dimension: transfer,
+          },
+        ],
+      status: stub,
+    }
+  - {
       id: robot-foundation-models,
       title: Robot foundation models,
-      description: "Cross-embodiment pretraining, scaling data and generalist policies.",
+      description: "Cross-embodiment pretraining, scaling robot data and generalist policies (RT-1, 2022; Open X-Embodiment and RT-X, 2023; Octo, 2024; DROID, 2024; GR00T N1, 2025).",
       difficulty: 4,
       est_minutes: 25,
       week: 10,
       goal_weight: 2,
       dimensions: [conceptual],
-      prereqs: [{ id: vla-models }],
+      prereqs: [{ id: vla-models }, { id: vla-action-heads, strength: soft }],
       objectives: [{ text: "Discuss cross-embodiment training", dimension: conceptual }],
+      status: stub,
+    }
+  - {
+      id: video-world-models,
+      title: "Video world models for robotics",
+      description: "Generative models that predict future camera frames from actions, used as learned simulators, for planning and to evaluate policies (Genie, 2024; NVIDIA Cosmos, 2025; V-JEPA 2, 2025).",
+      difficulty: 4,
+      est_minutes: 35,
+      week: 10,
+      goal_weight: 2,
+      dimensions: [conceptual, transfer],
+      prereqs: [{ id: world-models }, { id: diffusion-policies }],
+      objectives:
+        [
+          {
+            text: "Explain how predicted future camera frames can support planning as a learned simulator",
+            dimension: conceptual,
+          },
+          {
+            text: "Describe how video world models can be used to evaluate policies",
+            dimension: transfer,
+          },
+        ],
       status: stub,
     }
   - {
       id: embodiment-gap,
       title: Embodiment and human-vs-robot data,
-      description: "Kinematic differences, retargeting, learning from human video.",
+      description: "Kinematic differences, retargeting, learning from human video (Mobile ALOHA, 2024; UMI, 2024).",
       difficulty: 3,
       est_minutes: 25,
       week: 10,
@@ -119,6 +185,31 @@ concepts:
         [
           {
             text: "Explain the challenges of learning from human demonstrations",
+            dimension: conceptual,
+          },
+        ],
+      status: stub,
+    }
+  - {
+      id: landmark-robot-learning-papers,
+      title: "Landmark robot learning papers, 2022–2025",
+      description: "A timeline of the papers behind modern robot learning: what each solved, its key idea and what built on it (RT-1, SayCan, Diffusion Policy, ACT, RT-2, Open X-Embodiment, Octo, OpenVLA, DROID, π0, Genie, V-JEPA 2, GR00T N1, Gemini Robotics).",
+      difficulty: 4,
+      est_minutes: 45,
+      week: 10,
+      goal_weight: 3,
+      dimensions: [conceptual],
+      prereqs:
+        [
+          { id: robot-foundation-models },
+          { id: action-chunking },
+          { id: video-world-models, strength: soft },
+          { id: embodiment-gap, strength: soft },
+        ],
+      objectives:
+        [
+          {
+            text: "Explain what problem each landmark paper solved and what built on it",
             dimension: conceptual,
           },
         ],
