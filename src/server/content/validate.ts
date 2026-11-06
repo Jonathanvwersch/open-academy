@@ -456,6 +456,7 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
 
   if (data.curriculum) {
     const curriculum = data.curriculum.value;
+    const outlinedConceptWeeks = new Map<string, number>();
     for (const goal of curriculum.goals) {
       if (seenGoals.has(goal.id)) {
         addIssue(issues, data.curriculum.file, goal.id, 'duplicate goal id');
@@ -478,6 +479,26 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
       }
       seenWeeks.add(week.week);
       for (const conceptId of week.concepts) {
+        const concept = concepts.get(conceptId);
+        if (concept && concept.value.week !== week.week) {
+          addIssue(
+            issues,
+            data.curriculum.file,
+            conceptId,
+            `concept week field (${concept.value.week}) does not match curriculum week (${week.week})`,
+          );
+        }
+        const outlinedWeek = outlinedConceptWeeks.get(conceptId);
+        if (outlinedWeek !== undefined) {
+          addIssue(
+            issues,
+            data.curriculum.file,
+            conceptId,
+            `concept listed more than once in the curriculum (weeks ${outlinedWeek} and ${week.week})`,
+          );
+        } else {
+          outlinedConceptWeeks.set(conceptId, week.week);
+        }
         if (!concepts.has(conceptId)) {
           addIssue(
             issues,

@@ -243,13 +243,7 @@ weeks:
       project: capstone,
       intro: "Running a robot-learning project properly: data pipelines, evaluation, failure analysis and statistics.",
       concepts:
-        [
-          data-pipelines-robotics,
-          policy-evaluation,
-          failure-analysis,
-          experimental-design,
-          statistical-evaluation,
-        ],
+        [data-pipelines-robotics, failure-analysis, experimental-design, statistical-evaluation],
     }
   - {
       week: 12,
