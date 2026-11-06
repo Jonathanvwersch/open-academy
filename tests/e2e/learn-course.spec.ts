@@ -127,6 +127,81 @@ test('Learn shows XP and tasks, starts a session, and Course links to lessons', 
   await expect(page).toHaveURL(/\/session\//);
 });
 
+test('VLA titles on Course and π0 descriptions on Map render as plain text', async ({ page }) => {
+  const concepts = [
+    {
+      id: 'vla-action-heads',
+      title: 'VLA action heads and training mixtures',
+      description:
+        'Continuous actions from a flow-matching action expert (π0, 2024; π0.5, 2025) and co-training on robot, web and human data.',
+    },
+    {
+      id: 'landmark-robot-learning-papers',
+      title: 'Landmark robot learning papers, 2022–2025',
+      description:
+        'A timeline of the papers behind modern robot learning: what each solved, its key idea and what built on it (RT-1, SayCan, Diffusion Policy, ACT, RT-2, Open X-Embodiment, Octo, OpenVLA, DROID, π0, Genie, V-JEPA 2, GR00T N1, Gemini Robotics).',
+    },
+  ] as const;
+  await page.route('**/api/course', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        weeks: [
+          {
+            week: 10,
+            title: 'Robot learning',
+            intro: '',
+            project: null,
+            topics: [
+              {
+                number: '10.1',
+                conceptId: concepts[0].id,
+                title: concepts[0].title,
+                hasLesson: false,
+                status: 'not_started',
+                mastery: 'Not started',
+                buildsOn: [],
+                leadsTo: [],
+                leadsToMore: 0,
+              },
+            ],
+          },
+        ],
+      }),
+    }),
+  );
+  await page.route('**/api/concepts/*', (route) => {
+    const concept = concepts.find(({ id }) =>
+      route.request().url().endsWith(`/api/concepts/${id}`),
+    );
+    if (!concept) return route.continue();
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        concept: { ...concept, status: 'stub' },
+        lessonAvailable: false,
+        mastery: [],
+        events: [],
+        debt: [],
+      }),
+    });
+  });
+
+  await page.goto('/course');
+  const actionHeadsRow = page.getByRole('listitem').filter({ hasText: concepts[0].title });
+  await expect(actionHeadsRow).toBeVisible();
+  await expect(actionHeadsRow.locator('.katex')).toHaveCount(0);
+
+  for (const concept of concepts) {
+    await page.goto(`/map?concept=${concept.id}`);
+    const descriptionText = page.getByText(concept.description, { exact: true });
+    await expect(descriptionText).toBeVisible();
+    await expect(descriptionText.locator('.katex')).toHaveCount(0);
+  }
+});
+
 test('authored course-structure lessons render their diagrams', async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 1000 });
   await mockLessonReview(
