@@ -141,7 +141,13 @@ export class E2ETutorProvider implements TutorProvider {
   }
 
   async gradeExplanation(): Promise<TutorResult<RubricJudgement>> {
-    return { value: RubricJudgementSchema.parse({ criteria: [], feedback_md: '' }), usage: null };
+    return {
+      value: RubricJudgementSchema.parse({
+        criteria: [{ id: 'summary', judgement: 'met', evidence: 'E2E summary feedback.' }],
+        feedback_md: 'E2E summary feedback.',
+      }),
+      usage: null,
+    };
   }
 }
 

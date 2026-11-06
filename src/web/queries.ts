@@ -54,6 +54,14 @@ export interface CoursePayload {
     title: string;
     intro: string;
     project: { id: string; title: string } | null;
+    papers: Array<{
+      id: string;
+      title: string;
+      authors: string;
+      year: number;
+      estMinutes: number;
+      status: 'not_started' | 'reading' | 'completed';
+    }>;
     topics: Array<{
       number: string;
       conceptId: string;
@@ -297,6 +305,63 @@ export const courseQueryOptions = () =>
     queryKey: ['course'] as const,
     queryFn: () => getJson<CoursePayload>('/api/course', 'Could not load Course'),
   });
+
+export interface PapersPayload {
+  weeks: Array<{
+    week: number;
+    papers: Array<{
+      id: string;
+      title: string;
+      authors: string;
+      year: number;
+      est_minutes: number;
+      status: 'not_started' | 'reading' | 'completed';
+    }>;
+  }>;
+}
+
+export const papersQueryOptions = () =>
+  queryOptions({
+    queryKey: ['papers'] as const,
+    queryFn: () => getJson<PapersPayload>('/api/papers', 'Could not load papers'),
+  });
+
+export const paperQueryOptions = (paperId: string) =>
+  queryOptions({
+    queryKey: ['paper', paperId] as const,
+    queryFn: () =>
+      getJson<{
+        paper: {
+          id: string;
+          title: string;
+          authors: string;
+          year: number;
+          week: number;
+          est_minutes: number;
+          source: { arxiv: string } | { url: string };
+          questions: Array<{ id: string; kind: string; prompt: string }>;
+          why_this_week: string;
+          how_to_read: string;
+          summary: {
+            prompt: string;
+            rubric?: Array<{ id: string; criterion: string; weight: number; required: boolean }>;
+          };
+        };
+        progress: {
+          lastPage: number;
+          notes: Record<string, string>;
+          summary: string | null;
+          summaryJudgement: unknown;
+        } | null;
+        originalUrl: string;
+      }>(`/api/papers/${encodeURIComponent(paperId)}`, 'Paper not found'),
+  });
+
+export function paperStatusLabel(
+  status: PapersPayload['weeks'][number]['papers'][number]['status'],
+) {
+  return status === 'not_started' ? 'Not started' : status === 'reading' ? 'Reading' : 'Completed';
+}
 
 export const sessionQueryOptions = (id: string) =>
   queryOptions({

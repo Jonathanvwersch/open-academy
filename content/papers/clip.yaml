@@ -1,0 +1,46 @@
+id: clip
+title: Learning Transferable Visual Models From Natural Language Supervision
+authors: Radford et al.
+year: 2021
+week: 9
+est_minutes: 90
+source:
+  arxiv: 2103.00020v1
+concepts:
+  - image-text-alignment
+  - vision-encoders
+why_this_week: This week you learn how models connect images and text. CLIP trained an image encoder and a text encoder to agree on which captions go with which images, using 400 million pairs from the web. The resulting encoders recognise new categories from a text description alone, and CLIP-style encoders sit inside many robot policies and VLAs.
+how_to_read: Read the introduction and the approach section closely, with the figure showing contrastive pretraining and zero-shot classification. Read the zero-shot results, including the ImageNet comparison and the robustness to distribution shift. Read the limitations section. Skip most of the long per-dataset results and the appendices.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What is the main claim about learning visual models from natural language rather than fixed labels?
+  - id: method
+    kind: method
+    prompt: "Explain contrastive pretraining: what is compared with what in each batch, and how is a trained CLIP used to classify an image with no task-specific training?"
+  - id: evidence
+    kind: evidence
+    prompt: What evidence supports zero-shot transfer? Look at ImageNet accuracy and at performance under distribution shift.
+  - id: limitations
+    kind: limitations
+    prompt: What does CLIP still do poorly according to the limitations section, and what risks come from training on unfiltered web data?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: "States the claim: learning from image-caption pairs gives visual features that transfer to new tasks without task-specific labels"
+      weight: 2
+      required: true
+    - id: r2
+      criterion: "Explains contrastive training: matching image and text embeddings are pulled together and mismatched pairs in the batch pushed apart; zero-shot classification compares an image with text prompts for each class"
+      weight: 2
+      required: true
+    - id: r3
+      criterion: Describes the evidence, e.g. zero-shot ImageNet accuracy matching a supervised ResNet-50, and better robustness to distribution shift
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. weak on fine-grained or counting tasks, or biases from web data
+      weight: 1
+      required: false
+  exemplar: Radford and colleagues ask whether image models can learn from natural language captions instead of fixed label sets. CLIP trains an image encoder and a text encoder on 400 million image-caption pairs so that, within each batch, each image's embedding is closest to its own caption's embedding and far from the others. To classify a new image, you write a caption for each class, such as "a photo of a dog", and pick the one whose embedding best matches the image. Without seeing any ImageNet training labels, CLIP matched the accuracy of a ResNet-50 trained on them, and it held up much better under distribution shift. Limitations include weak performance on tasks like counting objects, and biases picked up from web data.

@@ -6,6 +6,7 @@ import type { LearnerRepository } from '../db/repository.js';
 import {
   lessonProblems,
   lessonRuns,
+  paperProgress,
   sessionActivities,
   studySessions,
   xpEvents,
@@ -198,7 +199,16 @@ export function registerLearnCourseRoutes(
       .select()
       .from(lessonRuns)
       .where(eq(lessonRuns.userId, context.get('userId')));
-    return context.json({ weeks: buildCourseWeeks(index, state.mastery, runs) });
+    const paperRows = await deps.db
+      .select()
+      .from(paperProgress)
+      .where(eq(paperProgress.userId, context.get('userId')));
+    const paperStatuses = new Map<string, 'not_started' | 'reading' | 'completed'>(
+      paperRows.map((row) => [row.paperId, row.completedAt ? 'completed' : 'reading'] as const),
+    );
+    return context.json({
+      weeks: buildCourseWeeks(index, state.mastery, runs, paperStatuses),
+    });
   });
 }
 
@@ -236,6 +246,7 @@ export function buildCourseWeeks(
   index: ContentIndex,
   masteryRecords: Awaited<ReturnType<LearnerRepository['masteryRecords']>>,
   runs: Array<typeof lessonRuns.$inferSelect>,
+  paperStatuses: Map<string, 'not_started' | 'reading' | 'completed'> = new Map(),
 ) {
   const masteryByConcept = new Map<string, typeof masteryRecords>();
   for (const record of masteryRecords) {
@@ -265,6 +276,14 @@ export function buildCourseWeeks(
         title: week.title,
         intro: week.intro ?? '',
         project: project ? { id: project.id, title: project.title } : null,
+        papers: (index.papersByWeek.get(week.week) ?? []).map((paper) => ({
+          id: paper.id,
+          title: paper.title,
+          authors: paper.authors,
+          year: paper.year,
+          estMinutes: paper.est_minutes,
+          status: paperStatuses.get(paper.id) ?? 'not_started',
+        })),
         topics: week.concepts.map((conceptId, indexInWeek) => {
           const concept = index.conceptsById.get(conceptId);
           if (!concept) {
@@ -334,15 +353,19 @@ export function buildCourseWeeks(
     });
 }
 
-function activityLabel(kind: string): 'Lesson' | 'Review' | 'Practice' | 'Project' | 'Quiz' {
+function activityLabel(
+  kind: string,
+): 'Lesson' | 'Review' | 'Practice' | 'Project' | 'Quiz' | 'Paper' {
   if (kind === 'learn') return 'Lesson';
   if (kind === 'review') return 'Review';
   if (kind === 'lab') return 'Project';
+  if (kind === 'paper') return 'Paper';
   if (kind === 'quick_check' || kind === 'diagnostic') return 'Quiz';
   return 'Practice';
 }
 
 function titleForKind(kind: string): string {
+  if (kind === 'paper') return 'Paper reading';
   if (kind === 'quick_check') return 'Quick check';
   if (kind === 'reflect') return 'Reflection';
   if (kind === 'teachback') return 'Teach-back';

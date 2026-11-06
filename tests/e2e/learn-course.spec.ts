@@ -153,6 +153,7 @@ test('VLA titles on Course and π0 descriptions on Map render as plain text', as
             title: 'Robot learning',
             intro: '',
             project: null,
+            papers: [],
             topics: [
               {
                 number: '10.1',

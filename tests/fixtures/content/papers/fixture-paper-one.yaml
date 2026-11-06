@@ -1,0 +1,22 @@
+id: fixture-paper-one
+title: "Fixture Paper One"
+authors: "Fixture Authors"
+year: 2024
+week: 1
+est_minutes: 60
+source: { arxiv: "2401.12345v1" }
+concepts: [vectors]
+why_this_week: "This paper connects to vectors."
+how_to_read: "Read the abstract and figures first."
+questions:
+  - { id: claim, kind: claim, prompt: "What is the main claim?" }
+  - { id: method, kind: method, prompt: "What method is used?" }
+  - { id: evidence, kind: evidence, prompt: "What evidence is presented?" }
+  - { id: limitations, kind: limitations, prompt: "What are the limitations?" }
+summary:
+  prompt: "Summarize the paper."
+  rubric:
+    - { id: claim, criterion: "Explain the claim.", weight: 1, required: true }
+    - { id: method, criterion: "Explain the method.", weight: 1, required: false }
+    - { id: evidence, criterion: "Explain the evidence.", weight: 1, required: false }
+  exemplar: "The paper proposes a method and supports it with evidence."

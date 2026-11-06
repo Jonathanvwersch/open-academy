@@ -1,0 +1,46 @@
+id: ppo
+title: Proximal Policy Optimization Algorithms
+authors: Schulman, Wolski, Dhariwal, Radford and Klimov
+year: 2017
+week: 8
+est_minutes: 60
+source:
+  arxiv: 1707.06347v2
+concepts:
+  - ppo
+  - policy-gradients
+why_this_week: This week you learn policy gradients and PPO, the most widely used reinforcement learning algorithm, from robot locomotion to fine-tuning language models. This is the original PPO paper. It is short, and its key equation, the clipped objective, is exactly what you implement this week.
+how_to_read: Read the introduction and the background on policy gradients and trust regions. Read the section on the clipped surrogate objective closely, with the figure that plots it. Read the algorithm box. Read the continuous control results and skim the Atari results.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What problem with earlier policy gradient methods does PPO address?
+  - id: method
+    kind: method
+    prompt: "Explain the clipped objective: what is the probability ratio, and what does clipping it to between 1 − ε and 1 + ε prevent?"
+  - id: evidence
+    kind: evidence
+    prompt: What experiments show PPO works, and what is it compared against?
+  - id: limitations
+    kind: limitations
+    prompt: PPO's results depend on many implementation details and hyperparameters. What does the paper say about how sensitive it is, and what does it leave out?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: "States the problem: plain policy gradients are unstable with large updates, and TRPO is complicated; PPO aims for stable updates that are simple to implement"
+      weight: 2
+      required: true
+    - id: r2
+      criterion: "Explains the clipped objective: the ratio of new to old action probabilities is clipped so one update cannot change the policy too much, allowing several epochs per batch"
+      weight: 2
+      required: true
+    - id: r3
+      criterion: "Describes the evidence: MuJoCo continuous control and Atari comparisons against TRPO, A2C and others"
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. sensitivity to implementation details and hyperparameters, or limited theory
+      weight: 1
+      required: false
+  exemplar: Schulman and colleagues want policy gradient training that is stable but simple. Plain policy gradients can wreck a policy with one overly large update, and the earlier fix, TRPO, uses a complicated constrained optimisation. PPO instead clips the ratio between the new and old probability of each action to a small range around 1, so the objective gives no extra reward for moving the policy too far in one update. This lets it safely do several epochs of mini-batch updates on each batch of experience. On simulated robot control and Atari games it matched or beat TRPO and other methods with much simpler code, though later work showed its results depend heavily on implementation details.

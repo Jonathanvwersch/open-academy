@@ -1,0 +1,47 @@
+id: domingos-useful-things
+title: A Few Useful Things to Know About Machine Learning
+authors: Pedro Domingos
+year: 2012
+week: 1
+est_minutes: 60
+source:
+  url: https://homes.cs.washington.edu/~pedrod/papers/cacm12.pdf
+concepts:
+  - what-is-ml
+  - supervised-learning
+  - train-test-split
+why_this_week: "This week you learn what machine learning is: fitting a rule to examples so it works on new examples. Domingos wrote this short article to pass on the practical lessons that experienced people know but textbooks rarely state. It turns this week's ideas, such as training data, test data and generalisation, into twelve plain rules of thumb."
+how_to_read: Read the whole article. It is about nine pages and has no heavy maths. Each numbered section is one lesson, so take them one at a time. You can skim the section on high dimensions if the geometry feels unfamiliar; you will meet it again later in the course.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What does Domingos say learning is made of? Name the three parts and give one example of each.
+  - id: method
+    kind: method
+    prompt: Why does he say generalisation, not accuracy on the training data, is what counts? What does he recommend doing with the data to measure it?
+  - id: evidence
+    kind: evidence
+    prompt: Pick one of his lessons and describe the example or argument he gives to support it.
+  - id: limitations
+    kind: limitations
+    prompt: This is an opinion piece from 2012. Which of his claims would you want to test before trusting it, and has deep learning changed any of them?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: States that the article collects practical lessons about making learning work on new data, beyond what textbooks cover
+      weight: 2
+      required: true
+    - id: r2
+      criterion: Explains at least one central lesson correctly, e.g. learning = representation + evaluation + optimisation, or generalisation is what counts
+      weight: 2
+      required: true
+    - id: r3
+      criterion: Describes how he supports a lesson (an example, an argument or a cited result)
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. it is an expert's opinion rather than a set of experiments, or some advice predates deep learning
+      weight: 1
+      required: false
+  exemplar: Domingos argues that people new to machine learning miss practical lessons that experts pick up over years. His central lesson is that what matters is how well a model does on data it has never seen, so you must hold out test data and never tune on it. He also says every learner combines a representation (the family of rules it can express), an evaluation (how it scores a rule) and an optimisation (how it searches for the best rule). He supports each lesson with short examples, such as overfitting a model that memorises its training set. A limitation is that it is one expert's advice rather than experiments, and some points, like the value of hand-made features, matter less for modern deep networks.

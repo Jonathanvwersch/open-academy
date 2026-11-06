@@ -176,6 +176,7 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
     { concept: string; file: string; value: (typeof data.exercises)[number]['value'] }
   >();
   const projects = new Map(data.projects.map(({ value, file }) => [value.id, { value, file }]));
+  const seenPaperIds = new Set<string>();
   const domains = new Set(data.curriculum?.value.domains.map((domain) => domain.id) ?? []);
   const seenGoals = new Set<string>();
   const seenWeeks = new Set<number>();
@@ -301,6 +302,70 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
       if (!exercises.has(exerciseId)) {
         addIssue(issues, file, value.id, `reflection references unknown exercise "${exerciseId}"`);
       }
+    }
+  }
+
+  const curriculumWeeks = new Set(data.curriculum?.value.weeks.map((week) => week.week) ?? []);
+  const questionKinds = ['claim', 'method', 'evidence', 'limitations'];
+  for (const { value, file } of data.papers) {
+    if (seenPaperIds.has(value.id)) addIssue(issues, file, value.id, 'duplicate paper id');
+    seenPaperIds.add(value.id);
+    if (!curriculumWeeks.has(value.week)) {
+      addIssue(issues, file, value.id, `week ${value.week} is not in the curriculum`);
+    }
+    for (const conceptId of value.concepts) {
+      if (!concepts.has(conceptId)) {
+        addIssue(issues, file, value.id, `unknown concept "${conceptId}"`);
+      }
+    }
+    const questionIds = new Set<string>();
+    const kinds = new Map<string, number>();
+    for (const question of value.questions) {
+      if (questionIds.has(question.id)) {
+        addIssue(issues, file, value.id, `duplicate question id "${question.id}"`);
+      }
+      questionIds.add(question.id);
+      kinds.set(question.kind, (kinds.get(question.kind) ?? 0) + 1);
+    }
+    for (const kind of questionKinds) {
+      if (kinds.get(kind) !== 1) {
+        addIssue(issues, file, value.id, `paper must have exactly one "${kind}" question`);
+      }
+    }
+    const rubricIds = new Set<string>();
+    for (const criterion of value.summary.rubric) {
+      if (rubricIds.has(criterion.id)) {
+        addIssue(issues, file, value.id, `duplicate summary rubric id "${criterion.id}"`);
+      }
+      rubricIds.add(criterion.id);
+    }
+    if ('url' in value.source) {
+      const url = new URL(value.source.url);
+      if (
+        url.protocol !== 'https:' ||
+        !['arxiv.org', 'homes.cs.washington.edu'].includes(url.hostname) ||
+        !url.pathname.toLowerCase().endsWith('.pdf')
+      ) {
+        addIssue(
+          issues,
+          file,
+          value.id,
+          'paper URL must be an HTTPS PDF on arxiv.org or homes.cs.washington.edu',
+        );
+      }
+    }
+    for (const text of [
+      value.title,
+      value.authors,
+      value.why_this_week,
+      value.how_to_read,
+      ...value.questions.map((question) => question.prompt),
+      value.summary.prompt,
+      value.summary.exemplar,
+      ...value.summary.rubric.map((criterion) => criterion.criterion),
+    ]) {
+      validateSvgText(text, file, value.id, issues);
+      validateCurrencyText(text, file, value.id, issues);
     }
   }
 

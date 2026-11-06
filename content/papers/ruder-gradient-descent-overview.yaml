@@ -1,0 +1,47 @@
+id: ruder-gradient-descent-overview
+title: An overview of gradient descent optimization algorithms
+authors: Sebastian Ruder
+year: 2016
+week: 1
+est_minutes: 75
+source:
+  arxiv: 1609.04747v2
+concepts:
+  - gradient-descent
+  - loss-functions
+  - gradients
+why_this_week: "This week ends with gradient descent: repeatedly moving the weights a small step against the gradient of the loss. Ruder's overview shows how that one idea is used in practice, why the plain version struggles, and the family of variants (momentum, Adam and others) that nearly every model is trained with."
+how_to_read: "Read the introduction and the section on the three gradient descent variants (batch, stochastic and mini-batch) closely; they follow directly from this week. Read the section on challenges. Skim the list of algorithms: for now, aim to understand momentum, and come back to the rest in Week 3 when you study Adam. Skip the parallel and distributed training section."
+questions:
+  - id: claim
+    kind: claim
+    prompt: What problem does the overview set out to solve for someone who uses gradient descent as a black box?
+  - id: method
+    kind: method
+    prompt: Explain the difference between batch, stochastic and mini-batch gradient descent, and the trade-off between them.
+  - id: evidence
+    kind: evidence
+    prompt: What evidence does the overview give for which optimiser to use? Look at the figures and the advice on choosing one.
+  - id: limitations
+    kind: limitations
+    prompt: This is a survey, not an experiment. What kinds of claims in it would you need other papers to confirm?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: States that the paper explains how gradient descent variants work and when to use them, for people who otherwise use them as black boxes
+      weight: 2
+      required: true
+    - id: r2
+      criterion: Correctly explains at least one key idea, e.g. mini-batches trade gradient accuracy for speed, or momentum smooths updates across steps
+      weight: 2
+      required: true
+    - id: r3
+      criterion: Describes what support the paper gives, e.g. the visualisations of optimisers on loss surfaces or the cited results
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. it summarises other work without new controlled experiments, or its advice on choosing optimisers is general
+      weight: 1
+      required: false
+  exemplar: "Ruder's overview explains the optimisers that deep learning uses, for readers who use them without knowing how they differ. It starts from plain gradient descent and explains batch, stochastic and mini-batch versions: using fewer examples per step makes each step cheaper but noisier. It then lists the problems plain gradient descent has, such as picking a learning rate and slow progress in narrow valleys, and shows how momentum, Adagrad, RMSprop and Adam each address them. Its support is mostly visualisations and references to other papers. A limitation is that it is a survey, so its advice about which optimiser works best is general rather than tested on your problem."

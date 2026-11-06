@@ -51,6 +51,20 @@ test.beforeEach(async () => {
   await db.$client.end();
 });
 
+test('Course tutor sidebar fills at least 90 percent of the viewport height', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.setItem('academy.tutor.open', 'true');
+  });
+  await page.goto('/course');
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  await expect(tutor).toBeVisible();
+  const viewportHeight = await page.evaluate(() => window.innerHeight);
+  expect(
+    await tutor.evaluate((element) => element.getBoundingClientRect().height),
+  ).toBeGreaterThanOrEqual(viewportHeight * 0.9);
+});
+
 test('tutor chat sends optimistically and supports chat-list navigation', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-01-01T12:00:00.000Z') });
   await page.addInitScript(() => {

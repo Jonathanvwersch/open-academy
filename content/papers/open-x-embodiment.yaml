@@ -1,0 +1,47 @@
+id: open-x-embodiment
+title: "Open X-Embodiment: Robotic Learning Datasets and RT-X Models"
+authors: Open X-Embodiment Collaboration
+year: 2023
+week: 11
+est_minutes: 60
+source:
+  arxiv: 2310.08864v9
+concepts:
+  - data-pipelines-robotics
+  - robot-foundation-models
+  - embodiment-gap
+why_this_week: This week is about running robot-learning projects properly, starting with data pipelines. Open X-Embodiment pooled robot datasets from dozens of labs into one standard format and tested whether one model trained on many different robots beats models trained on each robot alone. Most robot foundation models since have trained on it.
+how_to_read: "Read the introduction and the section describing the dataset: how many datasets, labs and robot types, and the shared format. Read how RT-1-X and RT-2-X are trained. Read the results on transfer to robots with small and with large datasets, and on emergent skills. Skim the per-dataset details."
+questions:
+  - id: claim
+    kind: claim
+    prompt: What question does the paper ask, and what does it release?
+  - id: method
+    kind: method
+    prompt: How were so many different robots' datasets combined? Think about formats, action spaces and cameras.
+  - id: evidence
+    kind: evidence
+    prompt: What evidence shows training on many robots helps? Compare small-data and large-data robots.
+  - id: limitations
+    kind: limitations
+    prompt: Pooled data varies in quality, robot type and task. What problems does that cause, and what did the paper not test?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: States the question (does training on many robots' data help each robot?) and the release of a large shared dataset in a standard format
+      weight: 2
+      required: true
+    - id: r2
+      criterion: "Explains how data was combined: many datasets converted to one format with aligned observations and actions, used to train RT-1-X and RT-2-X"
+      weight: 2
+      required: true
+    - id: r3
+      criterion: "Describes the evidence: RT-1-X beats the original methods on robots with small datasets, and RT-2-X improves emergent skills"
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. uneven data quality, mostly single-arm manipulation, or no clear positive transfer for robots with large datasets for the smaller model
+      weight: 1
+      required: false
+  exemplar: The Open X-Embodiment collaboration asks whether a single model trained on data from many different robots works better than models trained on each robot's own data. Labs pooled dozens of datasets covering many robot types into one standard format, over a million trajectories in total. They trained RT-1-X and RT-2-X, versions of RT-1 and RT-2, on this mixture. On robots with small datasets, RT-1-X beat the methods originally developed for those datasets by about half again on average, and RT-2-X roughly tripled success on tasks needing skills seen only in other robots' data. A limitation is that the pooled data varies a lot in quality and is mostly single-arm manipulation, and the smaller model did not help robots that already had large datasets.

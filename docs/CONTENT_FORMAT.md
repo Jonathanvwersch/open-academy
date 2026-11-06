@@ -149,3 +149,30 @@ follow_up: ["..."]
 ```
 Lab code lives in `labs/<project-id>/` (starter/, tests/, README.md); `labs/verify.py <project-id>` writes `labs/<project-id>/work/results.json`:
 `{ "project": id, "version": 1, "tests": [{ "id", "passed", "message" }], "metrics": { id: number }, "generated_at": iso }`.
+
+## content/papers/<paper-id>.yaml
+```yaml
+id: attention-is-all-you-need
+title: "Attention Is All You Need"
+authors: "Vaswani et al."
+year: 2017
+week: 4
+est_minutes: 90
+source: { arxiv: "1706.03762v7" } # or { url: "https://arxiv.org/pdf/1706.03762.pdf" }
+concepts: [attention, transformer-block]
+why_this_week: "..."
+how_to_read: "..."
+questions:
+  - { id: claim, kind: claim, prompt: "..." }
+  - { id: method, kind: method, prompt: "..." }
+  - { id: evidence, kind: evidence, prompt: "..." }
+  - { id: limitations, kind: limitations, prompt: "..." }
+summary:
+  prompt: "..."
+  rubric:
+    - { id: contribution, criterion: "...", weight: 1, required: true }
+    - { id: evidence, criterion: "...", weight: 1, required: false }
+    - { id: limitation, criterion: "...", weight: 1, required: false }
+  exemplar: "..."
+```
+Paper IDs and concepts must exist, and `week` must be a curriculum week. Each paper has exactly one question of each kind. URLs must be HTTPS PDFs hosted on `arxiv.org` or `homes.cs.washington.edu`; arXiv identifiers include a version suffix. Summary rubrics contain 3–5 uniquely identified criteria.

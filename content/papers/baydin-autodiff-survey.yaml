@@ -1,0 +1,48 @@
+id: baydin-autodiff-survey
+title: "Automatic differentiation in machine learning: a survey"
+authors: Baydin, Pearlmutter, Radul and Siskind
+year: 2015
+week: 2
+est_minutes: 90
+source:
+  arxiv: 1502.05767v4
+concepts:
+  - autodiff
+  - backpropagation
+  - computational-graphs
+  - chain-rule
+why_this_week: This week you compute gradients with the chain rule on a computational graph, which is what backpropagation does. This survey explains the general technique behind it, automatic differentiation, and why it beats the other ways of getting derivatives. It is the clearest explanation of what PyTorch's autograd actually does.
+how_to_read: Read the introduction and the section explaining what automatic differentiation is not (numerical and symbolic differentiation). Then read the sections on forward mode and reverse mode carefully, working through the small example table with pen and paper. Skim the section on uses in machine learning. Skip the implementation details and the later sections on advanced topics.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What does the survey argue automatic differentiation is, and how does it differ from numerical and from symbolic differentiation?
+  - id: method
+    kind: method
+    prompt: Explain forward mode and reverse mode. Why is reverse mode the right choice for training a neural network with millions of weights and one loss?
+  - id: evidence
+    kind: evidence
+    prompt: How do the authors show that automatic differentiation gives exact derivatives at a small multiple of the cost of evaluating the function?
+  - id: limitations
+    kind: limitations
+    prompt: What does the survey say automatic differentiation cannot do well, or what costs does reverse mode bring, for example in memory?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: States that the paper explains automatic differentiation as a way to get exact derivatives of programs, distinct from numerical and symbolic methods
+      weight: 2
+      required: true
+    - id: r2
+      criterion: Explains forward vs reverse mode correctly, including that reverse mode costs about one extra pass per output, so it suits one loss and many weights
+      weight: 2
+      required: true
+    - id: r3
+      criterion: Describes the evidence, e.g. the worked evaluation trace or the cost analysis of each mode
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. reverse mode must store intermediate values, so memory grows with the computation
+      weight: 1
+      required: false
+  exemplar: "The survey explains automatic differentiation, which computes exact derivatives of a program by applying the chain rule to each elementary operation it performs. Unlike numerical differentiation it has no rounding-from-small-steps error, and unlike symbolic differentiation it does not build huge expressions. Forward mode pushes derivatives forward from one input at a time, while reverse mode runs the program, then pushes derivatives backwards from the output, so one backward pass gives the derivative with respect to every input. That is why backpropagation, which is reverse mode, can train networks with millions of weights and one loss. A cost is memory: reverse mode has to store the intermediate values from the forward pass."

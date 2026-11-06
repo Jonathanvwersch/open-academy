@@ -1,0 +1,48 @@
+id: robomimic
+title: What Matters in Learning from Offline Human Demonstrations for Robot Manipulation
+authors: Mandlekar et al.
+year: 2021
+week: 7
+est_minutes: 75
+source:
+  arxiv: 2108.03298v2
+concepts:
+  - demonstrations
+  - obs-action-datasets
+  - behavioral-cloning
+  - policy-evaluation
+why_this_week: "This week you build observation-action datasets from demonstrations and evaluate cloned policies. This paper is a careful study of what actually matters when learning from human demonstrations: which algorithm, how good the demonstrators are, which observations to use and how to evaluate. It is the practical guide behind this week's project."
+how_to_read: Read the introduction and the list of key findings closely. Read the description of the tasks and of the datasets from one skilled operator versus several operators. Read the results on algorithm choice and on data quality. Skim the hyperparameter study for its conclusions.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What question does the study ask, and what are its main findings?
+  - id: method
+    kind: method
+    prompt: How were the datasets collected, and how do the skilled-operator and multi-operator datasets differ?
+  - id: evidence
+    kind: evidence
+    prompt: What evidence shows which algorithm works best on human data, and how does data quality change results?
+  - id: limitations
+    kind: limitations
+    prompt: All tasks are in simulation with one robot arm. Which findings would you expect to carry over to your own robot, and which might not?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: States that the study asks which choices (algorithm, data quality, observations, hyperparameters) matter most when learning from offline human demonstrations
+      weight: 2
+      required: true
+    - id: r2
+      criterion: Explains a key finding correctly, e.g. behavioural cloning with a recurrent network that sees recent history works well, while offline RL struggles on human data
+      weight: 2
+      required: true
+    - id: r3
+      criterion: "Describes the evidence: controlled comparisons across manipulation tasks and datasets from one skilled operator versus several operators"
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. mostly simulated tasks with one arm, or results may depend on the specific tasks
+      weight: 1
+      required: false
+  exemplar: This study asks what matters most when a robot learns manipulation from a fixed set of human demonstrations. The authors collected demonstrations for several tasks, from lifting a cube to a two-arm transport task, from one skilled operator and from groups of operators of mixed skill. They compared behavioural cloning variants with offline reinforcement learning algorithms under controlled conditions. Behavioural cloning with a recurrent network that sees recent history worked best, offline RL struggled on human data, and data from operators of mixed skill made learning much harder. A limitation is that most tasks were in simulation with one type of arm, so the rankings may not hold for other robots.

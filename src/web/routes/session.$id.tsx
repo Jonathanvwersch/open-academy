@@ -1,7 +1,9 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+import { z } from 'zod';
 import { Alert, AlertDescription } from '@/ui/alert.js';
+import { Badge } from '@/ui/badge.js';
 import { Button } from '@/ui/button.js';
 import { Card, CardContent } from '@/ui/card.js';
 import { ExerciseForm, FeedbackPanel, HintLadder, LessonBlock, Markdown } from '../components';
@@ -11,15 +13,23 @@ import {
   type LessonRunPayload,
   lessonQueryOptions,
   lessonRunQueryOptions,
+  paperStatusLabel,
+  papersQueryOptions,
   sessionQueryOptions,
+  todayQueryOptions,
 } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
 import { SessionActivityHeader } from '../session/SessionActivityHeader.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
 
 export const Route = createFileRoute('/session/$id')({
+  validateSearch: z.object({ activity: z.string().optional() }),
   loader: async ({ context, params }) => {
     const session = await context.queryClient.ensureQueryData(sessionQueryOptions(params.id));
+    await Promise.all([
+      context.queryClient.ensureQueryData(papersQueryOptions()),
+      context.queryClient.ensureQueryData(todayQueryOptions()),
+    ]);
     const lessons = await Promise.all(
       session.activities.map((activity) =>
         ['learn', 'practice', 'remediate', 'transfer'].includes(activity.kind) &&
@@ -61,6 +71,7 @@ export const Route = createFileRoute('/session/$id')({
 
 function SessionPage() {
   const { id } = Route.useParams();
+  const { activity: requestedActivityId } = Route.useSearch();
   const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
@@ -116,7 +127,14 @@ function SessionPage() {
         item.exerciseIds.includes(exerciseId),
       ),
   );
-  const activity = completedLesson ?? completedFinal ?? activeActivity;
+  const requestedPaperActivity = activities.find(
+    (item) => item.id === requestedActivityId && item.kind === 'paper',
+  );
+  const activity =
+    (requestedPaperActivity?.status === 'completed' ? requestedPaperActivity : undefined) ??
+    completedLesson ??
+    completedFinal ??
+    activeActivity;
   const showingCompletedFinal = activity?.id === completedFinal?.id;
   const exerciseId = showingCompletedFinal
     ? activity?.exerciseIds.find((candidate) =>
@@ -335,13 +353,15 @@ function SessionPage() {
   const activityLabel = sessionActivityLabel(activity.kind);
   const activityTitle =
     activity.conceptTitle ??
-    (activity.kind === 'review'
-      ? 'Review'
-      : activity.kind === 'lab'
-        ? 'Project'
-        : ['quick_check', 'diagnostic', 'assessment'].includes(activity.kind)
-          ? 'Quiz'
-          : sessionActivityLabel(activity.kind));
+    (activity.kind === 'paper'
+      ? 'Paper reading'
+      : activity.kind === 'review'
+        ? 'Review'
+        : activity.kind === 'lab'
+          ? 'Project'
+          : ['quick_check', 'diagnostic', 'assessment'].includes(activity.kind)
+            ? 'Quiz'
+            : sessionActivityLabel(activity.kind));
   const lessonHref =
     activity.conceptId && activity.lessonAvailable
       ? `/lessons/${encodeURIComponent(activity.conceptId)}?from=${encodeURIComponent(id)}`
@@ -379,6 +399,33 @@ function SessionPage() {
         resumeRetry={activity.status !== 'completed'}
         onContinue={(status) => void continueLessonRunner(status)}
       />
+    );
+  }
+  if (activity.kind === 'paper') {
+    return (
+      <section className="mx-auto max-w-3xl space-y-6">
+        <SessionActivityHeader
+          title="Paper reading"
+          label="Paper"
+          position={activityPosition}
+          total={activities.length}
+          mode="practice"
+        />
+        <PaperActivity
+          sessionId={id}
+          activityId={activity.id}
+          completed={activity.status === 'completed'}
+          tutorEnabled={sessionQuery.data.tutorEnabled}
+          onSkip={async () => {
+            await fetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ complete: true }),
+            });
+            await queryClient.invalidateQueries({ queryKey: ['session', id] });
+          }}
+        />
+      </section>
     );
   }
   if (
@@ -562,8 +609,71 @@ function sessionActivityLabel(kind: string) {
     lab: 'Project',
     teachback: 'Teach-back',
     reflect: 'Reflection',
+    paper: 'Paper',
   };
   return labels[kind] ?? kind.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function PaperActivity({
+  sessionId,
+  activityId,
+  completed,
+  tutorEnabled,
+  onSkip,
+}: {
+  sessionId: string;
+  activityId: string;
+  completed: boolean;
+  tutorEnabled: boolean;
+  onSkip: () => Promise<void>;
+}) {
+  const { data: papersData } = useSuspenseQuery(papersQueryOptions());
+  const { data: today } = useSuspenseQuery(todayQueryOptions());
+  const papers = papersData.weeks.find((week) => week.week === today.week)?.papers ?? [];
+  if (completed) {
+    return <p role="status">Paper reading complete.</p>;
+  }
+  return (
+    <div className="space-y-4">
+      <p>Pick one of this week&apos;s papers to read.</p>
+      <ul className="divide-y rounded-md border">
+        {papers.map((paper) => (
+          <li key={paper.id}>
+            <Link
+              to="/papers/$paperId"
+              params={{ paperId: paper.id }}
+              search={{ from: sessionId, activity: activityId }}
+              className="block cursor-pointer px-4 py-3 hover:bg-muted/60"
+            >
+              <span className="font-medium">
+                <Markdown inline>{paper.title}</Markdown>
+              </span>
+              <span className="mt-1 block text-sm text-muted-foreground">
+                <Markdown inline>{paper.authors}</Markdown> · {paper.year} · ~{paper.est_minutes}{' '}
+                min
+              </span>
+              <Badge
+                variant="secondary"
+                className={
+                  paper.status === 'completed'
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                    : ''
+                }
+              >
+                {paperStatusLabel(paper.status)}
+              </Badge>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <Button type="button" variant="outline" onClick={() => void onSkip()}>
+        Skip for today
+      </Button>
+      {!tutorEnabled ? (
+        <p className="text-sm text-muted-foreground">Tutor grading is unavailable.</p>
+      ) : null}
+    </div>
+  );
 }
 
 function InlineLessonCheck({

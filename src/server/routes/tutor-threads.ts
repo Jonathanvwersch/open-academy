@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import { instantiateExercise, isTemplate } from '../content/templates.js';
@@ -10,6 +10,9 @@ import {
   lessonProblems,
   lessonRuns,
   llmCalls,
+  paperFiles,
+  paperPages,
+  paperProgress,
   sessionActivities,
   studySessions,
   tutorMessages,
@@ -20,6 +23,7 @@ import { buildTutorPageContent } from '../tutor/page-context.js';
 import type { TutorService } from '../tutor/service.js';
 import type { ApiEnv } from './api.js';
 import { buildCourseWeeks } from './learn-course.js';
+import { extractPaperPages } from './papers.js';
 
 type Ctx = Context<ApiEnv>;
 const bodySchema = z.object({
@@ -28,8 +32,11 @@ const bodySchema = z.object({
   activityId: z.string().uuid().optional(),
   exerciseId: z.string().optional(),
   lessonProblemId: z.string().uuid().optional(),
-  page: z.enum(['session', 'lesson', 'course', 'map']).optional(),
+  page: z.enum(['session', 'lesson', 'course', 'map', 'paper']).optional(),
   knowledgePointId: z.string().max(200).optional(),
+  paperId: z.string().optional(),
+  pageNumber: z.number().int().min(1).optional(),
+  selection: z.string().trim().max(2000).optional(),
 });
 
 function formatThreadTitle(question: string): string {
@@ -153,6 +160,12 @@ export function registerTutorThreadRoutes(
       content: m.content,
     }));
     const index = await deps.content();
+    if (input.page === 'paper' && !input.paperId) {
+      return c.json({ error: 'Paper id is required for paper context' }, 400);
+    }
+    if (input.page === 'paper' && !index.papersById.has(input.paperId ?? '')) {
+      return c.json({ error: 'Paper not found' }, 404);
+    }
     let exerciseId = input.exerciseId;
     let lessonProblem: typeof lessonProblems.$inferSelect | undefined;
     let currentAttempt: typeof attempts.$inferSelect | undefined;
@@ -262,6 +275,50 @@ export function registerTutorThreadRoutes(
       conceptId: pageConceptId,
       knowledgePointId: lessonProblem?.knowledgePointId ?? input.knowledgePointId,
       courseWeeks,
+      ...(input.page === 'paper'
+        ? await (async () => {
+            const paper = input.paperId ? index.papersById.get(input.paperId) : undefined;
+            if (!paper) return { paper: undefined };
+            const [progress] = await db
+              .select()
+              .from(paperProgress)
+              .where(
+                and(eq(paperProgress.paperId, paper.id), eq(paperProgress.userId, c.get('userId'))),
+              )
+              .limit(1);
+            const [file] = await db
+              .select({ bytes: paperFiles.bytes })
+              .from(paperFiles)
+              .where(eq(paperFiles.paperId, paper.id))
+              .limit(1);
+            if (file) await extractPaperPages(db, paper.id, file.bytes);
+            const pageNumber = input.pageNumber ?? 1;
+            const pages = await db
+              .select({ page: paperPages.page, text: paperPages.text })
+              .from(paperPages)
+              .where(
+                and(
+                  eq(paperPages.paperId, paper.id),
+                  sql`${paperPages.page} between ${pageNumber} and ${pageNumber + 1}`,
+                ),
+              )
+              .orderBy(asc(paperPages.page));
+            return {
+              selection: input.selection,
+              paper: {
+                title: paper.title,
+                authors: paper.authors,
+                year: paper.year,
+                whyThisWeek: paper.why_this_week,
+                questions: paper.questions,
+                notes: progress?.notes ?? {},
+                summary: progress?.summary,
+                feedback: progress?.summaryJudgement,
+                pages,
+              },
+            };
+          })()
+        : {}),
     });
     const correct = currentAttempt?.correct ?? lessonProblem?.correct;
     const service = deps.tutor(c);

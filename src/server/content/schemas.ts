@@ -489,12 +489,56 @@ export const ProjectSchema = z
   })
   .strict();
 
+const PaperQuestionSchema = z
+  .object({
+    id: IdSchema,
+    kind: z.enum(['claim', 'method', 'evidence', 'limitations']),
+    prompt: z.string().min(1),
+  })
+  .strict();
+
+const PaperRubricSchema = z
+  .object({
+    id: IdSchema,
+    criterion: z.string().min(1),
+    weight: z.number().positive(),
+    required: z.boolean().default(false),
+  })
+  .strict();
+
+export const PaperSchema = z
+  .object({
+    id: IdSchema,
+    title: z.string().min(1),
+    authors: z.string().min(1),
+    year: z.number().int().positive(),
+    week: z.number().int().positive(),
+    est_minutes: z.number().int().min(30).max(180),
+    source: z.union([
+      z.object({ arxiv: z.string().regex(/^\d{4}\.\d{4,5}v\d+$/) }).strict(),
+      z.object({ url: z.string().url() }).strict(),
+    ]),
+    concepts: z.array(IdSchema).min(1),
+    why_this_week: z.string().min(1),
+    how_to_read: z.string().min(1),
+    questions: z.array(PaperQuestionSchema).length(4),
+    summary: z
+      .object({
+        prompt: z.string().min(1),
+        rubric: z.array(PaperRubricSchema).min(3).max(5),
+        exemplar: z.string().min(1),
+      })
+      .strict(),
+  })
+  .strict();
+
 export type Curriculum = z.infer<typeof CurriculumSchema>;
 export type Concept = z.infer<typeof ConceptSchema>;
 export type NotationRegistry = z.infer<typeof NotationSchema>;
 export type Exercise = z.infer<typeof ExerciseSchema>;
 export type Diagnostic = z.infer<typeof DiagnosticSchema>;
 export type Project = z.infer<typeof ProjectSchema>;
+export type Paper = z.infer<typeof PaperSchema>;
 export type Dimension = z.infer<typeof DimensionSchema>;
 export type ExerciseRole = z.infer<typeof ExerciseRoleSchema>;
 export type MistakeCategory = z.infer<typeof MistakeCategorySchema>;

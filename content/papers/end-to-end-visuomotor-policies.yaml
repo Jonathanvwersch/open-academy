@@ -1,0 +1,47 @@
+id: end-to-end-visuomotor-policies
+title: End-to-End Training of Deep Visuomotor Policies
+authors: Levine, Finn, Darrell and Abbeel
+year: 2015
+week: 6
+est_minutes: 90
+source:
+  arxiv: 1504.00702v5
+concepts:
+  - robot-state-observation-action
+  - perception-pipelines
+  - sensors
+why_this_week: "This week covers how a robot senses the world and acts: observations, actions, sensors and perception pipelines. Before this paper, perception and control were built separately. Levine and colleagues trained one neural network mapping camera images straight to motor commands, an early ancestor of the learned policies later in the course."
+how_to_read: "Read the introduction and the overview of the method. Read the description of the network architecture, including the spatial softmax that turns image features into point coordinates. Skim the guided policy search derivation: understand the idea, not the maths. Read the real robot experiments and look at the tasks figure."
+questions:
+  - id: claim
+    kind: claim
+    prompt: What is the main claim about training perception and control together rather than separately?
+  - id: method
+    kind: method
+    prompt: How does guided policy search turn a hard reinforcement learning problem into supervised learning? What extra information is available only during training?
+  - id: evidence
+    kind: evidence
+    prompt: Which real robot tasks show the method works, and what is it compared against?
+  - id: limitations
+    kind: limitations
+    prompt: What does the method need during training that a robot in a new setting would not have? Think about the object positions and the number of tasks.
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: States the claim that a single network mapping raw images to motor torques, trained end to end, beats separately built perception and control
+      weight: 2
+      required: true
+    - id: r2
+      criterion: "Explains the method: controllers that know the full state guide the training, and the image-based network is trained by supervised learning to imitate them"
+      weight: 2
+      required: true
+    - id: r3
+      criterion: "Describes the evidence: real robot tasks such as screwing a cap onto a bottle, compared with a pose-estimation pipeline"
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. needs the full state during training, or each policy is trained for one task
+      weight: 1
+      required: false
+  exemplar: Levine and colleagues argue that a robot's perception and control work better if trained together, rather than building a vision system and a controller separately. Their network takes raw camera images and joint angles and outputs motor torques directly. Training it with reinforcement learning from images alone would be very hard, so guided policy search first trains simple controllers that know the exact state, then trains the image network to imitate them with supervised learning. On real tasks such as screwing a cap onto a bottle and inserting a block into a shape sorter, the end-to-end policy beat a pipeline that estimated object poses first. A limitation is that training needs the exact state of the scene, and each network learns a single task.

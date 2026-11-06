@@ -7,6 +7,7 @@ import type {
   ExerciseRole,
   Lesson,
   NotationRegistry,
+  Paper,
   Project,
 } from './schemas.js';
 
@@ -24,6 +25,7 @@ export interface ContentSourceData {
   notation?: { value: NotationRegistry; file: string };
   diagnostic?: { value: Diagnostic; file: string };
   projects: Array<{ value: Project; file: string }>;
+  papers: Array<{ value: Paper; file: string }>;
 }
 
 export type IndexedConcept = Concept & {
@@ -41,6 +43,10 @@ export type IndexedLesson = Lesson & {
 };
 
 export type IndexedProject = Project & {
+  contentVersion: string;
+};
+
+export type IndexedPaper = Paper & {
   contentVersion: string;
 };
 
@@ -65,4 +71,7 @@ export interface ContentIndex {
   diagnostic?: Diagnostic;
   projects: IndexedProject[];
   projectsById: Map<string, IndexedProject>;
+  papers: IndexedPaper[];
+  papersById: Map<string, IndexedPaper>;
+  papersByWeek: Map<number, IndexedPaper[]>;
 }

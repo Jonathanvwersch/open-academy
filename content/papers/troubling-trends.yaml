@@ -1,0 +1,46 @@
+id: troubling-trends
+title: Troubling Trends in Machine Learning Scholarship
+authors: Lipton and Steinhardt
+year: 2018
+week: 12
+est_minutes: 45
+source:
+  arxiv: 1807.03341v2
+concepts:
+  - reading-papers
+  - critical-evaluation
+why_this_week: This week you practise reading papers and judging their claims. This essay names four common habits in machine learning papers that make results look stronger or clearer than they are. Knowing them makes every other paper on this list easier to read critically, including ones you have already read.
+how_to_read: Read the whole essay; it is short and has no maths. For each of the four trends, note the definition and one of the examples. Then think back to a paper you read earlier in the course and look for any of the four habits in it.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What are the four troubling trends the authors describe?
+  - id: method
+    kind: method
+    prompt: Pick one trend and explain, with one of the paper's examples, how it misleads readers.
+  - id: evidence
+    kind: evidence
+    prompt: What evidence do the authors give that these trends are common, and how convincing is it?
+  - id: limitations
+    kind: limitations
+    prompt: This is an opinion essay. What does it not show, and do you think any of its criticisms apply to a paper you read earlier in this course?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: "States the four trends: mixing explanation with speculation, not identifying where gains come from, mathiness, and misuse of language"
+      weight: 2
+      required: true
+    - id: r2
+      criterion: Explains one trend correctly with an example, e.g. missing ablations hide that a gain came from tuning rather than the new idea
+      weight: 2
+      required: true
+    - id: r3
+      criterion: "Describes the evidence: examples from published papers rather than a systematic survey"
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. it is an essay with selected examples rather than a measured study
+      weight: 1
+      required: false
+  exemplar: Lipton and Steinhardt argue that machine learning papers often make results look stronger or clearer than they are, through four habits. Papers mix explanation with speculation, presenting guesses about why something works as if they were tested. They fail to identify where gains come from, for example by omitting ablations, so an improvement from tuning gets credited to a new idea. They use mathiness, equations that add apparent rigour without clarifying anything, and misuse language, such as suggestive names that imply more than was shown. Their evidence is examples from published papers, so it is a persuasive essay rather than a measured study of how common these habits are.

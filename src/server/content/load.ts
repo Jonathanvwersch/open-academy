@@ -13,6 +13,7 @@ import {
   LessonSchema,
   NotationSchema,
   normalizeLesson,
+  PaperSchema,
   ProjectSchema,
 } from './schemas.js';
 import type { ContentIndex, ContentIssue, ContentSourceData } from './types.js';
@@ -59,7 +60,13 @@ export async function loadContent(
   directory = process.env.CONTENT_DIR ?? 'content',
 ): Promise<ContentIndex> {
   const root = resolveContentDirectory(directory);
-  const data: ContentSourceData = { concepts: [], lessons: [], exercises: [], projects: [] };
+  const data: ContentSourceData = {
+    concepts: [],
+    lessons: [],
+    exercises: [],
+    projects: [],
+    papers: [],
+  };
   const issues: ContentIssue[] = [];
   const lessonInputs: Array<{ value: LessonInput; file: string }> = [];
 
@@ -193,6 +200,17 @@ export async function loadContent(
     const parsed = ProjectSchema.safeParse(raw);
     if (parsed.success) {
       data.projects.push({ value: parsed.data, file: displayFile });
+    } else {
+      addZodIssues(issues, displayFile, raw, parsed.error);
+    }
+  }
+
+  for (const file of await yamlFiles(join(root, 'papers'))) {
+    const displayFile = toContentRelative(root, file);
+    const raw = await readYaml(file, displayFile, issues);
+    const parsed = PaperSchema.safeParse(raw);
+    if (parsed.success) {
+      data.papers.push({ value: parsed.data, file: displayFile });
     } else {
       addZodIssues(issues, displayFile, raw, parsed.error);
     }

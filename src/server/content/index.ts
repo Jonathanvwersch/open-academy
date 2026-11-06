@@ -1,6 +1,6 @@
 import { contentVersion } from './hash.js';
 import type { Dimension, ExerciseRole } from './schemas.js';
-import type { ContentIndex, ContentSourceData, IndexedExercise } from './types.js';
+import type { ContentIndex, ContentSourceData, IndexedExercise, IndexedPaper } from './types.js';
 
 function appendToMap<Key, Value>(map: Map<Key, Value[]>, key: Key, value: Value) {
   const values = map.get(key) ?? [];
@@ -49,6 +49,13 @@ export function buildContentIndex(data: ContentSourceData): ContentIndex {
     contentVersion: contentVersion(value),
   }));
   const projectsById = new Map(projects.map((project) => [project.id, project]));
+  const papers: IndexedPaper[] = data.papers.map(({ value }) => ({
+    ...value,
+    contentVersion: contentVersion(value),
+  }));
+  const papersById = new Map(papers.map((paper) => [paper.id, paper]));
+  const papersByWeek = new Map<number, IndexedPaper[]>();
+  for (const paper of papers) appendToMap(papersByWeek, paper.week, paper);
 
   return {
     curriculum: data.curriculum
@@ -67,5 +74,8 @@ export function buildContentIndex(data: ContentSourceData): ContentIndex {
     diagnostic: data.diagnostic?.value,
     projects,
     projectsById,
+    papers,
+    papersById,
+    papersByWeek,
   };
 }

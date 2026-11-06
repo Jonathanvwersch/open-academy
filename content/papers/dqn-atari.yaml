@@ -1,0 +1,47 @@
+id: dqn-atari
+title: Playing Atari with Deep Reinforcement Learning
+authors: Mnih et al.
+year: 2013
+week: 8
+est_minutes: 60
+source:
+  arxiv: 1312.5602v1
+concepts:
+  - q-learning
+  - value-functions
+  - exploration
+why_this_week: This week you learn value functions and Q-learning. This short paper was the first to make Q-learning work with a deep network learning straight from screen pixels, and it started the modern deep reinforcement learning era. You can follow almost every equation with what you learn this week.
+how_to_read: "Read the whole paper; it is short. Pay most attention to the background on Q-learning, the section on experience replay and the deep Q-learning algorithm box. Look at the network input: stacked, downsampled game frames. Read the results table and the plots of average reward and Q-values during training."
+questions:
+  - id: claim
+    kind: claim
+    prompt: What did the authors achieve, and why was learning from raw pixels with Q-learning hard before?
+  - id: method
+    kind: method
+    prompt: What is experience replay, and what two problems does it solve? How are actions chosen during training?
+  - id: evidence
+    kind: evidence
+    prompt: What results support the method? Compare it with earlier methods and with a human player.
+  - id: limitations
+    kind: limitations
+    prompt: This version has no separate target network, which the 2015 follow-up added. What instability might that cause, and what else limits the results?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: "States the achievement: one convolutional network learned to play several Atari games from raw pixels with Q-learning"
+      weight: 2
+      required: true
+    - id: r2
+      criterion: "Explains experience replay: store transitions and train on random mini-batches, breaking correlations between consecutive samples and reusing data; epsilon-greedy exploration"
+      weight: 2
+      required: true
+    - id: r3
+      criterion: "Describes the evidence: beat earlier methods on six of seven games and a human expert on three, with stable learning curves"
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. no target network, only seven games, or poor results on games needing long-term planning
+      weight: 1
+      required: false
+  exemplar: "Mnih and colleagues trained a convolutional network to play Atari games directly from screen pixels using Q-learning, which had been considered unstable with neural networks. The network estimates the value of each joystick action from the last few frames, and actions are chosen epsilon-greedily: usually the best one, sometimes a random one. Experience replay stores past transitions and trains on random mini-batches of them, which breaks the correlation between consecutive frames and reuses each experience many times. With the same network and settings for every game, it beat all earlier methods on six of seven games and a human expert on three. A limitation is that it struggled on games that need long-term planning, and the follow-up added a target network for more stable learning."

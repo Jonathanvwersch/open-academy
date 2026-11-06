@@ -56,11 +56,13 @@ import {
 } from '../learning/scheduler.js';
 import type { LearningMode, MasteryRecord } from '../learning/types.js';
 import { initialMastery, masteryRank } from '../learning/types.js';
+import type { PaperFetcher } from '../papers/fetcher.js';
 import { createTutorProvider, E2ETutorProvider, type TutorProvider } from '../tutor/provider.js';
 import { scoreRubric } from '../tutor/scoring.js';
 import { TutorService } from '../tutor/service.js';
 import { registerLearnCourseRoutes } from './learn-course.js';
 import { registerLessonRunRoutes } from './lesson-runs.js';
+import { registerPaperRoutes } from './papers.js';
 import { registerTutorThreadRoutes } from './tutor-threads.js';
 
 export type ApiEnv = { Variables: { userId: string; timeZone: string } };
@@ -78,6 +80,7 @@ export function createApiRoutes(deps: {
   db: Database;
   content?: ContentIndex;
   tutorProvider?: TutorProvider | null;
+  paperFetcher?: PaperFetcher;
 }) {
   const api = new Hono<ApiEnv>();
   const contentPromise = deps.content ? Promise.resolve(deps.content) : loadContent();
@@ -124,6 +127,13 @@ export function createApiRoutes(deps: {
   });
   registerLearnCourseRoutes(api, { db, content, withRepo, requestNow });
   registerTutorThreadRoutes(api, { db, content, withRepo, tutor, requestNow });
+  registerPaperRoutes(api, {
+    db,
+    content,
+    tutor,
+    paperFetcher: deps.paperFetcher,
+    requestNow,
+  });
 
   api.get('/today', async (context) => {
     const [index, repo] = [await content(), withRepo(context)];
