@@ -144,7 +144,7 @@ exercises:
           text: "XOR needs more than two inputs",
           correct: false,
           category: misunderstood_definition,
-          feedback: "A two-input Boolean task can still be non-linearly separable, so input count is not the issue. Picture how the XOR-positive corners sit relative to the negative corners.",
+          feedback: "XOR is defined on exactly two inputs, so the number of inputs is not the limit. Plot the four input points and try to separate the two classes with one straight line.",
         }
       - {
           id: c,

@@ -179,7 +179,7 @@ exercises:
           text: "Only the other parameters; the data change",
           correct: false,
           category: misunderstood_definition,
-          feedback: "A partial derivative is not taken by changing the observations along with the parameter. Keep the dataset fixed and vary only the parameter named after the slash.",
+          feedback: "The data don't change while you take a derivative with respect to a parameter. The data are constants too.",
         }
     solution: "A partial derivative varies one variable; everything else, data and other parameters alike, is held fixed."
   - id: pd-explain
