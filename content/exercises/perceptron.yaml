@@ -144,6 +144,7 @@ exercises:
           text: "XOR needs more than two inputs",
           correct: false,
           category: misunderstood_definition,
+          feedback: "XOR is defined on exactly two inputs, so the number of inputs is not the limit. Plot the four input points and try to separate the two classes with one straight line.",
         }
       - {
           id: c,
@@ -179,7 +180,13 @@ exercises:
           category: math_error,
           feedback: "That is AND: only (1,1) gives a positive score.",
         }
-      - { id: c, text: "$w = (1, -1)$, $b = 0$", correct: false, category: math_error }
+      - {
+          id: c,
+          text: "$w = (1, -1)$, $b = 0$",
+          correct: false,
+          category: math_error,
+          feedback: "Changing the sign of one weight makes the two inputs push the score in opposite directions, so the rule is not a symmetric OR. Check all four input pairs against the threshold.",
+        }
     solution: "Scores for (0,0),(0,1),(1,0),(1,1): $-0.5, 0.5, 0.5, 1.5$, giving outputs $0, 1, 1, 1$."
   - id: perc-explain
     dimension: conceptual

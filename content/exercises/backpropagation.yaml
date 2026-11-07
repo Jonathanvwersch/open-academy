@@ -316,6 +316,7 @@ exercises:
           text: "Training always stores every number with twice as many digits as prediction does",
           correct: false,
           category: incorrect_reasoning,
+          feedback: "Saving twice as many digits is not a general rule for training; the extra memory comes from keeping intermediate values for the backward pass. Think about which values the chain rule needs.",
         }
     solution: "Local derivative rules use values from the forward pass. For example, a multiplication needs its inputs and ReLU needs to know which inputs were positive. Training saves those values for the batch until the backward pass has used them. Prediction alone does not need that later derivative calculation."
   - id: bp-explain

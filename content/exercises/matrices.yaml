@@ -519,7 +519,13 @@ exercises:
           category: misunderstood_definition,
           feedback: "The inner dimension (512) disappears. The outer dimensions remain.",
         }
-      - { id: c, text: "$64 \\times 128$", correct: false, category: misunderstood_definition }
+      - {
+          id: c,
+          text: "$64 \\times 128$",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Matrix multiplication's output keeps the first matrix's row count and the second matrix's column count. These come from the outer dimensions, not from swapping them.",
+        }
       - {
           id: d,
           text: "Undefined",

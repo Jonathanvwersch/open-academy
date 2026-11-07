@@ -245,14 +245,14 @@ function SessionPage() {
     }
     const allowed = !['diagnostic', 'review', 'quick_check', 'assessment'].includes(activity.kind);
     tutorSidebar.setContext({
-      conceptId: activity.conceptId,
-      conceptTitle: activity.conceptTitle,
+      conceptId: activity.conceptId ?? undefined,
+      conceptTitle: activity.conceptTitle ?? undefined,
       activityId: activity.id,
       exerciseId: activity.exerciseIds.find(
         (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
       ),
       page: 'session',
-      pageLabel: activity.conceptTitle,
+      pageLabel: activity.conceptTitle ?? undefined,
       allowed,
       enabled: sessionQuery.data.tutorEnabled,
     });
@@ -561,8 +561,8 @@ function SessionPage() {
                 {mode === 'practice' && exerciseId && sessionQuery.data.tutorEnabled ? (
                   <TutorLauncher
                     context={{
-                      conceptId: activity.conceptId,
-                      conceptTitle: activity.conceptTitle,
+                      conceptId: activity.conceptId ?? undefined,
+                      conceptTitle: activity.conceptTitle ?? undefined,
                       activityId: activity.id,
                       exerciseId,
                       allowed: true,

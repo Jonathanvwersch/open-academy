@@ -149,7 +149,13 @@ exercises:
           category: misunderstood_definition,
           feedback: "16 is the batch dimension, which is kept separate.",
         }
-      - { id: d, text: "96", correct: false, category: math_error }
+      - {
+          id: d,
+          text: "96",
+          correct: false,
+          category: math_error,
+          feedback: "96 counts 3 channels times the 32-pixel width, but leaves out the other spatial dimension. Include every pixel in each channel.",
+        }
     solution: "$3\\cdot32\\cdot32 = 3072$ features per example."
   - id: mlp-params
     dimension: math

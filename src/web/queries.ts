@@ -82,8 +82,8 @@ export interface SessionActivity {
   id: string;
   idx: number;
   kind: string;
-  conceptId?: string;
-  conceptTitle?: string;
+  conceptId?: string | null;
+  conceptTitle?: string | null;
   projectId?: string;
   exerciseIds: string[];
   plannedMinutes: number;

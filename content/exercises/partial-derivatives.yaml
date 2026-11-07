@@ -179,6 +179,7 @@ exercises:
           text: "Only the other parameters; the data change",
           correct: false,
           category: misunderstood_definition,
+          feedback: "The data don't change while you take a derivative with respect to a parameter. The data are constants too.",
         }
     solution: "A partial derivative varies one variable; everything else, data and other parameters alike, is held fixed."
   - id: pd-explain

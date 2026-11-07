@@ -18,6 +18,7 @@ import {
 } from '../src/server/db/schema.js';
 import { env } from '../src/server/env.js';
 import { answerDisplay } from '../src/server/learning/answer-display.js';
+import { tutorThreadBodySchema } from '../src/server/routes/tutor-threads.js';
 import { sanitizePageContent } from '../src/server/tutor/page-context.js';
 import type { TutorProvider, TutorResult } from '../src/server/tutor/provider.js';
 import type { ExplanationContext, TutorContext, TutorReply } from '../src/server/tutor/schemas.js';
@@ -76,6 +77,36 @@ async function send(question: string, threadId?: string, extra: Record<string, u
     body: JSON.stringify({ question, ...extra }),
   });
 }
+
+test('tutor request body normalizes null optional context fields', () => {
+  const parsed = tutorThreadBodySchema.parse({
+    question: 'Help me understand this practice question.',
+    conceptId: null,
+    activityId: null,
+    exerciseId: null,
+    lessonProblemId: null,
+    page: null,
+    knowledgePointId: null,
+    paperId: null,
+    pageNumber: null,
+    selection: null,
+  });
+
+  expect(parsed.question).toBe('Help me understand this practice question.');
+  for (const key of [
+    'conceptId',
+    'activityId',
+    'exerciseId',
+    'lessonProblemId',
+    'page',
+    'knowledgePointId',
+    'paperId',
+    'pageNumber',
+    'selection',
+  ] as const) {
+    expect(parsed[key]).toBeUndefined();
+  }
+});
 
 function concreteExercise(exerciseId: string, seed: number | null) {
   const exercise = content.exercisesById.get(exerciseId);
@@ -322,6 +353,53 @@ test('legacy exercise context is unanswered until an attempt exists for that act
       : 'a';
   expect(captured.at(-1)?.learnerAnswer).toBe(displayedAnswer);
   expect(captured.at(-1)?.graderVerdict).toBe('incorrect');
+});
+
+test('null-concept practice activity uses its exercise concept in new and existing threads', async () => {
+  const exercise = content.exercisesById.get('slp-input-target');
+  if (!exercise) throw new Error('Missing supervised-learning practice exercise');
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      plannedMinutes: 10,
+      startedAt: new Date(headers['X-Now']),
+      status: 'active',
+    })
+    .returning();
+  if (!session) throw new Error('Expected a study session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'practice',
+      conceptId: null,
+      exerciseIds: [exercise.id],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Expected a practice activity');
+  const context = { conceptId: null, activityId: activity.id, exerciseId: exercise.id };
+
+  const created = await send('Help with this exercise', undefined, context);
+  expect(created.status).toBe(200);
+  const createdPayload = await created.json();
+  expect(createdPayload.thread.conceptId).toBe(exercise.concept);
+  const expectedConceptTitle = content.conceptsById.get(exercise.concept)?.title;
+  expect(expectedConceptTitle).toBeDefined();
+  expect(captured.at(-1)).toMatchObject({
+    conceptTitle: expectedConceptTitle,
+    exercisePrompt: exercise.prompt,
+  });
+
+  const replied = await send('Can you explain the target?', createdPayload.thread.id, context);
+  expect(replied.status).toBe(200);
+  expect(captured.at(-1)).toMatchObject({
+    conceptTitle: expectedConceptTitle,
+    exercisePrompt: exercise.prompt,
+  });
 });
 
 test('session page context uses the answered lesson problem KP and sanitized authored text', async () => {

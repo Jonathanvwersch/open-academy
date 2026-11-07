@@ -86,7 +86,12 @@ exercises:
     solution: "The weight controls how strongly the feature changes the prediction."
     options:
       - { id: feature-effect, text: The feature's effect on the prediction, correct: true }
-      - { id: input-count, text: The number of input examples, correct: false }
+      - {
+          id: input-count,
+          text: The number of input examples,
+          correct: false,
+          feedback: "That counts how many examples are present, not how strongly the feature changes the prediction. Look at the coefficient's role in the formula.",
+        }
   - id: linear-models-fixture-review
     dimension: implementation
     type: mc

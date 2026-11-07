@@ -26,17 +26,20 @@ import { buildCourseWeeks } from './learn-course.js';
 import { extractPaperPages } from './papers.js';
 
 type Ctx = Context<ApiEnv>;
-const bodySchema = z.object({
+const optionalNullable = <T extends z.ZodTypeAny>(schema: T) =>
+  schema.nullish().transform((value) => value ?? undefined);
+
+export const tutorThreadBodySchema = z.object({
   question: z.string().trim().min(1).max(2000),
-  conceptId: z.string().optional(),
-  activityId: z.string().uuid().optional(),
-  exerciseId: z.string().optional(),
-  lessonProblemId: z.string().uuid().optional(),
-  page: z.enum(['session', 'lesson', 'course', 'map', 'paper']).optional(),
-  knowledgePointId: z.string().max(200).optional(),
-  paperId: z.string().optional(),
-  pageNumber: z.number().int().min(1).optional(),
-  selection: z.string().trim().max(2000).optional(),
+  conceptId: optionalNullable(z.string()),
+  activityId: optionalNullable(z.string().uuid()),
+  exerciseId: optionalNullable(z.string()),
+  lessonProblemId: optionalNullable(z.string().uuid()),
+  page: optionalNullable(z.enum(['session', 'lesson', 'course', 'map', 'paper'])),
+  knowledgePointId: optionalNullable(z.string().max(200)),
+  paperId: optionalNullable(z.string()),
+  pageNumber: optionalNullable(z.number().int().min(1)),
+  selection: optionalNullable(z.string().trim().max(2000)),
 });
 
 function formatThreadTitle(question: string): string {
@@ -134,7 +137,7 @@ export function registerTutorThreadRoutes(
     return c.json({ thread, messages });
   });
   const send = async (c: Ctx, requestedThreadId?: string) => {
-    const parsed = bodySchema.safeParse(await c.req.json().catch(() => ({})));
+    const parsed = tutorThreadBodySchema.safeParse(await c.req.json().catch(() => ({})));
     if (!parsed.success) return c.json({ error: 'Invalid tutor request' }, 400);
     const input = parsed.data;
     const [thread] = requestedThreadId

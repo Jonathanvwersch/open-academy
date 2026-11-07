@@ -174,8 +174,15 @@ exercises:
           text: "A vector pointing toward the lowest value anywhere in the function",
           correct: false,
           category: misunderstood_definition,
+          feedback: "The gradient at a local minimum is determined by nearby changes, not by the lowest value somewhere far away. Use the first-order behavior around the point.",
         }
-      - { id: c, text: "A vector of all ones", correct: false, category: recall_failure }
+      - {
+          id: c,
+          text: "A vector of all ones",
+          correct: false,
+          category: recall_failure,
+          feedback: "All ones would mean $f$ still increases when you step in any input direction, so stepping the other way would lower it. That cannot happen at a local minimum.",
+        }
     solution: "At a local minimum every partial derivative is zero, otherwise you could step downhill."
   - id: grad-transfer-scale
     dimension: transfer
@@ -202,6 +209,7 @@ exercises:
           text: "The gradient is zero, so nothing happens",
           correct: false,
           category: math_error,
+          feedback: "At $(1, 1)$ the gradient is $(2, 200)$, not zero. Compare how steep the loss is along $w_1$ and along $w_2$.",
         }
     hints: ["Compute $\\nabla L(1,1)$ and compare the two components."]
     solution: "$\\nabla L(1,1) = (2, 200)$. Each step multiplies $w_2$ by $1 - 200s$, so $w_2$ only shrinks if $s < 0.01$. At $s = 0.01$, each step multiplies $w_1$ by $1 - 2s = 0.98$, so it shrinks by only 2% per step. This mismatch motivates rescaling features and using methods that adjust the step size."

@@ -4,6 +4,8 @@ import type { GradeResult } from './types.js';
 
 type MultipleChoiceExercise = Extract<Exercise, { type: 'mc' }>;
 
+export const MULTIPLE_CHOICE_FALLBACK_FEEDBACK = 'Not quite.';
+
 export function gradeMultipleChoice(
   exercise: MultipleChoiceExercise,
   answer: unknown,
@@ -34,13 +36,9 @@ export function gradeMultipleChoice(
       feedback.push(`You missed ${missedCount} correct option${missedCount === 1 ? '' : 's'}.`);
     }
   }
-  return graded(
-    0,
-    feedback.join(' ') || 'Select the option or set of options that answers the prompt.',
-    {
-      mistake_category: selectedWrong[0]?.category,
-    },
-  );
+  return graded(0, feedback.join(' ') || MULTIPLE_CHOICE_FALLBACK_FEEDBACK, {
+    mistake_category: selectedWrong[0]?.category,
+  });
 }
 
 function selectedOptionIds(answer: unknown): string[] {
