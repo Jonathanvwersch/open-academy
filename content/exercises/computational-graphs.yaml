@@ -1,5 +1,104 @@
 concept: computational-graphs
 exercises:
+  - id: cg-drawing-graphs-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a computational graph?"
+    options:
+      - {
+          id: a,
+          text: "A table with one training house per row and one feature per column.",
+          correct: false,
+          feedback: "That is an input matrix; a computational graph connects operations and intermediate values.",
+        }
+      - {
+          id: b,
+          text: "A sequence of parameter updates intended to lower the model's loss.",
+          correct: false,
+          feedback: "That describes gradient descent; a graph represents the operations used in a calculation.",
+        }
+      - {
+          id: c,
+          text: "A plot that places predicted prices beside their recorded sale prices.",
+          correct: false,
+          feedback: "That visualizes predictions; a computational graph shows how their values are calculated.",
+        }
+      - {
+          id: d,
+          text: "A directed diagram showing values, operations, and dependencies between steps in a calculation.",
+          correct: true,
+          feedback: "Its arrows show how values feed operations, making the calculation's dependencies visible.",
+        }
+    solution: "A computational graph is a directed diagram of values and operations, connected by arrows showing which inputs each operation uses."
+  - id: cg-local-derivatives-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a local derivative?"
+    options:
+      - {
+          id: a,
+          text: "The loss change measured after every model parameter has been updated.",
+          correct: false,
+          feedback: "That is an overall training result, not one operation's output rate for one input.",
+        }
+      - {
+          id: b,
+          text: "The rate at which the final prediction changes across all training examples.",
+          correct: false,
+          feedback: "That describes a model-wide change; a local derivative concerns one operation and input.",
+        }
+      - {
+          id: c,
+          text: "The rate at which one operation's output changes with one input, holding others fixed.",
+          correct: true,
+          feedback: "It isolates one operation and input so local rates can be combined along the graph.",
+        }
+      - {
+          id: d,
+          text: "The derivative of the final loss with respect to every model parameter.",
+          correct: false,
+          feedback: "That vector is the full loss gradient, assembled from many local derivatives.",
+        }
+    solution: "A local derivative measures one operation's output rate with respect to one input while its other inputs are fixed."
+  - id: cg-chaining-paths-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a backward path in a computational graph?"
+    options:
+      - {
+          id: a,
+          text: "A route from the input toward the loss, multiplying local derivatives in forward order.",
+          correct: false,
+          feedback: "That follows the graph forward; a backward path starts at loss and traces toward an input.",
+        }
+      - {
+          id: b,
+          text: "A route that skips operations whenever their current output equals zero.",
+          correct: false,
+          feedback: "A zero derivative can remove a route's contribution, but the graph path still exists.",
+        }
+      - {
+          id: c,
+          text: "A route from the final loss toward an input, multiplying each local derivative.",
+          correct: true,
+          feedback: "Multiplying rates along this route gives its contribution to the input's loss derivative.",
+        }
+      - {
+          id: d,
+          text: "A list of the values supplied to one operation in the graph.",
+          correct: false,
+          feedback: "That lists one node's inputs; a path connects operations from loss toward an input.",
+        }
+    solution: "A backward path follows the graph from the final loss toward an earlier input and multiplies local derivatives."
   - id: cg-check-1
     dimension: math
     type: numeric

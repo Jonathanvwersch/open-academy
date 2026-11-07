@@ -53,6 +53,7 @@ function orderedRows<Row extends LessonProblemRow>(rows: readonly Row[]): Row[] 
 export function deriveLessonState<Row extends LessonProblemRow>(
   lesson: { knowledge_points?: readonly KnowledgePoint[] },
   problems: readonly Row[],
+  exercises: ReadonlyMap<string, Pick<Exercise, 'role'>>,
 ): DerivedLessonState<Row> {
   const knowledgePoints = lesson.knowledge_points ?? [];
   const currentIds = new Set(knowledgePoints.map((point) => point.id));
@@ -71,7 +72,10 @@ export function deriveLessonState<Row extends LessonProblemRow>(
     let passedOn: Row | undefined;
     let answeredCount = 0;
     let roundFailed = false;
-    for (const [index, problem] of answered.entries()) {
+    const countedAnswers = answered.filter(
+      (problem) => exercises.get(problem.exerciseId)?.role !== 'basics',
+    );
+    for (const [index, problem] of countedAnswers.entries()) {
       answeredCount = index + 1;
       streak = problem.correct === 1 ? streak + 1 : 0;
       if (streak === 2) {
@@ -151,7 +155,10 @@ export function selectNextProblem(
   templateSeed: number,
   usedSeeds: ReadonlySet<number> = new Set(),
 ): SelectedLessonProblem | undefined {
-  if (roundProblems.length >= 5) return undefined;
+  const countedProblems = roundProblems.filter(
+    (problem) => exercises.get(problem.exerciseId)?.role !== 'basics',
+  );
+  if (countedProblems.length >= 5) return undefined;
   const served = new Set(roundProblems.map((problem) => problem.exerciseId));
   const templates: string[] = [];
   for (const id of point.problems) {

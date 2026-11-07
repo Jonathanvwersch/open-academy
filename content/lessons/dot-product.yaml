@@ -39,6 +39,7 @@ knowledge_points:
       A negative weight makes a larger feature value lower the prediction. A zero weight would ignore that feature entirely.
     problems:
       [
+        dot-weighted-total-basics,
         dotp-total,
         dotp-total-template,
         dotp-model,
@@ -106,6 +107,7 @@ knowledge_points:
 
     problems:
       [
+        dot-arrow-alignment-basics,
         dotp-sign,
         dotp-alignment-template,
         dotp-right-angle,
@@ -146,7 +148,15 @@ knowledge_points:
 
       Multiplying either arrow by a positive number leaves its direction, and therefore its cosine similarity, unchanged. For a robot this compares headings rather than distances travelled.
     problems:
-      [dotp-cosine, dotp-cosine-template, dotp-scaling, dotp-zero, dotp-attention, dotp-position]
+      [
+        dot-direction-only-basics,
+        dotp-cosine,
+        dotp-cosine-template,
+        dotp-scaling,
+        dotp-zero,
+        dotp-attention,
+        dotp-position,
+      ]
 final: dot-explain
 summary: |
   - A dot product multiplies matching entries and adds the results. When one vector contains weights, it gives a weighted total of the other vector's measurements.

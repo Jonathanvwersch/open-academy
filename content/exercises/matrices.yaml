@@ -1,5 +1,104 @@
 concept: matrices
 exercises:
+  - id: mat-rows-shapes-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a matrix?"
+    options:
+      - {
+          id: a,
+          text: "A rectangular grid of numbers with a shape given by rows, then columns.",
+          correct: true,
+          feedback: "Rows and columns form a rectangular grid, and their counts determine its shape.",
+        }
+      - {
+          id: b,
+          text: "An ordered list of numbers with one position for each feature.",
+          correct: false,
+          feedback: "That is a vector.",
+        }
+      - {
+          id: c,
+          text: "A single number made by multiplying matching vector entries and adding them.",
+          correct: false,
+          feedback: "That is a dot product.",
+        }
+      - {
+          id: d,
+          text: "A collection of training examples paired with their known target values.",
+          correct: false,
+          feedback: "That is a labeled dataset; a matrix is only a rectangular arrangement of numbers.",
+        }
+    solution: "A matrix is a rectangular grid of numbers; its shape lists the number of rows and then columns."
+  - id: mat-matrix-products-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a matrix product combine?"
+    options:
+      - {
+          id: a,
+          text: "The rows of both matrices paired with other rows to fill output entries.",
+          correct: false,
+          feedback: "Matrix multiplication pairs each left row with a right column to form one output entry.",
+        }
+      - {
+          id: b,
+          text: "A matrix whose entries are dot products of rows and columns from the two input grids.",
+          correct: true,
+          feedback: "Each output entry comes from a dot product of one left row with one right column.",
+        }
+      - {
+          id: c,
+          text: "Two vectors into one number by matching entries and adding the paired products.",
+          correct: false,
+          feedback: "That describes the dot product of vectors.",
+        }
+      - {
+          id: d,
+          text: "The two matrix shapes combined into a list of entries that they share.",
+          correct: false,
+          feedback: "Matching dimensions determine whether a product is valid.",
+        }
+    solution: "A matrix product combines two number grids, with each output entry formed from a left row and right column."
+  - id: mat-batches-transpose-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "When each row of $X$ is a house and $w$ holds feature weights, what does $X @ w$ compute?"
+    options:
+      - {
+          id: a,
+          text: "One weighted prediction for each house row in $X$, returned as a vector.",
+          correct: true,
+          feedback: "Each row's dot product with $w$ combines that house's features into one prediction.",
+        }
+      - {
+          id: b,
+          text: "The element-wise product of each house row and the weight vector, with no sum.",
+          correct: false,
+          feedback: "That is element-wise multiplication; matrix multiplication sums matching feature products.",
+        }
+      - {
+          id: c,
+          text: "One shared prediction formed by summing every feature across all house rows.",
+          correct: false,
+          feedback: "That collapses rows together; matrix multiplication returns a separate result for each row.",
+        }
+      - {
+          id: d,
+          text: "A column sum of the input matrix, scaled by the matching model weights.",
+          correct: false,
+          feedback: "A column sum combines houses; $X @ w$ instead takes a weighted sum within each house row.",
+        }
+    solution: "$X @ w$ takes each house row's dot product with the feature weights, producing one prediction per row."
   - id: matp-shape
     dimension: math
     type: mc

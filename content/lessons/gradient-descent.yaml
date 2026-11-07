@@ -27,6 +27,7 @@ knowledge_points:
       4. Predict: $12(25.048)+3(10.012)+20(-0.92)+0.004=312.216$.
     problems:
       [
+        gd-downhill-update-basics,
         gdp-why-negative-slope,
         gdp-step-template,
         gdp-positive-slope,
@@ -47,6 +48,7 @@ knowledge_points:
       The area and age contributions to the gradient are $-480$ and $-800$. Multiplying by the learning rate and subtracting gives changes $+0.048$ and $+0.08$. Their different sizes come from the different feature values.
     problems:
       [
+        gd-step-size-basics,
         gdp-rate-choice,
         gdp-factor-template,
         gdp-threshold-template,
@@ -72,6 +74,7 @@ knowledge_points:
       - $\partial L/\partial b=2(-20)=-40$.
     problems:
       [
+        gd-price-gradients-basics,
         gdp-why-input-factor,
         gdp-gradient-template,
         gdp-data-step-template,
@@ -92,6 +95,7 @@ knowledge_points:
       After the first update, the prediction is 312.216 and the error is $-17.784$. The next gradient is $2(-17.784)(12,3,20,1)=(-426.816,-106.704,-711.36,-35.568)$, so the next pass must use fresh slopes.
     problems:
       [
+        gd-training-loop-basics,
         gdp-loop-order,
         gdp-bias-step-template,
         gdp-code-gradient,

@@ -27,7 +27,15 @@ knowledge_points:
 
       The model predicts £310,000 for this house.
     problems:
-      [lrp-why-bias, lrp-price-template, lrp-dot-template, lrp-order, lrp-bias-once, lrp-new-task]
+      [
+        lr-add-contributions-basics,
+        lrp-why-bias,
+        lrp-price-template,
+        lrp-dot-template,
+        lrp-order,
+        lrp-bias-once,
+        lrp-new-task,
+      ]
   - id: lr-interpret-weights
     title: Read each weight in its own units
     explain: |
@@ -50,6 +58,7 @@ knowledge_points:
       Each calculation changes one feature only, so the corresponding weight gives the prediction change.
     problems:
       [
+        lr-interpret-weights-basics,
         lrp-why-hold-fixed,
         lrp-change-template,
         lrp-both-template,
@@ -86,6 +95,7 @@ knowledge_points:
       The matrix has shape $(2,3)$, the weight vector has shape $(3,)$, and the result has shape $(2,)$.
     problems:
       [
+        lr-batch-predictions-basics,
         lrp-why-matrix-product,
         lrp-batch-template,
         lrp-augmented-template,

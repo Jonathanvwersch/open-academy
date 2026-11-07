@@ -1,5 +1,104 @@
 concept: partial-derivatives
 exercises:
+  - id: pd-hold-fixed-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a partial derivative?"
+    options:
+      - {
+          id: a,
+          text: "The function's rate of change for one input, with all other inputs held fixed.",
+          correct: true,
+          feedback: "Holding the other inputs fixed isolates how the chosen input affects the function.",
+        }
+      - {
+          id: b,
+          text: "The rate at which a function changes when all its inputs move by the same amount.",
+          correct: false,
+          feedback: "That describes a combined directional change.",
+        }
+      - {
+          id: c,
+          text: "The output value of the function when every input is set to zero.",
+          correct: false,
+          feedback: "That is one function value, not a derivative.",
+        }
+      - {
+          id: d,
+          text: "The mean of all input values across the examples in a training batch.",
+          correct: false,
+          feedback: "That is an input statistic rather than a rate of change.",
+        }
+    solution: "A partial derivative measures a function's rate with respect to one input while holding the others fixed."
+  - id: pd-compute-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a partial formula for one weight give?"
+    options:
+      - {
+          id: a,
+          text: "The weight value that makes every training error equal to zero.",
+          correct: false,
+          feedback: "A derivative formula gives a slope, not a guaranteed zero-error weight.",
+        }
+      - {
+          id: b,
+          text: "The loss slope for one weight at any parameter setting.",
+          correct: true,
+          feedback: "The formula gives the loss slope for that parameter at any current setting.",
+        }
+      - {
+          id: c,
+          text: "The prediction made by the model at its current setting.",
+          correct: false,
+          feedback: "A prediction is a forward-pass result, not a loss slope.",
+        }
+      - {
+          id: d,
+          text: "The change in the target when the input feature changes.",
+          correct: false,
+          feedback: "The target is fixed; the derivative concerns model loss.",
+        }
+    solution: "A partial formula gives the loss slope for one weight at any parameter setting."
+  - id: pd-many-inputs-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "For squared loss $(\\hat y - y)^2$ with error $e = \\hat y - y$, what is the partial derivative with respect to the bias?"
+    options:
+      - {
+          id: a,
+          text: "$2e$, because the bias enters the prediction with multiplier 1",
+          correct: true,
+          feedback: "The bias changes prediction one-for-one, so the chain rule gives the loss partial $2e$.",
+        }
+      - {
+          id: b,
+          text: "$2e x_j$, because a weight partial includes its feature value",
+          correct: false,
+          feedback: "A weight partial includes its feature multiplier, while the bias multiplier is one.",
+        }
+      - {
+          id: c,
+          text: "$e$, because the squared-loss derivative has no factor of 2",
+          correct: false,
+          feedback: "Differentiating the square contributes a factor of two, giving $2e$ rather than $e$.",
+        }
+      - {
+          id: d,
+          text: "$b$, because the bias setting itself is the loss's slope",
+          correct: false,
+          feedback: "The bias is a parameter value; its partial derivative is the loss's change with respect to it.",
+        }
+    solution: "Because $b$ enters $\\hat y=w\\cdot x+b$ with multiplier 1, the squared-loss partial is $\\partial L/\\partial b=2e$."
   - id: pd-check-1
     dimension: math
     type: expression

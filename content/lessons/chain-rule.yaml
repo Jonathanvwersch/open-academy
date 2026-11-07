@@ -20,6 +20,7 @@ knowledge_points:
       $$\frac{d\hat y}{da}=\frac{d\hat y}{dh}\frac{dh}{dz}\frac{dz}{da}=15\cdot1\cdot0.1=1.5.$$
     problems:
       [
+        cr-rates-multiply-basics,
         crp-total-rate,
         crp-rate-product,
         crp-why-multiply,
@@ -44,6 +45,7 @@ knowledge_points:
       At $a=12$, the loss error is $324.5-330=-5.5$ and the max-operation slope is 1. Therefore $dL/da=2(-5.5)(15)(1)(0.1)=-16.5$. For the weight $0.1$, the final factor is $dz/dw=a=12$, giving $dL/dw=-1980$.
     problems:
       [
+        cr-nested-formulas-basics,
         crp-diff-cube,
         crp-nested-slope,
         crp-why-inner-factor,
@@ -64,6 +66,7 @@ knowledge_points:
       Route 1 contributes $(d\hat y/dh_1)(dh_1/da)=15(0.1)=1.5$. Route 2 contributes $10(0.05)=0.5$. Their sum is $2$ thousand pounds per area-feature unit.
     problems:
       [
+        cr-two-routes-basics,
         crp-sum-routes,
         crp-trip-cost,
         crp-why-both-routes,

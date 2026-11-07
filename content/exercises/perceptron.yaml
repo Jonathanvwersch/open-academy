@@ -1,5 +1,104 @@
 concept: perceptron
 exercises:
+  - id: perc-score-and-step-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a perceptron do?"
+    options:
+      - {
+          id: a,
+          text: "It predicts a number by adding weighted inputs and a bias.",
+          correct: false,
+          feedback: "That describes a linear regression prediction.",
+        }
+      - {
+          id: b,
+          text: "It thresholds a weighted score plus bias to choose a class.",
+          correct: true,
+          feedback: "The weighted score plus bias becomes a class decision through the step activation.",
+        }
+      - {
+          id: c,
+          text: "It chooses the closest training example and copies its target.",
+          correct: false,
+          feedback: "That describes a nearest-neighbour method.",
+        }
+      - {
+          id: d,
+          text: "It repeatedly changes a target to match a fixed score.",
+          correct: false,
+          feedback: "Training changes model parameters, not the target.",
+        }
+    solution: "A perceptron scores its inputs using weights and a bias, then applies a step to predict a class."
+  - id: perc-straight-boundary-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a decision boundary?"
+    options:
+      - {
+          id: a,
+          text: "The inputs where the perceptron's score is exactly zero, separating its two predicted classes",
+          correct: true,
+          feedback: "At score zero the perceptron's step output changes across the boundary.",
+        }
+      - {
+          id: b,
+          text: "The line connecting the two nearest examples from different classes in the training data.",
+          correct: false,
+          feedback: "A classifier's boundary comes from its score rule, not just the two closest examples.",
+        }
+      - {
+          id: c,
+          text: "The average loss score calculated across all examples in the training set.",
+          correct: false,
+          feedback: "That is a training objective, not a class boundary.",
+        }
+      - {
+          id: d,
+          text: "The range of feature values observed across training examples, not a class-separating surface.",
+          correct: false,
+          feedback: "That is the data range, not where model predictions switch.",
+        }
+    solution: "A decision boundary is the line or surface where a classifier changes its predicted class."
+  - id: perc-and-or-xor-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why can't one straight boundary classify XOR correctly?"
+    options:
+      - {
+          id: a,
+          text: "Because XOR has more output classes than a perceptron can predict.",
+          correct: false,
+          feedback: "XOR is a two-class problem.",
+        }
+      - {
+          id: b,
+          text: "Because XOR's alternating positive and negative corners cannot be split by one straight boundary.",
+          correct: true,
+          feedback: "The alternating positive and negative corners cannot be divided by one linear decision boundary.",
+        }
+      - {
+          id: c,
+          text: "Because a straight boundary gives every input the same predicted class.",
+          correct: false,
+          feedback: "A boundary separates input regions that predict different classes.",
+        }
+      - {
+          id: d,
+          text: "Because a perceptron is limited to using a single input feature.",
+          correct: false,
+          feedback: "A perceptron can use multiple input features.",
+        }
+    solution: "XOR is not separable by one straight boundary, so a single perceptron cannot classify it correctly."
   - id: perc-check-1
     dimension: math
     type: numeric

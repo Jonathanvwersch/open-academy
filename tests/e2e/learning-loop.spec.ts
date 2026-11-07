@@ -105,7 +105,7 @@ test('diagnostic to KP runner starts point one and preserves map and progress', 
   await expect(page.getByRole('heading', { name: 'Current week' })).toHaveCount(0);
   await page.screenshot({ path: `${screenshotDir}/today-plan.png`, fullPage: true });
   await page.getByRole('button', { name: 'Start learning' }).click();
-  await expect(page.getByText(/^Problem 1 · up to 5$/)).toBeVisible();
+  await expect(page.getByText('Basics question', { exact: true })).toBeVisible();
   const run = await page.evaluate(async () => (await fetch('/api/lessons/vectors/run')).json());
   expect(run.run.currentPointId).toBe('vectors-fixture-1');
   expect(run.run.pendingProblem.id).toBeTruthy();
@@ -277,7 +277,9 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
     window.__layoutShifts = [];
   });
   await page.goto(`/session/${session.id}`);
-  await expect(page.getByText(/^Problem 1 · up to 5$/)).toBeVisible();
-  await expect(page.getByTestId('lesson-problem-prompt')).toContainText('Compute 1 + 1.');
+  await expect(page.getByText('Basics question', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('lesson-problem-prompt')).toContainText(
+    'Which statement best describes the main idea in this step?',
+  );
   await assertStable('/session/:id');
 });

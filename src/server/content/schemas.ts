@@ -11,6 +11,7 @@ export const ExerciseRoleSchema = z.enum([
   'diagnostic',
   'check',
   'practice',
+  'basics',
 ]);
 export const MistakeCategorySchema = z.enum([
   'missing_prerequisite',
@@ -219,7 +220,7 @@ export function normalizeLesson(
   for (const point of lesson.knowledge_points) {
     blocks.push({ kind: 'intuition', md: `### ${point.title}\n\n${point.explain}` });
     blocks.push({ kind: 'worked', md: point.worked });
-    const fixedProblem = point.problems.find((problemId) => !isTemplateProblem(problemId));
+    const fixedProblem = point.problems.slice(1).find((problemId) => !isTemplateProblem(problemId));
     if (fixedProblem) blocks.push({ kind: 'check', exercise: fixedProblem });
   }
   blocks.push({ kind: 'check', exercise: lesson.final });

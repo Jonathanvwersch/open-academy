@@ -18,6 +18,7 @@ knowledge_points:
       For scalar layers $z_1=2x+1$ and $z_2=3z_1-4$, substitution gives $z_2=3(2x+1)-4=6x-1$, still a straight-line rule.
     problems:
       [
+        act-stacking-stays-straight-basics,
         actp-stack-collapse,
         actp-collapse-template,
         actp-why-not-more-layers,
@@ -38,6 +39,7 @@ knowledge_points:
       For $z=0.5$: $\operatorname{ReLU}(z)=0.5$, $\sigma(z)=1/(1+e^{-0.5})\approx0.62$, and $\tanh(z)\approx0.46$.
     problems:
       [
+        act-relu-sigmoid-tanh-basics,
         actp-relu-values,
         actp-relu-sum-template,
         actp-sigmoid-template,
@@ -58,6 +60,7 @@ knowledge_points:
       At $z=0$, sigmoid is 0.5 and its slope is $0.5(1-0.5)=0.25$. At a score far from zero the output saturates and the slope is smaller.
     problems:
       [
+        act-slopes-basics,
         actp-relu-slope,
         actp-sigmoid-slope-template,
         actp-nudge-estimate,

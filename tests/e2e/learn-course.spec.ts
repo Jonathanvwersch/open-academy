@@ -441,6 +441,8 @@ test('passing a knowledge point increases Learn XP after reload', async ({ page 
   await expect(page.getByRole('button', { name: 'Next problem' })).toBeVisible();
   await page.getByRole('button', { name: 'Next problem' }).click();
   await answerCurrentProblem(page);
+  await page.getByRole('button', { name: 'Next problem' }).click();
+  await answerCurrentProblem(page);
   await page.goto('/');
   await expect
     .poll(async () => {

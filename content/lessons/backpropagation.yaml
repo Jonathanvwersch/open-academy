@@ -16,7 +16,8 @@ knowledge_points:
     worked: |
       This example shows the calculation.
       The forward pass stores $z=1.2$, $h=1.2$, $\hat y=324.5$ and $L=30.25$. The backward pass starts with $dL/d\hat y=2(324.5-330)=-11$ and uses the stored values to continue toward earlier weights.
-    problems: [bpp-why-every, bpp-nudge-time, bpp-keep-values, bpp-cost, bpp-exact]
+    problems:
+      [bp-why-backprop-basics, bpp-why-every, bpp-nudge-time, bpp-keep-values, bpp-cost, bpp-exact]
   - id: bp-by-hand
     title: Compute one weight gradient backward
     explain: |
@@ -30,6 +31,7 @@ knowledge_points:
       $$\frac{\partial L}{\partial w}=\frac{\partial L}{\partial\hat y}\frac{\partial\hat y}{\partial h}\frac{\partial h}{\partial z}\frac{\partial z}{\partial w}=(-11)(15)(1)(12)=-1980.$$
     problems:
       [
+        bp-by-hand-basics,
         bpp-upstream-rule,
         bpp-w2-template,
         bpp-gate-closed,
@@ -54,6 +56,7 @@ knowledge_points:
       With $B=2$, $d_{\rm in}=3$ house features and $d_{\rm out}=2$ hidden units, $X^\top$ has shape $3\times2$ and $G$ has shape $2\times2$. Thus $dW=X^\top G$ has shape $3\times2$, matching $W$.
     problems:
       [
+        bp-arrays-basics,
         bpp-grad-shape,
         bpp-hadamard-template,
         bpp-bias-code,
@@ -74,6 +77,7 @@ knowledge_points:
       For a smooth loss, reduce $h$ and compare the finite-difference estimate with the backward derivative. Agreement to a small tolerance supports the implementation; a sign or shape mismatch points to a bug.
     problems:
       [
+        bp-checking-basics,
         bpp-why-check-nudges,
         bpp-check-template,
         bpp-sign-bug,

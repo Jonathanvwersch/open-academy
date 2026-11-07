@@ -1,5 +1,104 @@
 concept: loss-functions
 exercises:
+  - id: loss-measure-misses-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a loss?"
+    options:
+      - {
+          id: a,
+          text: "A signed prediction-minus-target difference that lets errors in opposite directions cancel.",
+          correct: false,
+          feedback: "Signed errors can cancel, so they are not a non-negative loss.",
+        }
+      - {
+          id: b,
+          text: "A learned parameter that shifts every model prediction by the same fixed amount.",
+          correct: false,
+          feedback: "That is the bias.",
+        }
+      - {
+          id: c,
+          text: "A validation score used to compare model versions before final test evaluation.",
+          correct: false,
+          feedback: "Validation error guides model selection; a loss itself measures prediction error.",
+        }
+      - {
+          id: d,
+          text: "A non-negative score that grows as a prediction moves farther from its target.",
+          correct: true,
+          feedback: "A prediction farther from its target receives a larger non-negative error score.",
+        }
+    solution: "A loss is a non-negative score for how far a model's prediction is from the true price."
+  - id: loss-large-errors-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "How does squared loss treat a large miss compared with absolute loss?"
+    options:
+      - {
+          id: a,
+          text: "Squared loss and absolute loss both add the same amount for each extra error unit.",
+          correct: false,
+          feedback: "Squared loss grows faster as the miss gets larger.",
+        }
+      - {
+          id: b,
+          text: "Squared loss makes large misses count more than absolute loss does.",
+          correct: true,
+          feedback: "Squaring makes the penalty grow faster as a miss grows, unlike absolute loss.",
+        }
+      - {
+          id: c,
+          text: "Squared loss takes the absolute value, while absolute loss squares the miss.",
+          correct: false,
+          feedback: "Those definitions are reversed.",
+        }
+      - {
+          id: d,
+          text: "Squared loss and absolute loss stay unchanged as prediction errors grow.",
+          correct: false,
+          feedback: "Both losses increase as prediction error grows.",
+        }
+    solution: "Squared loss makes large misses count disproportionately more, while absolute loss increases at a constant rate."
+  - id: loss-constant-choice-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a baseline model?"
+    options:
+      - {
+          id: a,
+          text: "A simple reference for judging whether a more detailed model is useful.",
+          correct: true,
+          feedback: "A simple baseline provides a reference score for judging whether added model detail helps.",
+        }
+      - {
+          id: b,
+          text: "A model that always predicts the training example's exact target.",
+          correct: false,
+          feedback: "That describes memorising training data.",
+        }
+      - {
+          id: c,
+          text: "A model that predicts a different price for every feature.",
+          correct: false,
+          feedback: "A baseline may use one constant prediction for every house.",
+        }
+      - {
+          id: d,
+          text: "A model that uses the test set to choose its weights.",
+          correct: false,
+          feedback: "The test set must stay separate from fitting and model selection.",
+        }
+    solution: "A baseline is a simple model used to check whether a more detailed house-price model is useful."
   - id: loss-check-mse
     dimension: math
     type: numeric

@@ -1,5 +1,104 @@
 concept: chain-rule
 exercises:
+  - id: cr-rates-multiply-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does the chain rule do?"
+    options:
+      - {
+          id: a,
+          text: "It adds the derivatives of separate terms whenever a calculation contains a sum.",
+          correct: false,
+          feedback: "The sum rule handles separate terms; the chain rule multiplies rates through nested steps.",
+        }
+      - {
+          id: b,
+          text: "It divides the output rate by the input rate at each nested step.",
+          correct: false,
+          feedback: "Division reverses a rate; nested operations pass changes along by multiplying local rates.",
+        }
+      - {
+          id: c,
+          text: "It finds the derivative of a nested calculation by multiplying the derivatives of each step",
+          correct: true,
+          feedback: "Multiplying each nested step's derivative gives the overall derivative from the input to the final output.",
+        }
+      - {
+          id: d,
+          text: "It replaces each derivative with the function's output value at that step.",
+          correct: false,
+          feedback: "A function value is not its rate of change, which is what each derivative measures.",
+        }
+    solution: "The chain rule differentiates a nested calculation by multiplying the derivative at each step."
+  - id: cr-nested-formulas-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a composite function?"
+    options:
+      - {
+          id: a,
+          text: "A function that adds two changing function outputs together.",
+          correct: false,
+          feedback: "That is a sum of functions; a composite applies one function to another's output.",
+        }
+      - {
+          id: b,
+          text: "A function that pairs vector entries with weights and adds their products.",
+          correct: false,
+          feedback: "That is a dot product, not one function nested inside another.",
+        }
+      - {
+          id: c,
+          text: "A function that returns the same fixed value for every possible input.",
+          correct: false,
+          feedback: "That is a constant function; composition requires one function to transform another's input.",
+        }
+      - {
+          id: d,
+          text: "A function that takes another function's output as its input.",
+          correct: true,
+          feedback: "The inner function changes the input before the outer function applies its rule.",
+        }
+    solution: "A composite function uses another function to transform its input before applying its own rule."
+  - id: cr-two-routes-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a route in a computation?"
+    options:
+      - {
+          id: a,
+          text: "A list of input features in their fixed order for a model.",
+          correct: false,
+          feedback: "That is a feature vector; a route is a sequence of operations carrying an effect.",
+        }
+      - {
+          id: b,
+          text: "A collection of loss values calculated for several training examples.",
+          correct: false,
+          feedback: "Those values make a batch of losses; a route connects operations within one computation.",
+        }
+      - {
+          id: c,
+          text: "One sequence of operations carrying an input's effect to an output.",
+          correct: true,
+          feedback: "Following that sequence traces one way an input change reaches the output.",
+        }
+      - {
+          id: d,
+          text: "A parameter setting chosen to make the model's loss as small as possible.",
+          correct: false,
+          feedback: "That is an optimized parameter setting, not a path of operations in a computation.",
+        }
+    solution: "A route is one sequence of operations through which an input affects an output."
   - id: cr-check-1
     dimension: math
     type: expression

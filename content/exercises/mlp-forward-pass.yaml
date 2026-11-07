@@ -1,5 +1,104 @@
 concept: mlp-forward-pass
 exercises:
+  - id: mlp-layer-of-neurons-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a layer of neurons do?"
+    options:
+      - {
+          id: a,
+          text: "It applies one shared weight to every input, giving all neurons the same score.",
+          correct: false,
+          feedback: "Neurons have their own weights and biases.",
+        }
+      - {
+          id: b,
+          text: "It forms a weighted score for each neuron, then applies that neuron's activation.",
+          correct: true,
+          feedback: "Each neuron has its own weighted score, which its activation transforms before the next layer.",
+        }
+      - {
+          id: c,
+          text: "It compares predictions with targets to measure the model's prediction error.",
+          correct: false,
+          feedback: "That is the role of a loss function.",
+        }
+      - {
+          id: d,
+          text: "It updates each weight by subtracting the loss gradient after a training step.",
+          correct: false,
+          feedback: "That is a gradient-descent update.",
+        }
+    solution: "A layer computes weighted scores for several neurons and applies an activation function to each."
+  - id: mlp-two-layers-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a forward pass through a neural network?"
+    options:
+      - {
+          id: a,
+          text: "Calculating a prediction by passing values through each layer in order.",
+          correct: true,
+          feedback: "Each layer consumes preceding values and produces the next values toward the prediction.",
+        }
+      - {
+          id: b,
+          text: "Propagating loss derivatives backward through the network to calculate each weight's gradient.",
+          correct: false,
+          feedback: "That is backpropagation.",
+        }
+      - {
+          id: c,
+          text: "Updating each layer's weights repeatedly until the final test loss reaches zero.",
+          correct: false,
+          feedback: "A forward pass calculates values and does not update weights.",
+        }
+      - {
+          id: d,
+          text: "Adding every layer's output together to make a single final prediction.",
+          correct: false,
+          feedback: "Layers pass transformed values onward rather than all adding their outputs.",
+        }
+    solution: "A forward pass calculates a prediction by passing values through the network's layers in order."
+  - id: mlp-shapes-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a matrix shape tell you?"
+    options:
+      - {
+          id: a,
+          text: "The number of training and test examples used to fit and evaluate a model.",
+          correct: false,
+          feedback: "Those are dataset split sizes; a matrix shape counts that matrix's rows and columns.",
+        }
+      - {
+          id: b,
+          text: "The number of rows followed by the number of columns.",
+          correct: true,
+          feedback: "The row and column counts tell whether the layer's matrix operations can fit.",
+        }
+      - {
+          id: c,
+          text: "The number of parameter updates required before training reaches a minimum.",
+          correct: false,
+          feedback: "Training duration is not encoded by shape; shape records the matrix's row and column counts.",
+        }
+      - {
+          id: d,
+          text: "The number of input features and output values handled by the network layer.",
+          correct: false,
+          feedback: "Those counts describe layer dimensions; a matrix shape specifically gives its rows and columns.",
+        }
+    solution: "A matrix shape gives its number of rows followed by its number of columns."
   - id: mlp-check-forward
     dimension: math
     type: numeric

@@ -1,5 +1,104 @@
 concept: vectors
 exercises:
+  - id: vec-points-moves-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a vector?"
+    options:
+      - {
+          id: a,
+          text: "An ordered list of numbers with fixed positions.",
+          correct: true,
+          feedback: "The fixed order preserves which feature or coordinate each component represents.",
+        }
+      - {
+          id: b,
+          text: "An unordered set of measurements with no fixed entry positions.",
+          correct: false,
+          feedback: "Vectors keep their entries in a fixed order.",
+        }
+      - {
+          id: c,
+          text: "A rectangular grid of numbers with rows and columns.",
+          correct: false,
+          feedback: "That is a matrix.",
+        }
+      - {
+          id: d,
+          text: "A single number made by combining two feature lists.",
+          correct: false,
+          feedback: "That describes a dot product.",
+        }
+    solution: "A vector is an ordered list of numbers, with a fixed position and meaning for each entry."
+  - id: vec-change-move-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does scaling a vector do?"
+    options:
+      - {
+          id: a,
+          text: "It adds the same amount to every entry, rather than multiplying.",
+          correct: false,
+          feedback: "Adding a number is not scaling and can change direction.",
+        }
+      - {
+          id: b,
+          text: "It multiplies every entry by the same number",
+          correct: true,
+          feedback: "Multiplying every entry by one scalar changes length and may reverse direction.",
+        }
+      - {
+          id: c,
+          text: "It replaces each entry with its absolute value, removing its sign.",
+          correct: false,
+          feedback: "That takes component-wise absolute values; scaling multiplies every entry by the same scalar.",
+        }
+      - {
+          id: d,
+          text: "It replaces the vector with its length, a single number.",
+          correct: false,
+          feedback: "That distance is the vector's length or norm.",
+        }
+    solution: "Scaling multiplies every vector entry by the same number, changing its length and possibly its direction."
+  - id: vec-length-distance-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is the L2 norm of a vector?"
+    options:
+      - {
+          id: a,
+          text: "The sum of the vector's entries, including their signs.",
+          correct: false,
+          feedback: "That is a signed sum, not the L2 length.",
+        }
+      - {
+          id: b,
+          text: "The largest absolute entry, which defines the vector's maximum norm.",
+          correct: false,
+          feedback: "That is the maximum norm.",
+        }
+      - {
+          id: c,
+          text: "The square root of the sum of the squared entries.",
+          correct: true,
+          feedback: "Squaring components, summing them, and taking the square root gives straight-line length.",
+        }
+      - {
+          id: d,
+          text: "The dot product of the vector with a different vector.",
+          correct: false,
+          feedback: "The L2 norm uses the vector's own squared entries.",
+        }
+    solution: "The L2 norm is the square root of the sum of a vector's squared entries."
   - id: vecp-add
     dimension: conceptual
     type: mc

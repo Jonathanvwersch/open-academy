@@ -23,6 +23,7 @@ knowledge_points:
       2. Since $z$ is not positive, the perceptron outputs 0.
     problems:
       [
+        perc-score-and-step-basics,
         percp-output,
         percp-score-template,
         percp-score-zero,
@@ -45,6 +46,7 @@ knowledge_points:
       With score $z=0.2a+0.1r-0.02g-2.5$, the boundary is $0.2a+0.1r-0.02g-2.5=0$. If age $g$ stays fixed, this is a straight line in area $a$ and bedroom count $r$.
     problems:
       [
+        perc-straight-boundary-basics,
         percp-boundary-meaning,
         percp-crossing-template,
         percp-which-side,
@@ -67,6 +69,7 @@ knowledge_points:
       Label $(0,1)$ and $(1,0)$ as 1, and $(0,0)$ and $(1,1)$ as 0. The labels alternate around the square, so no single line can put both positive corners on one side and both negative corners on the other.
     problems:
       [
+        perc-and-or-xor-basics,
         percp-xor-why,
         percp-count-yes-template,
         percp-or-bias,

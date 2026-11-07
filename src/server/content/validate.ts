@@ -18,7 +18,7 @@ const SVG_COLOR_PROPERTIES = new Set([
   'solid-color',
   'background-color',
 ]);
-const REVIEWABLE_EXERCISE_ROLES = new Set(['review', 'core', 'practice', 'transfer']);
+const REVIEWABLE_EXERCISE_ROLES = new Set(['review', 'core', 'practice', 'transfer', 'basics']);
 
 function svgIssue(source: string): string | null {
   if (/<\s*(script|foreignObject)\b/i.test(source)) return 'forbidden element';
@@ -251,6 +251,17 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
         value.id,
         'multiple-choice exercise must have at least one correct option',
       );
+    }
+    if (value.type === 'mc') {
+      const optionTexts = new Set<string>();
+      for (const option of value.options) {
+        const normalizedText = option.text.trim().toLowerCase();
+        if (optionTexts.has(normalizedText)) {
+          addIssue(issues, file, value.id, 'multiple-choice option texts must be unique');
+          break;
+        }
+        optionTexts.add(normalizedText);
+      }
     }
     if (value.type === 'debug' && !value.fix_options.some((option) => option.correct)) {
       addIssue(issues, file, value.id, 'debug exercise must have at least one correct fix option');
@@ -673,6 +684,8 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
           addIssue(issues, file, lesson.concept, 'final exercise must be type explain');
         if (final.value.role !== 'core')
           addIssue(issues, file, lesson.concept, 'final exercise must have core role');
+        if (final.value.role === 'basics')
+          addIssue(issues, file, lesson.concept, 'basics exercise cannot be a lesson final');
       }
       if (lesson.knowledge_points.some((point) => point.problems.includes(lesson.final ?? ''))) {
         addIssue(
@@ -739,6 +752,21 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
       if (point.problems.length < 3) {
         addIssue(issues, file, point.id, 'knowledge point must reference at least 3 problems');
       }
+      const firstProblemId = point.problems[0];
+      const firstProblem = firstProblemId ? exercises.get(firstProblemId) : undefined;
+      if (firstProblem?.value.role !== 'basics') {
+        addIssue(issues, file, point.id, 'knowledge point first problem must have basics role');
+      } else if (
+        firstProblem.value.type !== 'mc' ||
+        firstProblem.value.dimension !== 'conceptual'
+      ) {
+        addIssue(
+          issues,
+          file,
+          point.id,
+          'knowledge point first problem must be a conceptual multiple-choice basics exercise',
+        );
+      }
       const fixedProblems = point.problems.filter((problemId) => {
         const problem = exercises.get(problemId)?.value;
         return problem !== undefined && !isTemplate(problem);
@@ -786,7 +814,11 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
             `problem "${problemId}" belongs to "${problem.concept}"`,
           );
         }
-        if (problem.value.role !== 'practice' && problem.value.role !== 'check') {
+        if (
+          problem.value.role !== 'practice' &&
+          problem.value.role !== 'check' &&
+          !(problemId === firstProblemId && problem.value.role === 'basics')
+        ) {
           addIssue(
             issues,
             file,
@@ -812,6 +844,30 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
           ? 'practice exercise must be referenced by exactly one knowledge point'
           : 'practice exercise is not referenced by a knowledge point',
       );
+    }
+    if (exercise.role === 'basics') {
+      if (references.get(exercise.id) !== 1) {
+        addIssue(
+          issues,
+          file,
+          exercise.id,
+          references.has(exercise.id)
+            ? 'basics exercise must be referenced by exactly one knowledge point'
+            : 'basics exercise is not referenced by a knowledge point',
+        );
+      }
+      if (exercise.type === 'mc') {
+        for (const option of exercise.options) {
+          if (!option.feedback?.trim()) {
+            addIssue(
+              issues,
+              file,
+              exercise.id,
+              `basics option "${option.id}" must include feedback`,
+            );
+          }
+        }
+      }
     }
     if (isTemplate(exercise) && exercise.role !== 'practice') {
       addIssue(issues, file, exercise.id, 'templates must have practice role');

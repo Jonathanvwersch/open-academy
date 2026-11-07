@@ -108,7 +108,7 @@ export function registerLearnCourseRoutes(
       const lessonState =
         activity.kind === 'learn' && lesson?.knowledge_points?.length
           ? run
-            ? deriveLessonState(lesson, problemsByRun.get(run.id) ?? [])
+            ? deriveLessonState(lesson, problemsByRun.get(run.id) ?? [], index.exercisesById)
             : {
                 points: lesson.knowledge_points.map(() => ({ status: 'active' })),
               }

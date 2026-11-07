@@ -379,7 +379,9 @@ function buildPracticeBlock(
       conceptId,
       (content.exercisesByConcept.get(conceptId) ?? [])
         .filter(
-          (item) => (item.role === 'core' || item.role === 'review') && !excluded.has(item.id),
+          (item) =>
+            (item.role === 'core' || item.role === 'review' || item.role === 'basics') &&
+            !excluded.has(item.id),
         )
         .sort((left, right) => left.est_minutes - right.est_minutes),
     ]),
@@ -644,8 +646,8 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     const record = masteryByKey.get(masteryKey(card.conceptId, card.dimension));
     const isIndependent = record && masteryRank(record.state) >= masteryRank('independent');
     const reviewRoles = isIndependent
-      ? ['transfer', 'review', 'core', 'practice']
-      : ['review', 'core', 'practice', 'transfer'];
+      ? ['transfer', 'review', 'core', 'practice', 'basics']
+      : ['review', 'core', 'practice', 'transfer', 'basics'];
     const exercise = chooseExercise(
       state,
       content,
@@ -1015,7 +1017,7 @@ function planSunday(
           content,
           concept,
           undefined,
-          ['core', 'transfer', 'review'],
+          ['core', 'transfer', 'review', 'basics'],
           now,
         ),
       )

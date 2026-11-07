@@ -457,7 +457,7 @@ test('opening a lesson review does not create session or attempt rows', async ()
   expect(afterMasteryEvents).toHaveLength(beforeMasteryEvents.length);
 });
 
-test('lesson-runner review cards are all planned, then rescheduled after review', async () => {
+test('lesson-runner schedules one due review per concept, then reschedules it', async () => {
   await resetLearner('America/Los_Angeles');
   const dayOne = '2026-01-01T12:00:00.000Z';
   const { activity } = await createLearnActivity(dayOne);
@@ -484,9 +484,10 @@ test('lesson-runner review cards are all planned, then rescheduled after review'
       return `${activity.conceptId}/${exercise?.dimension}`;
     },
   );
-  expect(new Set(plannedCardKeys)).toEqual(
-    new Set(dueCards.map((card) => `${card.conceptId}/${card.dimension}`)),
-  );
+  expect(reviewActivities).toHaveLength(1);
+  expect(
+    dueCards.some((card) => plannedCardKeys.includes(`${card.conceptId}/${card.dimension}`)),
+  ).toBe(true);
 
   const reviewActivity = reviewActivities[0];
   if (!reviewActivity) throw new Error('No due review activity was planned');

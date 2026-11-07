@@ -862,6 +862,32 @@ test('due review prefers a fresh practice exercise over a recent review exercise
   expect(review?.exerciseIds[0]).toBe(practiceExercise.id);
 });
 
+test('due reviews can select a basics exercise', () => {
+  const basics = required(
+    (content.exercisesByConcept.get('vectors') ?? []).find(
+      (exercise) => exercise.id === 'vectors-fixture-1-basics',
+    ),
+    'vectors basics exercise',
+  );
+  const exercisesByConcept = new Map(content.exercisesByConcept);
+  exercisesByConcept.set('vectors', [basics]);
+  const reviewContent: ContentIndex = { ...content, exercisesByConcept };
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'conceptual',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+
+  const review = planSession(state, reviewContent, now, 60).activities.find(
+    (activity) => activity.kind === 'review' && activity.conceptId === 'vectors',
+  );
+  expect(review?.exerciseIds).toContain(basics.id);
+});
+
 test('due review falls back to a recent exercise when no fresh choice exists', () => {
   const reviewExercise = required(
     (content.exercisesByConcept.get('vectors') ?? []).find(
