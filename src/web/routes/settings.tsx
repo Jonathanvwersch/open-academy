@@ -7,6 +7,7 @@ import { Button } from '@/ui/button.js';
 import { Card, CardContent } from '@/ui/card.js';
 import { Input } from '@/ui/input.js';
 import { Label } from '@/ui/label.js';
+import { apiFetch } from '../authenticated-fetch.js';
 import { settingsQueryOptions } from '../queries.js';
 
 export const Route = createFileRoute('/settings')({
@@ -18,11 +19,12 @@ function SettingsPage() {
   const { data: settings } = useSuspenseQuery(settingsQueryOptions());
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [authError, setAuthError] = useState('');
   const [draft, setDraft] = useState(settings);
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
-    const response = await fetch('/api/settings', {
+    const response = await apiFetch('/api/settings', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(draft),
@@ -33,6 +35,15 @@ function SettingsPage() {
     }
     setSaved(true);
   };
+  async function logout(endpoint: 'logout' | 'logout-all') {
+    setAuthError('');
+    const response = await apiFetch(`/api/auth/${endpoint}`, { method: 'POST' });
+    if (!response.ok) {
+      setAuthError('Could not log out.');
+      return;
+    }
+    window.location.replace('/login');
+  }
   return (
     <section className="mx-auto max-w-3xl space-y-6">
       <div>
@@ -98,6 +109,22 @@ function SettingsPage() {
           </CardContent>
         </Card>
       </form>
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Security</h2>
+        {authError ? (
+          <Alert variant="destructive">
+            <AlertDescription>{authError}</AlertDescription>
+          </Alert>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" onClick={() => void logout('logout')}>
+            Log out
+          </Button>
+          <Button type="button" variant="outline" onClick={() => void logout('logout-all')}>
+            Log out of all devices
+          </Button>
+        </div>
+      </section>
     </section>
   );
 }

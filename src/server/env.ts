@@ -8,6 +8,7 @@ const envSchema = z.object({
     .url()
     .default('postgres://academy:academy@localhost:5433/academy_test'),
   PORT: z.coerce.number().int().positive().default(3001),
+  ACADEMY_PASSWORD: z.string().max(200).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_MODEL: z.string().default('gpt-5.4-mini'),
   TUTOR_DAILY_CALL_CAP: z.coerce.number().int().positive().default(200),

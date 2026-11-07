@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
 import { Input } from '@/ui/input.js';
 import { Label } from '@/ui/label.js';
+import { apiFetch } from '../authenticated-fetch.js';
 import { Markdown } from '../components.js';
 import { projectQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
@@ -22,7 +23,7 @@ function LabPage() {
   async function upload(file?: File) {
     if (!file) return;
     try {
-      const response = await fetch('/api/projects/linreg-numpy/results', {
+      const response = await apiFetch('/api/projects/linreg-numpy/results', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: await file.text(),

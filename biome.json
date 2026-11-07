@@ -13,6 +13,7 @@
       "!dist",
       "!playwright-report",
       "!test-results",
+      "!tests/e2e/.auth",
       "!docs",
       "!drizzle/meta",
       "!src/server/tutor/prompts",

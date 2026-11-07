@@ -1,4 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
+import { apiFetch } from './authenticated-fetch.js';
 import type { ClientExercise, LessonBlockKind } from './components.js';
 
 export interface TodayPayload {
@@ -282,8 +283,20 @@ export interface TutorThreadDetail {
   messages: Array<{ id: string; role: string; content: string; createdAt: string }>;
 }
 
+export interface AuthPayload {
+  authenticated: boolean;
+  authRequired: boolean;
+}
+
+export const authQueryOptions = () =>
+  queryOptions({
+    queryKey: ['auth', 'me'] as const,
+    queryFn: () => getJson<AuthPayload>('/api/auth/me', 'Could not check authentication'),
+    staleTime: Infinity,
+  });
+
 async function getJson<T>(url: string, message: string): Promise<T> {
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (!response.ok) throw new Error(message);
   return (await response.json()) as T;
 }

@@ -1,5 +1,10 @@
 import { spawn, spawnSync } from 'node:child_process';
+import 'dotenv/config';
 import { waitForDatabase } from './wait-for-db.mjs';
+
+if (!process.env.ACADEMY_PASSWORD) {
+  console.warn('Warning: ACADEMY_PASSWORD is unset; authentication is off.');
+}
 
 function run(command, args) {
   const result = spawnSync(command, args, { stdio: 'inherit' });

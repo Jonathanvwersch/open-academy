@@ -8,6 +8,13 @@ import { createDb } from './db/client.js';
 import { users } from './db/schema.js';
 import { env } from './env.js';
 
+const academyPassword = env.ACADEMY_PASSWORD;
+if (!academyPassword || academyPassword.length < 12) {
+  throw new Error(
+    'ACADEMY_PASSWORD must be set to at least 12 characters before starting production.',
+  );
+}
+
 const webRoot = resolve('dist/web');
 const db = createDb(env.DATABASE_URL);
 
@@ -24,7 +31,7 @@ await db
   .onConflictDoNothing();
 
 const indexHtml = await readFile(resolve(webRoot, 'index.html'), 'utf8');
-const app = createApp({ db });
+const app = createApp({ db, auth: { password: academyPassword } });
 app.use('/*', serveStatic({ root: 'dist/web' }));
 app.get('*', (context) =>
   context.req.path.startsWith('/api/') ? context.notFound() : context.html(indexHtml),

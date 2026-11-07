@@ -27,3 +27,10 @@ pnpm build
 
 Vitest uses the separate `academy_test` database. `pnpm test:e2e` starts the local dev stack through Playwright's web server configuration.
 `pnpm db:reset` truncates learner state in the development database and reseeds the default learner.
+
+## Deployment
+
+Set `ACADEMY_PASSWORD` as a deployment secret before starting the public app. Production startup
+requires a password of at least 12 characters. The Ample service declares this secret in
+`ample.toml`; configure its value through Ample's secret management, not in the repository.
+Locally, leaving it unset disables login and prints a warning from `pnpm dev`.

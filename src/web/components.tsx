@@ -7,6 +7,7 @@ import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import { normalizeDisplayMath } from '../shared/markdown';
+import { apiFetch } from './authenticated-fetch.js';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert.js';
 import { Badge } from './ui/badge.js';
 import { Button } from './ui/button.js';
@@ -503,7 +504,7 @@ export function HintLadder({
   const showSolution = !canRequestHint;
   const requestHint = async () => {
     setLoading(true);
-    const response = await fetch('/api/hints', {
+    const response = await apiFetch('/api/hints', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({

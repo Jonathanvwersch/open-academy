@@ -1,5 +1,6 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { apiFetch } from '../authenticated-fetch.js';
 import { ExerciseForm, FeedbackPanel, LessonBlock, Markdown } from '../components.js';
 import { type LessonRunPayload, lessonQueryOptions, lessonRunQueryOptions } from '../queries.js';
 import { SessionActivityHeader } from '../session/SessionActivityHeader.js';
@@ -94,7 +95,7 @@ export function LessonRunner({
     if ((!state || retryBelongsToAnotherActivity) && !starting.current) {
       starting.current = true;
       setBusy(true);
-      void fetch(`/api/lessons/${encodeURIComponent(conceptId)}/run`, {
+      void apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/run`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ activityId }),
@@ -116,7 +117,7 @@ export function LessonRunner({
     setBusy(true);
     setError('');
     try {
-      const response = await fetch(`/api/lessons/${encodeURIComponent(conceptId)}/run/answer`, {
+      const response = await apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/run/answer`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ problemId: state.pending.id, answer, activityId }),
@@ -143,7 +144,7 @@ export function LessonRunner({
     setBusy(true);
     setError('');
     try {
-      const response = await fetch(`/api/lessons/${encodeURIComponent(conceptId)}/run`, {
+      const response = await apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/run`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ activityId }),
