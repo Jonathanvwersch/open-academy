@@ -211,6 +211,7 @@ weeks:
         [
           vision-encoders,
           image-text-alignment,
+          jepa,
           vision-language-models,
           action-representations,
           vision-conditioned-policies,
