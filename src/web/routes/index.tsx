@@ -47,10 +47,7 @@ function LearnPage() {
   if (today.needsDiagnostic) {
     return (
       <section className="space-y-6">
-        <div>
-          <p className="text-sm text-muted-foreground">Your learning plan</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Learn</h1>
-        </div>
+        <h1 className="sr-only">Learn</h1>
         <Card>
           <CardHeader>
             <CardTitle>Welcome to Academy</CardTitle>
@@ -78,10 +75,7 @@ function LearnPage() {
 
   return (
     <section className="space-y-6">
-      <div>
-        <p className="text-sm text-muted-foreground">Your learning plan</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Learn</h1>
-      </div>
+      <h1 className="sr-only">Learn</h1>
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader>
