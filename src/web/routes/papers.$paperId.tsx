@@ -7,6 +7,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { z } from 'zod';
 import { Button } from '@/ui/button.js';
 import { Textarea } from '@/ui/textarea.js';
+import { apiFetch } from '../authenticated-fetch.js';
 import { FeedbackPanel, Markdown } from '../components.js';
 import { paperQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
@@ -191,7 +192,7 @@ function PaperReaderPage() {
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      void fetch(`/api/papers/${encodeURIComponent(paperId)}/progress`, {
+      void apiFetch(`/api/papers/${encodeURIComponent(paperId)}/progress`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ lastPage: boundedPage }),
@@ -212,7 +213,7 @@ function PaperReaderPage() {
         return undefined;
       return window.setTimeout(() => {
         setNoteStatuses((current) => ({ ...current, [question.id]: 'saving' }));
-        void fetch(`/api/papers/${encodeURIComponent(paperId)}/progress`, {
+        void apiFetch(`/api/papers/${encodeURIComponent(paperId)}/progress`, {
           method: 'PUT',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ notes: { [question.id]: text } }),
@@ -321,7 +322,7 @@ function PaperReaderPage() {
 
   const submitSummary = async () => {
     setSubmitting(true);
-    const response = await fetch(`/api/papers/${encodeURIComponent(paperId)}/summary`, {
+    const response = await apiFetch(`/api/papers/${encodeURIComponent(paperId)}/summary`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ summary, ...(activity ? { activityId: activity } : {}) }),

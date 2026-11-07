@@ -1,7 +1,14 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, Link, Outlet, useRouterState } from '@tanstack/react-router';
+import {
+  createRootRouteWithContext,
+  Link,
+  Outlet,
+  redirect,
+  useRouterState,
+} from '@tanstack/react-router';
 import { Button } from '@/ui/button.js';
 import { TooltipProvider } from '@/ui/tooltip.js';
+import { authQueryOptions } from '../queries.js';
 import { TutorContextProvider } from '../tutor/TutorSidebar.js';
 
 interface RouterContext {
@@ -19,6 +26,7 @@ const navigation = [
 
 function RootLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  if (pathname === '/login') return <Outlet />;
   const isPaperReader = pathname.startsWith('/papers/');
   return (
     <TooltipProvider>
@@ -58,7 +66,7 @@ function RootLayout() {
             className={
               isPaperReader
                 ? 'flex w-full min-h-0 min-w-0 flex-1 px-0 py-0'
-                : 'mx-auto max-w-3xl px-5 py-8'
+                : 'mx-auto w-full max-w-3xl px-5 py-8'
             }
           >
             <Outlet />
@@ -70,5 +78,14 @@ function RootLayout() {
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
+  beforeLoad: async ({ context, location }) => {
+    const auth = await context.queryClient.ensureQueryData(authQueryOptions());
+    if (auth.authRequired && !auth.authenticated && location.pathname !== '/login') {
+      throw redirect({
+        to: '/login',
+        search: { redirect: `${location.pathname}${location.searchStr}` },
+      });
+    }
+  },
   component: RootLayout,
 });

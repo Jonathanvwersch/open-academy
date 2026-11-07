@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CourseRouteImport } from './routes/course'
 import { Route as DiagnosticRouteImport } from './routes/diagnostic'
 import { Route as LabRouteImport } from './routes/lab'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -39,6 +40,11 @@ const DiagnosticRoute = DiagnosticRouteImport.update({
 const LabRoute = LabRouteImport.update({
   id: '/lab',
   path: '/lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MapRoute = MapRouteImport.update({
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/course': typeof CourseRoute
   '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByTo {
   '/course': typeof CourseRoute
   '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
@@ -109,6 +117,7 @@ export interface FileRoutesById {
   '/course': typeof CourseRoute
   '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/course'
     | '/diagnostic'
     | '/lab'
+    | '/login'
     | '/map'
     | '/progress'
     | '/settings'
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/course'
     | '/diagnostic'
     | '/lab'
+    | '/login'
     | '/map'
     | '/progress'
     | '/settings'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/course'
     | '/diagnostic'
     | '/lab'
+    | '/login'
     | '/map'
     | '/progress'
     | '/settings'
@@ -164,6 +176,7 @@ export interface RootRouteChildren {
   CourseRoute: typeof CourseRoute
   DiagnosticRoute: typeof DiagnosticRouteWithChildren
   LabRoute: typeof LabRoute
+  LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
   ProgressRoute: typeof ProgressRoute
   SettingsRoute: typeof SettingsRoute
@@ -200,6 +213,13 @@ declare module '@tanstack/react-router' {
       path: '/lab'
       fullPath: '/lab'
       preLoaderRoute: typeof LabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/map': {
@@ -271,6 +291,7 @@ const rootRouteChildren: RootRouteChildren = {
   CourseRoute: CourseRoute,
   DiagnosticRoute: DiagnosticRouteWithChildren,
   LabRoute: LabRoute,
+  LoginRoute: LoginRoute,
   MapRoute: MapRoute,
   ProgressRoute: ProgressRoute,
   SettingsRoute: SettingsRoute,

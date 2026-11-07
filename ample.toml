@@ -12,6 +12,7 @@ health_path = "/api/health"
 
 [services.academy.env]
 DATABASE_URL = { database = "main" }
+ACADEMY_PASSWORD = { secret = true }
 
 [databases.main]
 engine = "postgres"

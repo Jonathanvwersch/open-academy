@@ -4,6 +4,7 @@ import { Badge } from '@/ui/badge.js';
 import { Button } from '@/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
 import { Progress } from '@/ui/progress.js';
+import { apiFetch } from '../authenticated-fetch.js';
 import { learnQueryOptions, todayQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
 
@@ -28,7 +29,7 @@ function LearnPage() {
   const { data: today } = useSuspenseQuery(todayQueryOptions());
   const startSession = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/sessions', {
+      const response = await apiFetch('/api/sessions', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({}),

@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/ui/alert.js';
 import { Badge } from '@/ui/badge.js';
 import { Button } from '@/ui/button.js';
 import { Card, CardContent } from '@/ui/card.js';
+import { apiFetch } from '../authenticated-fetch.js';
 import { ExerciseForm, FeedbackPanel, HintLadder, LessonBlock, Markdown } from '../components';
 import { LessonRunner } from '../lesson/LessonRunner.js';
 import {
@@ -179,7 +180,7 @@ function SessionPage() {
     const key = `replanned:${id}`;
     if (elapsed > session.plannedMinutes * 1.3 && !window.sessionStorage.getItem(key)) {
       window.sessionStorage.setItem(key, 'true');
-      void fetch(`/api/sessions/${id}/replan`, {
+      void apiFetch(`/api/sessions/${id}/replan`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -258,7 +259,7 @@ function SessionPage() {
 
   const markLessonViewed = async () => {
     if (!activity) return;
-    await fetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
+    await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ ...(activity.progress ?? {}), lessonViewed: true }),
@@ -268,7 +269,7 @@ function SessionPage() {
 
   const completeActivity = async () => {
     if (!activity) return;
-    await fetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
+    await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ ...(activity.progress ?? {}), complete: true }),
@@ -284,7 +285,7 @@ function SessionPage() {
         : activity.kind === 'review'
           ? 'review'
           : 'practice';
-    const response = await fetch('/api/attempts', {
+    const response = await apiFetch('/api/attempts', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ exerciseId, activityId: activity.id, answer, mode }),
@@ -297,7 +298,7 @@ function SessionPage() {
   };
   const continueNext = async () => {
     if (showingCompletedFinal && activity) {
-      await fetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
+      await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -315,7 +316,7 @@ function SessionPage() {
       status === 'completed' &&
       !!lesson?.final &&
       !(activity.progress?.completedExerciseIds ?? []).includes(lesson.final);
-    await fetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
+    await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -328,7 +329,7 @@ function SessionPage() {
   };
 
   const endSession = async () => {
-    await fetch(`/api/sessions/${id}/end`, { method: 'POST' });
+    await apiFetch(`/api/sessions/${id}/end`, { method: 'POST' });
     window.location.href = '/';
   };
 
@@ -417,7 +418,7 @@ function SessionPage() {
           completed={activity.status === 'completed'}
           tutorEnabled={sessionQuery.data.tutorEnabled}
           onSkip={async () => {
-            await fetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
+            await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
               body: JSON.stringify({ complete: true }),
@@ -688,7 +689,7 @@ function InlineLessonCheck({
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const { data: exercise } = useSuspenseQuery(exerciseQueryOptions(exerciseId));
   const submit = async (answer: unknown) => {
-    const response = await fetch('/api/attempts', {
+    const response = await apiFetch('/api/attempts', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ exerciseId, activityId, answer, mode: 'practice' }),

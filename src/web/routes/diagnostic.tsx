@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/ui/button.js';
 import { Card, CardContent } from '@/ui/card.js';
 import { Skeleton } from '@/ui/skeleton.js';
+import { apiFetch } from '../authenticated-fetch.js';
 import { ExerciseForm, Markdown, ModeBadge } from '../components';
 
 interface DiagnosticItem {
@@ -33,7 +34,7 @@ function DiagnosticPage() {
 
   const loadNext = useCallback(
     async (id: string) => {
-      const response = await fetch(`/api/diagnostic/${id}/next`);
+      const response = await apiFetch(`/api/diagnostic/${id}/next`);
       const data = await response.json();
       setFeedback('');
       if (data.complete) {
@@ -56,7 +57,7 @@ function DiagnosticPage() {
     if (!runPromise.current) {
       runPromise.current = activeRunId
         ? Promise.resolve({ id: activeRunId })
-        : fetch('/api/diagnostic', { method: 'POST' }).then((response) => response.json());
+        : apiFetch('/api/diagnostic', { method: 'POST' }).then((response) => response.json());
     }
     void runPromise.current.then((run) => {
       if (active) {
@@ -72,7 +73,7 @@ function DiagnosticPage() {
   const submit = async (answer: unknown) => {
     if (!exercise || !runId) return;
     setBusy(true);
-    const response = await fetch(`/api/diagnostic/${runId}/answer`, {
+    const response = await apiFetch(`/api/diagnostic/${runId}/answer`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ exerciseId: exercise.id, answer }),
@@ -91,7 +92,7 @@ function DiagnosticPage() {
   const skip = async () => {
     if (!domain || !runId) return;
     setBusy(true);
-    const response = await fetch(`/api/diagnostic/${runId}/skip`, {
+    const response = await apiFetch(`/api/diagnostic/${runId}/skip`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ domain }),

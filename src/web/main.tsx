@@ -38,7 +38,7 @@ const router = createRouter({
   context: { queryClient },
   defaultPreload: 'intent',
   defaultPreloadStaleTime: 0,
-  defaultPendingMs: 400,
+  defaultPendingMs: 3_500,
   defaultPendingMinMs: 300,
   defaultPendingComponent: RoutePendingSkeleton,
   defaultErrorComponent: DefaultRouteError,

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Eye, Plus, Sparkles, X } from 'lucide-react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile.js';
+import { apiFetch } from '../authenticated-fetch.js';
 import { Markdown } from '../components.js';
 import {
   type TutorThreadDetail,
@@ -128,7 +129,7 @@ function relativeThreadTime(value: string): string {
 }
 
 async function getJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (!response.ok) throw new Error('Tutor conversations could not be loaded.');
   return (await response.json()) as T;
 }
@@ -233,7 +234,7 @@ export function TutorContextProvider({
       const target = threadId
         ? `/api/tutor/threads/${encodeURIComponent(threadId)}/messages`
         : '/api/tutor/threads';
-      const response = await fetch(target, {
+      const response = await apiFetch(target, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({

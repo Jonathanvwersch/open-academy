@@ -7,6 +7,7 @@ import { Badge } from '@/ui/badge.js';
 import { Button } from '@/ui/button.js';
 import { Card, CardContent } from '@/ui/card.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/select.js';
+import { apiFetch } from '../authenticated-fetch.js';
 import { conceptQueryOptions, mapQueryOptions } from '../queries.js';
 import { useTutorSidebar } from '../tutor/TutorSidebar.js';
 import '@xyflow/react/dist/style.css';
@@ -106,7 +107,7 @@ function MapPage() {
   }, [queryClient]);
   const studyNow = async () => {
     const concept = selected?.concept as { id?: string } | undefined;
-    const response = await fetch('/api/sessions', {
+    const response = await apiFetch('/api/sessions', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ focusConceptId: concept?.id, budgetMinutes: 30 }),

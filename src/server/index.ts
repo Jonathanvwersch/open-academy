@@ -4,7 +4,10 @@ import { createDb } from './db/client.js';
 import { env } from './env.js';
 
 const db = createDb(env.DATABASE_URL);
-const app = createApp({ db });
+const app = createApp({
+  db,
+  auth: env.ACADEMY_PASSWORD ? { password: env.ACADEMY_PASSWORD } : null,
+});
 
 serve({
   fetch: app.fetch,
