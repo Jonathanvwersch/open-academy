@@ -110,7 +110,14 @@ function LazyPage({
       style={{ width, height: width * aspectRatio }}
     >
       {visible ? (
-        <Page pageNumber={pageNumber} width={width} renderTextLayer renderAnnotationLayer />
+        <Page
+          pageNumber={pageNumber}
+          width={width}
+          renderTextLayer
+          renderAnnotationLayer
+          loading={null}
+          suspense={false}
+        />
       ) : null}
     </div>
   );
@@ -462,6 +469,7 @@ function PaperReaderPage() {
             <Document
               key={retry}
               file={file}
+              suspense={false}
               onLoadSuccess={async (document) => {
                 const aspects = await Promise.all(
                   Array.from({ length: document.numPages }, async (_, index) => {
