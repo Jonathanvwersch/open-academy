@@ -2,6 +2,7 @@ import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../src/server/content/load.js';
 import type { ContentIndex } from '../src/server/content/types.js';
 import { gradeExercise } from '../src/server/grading/index.js';
+import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../src/server/grading/multiple-choice.js';
 import type { NumericExercise } from '../src/server/grading/types.js';
 
 let content: ContentIndex;
@@ -49,6 +50,24 @@ test('multiple choice explains selected wrong options and counts missed selectio
   expect(result.feedback).toContain('First wrong-option feedback.');
   expect(result.feedback).toContain('Second wrong-option feedback.');
   expect(result.feedback).toContain('You missed 2 correct options.');
+});
+
+test('multiple choice uses a concise fallback when a wrong option has no feedback', async () => {
+  const source = required(content.exercisesById.get('dx-vectors'), 'multiple choice exercise');
+  if (source.type !== 'mc') throw new Error('Expected multiple choice exercise');
+  const wrong = source.options.find((option) => !option.correct);
+  if (!wrong) throw new Error('Missing incorrect option');
+  const exercise = {
+    ...source,
+    options: source.options.map((option) =>
+      option.id === wrong.id ? { ...option, feedback: undefined } : option,
+    ),
+  };
+
+  expect((await gradeExercise(exercise, wrong.id)).feedback).toBe(
+    MULTIPLE_CHOICE_FALLBACK_FEEDBACK,
+  );
+  expect(MULTIPLE_CHOICE_FALLBACK_FEEDBACK).toBe('Not quite.');
 });
 
 test('numeric accepts fractions, scientific notation, tolerance, and common wrong answers', async () => {

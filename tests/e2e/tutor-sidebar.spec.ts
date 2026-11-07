@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
+import { eq } from 'drizzle-orm';
 import { createDb } from '../../src/server/db/client.js';
 import { sessionActivities, studySessions, users } from '../../src/server/db/schema.js';
 import { env } from '../../src/server/env.js';
@@ -244,6 +245,53 @@ test('tutor send failure restores the draft and removes the optimistic message',
   await expect(tutor.getByRole('alert')).toContainText('The tutor could not respond. Try again.');
   await expect(tutor.getByTestId('tutor-user-message')).toHaveCount(0);
   await expect(tutor.getByTestId('tutor-thinking-bubble')).toHaveCount(0);
+});
+
+test('Practice activity without a concept can send a tutor message', async ({ page }) => {
+  const db = createDb(env.TEST_DATABASE_URL);
+  await db
+    .update(sessionActivities)
+    .set({ status: 'planned' })
+    .where(eq(sessionActivities.sessionId, sessionId));
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId,
+      idx: 1,
+      kind: 'practice',
+      conceptId: null,
+      exerciseIds: ['slp-input-target'],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  await db.$client.end();
+  if (!activity) throw new Error('Could not create a null-concept practice activity');
+
+  let requestBody: Record<string, unknown> | undefined;
+  await page.route('**/api/tutor/threads**', async (route) => {
+    if (route.request().method() === 'POST') {
+      requestBody = route.request().postDataJSON();
+    }
+    await route.continue();
+  });
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByText(/A shop predicts tomorrow's number of orders/)).toBeVisible();
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  await tutor.getByRole('button', { name: 'New chat' }).first().click();
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.fill('What is the target in this question?');
+  await textarea.press('Enter');
+  await expect(
+    tutor.getByText('Tutor reply to: What is the target in this question?'),
+  ).toBeVisible();
+  await expect(page.getByText('Invalid tutor request', { exact: true })).toHaveCount(0);
+  expect(requestBody).toMatchObject({
+    activityId: activity.id,
+    exerciseId: 'slp-input-target',
+  });
+  expect(requestBody).not.toHaveProperty('conceptId');
 });
 
 test('tutor Reading context follows the session, lesson, and home pages', async ({ page }) => {

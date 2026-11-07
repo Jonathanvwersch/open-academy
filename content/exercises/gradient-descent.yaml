@@ -241,6 +241,7 @@ exercises:
           text: "The model is underfitting; add more layers",
           correct: false,
           category: misapplied_technique,
+          feedback: "Adding layers does not explain a loss that starts rising rapidly to NaN. A sharp rise after an initial decrease points to update steps that are too aggressive.",
         }
       - {
           id: c,
@@ -275,6 +276,7 @@ exercises:
           text: "The learning rate is too large",
           correct: false,
           category: incorrect_reasoning,
+          feedback: "A learning rate that is too large tends to produce oscillation or instability, not a smooth, very slow decrease. Compare the curve with what happens when a small step is doubled.",
         }
       - {
           id: c,
@@ -354,7 +356,13 @@ exercises:
           category: incorrect_reasoning,
           feedback: "There is a stability limit: past it the error grows each step.",
         }
-      - { id: c, text: "Both diverge", correct: false, category: incorrect_reasoning }
+      - {
+          id: c,
+          text: "Both diverge",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "A 10× rate gives 0.1 here, which can still be stable with unit-variance features. Distinguish that from the much more aggressive 100× rate.",
+        }
     solution: "With unit-variance features, MSE curvature is about 2, so the stability limit is around $\\eta \\approx 1$. Then 0.1 is fast and safe, while 1.0 sits right at the edge and typically oscillates or diverges once noise and correlated features are included. Check this against your experiment."
   - id: lab-linreg-explain-divergence
     dimension: transfer
@@ -407,6 +415,7 @@ exercises:
           text: "The model is underfitting and needs more features",
           correct: false,
           category: incorrect_reasoning,
+          feedback: "The two errors are close to each other and to the stated noise variance. Check whether this suggests a large gap or a model already near the measurement limit.",
         }
     solution: "With noise variance 0.25, no model can do much better than MSE ≈ 0.25 on new data."
   - id: gdp-why-negative-slope

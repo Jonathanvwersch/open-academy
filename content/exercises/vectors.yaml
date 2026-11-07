@@ -610,7 +610,13 @@ exercises:
           category: recall_failure,
           feedback: "That selects only the largest absolute entry. L2 length includes every squared entry.",
         }
-      - { id: d, text: "$\\sum_i x_i$", correct: false, category: recall_failure }
+      - {
+          id: d,
+          text: "$\\sum_i x_i$",
+          correct: false,
+          category: recall_failure,
+          feedback: "Adding signed components can let positive and negative entries cancel, so the sum is not a length. A length should reflect the magnitude of all entries without cancellation.",
+        }
     solution: "$\\|x\\|_2 = \\sqrt{\\sum_i x_i^2}$."
   - id: vec-explain
     dimension: conceptual

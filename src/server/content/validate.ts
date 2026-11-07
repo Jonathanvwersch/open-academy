@@ -262,6 +262,18 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
         }
         optionTexts.add(normalizedText);
       }
+      if (value.role !== 'diagnostic' && value.role !== 'basics') {
+        for (const option of value.options) {
+          if (!option.correct && !option.feedback?.trim()) {
+            addIssue(
+              issues,
+              file,
+              value.id,
+              `incorrect option "${option.id}" must include feedback`,
+            );
+          }
+        }
+      }
     }
     if (value.type === 'debug' && !value.fix_options.some((option) => option.correct)) {
       addIssue(issues, file, value.id, 'debug exercise must have at least one correct fix option');

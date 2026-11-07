@@ -8,6 +8,7 @@ import type { Database } from '../db/client.js';
 import { LearnerRepository } from '../db/repository.js';
 import { attempts, lessonProblems, lessonRuns, sessionActivities, xpEvents } from '../db/schema.js';
 import { gradeExercise } from '../grading/index.js';
+import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../grading/multiple-choice.js';
 import { updateActivityAndAdvance } from '../learning/activity-completion.js';
 import { answerDisplay, answerText } from '../learning/answer-display.js';
 import {
@@ -110,10 +111,10 @@ export function registerLessonRunRoutes(
       : [];
     const attemptFeedback = (lastAttempt?.feedback as { message?: string } | null)?.message;
     const feedback =
-      lastInstance?.type === 'mc' &&
-      attemptFeedback === 'Select the option or set of options that answers the prompt.'
+      lastInstance?.type === 'mc' && attemptFeedback === MULTIPLE_CHOICE_FALLBACK_FEEDBACK
         ? ''
-        : (attemptFeedback ?? (lastRow?.correct === 1 ? 'Correct.' : 'Not quite.'));
+        : (attemptFeedback ??
+          (lastRow?.correct === 1 ? 'Correct.' : MULTIPLE_CHOICE_FALLBACK_FEEDBACK));
     const earnedEvents = await deps.db
       .select({ amount: xpEvents.amount })
       .from(xpEvents)

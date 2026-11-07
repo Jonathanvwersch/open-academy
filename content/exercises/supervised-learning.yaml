@@ -155,7 +155,13 @@ exercises:
           category: misunderstood_definition,
           feedback: "That is the loss.",
         }
-      - { id: d, text: "The model's weights", correct: false, category: misunderstood_definition }
+      - {
+          id: d,
+          text: "The model's weights",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Weights are adjustable settings learned during training, not the outcome the supplier is asking the model to predict. Separate the desired future quantity from the parameters used to produce it.",
+        }
     solution: "The target is what we want to predict: tomorrow's demand. This is a regression problem."
   - id: dx-ml-1
     dimension: conceptual
@@ -199,6 +205,7 @@ exercises:
           text: "Predicting the remaining battery life in minutes",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Battery life in minutes is a measured quantity rather than a category label. Classify tasks by the form of the output, not by the fact it is a prediction.",
         }
     solution: "Spam status and object identity are category labels, so predicting them is classification. Position and battery life are numerical measurements, so predicting them is regression."
   - id: sl-review-ingredients
@@ -219,6 +226,7 @@ exercises:
           text: "The targets that best fit the inputs",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Targets are the observed outcomes in the past sales, not values chosen by the training procedure. Training adjusts the model settings to reduce loss against those outcomes.",
         }
       - {
           id: c,
@@ -311,18 +319,26 @@ exercises:
     prompt: "A shop received 50 orders today and needs to plan tomorrow's staffing. A model predicts tomorrow's number of orders from today's temperature and whether it is a weekday. What is the target?"
     options:
       - { id: a, text: "Tomorrow's number of orders", correct: true }
-      - { id: b, text: "Today's temperature", correct: false, category: misunderstood_definition }
+      - {
+          id: b,
+          text: "Today's temperature",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Temperature is available to the model before it predicts and helps it form the estimate. Ask which value the model is meant to produce for tomorrow.",
+        }
       - {
           id: c,
           text: "Whether it is a weekday",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Weekday status is another input that helps make the prediction, not the value being predicted. Look for the answer the staffing plan needs.",
         }
       - {
           id: d,
           text: "The model's adjustable settings",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Adjustable settings are learned by the model, not the quantity it returns for staffing. Separate model parameters from the prediction target.",
         }
     solution: "The target is the answer the model is being trained to predict: tomorrow's number of orders. Today's temperature and weekday status are inputs."
   - id: slp-parameters
@@ -339,18 +355,21 @@ exercises:
           text: "The house's size and bedroom count",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Size and bedroom count describe the house and serve as inputs to this model. The symbol $\\theta$ refers to something the training process can adjust.",
         }
       - {
           id: c,
           text: "The price the house actually sold for",
           correct: false,
           category: misunderstood_definition,
+          feedback: "The sold price is the observed outcome the model learns to estimate, not a setting it changes. Look for the symbols that control the formula.",
         }
       - {
           id: d,
           text: "The number of past sales",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Past sales are examples used to train the model, not its adjustable values. Think about which parts of the formula determine predictions.",
         }
     solution: "$\\theta$ names the model's adjustable parameters. Here those are $w_1$, $w_2$ and $b$."
   - id: slp-squared-error
@@ -524,18 +543,21 @@ exercises:
           text: "The largest possible loss",
           correct: false,
           category: misunderstood_definition,
+          feedback: "An argmin looks for a setting that makes the objective small; it does not search for the largest loss. Keep track of whether the operation is minimizing or maximizing.",
         }
       - {
           id: c,
           text: "The number of houses in the dataset",
           correct: false,
           category: misunderstood_definition,
+          feedback: "The number of houses describes the dataset size, not the value selected by `argmin`. Focus on what appears as the subscript to the optimization operation.",
         }
       - {
           id: d,
           text: "The average of the model's parameters",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Averaging parameter values is different from selecting settings according to their loss. Look at which quantity the formula asks to minimize.",
         }
     solution: "$\\arg\\min_\\theta$ asks for the adjustable settings that make the following average loss as small as possible. It names the settings, not the size of the loss."
   - id: slp-best-setting
@@ -552,13 +574,21 @@ exercises:
           text: "Setting B, because its average loss is larger",
           correct: false,
           category: misunderstood_definition,
+          feedback: "A larger squared error means the predictions are farther from the observed values on average, not a better fit. Compare the scores using the same loss on the same sales.",
         }
-      - { id: c, text: "They fit equally well", correct: false, category: incorrect_reasoning }
+      - {
+          id: c,
+          text: "They fit equally well",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The two settings have different average errors, so they do not fit these sales equally under this measure. Use the lower loss to compare fit.",
+        }
       - {
           id: d,
           text: "There is not enough information to compare their losses",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Both losses use the same metric on the same houses, so they are directly comparable. Check what the smaller score says about the fit.",
         }
     solution: "Both averages use the same squared-error measure on the same sales. The smaller average, 200, means Setting A fits these sales better."
   - id: slp-new-houses
@@ -610,18 +640,21 @@ exercises:
           text: "Predicting whether an email is spam",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Spam status is a category label rather than a measured amount. Decide whether each task predicts a number or selects a class.",
         }
       - {
           id: c,
           text: "Predicting which of three labels applies to a photo",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Choosing a photo label predicts which category applies; the number of possible labels does not turn it into regression. Focus on the kind of output.",
         }
       - {
           id: d,
           text: "Choosing between the labels yes and no",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Choosing yes or no is still selecting a category, even with only two labels. The number of possible labels does not determine regression versus classification.",
         }
     solution: "Regression predicts a number such as a sale price. Classification predicts a category or label."
   - id: slp-target-type-travel
@@ -638,18 +671,21 @@ exercises:
           text: "Classification, because journey times are categories",
           correct: false,
           category: misunderstood_definition,
+          feedback: "A duration measured in minutes is a numerical quantity, not a category. Decide based on what the app is asked to output.",
         }
       - {
           id: c,
           text: "Classification, because the app uses inputs",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Using inputs does not make a task classification; both task types use inputs. The distinction is whether the output is a measured number or a label.",
         }
       - {
           id: d,
           text: "Neither, because the target is not a house price",
           correct: false,
           category: misunderstood_definition,
+          feedback: "A predicted quantity need not be a house price to be regression. Look at whether this target is numerical or categorical.",
         }
     solution: "The target is a number of minutes, so this is regression."
   - id: slp-target-type-parcel
@@ -666,18 +702,21 @@ exercises:
           text: "Regression, because the target is a number",
           correct: false,
           category: misunderstood_definition,
+          feedback: "The arrival choice is one of two labels, not a measured amount. The number of possible labels does not determine whether the task is regression.",
         }
       - {
           id: c,
           text: "Regression, because there are two possible answers",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Two possible answers can still be categories; the count alone does not make them numerical values. Consider what “today” and “tomorrow” mean here.",
         }
       - {
           id: d,
           text: "Neither, because delivery status cannot be predicted",
           correct: false,
           category: misunderstood_definition,
+          feedback: "Delivery status can be predicted from information such as tracking history. Focus on whether the desired output is one of two labels or a numerical measurement.",
         }
     solution: "Today and tomorrow are categories, so predicting which one applies is classification."
   - id: slp-low-training-loss
@@ -694,17 +733,20 @@ exercises:
           text: "A small average loss means the target was a category",
           correct: false,
           category: misunderstood_definition,
+          feedback: "A small loss measures prediction error; it does not tell you whether the target was a category. The prompt describes a numeric price, but training performance alone says little about unseen houses.",
         }
       - {
           id: c,
           text: "The training loss must always be larger than the loss on new houses",
           correct: false,
           category: incorrect_reasoning,
+          feedback: "Training loss is not guaranteed to be higher than test loss; models can fit training examples especially well. Ask what a low training score tells you about houses not used to tune the settings.",
         }
       - {
           id: d,
           text: "A small loss means the model did not use its inputs",
           correct: false,
           category: misunderstood_definition,
+          feedback: "A small loss does not imply that the model ignored its inputs. It summarizes performance on the examples used to choose settings; consider how performance might change on a new house.",
         }
     solution: "A model can fit its training houses well but still predict new houses badly, so we test it on houses it did not train on."

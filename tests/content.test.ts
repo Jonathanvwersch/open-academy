@@ -593,7 +593,12 @@ test('a valid knowledge-point lesson with a parameterised practice problem passe
         solution: 'This answer matches the definition.',
         options: [
           { id: `${id}-yes`, text: 'Correct', correct: true },
-          { id: `${id}-no`, text: 'Incorrect', correct: false },
+          {
+            id: `${id}-no`,
+            text: 'Incorrect',
+            correct: false,
+            feedback: 'That choice does not match the explanation for this exercise.',
+          },
         ],
       }),
   );
@@ -696,6 +701,26 @@ test('multiple-choice exercises reject option texts duplicated by case or whites
   );
 });
 
+test('non-diagnostic multiple-choice distractors require feedback', async () => {
+  const data = await notationFixture();
+  const exercise = data.exercises.find(
+    ({ value }) => value.id === 'gradient-descent-fixture-review',
+  );
+  if (exercise?.value.type !== 'mc') throw new Error('Missing review multiple-choice fixture');
+  const incorrectOption = exercise.value.options.find((option) => !option.correct);
+  if (!incorrectOption) throw new Error('Missing incorrect option');
+  incorrectOption.feedback = undefined;
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: exercise.value.id,
+        message: `incorrect option "${incorrectOption.id}" must include feedback`,
+      }),
+    ]),
+  );
+});
+
 test('knowledge-point rules reject short, duplicate, missing, non-practice, and shared problems', async () => {
   const data = await notationFixture();
   const lesson = data.lessons.find(({ value }) => value.concept === 'vectors');
@@ -713,7 +738,12 @@ test('knowledge-point rules reject short, duplicate, missing, non-practice, and 
       solution: 'This option is correct because it matches the definition.',
       options: [
         { id: `${id}-yes`, text: 'Correct', correct: true },
-        { id: `${id}-no`, text: 'Incorrect', correct: false },
+        {
+          id: `${id}-no`,
+          text: 'Incorrect',
+          correct: false,
+          feedback: 'That choice does not match the explanation for this exercise.',
+        },
       ],
     });
   data.exercises.push(

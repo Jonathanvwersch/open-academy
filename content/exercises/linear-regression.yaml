@@ -203,8 +203,20 @@ exercises:
     prompt: "A house-price program stores 200 houses with 5 features each in `X`, with shape `(200, 5)`. Its weight vector `w` has shape `(5,)`. What is the shape of `X @ w + 0.3`, the predicted prices?"
     options:
       - { id: a, text: "`(200,)`", correct: true }
-      - { id: b, text: "`(5,)`", correct: false, category: misunderstood_definition }
-      - { id: c, text: "`(200, 5)`", correct: false, category: misunderstood_definition }
+      - {
+          id: b,
+          text: "`(5,)`",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "`(5,)` is the shape of `w`, which has one weight per feature. Multiplying `X @ w` combines those 5 values for each row, so the result has one prediction per house.",
+        }
+      - {
+          id: c,
+          text: "`(200, 5)`",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "`(200, 5)` is the shape of `X` itself. `X @ w` combines each row's 5 features into one weighted sum, so each house gets a single number. Multiplying every value by 5 would be `X * 5`, which does keep shape `(200, 5)`.",
+        }
       - {
           id: d,
           text: "`(200, 1)`",

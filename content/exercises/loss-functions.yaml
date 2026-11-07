@@ -177,6 +177,7 @@ exercises:
           text: "MSE ignores large errors; switch to a loss that squares them",
           correct: false,
           category: misunderstood_definition,
+          feedback: "MSE does not ignore large errors: squaring gives them more influence. Think about whether a robust loss should reduce or amplify the effect of extreme residuals.",
         }
       - {
           id: c,
@@ -214,12 +215,14 @@ exercises:
           text: "MSE gives the median; MAE gives the mean",
           correct: false,
           category: misunderstood_definition,
+          feedback: "A rare 60-minute trip has much more leverage under a squared penalty than under an absolute one. Ask which statistic minimizes each penalty when you must choose a single value.",
         }
       - {
           id: c,
           text: "Both give the same constant",
           correct: false,
           category: incorrect_reasoning,
+          feedback: "They do not generally give the same constant: a squared penalty gives an unusually long trip more influence than an absolute penalty. Consider how the two losses weigh the outlier.",
         }
     hints:
       [
