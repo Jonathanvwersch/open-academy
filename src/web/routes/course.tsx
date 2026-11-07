@@ -73,17 +73,24 @@ function CoursePage() {
                             <p className="text-xs text-muted-foreground">{contextLine}</p>
                           ) : null}
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge
-                              variant="secondary"
-                              className={
-                                topic.status === 'complete'
-                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                  : ''
-                              }
-                            >
-                              {topic.mastery}
-                            </Badge>
-                            {topic.status !== 'not_started' ? (
+                            {topic.status === 'locked' ? (
+                              <span className="text-xs text-muted-foreground">
+                                Needs{' '}
+                                {topic.needs?.map((prerequisite) => prerequisite.title).join(', ')}
+                              </span>
+                            ) : (
+                              <Badge
+                                variant="secondary"
+                                className={
+                                  topic.status === 'complete'
+                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                    : ''
+                                }
+                              >
+                                {COURSE_STATUS_LABEL[topic.status]}
+                              </Badge>
+                            )}
+                            {topic.status !== 'locked' && topic.mastery !== 'Not started' ? (
                               <span
                                 className={`text-xs ${
                                   topic.status === 'complete'
@@ -91,9 +98,7 @@ function CoursePage() {
                                     : 'text-muted-foreground'
                                 }`}
                               >
-                                {topic.status === 'locked'
-                                  ? `Needs ${topic.needs?.map((prerequisite) => prerequisite.title).join(', ')}`
-                                  : COURSE_STATUS_LABEL[topic.status]}
+                                Mastery: {topic.mastery}
                               </span>
                             ) : null}
                           </div>

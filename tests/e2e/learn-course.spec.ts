@@ -166,6 +166,17 @@ test('VLA titles on Course and π0 descriptions on Map render as plain text', as
                 leadsTo: [],
                 leadsToMore: 0,
               },
+              {
+                number: '10.2',
+                conceptId: 'linear-regression',
+                title: 'Linear regression',
+                hasLesson: false,
+                status: 'in_progress',
+                mastery: 'Not started',
+                buildsOn: [],
+                leadsTo: [],
+                leadsToMore: 0,
+              },
             ],
           },
         ],
@@ -194,6 +205,14 @@ test('VLA titles on Course and π0 descriptions on Map render as plain text', as
   const actionHeadsRow = page.getByRole('listitem').filter({ hasText: concepts[0].title });
   await expect(actionHeadsRow).toBeVisible();
   await expect(actionHeadsRow.locator('.katex')).toHaveCount(0);
+  await expect(actionHeadsRow).toContainText('Not started');
+  await expect(actionHeadsRow).not.toContainText('Mastery:');
+  const inProgressUnassessedRow = page
+    .getByRole('listitem')
+    .filter({ hasText: 'Linear regression' });
+  await expect(inProgressUnassessedRow).toContainText('In progress');
+  await expect(inProgressUnassessedRow).not.toContainText('Not started');
+  await expect(inProgressUnassessedRow).not.toContainText('Mastery:');
 
   for (const concept of concepts) {
     await page.goto(`/map?concept=${concept.id}`);
@@ -385,7 +404,7 @@ test('Course marks completed lessons green and links the whole row', async ({ pa
   await page.goto('/course');
   const completedRow = page.getByRole('link', { name: /1\.1.*Vectors/ });
   await expect(completedRow).toContainText('Complete');
-  await expect(completedRow).toContainText('Familiar');
+  await expect(completedRow).toContainText('Mastery: Familiar');
   await expect(completedRow).toHaveClass(/emerald/);
   await expect(
     page.locator('[data-slot="sidebar"][aria-label="Tutor"] [data-slot="sidebar-container"]'),
