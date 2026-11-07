@@ -2,11 +2,16 @@ import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/server/db/client.js';
 import { calculateCredit } from '../src/server/learning/mastery.js';
 import {
+  buildTutorInput,
   createTutorProvider,
   FakeProvider,
   TUTOR_PROMPT_VERSIONS,
 } from '../src/server/tutor/provider.js';
-import { RubricJudgementSchema, TutorReplySchema } from '../src/server/tutor/schemas.js';
+import {
+  RubricJudgementSchema,
+  type TutorContext,
+  TutorReplySchema,
+} from '../src/server/tutor/schemas.js';
 import { scoreRubric } from '../src/server/tutor/scoring.js';
 import { startOfLocalDay, TutorService, tutorCallAllowed } from '../src/server/tutor/service.js';
 
@@ -23,6 +28,86 @@ function testDatabase(dailyCount = 0) {
   } as unknown as Database;
   return { db, loggedCall: () => loggedCall };
 }
+
+function tutorContext(overrides: Partial<TutorContext> = {}): TutorContext {
+  return {
+    conceptTitle: 'Linear regression',
+    objectives: ['Understand the slope'],
+    lessonSummary: 'A line models the relationship between two variables.',
+    exercisePrompt: 'What does the slope represent?',
+    hintLevel: 1,
+    authoredHints: ['Think about how y changes as x changes.'],
+    solution: 'The slope is the change in y for each unit change in x.',
+    recentMistakes: [],
+    history: [],
+    problem_status: 'unanswered',
+    page: 'none',
+    page_content: '',
+    ...overrides,
+  };
+}
+
+describe('buildTutorInput', () => {
+  it('sends context, history, and the latest learner message as separate turns', () => {
+    const input = buildTutorInput(
+      tutorContext({
+        history: [
+          { role: 'learner', content: 'I do not understand the slope.' },
+          { role: 'tutor', content: 'What changes when x increases?' },
+        ],
+        question: 'ah true makes sense',
+      }),
+      'hint',
+    );
+
+    expect(input.map((message) => message.role)).toEqual([
+      'system',
+      'user',
+      'user',
+      'assistant',
+      'user',
+    ]);
+    expect(input.at(-1)).toEqual({ role: 'user', content: 'ah true makes sense' });
+    const contextMessage = input[1];
+    if (!contextMessage) throw new Error('Missing tutor context message');
+    const context = JSON.parse(contextMessage.content) as Record<string, unknown>;
+    expect(context).not.toHaveProperty('history');
+    expect(context).not.toHaveProperty('question');
+    expect(context).toMatchObject({
+      conceptTitle: 'Linear regression',
+      requested_help_level: 'hint',
+    });
+  });
+
+  it('adds the hint-button message when there is no question or history', () => {
+    const input = buildTutorInput(tutorContext({ history: [], question: undefined }), 'nudge');
+
+    expect(input).toHaveLength(3);
+    expect(input.at(-1)).toEqual({
+      role: 'user',
+      content:
+        '(No chat message: the learner pressed the hint button. Give help at requested_help_level.)',
+    });
+  });
+
+  it('maps tutor turns to assistant and learner turns to user', () => {
+    const input = buildTutorInput(
+      tutorContext({
+        history: [
+          { role: 'tutor', content: 'Consider the slope.' },
+          { role: 'learner', content: 'I see it now.' },
+        ],
+        question: 'Thanks.',
+      }),
+      'nudge',
+    );
+
+    expect(input.slice(2, 4)).toEqual([
+      { role: 'assistant', content: 'Consider the slope.' },
+      { role: 'user', content: 'I see it now.' },
+    ]);
+  });
+});
 
 describe('tutor contracts', () => {
   it('accepts only the prompt-defined tutor reply shape', () => {
