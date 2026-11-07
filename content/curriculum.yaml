@@ -233,6 +233,7 @@ weeks:
           vla-action-heads,
           robot-foundation-models,
           video-world-models,
+          world-action-models,
           embodiment-gap,
           landmark-robot-learning-papers,
         ],

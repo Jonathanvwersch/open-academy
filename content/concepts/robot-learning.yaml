@@ -172,6 +172,29 @@ concepts:
       status: stub,
     }
   - {
+      id: world-action-models,
+      title: "World action models",
+      description: "One model that predicts both the robot's future camera video and its actions, built on a pretrained video-generation model, so the policy learns how the world moves from video (UVA, 2025; Genie Envisioner, 2025; DreamZero, 2026).",
+      difficulty: 4,
+      est_minutes: 35,
+      week: 10,
+      goal_weight: 3,
+      dimensions: [conceptual, transfer],
+      prereqs: [{ id: video-world-models }, { id: vla-action-heads, strength: soft }],
+      objectives:
+        [
+          {
+            text: "Explain how jointly predicting future video and actions differs from a VLA that predicts actions only",
+            dimension: conceptual,
+          },
+          {
+            text: "Describe how a world action model can learn from videos that have no action labels, such as videos of humans",
+            dimension: transfer,
+          },
+        ],
+      status: stub,
+    }
+  - {
       id: embodiment-gap,
       title: Embodiment and human-vs-robot data,
       description: "Kinematic differences, retargeting, learning from human video (Mobile ALOHA, 2024; UMI, 2024).",
@@ -192,8 +215,8 @@ concepts:
     }
   - {
       id: landmark-robot-learning-papers,
-      title: "Landmark robot learning papers, 2022–2025",
-      description: "A timeline of the papers behind modern robot learning: what each solved, its key idea and what built on it (RT-1, SayCan, Diffusion Policy, ACT, RT-2, Open X-Embodiment, Octo, OpenVLA, DROID, π0, Genie, V-JEPA 2, GR00T N1, Gemini Robotics).",
+      title: "Landmark robot learning papers, 2022–2026",
+      description: "A timeline of the papers behind modern robot learning: what each solved, its key idea and what built on it (RT-1, SayCan, Diffusion Policy, ACT, RT-2, Open X-Embodiment, Octo, OpenVLA, DROID, π0, Genie, V-JEPA 2, GR00T N1, Gemini Robotics, UVA, Genie Envisioner, DreamZero).",
       difficulty: 4,
       est_minutes: 45,
       week: 10,
@@ -204,6 +227,7 @@ concepts:
           { id: robot-foundation-models },
           { id: action-chunking },
           { id: video-world-models, strength: soft },
+          { id: world-action-models, strength: soft },
           { id: embodiment-gap, strength: soft },
         ],
       objectives:
