@@ -29,6 +29,34 @@ export const TUTOR_PROMPT_VERSIONS: Record<TutorPromptId, string> = {
   'rubric-grader': createHash('sha256').update(rubricPrompt).digest('hex').slice(0, 12),
 };
 
+export type TutorInputMessage = {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+};
+
+export function buildTutorInput(ctx: TutorContext, level: TutorLevel): TutorInputMessage[] {
+  const { history = [], question, ...rest } = ctx;
+  return [
+    { role: 'system', content: tutorPrompt },
+    {
+      role: 'user',
+      content: JSON.stringify({ ...rest, requested_help_level: level }),
+    },
+    ...history.map(
+      (message): TutorInputMessage => ({
+        role: message.role === 'tutor' ? 'assistant' : 'user',
+        content: message.content,
+      }),
+    ),
+    {
+      role: 'user',
+      content: question?.trim()
+        ? question
+        : '(No chat message: the learner pressed the hint button. Give help at requested_help_level.)',
+    },
+  ];
+}
+
 export interface TutorUsage {
   inputTokens: number;
   outputTokens: number;
@@ -59,10 +87,7 @@ export class OpenAIProvider implements TutorProvider {
   async respond(ctx: TutorContext, level: TutorLevel): Promise<TutorResult<TutorReply>> {
     const response = await this.client.responses.parse({
       model: this.model,
-      input: [
-        { role: 'system', content: tutorPrompt },
-        { role: 'user', content: JSON.stringify({ ...ctx, requested_help_level: level }) },
-      ],
+      input: buildTutorInput(ctx, level),
       text: { format: zodTextFormat(TutorReplySchema, 'tutor_reply') },
       max_output_tokens: 900,
     });
