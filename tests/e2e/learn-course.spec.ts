@@ -137,9 +137,9 @@ test('VLA titles on Course and π0 descriptions on Map render as plain text', as
     },
     {
       id: 'landmark-robot-learning-papers',
-      title: 'Landmark robot learning papers, 2022–2025',
+      title: 'Landmark robot learning papers, 2022–2026',
       description:
-        'A timeline of the papers behind modern robot learning: what each solved, its key idea and what built on it (RT-1, SayCan, Diffusion Policy, ACT, RT-2, Open X-Embodiment, Octo, OpenVLA, DROID, π0, Genie, V-JEPA 2, GR00T N1, Gemini Robotics).',
+        'A timeline of the papers behind modern robot learning: what each solved, its key idea and what built on it (RT-1, SayCan, Diffusion Policy, ACT, RT-2, Open X-Embodiment, Octo, OpenVLA, DROID, π0, Genie, V-JEPA 2, GR00T N1, Gemini Robotics, UVA, Genie Envisioner, DreamZero).',
     },
   ] as const;
   await page.route('**/api/course', (route) =>
