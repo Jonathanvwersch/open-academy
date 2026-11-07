@@ -151,13 +151,13 @@ concepts:
   - {
       id: video-world-models,
       title: "Video world models for robotics",
-      description: "Generative models that predict future camera frames from actions, used as learned simulators, for planning and to evaluate policies (Genie, 2024; NVIDIA Cosmos, 2025; V-JEPA 2, 2025).",
+      description: "Models trained on video that predict what happens next given an action, either as future camera frames (Genie, 2024; NVIDIA Cosmos, 2025) or as future embeddings (V-JEPA 2-AC, 2025), used as learned simulators, for planning and to evaluate policies.",
       difficulty: 4,
       est_minutes: 35,
       week: 10,
       goal_weight: 2,
       dimensions: [conceptual, transfer],
-      prereqs: [{ id: world-models }, { id: diffusion-policies }],
+      prereqs: [{ id: world-models }, { id: diffusion-policies }, { id: jepa }],
       objectives:
         [
           {

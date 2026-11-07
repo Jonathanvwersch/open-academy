@@ -67,6 +67,29 @@ concepts:
       status: stub,
     }
   - {
+      id: jepa,
+      title: "Self-supervised learning and JEPA",
+      description: "Learning from unlabelled images and video by hiding part of the input and predicting the hidden part's embedding rather than its pixels (I-JEPA, 2023; V-JEPA, 2024; V-JEPA 2, 2025).",
+      difficulty: 4,
+      est_minutes: 30,
+      week: 9,
+      goal_weight: 2,
+      dimensions: [conceptual, transfer],
+      prereqs: [{ id: autoencoders }, { id: image-text-alignment }],
+      objectives:
+        [
+          {
+            text: "Explain how a JEPA differs from an autoencoder, which reconstructs pixels, and from contrastive learning, which needs negative pairs",
+            dimension: conceptual,
+          },
+          {
+            text: "Explain why predicting in embedding space suits world models used for robot planning",
+            dimension: transfer,
+          },
+        ],
+      status: stub,
+    }
+  - {
       id: vision-language-models,
       title: Vision-language models,
       description: "Feeding image tokens into a language model.",

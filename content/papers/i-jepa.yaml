@@ -1,0 +1,46 @@
+id: i-jepa
+title: Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture
+authors: Assran et al.
+year: 2023
+week: 9
+est_minutes: 90
+source:
+  arxiv: 2301.08243v3
+concepts:
+  - jepa
+  - vision-encoders
+why_this_week: "This week you meet JEPA: learning from unlabelled images by hiding part of each image and predicting the hidden part's embedding instead of its pixels. I-JEPA is the paper that introduced it for images. It is the starting point for V-JEPA 2, which Meta later turned into a world model that plans robot actions."
+how_to_read: "Read the introduction closely, with the figure comparing joint-embedding, generative and joint-embedding predictive architectures. Read the method section, focusing on the context block, the target blocks and why the targets are embeddings from a separate target encoder. Read the masking section, because the paper argues the choice of blocks is what makes the representations semantic. Skim the result tables for linear classification, counting and depth. Skip the appendices."
+questions:
+  - id: claim
+    kind: claim
+    prompt: What does the paper claim about learning image representations without hand-crafted data augmentations?
+  - id: method
+    kind: method
+    prompt: "Explain the training setup: what is the context block, what are the target blocks, and why does the model predict their embeddings rather than their pixels?"
+  - id: evidence
+    kind: evidence
+    prompt: What evidence supports the claim? Look at the downstream tasks it is tested on and at the training cost.
+  - id: limitations
+    kind: limitations
+    prompt: What does the paper not show, for example about video, about actions, or about how much the masking choices matter outside ImageNet?
+summary:
+  prompt: In about five sentences, explain to a classmate what problem this paper tackles, its key idea, the main evidence that it works, and one limitation.
+  rubric:
+    - id: r1
+      criterion: "States the claim: predicting the embeddings of hidden image regions learns semantic representations without hand-crafted augmentations"
+      weight: 2
+      required: true
+    - id: r2
+      criterion: "Explains the method: from one visible context block, a predictor estimates the embeddings of several hidden target blocks, produced by a separate target encoder, instead of reconstructing pixels"
+      weight: 2
+      required: true
+    - id: r3
+      criterion: Describes the evidence, e.g. strong results from linear classification to object counting and depth prediction, with a ViT-Huge trained on ImageNet on 16 A100 GPUs in under 72 hours
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Names a real limitation, e.g. images only with no video or actions, or results that depend on the masking strategy
+      weight: 1
+      required: false
+  exemplar: "Assran and colleagues ask how to learn useful image representations from unlabelled images without hand-designed augmentations. I-JEPA shows the model one visible block of an image and trains it to predict the embeddings of several hidden blocks, where those target embeddings come from a separate target encoder. Because it predicts embeddings rather than pixels, it does not spend effort on unpredictable detail such as exact textures. The masking strategy matters: target blocks must be large enough to carry meaning, and the context block must be spread out enough to be informative. A ViT-Huge trained this way on ImageNet in under 72 hours on 16 A100 GPUs did well on tasks from classification to object counting and depth, though the paper covers still images only, not video or actions."
