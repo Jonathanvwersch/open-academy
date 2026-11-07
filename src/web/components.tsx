@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import { normalizeDisplayMath } from '../shared/markdown';
 import { apiFetch } from './authenticated-fetch.js';
+import { cn } from './lib/utils.js';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert.js';
 import { Badge } from './ui/badge.js';
 import { Button } from './ui/button.js';
@@ -32,7 +33,15 @@ export interface ClientExercise {
   rubric?: Array<{ id: string; criterion: string; required: boolean }>;
 }
 
-export function Markdown({ children, inline = false }: { children: string; inline?: boolean }) {
+export function Markdown({
+  children,
+  inline = false,
+  className,
+}: {
+  children: string;
+  inline?: boolean;
+  className?: string;
+}) {
   const markdownComponents: Components = {
     code({ className, children: codeChildren, ...props }) {
       if (/\blanguage-svg\b/.test(className ?? '')) {
@@ -63,7 +72,7 @@ export function Markdown({ children, inline = false }: { children: string; inlin
       ) {
         return child;
       }
-      return <pre>{preChildren}</pre>;
+      return <pre className="overflow-x-auto rounded-lg bg-muted p-4">{preChildren}</pre>;
     },
   };
   const components: Components = inline
@@ -84,9 +93,11 @@ export function Markdown({ children, inline = false }: { children: string; inlin
     </ReactMarkdown>
   );
   return inline ? (
-    <span className="inline">{content}</span>
+    <span className={cn('inline', className)}>{content}</span>
   ) : (
-    <div className="markdown max-w-[70ch] text-base leading-7 text-foreground">{content}</div>
+    <div className={cn('markdown max-w-[70ch] text-base leading-7 text-foreground', className)}>
+      {content}
+    </div>
   );
 }
 
@@ -149,10 +160,10 @@ export function LessonBlock({
   }
   return (
     <Card className={kind === 'worked' ? 'gap-2 bg-muted/50' : 'gap-2'}>
-      <CardHeader className="gap-0 pt-4">
+      <CardHeader className="gap-0">
         <CardTitle className="text-sm font-medium">{lessonBlockLabels[kind]}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-2">
         {content ? <Markdown>{content}</Markdown> : null}
         {children}
       </CardContent>
@@ -341,7 +352,9 @@ export function ExerciseForm({
                         )
                       }
                     />
-                    <Markdown inline>{option.text}</Markdown>
+                    <span className="text-base leading-6 font-normal">
+                      <Markdown inline>{option.text}</Markdown>
+                    </span>
                   </Label>
                 );
               })}
@@ -361,7 +374,9 @@ export function ExerciseForm({
                     className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card p-3"
                   >
                     <RadioGroupItem id={optionId} value={option.id} />
-                    <Markdown inline>{option.text}</Markdown>
+                    <span className="text-base leading-6 font-normal">
+                      <Markdown inline>{option.text}</Markdown>
+                    </span>
                   </Label>
                 );
               })}
@@ -546,7 +561,7 @@ export function HintLadder({
         : showSolution
           ? 'Show solution'
           : mode === 'review'
-            ? "I'm stuck — show a hint"
+            ? 'Show a hint'
             : 'Hint'}
     </Button>
   );

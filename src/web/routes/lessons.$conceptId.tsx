@@ -5,9 +5,11 @@ import { Button } from '@/ui/button.js';
 import { LessonBlock, Markdown } from '../components.js';
 import { exerciseQueryOptions, lessonReviewQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
+import { LessonSkeleton } from '../skeletons.js';
 import { useTutorSidebar } from '../tutor/TutorSidebar.js';
 
 export const Route = createFileRoute('/lessons/$conceptId')({
+  pendingComponent: LessonSkeleton,
   validateSearch: (search: Record<string, unknown>) => ({
     from: typeof search.from === 'string' ? search.from : undefined,
   }),
@@ -54,7 +56,7 @@ function LessonReviewPage() {
     return () => tutorSidebar.clearContext();
   }, [conceptId, conceptTitle, tutorSidebar]);
   return (
-    <section className="mx-auto max-w-3xl space-y-6">
+    <section className="space-y-6">
       {from ? (
         <Button asChild variant="link" className="px-0">
           <a href={`/session/${encodeURIComponent(from)}`}>← Back to session</a>
@@ -129,7 +131,7 @@ function ReadOnlyCheck({ exerciseId, answer }: { exerciseId: string; answer: str
         answer ? (
           <Markdown>{answer}</Markdown>
         ) : (
-          <p className="text-sm text-neutral-600">No answer is available for this check.</p>
+          <p className="text-sm text-muted-foreground">No answer is available for this check.</p>
         )
       ) : null}
     </div>

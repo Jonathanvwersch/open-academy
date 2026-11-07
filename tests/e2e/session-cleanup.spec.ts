@@ -91,7 +91,7 @@ test('legacy session header links to a read-only lesson and returns with the res
   await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Show answer' }).first()).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/legacy-lesson.png`, fullPage: true });
-  await page.getByRole('link', { name: '← Back to session' }).click();
+  await page.getByRole('link', { name: 'Back to session' }).click();
   await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
   await expect(page.getByText('Not quite', { exact: true })).toBeVisible();
   await expect(page.getByTestId('exercise-prompt')).toContainText(questionText);
@@ -240,7 +240,7 @@ test('legacy lesson review presents labelled blocks as cards with checks inside'
 test('Map concept details link to the lesson', async ({ page }) => {
   await page.goto('/map');
   await page.getByText('Vectors', { exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Mastery by dimension' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mastery' })).toBeVisible();
   await page.getByRole('link', { name: 'View lesson' }).click();
   await expect(page).toHaveURL(/\/lessons\/vectors$/);
   await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();

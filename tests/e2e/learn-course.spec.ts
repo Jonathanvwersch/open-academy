@@ -118,7 +118,10 @@ test('Learn shows XP and tasks, starts a session, and Course links to lessons', 
     fullPage: true,
   });
   await page.screenshot({ path: `${screenshotDir}/course.png`, fullPage: true });
-  await page.getByRole('link', { name: 'View lesson' }).first().click();
+  await page
+    .getByRole('link', { name: /Vectors/ })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/lessons\/vectors$/);
   await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
 
@@ -205,7 +208,7 @@ test('VLA titles on Course and π0 descriptions on Map render as plain text', as
   const actionHeadsRow = page.getByRole('listitem').filter({ hasText: concepts[0].title });
   await expect(actionHeadsRow).toBeVisible();
   await expect(actionHeadsRow.locator('.katex')).toHaveCount(0);
-  await expect(actionHeadsRow).toContainText('Not started');
+  await expect(actionHeadsRow.locator('[data-slot="badge"]')).toHaveCount(0);
   await expect(actionHeadsRow).not.toContainText('Mastery:');
   const inProgressUnassessedRow = page
     .getByRole('listitem')

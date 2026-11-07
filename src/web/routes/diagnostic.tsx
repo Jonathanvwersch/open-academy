@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/ui/card.js';
 import { Skeleton } from '@/ui/skeleton.js';
 import { apiFetch } from '../authenticated-fetch.js';
 import { ExerciseForm, Markdown, ModeBadge } from '../components';
+import { PageSkeleton } from '../skeletons.js';
 
 interface DiagnosticItem {
   id: string;
@@ -18,6 +19,7 @@ interface DiagnosticItem {
 }
 
 export const Route = createFileRoute('/diagnostic')({
+  pendingComponent: PageSkeleton,
   component: DiagnosticPage,
 });
 
@@ -113,25 +115,25 @@ function DiagnosticPage() {
   }
 
   return (
-    <section className="mx-auto max-w-3xl space-y-6">
+    <section className="space-y-6">
       <div>
-        <p className="text-sm text-neutral-500">Getting started</p>
+        <p className="text-sm text-muted-foreground">Getting started</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">Starting-point diagnostic</h1>
-        <p className="mt-2 text-sm text-neutral-600">
+        <p className="mt-2 text-sm text-muted-foreground">
           A short set of questions will help place your first session.
         </p>
       </div>
       {exercise ? (
         <Card>
-          <CardContent className="space-y-5 p-6">
-            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          <CardContent className="space-y-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {domainTitle}
             </p>
             <ModeBadge mode="assessment" />
             <Markdown>{exercise.prompt}</Markdown>
             <ExerciseForm key={`${runId}:${exercise.id}`} exercise={exercise} onSubmit={submit} />
             {feedback ? (
-              <div role="status" className="text-sm text-neutral-600">
+              <div role="status" className="text-sm text-muted-foreground">
                 <Markdown>{feedback}</Markdown>
               </div>
             ) : null}
@@ -148,7 +150,7 @@ function DiagnosticPage() {
         </Card>
       ) : (
         <Card aria-busy="true" aria-label="Preparing diagnostic">
-          <CardContent className="space-y-5 p-6">
+          <CardContent className="space-y-5">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-6 w-3/4" />
             <Skeleton className="h-12 w-full" />

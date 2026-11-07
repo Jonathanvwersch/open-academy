@@ -173,10 +173,10 @@ test('passes every knowledge point and restores the exact problem and result aft
   await expect(page.getByTestId('lesson-problem-prompt')).toContainText(
     'Which statement best describes the main idea in this step?',
   );
-  await expect(page.getByLabel('0 correct in a row')).toBeVisible();
+  await expect(page.getByLabel('0 correct in a row')).toHaveCount(0);
   run = await answerAndReload(page, true);
   expect(run.points[0]).toMatchObject({ status: 'active', answered: 0, streak: 0 });
-  await expect(page.getByLabel('0 correct in a row')).toBeVisible();
+  await expect(page.getByLabel('0 correct in a row')).toHaveCount(0);
   await expect(page.getByLabel('1 correct in a row')).toHaveCount(0);
 
   for (let pointIndex = 0; pointIndex < run.points.length; pointIndex += 1) {

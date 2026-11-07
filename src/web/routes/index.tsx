@@ -7,8 +7,10 @@ import { Progress } from '@/ui/progress.js';
 import { apiFetch } from '../authenticated-fetch.js';
 import { learnQueryOptions, todayQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
+import { LearnSkeleton } from '../skeletons.js';
 
 export const Route = createFileRoute('/')({
+  pendingComponent: LearnSkeleton,
   loader: async ({ context }) => {
     await Promise.all([
       context.queryClient.ensureQueryData(learnQueryOptions()),
@@ -76,7 +78,67 @@ function LearnPage() {
   return (
     <section className="space-y-6">
       <h1 className="sr-only">Learn</h1>
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+        <Card>
+          <CardHeader>
+            <CardTitle>Next up</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {data.activeSessionId ? (
+              <Button asChild className="w-full">
+                <Link to="/session/$id" params={{ id: data.activeSessionId }}>
+                  Resume session
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                className="w-full"
+                onClick={() => startSession.mutate()}
+                disabled={startSession.isPending}
+              >
+                {startSession.isPending ? 'Starting…' : 'Start learning'}
+              </Button>
+            )}
+            {startSession.isError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {startSession.error.message}
+              </p>
+            ) : null}
+            {data.tasks.length ? (
+              <ul className="divide-y">
+                {data.tasks.map((task) => (
+                  <li
+                    key={`${task.activityKind}-${task.conceptId ?? task.title}-${task.title}`}
+                    className="space-y-2 py-4 first:pt-0 last:pb-0"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <Badge variant="secondary">{task.label}</Badge>
+                        <h2 className="font-medium leading-6">{task.title}</h2>
+                      </div>
+                      <span className="shrink-0 text-sm font-medium text-muted-foreground">
+                        +{task.xp} XP
+                      </span>
+                    </div>
+                    {task.prerequisites.some((prerequisite) => !prerequisite.done) ? (
+                      <p className="text-sm text-muted-foreground">
+                        Needs{' '}
+                        {task.prerequisites
+                          .filter((prerequisite) => !prerequisite.done)
+                          .map((prerequisite) => prerequisite.title)
+                          .join(', ')}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No tasks planned for today.</p>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Your progress</CardTitle>
@@ -102,7 +164,7 @@ function LearnPage() {
               </div>
               {data.course.estimatedFinish ? (
                 <p className="text-sm text-muted-foreground">
-                  Estimated finish: {formatDate(data.course.estimatedFinish)} <span>(est.)</span>
+                  Estimated finish {formatDate(data.course.estimatedFinish)}
                 </p>
               ) : null}
             </div>
@@ -145,7 +207,10 @@ function LearnPage() {
                   const xpHeight = Math.min(100, (day.xp / maxXp) * 100);
                   return (
                     <div key={day.date} className="flex h-full min-w-0 flex-col justify-end gap-1">
-                      <div className="relative h-24 overflow-hidden rounded-sm bg-muted">
+                      <div
+                        className="relative h-24 overflow-hidden rounded-sm bg-muted"
+                        title={`${day.xp} XP earned; goal ${day.goal} XP`}
+                      >
                         <div
                           aria-hidden="true"
                           className="absolute z-10 w-full border-t border-dashed border-muted-foreground/70"
@@ -167,72 +232,8 @@ function LearnPage() {
                   );
                 })}
               </div>
-              <p className="text-xs text-muted-foreground">Dashed line marks each day’s goal.</p>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Next up</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {data.tasks.length ? (
-              <ul className="divide-y">
-                {data.tasks.map((task) => (
-                  <li
-                    key={`${task.activityKind}-${task.conceptId ?? task.title}-${task.title}`}
-                    className="space-y-2 py-4 first:pt-0 last:pb-0"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 space-y-1">
-                        <Badge variant="secondary">{task.label}</Badge>
-                        <h2 className="font-medium leading-6">{task.title}</h2>
-                      </div>
-                      <span className="shrink-0 text-sm font-medium text-muted-foreground">
-                        +{task.xp} XP
-                      </span>
-                    </div>
-                    {task.prerequisites.length ? (
-                      <ul aria-label={`Prerequisites for ${task.title}`} className="space-y-1">
-                        {task.prerequisites.map((prerequisite) => (
-                          <li
-                            key={prerequisite.id}
-                            className="flex items-center gap-2 text-sm text-muted-foreground"
-                          >
-                            <span aria-hidden="true">{prerequisite.done ? '✓' : '○'}</span>
-                            <span>{prerequisite.title}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">No tasks planned for today.</p>
-            )}
-            {data.activeSessionId ? (
-              <Button asChild className="w-full">
-                <Link to="/session/$id" params={{ id: data.activeSessionId }}>
-                  Resume session
-                </Link>
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                className="w-full"
-                onClick={() => startSession.mutate()}
-                disabled={startSession.isPending}
-              >
-                {startSession.isPending ? 'Starting…' : 'Start learning'}
-              </Button>
-            )}
-            {startSession.isError ? (
-              <p role="alert" className="text-sm text-destructive">
-                {startSession.error.message}
-              </p>
-            ) : null}
             <div className="space-y-3 border-t pt-5">
               <h2 className="text-sm font-medium">Done today</h2>
               {data.doneToday.length ? (

@@ -4,13 +4,15 @@ import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { Alert, AlertDescription } from '@/ui/alert.js';
 import { Button } from '@/ui/button.js';
-import { Card, CardContent } from '@/ui/card.js';
+import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
 import { Input } from '@/ui/input.js';
 import { Label } from '@/ui/label.js';
 import { apiFetch } from '../authenticated-fetch.js';
 import { settingsQueryOptions } from '../queries.js';
+import { PageSkeleton } from '../skeletons.js';
 
 export const Route = createFileRoute('/settings')({
+  pendingComponent: PageSkeleton,
   loader: ({ context }) => context.queryClient.ensureQueryData(settingsQueryOptions()),
   component: SettingsPage,
 });
@@ -45,53 +47,70 @@ function SettingsPage() {
     window.location.replace('/login');
   }
   return (
-    <section className="mx-auto max-w-3xl space-y-6">
+    <section className="space-y-6">
       <h1 className="sr-only">Settings</h1>
       <form onSubmit={save}>
         <Card>
-          <CardContent className="space-y-5 p-6">
-            <Label className="block space-y-2">
-              Daily study time
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={5}
-                  max={600}
-                  step={5}
-                  value={draft.scheduleMinutes}
-                  onChange={(event) =>
-                    setDraft({ ...draft, scheduleMinutes: Number(event.target.value) })
-                  }
-                  className="w-28"
-                />
-                <span className="text-neutral-600">minutes</span>
-              </div>
-            </Label>
-            {(['saturdayMinutes', 'sundayMinutes'] as const).map((key) => (
-              <Label key={key} className="block space-y-2">
-                {key === 'saturdayMinutes' ? 'Saturday study time' : 'Sunday study time'}
-                <div className="flex items-center gap-2">
+          <CardHeader>
+            <CardTitle>Study schedule</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-2">
+                <Label htmlFor="scheduleMinutes">Daily study time</Label>
+                <div className="relative">
                   <Input
+                    id="scheduleMinutes"
                     type="number"
                     min={5}
                     max={600}
                     step={5}
-                    value={draft[key]}
-                    onChange={(event) => setDraft({ ...draft, [key]: Number(event.target.value) })}
-                    className="w-28"
+                    value={draft.scheduleMinutes}
+                    onChange={(event) =>
+                      setDraft({ ...draft, scheduleMinutes: Number(event.target.value) })
+                    }
+                    className="w-full pr-12"
                   />
-                  <span className="text-neutral-600">minutes</span>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    min
+                  </span>
                 </div>
-              </Label>
-            ))}
-            <Label className="block space-y-2">
-              Learning start date
+              </div>
+              {(['saturdayMinutes', 'sundayMinutes'] as const).map((key) => (
+                <div className="grid gap-2" key={key}>
+                  <Label htmlFor={key}>
+                    {key === 'saturdayMinutes' ? 'Saturday study time' : 'Sunday study time'}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id={key}
+                      type="number"
+                      min={5}
+                      max={600}
+                      step={5}
+                      value={draft[key]}
+                      onChange={(event) =>
+                        setDraft({ ...draft, [key]: Number(event.target.value) })
+                      }
+                      className="w-full pr-12"
+                    />
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                      min
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="startDate">Learning start date</Label>
               <Input
+                id="startDate"
                 type="date"
                 value={draft.startDate}
                 onChange={(event) => setDraft({ ...draft, startDate: event.target.value })}
+                className="w-48"
               />
-            </Label>
+            </div>
             {error ? (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
@@ -106,22 +125,26 @@ function SettingsPage() {
           </CardContent>
         </Card>
       </form>
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Security</h2>
-        {authError ? (
-          <Alert variant="destructive">
-            <AlertDescription>{authError}</AlertDescription>
-          </Alert>
-        ) : null}
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={() => void logout('logout')}>
-            Log out
-          </Button>
-          <Button type="button" variant="outline" onClick={() => void logout('logout-all')}>
-            Log out of all devices
-          </Button>
-        </div>
-      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>Security</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {authError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{authError}</AlertDescription>
+            </Alert>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={() => void logout('logout')}>
+              Log out
+            </Button>
+            <Button type="button" variant="outline" onClick={() => void logout('logout-all')}>
+              Log out of all devices
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </section>
   );
 }

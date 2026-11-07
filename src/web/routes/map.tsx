@@ -2,17 +2,20 @@ import dagre from '@dagrejs/dagre';
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { Background, Controls, type Edge, type Node, ReactFlow } from '@xyflow/react';
+import { X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Badge } from '@/ui/badge.js';
 import { Button } from '@/ui/button.js';
 import { Card, CardContent } from '@/ui/card.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/select.js';
 import { apiFetch } from '../authenticated-fetch.js';
+import { masteryStateLabels } from '../mastery-labels.js';
 import { conceptQueryOptions, mapQueryOptions } from '../queries.js';
+import { PageSkeleton } from '../skeletons.js';
 import { useTutorSidebar } from '../tutor/TutorSidebar.js';
 import '@xyflow/react/dist/style.css';
 
 export const Route = createFileRoute('/map')({
+  pendingComponent: PageSkeleton,
   loader: async ({ context }) => {
     const map = await context.queryClient.ensureQueryData(mapQueryOptions(null));
     await context.queryClient.ensureQueryData(mapQueryOptions(map.currentWeekDomain));
@@ -66,7 +69,7 @@ function MapPage() {
             <div className="leading-5">
               <div>{node.status === 'stub' ? `${node.title} · Not yet authored` : node.title}</div>
               {(!domain || node.domain !== domain) && (
-                <span className="text-[10px] text-neutral-500">
+                <span className="text-[10px] text-muted-foreground">
                   {domainTitles.get(node.domain) ?? node.domain}
                 </span>
               )}
@@ -134,15 +137,6 @@ function MapPage() {
         }>;
       }>
     | undefined;
-  const events = selected?.events as
-    | Array<{
-        dimension: string;
-        fromState: string;
-        toState: string;
-        rule: string;
-        createdAt: string;
-      }>
-    | undefined;
   const selectedDomain = domain ?? mapQuery.data.currentWeekDomain;
   useEffect(() => {
     if (concept?.id && concept.title) {
@@ -188,7 +182,7 @@ function MapPage() {
           </Select>
         </div>
       </div>
-      <Card className="h-[560px] p-0">
+      <Card className="h-[560px]">
         <div className="h-full w-full">
           <ReactFlow
             nodes={graph.nodes}
@@ -203,7 +197,10 @@ function MapPage() {
           </ReactFlow>
         </div>
       </Card>
-      <ul aria-label="Mastery legend" className="flex flex-wrap gap-3 text-xs text-neutral-700">
+      <ul
+        aria-label="Mastery legend"
+        className="flex flex-wrap gap-3 text-xs text-muted-foreground"
+      >
         {[
           { color: '#f5f5f5', label: 'Not assessed / introduced' },
           { color: '#fef3c7', label: 'Assisted' },
@@ -227,29 +224,25 @@ function MapPage() {
       </ul>
       {concept ? (
         <Card aria-label={`${concept.title} details`}>
-          <CardContent className="space-y-4 p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold">{concept.title}</h2>
-                <p className="mt-1 max-w-[70ch] text-sm text-neutral-600">{concept.description}</p>
-                {concept.status === 'stub' ? (
-                  <p className="mt-2 text-sm font-medium text-neutral-500">Not yet authored</p>
-                ) : null}
-              </div>
-              <div className="flex gap-2">
-                {concept.id && hasLesson ? (
-                  <Button asChild variant="outline" size="sm">
-                    <a href={`/lessons/${encodeURIComponent(concept.id)}`}>View lesson</a>
-                  </Button>
-                ) : null}
-                {concept.status !== 'stub' ? (
-                  <Button type="button" onClick={studyNow}>
-                    Study this now
-                  </Button>
-                ) : null}
+          <CardContent className="space-y-5">
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold">{concept.title}</h2>
+                  <p className="mt-1 max-w-[70ch] text-sm text-muted-foreground">
+                    {concept.description}
+                  </p>
+                  {concept.status === 'stub' ? (
+                    <p className="mt-2 text-sm font-medium text-muted-foreground">
+                      Not yet authored
+                    </p>
+                  ) : null}
+                </div>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Close"
                   onClick={() => {
                     setSelected(null);
                     const url = new URL(window.location.href);
@@ -257,45 +250,99 @@ function MapPage() {
                     window.history.replaceState({}, '', url);
                   }}
                 >
-                  Close
+                  <X aria-hidden="true" className="size-4" />
                 </Button>
               </div>
+              <div className="flex flex-wrap gap-2">
+                {concept.id && hasLesson ? (
+                  <Button asChild variant="outline" size="sm">
+                    <a href={`/lessons/${encodeURIComponent(concept.id)}`}>View lesson</a>
+                  </Button>
+                ) : null}
+                {concept.status !== 'stub' ? (
+                  <Button type="button" size="sm" onClick={studyNow}>
+                    Study this now
+                  </Button>
+                ) : null}
+              </div>
             </div>
-            <h3 className="mt-5 text-sm font-semibold">Mastery by dimension</h3>
-            <ul className="mt-2 flex flex-wrap gap-2">
-              {(mastery ?? []).map((record) => (
-                <li key={record.dimension}>
-                  <Badge variant="secondary">
-                    {record.dimension}: {record.inferred ? 'inferred' : record.state}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-            <h3 className="mt-5 text-sm font-semibold">Mastery history</h3>
-            <ul className="mt-2 space-y-2 text-sm text-neutral-600">
-              {(mastery ?? []).flatMap((record) =>
-                (record.attempts ?? []).map((attempt) => (
-                  <li key={`${record.dimension}-${attempt.exerciseId}-${attempt.createdAt}`}>
-                    {record.dimension}: {attempt.exerciseId} · {attempt.correct} correct ·{' '}
-                    {attempt.credit} credit · {attempt.hintsUsed} hints · {attempt.mode} ·{' '}
-                    {new Date(attempt.createdAt).toLocaleDateString()}
-                  </li>
-                )),
-              )}
-              {!mastery?.some((record) => record.attempts?.length) ? (
-                <li>No attempt evidence recorded yet.</li>
-              ) : null}
-            </ul>
-            <h3 className="mt-5 text-sm font-semibold">Mastery events</h3>
-            <ul className="mt-2 space-y-2 text-sm text-neutral-600">
-              {(events ?? []).map((event) => (
-                <li key={`${event.dimension}-${event.createdAt}-${event.rule}`}>
-                  {event.dimension}: {event.fromState} → {event.toState} · {event.rule} ·{' '}
-                  {new Date(event.createdAt).toLocaleDateString()}
-                </li>
-              ))}
-              {!events?.length ? <li>No recorded mastery events yet.</li> : null}
-            </ul>
+            <section className="space-y-2">
+              <h3 className="text-sm font-medium">Mastery</h3>
+              <ul className="divide-y">
+                {(mastery ?? []).map((record) => {
+                  const dimension = record.dimension
+                    .replaceAll('_', ' ')
+                    .replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
+                  const state =
+                    record.inferred || record.state === 'inferred'
+                      ? 'Inferred'
+                      : (masteryStateLabels[record.state] ?? record.state);
+                  return (
+                    <li
+                      key={record.dimension}
+                      className="flex items-center justify-between gap-4 py-2 first:pt-0 last:pb-0"
+                    >
+                      <span className="text-sm">{dimension}</span>
+                      <span className="text-sm text-muted-foreground">{state}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+            <section className="space-y-2">
+              <h3 className="text-sm font-medium">Recent answers</h3>
+              <ul className="divide-y">
+                {(mastery ?? [])
+                  .flatMap((record) => record.attempts ?? [])
+                  .sort(
+                    (first, second) =>
+                      new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime(),
+                  )
+                  .slice(0, 5)
+                  .map((attempt) => {
+                    const correct = attempt.credit >= 1;
+                    const result = correct
+                      ? 'Correct'
+                      : attempt.credit === 0
+                        ? 'Incorrect'
+                        : 'Partly correct';
+                    const mode =
+                      attempt.mode === 'practice'
+                        ? 'Practice'
+                        : attempt.mode === 'review'
+                          ? 'Review'
+                          : attempt.mode === 'assessment'
+                            ? 'Assessment'
+                            : attempt.mode;
+                    return (
+                      <li
+                        key={`${attempt.exerciseId}-${attempt.createdAt}`}
+                        className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{concept.title}</p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1 whitespace-nowrap text-right text-sm text-muted-foreground">
+                          <span className={correct ? 'text-emerald-700 dark:text-emerald-300' : ''}>
+                            {result}
+                          </span>
+                          <span aria-hidden="true">·</span>
+                          <span>{mode} ·</span>
+                          <span>
+                            {new Date(attempt.createdAt).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                {!mastery?.some((record) => record.attempts?.length) ? (
+                  <li className="py-2 text-sm text-muted-foreground">No answers yet.</li>
+                ) : null}
+              </ul>
+            </section>
           </CardContent>
         </Card>
       ) : null}

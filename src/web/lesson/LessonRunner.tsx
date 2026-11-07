@@ -4,6 +4,7 @@ import { apiFetch } from '../authenticated-fetch.js';
 import { ExerciseForm, FeedbackPanel, LessonBlock, Markdown } from '../components.js';
 import { type LessonRunPayload, lessonQueryOptions, lessonRunQueryOptions } from '../queries.js';
 import { SessionActivityHeader } from '../session/SessionActivityHeader.js';
+import { LessonSkeletonBody } from '../skeletons.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
 import { Alert, AlertDescription } from '../ui/alert.js';
 import { Badge } from '../ui/badge.js';
@@ -18,7 +19,6 @@ export function LessonRunner({
   activityPosition,
   activityCount,
   lessonHref,
-  mode,
   tutorEnabled,
   resumeRetry,
   onContinue,
@@ -30,7 +30,6 @@ export function LessonRunner({
   activityPosition: number;
   activityCount: number;
   lessonHref?: string;
-  mode: 'practice' | 'assessment' | 'review';
   tutorEnabled: boolean;
   resumeRetry: boolean;
   onContinue: (status: 'completed' | 'needs_retry') => void;
@@ -182,9 +181,8 @@ export function LessonRunner({
 
   if (!state) {
     return (
-      <section aria-busy="true" className="mx-auto min-h-[28rem] max-w-3xl space-y-6">
-        <div className="h-8 w-64 animate-pulse rounded bg-neutral-200" />
-        <div className="h-40 animate-pulse rounded-xl bg-neutral-100" />
+      <section aria-busy="true" className="space-y-6">
+        <LessonSkeletonBody />
       </section>
     );
   }
@@ -198,13 +196,12 @@ export function LessonRunner({
   };
 
   return (
-    <section className="mx-auto max-w-3xl space-y-6">
+    <section className="space-y-6">
       <SessionActivityHeader
         title={title}
         label={activityLabel}
         position={activityPosition}
         total={activityCount}
-        mode={mode}
         lessonHref={lessonHref}
       />
       <ol aria-label="Lesson steps" className="flex flex-wrap gap-2">
@@ -219,7 +216,7 @@ export function LessonRunner({
                     ? 'border-red-300 bg-red-50 text-red-900'
                     : item.id === state.currentPointId
                       ? 'border-primary bg-muted text-foreground'
-                      : 'border-neutral-200 text-neutral-600'
+                      : 'border-border text-muted-foreground'
               }`}
             >
               {item.status === 'passed' ? '✓ ' : item.status === 'failed' ? '! ' : ''}
@@ -231,7 +228,7 @@ export function LessonRunner({
 
       {state.status === 'completed' ? (
         <Card className="border-green-300 bg-green-50">
-          <CardContent className="space-y-3 p-5 text-green-950">
+          <CardContent className="space-y-3 text-green-950">
             <h2 className="text-xl font-semibold">Lesson complete · +{state.xpEarned} XP</h2>
             <p>Your progress and experience points have been saved.</p>
             {state.lastAnsweredProblem ? (
@@ -255,7 +252,7 @@ export function LessonRunner({
         </Card>
       ) : state.status === 'needs_retry' ? (
         <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="space-y-2 p-5 text-amber-950">
+          <CardContent className="space-y-2 text-amber-950">
             <h2 className="text-xl font-semibold">Try again later</h2>
             <p>This step comes back in your next session.</p>
             {state.lastAnsweredProblem ? (
@@ -296,28 +293,32 @@ export function LessonRunner({
               data-testid="lesson-problem"
               data-problem-id={shownProblem.id}
             >
-              <CardContent className="space-y-5 p-5">
+              <CardContent className="space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="font-semibold">
+                  <h3 className="text-sm font-medium">
                     {problemLabel(shownProblem.exercise.id, Boolean(state.pendingProblem))}
                   </h3>
-                  <p className="text-sm text-neutral-600">2 in a row to move on</p>
-                </div>
-                <div
-                  role="img"
-                  aria-label={`${pointStatus?.streak ?? 0} correct in a row`}
-                  className="flex gap-2"
-                >
-                  {[0, 1].map((index) => (
-                    <span
-                      key={index}
-                      className={`h-3 w-3 rounded-full border ${
-                        index < (pointStatus?.streak ?? 0)
-                          ? 'border-green-600 bg-green-500'
-                          : 'border-neutral-300 bg-white'
-                      }`}
-                    />
-                  ))}
+                  {basicsExerciseId !== shownProblem.exercise.id ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div
+                        role="img"
+                        aria-label={`${pointStatus?.streak ?? 0} correct in a row`}
+                        className="flex gap-2"
+                      >
+                        {[0, 1].map((index) => (
+                          <span
+                            key={index}
+                            className={`h-3 w-3 rounded-full border ${
+                              index < (pointStatus?.streak ?? 0)
+                                ? 'border-green-600 bg-green-500'
+                                : 'border-border bg-background'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span>2 in a row to move on</span>
+                    </div>
+                  ) : null}
                 </div>
                 <div data-testid="lesson-problem-prompt">
                   <Markdown>{shownProblem.exercise.prompt}</Markdown>

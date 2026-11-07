@@ -8,8 +8,10 @@ import { apiFetch } from '../authenticated-fetch.js';
 import { Markdown } from '../components.js';
 import { projectQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
+import { PageSkeleton } from '../skeletons.js';
 
 export const Route = createFileRoute('/lab')({
+  pendingComponent: PageSkeleton,
   loader: ({ context }) => context.queryClient.ensureQueryData(projectQueryOptions('linreg-numpy')),
   errorComponent: () => <RouteLoadError message="Lab is unavailable." role="alert" />,
   component: LabPage,
@@ -43,11 +45,13 @@ function LabPage() {
   }
   const project = data.project;
   return (
-    <section className="mx-auto max-w-3xl space-y-6">
-      <h1 className="text-3xl font-semibold">{project.title}</h1>
+    <section className="space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{project.title}</h1>
+        <p className="text-muted-foreground">{project.objective}</p>
+      </div>
       <Card>
-        <CardContent className="space-y-4 p-6">
-          <p>{project.objective}</p>
+        <CardContent className="space-y-4">
           <Markdown>{project.background}</Markdown>
           <h2 className="text-lg font-semibold">Milestones</h2>
           <ol className="list-decimal space-y-3 pl-5">
@@ -64,26 +68,29 @@ function LabPage() {
               <li key={item}>{item}</li>
             ))}
           </ul>
-          <p className="text-sm text-neutral-600">
-            Run `python labs/linreg-numpy/verify.py` locally, then upload results.json. The server
-            validates data only and never runs uploaded code.
-          </p>
-          <Label className="block">
-            Upload results.json
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Submit results</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2">
+            <Label htmlFor="results-file">Upload results.json</Label>
             <Input
-              className="mt-2"
+              id="results-file"
               type="file"
               accept=".json,application/json"
               onChange={(event) => void upload(event.target.files?.[0])}
             />
-          </Label>
+          </div>
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
       {evidence ? (
         <Card>
           <CardHeader>

@@ -21,9 +21,11 @@ import {
 } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
 import { SessionActivityHeader } from '../session/SessionActivityHeader.js';
+import { LessonSkeleton } from '../skeletons.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
 
 export const Route = createFileRoute('/session/$id')({
+  pendingComponent: LessonSkeleton,
   validateSearch: z.object({ activity: z.string().optional() }),
   loader: async ({ context, params }) => {
     const session = await context.queryClient.ensureQueryData(sessionQueryOptions(params.id));
@@ -335,9 +337,9 @@ function SessionPage() {
 
   if (!activity) {
     return (
-      <section className="mx-auto max-w-3xl space-y-4">
+      <section className="space-y-4">
         <h1 className="text-3xl font-semibold">Session complete</h1>
-        <p className="text-neutral-600">Your progress has been saved.</p>
+        <p className="text-muted-foreground">Your progress has been saved.</p>
         <Button type="button" onClick={endSession}>
           Finish session
         </Button>
@@ -395,7 +397,6 @@ function SessionPage() {
         activityPosition={activityPosition}
         activityCount={activities.length}
         lessonHref={lessonHref}
-        mode={mode}
         tutorEnabled={sessionQuery.data.tutorEnabled}
         resumeRetry={activity.status !== 'completed'}
         onContinue={(status) => void continueLessonRunner(status)}
@@ -404,13 +405,12 @@ function SessionPage() {
   }
   if (activity.kind === 'paper') {
     return (
-      <section className="mx-auto max-w-3xl space-y-6">
+      <section className="space-y-6">
         <SessionActivityHeader
           title="Paper reading"
           label="Paper"
           position={activityPosition}
           total={activities.length}
-          mode="practice"
         />
         <PaperActivity
           sessionId={id}
@@ -448,13 +448,12 @@ function SessionPage() {
       ...lesson.blocks.filter((block) => block.kind === 'summary'),
     ];
     return (
-      <section className="mx-auto max-w-3xl space-y-6">
+      <section className="space-y-6">
         <SessionActivityHeader
           title={activityTitle}
           label={activityLabel}
           position={activityPosition}
           total={activities.length}
-          mode={mode}
           lessonHref={lessonHref}
         />
         <div className="space-y-5">
@@ -483,24 +482,25 @@ function SessionPage() {
           Continue to practice
         </Button>
         {checksPending ? (
-          <p className="text-sm text-neutral-500">Answer or skip the check above to continue.</p>
+          <p className="text-sm text-muted-foreground">
+            Answer or skip the check above to continue.
+          </p>
         ) : null}
       </section>
     );
   }
   return (
-    <section className="mx-auto max-w-3xl space-y-6">
+    <section className="space-y-6">
       <SessionActivityHeader
         title={activityTitle}
         label={activityLabel}
         position={activityPosition}
         total={activities.length}
-        mode={mode}
         lessonHref={lessonHref}
       />
       {exerciseQuery.data ? (
         <Card data-testid="session-exercise">
-          <CardContent className="space-y-5 p-6">
+          <CardContent className="space-y-5">
             <div data-testid="exercise-prompt">
               <Markdown>{exerciseQuery.data.prompt}</Markdown>
             </div>
@@ -519,7 +519,7 @@ function SessionPage() {
               </Alert>
             ) : null}
             {hint?.text ? (
-              <div className="rounded-lg bg-neutral-100 p-4 text-sm">
+              <div className="rounded-lg bg-muted p-4 text-sm">
                 <p className="font-medium">
                   {hint.revealedSolution ? 'Solution' : `Hint ${hint.level}`}
                 </p>
@@ -527,7 +527,7 @@ function SessionPage() {
               </div>
             ) : null}
             {hint?.tutorUnavailable ? (
-              <p className="text-xs text-neutral-500">Tutor unavailable right now.</p>
+              <p className="text-xs text-muted-foreground">Tutor unavailable right now.</p>
             ) : null}
             {canSubmitAnswer ? (
               <ExerciseForm
@@ -576,9 +576,9 @@ function SessionPage() {
         </Card>
       ) : !exerciseId ? (
         <Card>
-          <CardContent className="space-y-4 p-6">
+          <CardContent className="space-y-4">
             <h2 className="text-lg font-semibold capitalize">{activity.kind.replace('_', ' ')}</h2>
-            <p className="max-w-[70ch] text-sm leading-6 text-neutral-600">
+            <p className="max-w-[70ch] text-sm leading-6 text-muted-foreground">
               {activity.kind === 'lab'
                 ? `Project ${activity.projectId ?? 'activity'} is ready to continue in your local workspace.`
                 : activity.kind === 'teachback'
@@ -700,7 +700,7 @@ function InlineLessonCheck({
   };
   return (
     <Card>
-      <CardContent className="space-y-3 p-4">
+      <CardContent className="space-y-3">
         {exercise ? (
           <>
             <Markdown>{exercise.prompt}</Markdown>
