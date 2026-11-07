@@ -37,27 +37,47 @@ test.afterAll(async () => {
   await db.$client.end();
 });
 
-test('routes fit a 390px viewport without horizontal page overflow', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  for (const route of [
-    '/',
-    '/course',
-    '/map',
-    '/lab',
-    '/progress',
-    '/settings',
-    '/lessons/linear-models',
-  ]) {
-    await page.goto(route);
-    await expect(page.locator('h1').first()).toBeAttached();
-    const dimensions = await page.evaluate(() => ({
-      documentWidth: document.documentElement.scrollWidth,
-      viewportWidth: window.innerWidth,
-    }));
-    expect(
-      dimensions.documentWidth,
-      `${route} overflows a ${dimensions.viewportWidth}px viewport`,
-    ).toBeLessThanOrEqual(dimensions.viewportWidth);
+test('routes fit mobile viewports without horizontal page or navigation overflow', async ({
+  page,
+}) => {
+  for (const width of [390, 360]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const route of [
+      '/',
+      '/course',
+      '/map',
+      '/lab',
+      '/progress',
+      '/settings',
+      '/lessons/linear-models',
+    ]) {
+      await page.goto(route);
+      await expect(page.locator('h1').first()).toBeAttached();
+      const dimensions = await page.evaluate(() => ({
+        documentWidth: document.documentElement.scrollWidth,
+        viewportWidth: window.innerWidth,
+      }));
+      expect(
+        dimensions.documentWidth,
+        `${route} overflows a ${dimensions.viewportWidth}px viewport`,
+      ).toBeLessThanOrEqual(dimensions.viewportWidth);
+      const navigation = await page
+        .getByRole('navigation', { name: 'Main navigation' })
+        .evaluate((element) => ({
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          items: Array.from(element.children).map((item) => ({
+            text: item.textContent,
+            width: item.getBoundingClientRect().width,
+            padding: getComputedStyle(item).paddingInline,
+            fontSize: getComputedStyle(item).fontSize,
+          })),
+        }));
+      expect(
+        navigation.scrollWidth,
+        `navigation overflows at ${width}px: ${JSON.stringify(navigation)}`,
+      ).toBeLessThanOrEqual(navigation.clientWidth);
+    }
   }
 });
 
@@ -79,4 +99,21 @@ test('course route skeleton aligns with the Academy wordmark', async ({ page }) 
   expect(wordmarkBounds).not.toBeNull();
   expect(Math.abs((skeletonBounds?.x ?? 0) - (wordmarkBounds?.x ?? 0))).toBeLessThanOrEqual(1);
   await navigation;
+});
+
+test('root auth pending renders the app-shell skeleton', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.route('**/api/auth/me', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1800));
+    await route.continue({
+      headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
+    });
+  });
+  await page.goto('/course');
+  const shell = page.getByTestId('app-shell-skeleton');
+  await expect(shell).toBeVisible();
+  await expect(shell.locator('header')).toBeVisible();
+  await expect(shell.getByTestId('route-skeleton')).toBeVisible();
+  await expect(shell.locator('nav > *')).toHaveCount(6);
+  await expect(shell).toBeHidden();
 });

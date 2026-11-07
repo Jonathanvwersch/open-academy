@@ -46,7 +46,7 @@ function CoursePage() {
                 <p className="text-sm text-muted-foreground">Project: {week.project.title}</p>
               ) : null}
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="p-0 last:pb-0">
               <ol className="divide-y">
                 {week.topics.map((topic) => {
                   const contextLine = [

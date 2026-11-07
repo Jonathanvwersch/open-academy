@@ -317,16 +317,17 @@ function MapPage() {
                     return (
                       <li
                         key={`${attempt.exerciseId}-${attempt.createdAt}`}
-                        className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                        className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
                       >
                         <div className="min-w-0">
-                          <p className="font-medium">{concept.title}</p>
-                          <p className="text-xs text-muted-foreground">{mode}</p>
+                          <p className="truncate font-medium">{concept.title}</p>
                         </div>
-                        <div className="flex shrink-0 flex-col items-end text-right text-sm text-muted-foreground">
+                        <div className="flex shrink-0 items-center gap-1 whitespace-nowrap text-right text-sm text-muted-foreground">
                           <span className={correct ? 'text-emerald-700 dark:text-emerald-300' : ''}>
                             {result}
                           </span>
+                          <span aria-hidden="true">·</span>
+                          <span>{mode} ·</span>
                           <span>
                             {new Date(attempt.createdAt).toLocaleDateString(undefined, {
                               month: 'short',

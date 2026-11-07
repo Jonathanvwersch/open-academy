@@ -390,13 +390,15 @@ function PaperReaderPage() {
             </Link>
           </Button>
         )}
-        <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">
-          <Markdown inline>{data.paper.title}</Markdown>
-        </h1>
-        <p className="hidden shrink-0 text-sm text-muted-foreground lg:inline">
-          <Markdown inline>{data.paper.authors}</Markdown> · {data.paper.year} · ~
-          {data.paper.est_minutes} min
-        </p>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <h1 className="min-w-0 truncate text-sm font-semibold">
+            <Markdown inline>{data.paper.title}</Markdown>
+          </h1>
+          <p className="hidden shrink-0 text-sm text-muted-foreground lg:inline">
+            <Markdown inline>{data.paper.authors}</Markdown> · {data.paper.year} · ~
+            {data.paper.est_minutes} min
+          </p>
+        </div>
         <div className="ml-auto flex shrink-0 items-center gap-1">
           <Button
             variant="ghost"
@@ -518,15 +520,11 @@ function PaperReaderPage() {
           >
             <section>
               <h2 className="text-sm font-semibold">Why this paper</h2>
-              <div className="text-sm leading-6">
-                <Markdown>{data.paper.why_this_week}</Markdown>
-              </div>
+              <Markdown className="text-sm leading-6">{data.paper.why_this_week}</Markdown>
             </section>
             <section>
               <h2 className="text-sm font-semibold">How to read it</h2>
-              <div className="text-sm leading-6">
-                <Markdown>{data.paper.how_to_read}</Markdown>
-              </div>
+              <Markdown className="text-sm leading-6">{data.paper.how_to_read}</Markdown>
             </section>
             {data.paper.questions.map((question) => (
               <section key={question.id} className="space-y-2">
@@ -566,9 +564,7 @@ function PaperReaderPage() {
             ))}
             <section className="space-y-2">
               <h2 className="text-sm font-semibold">Summary</h2>
-              <div className="text-sm leading-6">
-                <Markdown>{data.paper.summary.prompt}</Markdown>
-              </div>
+              <Markdown className="text-sm leading-6">{data.paper.summary.prompt}</Markdown>
               <Textarea
                 aria-label="Paper summary"
                 value={summary}

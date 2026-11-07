@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import { normalizeDisplayMath } from '../shared/markdown';
 import { apiFetch } from './authenticated-fetch.js';
+import { cn } from './lib/utils.js';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert.js';
 import { Badge } from './ui/badge.js';
 import { Button } from './ui/button.js';
@@ -32,7 +33,15 @@ export interface ClientExercise {
   rubric?: Array<{ id: string; criterion: string; required: boolean }>;
 }
 
-export function Markdown({ children, inline = false }: { children: string; inline?: boolean }) {
+export function Markdown({
+  children,
+  inline = false,
+  className,
+}: {
+  children: string;
+  inline?: boolean;
+  className?: string;
+}) {
   const markdownComponents: Components = {
     code({ className, children: codeChildren, ...props }) {
       if (/\blanguage-svg\b/.test(className ?? '')) {
@@ -84,9 +93,11 @@ export function Markdown({ children, inline = false }: { children: string; inlin
     </ReactMarkdown>
   );
   return inline ? (
-    <span className="inline">{content}</span>
+    <span className={cn('inline', className)}>{content}</span>
   ) : (
-    <div className="markdown max-w-[70ch] text-base leading-7 text-foreground">{content}</div>
+    <div className={cn('markdown max-w-[70ch] text-base leading-7 text-foreground', className)}>
+      {content}
+    </div>
   );
 }
 
@@ -341,7 +352,7 @@ export function ExerciseForm({
                         )
                       }
                     />
-                    <span className="font-normal leading-6">
+                    <span className="text-base leading-6 font-normal">
                       <Markdown inline>{option.text}</Markdown>
                     </span>
                   </Label>
@@ -363,7 +374,7 @@ export function ExerciseForm({
                     className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card p-3"
                   >
                     <RadioGroupItem id={optionId} value={option.id} />
-                    <span className="font-normal leading-6">
+                    <span className="text-base leading-6 font-normal">
                       <Markdown inline>{option.text}</Markdown>
                     </span>
                   </Label>

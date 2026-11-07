@@ -140,13 +140,14 @@ function ProgressPage() {
                 return (
                   <li
                     key={item.id}
-                    className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                    className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
                   >
-                    <p className="min-w-0 font-medium">{item.conceptTitle}</p>
-                    <div className="flex shrink-0 flex-col items-end text-right text-sm text-muted-foreground">
+                    <p className="min-w-0 truncate font-medium">{item.conceptTitle}</p>
+                    <div className="flex shrink-0 items-center gap-1 whitespace-nowrap text-right text-sm text-muted-foreground">
                       <span className={correct ? 'text-emerald-700 dark:text-emerald-300' : ''}>
                         {result}
                       </span>
+                      <span aria-hidden="true">·</span>
                       <span>
                         {new Date(item.createdAt).toLocaleDateString(undefined, {
                           month: 'short',
