@@ -104,7 +104,11 @@ async function answerAndReload(page: Page, correct: boolean, runConceptId = conc
   return body.state;
 }
 
-async function nextProblemAndReload(page: Page, runConceptId = conceptId) {
+async function nextProblemAndReload(
+  page: Page,
+  runConceptId = conceptId,
+  assertWithinStepScroll = false,
+) {
   const before = await currentRun(page, runConceptId);
   const buttonName =
     before.points.find(
@@ -112,6 +116,11 @@ async function nextProblemAndReload(page: Page, runConceptId = conceptId) {
     )?.status === 'passed'
       ? 'Next step'
       : 'Next problem';
+  const checkScroll = buttonName === 'Next step' || assertWithinStepScroll;
+  if (checkScroll) {
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  }
   const responsePromise = page.waitForResponse(
     (response) =>
       response.url().endsWith(`/api/lessons/${runConceptId}/run`) &&
@@ -121,6 +130,18 @@ async function nextProblemAndReload(page: Page, runConceptId = conceptId) {
   const response = await responsePromise;
   const body = await response.json();
   expect(response.status()).toBe(200);
+  if (buttonName === 'Next step') {
+    await expect(
+      page.getByRole('heading', { name: body.run.currentPoint.title, exact: true }),
+    ).toBeVisible();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  } else if (assertWithinStepScroll) {
+    await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
+      'data-problem-id',
+      body.run.pendingProblem.id,
+    );
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  }
   await page.reload();
   await expect(page.getByText(/^Problem \d+ · up to 5$/)).toBeVisible();
   expect(await currentRun(page, runConceptId)).toEqual(body.run);
@@ -149,7 +170,7 @@ test('passes every knowledge point and restores the exact problem and result aft
   let run = await currentRun(page);
   for (let pointIndex = 0; pointIndex < run.points.length; pointIndex += 1) {
     while (run.points[pointIndex].status !== 'passed') {
-      if (!run.pendingProblem) run = await nextProblemAndReload(page);
+      if (!run.pendingProblem) run = await nextProblemAndReload(page, conceptId, true);
       run = await answerAndReload(page, true);
       if (pointIndex === 0 && run.points[0].streak === 1) {
         await expect(page.getByLabel('1 correct in a row')).toBeVisible();
