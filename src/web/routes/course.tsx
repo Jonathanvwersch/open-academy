@@ -1,14 +1,17 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { ChevronRight, FileText } from 'lucide-react';
 import { useEffect } from 'react';
 import { Badge } from '@/ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
 import { Markdown } from '../components.js';
 import { courseQueryOptions, paperStatusLabel } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
+import { CourseSkeleton } from '../skeletons.js';
 import { useTutorSidebar } from '../tutor/TutorSidebar.js';
 
 export const Route = createFileRoute('/course')({
+  pendingComponent: CourseSkeleton,
   loader: ({ context }) => context.queryClient.ensureQueryData(courseQueryOptions()),
   errorComponent: () => (
     <RouteLoadError message="Your course is unavailable." className="text-sm text-destructive" />
@@ -75,7 +78,7 @@ function CoursePage() {
                                 Needs{' '}
                                 {topic.needs?.map((prerequisite) => prerequisite.title).join(', ')}
                               </span>
-                            ) : (
+                            ) : topic.status !== 'not_started' ? (
                               <Badge
                                 variant="secondary"
                                 className={
@@ -86,7 +89,7 @@ function CoursePage() {
                               >
                                 {COURSE_STATUS_LABEL[topic.status]}
                               </Badge>
-                            )}
+                            ) : null}
                             {topic.status !== 'locked' && topic.mastery !== 'Not started' ? (
                               <span
                                 className={`text-xs ${
@@ -102,9 +105,10 @@ function CoursePage() {
                         </div>
                       </div>
                       {topic.hasLesson ? (
-                        <span className="shrink-0 text-sm font-medium underline-offset-4 group-hover:underline">
-                          View lesson
-                        </span>
+                        <ChevronRight
+                          aria-hidden="true"
+                          className="size-4 shrink-0 text-muted-foreground"
+                        />
                       ) : null}
                     </>
                   );
@@ -134,31 +138,46 @@ function CoursePage() {
                 })}
               </ol>
               {week.papers.length > 0 ? (
-                <section className="border-t px-4 py-4" aria-label="Papers">
-                  <h3 className="mb-2 font-semibold">Papers</h3>
+                <section className="border-t" aria-label="Papers">
+                  <h3 className="px-4 pt-4 pb-1 text-sm font-medium text-muted-foreground">
+                    Papers
+                  </h3>
                   <ul className="divide-y">
                     {week.papers.map((paper) => (
                       <li key={paper.id}>
                         <Link
                           to="/papers/$paperId"
                           params={{ paperId: paper.id }}
-                          className="block cursor-pointer rounded px-2 py-3 hover:bg-muted/60"
+                          className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/60"
                         >
-                          <Markdown inline>{paper.title}</Markdown>
-                          <p className="text-sm text-muted-foreground">
-                            <Markdown inline>{paper.authors}</Markdown> · {paper.year} · ~
-                            {paper.estMinutes} min
-                          </p>
-                          <Badge
-                            variant="secondary"
-                            className={
-                              paper.status === 'completed'
-                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                : ''
-                            }
-                          >
-                            {paperStatusLabel(paper.status)}
-                          </Badge>
+                          <span className="flex w-9 shrink-0 items-center">
+                            <FileText aria-hidden="true" className="size-4 text-muted-foreground" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-medium">
+                              <Markdown inline>{paper.title}</Markdown>
+                            </span>
+                            <span className="block text-xs text-muted-foreground">
+                              <Markdown inline>{paper.authors}</Markdown> · {paper.year} · ~
+                              {paper.estMinutes} min
+                            </span>
+                          </span>
+                          {paper.status === 'reading' || paper.status === 'completed' ? (
+                            <Badge
+                              variant="secondary"
+                              className={
+                                paper.status === 'completed'
+                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                  : ''
+                              }
+                            >
+                              {paperStatusLabel(paper.status)}
+                            </Badge>
+                          ) : null}
+                          <ChevronRight
+                            aria-hidden="true"
+                            className="size-4 shrink-0 text-muted-foreground"
+                          />
                         </Link>
                       </li>
                     ))}

@@ -120,7 +120,7 @@ test('diagnostic to KP runner starts point one and preserves map and progress', 
   await page.goto('/map');
   await expect(page.getByText('Prerequisites not met')).toBeVisible();
   await page.getByText('Vectors', { exact: true }).first().click();
-  await expect(page.getByText('Mastery by dimension')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mastery' })).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/map.png`, fullPage: true });
   await page.goto('/progress');
   await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
@@ -169,12 +169,12 @@ test('progress displays mastery, goal progress, study time, and evidence section
 }) => {
   await page.goto('/progress');
   await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '90-day goals' })).toBeVisible();
+  await expect(page.getByText('Concepts mastered', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Mastery by domain' })).toBeVisible();
   await expect(page.getByText('Mathematics', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Learning debt' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Study time' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Recent evidence' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Learning debt' })).toHaveCount(0);
+  await expect(page.getByText('Study time', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Recent answers' })).toBeVisible();
   await expect(page.getByText('No answers yet.')).toBeVisible();
 });
 

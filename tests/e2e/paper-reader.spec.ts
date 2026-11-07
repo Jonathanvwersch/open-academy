@@ -55,7 +55,7 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
   await page.goto('/course');
   const paperLink = page.getByRole('link', { name: /Fixture Paper One/ }).first();
   await expect(paperLink).toBeVisible();
-  await expect(paperLink.locator('[data-slot="badge"]')).toHaveText('Not started');
+  await expect(paperLink.locator('[data-slot="badge"]')).toHaveCount(0);
   await paperLink.click();
   await expect(page).toHaveURL(/\/papers\/fixture-paper-one/);
   await expect(page.locator('.react-pdf__Page__canvas').first()).toBeVisible();
@@ -72,7 +72,7 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
   );
   await page.getByRole('button', { name: 'Zoom in' }).click();
   await expect(page.getByText('110%', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '−' }).click();
+  await page.getByRole('button', { name: 'Zoom out' }).click();
   await expect(page.getByText('100%', { exact: true })).toBeVisible();
 
   const pageTwoSave = page.waitForResponse((response) => {
@@ -235,7 +235,7 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
   await tutor.getByRole('button', { name: 'Clear selected passage' }).click();
   await expect(continuedChip).toHaveCount(0);
   await expect(tutor.getByTestId('tutor-reading-context')).not.toContainText('selected passage');
-  await page.getByRole('link', { name: '← Back to Course' }).click();
+  await page.getByRole('link', { name: 'Back to Course' }).click();
   const completedPaperLink = page.getByRole('link', { name: /Fixture Paper One/ }).first();
   await expect(completedPaperLink.locator('[data-slot="badge"]')).toHaveText('Completed');
   await expect(completedPaperLink.locator('[data-slot="badge"]')).toHaveClass(/bg-emerald-50/);
@@ -268,7 +268,7 @@ test('scrolling through PDF pages does not show the route loading skeleton', asy
   await page.evaluate(() => {
     window.__routeSkeletonSeen = false;
     const observer = new MutationObserver(() => {
-      if (document.querySelector('[aria-hidden="true"].animate-pulse')) {
+      if (document.querySelector('[data-testid="route-skeleton"]')) {
         window.__routeSkeletonSeen = true;
       }
     });
@@ -330,7 +330,7 @@ test('Saturday session offers the current week papers and a skip action', async 
   await expect(page.getByText("Pick one of this week's papers to read.")).toBeVisible();
   const sessionPaper = page.getByRole('link', { name: /Fixture Paper One/ });
   await expect(sessionPaper).toBeVisible();
-  await expect(sessionPaper.locator('[data-slot="badge"]')).toHaveText('Not started');
+  await expect(sessionPaper).toContainText('Not started');
   await expect(page.getByRole('link', { name: /Fixture Paper Two/ })).toBeVisible();
   await page.getByRole('button', { name: 'Skip for today' }).click();
 });

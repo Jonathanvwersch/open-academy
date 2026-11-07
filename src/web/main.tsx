@@ -4,17 +4,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouteLoadError } from './route-error.js';
 import { routeTree } from './routeTree.gen.js';
+import { PageSkeleton } from './skeletons.js';
 import './styles.css';
-
-function RoutePendingSkeleton() {
-  return (
-    <div aria-hidden="true" className="w-full animate-pulse space-y-6">
-      <div className="h-4 w-32 rounded bg-neutral-200" />
-      <div className="h-9 w-56 rounded bg-neutral-200" />
-      <div className="h-36 w-full rounded-xl bg-neutral-200" />
-    </div>
-  );
-}
 
 function DefaultRouteError() {
   return (
@@ -38,9 +29,9 @@ const router = createRouter({
   context: { queryClient },
   defaultPreload: 'intent',
   defaultPreloadStaleTime: 0,
-  defaultPendingMs: 3_500,
+  defaultPendingMs: 1_000,
   defaultPendingMinMs: 300,
-  defaultPendingComponent: RoutePendingSkeleton,
+  defaultPendingComponent: PageSkeleton,
   defaultErrorComponent: DefaultRouteError,
 });
 

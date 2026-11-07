@@ -12,8 +12,8 @@ export function RouteLoadError({
 }) {
   const router = useRouter();
   return (
-    <div className="space-y-2">
-      <p className={className} role={role}>
+    <div className="flex flex-col items-start gap-3 rounded-lg border p-4">
+      <p className={`text-sm ${className ?? ''}`} role={role}>
         {message}
       </p>
       <Button variant="outline" size="sm" type="button" onClick={() => void router.invalidate()}>

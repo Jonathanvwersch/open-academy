@@ -3,70 +3,112 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Button } from '@/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
 import { Progress } from '@/ui/progress.js';
+import { masteryStateLabels } from '../mastery-labels.js';
 import { progressQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
+import { PageSkeleton } from '../skeletons.js';
 
 export const Route = createFileRoute('/progress')({
+  pendingComponent: PageSkeleton,
   loader: ({ context }) => context.queryClient.ensureQueryData(progressQueryOptions()),
   errorComponent: () => <RouteLoadError message="Progress is unavailable." role="alert" />,
   component: ProgressPage,
 });
 
-const masteryStateLabels: Record<string, string> = {
-  not_assessed: 'Not assessed',
-  introduced: 'Introduced',
-  assisted: 'Assisted',
-  independent: 'Independent',
-  retained: 'Retained',
+const masteryStateOrder = ['retained', 'independent', 'assisted', 'introduced', 'not_assessed'];
+const masteryStateColors: Record<string, string> = {
+  not_assessed: 'bg-muted',
+  introduced: 'bg-neutral-300',
+  assisted: 'bg-amber-300',
+  independent: 'bg-sky-400',
+  retained: 'bg-emerald-500',
 };
 
 function ProgressPage() {
   const { data } = useSuspenseQuery(progressQueryOptions());
+  const domains = data.domains.filter((domain) =>
+    Object.values(domain.counts).some((count) => count > 0),
+  );
+  const recentAnswers = data.evidence.slice(0, 10);
   return (
-    <section className="mx-auto max-w-3xl space-y-6">
+    <section className="space-y-6">
       <h1 className="sr-only">Progress</h1>
       <Card>
-        <CardHeader>
-          <CardTitle>90-day goals</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>
-            {data.goal.mastered} of {data.goal.total} concepts independent or retained
-          </p>
-          <Progress
-            className="mt-3"
-            value={data.goal.total ? (data.goal.mastered / data.goal.total) * 100 : 0}
-          />
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Mastery by domain</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.domains.map((domain, index) => (
-            <div className={index === 0 ? '' : 'mt-4 border-t pt-3'} key={domain.id}>
-              <h3 className="font-medium">{domain.title}</h3>
-              {Object.values(domain.counts).every((count) => count === 0) ? (
-                <p className="text-sm text-muted-foreground">No lessons authored yet</p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {Object.entries(domain.counts)
-                    .map(([state, count]) => `${masteryStateLabels[state] ?? state}: ${count}`)
-                    .join(' · ')}
-                </p>
-              )}
+        <CardHeader className="gap-0">
+          <div className="grid grid-cols-3 divide-x">
+            <div className="min-w-0 px-3 first:pl-0">
+              <p className="text-xs text-muted-foreground">Concepts mastered</p>
+              <p className="text-2xl font-semibold tabular-nums">
+                {data.goal.mastered} / {data.goal.total}
+              </p>
+              <Progress
+                aria-label="Concepts mastered"
+                className="mt-2 h-1.5"
+                value={data.goal.total ? (data.goal.mastered / data.goal.total) * 100 : 0}
+              />
             </div>
-          ))}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Learning debt</CardTitle>
+            <div className="min-w-0 px-3">
+              <p className="text-xs text-muted-foreground">Study time</p>
+              <p className="text-2xl font-semibold tabular-nums">{data.hours.toFixed(1)} h</p>
+              <p className="text-sm text-muted-foreground">of {data.planHours} h</p>
+            </div>
+            <div className="min-w-0 px-3 last:pr-0">
+              <p className="text-xs text-muted-foreground">Streak</p>
+              <p className="text-2xl font-semibold tabular-nums">{data.streakDays}</p>
+              <p className="text-sm text-muted-foreground">days</p>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          {data.debt.length ? (
-            <ul className="mt-3 space-y-3">
+      </Card>
+      {domains.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Mastery by domain</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {domains.map((domain) => {
+              const total = Object.values(domain.counts).reduce((sum, count) => sum + count, 0);
+              const counts = masteryStateOrder
+                .map(
+                  (state) => [state, domain.counts[state as keyof typeof domain.counts]] as const,
+                )
+                .filter(([, count]) => count > 0);
+              return (
+                <div className="space-y-2" key={domain.id}>
+                  <h3 className="font-medium">{domain.title}</h3>
+                  <div
+                    aria-label={counts
+                      .map(([state, count]) => `${count} ${masteryStateLabels[state]}`)
+                      .join(' · ')}
+                    className="flex h-2 overflow-hidden rounded-full"
+                    role="img"
+                  >
+                    {counts.map(([state, count]) => (
+                      <span
+                        key={state}
+                        className={masteryStateColors[state]}
+                        style={{ width: `${(count / total) * 100}%` }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {counts
+                      .map(([state, count]) => `${count} ${masteryStateLabels[state]}`)
+                      .join(' · ')}
+                  </p>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      ) : null}
+      {data.debt.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Learning debt</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3">
               {data.debt.map((item) => (
                 <li key={`${item.conceptId}-${item.dimension}-${item.reason}`}>
                   <Button asChild variant="link" className="px-0">
@@ -78,35 +120,43 @@ function ProgressPage() {
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="mt-2 text-sm text-muted-foreground">No learning debt identified.</p>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : null}
       <Card>
         <CardHeader>
-          <CardTitle>Study time</CardTitle>
+          <CardTitle>Recent answers</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>
-            {data.hours.toFixed(1)} of {data.planHours} hours · {data.streakDays}-day current streak
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent evidence</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.evidence.length ? (
-            <ul className="space-y-2 text-sm">
-              {data.evidence.map((item) => (
-                <li key={item.id}>
-                  Attempt {item.exerciseId} ({item.conceptTitle}) → {item.correct} credit ·{' '}
-                  {new Date(item.createdAt).toLocaleDateString()} ·{' '}
-                  {item.event ?? 'no mastery-state change'}
-                </li>
-              ))}
+          {recentAnswers.length ? (
+            <ul className="divide-y">
+              {recentAnswers.map((item) => {
+                const correct = item.correct >= 1;
+                const result = correct
+                  ? 'Correct'
+                  : item.correct === 0
+                    ? 'Incorrect'
+                    : 'Partly correct';
+                return (
+                  <li
+                    key={item.id}
+                    className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                  >
+                    <p className="min-w-0 font-medium">{item.conceptTitle}</p>
+                    <div className="flex shrink-0 flex-col items-end text-right text-sm text-muted-foreground">
+                      <span className={correct ? 'text-emerald-700 dark:text-emerald-300' : ''}>
+                        {result}
+                      </span>
+                      <span>
+                        {new Date(item.createdAt).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="text-sm text-muted-foreground">No answers yet.</p>

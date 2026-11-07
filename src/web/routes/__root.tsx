@@ -40,16 +40,20 @@ function RootLayout() {
           }`}
         >
           <header className="border-b bg-background">
-            <div className="mx-auto flex h-14 max-w-3xl items-center justify-between gap-4 px-5">
-              <Link to="/" className="text-sm font-semibold tracking-tight">
+            <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between gap-4 px-4 sm:px-6">
+              <Link to="/" className="hidden text-sm font-semibold tracking-tight sm:block">
                 Academy
               </Link>
-              <nav aria-label="Main navigation" className="flex items-center gap-1">
+              <nav
+                aria-label="Main navigation"
+                className="flex min-w-0 flex-1 items-center justify-start gap-0.5 overflow-x-auto [scrollbar-width:none] sm:justify-end"
+              >
                 {navigation.map((item) => (
                   <Button
                     key={item.to}
                     asChild
                     size="sm"
+                    className="px-2.5 sm:px-3"
                     variant={
                       pathname === item.to || (item.to !== '/' && pathname.startsWith(item.to))
                         ? 'secondary'
@@ -66,7 +70,7 @@ function RootLayout() {
             className={
               isPaperReader
                 ? 'flex w-full min-h-0 min-w-0 flex-1 px-0 py-0'
-                : 'mx-auto w-full max-w-3xl px-5 py-8'
+                : 'mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-8'
             }
           >
             <Outlet />

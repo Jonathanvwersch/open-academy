@@ -4,8 +4,10 @@ import { Button } from '@/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
 import { diagnosticResultsQueryOptions, latestDiagnosticQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
+import { PageSkeleton } from '../skeletons.js';
 
 export const Route = createFileRoute('/diagnostic/results')({
+  pendingComponent: PageSkeleton,
   validateSearch: (search: Record<string, unknown>) => ({
     id: typeof search.id === 'string' ? search.id : undefined,
   }),
@@ -34,13 +36,13 @@ function DiagnosticResultsPage() {
   const id = Route.useLoaderData();
   const { data: result } = useSuspenseQuery(diagnosticResultsQueryOptions(id));
   return (
-    <section className="mx-auto max-w-3xl space-y-6">
+    <section className="space-y-6">
       <div>
-        <p className="text-sm text-neutral-500">Diagnostic complete</p>
+        <p className="text-sm text-muted-foreground">Diagnostic complete</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">Your starting point</h1>
       </div>
       <Card>
-        <CardContent className="space-y-5 p-6">
+        <CardContent className="space-y-5">
           <p className="text-sm leading-6 text-muted-foreground">
             Results are provisional; independent practice will refine your mastery.
           </p>
@@ -92,7 +94,7 @@ function DiagnosticResultsPage() {
           </div>
           <div>
             <h3 className="font-medium">90-day path</h3>
-            <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-neutral-600">
+            <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-muted-foreground">
               {result.plan.ninetyDayPath.map((week) => (
                 <li key={week.week}>
                   Week {week.week}: {week.title}

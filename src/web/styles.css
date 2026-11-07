@@ -115,11 +115,10 @@ label[for],
   font-weight: 600;
 }
 
-.markdown pre {
+.katex-display {
   overflow-x: auto;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  background: #f5f5f5;
+  overflow-y: hidden;
+  padding-block: 0.25rem;
 }
 
 @theme inline {

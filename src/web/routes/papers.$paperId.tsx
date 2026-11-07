@@ -1,16 +1,19 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { ArrowLeft, Minus, Plus } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { Button } from '@/ui/button.js';
+import { Input } from '@/ui/input.js';
 import { Textarea } from '@/ui/textarea.js';
 import { apiFetch } from '../authenticated-fetch.js';
 import { FeedbackPanel, Markdown } from '../components.js';
 import { paperQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
+import { PaperSkeleton } from '../skeletons.js';
 import { useTutorSidebar } from '../tutor/TutorSidebar.js';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -66,6 +69,7 @@ function paperFeedbackResult(
 }
 
 export const Route = createFileRoute('/papers/$paperId')({
+  pendingComponent: PaperSkeleton,
   validateSearch: searchSchema,
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(paperQueryOptions(params.paperId)),
@@ -134,7 +138,7 @@ function PaperReaderPage() {
   const [pageWidth, setPageWidth] = useState(0);
   const [pageNumber, setPageNumber] = useState(data.progress?.lastPage ?? 1);
   const [zoom, setZoom] = useState(100);
-  const [guideOpen, setGuideOpen] = useState(true);
+  const [guideOpen, setGuideOpen] = useState(() => window.matchMedia('(min-width: 768px)').matches);
   const [pdfError, setPdfError] = useState(false);
   const [retry, setRetry] = useState(0);
   const [notes, setNotes] = useState<Record<string, string>>(data.progress?.notes ?? {});
@@ -365,82 +369,93 @@ function PaperReaderPage() {
 
   return (
     <section className="flex h-[calc(100dvh-3.5rem)] min-h-0 w-full min-w-0 flex-col md:h-[calc(100dvh-4.5rem)]">
-      <header className="flex shrink-0 flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-2">
+      <header className="sticky top-0 z-20 flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b bg-background px-4 py-1 sm:h-12 sm:flex-nowrap">
         {from ? (
-          <Link
-            className="cursor-pointer text-sm underline"
-            to="/session/$id"
-            params={{ id: from }}
-            search={activity ? { activity } : {}}
-          >
-            ← Back to session
-          </Link>
+          <Button asChild variant="ghost" size="sm">
+            <Link
+              aria-label="Back to session"
+              to="/session/$id"
+              params={{ id: from }}
+              search={activity ? { activity } : {}}
+            >
+              <ArrowLeft aria-hidden="true" className="size-4" />
+              Session
+            </Link>
+          </Button>
         ) : (
-          <Link className="cursor-pointer text-sm underline" to="/course">
-            ← Back to Course
-          </Link>
+          <Button asChild variant="ghost" size="sm">
+            <Link aria-label="Back to Course" to="/course">
+              <ArrowLeft aria-hidden="true" className="size-4" />
+              Course
+            </Link>
+          </Button>
         )}
-        <h1 className="text-xl font-semibold">
+        <h1 className="min-w-0 flex-1 truncate text-sm font-semibold">
           <Markdown inline>{data.paper.title}</Markdown>
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="hidden shrink-0 text-sm text-muted-foreground lg:inline">
           <Markdown inline>{data.paper.authors}</Markdown> · {data.paper.year} · ~
           {data.paper.est_minutes} min
         </p>
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Zoom out"
+            onClick={() => setZoom((value) => Math.max(50, value - 10))}
+          >
+            <Minus aria-hidden="true" className="size-4" />
+          </Button>
+          <span className="w-9 text-center text-xs tabular-nums">{zoom}%</span>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Zoom in"
+            onClick={() => setZoom((value) => Math.min(200, value + 10))}
+          >
+            <Plus aria-hidden="true" className="size-4" />
+          </Button>
+          <label htmlFor="paper-page" className="flex shrink-0 items-center gap-1 text-sm">
+            <span className="sr-only">Page</span>
+            <Input
+              id="paper-page"
+              aria-label="Go to page"
+              className="h-8 w-14 px-1 text-center"
+              type="number"
+              min={1}
+              max={pageCount || undefined}
+              value={boundedPage}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                if (!Number.isInteger(next) || next < 1) return;
+                const targetPage = pageCount > 0 ? Math.min(next, pageCount) : next;
+                setPageNumber(targetPage);
+                viewer.current
+                  ?.querySelector(`[data-page="${targetPage}"]`)
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            />
+            of {pageCount || '…'}
+          </label>
+          <Button
+            variant={guideOpen ? 'secondary' : 'outline'}
+            size="sm"
+            aria-expanded={guideOpen}
+            aria-controls="paper-guide"
+            onClick={() => setGuideOpen((open) => !open)}
+          >
+            Guide
+          </Button>
+        </div>
       </header>
-      <div className="sticky top-0 z-20 flex shrink-0 flex-wrap items-center gap-2 border-y bg-background px-4 py-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setZoom((value) => Math.max(50, value - 10))}
-        >
-          −
-        </Button>
-        <span className="min-w-10 text-center">{zoom}%</span>
-        <Button
-          variant="outline"
-          size="sm"
-          aria-label="Zoom in"
-          onClick={() => setZoom((value) => Math.min(200, value + 10))}
-        >
-          +
-        </Button>
-        <label className="ml-3 flex items-center gap-2 text-sm">
-          Page
-          <input
-            aria-label="Go to page"
-            className="w-16 rounded border px-2 py-1"
-            type="number"
-            min={1}
-            max={pageCount || undefined}
-            value={boundedPage}
-            onChange={(event) => {
-              const next = Number(event.target.value);
-              if (!Number.isInteger(next) || next < 1) return;
-              const targetPage = pageCount > 0 ? Math.min(next, pageCount) : next;
-              setPageNumber(targetPage);
-              viewer.current
-                ?.querySelector(`[data-page="${targetPage}"]`)
-                ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
-          />
-          of {pageCount || '…'}
-        </label>
-        <Button
-          variant="outline"
-          size="sm"
-          className="ml-auto"
-          onClick={() => setGuideOpen((open) => !open)}
-        >
-          Guide
-        </Button>
-      </div>
-      <div className="flex min-h-0 min-w-0 flex-1 gap-4 overflow-hidden px-4 pb-4">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden px-4 pb-4 md:flex-row">
         <section
           ref={viewer}
           onMouseUp={onSelection}
           aria-label="PDF reader"
-          className="min-h-0 min-w-0 flex-1 overflow-auto px-4"
+          className={`min-h-0 min-w-0 flex-1 overflow-auto px-4 ${
+            guideOpen ? 'hidden md:block' : 'w-full'
+          }`}
         >
           {pdfError ? (
             <div className="rounded-md border p-5">
@@ -497,22 +512,29 @@ function PaperReaderPage() {
           )}
         </section>
         {guideOpen ? (
-          <aside className="min-h-0 w-[380px] max-w-[40vw] shrink-0 space-y-4 overflow-y-auto border-l pl-4">
+          <aside
+            id="paper-guide"
+            className="min-h-0 w-full shrink-0 space-y-6 overflow-y-auto pt-4 pb-6 pr-1 md:w-[380px] md:border-l md:pl-4"
+          >
             <section>
-              <h2 className="font-semibold">Why this paper</h2>
-              <Markdown>{data.paper.why_this_week}</Markdown>
+              <h2 className="text-sm font-semibold">Why this paper</h2>
+              <div className="text-sm leading-6">
+                <Markdown>{data.paper.why_this_week}</Markdown>
+              </div>
             </section>
             <section>
-              <h2 className="font-semibold">How to read it</h2>
-              <Markdown>{data.paper.how_to_read}</Markdown>
+              <h2 className="text-sm font-semibold">How to read it</h2>
+              <div className="text-sm leading-6">
+                <Markdown>{data.paper.how_to_read}</Markdown>
+              </div>
             </section>
             {data.paper.questions.map((question) => (
               <section key={question.id} className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {question.kind[0]?.toUpperCase()}
                   {question.kind.slice(1)}
                 </p>
-                <h3 className="font-medium">
+                <h3 className="text-sm font-medium leading-6">
                   <Markdown inline>{question.prompt}</Markdown>
                 </h3>
                 <Textarea
@@ -543,8 +565,10 @@ function PaperReaderPage() {
               </section>
             ))}
             <section className="space-y-2">
-              <h2 className="font-semibold">Summary</h2>
-              <Markdown>{data.paper.summary.prompt}</Markdown>
+              <h2 className="text-sm font-semibold">Summary</h2>
+              <div className="text-sm leading-6">
+                <Markdown>{data.paper.summary.prompt}</Markdown>
+              </div>
               <Textarea
                 aria-label="Paper summary"
                 value={summary}
