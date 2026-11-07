@@ -50,6 +50,7 @@ knowledge_points:
       These rates approach $L'(25)=-720$.
     problems:
       [
+        der-speed-at-instant-basics,
         derp-meaning,
         derp-average-speed,
         derp-tangent,
@@ -80,6 +81,7 @@ knowledge_points:
       The negative slope says increasing $w$ slightly reduces the loss at this point.
     problems:
       [
+        der-power-rule-basics,
         derp-power-poly,
         derp-power-value,
         derp-power-cube,
@@ -107,6 +109,7 @@ knowledge_points:
       Each term uses its own rule; the sum rule combines them.
     problems:
       [
+        der-exp-log-basics,
         derp-exp-log-mix,
         derp-ln-slope,
         derp-exp-slope,
@@ -134,6 +137,7 @@ knowledge_points:
       At $w=25$, this is $24(-30)=-720$. The product rule agrees with differentiating the expanded polynomial.
     problems:
       [
+        der-product-quotient-basics,
         derp-product-expr,
         derp-product-value,
         derp-why-not-multiply,

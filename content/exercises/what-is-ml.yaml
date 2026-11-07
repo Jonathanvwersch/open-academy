@@ -1,5 +1,104 @@
 concept: what-is-ml
 exercises:
+  - id: ml-what-it-is-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is machine learning?"
+    options:
+      - {
+          id: a,
+          text: "Writing every rule by hand to map inputs to outputs before seeing examples.",
+          correct: false,
+          feedback: "That is hand-coded programming, not learning from data.",
+        }
+      - {
+          id: b,
+          text: "Fitting a model to examples so it can make predictions for new inputs",
+          correct: true,
+          feedback: "The model fits patterns from examples and uses them to predict outputs for new inputs.",
+        }
+      - {
+          id: c,
+          text: "Memorising the known training targets and returning them only when those same examples appear.",
+          correct: false,
+          feedback: "A learned model is intended to make predictions on new inputs.",
+        }
+      - {
+          id: d,
+          text: "Choosing an output for each input without learning from any past examples.",
+          correct: false,
+          feedback: "Machine learning uses examples and inputs to make predictions.",
+        }
+    solution: "Machine learning learns a model from examples so it can make predictions on new inputs."
+  - id: ml-house-model-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the house-price model, what is the target?"
+    options:
+      - {
+          id: a,
+          text: "The sale price the model is trying to predict",
+          correct: true,
+          feedback: "The target is the known sale price that the model is trained to predict.",
+        }
+      - {
+          id: b,
+          text: "The house's measurements, such as area and bedrooms",
+          correct: false,
+          feedback: "Those measurements are features, the inputs that describe the house.",
+        }
+      - {
+          id: c,
+          text: "The numbers the model learns to multiply each measurement by",
+          correct: false,
+          feedback: "Those learned multipliers are weights that set each feature's influence on the prediction.",
+        }
+      - {
+          id: d,
+          text: "The price the model currently estimates for a house",
+          correct: false,
+          feedback: "That is the prediction, the model's current estimate of the house's sale price.",
+        }
+    solution: "Features are recorded inputs, weights are adjustable settings, prediction is the model's output, and target is the known answer."
+  - id: ml-to-robots-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What stays the same when machine learning is applied to harder robot tasks?"
+    options:
+      - {
+          id: a,
+          text: "The same loop: a model with weights, a loss that scores its errors, and training to reduce it",
+          correct: true,
+          feedback: "The same model, loss, and training loop apply even when a task uses different inputs and outputs.",
+        }
+      - {
+          id: b,
+          text: "The same house measurements and sale-price targets, even for tasks with different inputs and desired outcomes.",
+          correct: false,
+          feedback: "Robot tasks use their own inputs and targets.",
+        }
+      - {
+          id: c,
+          text: "The same model prediction for every new input, regardless of the robot task or situation.",
+          correct: false,
+          feedback: "A model should respond to the input rather than return one fixed prediction.",
+        }
+      - {
+          id: d,
+          text: "The same hand-written action rule for every possible robot situation and input type.",
+          correct: false,
+          feedback: "Learning uses examples and training rather than one fixed action rule.",
+        }
+    solution: "The learning loop stays the same: a model has weights, a loss measures its errors, and training reduces that loss."
   - id: ml-fit-task
     dimension: conceptual
     type: mc
@@ -201,7 +300,7 @@ exercises:
           text: "It's an arbitrary order",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "Each Week 1 lesson answers a need the previous one raised.",
+          feedback: "Each Week 1 topic answers a question raised by the previous topic.",
         }
     solution: "Derivatives tell gradient descent how the loss changes as each weight changes."
   - id: ml-why-new-houses

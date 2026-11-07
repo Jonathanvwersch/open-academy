@@ -1,5 +1,137 @@
 concept: train-test-split
 exercises:
+  - id: tts-why-hold-out-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why hold out test data?"
+    options:
+      - {
+          id: a,
+          text: "To estimate how well the model does on data it was never fitted or tuned on",
+          correct: true,
+          feedback: "The held-out score estimates how well the model predicts data excluded from fitting and choices.",
+        }
+      - {
+          id: b,
+          text: "To provide extra examples for each training update so the model can fit faster.",
+          correct: false,
+          feedback: "Training examples, not held-out test examples, update the model.",
+        }
+      - {
+          id: c,
+          text: "To choose settings and model versions by checking the test score after every training run.",
+          correct: false,
+          feedback: "The validation set is used to select hyperparameters.",
+        }
+      - {
+          id: d,
+          text: "To guarantee accurate predictions on all future houses, even when they differ from training.",
+          correct: false,
+          feedback: "A test estimate cannot guarantee future performance.",
+        }
+    solution: "Test data is held out to estimate performance on data not used to fit or select the model."
+  - id: tts-three-splits-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What are the roles of training, validation, and test sets?"
+    options:
+      - {
+          id: a,
+          text: "The training set fits parameters, validation data chooses settings, and test data estimates final performance.",
+          correct: true,
+          feedback: "Training changes parameters, validation guides choices, and test data supplies the final estimate.",
+        }
+      - {
+          id: b,
+          text: "The training set chooses settings, validation data fits parameters, and test data updates weights.",
+          correct: false,
+          feedback: "Training fits parameters; validation and test data do not update weights.",
+        }
+      - {
+          id: c,
+          text: "The training set estimates final performance, validation data updates weights, and test data chooses settings.",
+          correct: false,
+          feedback: "The test set estimates final performance and is not used to choose settings.",
+        }
+      - {
+          id: d,
+          text: "The training, validation, and test sets all fit parameters, but use different numbers of examples.",
+          correct: false,
+          feedback: "Only the training set fits model parameters.",
+        }
+    solution: "Training data fits parameters, validation data chooses settings, and test data estimates final performance."
+  - id: tts-hyperparameters-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a hyperparameter?"
+    options:
+      - {
+          id: a,
+          text: "A value learned directly from training examples as part of the model, such as a weight.",
+          correct: false,
+          feedback: "A learned weight is a model parameter.",
+        }
+      - {
+          id: b,
+          text: "A setting you choose before training, such as the learning rate, rather than one the model learns",
+          correct: true,
+          feedback: "The learning rate is chosen before a fit, while weights are learned from training examples.",
+        }
+      - {
+          id: c,
+          text: "A known target supplied alongside each training example for the model to predict.",
+          correct: false,
+          feedback: "Targets label examples; they are not model settings.",
+        }
+      - {
+          id: d,
+          text: "A prediction made by a model before any of its parameters have been fitted.",
+          correct: false,
+          feedback: "A prediction is an output, not a training setting.",
+        }
+    solution: "A hyperparameter is a setting chosen outside the fitted model parameters and fixed before fitting."
+  - id: tts-leakage-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is data leakage?"
+    options:
+      - {
+          id: a,
+          text: "When information from validation or test data influences training or model choices",
+          correct: true,
+          feedback: "Leakage occurs when held-out validation or test information affects fitting or model selection.",
+        }
+      - {
+          id: b,
+          text: "When one training example is left out while the model is fitted.",
+          correct: false,
+          feedback: "Omitting a training example is not leakage because no held-out information enters fitting.",
+        }
+      - {
+          id: c,
+          text: "When the model's training loss is used to update its fitted parameters.",
+          correct: false,
+          feedback: "Training loss is expected to guide parameter updates.",
+        }
+      - {
+          id: d,
+          text: "When the training and test sets contain different numbers of examples.",
+          correct: false,
+          feedback: "Different split sizes alone do not make held-out information affect training.",
+        }
+    solution: "Data leakage occurs when information from outside the training split is used during fitting or model selection."
   - id: tts-check-purpose
     dimension: conceptual
     type: mc
@@ -496,7 +628,7 @@ exercises:
           text: "Size, because it uses fewer inputs than the others",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "Model simplicity is not the selection rule in this lesson; compare validation errors to choose a version.",
+          feedback: "Model simplicity is not the selection rule here; compare validation errors to choose a version.",
         }
       - {
           id: b,

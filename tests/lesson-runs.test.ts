@@ -175,10 +175,11 @@ test('GET run is read-only and POST creates exactly one pending problem', async 
   expect(await db.select().from(lessonProblems)).toHaveLength(1);
 });
 
-test('two correct answers pass a point and award exactly one ten-point event', async () => {
+test('basics does not count toward the two correct answers or the XP award', async () => {
   let run = (await (await startRun()).json()).run;
   expect(run.currentPointId).toBe('sl-inputs-targets');
-  for (let count = 0; count < 2; count += 1) {
+  expect(content.exercisesById.get(run.pending.exerciseId)?.role).toBe('basics');
+  for (let count = 0; count < 3; count += 1) {
     const pending = run.pending;
     const response = await answerProblem(
       pending.id,
@@ -192,7 +193,8 @@ test('two correct answers pass a point and award exactly one ten-point event', a
       yourAnswer: expect.any(String),
       correctAnswer: expect.any(String),
     });
-    if (count === 0) run = (await (await startRun()).json()).run;
+    if (count === 0) expect(run.points[0]).toMatchObject({ answered: 0, streak: 0 });
+    if (count < 2) run = (await (await startRun()).json()).run;
   }
   expect(run.points[0]).toMatchObject({ id: 'sl-inputs-targets', status: 'passed', answered: 2 });
   expect(run.xpEarned).toBe(10);
@@ -214,7 +216,7 @@ test('double-submit returns 409 and records just one attempt', async () => {
 
 async function pendingTemplate() {
   let run = (await (await startRun()).json()).run;
-  for (let count = 0; count < 4; count += 1) {
+  for (let count = 0; count < 5; count += 1) {
     const pending = run.pending;
     const exercise = content.exercisesById.get(pending.exerciseId);
     if (exercise && isTemplate(exercise)) return { run, pending, exercise };
@@ -222,7 +224,7 @@ async function pendingTemplate() {
     run = (await result.json()).state;
     if (run.status === 'needs_retry')
       throw new Error('Template was not served before the point failed');
-    if (!run.pending) run = (await (await startRun()).json()).run;
+    if (!run.pending && count < 4) run = (await (await startRun()).json()).run;
   }
   throw new Error('No template was served in the first knowledge point');
 }
@@ -259,7 +261,7 @@ test('failed round completes its activity, starts the next, and resumes at round
   const activities = await activityFixture();
   let run = (await (await startRun(activities.learn.id)).json()).run;
   const firstProblemId = run.pending.id;
-  for (let count = 0; count < 4; count += 1) {
+  for (let count = 0; count < 5; count += 1) {
     const pending = run.pending;
     const result = await answerProblem(
       pending.id,
@@ -270,7 +272,7 @@ test('failed round completes its activity, starts the next, and resumes at round
     const body = await result.json();
     run = body.state;
     expect(run.lastAnsweredProblem.id).toBe(pending.id);
-    if (count < 3) run = (await (await startRun(activities.learn.id)).json()).run;
+    if (count < 4) run = (await (await startRun(activities.learn.id)).json()).run;
   }
   expect(run.status).toBe('needs_retry');
   expect(run.points[0]).toMatchObject({ id: 'sl-inputs-targets', status: 'failed', round: 1 });

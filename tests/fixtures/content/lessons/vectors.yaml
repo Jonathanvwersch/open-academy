@@ -13,6 +13,7 @@ knowledge_points:
     worked: This example shows the magnitude of a two-dimensional vector.
     problems:
       [
+        vectors-fixture-1-basics,
         vectors-fixture-practice-1,
         vectors-fixture-practice-2,
         vectors-fixture-practice-3,
@@ -27,6 +28,7 @@ knowledge_points:
     worked: This example shows a simple operation on vector coordinates.
     problems:
       [
+        vectors-fixture-2-basics,
         vectors-fixture-practice-4,
         vectors-fixture-practice-5,
         vectors-fixture-practice-6,

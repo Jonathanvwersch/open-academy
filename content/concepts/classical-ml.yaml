@@ -87,7 +87,7 @@ concepts:
     week: 1
     goal_weight: 3
     dimensions: [conceptual, transfer]
-    prereqs: [{ id: supervised-learning }]
+    prereqs: [{ id: supervised-learning }, { id: gradient-descent }]
     objectives:
       - { text: "Explain the purpose of each split", dimension: conceptual }
       - { text: "Spot data leakage in an evaluation setup", dimension: transfer }

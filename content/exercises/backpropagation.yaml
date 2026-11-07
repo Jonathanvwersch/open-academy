@@ -1,5 +1,137 @@
 concept: backpropagation
 exercises:
+  - id: bp-why-backprop-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is backpropagation?"
+    options:
+      - {
+          id: a,
+          text: "A forward calculation that uses house features and learned weights to produce a sale-price prediction.",
+          correct: false,
+          feedback: "That is the forward pass, which computes predictions before derivatives flow backward.",
+        }
+      - {
+          id: b,
+          text: "A numerical check that compares an analytic derivative with a nearby finite-difference estimate.",
+          correct: false,
+          feedback: "That is a gradient check, which tests a derivative calculation rather than computing all gradients.",
+        }
+      - {
+          id: c,
+          text: "A batch calculation that combines several houses' contributions to the model's loss gradient.",
+          correct: false,
+          feedback: "That describes a batch gradient, which aggregates examples rather than backpropagating a network.",
+        }
+      - {
+          id: d,
+          text: "A backward chain-rule calculation that finds the loss derivative for every weight and bias",
+          correct: true,
+          feedback: "The chain rule carries the loss derivative backward through the network to every weight and bias.",
+        }
+    solution: "Backpropagation applies the chain rule backward through a network to find the loss derivative for each weight and bias."
+  - id: bp-by-hand-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a backward pass do?"
+    options:
+      - {
+          id: a,
+          text: "It changes each weight by a learning-rate-scaled amount to reduce the loss.",
+          correct: false,
+          feedback: "That is a gradient-descent update; a backward pass calculates derivatives used by updates.",
+        }
+      - {
+          id: b,
+          text: "It places examples in a matrix so their predictions can be calculated together.",
+          correct: false,
+          feedback: "That arranges a batch for the forward calculation; it does not propagate loss derivatives.",
+        }
+      - {
+          id: c,
+          text: "It transforms a weighted score into the value passed to the next layer.",
+          correct: false,
+          feedback: "That is an activation's forward operation, not the backward propagation of derivatives.",
+        }
+      - {
+          id: d,
+          text: "It carries derivatives backward, multiplying local rates at each operation.",
+          correct: true,
+          feedback: "Each local derivative transfers the loss sensitivity to the preceding operation.",
+        }
+    solution: "A backward pass propagates derivatives from the loss toward earlier operations by multiplying local derivatives."
+  - id: bp-arrays-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a batch gradient?"
+    options:
+      - {
+          id: a,
+          text: "The loss gradient contributed by one weight for a single training house.",
+          correct: false,
+          feedback: "That is a single-example gradient; a batch gradient combines several houses' contributions.",
+        }
+      - {
+          id: b,
+          text: "A list of predicted prices for every house in a training batch.",
+          correct: false,
+          feedback: "Those are batch predictions; a gradient records loss derivatives for parameters.",
+        }
+      - {
+          id: c,
+          text: "The combined gradient for the model's parameters from several training houses.",
+          correct: true,
+          feedback: "Processing the batch combines per-house slopes into one set of parameter derivatives.",
+        }
+      - {
+          id: d,
+          text: "The derivative of an activation output with respect to one score.",
+          correct: false,
+          feedback: "That is an activation slope for one score, not a batch of parameter gradients.",
+        }
+    solution: "A batch gradient combines the gradient information from several training houses processed together."
+  - id: bp-checking-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a gradient check compare?"
+    options:
+      - {
+          id: a,
+          text: "The model's training loss compared with its held-out test loss.",
+          correct: false,
+          feedback: "That compares performance across data splits, not a derivative with a numerical estimate.",
+        }
+      - {
+          id: b,
+          text: "Two activation outputs calculated from the same weighted score.",
+          correct: false,
+          feedback: "That compares outputs; a gradient check compares derivative values from two methods.",
+        }
+      - {
+          id: c,
+          text: "A calculated derivative compared with a nearby numerical estimate.",
+          correct: true,
+          feedback: "Agreement between the analytic slope and nearby-value estimate supports the derivative calculation.",
+        }
+      - {
+          id: d,
+          text: "A model's weight vector compared with its vector of predicted prices.",
+          correct: false,
+          feedback: "Those vectors describe parameters and outputs, not two estimates of the same derivative.",
+        }
+    solution: "A gradient check compares a calculated derivative with a finite-difference estimate near the same parameter setting."
   - id: bp-check-1
     dimension: math
     type: numeric

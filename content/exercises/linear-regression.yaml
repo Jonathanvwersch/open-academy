@@ -1,5 +1,104 @@
 concept: linear-regression
 exercises:
+  - id: lr-add-contributions-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a linear regression model do?"
+    options:
+      - {
+          id: a,
+          text: "It predicts a category by assigning input features to labels such as spam or not spam.",
+          correct: false,
+          feedback: "Classification predicts a category, while linear regression predicts a numeric value.",
+        }
+      - {
+          id: b,
+          text: "It draws a straight line through the two closest training examples without fitting feature weights.",
+          correct: false,
+          feedback: "Connecting nearby examples is a nearest-neighbour idea, not how linear regression fits weights.",
+        }
+      - {
+          id: c,
+          text: "It finds weights by testing every possible parameter setting and keeping the one with the smallest loss.",
+          correct: false,
+          feedback: "That is exhaustive parameter search; gradient-based training uses loss gradients to update weights.",
+        }
+      - {
+          id: d,
+          text: "It predicts a number by multiplying each input feature by a weight, adding the results, then adding a bias.",
+          correct: true,
+          feedback: "Each feature contributes its value times its weight, and those contributions plus the bias form the prediction.",
+        }
+    solution: "A linear regression model predicts a number by adding weighted feature contributions and a bias."
+  - id: lr-interpret-weights-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a weight mean in a linear model?"
+    options:
+      - {
+          id: a,
+          text: "The feature's share of all training examples in the dataset.",
+          correct: false,
+          feedback: "That is a data frequency, not a model weight.",
+        }
+      - {
+          id: b,
+          text: "The prediction shift when every feature value is zero.",
+          correct: false,
+          feedback: "That shift is the bias, not a weight; a weight measures one feature's per-unit effect.",
+        }
+      - {
+          id: c,
+          text: "The change in every feature when the predicted price rises.",
+          correct: false,
+          feedback: "A weight describes a model effect, not feature movement.",
+        }
+      - {
+          id: d,
+          text: "A feature's per-unit effect on prediction, with other features fixed.",
+          correct: true,
+          feedback: "Changing one feature by a unit changes the prediction by its weight when others stay fixed.",
+        }
+    solution: "A weight is the prediction change for a one-unit increase in its feature while other features stay fixed."
+  - id: lr-batch-predictions-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a batch prediction?"
+    options:
+      - {
+          id: a,
+          text: "A single house prediction made with a different weight for every feature.",
+          correct: false,
+          feedback: "That describes one prediction, not a batch.",
+        }
+      - {
+          id: b,
+          text: "A vector of predictions computed for several house rows of $X$ in one matrix operation.",
+          correct: true,
+          feedback: "Each row contains one house's features, so multiplying by shared weights gives one prediction per row.",
+        }
+      - {
+          id: c,
+          text: "A collection of predictions made by different models for the same house.",
+          correct: false,
+          feedback: "That compares models rather than processing several houses together.",
+        }
+      - {
+          id: d,
+          text: "A sum of predicted house prices used to set the model's shared bias value.",
+          correct: false,
+          feedback: "The bias is added to predictions; it is not a batch sum.",
+        }
+    solution: "A batch prediction processes several houses together by placing each feature vector in a row of $X$."
   - id: lr-check-predict
     dimension: math
     type: numeric

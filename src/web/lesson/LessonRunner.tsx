@@ -56,6 +56,8 @@ export function LessonRunner({
       : undefined;
   const point = answeredPoint ?? activePoint ?? state?.currentPoint;
   const pointId = point?.id;
+  const basicsExerciseId = lesson?.knowledge_points?.find((item) => item.id === pointId)
+    ?.problems[0];
   const contextProblem = state?.pendingProblem ?? state?.lastAnsweredProblem;
   const currentPointIndex = state?.currentPointId
     ? state.points.findIndex((point) => point.id === state.currentPointId)
@@ -190,6 +192,10 @@ export function LessonRunner({
   const pointStatus = state.points.find((item) => item.id === point?.id);
   const shownProblem = state.pendingProblem ?? state.lastAnsweredProblem;
   const showingAnswer = Boolean(state.lastAnsweredProblem && !state.pendingProblem);
+  const problemLabel = (exerciseId: string, pending = false) => {
+    if (basicsExerciseId === exerciseId) return 'Basics question';
+    return `Problem ${(pointStatus?.answered ?? 0) + (pending ? 1 : 0)} · up to 5`;
+  };
 
   return (
     <section className="mx-auto max-w-3xl space-y-6">
@@ -236,7 +242,7 @@ export function LessonRunner({
                   className="rounded-lg border border-green-200 bg-background p-4"
                 >
                   <p className="mb-2 text-sm font-medium">
-                    Problem {state.lastAnsweredProblem.position} · up to 5
+                    {problemLabel(state.lastAnsweredProblem.exercise.id)}
                   </p>
                   <div data-testid="lesson-problem-prompt">
                     <Markdown>{state.lastAnsweredProblem.exercise.prompt}</Markdown>
@@ -260,7 +266,7 @@ export function LessonRunner({
                   className="rounded-lg border border-amber-200 bg-background p-4"
                 >
                   <p className="mb-2 text-sm font-medium">
-                    Problem {state.lastAnsweredProblem.position} · up to 5
+                    {problemLabel(state.lastAnsweredProblem.exercise.id)}
                   </p>
                   <div data-testid="lesson-problem-prompt">
                     <Markdown>{state.lastAnsweredProblem.exercise.prompt}</Markdown>
@@ -292,7 +298,9 @@ export function LessonRunner({
             >
               <CardContent className="space-y-5 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="font-semibold">Problem {shownProblem.position} · up to 5</h3>
+                  <h3 className="font-semibold">
+                    {problemLabel(shownProblem.exercise.id, Boolean(state.pendingProblem))}
+                  </h3>
                   <p className="text-sm text-neutral-600">2 in a row to move on</p>
                 </div>
                 <div

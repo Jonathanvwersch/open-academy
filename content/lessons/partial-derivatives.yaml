@@ -23,7 +23,16 @@ knowledge_points:
       $$\frac{\partial L}{\partial w_1}=2(12w_1+30-20-330)\cdot12=-480.$$
 
       A small increase to $w_1$ lowers the squared error at this point.
-    problems: [pdp-meaning, pdp-house-rate, pdp-why-freeze, pdp-sign, pdp-nudge-check, pdp-how-many]
+    problems:
+      [
+        pd-hold-fixed-basics,
+        pdp-meaning,
+        pdp-house-rate,
+        pdp-why-freeze,
+        pdp-sign,
+        pdp-nudge-check,
+        pdp-how-many,
+      ]
   - id: pd-compute
     title: Compute each partial with derivative rules
     explain: |
@@ -46,7 +55,15 @@ knowledge_points:
 
       A negative partial means a small increase to that weight lowers this house's squared loss.
     problems:
-      [pdp-compute-x, pdp-value-template, pdp-why-zero, pdp-exp-log, pdp-product, pdp-compute-y]
+      [
+        pd-compute-basics,
+        pdp-compute-x,
+        pdp-value-template,
+        pdp-why-zero,
+        pdp-exp-log,
+        pdp-product,
+        pdp-compute-y,
+      ]
   - id: pd-many-inputs
     title: Include the bias as another input
     explain: |
@@ -66,7 +83,15 @@ knowledge_points:
 
       The three weight rates use the three feature values. The bias rate uses 1.
     problems:
-      [pdp-gap-w, pdp-gap-template, pdp-gap-b, pdp-why-data-fixed, pdp-turn-dial, pdp-three-inputs]
+      [
+        pd-many-inputs-basics,
+        pdp-gap-w,
+        pdp-gap-template,
+        pdp-gap-b,
+        pdp-why-data-fixed,
+        pdp-turn-dial,
+        pdp-three-inputs,
+      ]
 final: pd-explain
 summary: |
   - A partial derivative measures how loss changes with one weight while all other weights are held fixed.

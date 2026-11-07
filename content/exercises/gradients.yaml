@@ -1,5 +1,104 @@
 concept: gradients
 exercises:
+  - id: grad-vector-of-partials-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a gradient?"
+    options:
+      - {
+          id: a,
+          text: "A scalar loss score for one training example, rather than a derivative for model parameters.",
+          correct: false,
+          feedback: "A loss is a score; a gradient is a vector of derivatives.",
+        }
+      - {
+          id: b,
+          text: "A vector of the loss's partial derivatives, one for each weight and bias",
+          correct: true,
+          feedback: "Each vector entry is the loss's partial derivative for one weight or bias.",
+        }
+      - {
+          id: c,
+          text: "A vector of input features describing the measurements of one house.",
+          correct: false,
+          feedback: "That is a feature vector.",
+        }
+      - {
+          id: d,
+          text: "A direction that always increases the model's predicted output, regardless of its loss slope.",
+          correct: false,
+          feedback: "It points toward increasing loss here; it does not always increase a model's prediction.",
+        }
+    solution: "A gradient is an ordered vector containing one partial derivative for each adjustable model parameter."
+  - id: grad-points-uphill-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a directional change?"
+    options:
+      - {
+          id: a,
+          text: "The exact output difference after changing one input by an arbitrary amount.",
+          correct: false,
+          feedback: "A directional change is a first-order approximation for several inputs moving a small amount.",
+        }
+      - {
+          id: b,
+          text: "An estimate of how output changes when several inputs move a small amount together.",
+          correct: true,
+          feedback: "A small move combines changes across inputs to estimate the output change.",
+        }
+      - {
+          id: c,
+          text: "The output difference between current inputs and the all-zero input setting.",
+          correct: false,
+          feedback: "That is one finite change; a directional change estimates a small move along a chosen direction.",
+        }
+      - {
+          id: d,
+          text: "The local rate of one output with respect to one selected input.",
+          correct: false,
+          feedback: "That is a partial derivative; a directional change combines several input movements.",
+        }
+    solution: "A directional change approximates the output change caused by moving several inputs a small amount together."
+  - id: grad-steepest-descent-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does steepest descent mean?"
+    options:
+      - {
+          id: a,
+          text: "The direction that changes the most input values at once.",
+          correct: false,
+          feedback: "Changing more coordinates does not ensure the fastest decrease per unit distance.",
+        }
+      - {
+          id: b,
+          text: "The direction in which the gradient gets steeper fastest.",
+          correct: false,
+          feedback: "Steepest descent lowers the function locally rather than making its gradient grow.",
+        }
+      - {
+          id: c,
+          text: "The direction that reaches the global minimum in one update.",
+          correct: false,
+          feedback: "A local step may lower the function without reaching any minimum, let alone the global one.",
+        }
+      - {
+          id: d,
+          text: "The direction in which a small step lowers the function fastest",
+          correct: true,
+          feedback: "Among unit-length directions, this one gives the greatest local decrease for a small step.",
+        }
+    solution: "Steepest descent is the direction that lowers a function fastest per unit distance for a small step."
   - id: grad-check-1
     dimension: math
     type: text

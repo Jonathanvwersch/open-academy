@@ -143,7 +143,7 @@ async function nextProblemAndReload(
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   }
   await page.reload();
-  await expect(page.getByText(/^Problem \d+ · up to 5$/)).toBeVisible();
+  await expect(page.getByText(/^(?:Basics question|Problem \d+ · up to 5)$/)).toBeVisible();
   expect(await currentRun(page, runConceptId)).toEqual(body.run);
   return body.run;
 }
@@ -168,6 +168,17 @@ test('passes every knowledge point and restores the exact problem and result aft
   });
 
   let run = await currentRun(page);
+  expect(run.pendingProblem.exercise.role).toBe('basics');
+  expect(run.pendingProblem.exercise.id).toBe(`${run.points[0].id}-basics`);
+  await expect(page.getByTestId('lesson-problem-prompt')).toContainText(
+    'Which statement best describes the main idea in this step?',
+  );
+  await expect(page.getByLabel('0 correct in a row')).toBeVisible();
+  run = await answerAndReload(page, true);
+  expect(run.points[0]).toMatchObject({ status: 'active', answered: 0, streak: 0 });
+  await expect(page.getByLabel('0 correct in a row')).toBeVisible();
+  await expect(page.getByLabel('1 correct in a row')).toHaveCount(0);
+
   for (let pointIndex = 0; pointIndex < run.points.length; pointIndex += 1) {
     while (run.points[pointIndex].status !== 'passed') {
       if (!run.pendingProblem) run = await nextProblemAndReload(page, conceptId, true);
@@ -283,7 +294,7 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
   if (!activity) throw new Error('Could not create legacy learn activity');
 
   await page.goto(`/session/${session.id}`);
-  await expect(page.getByText(/^Problem 1 · up to 5$/)).toBeVisible();
+  await expect(page.getByText('Basics question', { exact: true })).toBeVisible();
   await expect
     .poll(async () => (await currentRun(page, 'vectors'))?.pendingProblem?.id)
     .toBeTruthy();
@@ -355,14 +366,17 @@ test('a failed knowledge point shows the retry screen and resumes at round two i
   await createSession(page);
   let run = await currentRun(page);
   const firstProblemId = run.pendingProblem.id;
-  for (let answerIndex = 0; answerIndex < 4; answerIndex += 1) {
+  for (let answerIndex = 0; answerIndex < 5; answerIndex += 1) {
     run = await answerAndReload(page, false);
+    if (answerIndex === 0) {
+      expect(run.points[0]).toMatchObject({ status: 'active', answered: 0, streak: 0 });
+    }
     if (answerIndex === 0) {
       await expect(page.getByText('Your answer:')).toBeVisible();
       await expect(page.getByText('Correct answer:')).toBeVisible();
       await page.screenshot({ path: `${screenshotDir}/wrong-answer.png`, fullPage: true });
     }
-    if (answerIndex < 3) run = await nextProblemAndReload(page);
+    if (answerIndex < 4) run = await nextProblemAndReload(page);
   }
   expect(run.status).toBe('needs_retry');
   expect(run.points[0]).toMatchObject({ status: 'failed', round: 1 });
@@ -391,6 +405,6 @@ test('a failed knowledge point shows the retry screen and resumes at round two i
   expect(resumed.currentPointId).toBe('sl-inputs-targets');
   expect(resumed.points[0]).toMatchObject({ status: 'active', round: 2, answered: 0 });
   expect(resumed.pendingProblem.id).not.toBe(firstProblemId);
-  await expect(page.getByText('Problem 1 · up to 5')).toBeVisible();
+  await expect(page.getByText('Basics question', { exact: true })).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/round-two-retry.png`, fullPage: true });
 });

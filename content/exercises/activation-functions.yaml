@@ -1,5 +1,104 @@
 concept: activation-functions
 exercises:
+  - id: act-stacking-stays-straight-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What rule do stacked linear layers represent when no activations intervene?"
+    options:
+      - {
+          id: a,
+          text: "A curved rule, since each added layer creates another bend in the prediction.",
+          correct: false,
+          feedback: "A bend requires a nonlinear activation between the weighted-sum layers.",
+        }
+      - {
+          id: b,
+          text: "A probability rule, since each layer restricts its output to values from zero to one.",
+          correct: false,
+          feedback: "A sigmoid can bound a score, but stacking linear layers alone does not bound outputs.",
+        }
+      - {
+          id: c,
+          text: "A nearest-neighbour rule, since each layer selects examples close to the current input.",
+          correct: false,
+          feedback: "Nearest-neighbour prediction compares stored examples instead of composing layer rules.",
+        }
+      - {
+          id: d,
+          text: "One affine rule, since composing weighted sums and biases still gives one.",
+          correct: true,
+          feedback: "Composing affine rules changes their coefficients but keeps one weighted sum plus bias.",
+        }
+    solution: "Stacked linear layers still form one affine rule, so depth alone cannot add a bend."
+  - id: act-relu-sigmoid-tanh-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is an activation function?"
+    options:
+      - {
+          id: a,
+          text: "A rate that measures how the loss changes when one adjustable model weight changes.",
+          correct: false,
+          feedback: "That rate is a loss derivative for a parameter, not a transformation of a neuron's score.",
+        }
+      - {
+          id: b,
+          text: "A multiplier that scales input features before a neuron computes its weighted score.",
+          correct: false,
+          feedback: "That multiplier is a weight; an activation transforms the score after the weighted sum.",
+        }
+      - {
+          id: c,
+          text: "A function applied to a neuron's weighted score before the value is passed to the next layer",
+          correct: true,
+          feedback: "It transforms the weighted score before the next layer uses that value.",
+        }
+      - {
+          id: d,
+          text: "A non-negative score that measures the difference between a prediction and its target.",
+          correct: false,
+          feedback: "That score is a loss; an activation transforms a neuron's weighted score.",
+        }
+    solution: "An activation function transforms a neuron's weighted score before it is passed to the next layer."
+  - id: act-slopes-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does an activation slope measure?"
+    options:
+      - {
+          id: a,
+          text: "The rate at which loss changes when one model weight changes.",
+          correct: false,
+          feedback: "That is a parameter's loss derivative, not the activation's output rate.",
+        }
+      - {
+          id: b,
+          text: "The angle between two input feature vectors being compared for direction.",
+          correct: false,
+          feedback: "Cosine similarity uses the angle between vectors; an activation slope is a derivative.",
+        }
+      - {
+          id: c,
+          text: "The rate at which activation output changes as its input score changes.",
+          correct: true,
+          feedback: "This derivative tells how a score change affects the value passed onward.",
+        }
+      - {
+          id: d,
+          text: "The difference between a model prediction and its known target.",
+          correct: false,
+          feedback: "That difference is a prediction error, not a derivative of an activation.",
+        }
+    solution: "An activation slope is the derivative of the activation output with respect to its input score."
   - id: act-check-relu
     dimension: math
     type: text

@@ -85,7 +85,7 @@ export function registerLessonRunRoutes(
       .from(lessonProblems)
       .where(eq(lessonProblems.runId, run.id))
       .orderBy(lessonProblems.servedAt, lessonProblems.position);
-    const derived = deriveLessonState(lesson, rows);
+    const derived = deriveLessonState(lesson, rows, index.exercisesById);
     const point = lesson.knowledge_points?.find((item) => item.id === derived.currentPointId);
     const buildInstance = (exercise: IndexedExercise, seed: number | null) => {
       if (!isTemplate(exercise)) return exercise;
@@ -230,7 +230,7 @@ export function registerLessonRunRoutes(
         .from(lessonProblems)
         .where(eq(lessonProblems.runId, existing.id))
         .orderBy(lessonProblems.servedAt, lessonProblems.position);
-      let state = deriveLessonState(resolved.lesson, problems);
+      let state = deriveLessonState(resolved.lesson, problems, resolved.index.exercisesById);
       if (state.status === 'completed') {
         if (existing.status !== 'completed') {
           [existing] = await tx
@@ -249,7 +249,7 @@ export function registerLessonRunRoutes(
           .set({ status: 'in_progress', updatedAt: now, completedAt: null })
           .where(eq(lessonRuns.id, existing.id))
           .returning();
-        state = deriveLessonState(resolved.lesson, problems);
+        state = deriveLessonState(resolved.lesson, problems, resolved.index.exercisesById);
       }
       if (existing.status !== 'in_progress') {
         [existing] = await tx
@@ -328,7 +328,10 @@ export function registerLessonRunRoutes(
         .select()
         .from(lessonProblems)
         .where(eq(lessonProblems.runId, joined.run.id));
-      if (deriveLessonState(resolved.lesson, allProblems).pending?.id !== joined.problem.id) {
+      if (
+        deriveLessonState(resolved.lesson, allProblems, resolved.index.exercisesById).pending
+          ?.id !== joined.problem.id
+      ) {
         return { kind: 'conflict' as const, runId: joined.run.id };
       }
       const indexed = resolved.index.exercisesById.get(joined.problem.exerciseId);
@@ -403,8 +406,9 @@ export function registerLessonRunRoutes(
       const previous = deriveLessonState(
         resolved.lesson,
         problems.filter((item) => item.id !== joined.problem.id),
+        resolved.index.exercisesById,
       );
-      const state = deriveLessonState(resolved.lesson, problems);
+      const state = deriveLessonState(resolved.lesson, problems, resolved.index.exercisesById);
       const point = state.points.find((item) => item.id === joined.problem.knowledgePointId);
       let xpAwarded = 0;
       if (

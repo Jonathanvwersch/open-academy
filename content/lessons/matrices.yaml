@@ -78,7 +78,14 @@ knowledge_points:
 
       So $Xw=(310, 215, 385)$: a $3\times3$ matrix times a 3-entry vector gives 3 prices, one per house.
     problems:
-      [matp-vector, matp-vector-shape, matp-vector-entry, matp-vector-template, matp-why-rows]
+      [
+        mat-rows-shapes-basics,
+        matp-vector,
+        matp-vector-shape,
+        matp-vector-entry,
+        matp-vector-template,
+        matp-why-rows,
+      ]
   - id: mat-matrix-products
     title: Multiplying matrices and matching shapes
     explain: |
@@ -106,7 +113,15 @@ knowledge_points:
       $$XW=\begin{bmatrix}310&1250\\215&875\end{bmatrix}.$$
 
       Each row is one house. The first output column is predicted sale price; the second is predicted monthly rent.
-    problems: [matp-shape, matp-entry-template, matp-invalid, matp-entry, matp-batch-shape]
+    problems:
+      [
+        mat-matrix-products-basics,
+        matp-shape,
+        matp-entry-template,
+        matp-invalid,
+        matp-entry,
+        matp-batch-shape,
+      ]
   - id: mat-batches-transpose
     title: Scoring many houses with NumPy
     explain: |
@@ -148,6 +163,7 @@ knowledge_points:
       The two biases are reused for each house. `W.T` has shape $(2,3)$, with each output's three weights in one row.
     problems:
       [
+        mat-batches-transpose-basics,
         matp-code,
         matp-bias-template,
         matp-transpose,

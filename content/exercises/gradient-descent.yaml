@@ -1,5 +1,137 @@
 concept: gradient-descent
 exercises:
+  - id: gd-downhill-update-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does gradient descent do to model parameters?"
+    options:
+      - {
+          id: a,
+          text: "It repeatedly adds the loss gradient to the parameters.",
+          correct: false,
+          feedback: "Adding the gradient is gradient ascent, which moves toward a local increase in loss.",
+        }
+      - {
+          id: b,
+          text: "It replaces the learned weights and bias with the training examples.",
+          correct: false,
+          feedback: "Examples are fixed data; gradient descent changes the model's adjustable weights and bias.",
+        }
+      - {
+          id: c,
+          text: "It chooses the lowest-loss parameter setting in one search over all possibilities.",
+          correct: false,
+          feedback: "Gradient descent takes repeated local steps using derivatives instead of searching every setting at once.",
+        }
+      - {
+          id: d,
+          text: "It repeatedly subtracts a scaled loss gradient from the parameters.",
+          correct: true,
+          feedback: "Subtracting the loss gradient moves parameters opposite the local direction of increasing loss.",
+        }
+    solution: "Gradient descent repeatedly subtracts a scaled loss gradient from model parameters."
+  - id: gd-step-size-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does the learning rate set?"
+    options:
+      - {
+          id: a,
+          text: "The number of training houses used to calculate each update's average loss.",
+          correct: false,
+          feedback: "That is the batch size.",
+        }
+      - {
+          id: b,
+          text: "The positive scale controlling how far each gradient-descent step moves.",
+          correct: true,
+          feedback: "The learning rate scales the gradient and sets how far each update moves.",
+        }
+      - {
+          id: c,
+          text: "The number of adjustable weights and biases included in the model.",
+          correct: false,
+          feedback: "The model architecture determines how many weights it has.",
+        }
+      - {
+          id: d,
+          text: "The smallest loss value the model can reach during training.",
+          correct: false,
+          feedback: "A learning rate sets step size, not a target loss.",
+        }
+    solution: "The learning rate is the positive scale that controls each gradient-descent step's distance."
+  - id: gd-price-gradients-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a parameter gradient?"
+    options:
+      - {
+          id: a,
+          text: "The prediction change when every feature of a house increases together.",
+          correct: false,
+          feedback: "That combines several input changes, not one parameter derivative.",
+        }
+      - {
+          id: b,
+          text: "The average loss value across all houses in one training batch.",
+          correct: false,
+          feedback: "That is a dataset loss such as mean squared error.",
+        }
+      - {
+          id: c,
+          text: "The weighted contribution of one feature to a house-price prediction.",
+          correct: false,
+          feedback: "That is one contribution to a prediction.",
+        }
+      - {
+          id: d,
+          text: "The partial derivative of the loss with respect to one weight or bias",
+          correct: true,
+          feedback: "This parameter-specific partial gives the loss slope for that one weight or bias.",
+        }
+    solution: "A parameter gradient is the loss's partial derivative with respect to one adjustable weight or bias."
+  - id: gd-training-loop-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a training loop?"
+    options:
+      - {
+          id: a,
+          text: "A single prediction followed by a final test-set score.",
+          correct: false,
+          feedback: "Training repeats updates; a test score is evaluation.",
+        }
+      - {
+          id: b,
+          text: "A sequence that changes the target until prediction matches it.",
+          correct: false,
+          feedback: "Training changes model parameters, not known targets.",
+        }
+      - {
+          id: c,
+          text: "A repeated comparison of candidate predictions on test data without parameter updates.",
+          correct: false,
+          feedback: "That is evaluation without fitting; training calculates gradients and updates parameters.",
+        }
+      - {
+          id: d,
+          text: "The repeated cycle of prediction, loss, gradient, and parameter update.",
+          correct: true,
+          feedback: "Repeating these stages recalculates slopes after each parameter update.",
+        }
+    solution: "A training loop repeatedly predicts, measures loss, calculates gradients, and updates parameters."
   - id: gd-check-step
     dimension: math
     type: numeric

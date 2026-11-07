@@ -1,5 +1,137 @@
 concept: supervised-learning
 exercises:
+  - id: sl-inputs-targets-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is supervised learning?"
+    options:
+      - {
+          id: a,
+          text: "Learning from input examples paired with known targets.",
+          correct: true,
+          feedback: "Known targets let the model compare predictions with answers and fit its parameters.",
+        }
+      - {
+          id: b,
+          text: "Grouping examples by similarity without using known targets.",
+          correct: false,
+          feedback: "That describes unsupervised clustering.",
+        }
+      - {
+          id: c,
+          text: "Choosing a model by checking its final test-set score repeatedly.",
+          correct: false,
+          feedback: "Repeated test-set selection leaks information from the test set.",
+        }
+      - {
+          id: d,
+          text: "Writing a fixed rule that maps inputs to outputs by hand.",
+          correct: false,
+          feedback: "Supervised learning fits from examples rather than hand-writing the mapping.",
+        }
+    solution: "Supervised learning uses example pairs of inputs and known targets to learn a mapping from inputs to targets."
+  - id: sl-measuring-error-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does a squared-error loss measure?"
+    options:
+      - {
+          id: a,
+          text: "The absolute distance between a prediction and target before any averaging is performed.",
+          correct: false,
+          feedback: "That is absolute error, not squared error.",
+        }
+      - {
+          id: b,
+          text: "The squared difference between a model's prediction and its known target value.",
+          correct: true,
+          feedback: "Squaring the prediction-minus-target difference makes either sign contribute a positive score.",
+        }
+      - {
+          id: c,
+          text: "The number of training examples whose predicted categories differ from their target labels.",
+          correct: false,
+          feedback: "That is an error count, not squared-error loss.",
+        }
+      - {
+          id: d,
+          text: "The gap between average training loss and average test loss for the model.",
+          correct: false,
+          feedback: "That is a generalization gap.",
+        }
+    solution: "Squared-error loss measures the squared difference between a model prediction and its target."
+  - id: sl-training-loss-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is mean squared error?"
+    options:
+      - {
+          id: a,
+          text: "The mean of squared prediction errors across examples.",
+          correct: true,
+          feedback: "Squaring each miss before averaging prevents opposite errors from cancelling.",
+        }
+      - {
+          id: b,
+          text: "The square of the average prediction error across the examples.",
+          correct: false,
+          feedback: "That squares the signed mean error; MSE instead squares each error before averaging.",
+        }
+      - {
+          id: c,
+          text: "The largest single squared prediction error among all examples.",
+          correct: false,
+          feedback: "That is the maximum squared error, not the average across examples.",
+        }
+      - {
+          id: d,
+          text: "The average of the absolute prediction errors across the examples.",
+          correct: false,
+          feedback: "It averages the sizes of errors instead of their squares, so it does not describe MSE.",
+        }
+    solution: "Mean squared error is the average of the squared prediction errors over the examples."
+  - id: sl-new-data-targets-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does regression predict, compared with classification?"
+    options:
+      - {
+          id: a,
+          text: "Regression predicts a category, while classification predicts a number.",
+          correct: false,
+          feedback: "Those prediction types are reversed.",
+        }
+      - {
+          id: b,
+          text: "Regression predicts a number, while classification labels a number as a category.",
+          correct: false,
+          feedback: "Classification predicts a category, not a rounded numeric value.",
+        }
+      - {
+          id: c,
+          text: "Regression predicts a number, while classification predicts a category.",
+          correct: true,
+          feedback: "The target type defines the task: regression predicts numbers and classification predicts categories.",
+        }
+      - {
+          id: d,
+          text: "Regression predicts only for training examples, while classification predicts for new inputs.",
+          correct: false,
+          feedback: "Both task types can make predictions on new inputs.",
+        }
+    solution: "Regression predicts a number, while classification predicts a category."
   - id: sl-check-target
     dimension: conceptual
     type: mc

@@ -18,6 +18,7 @@ knowledge_points:
       $$a=12\longrightarrow z=0.1a=1.2\longrightarrow h=\max(0,z)=1.2\longrightarrow\hat y=15h+306.5=324.5\longrightarrow L=(\hat y-330)^2=30.25.$$
     problems:
       [
+        cg-drawing-graphs-basics,
         cgp-steps-for-expression,
         cgp-forward-value,
         cgp-arrow-meaning,
@@ -38,6 +39,7 @@ knowledge_points:
       At $\hat y=324.5$, the last operation gives $dL/d\hat y=2(324.5-330)=-11$. The output multiply gives $d\hat y/dh=15$.
     problems:
       [
+        cg-local-derivatives-basics,
         cgp-multiply-local,
         cgp-multiply-nudge,
         cgp-square-local,
@@ -58,6 +60,7 @@ knowledge_points:
       $$\frac{dL}{dw}=\frac{dL}{d\hat y}\frac{d\hat y}{dh}\frac{dh}{dz}\frac{dz}{dw}=(-11)(15)(1)(12)=-1980.$$
     problems:
       [
+        cg-chaining-paths-basics,
         cgp-path-product,
         cgp-chain-template,
         cgp-one-path-only,

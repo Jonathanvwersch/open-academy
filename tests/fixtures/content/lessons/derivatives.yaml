@@ -13,6 +13,7 @@ knowledge_points:
     worked: This example shows a simple derivative calculation.
     problems:
       [
+        derivatives-fixture-1-basics,
         derivatives-fixture-practice-1,
         derivatives-fixture-practice-2,
         derivatives-fixture-practice-3,
@@ -27,6 +28,7 @@ knowledge_points:
     worked: This example shows how a derivative describes a tangent slope.
     problems:
       [
+        derivatives-fixture-2-basics,
         derivatives-fixture-practice-4,
         derivatives-fixture-practice-5,
         derivatives-fixture-practice-6,

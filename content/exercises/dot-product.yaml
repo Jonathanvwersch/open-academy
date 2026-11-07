@@ -1,5 +1,104 @@
 concept: dot-product
 exercises:
+  - id: dot-weighted-total-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does the dot product of two vectors do?"
+    options:
+      - {
+          id: a,
+          text: "It compares two directions after dividing out both vector lengths.",
+          correct: false,
+          feedback: "That is cosine similarity; the dot product itself also depends on both lengths.",
+        }
+      - {
+          id: b,
+          text: "It adds entries in matching positions and keeps the result as a vector.",
+          correct: false,
+          feedback: "That is vector addition; a dot product multiplies matching entries and returns one number.",
+        }
+      - {
+          id: c,
+          text: "It multiplies matching entries and adds their products into one number.",
+          correct: true,
+          feedback: "The sum combines each matched feature's weighted contribution into one scalar.",
+        }
+      - {
+          id: d,
+          text: "It multiplies matching entries but leaves each product as a separate output entry.",
+          correct: false,
+          feedback: "That is element-wise multiplication; the dot product also adds the products together.",
+        }
+    solution: "The dot product multiplies matching vector entries and adds those products to make one number."
+  - id: dot-arrow-alignment-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does the sign of a dot product tell you about two arrows?"
+    options:
+      - {
+          id: a,
+          text: "It compares arrow lengths to tell whether one vector is longer, but the dot-product sign instead describes their directional alignment.",
+          correct: false,
+          feedback: "Arrow length is measured by a norm; the dot-product sign depends on how the directions align.",
+        }
+      - {
+          id: b,
+          text: "It measures the straight-line distance between arrow endpoints, a quantity that stays non-negative regardless of how their directions compare.",
+          correct: false,
+          feedback: "Straight-line distance cannot be negative, while the dot-product sign can be positive, zero, or negative.",
+        }
+      - {
+          id: c,
+          text: "It is positive when arrows point roughly together, zero when they are perpendicular, and negative when they point opposite ways.",
+          correct: true,
+          feedback: "Arrows pointing together give a positive value, perpendicular components cancel, and opposite directions give a negative value.",
+        }
+      - {
+          id: d,
+          text: "It counts whether matching components have the same sign, but ignores the size of each product when combining all the terms.",
+          correct: false,
+          feedback: "Component signs alone are not enough; magnitudes determine the summed products and can change the sign.",
+        }
+    solution: "A dot product is positive for arrows pointing together, zero for perpendicular arrows, and negative for opposite arrows."
+  - id: dot-direction-only-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is cosine similarity?"
+    options:
+      - {
+          id: a,
+          text: "A number measuring one vector's straight-line length from the origin.",
+          correct: false,
+          feedback: "That is the L2 norm; cosine similarity compares two directions.",
+        }
+      - {
+          id: b,
+          text: "The dot product of two vectors before dividing by their lengths.",
+          correct: false,
+          feedback: "That is the unnormalized dot product, so longer vectors can increase its value.",
+        }
+      - {
+          id: c,
+          text: "A score comparing vector lengths while ignoring the angle between them.",
+          correct: false,
+          feedback: "Cosine similarity removes vector lengths and keeps the directional comparison.",
+        }
+      - {
+          id: d,
+          text: "A score comparing non-zero vector directions without rewarding their lengths.",
+          correct: true,
+          feedback: "Dividing by both lengths removes size, leaving a score determined by the angle.",
+        }
+    solution: "Cosine similarity compares the directions of non-zero vectors without rewarding their lengths."
   - id: dotp-total
     dimension: conceptual
     type: mc

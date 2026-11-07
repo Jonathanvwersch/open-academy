@@ -20,6 +20,7 @@ knowledge_points:
       Suppose a model fits 700 sales and predicts 150 different sales. If it predicts those held-out prices with small errors, that is evidence of generalisation; the fitting error alone cannot provide that evidence.
     problems:
       [
+        tts-why-hold-out-basics,
         ttsp-honest-estimate,
         ttsp-memoriser,
         ttsp-heldout-error,
@@ -40,6 +41,7 @@ knowledge_points:
       From 1,000 house sales, one split might use 700 for training, 150 for validation and 150 for test. Only training sales update weights; validation selects a version; test evaluates the chosen version.
     problems:
       [
+        tts-three-splits-basics,
         ttsp-which-set-fit,
         ttsp-split-counts,
         ttsp-which-set-choose,
@@ -62,6 +64,7 @@ knowledge_points:
       If house-price models have different numbers of hidden units, fit each on the same training split, select using validation error, and reserve test houses for the final check.
     problems:
       [
+        tts-hyperparameters-basics,
         ttsp-param-or-hyper-w,
         ttsp-param-or-hyper-inputs,
         ttsp-why-not-train-choose,
@@ -83,6 +86,7 @@ knowledge_points:
       If two rows describe the same house sale, assign both to training or both to test, never one to each. Compute a missing-area fill value from training sales only.
     problems:
       [
+        tts-leakage-basics,
         ttsp-duplicate-leak,
         ttsp-fill-average,
         ttsp-dup-error,

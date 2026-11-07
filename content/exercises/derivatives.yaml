@@ -1,5 +1,137 @@
 concept: derivatives
 exercises:
+  - id: der-speed-at-instant-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a derivative?"
+    options:
+      - {
+          id: a,
+          text: "The total output change across a wide input interval, rather than the rate at one point.",
+          correct: false,
+          feedback: "That is a finite-interval change; a derivative gives the local rate at one input value.",
+        }
+      - {
+          id: b,
+          text: "The average output value across several input settings, rather than the speed of change.",
+          correct: false,
+          feedback: "An average output summarizes values; a derivative measures how output changes locally.",
+        }
+      - {
+          id: c,
+          text: "How fast a function's output changes per unit of input, at one particular input value",
+          correct: true,
+          feedback: "The derivative gives the local output rate per input unit at the specified input value.",
+        }
+      - {
+          id: d,
+          text: "The input value where a function reaches its minimum, rather than a local rate.",
+          correct: false,
+          feedback: "That input is a minimizer; the derivative is a rate evaluated at an input.",
+        }
+    solution: "A derivative is the rate at which a function's output changes per unit of input at one point."
+  - id: der-power-rule-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does the power rule say about $x^n$?"
+    options:
+      - {
+          id: a,
+          text: "Its derivative is $x^{n+1}/(n+1)$ for every fixed power.",
+          correct: false,
+          feedback: "That raises the exponent as in integration; differentiation lowers it by one.",
+        }
+      - {
+          id: b,
+          text: "Its derivative is $nx^n$ because the exponent stays unchanged.",
+          correct: false,
+          feedback: "The power rule lowers the exponent by one.",
+        }
+      - {
+          id: c,
+          text: "Its derivative is $x^{n-1}$ because the power only lowers the exponent.",
+          correct: false,
+          feedback: "That omits the required multiplier $n$ from the power rule.",
+        }
+      - {
+          id: d,
+          text: "Its derivative is $nx^{n-1}$ for a fixed power $n$.",
+          correct: true,
+          feedback: "The exponent becomes a multiplier and then drops by one in the derivative.",
+        }
+    solution: "For a fixed power $n$, the derivative of $x^n$ is $nx^{n-1}$."
+  - id: der-exp-log-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does the natural logarithm $\\ln x$ ask?"
+    options:
+      - {
+          id: a,
+          text: "Which positive number multiplied by itself gives the input $x$.",
+          correct: false,
+          feedback: "That asks for a square root; the logarithm asks for an exponent on base $e$.",
+        }
+      - {
+          id: b,
+          text: "Which power of the input $x$ gives the base $e$.",
+          correct: false,
+          feedback: "That uses $x$ as the base; $\\ln x$ asks which power of $e$ gives $x$.",
+        }
+      - {
+          id: c,
+          text: "Which power of $e$ equals the positive input $x$.",
+          correct: true,
+          feedback: "The logarithm is the exponent on $e$ that produces a positive input $x$.",
+        }
+      - {
+          id: d,
+          text: "Which rate describes how quickly $e^x$ changes at each input value.",
+          correct: false,
+          feedback: "That asks about a derivative; $\\ln x$ returns an exponent for a positive input.",
+        }
+    solution: "The natural logarithm asks which power of $e$ equals the positive input $x$."
+  - id: der-product-quotient-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What do the product and quotient rules differentiate?"
+    options:
+      - {
+          id: a,
+          text: "A sum of two changing functions and a constant.",
+          correct: false,
+          feedback: "The sum rule handles separate terms; product and quotient rules handle multiplication and division.",
+        }
+      - {
+          id: b,
+          text: "A changing factor times a constant, or a constant over a function.",
+          correct: false,
+          feedback: "Those use constant-factor rules; product and quotient rules cover two changing factors.",
+        }
+      - {
+          id: c,
+          text: "A product of two changing factors and a quotient of two functions.",
+          correct: true,
+          feedback: "Both rules account for changes in both factors, or in both parts of a ratio.",
+        }
+      - {
+          id: d,
+          text: "A nested function whose input is transformed by an inner function.",
+          correct: false,
+          feedback: "That is the chain rule's setting; product and quotient rules handle products and ratios.",
+        }
+    solution: "The product rule differentiates two changing factors, while the quotient rule differentiates their ratio."
   - id: der-check-power
     dimension: math
     type: expression

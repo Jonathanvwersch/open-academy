@@ -40,7 +40,7 @@ test('loads the fixture graph and builds lookup indexes', async () => {
     prerequisiteId: 'gradients',
     strength: 'hard',
   });
-  expect(content.exercisesByConcept.get('vectors')).toHaveLength(13);
+  expect(content.exercisesByConcept.get('vectors')).toHaveLength(15);
   expect(content.exercisesByDimension.get('math')?.length).toBeGreaterThan(0);
   expect(content.exercisesByRole.get('diagnostic')?.length).toBe(8);
   expect(new Set(content.exercises.map((exercise) => exercise.type))).toEqual(
@@ -503,14 +503,14 @@ test('knowledge-point lessons derive the legacy block shape', () => {
         title: 'First',
         explain: 'Explain.\n\n**Why this is useful.** It supports the next calculation.',
         worked: 'Work.',
-        problems: ['template', 'fixed'],
+        problems: ['kp-one-basics', 'template', 'fixed'],
       },
       {
         id: 'kp-two',
         title: 'Second',
         explain: 'Explain.\n\n**Why this is useful.** It supports the next calculation.',
         worked: 'Work.',
-        problems: ['fixed'],
+        problems: ['kp-two-basics', 'fixed'],
       },
     ],
     summary: 'Finish.',
@@ -612,9 +612,31 @@ test('a valid knowledge-point lesson with a parameterised practice problem passe
       params: { x: { min: 1, max: 3 } },
       tolerance: { abs: 0.000001 },
     });
+  const basics = (id: string) =>
+    ExerciseSchema.parse({
+      id,
+      dimension: 'conceptual',
+      type: 'mc',
+      role: 'basics',
+      difficulty: 1,
+      est_minutes: 1,
+      prompt: 'What is the idea?',
+      hints: [],
+      solution: 'The idea is stated.',
+      options: [
+        { id: `${id}-yes`, text: 'The idea', correct: true, feedback: 'This states the idea.' },
+        {
+          id: `${id}-no`,
+          text: 'A different idea',
+          correct: false,
+          feedback: 'That describes another idea.',
+        },
+      ],
+    });
+  const basicsExercises = [basics('kp-valid-one-basics'), basics('kp-valid-two-basics')];
   const templates = [template('kp-template-one'), template('kp-template-two')];
   data.exercises.push(
-    ...[...fixedExercises, ...templates].map((value) => ({
+    ...[...basicsExercises, ...fixedExercises, ...templates].map((value) => ({
       value,
       concept: 'vectors',
       file: 'exercises/vectors.yaml',
@@ -626,18 +648,52 @@ test('a valid knowledge-point lesson with a parameterised practice problem passe
       title: 'A valid point',
       explain: 'A concise explanation.\n\n**Why this is useful.** It supports the next step.',
       worked: 'This example shows a complete worked example.',
-      problems: ['kp-template-one', 'kp-fixed-one', 'kp-fixed-two'],
+      problems: ['kp-valid-one-basics', 'kp-template-one', 'kp-fixed-one', 'kp-fixed-two'],
     },
     {
       id: 'kp-valid-two',
       title: 'Another valid point',
       explain: 'A concise explanation.\n\n**Why this is useful.** It supports the next step.',
       worked: 'This example shows another complete worked example.',
-      problems: ['kp-template-two', 'kp-fixed-three', 'kp-fixed-four'],
+      problems: ['kp-valid-two-basics', 'kp-template-two', 'kp-fixed-three', 'kp-fixed-four'],
     },
   ];
   addFinalExercise(data, 'vectors');
   expect(validateContent(data).filter((issue) => issue.id.startsWith('kp-'))).toEqual([]);
+});
+
+test('knowledge-point lessons require a basics exercise first', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'vectors');
+  if (!lesson?.value.knowledge_points) throw new Error('Missing vectors knowledge-point lesson');
+  const point = lesson.value.knowledge_points[0];
+  point.problems[0] = 'vectors-fixture-practice-1';
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: point.id,
+        message: 'knowledge point first problem must have basics role',
+      }),
+    ]),
+  );
+});
+
+test('multiple-choice exercises reject option texts duplicated by case or whitespace', async () => {
+  const data = await notationFixture();
+  const exercise = data.exercises.find(({ value }) => value.type === 'mc');
+  if (exercise?.value.type !== 'mc') throw new Error('Missing MC exercise fixture');
+  const first = exercise.value.options[0];
+  const second = exercise.value.options[1];
+  if (!first || !second) throw new Error('Missing MC options');
+  second.text = ` ${first.text.toUpperCase()} `;
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: exercise.value.id,
+        message: 'multiple-choice option texts must be unique',
+      }),
+    ]),
+  );
 });
 
 test('knowledge-point rules reject short, duplicate, missing, non-practice, and shared problems', async () => {

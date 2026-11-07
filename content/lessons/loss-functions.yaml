@@ -27,6 +27,7 @@ knowledge_points:
       Repeating each sale does not change either average because both the total and the house count double.
     problems:
       [
+        loss-measure-misses-basics,
         lossp-why-not-count,
         lossp-mse-template,
         lossp-mae-template,
@@ -52,6 +53,7 @@ knowledge_points:
       MSE gives the larger miss 81 times the squared-error cost; MAE gives it 9 times the cost. Thus MSE emphasizes large misses more strongly.
     problems:
       [
+        loss-large-errors-basics,
         lossp-outlier,
         lossp-slope-template,
         lossp-why-square,
@@ -79,6 +81,7 @@ knowledge_points:
       At 383.33, the absolute-error total is about 353.33. At 300, it is $10+0+260=270$. The mean minimizes squared error; the median minimizes absolute error.
     problems:
       [
+        loss-constant-choice-basics,
         lossp-why-median,
         lossp-mean-template,
         lossp-median-template,

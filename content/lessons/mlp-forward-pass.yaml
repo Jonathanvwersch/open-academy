@@ -21,6 +21,7 @@ knowledge_points:
       $$W_1x=\begin{pmatrix}0.1&0&0\\0&0.1&0.05\end{pmatrix}\begin{pmatrix}12\\3\\20\end{pmatrix}=\begin{pmatrix}1.2\\1.3\end{pmatrix},\quad h=\operatorname{ReLU}(W_1x)=(1.2,1.3).$$
     problems:
       [
+        mlp-layer-of-neurons-basics,
         mlpp-layer-values,
         mlpp-unit-score-template,
         mlpp-why-matrix,
@@ -46,6 +47,7 @@ knowledge_points:
       2. Add the output bias: $\hat y=24.5+300=324.5$ thousand pounds.
     problems:
       [
+        mlp-two-layers-basics,
         mlpp-forward-order,
         mlpp-forward-template,
         mlpp-forward-fixed,
@@ -68,6 +70,7 @@ knowledge_points:
       The first layer has $3\cdot2+2=8$ parameters including its bias. The output layer has $2\cdot1+1=3$, for 11 total trainable parameters.
     problems:
       [
+        mlp-shapes-basics,
         mlpp-batch-shape,
         mlpp-params-template,
         mlpp-why-shared-weights,

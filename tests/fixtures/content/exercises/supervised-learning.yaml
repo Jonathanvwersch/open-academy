@@ -1,5 +1,109 @@
 concept: supervised-learning
 exercises:
+  - id: sl-inputs-targets-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which statement best describes the main idea in this step?
+    hints: []
+    solution: The main idea of this step is Inputs, targets and the model.
+    options:
+      - id: a
+        text: The main idea of this step is Inputs, targets and the model.
+        correct: true
+        feedback: This states the main idea of the knowledge point.
+      - id: b
+        text: It is a rule for splitting examples into training and test sets.
+        correct: false
+        feedback: That describes a data-splitting step instead.
+      - id: c
+        text: It is a parameter update that subtracts a scaled loss gradient.
+        correct: false
+        feedback: That describes gradient descent instead.
+      - id: d
+        text: It is an output score that measures prediction error.
+        correct: false
+        feedback: That describes a loss value instead.
+  - id: sl-measuring-error-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which statement best describes the main idea in this step?
+    hints: []
+    solution: "The main idea of this step is Measuring how wrong: squared error."
+    options:
+      - id: a
+        text: "The main idea of this step is Measuring how wrong: squared error."
+        correct: true
+        feedback: This states the main idea of the knowledge point.
+      - id: b
+        text: It is a rule for splitting examples into training and test sets.
+        correct: false
+        feedback: That describes a data-splitting step instead.
+      - id: c
+        text: It is a parameter update that subtracts a scaled loss gradient.
+        correct: false
+        feedback: That describes gradient descent instead.
+      - id: d
+        text: It is an output score that measures prediction error.
+        correct: false
+        feedback: That describes a loss value instead.
+  - id: sl-training-loss-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which statement best describes the main idea in this step?
+    hints: []
+    solution: The main idea of this step is Training chooses the smallest average loss.
+    options:
+      - id: a
+        text: The main idea of this step is Training chooses the smallest average loss.
+        correct: true
+        feedback: This states the main idea of the knowledge point.
+      - id: b
+        text: It is a rule for splitting examples into training and test sets.
+        correct: false
+        feedback: That describes a data-splitting step instead.
+      - id: c
+        text: It is a parameter update that subtracts a scaled loss gradient.
+        correct: false
+        feedback: That describes gradient descent instead.
+      - id: d
+        text: It is an output score that measures prediction error.
+        correct: false
+        feedback: That describes a loss value instead.
+  - id: sl-new-data-targets-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which statement best describes the main idea in this step?
+    hints: []
+    solution: The main idea of this step is New houses and two kinds of target.
+    options:
+      - id: a
+        text: The main idea of this step is New houses and two kinds of target.
+        correct: true
+        feedback: This states the main idea of the knowledge point.
+      - id: b
+        text: It is a rule for splitting examples into training and test sets.
+        correct: false
+        feedback: That describes a data-splitting step instead.
+      - id: c
+        text: It is a parameter update that subtracts a scaled loss gradient.
+        correct: false
+        feedback: That describes gradient descent instead.
+      - id: d
+        text: It is an output score that measures prediction error.
+        correct: false
+        feedback: That describes a loss value instead.
   - id: sl-check-target
     dimension: conceptual
     type: mc

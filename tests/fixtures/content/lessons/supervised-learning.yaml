@@ -34,7 +34,8 @@ knowledge_points:
       - **Setting B:** $w_1 = 2,\ w_2 = 20,\ b = 100$. The same house gets $2\cdot100 + 20\cdot2 + 100 = 340$.
 
       Training means choosing the setting. To choose, we need a way to say which one is better.
-    problems: [slp-predict, slp-predict-variant, slp-input-target, slp-parameters]
+    problems:
+      [sl-inputs-targets-basics, slp-predict, slp-predict-variant, slp-input-target, slp-parameters]
   - id: sl-measuring-error
     title: "Measuring how wrong: squared error"
     explain: |
@@ -57,7 +58,7 @@ knowledge_points:
       The errors add up to $10 + 10 - 20 = 0$, even though every prediction is wrong.
 
       Squaring gives $10^2 = 100$, $10^2 = 100$, and $(-20)^2 = 400$. The squared errors are all positive, so they do not cancel.
-    problems: [slp-squared-error, slp-error-sum, slp-why-square]
+    problems: [sl-measuring-error-basics, slp-squared-error, slp-error-sum, slp-why-square]
   - id: sl-training-loss
     title: Training chooses the smallest average loss
     explain: |
@@ -91,7 +92,7 @@ knowledge_points:
       | **average** | **200** | | **2300** |
 
       Setting A averages 200 and Setting B averages 2300, so Setting A fits these sales much better.
-    problems: [slp-average-mse, slp-argmin, slp-best-setting]
+    problems: [sl-training-loss-basics, slp-average-mse, slp-argmin, slp-best-setting]
   - id: sl-new-data-targets
     title: New houses and two kinds of target
     explain: |
@@ -111,6 +112,7 @@ knowledge_points:
 
       A robot's action—"grasp" or "release"—is also a category, so predicting it is classification.
     problems:
+      - sl-new-data-targets-basics
       - slp-new-houses
       - slp-regression-classification
       - slp-target-type-travel
