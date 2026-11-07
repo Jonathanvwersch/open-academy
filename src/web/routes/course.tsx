@@ -30,10 +30,7 @@ function CoursePage() {
   }, [tutorSidebar]);
   return (
     <section className="space-y-6">
-      <div>
-        <p className="text-sm text-muted-foreground">Your curriculum</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Course</h1>
-      </div>
+      <h1 className="sr-only">Course</h1>
       <div className="space-y-4">
         {data.weeks.map((week) => (
           <Card key={week.week}>

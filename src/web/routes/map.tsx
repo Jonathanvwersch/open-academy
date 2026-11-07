@@ -166,11 +166,8 @@ function MapPage() {
   }, [concept?.id, concept?.title, tutorSidebar]);
   return (
     <section className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm text-neutral-500">Prerequisites and mastery</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Knowledge map</h1>
-        </div>
+      <h1 className="sr-only">Knowledge map</h1>
+      <div className="flex flex-wrap items-end justify-end gap-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>Domain</span>
           <Select
