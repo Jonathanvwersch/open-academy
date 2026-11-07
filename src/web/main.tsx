@@ -8,7 +8,7 @@ import './styles.css';
 
 function RoutePendingSkeleton() {
   return (
-    <div aria-hidden="true" className="animate-pulse space-y-6">
+    <div aria-hidden="true" className="w-full animate-pulse space-y-6">
       <div className="h-4 w-32 rounded bg-neutral-200" />
       <div className="h-9 w-56 rounded bg-neutral-200" />
       <div className="h-36 w-full rounded-xl bg-neutral-200" />

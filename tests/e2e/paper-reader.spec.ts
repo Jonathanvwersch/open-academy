@@ -7,6 +7,7 @@ import { env } from '../../src/server/env.js';
 declare global {
   interface Window {
     __paperLayoutShifts: number[];
+    __routeSkeletonSeen: boolean;
   }
 }
 
@@ -256,6 +257,61 @@ test('paper reader layout shift stays below the course threshold', async ({ page
     window.__paperLayoutShifts.reduce((sum, value) => sum + value, 0),
   );
   expect(cls, 'paper reader CLS').toBeLessThan(0.02);
+});
+
+test('scrolling through PDF pages does not show the route loading skeleton', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/papers/fixture-paper-one');
+  await expect(page.locator('[data-page="1"] .react-pdf__Page__canvas')).toBeVisible();
+  await expect(page.getByLabel('Go to page').locator('..')).toContainText('of 3');
+
+  await page.evaluate(() => {
+    window.__routeSkeletonSeen = false;
+    const observer = new MutationObserver(() => {
+      if (document.querySelector('[aria-hidden="true"].animate-pulse')) {
+        window.__routeSkeletonSeen = true;
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+
+  const reader = page.getByLabel('PDF reader');
+  await reader.scrollIntoViewIfNeeded();
+  const readerBounds = await reader.boundingBox();
+  if (!readerBounds) throw new Error('The PDF reader has no visible bounds');
+  await page.mouse.move(
+    readerBounds.x + readerBounds.width / 2,
+    readerBounds.y + readerBounds.height / 2,
+  );
+  const scrollToEdge = async (direction: 1 | -1) => {
+    for (let step = 0; step < 20; step += 1) {
+      await page.mouse.wheel(0, direction * 400);
+      await page.waitForTimeout(150);
+      const reachedEdge = await reader.evaluate(
+        (element, delta) =>
+          delta > 0
+            ? element.scrollTop + element.clientHeight >= element.scrollHeight - 1
+            : element.scrollTop <= 1,
+        direction,
+      );
+      if (reachedEdge) break;
+    }
+  };
+
+  await scrollToEdge(1);
+  expect(await page.evaluate(() => window.__routeSkeletonSeen)).toBe(false);
+  await expect(page.locator('[data-page="3"] .react-pdf__Page__canvas')).toBeVisible();
+  await expect(page.getByLabel('Go to page')).toHaveValue('3');
+  await scrollToEdge(-1);
+  await expect(page.locator('[data-page="1"] .react-pdf__Page__canvas')).toBeVisible();
+  await expect(page.getByLabel('Go to page')).toHaveValue('1');
+
+  const pages = reader.locator('[data-page]');
+  await expect(pages).toHaveCount(3);
+  for (const pageSlot of await pages.all()) {
+    await expect(pageSlot).toBeVisible();
+  }
+  expect(await page.evaluate(() => window.__routeSkeletonSeen)).toBe(false);
 });
 
 test('Saturday session offers the current week papers and a skip action', async ({ page }) => {
