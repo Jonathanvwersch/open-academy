@@ -41,9 +41,21 @@ export function LessonRunner({
   const query = useSuspenseQuery(queryOptions);
   const lesson = useSuspenseQuery(lessonQueryOptions(conceptId)).data;
   const starting = useRef(false);
+  const previousPointId = useRef<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const state = query.data.run;
+  const activePoint = state
+    ? (lesson?.knowledge_points?.find((point) => point.id === state.currentPointId) ?? undefined)
+    : undefined;
+  const answeredPoint =
+    state?.lastAnsweredProblem && !state.pendingProblem
+      ? lesson?.knowledge_points?.find(
+          (point) => point.id === state.lastAnsweredProblem?.knowledgePointId,
+        )
+      : undefined;
+  const point = answeredPoint ?? activePoint ?? state?.currentPoint;
+  const pointId = point?.id;
   const contextProblem = state?.pendingProblem ?? state?.lastAnsweredProblem;
   const currentPointIndex = state?.currentPointId
     ? state.points.findIndex((point) => point.id === state.currentPointId)
@@ -52,6 +64,13 @@ export function LessonRunner({
     state && currentPointIndex >= 0
       ? `${title} · step ${currentPointIndex + 1} of ${state.points.length}`
       : title;
+
+  useEffect(() => {
+    if (previousPointId.current !== undefined && previousPointId.current !== pointId) {
+      window.scrollTo({ top: 0 });
+    }
+    previousPointId.current = pointId;
+  }, [pointId]);
 
   useEffect(() => {
     tutorSidebar.setContext({
@@ -168,15 +187,6 @@ export function LessonRunner({
     );
   }
 
-  const activePoint =
-    lesson?.knowledge_points?.find((point) => point.id === state.currentPointId) ?? undefined;
-  const answeredPoint =
-    state.lastAnsweredProblem && !state.pendingProblem
-      ? lesson?.knowledge_points?.find(
-          (point) => point.id === state.lastAnsweredProblem?.knowledgePointId,
-        )
-      : undefined;
-  const point = answeredPoint ?? activePoint ?? state.currentPoint;
   const pointStatus = state.points.find((item) => item.id === point?.id);
   const shownProblem = state.pendingProblem ?? state.lastAnsweredProblem;
   const showingAnswer = Boolean(state.lastAnsweredProblem && !state.pendingProblem);
