@@ -46,10 +46,7 @@ function SettingsPage() {
   }
   return (
     <section className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <p className="text-sm text-neutral-500">Preferences</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Settings</h1>
-      </div>
+      <h1 className="sr-only">Settings</h1>
       <form onSubmit={save}>
         <Card>
           <CardContent className="space-y-5 p-6">

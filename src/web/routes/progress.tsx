@@ -24,10 +24,7 @@ function ProgressPage() {
   const { data } = useSuspenseQuery(progressQueryOptions());
   return (
     <section className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <p className="text-sm text-neutral-500">Learning overview</p>
-        <h1 className="mt-1 text-3xl font-semibold">Progress</h1>
-      </div>
+      <h1 className="sr-only">Progress</h1>
       <Card>
         <CardHeader>
           <CardTitle>90-day goals</CardTitle>
