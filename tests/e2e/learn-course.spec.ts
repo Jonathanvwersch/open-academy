@@ -536,13 +536,8 @@ async function answerCurrentProblem(page: Page) {
   }, problem.id);
   if (problem.exercise.type === 'mc') {
     const ids = Array.isArray(answer.answer) ? answer.answer : [answer.answer];
-    const options = problem.exercise.options;
     for (const id of ids) {
-      const index = options.findIndex((option: { id: string }) => option.id === id);
-      await page
-        .getByRole(problem.exercise.multi ? 'checkbox' : 'radio')
-        .nth(index)
-        .click();
+      await page.locator(`[id="${problem.exercise.id}-${id}"]`).click();
     }
   } else {
     await page.getByLabel('Your answer').fill(String(answer.answer));
