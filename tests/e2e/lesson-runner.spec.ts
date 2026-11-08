@@ -8,9 +8,11 @@ const conceptId = 'supervised-learning';
 const screenshotDir = '/home/ubuntu/screenshots/shadcn';
 const lessonCardScreenshotDir = '/home/ubuntu/screenshots/lesson-cards';
 const stepReviewScreenshotDir = '/home/ubuntu/ui-audit/step-review';
+const feedbackCorrectScreenshotDir = '/home/ubuntu/screenshots/feedback-correct';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
+mkdirSync(feedbackCorrectScreenshotDir, { recursive: true });
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -316,6 +318,60 @@ test('passes every knowledge point and restores the exact problem and result aft
   expect(page.url()).toContain(`/session/${sessionId}`);
   await page.goto('/lessons/supervised-learning');
   await expect(page.getByRole('heading', { name: 'Where this fits', exact: true })).toBeVisible();
+});
+
+test('shows a correct lesson-run solution inline when no feedback exists', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const db = createDb(env.TEST_DATABASE_URL);
+  const [learner] = await db.select({ id: users.id }).from(users).limit(1);
+  if (!learner) throw new Error('Missing E2E learner');
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId: learner.id,
+      kind: 'weekday',
+      plannedMinutes: 20,
+      status: 'active',
+      startedAt: new Date(),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create practice session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: 'loss-functions',
+      exerciseIds: [],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  await db.$client.end();
+  if (!activity) throw new Error('Could not create practice activity');
+
+  await page.goto(`/session/${session.id}`);
+  await expect(page.getByText('Basics question', { exact: true })).toBeVisible();
+  await expect
+    .poll(async () => (await currentRun(page, 'loss-functions'))?.pendingProblem?.id)
+    .toBeTruthy();
+  let run = await currentRun(page, 'loss-functions');
+  expect(run.pendingProblem.exercise.id).toBe('loss-functions-fixture-1-basics');
+  run = await answerAndReload(page, true, 'loss-functions');
+  run = await nextProblemAndReload(page, 'loss-functions');
+  expect(run.pendingProblem.exercise.id).toBe('loss-functions-fixture-practice-1');
+  run = await answerAndReload(page, true, 'loss-functions');
+  expect(run.lastAnsweredProblem.exercise.id).toBe('loss-functions-fixture-practice-1');
+
+  const status = page.getByRole('status');
+  await expect(status).toContainText('Correct');
+  await expect(status).toContainText('1 + 1 = 2.');
+  await expect(page.getByText('Solution', { exact: true })).toHaveCount(0);
+  await page.screenshot({
+    path: `${feedbackCorrectScreenshotDir}/correct.png`,
+    fullPage: true,
+  });
 });
 
 test('a legacy v1 learn activity resumes through the KP runner and final question', async ({
