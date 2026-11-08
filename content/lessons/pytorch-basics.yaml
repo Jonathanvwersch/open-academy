@@ -1,0 +1,237 @@
+concept: pytorch-basics
+version: 1
+objective: |
+  **Goal:** write and explain a PyTorch training loop for the house-price model.
+where_this_fits: |
+  Automatic differentiation showed how PyTorch records operations and how `loss.backward()` computes gradients. Gradient descent showed how those gradients update the weights and bias of the house-price model. We still need to connect the ideas in working code: represent houses as tensors, define a model and loss, and update its parameters with an optimiser. This lesson builds that loop.
+knowledge_points:
+  - id: ptb-tensors
+    title: Tensors hold house data and numbers
+    explain: |
+      **What a tensor is.** A tensor is an array of numbers that can have one or more dimensions. Its shape gives the size of each dimension; its data type says how the numbers are represented.
+
+      **How it works.** Put one house in a row and each input feature in a column. Area, bedrooms and age give the row shape $(1,3)$. Use a floating-point data type for price calculations. The `@` operator multiplies matching matrices and vectors, returning one prediction per row. A standalone parameter tensor can use `requires_grad=True` so PyTorch records operations that depend on it.
+
+      ```python
+      import torch
+
+      features = torch.tensor([[12.0, 3.0, 20.0]], dtype=torch.float32)
+      weights = torch.tensor([25.0, 10.0, -1.0], dtype=torch.float32)
+      prediction = features @ weights
+      weight = torch.tensor(25.0, requires_grad=True)
+      contribution = weight * 12.0
+      print(features.shape, features.dtype, prediction.item())
+      print(weight.requires_grad, contribution.item())
+      ```
+
+      **Why this is useful.** Tensors keep house measurements in a consistent shape and type, so PyTorch can calculate predictions and track the operations needed for gradients.
+    worked: |
+      This example shows how the three measurements of one house become a PyTorch row.
+
+      The inputs are area 12, 3 bedrooms and age 20:
+
+      ```python
+      import torch
+
+      house = torch.tensor([[12.0, 3.0, 20.0]], dtype=torch.float32)
+      weights = torch.tensor([25.0, 10.0, -1.0], dtype=torch.float32)
+      prediction = house @ weights
+      print(house.shape, weights.shape, prediction.tolist())
+      ```
+
+      The dot product combines the matching entries:
+
+      $$25 \times 12 + 10 \times 3 + (-1) \times 20 = 310.$$
+
+      The row shape is $(1,3)$, the weight shape is $(3,)$ and the prediction contains one value, 310 thousand pounds. The tensor shape preserves the three feature positions while `@` calculates their weighted total.
+    problems: [ptb-tensors-basics, ptb-tensor-numeric, ptb-tensors-why, ptb-tensor-shape, ptb-tensor-matmul, ptb-requires-grad]
+  - id: ptb-linear
+    title: A linear module holds the house model
+    explain: |
+      **What a module is.** A PyTorch module is an object that computes outputs and stores any trainable parameters it needs. `nn.Linear(3, 1)` is a linear module with three input features and one output.
+
+      **How it works.** If `features` has shape $(n,3)$ for $n$ houses, the layer's weight has shape $(1,3)$ and its bias has shape $(1,)$. The layer applies the same weighted sum and bias to each row, so its output has shape $(n,1)$. The weight and bias are registered parameters, and PyTorch tracks them for gradients without manually setting `requires_grad`.
+
+      For a repeatable worked calculation, the model can be given the house weights from the linear-regression lesson. `torch.no_grad()` makes this setup a parameter assignment, not part of a gradient calculation.
+
+      ```python
+      import torch
+      from torch import nn
+
+      model = nn.Linear(3, 1)
+      features = torch.tensor([[12.0, 3.0, 20.0], [8.0, 2.0, 5.0]])
+      prediction = model(features)
+      print(model.weight.shape, model.bias.shape, prediction.shape)
+      ```
+
+      **Why this is useful.** The module keeps the house weights and bias together, so the same prediction rule can be called for each row and passed to an optimiser.
+    worked: |
+      This example shows one `nn.Linear` layer using the house model's known parameters.
+
+      Set the weights to 25, 10 and −1, with a zero bias, for this calculation only:
+
+      ```python
+      import torch
+      from torch import nn
+
+      model = nn.Linear(3, 1)
+      with torch.no_grad():
+          model.weight.copy_(torch.tensor([[25.0, 10.0, -1.0]]))
+          model.bias.zero_()
+      house = torch.tensor([[12.0, 3.0, 20.0]])
+      print(model(house).item())
+      ```
+
+      The layer multiplies each measurement by its matching weight:
+
+      $$12 \times 25 + 3 \times 10 + 20 \times (-1) = 310.$$
+
+      It then adds the bias:
+
+      $$310 + 0 = 310.$$
+
+      The output is one predicted price in thousands of pounds. `nn.Linear` performs the same weighted-sum rule as the house model.
+    problems: [ptb-linear-basics, ptb-linear-why, ptb-linear-shape, ptb-linear-complete, ptb-linear-forward]
+  - id: ptb-loss-optimizer
+    title: Loss measures error and SGD updates parameters
+    explain: |
+      **What a loss function is.** A loss function compares a model's predictions with the correct targets and returns a score for their errors. `nn.MSELoss()` returns the mean of the squared element-by-element differences.
+
+      **How it works.** For one house, the prediction and target each have shape $(1,1)$, so the mean squared error is simply their squared difference. An optimiser applies an update rule to the model's registered parameters. `torch.optim.SGD(model.parameters(), lr=0.0001)` creates a stochastic gradient descent optimiser that uses the gradients and learning rate to update the weight and bias together.
+
+      ```python
+      import torch
+      from torch import nn
+
+      model = nn.Linear(3, 1)
+      loss_fn = nn.MSELoss()
+      optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
+      prediction = torch.tensor([[310.0]])
+      target = torch.tensor([[330.0]])
+      loss = loss_fn(prediction, target)
+      print(loss.item(), len(optimizer.param_groups[0]["params"]))
+      ```
+
+      Here the loss is 400, and the optimiser holds the model's weight and bias tensors. We use SGD because it applies the gradient-descent update already studied, rather than writing a separate update for each parameter.
+
+      **Why this is useful.** The loss turns price errors into a number to reduce, while the optimiser applies the resulting gradients to every house-model parameter.
+    worked: |
+      This example shows the mean squared error for one house prediction.
+
+      The model predicts 310 thousand pounds, and the target is 330:
+
+      $$\text{error} = 310 - 330 = -20.$$
+
+      Square the error:
+
+      $$(-20)^2 = 400.$$
+
+      PyTorch computes the same loss:
+
+      ```python
+      import torch
+      from torch import nn
+
+      prediction = torch.tensor([[310.0]])
+      target = torch.tensor([[330.0]])
+      loss = nn.MSELoss()(prediction, target)
+      print(loss.item())
+      ```
+
+      With one output, the mean is the single squared error, 400. Squaring keeps the loss non-negative and penalises larger errors more.
+    problems: [ptb-loss-basics, ptb-loss-why, ptb-loss-read, ptb-loss-complete, ptb-sgd-complete]
+  - id: ptb-training-loop
+    title: Run the five steps of a training update
+    explain: |
+      **What a training step is.** A training step uses the current parameters to make a prediction, measures its loss, calculates gradients, and updates the parameters once. A training loop repeats that sequence.
+
+      **How it works.** This code uses one house to make each update. Each line has one job:
+
+      ```python
+      import torch
+      from torch import nn
+
+      features = torch.tensor([[12.0, 3.0, 20.0]])
+      target = torch.tensor([[330.0]])
+      model = nn.Linear(3, 1)
+      with torch.no_grad():
+          model.weight.copy_(torch.tensor([[25.0, 10.0, -1.0]]))
+          model.bias.zero_()
+      loss_fn = nn.MSELoss()
+      optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
+
+      for _ in range(2):
+          optimizer.zero_grad()  # Clear gradients from the previous update.
+          prediction = model(features)  # Compute the current price prediction.
+          loss = loss_fn(prediction, target)  # Measure its current error.
+          loss.backward()  # Calculate gradients for the parameters.
+          optimizer.step()  # Apply one SGD update.
+      ```
+
+      The order matters: `backward()` fills gradients and `step()` uses them. Automatic differentiation showed that gradients accumulate, so leaving out `zero_grad()` makes a later update use old gradients added to the new ones.
+
+      Each iteration uses the parameters as they are now. After `optimizer.step()` changes them, the next forward pass must calculate a new prediction and loss rather than reusing the previous values.
+
+      ```svg
+      <svg viewBox="0 0 640 92" aria-label="Five steps in a PyTorch training update" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="18" width="112" height="42" rx="6" fill="#d4d4d4" stroke="#737373"/>
+        <text x="60" y="44" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">zero_grad()</text>
+        <line x1="116" y1="39" x2="132" y2="39" stroke="#737373" stroke-width="2"/>
+        <polygon points="132,34 140,39 132,44" fill="#737373"/>
+        <rect x="140" y="18" width="100" height="42" rx="6" fill="#d4d4d4" stroke="#737373"/>
+        <text x="190" y="44" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">forward</text>
+        <line x1="240" y1="39" x2="256" y2="39" stroke="#737373" stroke-width="2"/>
+        <polygon points="256,34 264,39 256,44" fill="#737373"/>
+        <rect x="264" y="18" width="84" height="42" rx="6" fill="#d4d4d4" stroke="#737373"/>
+        <text x="306" y="44" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">loss</text>
+        <line x1="348" y1="39" x2="364" y2="39" stroke="#737373" stroke-width="2"/>
+        <polygon points="364,34 372,39 364,44" fill="#737373"/>
+        <rect x="372" y="18" width="112" height="42" rx="6" fill="#d4d4d4" stroke="#737373"/>
+        <text x="428" y="44" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">backward()</text>
+        <line x1="484" y1="39" x2="500" y2="39" stroke="#737373" stroke-width="2"/>
+        <polygon points="500,34 508,39 500,44" fill="#737373"/>
+        <rect x="508" y="18" width="112" height="42" rx="6" fill="#d4d4d4" stroke="#737373"/>
+        <text x="564" y="44" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">step()</text>
+        <text x="320" y="82" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#737373">repeat for the next update</text>
+      </svg>
+      ```
+
+      **Why this is useful.** The loop connects PyTorch's forward calculation, automatic gradients and gradient-descent updates in the exact order needed to train the house-price model.
+    worked: |
+      This example shows how one PyTorch update changes the house model's prediction.
+
+      Start with weights $(25,10,-1)$, bias $0$, inputs $(12,3,20)$ and target 330. The initial prediction and error are:
+
+      $$\hat y = 25 \times 12 + 10 \times 3 - 20 = 310.$$
+
+      $$e = 310 - 330 = -20.$$
+
+      For squared error, the weight gradients are twice the error times each feature:
+
+      $$\frac{\partial L}{\partial w} = 2(-20)(12,3,20) = (-480,-120,-800).$$
+
+      The bias gradient is:
+
+      $$\frac{\partial L}{\partial b} = 2(-20) = -40.$$
+
+      With learning rate $0.0001$, SGD subtracts each scaled gradient:
+
+      $$w' = (25,10,-1) - 0.0001(-480,-120,-800) = (25.048,10.012,-0.92).$$
+
+      $$b' = 0 - 0.0001(-40) = 0.004.$$
+
+      The updated prediction and loss are:
+
+      $$\hat y' = 12(25.048) + 3(10.012) + 20(-0.92) + 0.004 = 312.216.$$
+
+      $$(312.216 - 330)^2 = 316.270656.$$
+
+      The loss falls from 400 to about 316.27. The code exercises use this same one-step loop so each PyTorch operation can be checked against the hand calculation.
+    problems: [ptb-loop-basics, ptb-loop-why, ptb-loop-zero-complete, ptb-loop-backward-complete, ptb-loop-step-complete, ptb-loop-debug, ptb-loop-read]
+final: ptb-explain-loop
+summary: |
+  - Tensors hold house features in rows; `nn.Linear(3, 1)` stores three weights and one bias.
+  - `nn.MSELoss()` scores prediction errors, and SGD uses gradients to update the model parameters.
+  - A training update clears old gradients, predicts, measures loss, backpropagates and steps the optimiser.
+
+  **Next:** Logistic regression turns a model score into a probability for whether a house sells above asking.

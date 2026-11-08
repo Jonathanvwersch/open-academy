@@ -1,0 +1,563 @@
+concept: pytorch-basics
+exercises:
+  - id: ptb-tensors-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What is a tensor?"
+    options:
+      - id: a
+        text: "A named Python variable that must contain exactly one number."
+        correct: false
+        category: misunderstood_definition
+        feedback: "A tensor can contain many numbers arranged across one or more dimensions."
+      - id: b
+        text: "A two-dimensional table that cannot represent a single number or vector."
+        correct: false
+        category: misunderstood_definition
+        feedback: "A tensor can have one or more dimensions, including a scalar or a vector."
+      - id: c
+        text: "An array of numbers that can have one or more dimensions."
+        correct: true
+        feedback: "Correct. Tensors store numbers in shapes such as scalars, vectors, matrices and higher-dimensional arrays."
+      - id: d
+        text: "A function that updates the model parameters using gradients."
+        correct: false
+        category: misunderstood_definition
+        feedback: "An optimiser updates parameters; a tensor is an array of numerical values."
+    solution: "A tensor is PyTorch's array of numerical values, and its shape describes how those values are arranged."
+  - id: ptb-tensor-numeric
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Use house features `(12, 3, 20)` and weights `(25, 10, -1)`. What prediction does `features @ weights` make, in thousands of pounds?"
+    answer: 310
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 330,
+          category: math_error,
+          feedback: "That leaves out the age contribution. Add $-1 \\times 20=-20$ to the area and bedroom contributions.",
+        }
+      - {
+          answer: 300,
+          category: math_error,
+          feedback: "That includes the area contribution only. Add the bedroom contribution $10 \\times 3=30$ and the age contribution $-20$.",
+        }
+    solution: "The weighted contributions are $25(12)=300$, $10(3)=30$ and $(-1)(20)=-20$. Their sum is 310 thousand pounds."
+  - id: ptb-tensors-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Why use a floating-point data type for the house measurements and weights?"
+    options:
+      - id: a
+        text: "It lets tensor arithmetic represent decimal values used in price calculations."
+        correct: true
+        feedback: "Correct. Floating-point values can represent the non-integer weights and predictions used by the model."
+      - id: b
+        text: "It changes a tensor's shape so each input becomes a separate row."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Shape describes the arrangement of values; the data type describes how each value is represented."
+      - id: c
+        text: "It automatically sets `requires_grad=True` on every number."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The data type and gradient tracking are separate settings; use `requires_grad=True` to request tracking."
+      - id: d
+        text: "It tells PyTorch which house feature has the largest effect."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Feature effects come from the weights, not from the data type."
+    solution: "The data type controls numerical representation, not shape, gradient tracking or feature importance. Floating point can represent the decimal weights used in price calculations."
+  - id: ptb-tensor-shape
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What does this code print?"
+    code: |
+      import torch
+
+      features = torch.tensor([[12.0, 3.0, 20.0]], dtype=torch.float32)
+      print(tuple(features.shape), features.dtype)
+    accept: ["(1, 3) torch.float32"]
+    solution: "There is one row with three feature values, so the shape is `(1, 3)`. The tensor stores them as 32-bit floating-point values."
+  - id: ptb-tensor-matmul
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "What predictions does this tensor multiplication return, in thousands of pounds?"
+    code: |
+      import torch
+
+      houses = torch.tensor([[12.0, 3.0, 20.0], [8.0, 2.0, 5.0]])
+      weights = torch.tensor([25.0, 10.0, -1.0])
+      print((houses @ weights).tolist())
+    accept: ["[310.0, 215.0]"]
+    solution: "The first row gives $25(12)+10(3)-20=310$, and the second gives $25(8)+10(2)-5=215$. Each row is multiplied by the same weight vector."
+  - id: ptb-requires-grad
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Complete the tensor creation so PyTorch tracks operations that depend on `weight`."
+    code: |
+      import torch
+
+      weight = torch.tensor(25.0, ____)
+      contribution = weight * 12.0
+      print(weight.requires_grad, contribution.item())
+    accept: ["requires_grad=True", "requires_grad = True"]
+    solution: "`requires_grad=True` asks PyTorch to track operations that depend on `weight`. The contribution is still 300."
+  - id: ptb-linear-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What is `nn.Linear(3, 1)`?"
+    options:
+      - id: a
+        text: "A layer that accepts one feature and returns three outputs."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The arguments are input features first and output features second, so this layer maps three inputs to one output."
+      - id: b
+        text: "A layer with no parameters that only changes the input data type."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The linear layer has trainable weights and a bias; it computes an output from the input features."
+      - id: c
+        text: "A layer that creates three independent output rows from one input."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The first argument is the number of input features, not the number of output rows."
+      - id: d
+        text: "A layer with three input weights and one output per input row."
+        correct: true
+        feedback: "Correct. `nn.Linear(3, 1)` uses three input features to compute one output for each row."
+    solution: "The first argument sets the input feature count and the second sets the output feature count. The layer stores a weight and bias for its linear calculation."
+  - id: ptb-linear-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Why must each house row passed to `nn.Linear(3, 1)` contain three feature values?"
+    options:
+      - id: a
+        text: "The layer needs three rows so it can calculate its single bias."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The first argument counts features in each row; the bias is a separate learned parameter."
+      - id: b
+        text: "Its three input weights match area, bedrooms and age in that fixed order."
+        correct: true
+        feedback: "Correct. Each input column pairs with one of the layer's three weights."
+      - id: c
+        text: "PyTorch uses the three values as three separate output prices."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The output feature count is one, so the layer returns one price for each input row."
+      - id: d
+        text: "Three features are needed because the layer has three bias values."
+        correct: false
+        category: misunderstood_definition
+        feedback: "A layer with one output has one bias value; the three inputs match its three weights."
+    solution: "Each input column is paired with a weight, so the three columns represent area, bedrooms and age. The layer then returns one price per row."
+  - id: ptb-linear-shape
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "What shapes does this code print for the layer's weight, bias and two-house output?"
+    code: |
+      import torch
+      from torch import nn
+
+      model = nn.Linear(3, 1)
+      features = torch.tensor([[12.0, 3.0, 20.0], [8.0, 2.0, 5.0]])
+      print(tuple(model.weight.shape), tuple(model.bias.shape), tuple(model(features).shape))
+    accept: ["(1, 3) (1,) (2, 1)"]
+    solution: "The layer stores one row of three weights and one bias. Two input rows therefore produce two rows with one price each."
+  - id: ptb-linear-complete
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Complete the model so it accepts the three house features and returns one price."
+    code: |
+      import torch
+      from torch import nn
+
+      model = ____
+      print(model.in_features, model.out_features)
+    accept: ["nn.Linear(3, 1)", "torch.nn.Linear(3, 1)"]
+    solution: "`nn.Linear(3, 1)` creates a layer with three inputs and one output. The two counts are available as `in_features` and `out_features`."
+  - id: ptb-linear-forward
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "After setting the known house weights and bias, what price does this model predict, in thousands of pounds?"
+    code: |
+      import torch
+      from torch import nn
+
+      model = nn.Linear(3, 1)
+      with torch.no_grad():
+          model.weight.copy_(torch.tensor([[25.0, 10.0, -1.0]]))
+          model.bias.zero_()
+      house = torch.tensor([[12.0, 3.0, 20.0]])
+      print(model(house).item())
+    answer: 310
+    tolerance: { abs: 0.001 }
+    solution: "The model calculates $25(12)+10(3)-20+0=310$. `nn.Linear` applies the same weighted sum and bias as the house model."
+  - id: ptb-loss-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What is a loss function in this PyTorch model?"
+    options:
+      - id: a
+        text: "A calculation that compares predictions with targets and scores their errors."
+        correct: true
+        feedback: "Correct. The loss is a numerical score for how far predictions are from their targets."
+      - id: b
+        text: "A collection of house inputs stored in one tensor."
+        correct: false
+        category: misunderstood_definition
+        feedback: "A tensor can store inputs; a loss function compares predictions with targets."
+      - id: c
+        text: "A parameter update that changes weights before gradients are calculated."
+        correct: false
+        category: misunderstood_definition
+        feedback: "An optimiser updates parameters; the loss scores current predictions against targets."
+      - id: d
+        text: "A shape conversion that turns three features into one output."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The linear layer maps features to an output; the loss measures the output's error."
+    solution: "A loss function gives a numerical score to the mismatch between a model's prediction and the target price."
+  - id: ptb-loss-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Why does `nn.MSELoss()` return 400 for a prediction of 310 and a target of 330?"
+    options:
+      - id: a
+        text: "It subtracts the prediction from the target but does not square the result."
+        correct: false
+        category: math_error
+        feedback: "The absolute difference is 20; MSE squares the error to get 400."
+      - id: b
+        text: "It adds the target and prediction, then divides by two."
+        correct: false
+        category: misunderstood_definition
+        feedback: "MSE does not average the two prices; it averages their squared differences."
+      - id: c
+        text: "The single output's error is −20, and squaring it gives 400."
+        correct: true
+        feedback: "Correct. With one output, the mean squared error is just the squared difference."
+      - id: d
+        text: "It counts the two model parameters and multiplies them by 200."
+        correct: false
+        category: misunderstood_definition
+        feedback: "MSE depends on prediction and target values, not on how many parameters the model has."
+    solution: "The error is $310-330=-20$. `nn.MSELoss()` squares it, and with one output the mean is $(-20)^2=400$."
+  - id: ptb-loss-read
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "What loss does this code print?"
+    code: |
+      import torch
+      from torch import nn
+
+      prediction = torch.tensor([[324.5]])
+      target = torch.tensor([[330.0]])
+      loss = nn.MSELoss()(prediction, target)
+      print(round(loss.item(), 2))
+    answer: 30.25
+    tolerance: { abs: 0.001 }
+    solution: "The difference is $324.5-330=-5.5$. Squaring it gives the printed loss, $30.25$."
+  - id: ptb-loss-complete
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Complete the loss function so the code calculates mean squared error."
+    code: |
+      import torch
+      from torch import nn
+
+      loss_fn = ____
+      prediction = torch.tensor([[310.0]])
+      target = torch.tensor([[330.0]])
+      print(loss_fn(prediction, target).item())
+    accept: ["nn.MSELoss()", "torch.nn.MSELoss()"]
+    solution: "`nn.MSELoss()` returns the mean of squared differences. With one output, this example returns 400."
+  - id: ptb-sgd-complete
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Complete the optimiser so it can update the linear model's parameters with stochastic gradient descent."
+    code: |
+      import torch
+      from torch import nn
+
+      model = nn.Linear(3, 1)
+      optimizer = ____
+      print(len(optimizer.param_groups[0]["params"]))
+    accept:
+      - "torch.optim.SGD(model.parameters(), lr=0.0001)"
+      - "torch.optim.SGD(params=model.parameters(), lr=0.0001)"
+    solution: "SGD receives the model's parameters and learning rate. The layer has two parameter tensors: its weight and bias."
+  - id: ptb-loop-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What is a PyTorch training step?"
+    options:
+      - id: a
+        text: "A second backward call that leaves the model parameters unchanged."
+        correct: false
+        category: misunderstood_definition
+        feedback: "A training step includes an update to the model parameters after gradients are calculated."
+      - id: b
+        text: "A sequence that predicts, measures loss, calculates gradients and updates parameters."
+        correct: true
+        feedback: "Correct. A training step connects the forward calculation, loss, backward calculation and parameter update."
+      - id: c
+        text: "A list of input rows and target prices without any model calculation."
+        correct: false
+        category: misunderstood_definition
+        feedback: "That describes training data; a training step uses the data to calculate and update the model."
+      - id: d
+        text: "A conversion that changes every input tensor to a new data type."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Changing data type is a tensor operation, not a training step."
+    solution: "A training step uses current parameters to predict and measure loss, calculates gradients, then updates the parameters once."
+  - id: ptb-loop-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "What goes wrong if `optimizer.zero_grad()` is omitted between training-loop iterations?"
+    options:
+      - id: a
+        text: "The model can no longer calculate a forward prediction."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The forward pass still works; the problem is that old gradients remain stored."
+      - id: b
+        text: "SGD stops referring to the model's weights and bias."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The optimiser still holds the model parameters; it will use the accumulated gradients."
+      - id: c
+        text: "The loss changes from mean squared error to absolute error."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The loss function is unchanged; omitting zero_grad affects the gradients used for updates."
+      - id: d
+        text: "Each backward call adds new gradients to old ones, so updates use accumulated gradients."
+        correct: true
+        feedback: "Correct. PyTorch accumulates gradients, so clear them before calculating the next update."
+    solution: "`backward()` adds to stored gradients. Without `zero_grad()`, later SGD updates use old and new gradient contributions together."
+  - id: ptb-loop-zero-complete
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Add the step that clears gradients from the previous update."
+    code: |
+      import torch
+      from torch import nn
+
+      model = nn.Linear(3, 1)
+      loss_fn = nn.MSELoss()
+      optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
+      features = torch.tensor([[12.0, 3.0, 20.0]])
+      target = torch.tensor([[330.0]])
+      ____
+      prediction = model(features)
+      loss = loss_fn(prediction, target)
+      loss.backward()
+      optimizer.step()
+      print(round(loss.item(), 2))
+    accept: ["optimizer.zero_grad()", "optimizer.zero_grad(set_to_none=True)"]
+    solution: "`optimizer.zero_grad()` clears the previous gradient before this update. The other lines then compute a fresh prediction, loss, gradient and parameter step."
+  - id: ptb-loop-backward-complete
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Complete the training step so PyTorch calculates parameter gradients from the loss."
+    code: |
+      import torch
+      from torch import nn
+
+      model = nn.Linear(3, 1)
+      loss_fn = nn.MSELoss()
+      optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
+      features = torch.tensor([[12.0, 3.0, 20.0]])
+      target = torch.tensor([[330.0]])
+      optimizer.zero_grad()
+      prediction = model(features)
+      loss = loss_fn(prediction, target)
+      ____
+      optimizer.step()
+      print(round(loss.item(), 2))
+    accept: ["loss.backward()"]
+    solution: "`loss.backward()` applies the recorded derivative rules and stores parameter gradients. The optimiser can then use them in `step()`."
+  - id: ptb-loop-step-complete
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Complete the final line so SGD applies the calculated gradients to the model."
+    code: |
+      import torch
+      from torch import nn
+
+      model = nn.Linear(3, 1)
+      loss_fn = nn.MSELoss()
+      optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
+      features = torch.tensor([[12.0, 3.0, 20.0]])
+      target = torch.tensor([[330.0]])
+      optimizer.zero_grad()
+      prediction = model(features)
+      loss = loss_fn(prediction, target)
+      loss.backward()
+      ____
+      print(round(loss.item(), 2))
+    accept: ["optimizer.step()"]
+    solution: "`optimizer.step()` updates each registered model parameter using its current gradient and the configured learning rate."
+  - id: ptb-loop-debug
+    dimension: implementation
+    type: debug
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "The training step runs without an exception, but the model does not use the current loss gradient for its update. Which line is wrong, and what fixes it?"
+    code: |
+      import torch
+      from torch import nn
+
+      features = torch.tensor([[12.0, 3.0, 20.0]])
+      target = torch.tensor([[330.0]])
+      model = nn.Linear(3, 1)
+      loss_fn = nn.MSELoss()
+      optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
+
+      optimizer.zero_grad()
+      prediction = model(features)
+      loss = loss_fn(prediction, target)
+      optimizer.step()
+      loss.backward()
+    buggy_line: 13
+    fix_options:
+      - id: a
+        text: "Move `optimizer.zero_grad()` to after the forward pass."
+        correct: false
+        feedback: "Clearing after the forward pass would still happen before backward, but it would not fix the optimiser stepping before gradients are calculated."
+      - id: b
+        text: "Increase the learning rate so the optimiser uses a larger update."
+        correct: false
+        feedback: "The step runs before the current gradients exist, so changing the learning rate cannot make it use them."
+      - id: c
+        text: "Swap lines 13 and 14 so `loss.backward()` runs before `optimizer.step()`."
+        correct: true
+        feedback: "Correct. Backward must fill the gradients before the optimiser step reads them."
+      - id: d
+        text: "Replace `loss.backward()` with `loss.detach()`."
+        correct: false
+        feedback: "Detaching the loss cuts off gradient tracking instead of calculating gradients."
+    solution: "`optimizer.step()` reads the stored gradients, but line 13 runs before `loss.backward()` has calculated them. Swap those lines so backward fills the gradients first."
+  - id: ptb-loop-read
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "Starting from the known house weights, what loss does the code print after one SGD update?"
+    code: |
+      import torch
+      from torch import nn
+
+      features = torch.tensor([[12.0, 3.0, 20.0]])
+      target = torch.tensor([[330.0]])
+      model = nn.Linear(3, 1)
+      with torch.no_grad():
+          model.weight.copy_(torch.tensor([[25.0, 10.0, -1.0]]))
+          model.bias.zero_()
+      loss_fn = nn.MSELoss()
+      optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
+      optimizer.zero_grad()
+      prediction = model(features)
+      loss = loss_fn(prediction, target)
+      loss.backward()
+      optimizer.step()
+      print(round(loss_fn(model(features), target).item(), 3))
+    answer: 316.271
+    tolerance: { abs: 0.002 }
+    solution: "The starting loss is 400 and the gradient update changes the weights to about $(25.048,10.012,-0.92)$ and the bias to $0.004$. The updated prediction is about 312.216, so the new loss is about 316.271."
+  - id: ptb-explain-loop
+    dimension: implementation
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 5
+    prompt: "Explain the five steps in a PyTorch training loop for the house-price model, what each line does, and what goes wrong if `optimizer.zero_grad()` is omitted."
+    rubric:
+      - {
+          id: order,
+          criterion: "Gives the order zero_grad, forward prediction, loss, backward, optimizer step",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: roles,
+          criterion: "Explains that the forward pass predicts, the loss scores error, backward calculates gradients and the optimiser updates parameters",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: accumulation,
+          criterion: "Explains that gradients accumulate unless cleared, so omitting zero_grad makes later updates use old and new gradients",
+          weight: 1,
+          required: true,
+        }
+    exemplar: "First, optimizer.zero_grad() clears gradients left from the previous update. The model then predicts the house price, and nn.MSELoss compares that prediction with the target. loss.backward() calculates gradients for the model's weights and bias. Finally, optimizer.step() uses those gradients to update the parameters. If I omit zero_grad, backward adds each new gradient to the stored one, so later updates use accumulated gradients rather than only the current loss gradient."
