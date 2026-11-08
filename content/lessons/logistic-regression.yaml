@@ -10,7 +10,7 @@ knowledge_points:
     explain: |
       **What binary classification is.** Classification predicts a category from input features. Binary classification chooses between two labels, while regression predicts a numerical amount.
 
-      **How it works.** In the house example, let $y=1$ mean a house sells above asking and $y=0$ mean it does not. A linear model gives a score $z=w\cdot x+b$. Unlike a price prediction, $z$ can be any real number: a score of $-2$ or $3$ is not a valid probability. The quantity we want is $P(y=1\mid x)$, the probability of the positive event given the house features. A classifier therefore needs to map its unrestricted score to a value from 0 to 1 before applying a decision threshold. The score ranks evidence; it is not yet a probability or a class.
+      **How it works.** In the house example, let $y=1$ mean a house sells above asking and $y=0$ mean it does not. A linear model gives a score $z=w\cdot x+b$. Like a price prediction, $z$ can be any real number, so a score of $-2$ or $3$ is not a valid probability. The quantity we want is $P(y=1\mid x)$, the probability of the positive event given the house features. A classifier therefore needs to map its unrestricted score to a value from 0 to 1 before applying a decision threshold. The score ranks evidence; it is not yet a probability or a class.
 
       **Why this is useful.** A classifier can answer the house-sale question and report how likely the positive outcome is, rather than predicting a price.
     worked: |
@@ -20,7 +20,7 @@ knowledge_points:
 
       For classification, $y=1$ means the house sells above asking, and $y=0$ means it does not.
 
-      A current linear score of 3 is greater than 1, so it cannot be a probability.
+      A linear score of 3 is greater than 1, so it cannot be a probability.
 
       A score of $-2$ is below 0, so it cannot be a probability either.
 
@@ -172,7 +172,13 @@ knowledge_points:
 
       $$b'=0-0.1(-0.377541)=0.037754.$$
 
-      The new score is $z'=2(0.325508)+0.037754=0.688770$, so its probability is about 0.6657 and its loss about 0.407.
+      Recompute the score, probability and loss with the new parameters:
+
+      $$z'=2(0.325508)+0.037754=0.688770.$$
+
+      $$p'=\sigma(0.688770)\approx0.665693.$$
+
+      $$L'=-\ln(0.665693)\approx0.406926.$$
 
       The update raises the probability of the observed positive outcome and lowers its loss.
     problems:
@@ -190,4 +196,4 @@ summary: |
   - Binary cross-entropy uses natural logarithms and strongly penalises confident wrong probabilities.
   - Its score gradient is $p-y$, which gradient descent uses to update the model's weights and bias.
 
-  **Next:** Compare how well the model fits training houses with how it predicts new ones.
+  **Next:** Week 3 starts with mini-batch SGD, which updates the model from a few examples at a time.
