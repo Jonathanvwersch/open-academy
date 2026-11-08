@@ -55,6 +55,7 @@ interface TutorContextValue {
   clearContext: () => void;
   open: (context?: Partial<TutorRequestContext>) => void;
   openConversation: (context?: Partial<TutorRequestContext>) => void;
+  startChat: (context: Partial<TutorRequestContext>, greeting: string) => void;
   isOpen: boolean;
 }
 
@@ -168,6 +169,7 @@ export function TutorContextProvider({
     localStorage.getItem(THREAD_KEY) ? 'conversation' : 'list',
   );
   const [newChatSelected, setNewChatSelected] = useState(false);
+  const [greeting, setGreeting] = useState<{ text: string; threadId: string | null } | null>(null);
   const [selectionChecked, setSelectionChecked] = useState(false);
   const [focusComposerOnOpen, setFocusComposerOnOpen] = useState(false);
   const [draft, setDraft] = useState('');
@@ -265,6 +267,14 @@ export function TutorContextProvider({
     },
     onSuccess: (payload, variables) => {
       if (payload.thread) {
+        if (variables.threadId === '') {
+          const greetingThreadId = payload.thread.id;
+          setGreeting((current) =>
+            current && current.threadId === null
+              ? { ...current, threadId: greetingThreadId }
+              : current,
+          );
+        }
         const detailKey = ['tutor', 'thread', payload.thread.id] as const;
         const previousDetail = queryClient.getQueryData<TutorThreadDetail>(detailKey);
         const previousSummary =
@@ -343,19 +353,34 @@ export function TutorContextProvider({
     },
     [view],
   );
+  const startChat = useCallback((next: Partial<TutorRequestContext>, greetingText: string) => {
+    setContext((current) => ({ ...current, ...next }));
+    setError('');
+    setDraft('');
+    setNewChatSelected(true);
+    setSelectedId('');
+    setView('conversation');
+    setGreeting({ text: greetingText, threadId: null });
+    setFocusComposerOnOpen(true);
+    setOpen(true);
+  }, []);
   const value = useMemo<TutorContextValue>(
     () => ({
       setContext,
       clearContext,
       open: openTutor,
       openConversation,
+      startChat,
       isOpen: open,
     }),
-    [clearContext, open, openConversation, openTutor],
+    [clearContext, open, openConversation, openTutor, startChat],
   );
   const messages = detail.data?.messages ?? [];
   const selectedThread =
     threads.data?.find((thread) => thread.id === selectedId) ?? detail.data?.thread;
+  const showGreeting =
+    (newChatSelected && greeting?.threadId === null) ||
+    (greeting !== null && greeting.threadId !== null && greeting.threadId === selectedId);
   const visiblePendingSend = pendingSend?.threadId === selectedId ? pendingSend : null;
   const threadGroups = groupThreads(threads.data ?? []);
   const selectionPreview = context.selection
@@ -368,6 +393,7 @@ export function TutorContextProvider({
   const startNewChat = () => {
     setDraft('');
     setError('');
+    setGreeting(null);
     setNewChatSelected(true);
     setSelectedId('');
     setView('conversation');
@@ -546,32 +572,41 @@ export function TutorContextProvider({
                   <SidebarContent className="min-h-0 flex-1 p-0">
                     <Conversation aria-label="Tutor messages">
                       <ConversationContent className="gap-4 p-4">
-                        {messages.length || visiblePendingSend ? (
-                          messages.map((message) => (
-                            <Message
-                              key={message.id}
-                              data-testid={
-                                message.role === 'user'
-                                  ? 'tutor-user-message'
-                                  : 'tutor-assistant-message'
-                              }
-                              from={message.role === 'user' ? 'user' : 'assistant'}
+                        {showGreeting && greeting ? (
+                          <Message data-testid="tutor-greeting" from="assistant">
+                            <p className="w-full text-left text-xs font-medium text-muted-foreground">
+                              Tutor
+                            </p>
+                            <MessageContent>
+                              <Markdown>{greeting.text}</Markdown>
+                            </MessageContent>
+                          </Message>
+                        ) : null}
+                        {messages.map((message) => (
+                          <Message
+                            key={message.id}
+                            data-testid={
+                              message.role === 'user'
+                                ? 'tutor-user-message'
+                                : 'tutor-assistant-message'
+                            }
+                            from={message.role === 'user' ? 'user' : 'assistant'}
+                          >
+                            <p
+                              className={`w-full text-xs font-medium text-muted-foreground ${
+                                message.role === 'user' ? 'text-right' : 'text-left'
+                              }`}
                             >
-                              <p
-                                className={`w-full text-xs font-medium text-muted-foreground ${
-                                  message.role === 'user' ? 'text-right' : 'text-left'
-                                }`}
-                              >
-                                {message.role === 'user' ? 'You' : 'Tutor'}
-                              </p>
-                              <MessageContent>
-                                <Markdown>{message.content}</Markdown>
-                              </MessageContent>
-                            </Message>
-                          ))
-                        ) : (
+                              {message.role === 'user' ? 'You' : 'Tutor'}
+                            </p>
+                            <MessageContent>
+                              <Markdown>{message.content}</Markdown>
+                            </MessageContent>
+                          </Message>
+                        ))}
+                        {messages.length === 0 && !visiblePendingSend && !showGreeting ? (
                           <ConversationEmptyState title="Start a conversation" description="" />
-                        )}
+                        ) : null}
                         {visiblePendingSend ? (
                           <>
                             <Message
@@ -712,14 +747,21 @@ export function useTutorSidebar() {
 
 export function TutorLauncher({
   context,
+  greeting = 'What would you like help with on this question?',
   children = 'Ask the tutor',
 }: {
   context: Partial<TutorRequestContext>;
+  greeting?: string;
   children?: React.ReactNode;
 }) {
   const tutor = useTutorSidebar();
   return (
-    <Button type="button" variant="outline" size="sm" onClick={() => tutor.open(context)}>
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={() => tutor.startChat(context, greeting)}
+    >
       {children}
     </Button>
   );

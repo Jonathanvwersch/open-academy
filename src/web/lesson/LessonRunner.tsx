@@ -420,6 +420,7 @@ export function LessonRunner({
                           allowed: true,
                           enabled: tutorEnabled,
                         }}
+                        greeting="What would you like to know about this answer?"
                       >
                         Ask the tutor about this
                       </TutorLauncher>
