@@ -39,11 +39,13 @@ export function LessonRunner({
   const queryOptions = lessonRunQueryOptions(conceptId);
   const query = useSuspenseQuery(queryOptions);
   const lesson = useSuspenseQuery(lessonQueryOptions(conceptId)).data;
+  const state = query.data.run;
   const starting = useRef(false);
   const previousPointId = useRef<string | undefined>(undefined);
+  const previousCurrentPointId = useRef(state?.currentPointId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const state = query.data.run;
+  const [viewingPointId, setViewingPointId] = useState<string | null>(null);
   const activePoint = state
     ? (lesson?.knowledge_points?.find((point) => point.id === state.currentPointId) ?? undefined)
     : undefined;
@@ -61,10 +63,24 @@ export function LessonRunner({
   const currentPointIndex = state?.currentPointId
     ? state.points.findIndex((point) => point.id === state.currentPointId)
     : -1;
+  const viewingPointIndex = viewingPointId
+    ? (state?.points.findIndex((item) => item.id === viewingPointId) ?? -1)
+    : -1;
+  const viewingPoint = viewingPointId
+    ? lesson?.knowledge_points?.find((item) => item.id === viewingPointId)
+    : undefined;
+  const viewingPastStep = Boolean(viewingPointId && viewingPointId !== state?.currentPointId);
+  const displayedPoint = viewingPastStep ? viewingPoint : point;
   const pageLabel =
     state && currentPointIndex >= 0
       ? `${title} · step ${currentPointIndex + 1} of ${state.points.length}`
       : title;
+  const tutorContextProblem = viewingPastStep ? undefined : contextProblem;
+  const tutorContextPointId = viewingPastStep ? viewingPointId : state?.currentPointId;
+  const tutorContextPageLabel =
+    viewingPastStep && state && viewingPointIndex >= 0
+      ? `${title} · step ${viewingPointIndex + 1} of ${state.points.length}`
+      : pageLabel;
 
   useEffect(() => {
     if (previousPointId.current !== undefined && previousPointId.current !== pointId) {
@@ -74,15 +90,21 @@ export function LessonRunner({
   }, [pointId]);
 
   useEffect(() => {
+    if (previousCurrentPointId.current === state?.currentPointId) return;
+    previousCurrentPointId.current = state?.currentPointId;
+    setViewingPointId(null);
+  }, [state?.currentPointId]);
+
+  useEffect(() => {
     tutorSidebar.setContext({
       conceptId,
       conceptTitle: title,
       activityId,
-      exerciseId: contextProblem?.exerciseId,
-      lessonProblemId: contextProblem?.id,
+      exerciseId: tutorContextProblem?.exerciseId,
+      lessonProblemId: tutorContextProblem?.id,
       page: 'session',
-      knowledgePointId: state?.currentPointId ?? undefined,
-      pageLabel,
+      knowledgePointId: tutorContextPointId ?? undefined,
+      pageLabel: tutorContextPageLabel,
       allowed: true,
       enabled: tutorEnabled,
     });
@@ -90,10 +112,10 @@ export function LessonRunner({
   }, [
     activityId,
     conceptId,
-    contextProblem?.exerciseId,
-    contextProblem?.id,
-    pageLabel,
-    state?.currentPointId,
+    tutorContextProblem?.exerciseId,
+    tutorContextProblem?.id,
+    tutorContextPageLabel,
+    tutorContextPointId,
     title,
     tutorEnabled,
     tutorSidebar,
@@ -194,6 +216,32 @@ export function LessonRunner({
     if (basicsExerciseId === exerciseId) return 'Basics question';
     return `Problem ${(pointStatus?.answered ?? 0) + (pending ? 1 : 0)} · up to 5`;
   };
+  const backButtonLabel =
+    state.status === 'completed'
+      ? 'Back to summary'
+      : `Back to step ${Math.max(0, currentPointIndex) + 1}`;
+  const stepContent = displayedPoint ? (
+    <section className="space-y-4">
+      <h2 className="text-xl font-semibold">{displayedPoint.title}</h2>
+      {displayedPoint.id === lesson?.knowledge_points?.[0]?.id &&
+      (lesson?.where_this_fits ?? state.where_this_fits) ? (
+        <LessonBlock kind="fits" md={lesson?.where_this_fits ?? state.where_this_fits} />
+      ) : null}
+      <Markdown>{displayedPoint.explain}</Markdown>
+      <LessonBlock kind="worked" md={displayedPoint.worked} />
+    </section>
+  ) : null;
+
+  const viewStep = (stepId: string) => {
+    const nextViewingPointId = stepId === state.currentPointId ? null : stepId;
+    if (viewingPointId !== nextViewingPointId) window.scrollTo({ top: 0 });
+    setViewingPointId(nextViewingPointId);
+  };
+
+  const returnToCurrentStep = () => {
+    setViewingPointId(null);
+    window.scrollTo({ top: 0 });
+  };
 
   return (
     <section className="space-y-6">
@@ -207,26 +255,70 @@ export function LessonRunner({
       <ol aria-label="Lesson steps" className="flex flex-wrap gap-2">
         {state.points.map((item, index) => (
           <li key={item.id}>
-            <Badge
-              variant="outline"
-              className={`${
-                item.status === 'passed'
-                  ? 'border-green-300 bg-green-50 text-green-900'
-                  : item.status === 'failed'
-                    ? 'border-red-300 bg-red-50 text-red-900'
-                    : item.id === state.currentPointId
-                      ? 'border-primary bg-muted text-foreground'
-                      : 'border-border text-muted-foreground'
-              }`}
-            >
-              {item.status === 'passed' ? '✓ ' : item.status === 'failed' ? '! ' : ''}
-              Step {index + 1} of {state.points.length}
-            </Badge>
+            {item.status === 'passed' ||
+            item.status === 'failed' ||
+            item.id === state.currentPointId ||
+            state.status === 'completed' ? (
+              <Badge
+                asChild
+                variant="outline"
+                className={`${
+                  item.status === 'passed'
+                    ? 'border-green-300 bg-green-50 text-green-900'
+                    : item.status === 'failed'
+                      ? 'border-red-300 bg-red-50 text-red-900'
+                      : item.id === state.currentPointId
+                        ? 'border-primary bg-muted text-foreground'
+                        : 'border-border text-muted-foreground'
+                } cursor-pointer hover:brightness-95 ${
+                  viewingPastStep && item.id === viewingPointId ? 'ring-1 ring-primary' : ''
+                }`}
+              >
+                <button
+                  type="button"
+                  aria-label={`Step ${index + 1} of ${state.points.length}, ${
+                    item.status === 'passed'
+                      ? 'passed'
+                      : item.status === 'failed'
+                        ? 'failed'
+                        : item.id === state.currentPointId
+                          ? 'current'
+                          : 'completed'
+                  }`}
+                  aria-current={
+                    (viewingPastStep && item.id === viewingPointId) ||
+                    (!viewingPastStep &&
+                      state.status === 'in_progress' &&
+                      item.id === (point?.id ?? state.currentPointId))
+                      ? 'step'
+                      : undefined
+                  }
+                  onClick={() => viewStep(item.id)}
+                >
+                  {item.status === 'passed' ? '✓ ' : item.status === 'failed' ? '! ' : ''}
+                  Step {index + 1} of {state.points.length}
+                </button>
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="border-border text-muted-foreground">
+                Step {index + 1} of {state.points.length}
+              </Badge>
+            )}
           </li>
         ))}
       </ol>
 
-      {state.status === 'completed' ? (
+      {viewingPastStep ? (
+        <>
+          <Button type="button" onClick={returnToCurrentStep}>
+            {backButtonLabel}
+          </Button>
+          {stepContent}
+          <Button type="button" onClick={returnToCurrentStep}>
+            {backButtonLabel}
+          </Button>
+        </>
+      ) : state.status === 'completed' ? (
         <Card className="border-green-300 bg-green-50">
           <CardContent className="space-y-3 text-green-950">
             <h2 className="text-xl font-semibold">Lesson complete · +{state.xpEarned} XP</h2>
@@ -276,17 +368,7 @@ export function LessonRunner({
         </Card>
       ) : (
         <>
-          {point ? (
-            <section className="space-y-4">
-              <h2 className="text-xl font-semibold">{point.title}</h2>
-              {point.id === lesson?.knowledge_points?.[0]?.id &&
-              (lesson?.where_this_fits ?? state.where_this_fits) ? (
-                <LessonBlock kind="fits" md={lesson?.where_this_fits ?? state.where_this_fits} />
-              ) : null}
-              <Markdown>{point.explain}</Markdown>
-              <LessonBlock kind="worked" md={point.worked} />
-            </section>
-          ) : null}
+          {stepContent}
           {shownProblem ? (
             <Card
               className="space-y-5"
@@ -369,12 +451,12 @@ export function LessonRunner({
           ) : null}
         </>
       )}
-      {error ? (
+      {!viewingPastStep && error ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      {!state.pendingProblem ? (
+      {!viewingPastStep && !state.pendingProblem ? (
         <Button type="button" onClick={() => void next()} disabled={busy}>
           {busy
             ? 'Saving…'
