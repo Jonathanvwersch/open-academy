@@ -1,3 +1,4 @@
+import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { eq } from 'drizzle-orm';
 import { createDb } from '../../src/server/db/client.js';
@@ -12,6 +13,8 @@ declare global {
 }
 
 const db = createDb(env.TEST_DATABASE_URL);
+const tutorHeaderScreenshotDir = '/home/ubuntu/screenshots/tutor-header';
+mkdirSync(tutorHeaderScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async ({ page }) => {
@@ -194,7 +197,7 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
   await expect(quoteChip).toBeVisible();
   await expect(tutor.getByText('No chats yet')).toHaveCount(0);
   await expect(tutor.getByTestId('tutor-reading-context')).toHaveText(
-    'Reading: Fixture Paper One · page 1 of 3 · selected passage',
+    'Context: Fixture Paper One · page 1 of 3 · selected passage',
   );
   await input.fill('What does this passage mean?');
   const sendButton = tutor.getByRole('button', { name: 'Send' });
@@ -220,6 +223,7 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
   });
   await expect(quoteChip).toHaveCount(0);
   await expect(tutor.getByTestId('tutor-reading-context')).not.toContainText('selected passage');
+  await page.screenshot({ path: `${tutorHeaderScreenshotDir}/paper.png` });
   const conversationTitle =
     (await tutor.getByTestId('tutor-conversation-title').textContent()) ?? '';
   const continuedSelection = await selectPassage();
