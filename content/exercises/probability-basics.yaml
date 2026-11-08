@@ -10,23 +10,23 @@ exercises:
     options:
       - {
           id: a,
-          text: "A set of outcomes that meet a stated condition",
-          correct: true,
-          feedback: "An event collects the outcomes that satisfy a condition.",
-        }
-      - {
-          id: b,
           text: "One outcome chosen without any condition",
           correct: false,
           category: misunderstood_definition,
           feedback: "An event can contain one outcome, but its definition is a set of outcomes selected by a condition.",
         }
       - {
-          id: c,
+          id: b,
           text: "The total number of observations in a dataset",
           correct: false,
           category: misunderstood_definition,
           feedback: "The sample size counts observations; an event says which outcomes to count.",
+        }
+      - {
+          id: c,
+          text: "A set of outcomes that meet a stated condition",
+          correct: true,
+          feedback: "An event collects the outcomes that satisfy a condition.",
         }
       - {
           id: d,
@@ -121,30 +121,30 @@ exercises:
     options:
       - {
           id: a,
-          text: "A rule that assigns a countable number to each possible outcome",
-          correct: true,
-          feedback: "A discrete random variable assigns a number to each outcome and has countable possible values.",
-        }
-      - {
-          id: b,
           text: "A list containing only the most likely outcome",
           correct: false,
           category: misunderstood_definition,
           feedback: "The variable can take every possible value, not only the most likely one.",
         }
       - {
-          id: c,
+          id: b,
           text: "The average of all observed numbers in a dataset",
           correct: false,
           category: misunderstood_definition,
           feedback: "An average summarises values; the variable assigns a value to each outcome.",
         }
       - {
-          id: d,
+          id: c,
           text: "A probability that must be larger than 1",
           correct: false,
           category: misunderstood_definition,
           feedback: "A probability is between 0 and 1; a random variable is the number assigned to an outcome.",
+        }
+      - {
+          id: d,
+          text: "A rule that assigns a countable number to each possible outcome",
+          correct: true,
+          feedback: "A discrete random variable assigns a number to each outcome and has countable possible values.",
         }
     solution: "A discrete random variable assigns a countable number to each possible outcome."
   - id: pb-distribution-why
@@ -157,16 +157,16 @@ exercises:
     options:
       - {
           id: a,
-          text: "The probabilities preserve which counts occur more often in the sales.",
-          correct: true,
-          feedback: "The probabilities record the relative frequencies of the possible offer counts.",
-        }
-      - {
-          id: b,
           text: "The probabilities make every possible offer count equally likely.",
           correct: false,
           category: incorrect_reasoning,
           feedback: "A distribution records the observed chances; it does not make them equal.",
+        }
+      - {
+          id: b,
+          text: "The probabilities preserve which counts occur more often in the sales.",
+          correct: true,
+          feedback: "The probabilities record the relative frequencies of the possible offer counts.",
         }
       - {
           id: c,
@@ -231,16 +231,16 @@ exercises:
     options:
       - {
           id: a,
-          text: "The probability-weighted average of a random variable's possible values",
-          correct: true,
-          feedback: "Weighting each value by its probability gives the expectation.",
-        }
-      - {
-          id: b,
           text: "The plain average of the possible values, regardless of their probabilities",
           correct: false,
           category: misunderstood_definition,
           feedback: "The expectation uses the distribution's probabilities, not equal weights for every value.",
+        }
+      - {
+          id: b,
+          text: "The probability-weighted average of a random variable's possible values",
+          correct: true,
+          feedback: "Weighting each value by its probability gives the expectation.",
         }
       - {
           id: c,
@@ -267,30 +267,30 @@ exercises:
     options:
       - {
           id: a,
-          text: "The offer counts have different probabilities, so they need different weights.",
-          correct: true,
-          feedback: "The distribution assigns unequal probabilities, so the average must use those weights.",
-        }
-      - {
-          id: b,
           text: "An expectation ignores probabilities and uses only the largest offer count.",
           correct: false,
           category: misunderstood_definition,
           feedback: "The expectation uses every possible value and its probability.",
         }
       - {
-          id: c,
+          id: b,
           text: "Every possible count must be equally likely before an average can be calculated.",
           correct: false,
           category: incorrect_reasoning,
           feedback: "Unequal chances are handled by weighting each count by its own probability.",
         }
       - {
-          id: d,
+          id: c,
           text: "The count that appears most often is always the expectation.",
           correct: false,
           category: misunderstood_definition,
           feedback: "The most likely count and the probability-weighted average can be different.",
+        }
+      - {
+          id: d,
+          text: "The offer counts have different probabilities, so they need different weights.",
+          correct: true,
+          feedback: "The distribution assigns unequal probabilities, so the average must use those weights.",
         }
     solution: "The observed probabilities are unequal, so a plain average gives the counts the wrong weights."
   - id: pb-expectation-fixed
@@ -388,23 +388,23 @@ exercises:
     options:
       - {
           id: a,
-          text: "The conditional rate is 0.75, while the overall above-asking rate is 0.45.",
-          correct: true,
-          feedback: "Independence would leave the chance of A unchanged after learning B; these rates differ.",
-        }
-      - {
-          id: b,
           text: "The conditional rate is 0.45, while the overall above-asking rate is 0.75.",
           correct: false,
           category: math_error,
           feedback: "For the conditional rate, divide the six above-asking houses by the eight with at least two offers.",
         }
       - {
-          id: c,
+          id: b,
           text: "The joint rate is 0.30, which is larger than both overall event rates.",
           correct: false,
           category: math_error,
           feedback: "The joint rate 0.30 is smaller than both 0.40 and 0.45; compare the conditional and overall rates instead.",
+        }
+      - {
+          id: c,
+          text: "The conditional rate is 0.75, while the overall above-asking rate is 0.45.",
+          correct: true,
+          feedback: "Independence would leave the chance of A unchanged after learning B; these rates differ.",
         }
       - {
           id: d,
