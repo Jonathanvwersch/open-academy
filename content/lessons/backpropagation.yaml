@@ -42,7 +42,7 @@ knowledge_points:
   - id: bp-arrays
     title: Backpropagate a batch with matrix operations
     explain: |
-      **What a batch gradient is.** It is the combined gradient from several training houses processed together.
+      **What a batch gradient is.** It is the loss gradient for several training examples at once: the per-example gradients added together, computed with a few matrix operations instead of one example at a time. Here each example is one training house.
 
       **How it works.** A batch contains $B$ houses. Let $d_{\rm in}$ be the number of input features and $d_{\rm out}$ the number of outputs. Define matrix $X$ with one input row per house, and matrix $G$ with one output-error row per house. Their shapes are $B\times d_{\rm in}$ and $B\times d_{\rm out}$.
 

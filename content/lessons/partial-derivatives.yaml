@@ -36,7 +36,7 @@ knowledge_points:
   - id: pd-compute
     title: Compute each partial with derivative rules
     explain: |
-      **What a partial formula gives.** It gives the loss slope for one weight at any setting of the model, not just one house price or one chosen set of weights.
+      **What a partial formula gives.** A partial-derivative formula is an expression for the loss slope with respect to one weight that holds at every parameter setting, so you plug in the current weights instead of re-deriving the slope each time.
 
       **How it works.** Let $e=12w_1+3w_2+20w_3-330$, and let $x_j$ be the $j$th house feature. If weight $w_j$ changes by $h$, the error changes by $x_jh$. The difference quotient is $((e+x_jh)^2-e^2)/h=2ex_j+x_j^2h$, which approaches $2ex_j$. Thus
 
@@ -67,7 +67,7 @@ knowledge_points:
   - id: pd-many-inputs
     title: Include the bias as another input
     explain: |
-      **What the bias partial is.** The bias is an adjustable offset added to every house's weighted total. Its partial derivative measures the effect of changing that offset alone.
+      **What the bias partial is.** The bias is an adjustable offset added to the model's weighted total for every example. Its partial derivative is the rate at which the loss changes when only the bias changes, with every weight held fixed.
 
       **How it works.** With prediction $\hat y=w\cdot x+b$, one-house squared loss is $L=(w\cdot x+b-y)^2$. Write the error as $e=w\cdot x+b-y$. Changing the bias by $h$ changes the error by $h$, so the loss difference quotient is $((e+h)^2-e^2)/h=2e+h$, which approaches $2e$. Each weight partial is $2e$ times its feature; the bias partial is $2e$ because its multiplier is 1.
 

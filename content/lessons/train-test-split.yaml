@@ -8,7 +8,7 @@ knowledge_points:
   - id: tts-why-hold-out
     title: Test on houses the model has not seen
     explain: |
-      **What a held-out test is.** A test set is a group of house sales kept separate from fitting so it can estimate how well a trained model predicts unseen houses.
+      **What a held-out test is.** A test set is a group of examples kept out of training, so the trained model's error on them estimates how well it predicts data it has never seen. For the house model, it is a group of past sales the weights were never fitted to.
 
       **How it works.** Fit the weights using training houses, then predict prices for separate test houses without updating the model from their sale prices. Compare each prediction with its known sale. If the model memorised the training examples, its training error can be small while test error remains large.
 
