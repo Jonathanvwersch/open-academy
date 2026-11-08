@@ -161,11 +161,16 @@ knowledge_points:
       optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
 
       for _ in range(2):
-          optimizer.zero_grad()  # Clear gradients from the previous update.
-          prediction = model(features)  # Compute the current price prediction.
-          loss = loss_fn(prediction, target)  # Measure its current error.
-          loss.backward()  # Calculate gradients for the parameters.
-          optimizer.step()  # Apply one SGD update.
+          # Clear gradients from the previous update.
+          optimizer.zero_grad()
+          # Compute the current price prediction.
+          prediction = model(features)
+          # Measure its current error.
+          loss = loss_fn(prediction, target)
+          # Calculate gradients for the parameters.
+          loss.backward()
+          # Apply one SGD update.
+          optimizer.step()
       ```
 
       The order matters: `backward()` fills gradients and `step()` uses them. Automatic differentiation showed that gradients accumulate, so leaving out `zero_grad()` makes a later update use old gradients added to the new ones.
