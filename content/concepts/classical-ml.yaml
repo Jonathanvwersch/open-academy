@@ -109,7 +109,7 @@ concepts:
       ]
     objectives:
       - { text: "Compute sigmoid outputs and binary cross-entropy", dimension: math }
-    status: stub
+    status: authored
   - id: overfitting
     title: Overfitting and underfitting
     description: Bias/variance intuition; diagnosing from train vs validation curves.

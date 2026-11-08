@@ -74,7 +74,7 @@ terms:
       id: sigmoid,
       label: "sigmoid σ",
       match: ['\\sigma', "sigmoid"],
-      introduced_by: [activation-functions],
+      introduced_by: [activation-functions, logistic-regression],
     }
   - { id: relu, label: "ReLU", match: ["ReLU"], introduced_by: [activation-functions] }
   - {
