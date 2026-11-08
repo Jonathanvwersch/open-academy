@@ -7,8 +7,10 @@ import { env } from '../../src/server/env.js';
 const conceptId = 'supervised-learning';
 const screenshotDir = '/home/ubuntu/screenshots/shadcn';
 const lessonCardScreenshotDir = '/home/ubuntu/screenshots/lesson-cards';
+const stepReviewScreenshotDir = '/home/ubuntu/ui-audit/step-review';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
+mkdirSync(stepReviewScreenshotDir, { recursive: true });
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -151,8 +153,13 @@ async function nextProblemAndReload(
 test('passes every knowledge point and restores the exact problem and result after reloads', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.setViewportSize({ width: 1440, height: 900 });
   const sessionId = await createSession(page);
+  const firstStepTitle = await page.evaluate(async () => {
+    const response = await fetch('/api/lessons/supervised-learning');
+    const lesson = await response.json();
+    return lesson.knowledge_points[0].title as string;
+  });
   const fitsHeading = page.getByRole('heading', { name: 'Where this fits', exact: true });
   await expect(fitsHeading).toBeVisible();
   const workedExample = page.getByRole('heading', { name: 'Worked example', exact: true });
@@ -203,7 +210,49 @@ test('passes every knowledge point and restores the exact problem and result aft
     }
     if (pointIndex < run.points.length - 1) {
       run = await nextProblemAndReload(page);
-      if (pointIndex === 0) await expect(fitsHeading).toHaveCount(0);
+      if (pointIndex === 0) {
+        await expect(fitsHeading).toHaveCount(0);
+        const problem = page.getByTestId('lesson-problem');
+        const problemId = await problem.getAttribute('data-problem-id');
+        const firstStepButtonName = `Step 1 of ${run.points.length}, passed`;
+        const currentStepIndex = run.points.findIndex(
+          (point: { id: string }) => point.id === run.currentPointId,
+        );
+        expect(currentStepIndex).toBe(1);
+        const backButtonName = `Back to step ${currentStepIndex + 1}`;
+
+        await expect(problemId).toBeTruthy();
+        await page.getByRole('button', { name: firstStepButtonName }).click();
+        await expect(
+          page.getByRole('heading', { name: firstStepTitle, exact: true }),
+        ).toBeVisible();
+        await expect(page.getByTestId('lesson-problem')).toHaveCount(0);
+        await expect(page.getByRole('button', { name: firstStepButtonName })).toHaveAttribute(
+          'aria-current',
+          'step',
+        );
+        if (run.points.length > 2) {
+          await expect(
+            page.getByText(`Step 3 of ${run.points.length}`, { exact: true }),
+          ).toBeVisible();
+          await expect(page.getByRole('button', { name: /^Step 3 of/ })).toHaveCount(0);
+        }
+        await page.screenshot({ path: `${stepReviewScreenshotDir}/desktop-viewing.png` });
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.screenshot({ path: `${stepReviewScreenshotDir}/mobile-viewing.png` });
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await page.getByRole('button', { name: firstStepButtonName }).hover();
+        await page.screenshot({ path: `${stepReviewScreenshotDir}/desktop-pills-hover.png` });
+        await page.getByRole('button', { name: backButtonName }).first().click();
+        await expect(
+          page.getByRole('heading', { name: run.currentPoint.title, exact: true }),
+        ).toBeVisible();
+        await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
+          'data-problem-id',
+          problemId ?? '',
+        );
+        await page.screenshot({ path: `${stepReviewScreenshotDir}/desktop-back.png` });
+      }
     }
   }
 
@@ -211,6 +260,13 @@ test('passes every knowledge point and restores the exact problem and result aft
   expect(run.xpEarned).toBe(40);
   await expect(page.getByText('Lesson complete · +40 XP')).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/lesson-complete.png`, fullPage: true });
+  const firstStepButtonName = `Step 1 of ${run.points.length}, passed`;
+  await page.getByRole('button', { name: firstStepButtonName }).click();
+  await expect(page.getByRole('heading', { name: firstStepTitle, exact: true })).toBeVisible();
+  await expect(page.getByTestId('lesson-problem')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Back to summary' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Back to summary' }).first().click();
+  await expect(page.getByText('Lesson complete · +40 XP')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByText('Lesson complete · +40 XP')).toHaveCount(0);
   await expect(page.getByLabel('Your answer')).toBeVisible();
