@@ -257,10 +257,16 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
         </div>
       ) : null}
       {showSolution ? (
-        <div className={solutionHasDivider ? 'mt-3 border-t border-current/15 pt-3' : 'mt-1'}>
-          <p className="mb-1 font-medium">Solution</p>
-          <Markdown>{solution}</Markdown>
-        </div>
+        solutionHasDivider ? (
+          <div className="mt-3 border-t border-current/15 pt-3">
+            <p className="mb-1 font-medium">Solution</p>
+            <Markdown>{solution}</Markdown>
+          </div>
+        ) : (
+          <AlertDescription className="mt-1 text-base text-inherit">
+            <Markdown>{solution}</Markdown>
+          </AlertDescription>
+        )
       ) : null}
     </Alert>
   );
