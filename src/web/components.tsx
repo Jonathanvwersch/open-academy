@@ -195,6 +195,17 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
     : [];
   const correct = Number(result.correct) >= 1;
   const partial = Number(result.correct) > 0 && !correct;
+  const writtenAnswer = typeof result.exemplar === 'string';
+  const showAnswers = typeof result.yourAnswer === 'string' && (writtenAnswer || !correct);
+  const solution =
+    typeof result.solution === 'string' && result.solution.trim() ? result.solution : '';
+  const showFeedback = Boolean(feedback) && !repeatsTitle;
+  const showSolution =
+    !writtenAnswer &&
+    Boolean(solution) &&
+    !(correct && showFeedback) &&
+    !(showAnswers && solution.trim() === String(result.correctAnswer ?? '').trim());
+  const solutionHasDivider = showFeedback || showAnswers || rubric.some((item) => item.judgement);
   const statusClass =
     result.status === 'self_check_required'
       ? 'border-amber-300 bg-amber-50 text-amber-950'
@@ -206,7 +217,7 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
   return (
     <Alert role="status" className={`${statusClass} text-base`}>
       {title ? <AlertTitle>{title}</AlertTitle> : null}
-      {feedback && !repeatsTitle ? (
+      {showFeedback ? (
         <AlertDescription className="mt-1 text-base text-inherit">
           <Markdown>{feedback}</Markdown>
         </AlertDescription>
@@ -225,11 +236,11 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
           })}
         </ul>
       ) : null}
-      {typeof result.yourAnswer === 'string' ? (
+      {showAnswers ? (
         <div className="mt-3 space-y-2">
           <div>
             <p className="font-medium">Your answer:</p>
-            <Markdown>{result.yourAnswer}</Markdown>
+            <Markdown>{String(result.yourAnswer)}</Markdown>
           </div>
           {typeof result.correctAnswer === 'string' ? (
             <div>
@@ -245,12 +256,10 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
           <Markdown>{result.exemplar}</Markdown>
         </div>
       ) : null}
-      {typeof result.exemplar !== 'string' &&
-      typeof result.solution === 'string' &&
-      result.solution.trim() ? (
-        <div className="mt-3 border-t border-current/15 pt-3">
+      {showSolution ? (
+        <div className={solutionHasDivider ? 'mt-3 border-t border-current/15 pt-3' : 'mt-1'}>
           <p className="mb-1 font-medium">Solution</p>
-          <Markdown>{result.solution}</Markdown>
+          <Markdown>{solution}</Markdown>
         </div>
       ) : null}
     </Alert>

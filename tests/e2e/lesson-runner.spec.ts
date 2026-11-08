@@ -200,8 +200,9 @@ test('passes every knowledge point and restores the exact problem and result aft
       if (pointIndex === 0 && run.points[0].status === 'passed') {
         await expect(page.getByText('+10 XP')).toBeVisible();
         await expect(page.getByText('Problem 2 · up to 5')).toBeVisible();
-        await expect(page.getByText('Your answer:')).toBeVisible();
-        await expect(page.getByText('Correct answer:')).toBeVisible();
+        await expect(page.getByText('Correct', { exact: true })).toBeVisible();
+        await expect(page.getByText('Your answer:')).toHaveCount(0);
+        await expect(page.getByText('Correct answer:')).toHaveCount(0);
         await page.screenshot({
           path: `${screenshotDir}/knowledge-point-passed.png`,
           fullPage: true,
