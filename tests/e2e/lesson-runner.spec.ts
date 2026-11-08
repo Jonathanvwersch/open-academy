@@ -9,10 +9,12 @@ const screenshotDir = '/home/ubuntu/screenshots/shadcn';
 const lessonCardScreenshotDir = '/home/ubuntu/screenshots/lesson-cards';
 const stepReviewScreenshotDir = '/home/ubuntu/ui-audit/step-review';
 const feedbackCorrectScreenshotDir = '/home/ubuntu/screenshots/feedback-correct';
+const mcShuffleScreenshotDir = '/home/ubuntu/screenshots/mc-shuffle';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
 mkdirSync(feedbackCorrectScreenshotDir, { recursive: true });
+mkdirSync(mcShuffleScreenshotDir, { recursive: true });
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -81,11 +83,10 @@ async function answerAndReload(page: Page, correct: boolean, runConceptId = conc
 
   if (exercise.type === 'mc') {
     const ids = Array.isArray(answer) ? answer : [answer];
-    const inputs = exercise.multi ? page.getByRole('checkbox') : page.getByRole('radio');
     for (const id of ids) {
-      const index = exercise.options.findIndex((option: { id: string }) => option.id === id);
-      await inputs.nth(index).click();
-      await expect(inputs.nth(index)).toHaveAttribute('aria-checked', 'true');
+      const input = page.locator(`[id="${exercise.id}-${id}"]`);
+      await input.click();
+      await expect(input).toHaveAttribute('aria-checked', 'true');
     }
   } else {
     await page.getByLabel('Your answer').fill(String(answer));
@@ -182,6 +183,13 @@ test('passes every knowledge point and restores the exact problem and result aft
   await expect(page.getByTestId('lesson-problem-prompt')).toContainText(
     'Which statement best describes the main idea in this step?',
   );
+  await page.getByTestId('lesson-problem').screenshot({
+    path: `${mcShuffleScreenshotDir}/mc.png`,
+  });
+  const firstDisplayedOption = page.getByRole('radio').first();
+  await firstDisplayedOption.focus();
+  await page.keyboard.press('1');
+  await expect(firstDisplayedOption).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByLabel('0 correct in a row')).toHaveCount(0);
   run = await answerAndReload(page, true);
   expect(run.points[0]).toMatchObject({ status: 'active', answered: 0, streak: 0 });

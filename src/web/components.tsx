@@ -1,12 +1,13 @@
 import type { FormEvent, KeyboardEvent, ReactNode, RefObject } from 'react';
 import * as React from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import { normalizeDisplayMath } from '../shared/markdown';
+import { seededOrder } from '../shared/shuffle.js';
 import { apiFetch } from './authenticated-fetch.js';
 import { cn } from './lib/utils.js';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert.js';
@@ -293,6 +294,18 @@ export function ExerciseForm({
   const [line, setLine] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [criteria, setCriteria] = useState<string[]>([]);
+  const options = exercise.options;
+  const orderedOptions = useMemo(
+    () => seededOrder(options ?? [], exercise.id),
+    [exercise.id, options],
+  );
+  const fixOptions = (
+    exercise as ClientExercise & { fix_options?: Array<{ id: string; text: string }> }
+  ).fix_options;
+  const orderedFixOptions = useMemo(
+    () => seededOrder(fixOptions ?? [], exercise.id),
+    [exercise.id, fixOptions],
+  );
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (exercise.type === 'debug') {
@@ -325,7 +338,7 @@ export function ExerciseForm({
       return;
     }
     if (exercise.type === 'mc' && /^[1-9]$/.test(event.key)) {
-      const option = exercise.options?.[Number(event.key) - 1];
+      const option = orderedOptions[Number(event.key) - 1];
       if (option) {
         event.preventDefault();
         if (exercise.multi) {
@@ -352,7 +365,7 @@ export function ExerciseForm({
           <legend className="sr-only">Choose an answer</legend>
           {exercise.multi ? (
             <div className="space-y-2">
-              {(exercise.options ?? []).map((option) => {
+              {orderedOptions.map((option) => {
                 const optionId = `${exercise.id}-${option.id}`;
                 return (
                   <Label
@@ -384,7 +397,7 @@ export function ExerciseForm({
               value={selected[0] ?? ''}
               onValueChange={(next) => setSelected([next])}
             >
-              {(exercise.options ?? []).map((option) => {
+              {orderedOptions.map((option) => {
                 const optionId = `${exercise.id}-${option.id}`;
                 return (
                   <Label
@@ -430,9 +443,7 @@ export function ExerciseForm({
                 <SelectValue placeholder="Choose a fix" />
               </SelectTrigger>
               <SelectContent>
-                {(
-                  exercise as ClientExercise & { fix_options?: Array<{ id: string; text: string }> }
-                ).fix_options?.map((option) => (
+                {orderedFixOptions.map((option) => (
                   <SelectItem key={option.id} value={option.id}>
                     <Markdown inline>{option.text}</Markdown>
                   </SelectItem>
