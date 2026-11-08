@@ -135,14 +135,15 @@ async function getJson<T>(url: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-function ReadingLine({ pageLabel }: { pageLabel?: string }) {
+function ContextLine({ pageLabel }: { pageLabel?: string }) {
   return pageLabel ? (
     <div
       data-testid="tutor-reading-context"
-      className="flex w-full min-w-0 items-center gap-2 border-b px-4 py-2 text-xs text-muted-foreground"
+      title={`Context: ${pageLabel}`}
+      className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
     >
       <Eye aria-hidden="true" className="size-3.5 shrink-0" />
-      <span className="truncate">Reading: {pageLabel}</span>
+      <span className="truncate">Context: {pageLabel}</span>
     </div>
   ) : null;
 }
@@ -386,10 +387,6 @@ export function TutorContextProvider({
   const selectionPreview = context.selection
     ? `${context.selection.slice(0, 120)}${context.selection.length > 120 ? '…' : ''}`
     : null;
-  const activeConceptTitle = newChatSelected
-    ? context.conceptTitle
-    : (selectedThread?.conceptTitle ??
-      (selectedThread?.conceptId === context.conceptId ? context.conceptTitle : undefined));
   const startNewChat = () => {
     setDraft('');
     setError('');
@@ -457,7 +454,6 @@ export function TutorContextProvider({
                       </div>
                     </div>
                   </SidebarHeader>
-                  <ReadingLine pageLabel={context.pageLabel} />
                   <SidebarContent className="min-h-0 flex-1 p-2">
                     {threads.isPending ? (
                       <div className="flex items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
@@ -530,7 +526,7 @@ export function TutorContextProvider({
               ) : (
                 <>
                   <SidebarHeader className="border-b p-3">
-                    <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex items-center justify-between gap-2">
                       <Button
                         type="button"
                         variant="ghost"
@@ -541,34 +537,31 @@ export function TutorContextProvider({
                         <ArrowLeft aria-hidden="true" />
                         Chats
                       </Button>
-                      <div className="flex min-w-0 flex-1 flex-col gap-1">
-                        <p
-                          data-testid="tutor-conversation-title"
-                          className="truncate text-sm font-medium"
+                      <h2 data-testid="tutor-conversation-title" className="sr-only">
+                        {newChatSelected ? 'New chat' : (selectedThread?.title ?? 'Conversation')}
+                      </h2>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          aria-label="New chat"
+                          variant="ghost"
+                          size="icon"
+                          onClick={startNewChat}
                         >
-                          {newChatSelected ? 'New chat' : (selectedThread?.title ?? 'Conversation')}
-                        </p>
-                        {activeConceptTitle ? (
-                          <Badge
-                            variant="secondary"
-                            className="max-w-full truncate text-muted-foreground"
-                          >
-                            {activeConceptTitle}
-                          </Badge>
-                        ) : null}
+                          <Plus aria-hidden="true" />
+                        </Button>
+                        <Button
+                          type="button"
+                          aria-label="Close tutor"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setOpen(false)}
+                        >
+                          <X aria-hidden="true" />
+                        </Button>
                       </div>
-                      <Button
-                        type="button"
-                        aria-label="Close tutor"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setOpen(false)}
-                      >
-                        <X aria-hidden="true" />
-                      </Button>
                     </div>
                   </SidebarHeader>
-                  <ReadingLine pageLabel={context.pageLabel} />
                   <SidebarContent className="min-h-0 flex-1 p-0">
                     <Conversation aria-label="Tutor messages">
                       <ConversationContent className="gap-4 p-4">
@@ -690,6 +683,7 @@ export function TutorContextProvider({
                         {mutation.isPending ? 'Sending…' : 'Send'}
                       </PromptInputSubmit>
                     </PromptInput>
+                    <ContextLine pageLabel={context.pageLabel} />
                   </SidebarFooter>
                 </>
               )

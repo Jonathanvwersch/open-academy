@@ -17,6 +17,8 @@ const pageContextScreenshotDir = '/home/ubuntu/screenshots/tutor-page-context';
 mkdirSync(pageContextScreenshotDir, { recursive: true });
 const greetingScreenshotDir = '/home/ubuntu/screenshots/tutor-greeting';
 mkdirSync(greetingScreenshotDir, { recursive: true });
+const headerScreenshotDir = '/home/ubuntu/screenshots/tutor-header';
+mkdirSync(headerScreenshotDir, { recursive: true });
 let sessionId = '';
 
 test.beforeEach(async () => {
@@ -108,8 +110,25 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
     (element) => element.getBoundingClientRect().width,
   );
   expect(mainWidthAfter, 'tutor sidebar reduces the main page width').toBeLessThan(mainWidthBefore);
-  await expect(tutor.getByText('Supervised learning', { exact: true })).toBeVisible();
-  await expect(tutor.getByTestId('tutor-greeting')).toBeVisible();
+  const conversationHeader = tutor.locator('[data-slot="sidebar-header"]');
+  await expect(conversationHeader.getByTestId('tutor-conversation-title')).toHaveClass(/sr-only/);
+  await expect(conversationHeader.getByText('Supervised learning', { exact: true })).toHaveCount(0);
+  const contextLine = tutor.getByTestId('tutor-reading-context');
+  await expect(contextLine).toContainText(/^Context: Supervised learning · step 1 of \d+$/);
+  await expect(contextLine).toHaveAttribute('title', /^Context: /);
+  const contextFollowsSend = await tutor.evaluate((element) => {
+    const sendButton = element.querySelector<HTMLButtonElement>('[aria-label="Send"]');
+    const line = element.querySelector('[data-testid="tutor-reading-context"]');
+    return Boolean(
+      sendButton &&
+        line &&
+        (sendButton.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+    );
+  });
+  expect(contextFollowsSend).toBe(true);
+  await tutor.getByRole('button', { name: 'New chat' }).click();
+  await expect(tutor.getByTestId('tutor-conversation-title')).toHaveText('New chat');
+  await expect(tutor.getByText('Start a conversation')).toBeVisible();
 
   const textarea = tutor.getByLabel('Ask the tutor');
   await textarea.fill('Explain the first step');
@@ -131,6 +150,13 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   await expect(
     tutor.getByTestId('tutor-user-message').filter({ hasText: 'Explain the first step' }),
   ).toHaveCount(1);
+  await expect(conversationHeader.getByTestId('tutor-conversation-title')).toHaveClass(/sr-only/);
+  const visibleHeaderText = await conversationHeader.evaluate((element) => {
+    const clone = element.cloneNode(true) as HTMLElement;
+    clone.querySelector('[data-testid="tutor-conversation-title"]')?.remove();
+    return clone.textContent?.trim() ?? '';
+  });
+  expect(visibleHeaderText).toBe('Chats');
   await page.screenshot({ path: `${screenshotDir}/tutor-conversation.png` });
 
   const cls = await page.evaluate(() =>
@@ -146,11 +172,20 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
     restoredTutor.getByTestId('tutor-user-message').filter({ hasText: 'Explain the first step' }),
   ).toHaveCount(1);
 
-  await restoredTutor.getByRole('button', { name: 'Chats' }).click();
-  await expect(restoredTutor.getByRole('heading', { name: 'Chats' })).toBeVisible();
-  await restoredTutor.getByRole('button', { name: 'New chat' }).first().click();
+  const restoredHeader = restoredTutor.locator('[data-slot="sidebar-header"]');
+  await expect(restoredHeader.getByTestId('tutor-conversation-title')).toHaveClass(/sr-only/);
+  const restoredVisibleHeaderText = await restoredHeader.evaluate((element) => {
+    const clone = element.cloneNode(true) as HTMLElement;
+    clone.querySelector('[data-testid="tutor-conversation-title"]')?.remove();
+    return clone.textContent?.trim() ?? '';
+  });
+  expect(restoredVisibleHeaderText).toBe('Chats');
+  await restoredTutor.getByRole('button', { name: 'New chat' }).click();
   await expect(restoredTutor.getByTestId('tutor-conversation-title')).toHaveText('New chat');
-  await expect(restoredTutor.getByText('Supervised learning', { exact: true })).toBeVisible();
+  await expect(restoredTutor.getByText('Start a conversation')).toBeVisible();
+  await expect(restoredTutor.getByTestId('tutor-reading-context')).toContainText(
+    /^Context: Supervised learning/,
+  );
   const secondTextarea = restoredTutor.getByLabel('Ask the tutor');
   await secondTextarea.fill('Why are targets useful?');
   await restoredTutor.getByRole('button', { name: 'Send' }).click();
@@ -186,7 +221,9 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   await restoredTutor.getByRole('button', { name: 'Chats' }).click();
   await restoredTutor.getByRole('button', { name: 'New chat' }).first().click();
   await expect(restoredTutor.getByTestId('tutor-conversation-title')).toHaveText('New chat');
-  await expect(restoredTutor.getByText('Supervised learning', { exact: true })).toBeVisible();
+  await expect(restoredTutor.getByTestId('tutor-reading-context')).toContainText(
+    /^Context: Supervised learning/,
+  );
   await expect(restoredTutor.getByTestId('tutor-user-message')).toHaveCount(0);
   await expect(restoredTutor.getByText('Start a conversation')).toBeVisible();
 
@@ -374,7 +411,8 @@ test('Practice activity without a concept can send a tutor message', async ({ pa
   expect(requestBody).not.toHaveProperty('conceptId');
 });
 
-test('tutor Reading context follows the session, lesson, and home pages', async ({ page }) => {
+test('tutor Context follows the session, lesson, and home pages', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   let requestBody: Record<string, unknown> | undefined;
   await page.route('**/api/tutor/threads**', async (route) => {
     if (route.request().method() === 'POST') {
@@ -387,8 +425,8 @@ test('tutor Reading context follows the session, lesson, and home pages', async 
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
   await page.getByRole('button', { name: 'Ask the tutor' }).click();
   const tutor = page.getByRole('complementary', { name: 'Tutor' });
-  const reading = tutor.getByTestId('tutor-reading-context');
-  await expect(reading).toHaveText(/^Reading: Supervised learning · step 1 of \d+$/);
+  const contextLine = tutor.getByTestId('tutor-reading-context');
+  await expect(contextLine).toHaveText(/^Context: Supervised learning · step 1 of \d+$/);
   await page.screenshot({
     path: `${pageContextScreenshotDir}/tutor-session.png`,
     fullPage: true,
@@ -424,7 +462,16 @@ test('tutor Reading context follows the session, lesson, and home pages', async 
   });
   await expect(page).toHaveURL(/\/lessons\/supervised-learning$/);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
-  await expect(reading).toHaveText('Reading: Supervised learning · full lesson');
+  await expect(contextLine).toHaveText('Context: Supervised learning · full lesson');
+  await page.screenshot({ path: `${headerScreenshotDir}/desktop.png` });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileTutor = page.locator('[data-slot="sidebar"][data-mobile="true"]');
+  await expect(mobileTutor).toBeVisible();
+  await expect(mobileTutor.getByTestId('tutor-conversation-title')).toHaveText(
+    'What does this step mean?',
+  );
+  await page.screenshot({ path: `${headerScreenshotDir}/mobile.png` });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.screenshot({
     path: `${pageContextScreenshotDir}/tutor-lesson.png`,
     fullPage: true,
