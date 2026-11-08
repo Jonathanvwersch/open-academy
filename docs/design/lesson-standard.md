@@ -57,7 +57,7 @@ Robots get at most one or two sentences of payoff per lesson, in "Why this is us
    us, say what we still can't do, and say that this lesson fills that gap. Only refer to lessons already taught, the next
    lesson, or the course introduction. No "you'll use this in attention" lists.
 2. **Each knowledge point that introduces a new object** reads in this order, using bold lead-ins:
-   - **What X is.** The definition in one or two plain sentences, with the smallest possible example.
+   - **What X is.** The general definition first, in one or two plain sentences that don't depend on the running example (say "examples", "values", "rows", not "houses"). Only then connect it to the house example.
    - **How it works** (or "How to compute it"). Step by step with small numbers, then *why the method works*
      (a picture or one-line reason; a diagram where shape matters).
    - **Why this is useful.** Tie it to the running example. Every knowledge point must contain a paragraph starting

@@ -8,7 +8,7 @@ knowledge_points:
   - id: loss-measure-misses
     title: Two ways to measure a missed price
     explain: |
-      **What a loss is.** A loss is a non-negative score for how far a model's prediction is from the true price. Mean squared error (MSE) squares each miss and averages; mean absolute error (MAE) takes each miss's absolute value and averages.
+      **What a loss is.** A loss is a non-negative score for how far a model's predictions are from the true values: 0 means every prediction is exact, and larger means worse. For the house model, the true values are sale prices. Mean squared error (MSE) squares each miss and averages; mean absolute error (MAE) takes each miss's absolute value and averages.
 
       For $n$ houses, $\hat y_i$ is house $i$'s predicted price and $y_i$ its sale price. Absolute value, written with bars, is distance from zero, so $|-20|=20$.
 
@@ -64,7 +64,7 @@ knowledge_points:
   - id: loss-constant-choice
     title: Which single price should you predict
     explain: |
-      **What a baseline is.** A baseline is a simple model used to check whether a more detailed house-price model is useful. A constant baseline predicts the same price for every house.
+      **What a baseline is.** A baseline is a deliberately simple model used as a reference: a more detailed model is only worth using if it beats the baseline. A constant baseline predicts the same value for every example, such as one price for every house.
 
       **How it works.** The mean is the arithmetic average; the median is the middle value after prices are sorted. Under MSE, the best constant is the mean because squared-error slopes balance at the average. Under MAE, a median minimizes the total absolute distance because at least half the prices lie on each side.
 

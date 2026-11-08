@@ -39,7 +39,7 @@ knowledge_points:
   - id: lr-interpret-weights
     title: Read each weight in its own units
     explain: |
-      **What a weight means.** A weight is the prediction change for a one-unit increase in its feature, with every other feature held fixed. Its units combine the price unit with the feature unit.
+      **What a weight means.** A weight is the prediction change for a one-unit increase in its feature, with every other feature held fixed. Its units are the prediction's unit per unit of the feature, such as thousand pounds per bedroom.
 
       **How it works.** In this model, area has weight 25 thousand pounds per ten square metres. If area rises by 2 tens of square metres while bedrooms and age stay the same, the prediction rises by $25\cdot2=50$ thousand pounds. The bedroom weight is 10 thousand pounds per bedroom; the age weight is −1 thousand pounds per year.
 
@@ -69,7 +69,7 @@ knowledge_points:
   - id: lr-batch-predictions
     title: Predict every row with one matrix operation
     explain: |
-      **What a batch prediction is.** A batch is several houses processed together. Put each house's feature vector in one row of an input matrix $X$.
+      **What a batch prediction is.** A batch prediction computes a model's predictions for many examples in one operation instead of one at a time. Each example's feature vector becomes one row of an input matrix $X$, and the same weights and bias are applied to every row. For the house model, $X$ has one row per house and the result is one predicted price per house.
 
       **How it works.** If there are $n$ houses and $d$ features, $X$ has shape $(n,d)$ and $w$ has $d$ entries. Multiplying $Xw$ computes one dot product per row, producing $n$ predictions. The bias is added to each one:
 
