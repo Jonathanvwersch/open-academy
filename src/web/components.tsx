@@ -245,7 +245,9 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
           <Markdown>{result.exemplar}</Markdown>
         </div>
       ) : null}
-      {typeof result.solution === 'string' && result.solution.trim() ? (
+      {typeof result.exemplar !== 'string' &&
+      typeof result.solution === 'string' &&
+      result.solution.trim() ? (
         <div className="mt-3 border-t border-current/15 pt-3">
           <p className="mb-1 font-medium">Solution</p>
           <Markdown>{result.solution}</Markdown>

@@ -298,6 +298,7 @@ test('passes every knowledge point and restores the exact problem and result aft
   await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
   await page.reload();
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
+  await expect(page.getByText('Solution', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Your answer:', { exact: true })).toBeVisible();
   const finalActivity = await page.evaluate(async (session) => {
     const response = await fetch(`/api/sessions/${session}`);
