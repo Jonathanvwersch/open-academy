@@ -376,6 +376,33 @@ function SessionPage() {
     (Number(result?.correct) === 0 && result?.retryAllowed === true);
   const canAskForHelp = !result || result.status === 'invalid' || result.retryAllowed === true;
   const triesLeft = Math.max(0, 2 - Number(result?.attemptNo ?? 1));
+  const helpActions = canAskForHelp ? (
+    <div className="flex flex-wrap gap-2">
+      {mode !== 'assessment' ? (
+        <HintLadder
+          exerciseId={exerciseId ?? ''}
+          activityId={activity.id}
+          hintCount={exerciseQuery.data?.hintCount ?? 0}
+          tutorEnabled={sessionQuery.data.tutorEnabled}
+          onHint={setHint}
+          mode={mode === 'review' ? 'review' : 'practice'}
+          buttonRef={hintButton}
+        />
+      ) : null}
+      {mode === 'practice' && exerciseId && sessionQuery.data.tutorEnabled ? (
+        <TutorLauncher
+          context={{
+            conceptId: activity.conceptId ?? undefined,
+            conceptTitle: activity.conceptTitle ?? undefined,
+            activityId: activity.id,
+            exerciseId,
+            allowed: true,
+            enabled: sessionQuery.data.tutorEnabled,
+          }}
+        />
+      ) : null}
+    </div>
+  ) : null;
   const submitLabel =
     result?.status === 'self_check_required'
       ? 'Submit self-check'
@@ -539,39 +566,16 @@ function SessionPage() {
                   typeof result?.yourAnswer === 'string' ? result.yourAnswer : undefined
                 }
                 submitLabel={submitLabel}
+                actions={helpActions}
               />
             ) : (
-              <Button type="button" onClick={continueNext}>
-                Continue
-              </Button>
+              <>
+                <Button type="button" onClick={continueNext}>
+                  Continue
+                </Button>
+                {helpActions}
+              </>
             )}
-            {canAskForHelp ? (
-              <div className="flex flex-wrap gap-2">
-                {mode !== 'assessment' ? (
-                  <HintLadder
-                    exerciseId={exerciseId ?? ''}
-                    activityId={activity.id}
-                    hintCount={exerciseQuery.data.hintCount}
-                    tutorEnabled={sessionQuery.data.tutorEnabled}
-                    onHint={setHint}
-                    mode={mode === 'review' ? 'review' : 'practice'}
-                    buttonRef={hintButton}
-                  />
-                ) : null}
-                {mode === 'practice' && exerciseId && sessionQuery.data.tutorEnabled ? (
-                  <TutorLauncher
-                    context={{
-                      conceptId: activity.conceptId ?? undefined,
-                      conceptTitle: activity.conceptTitle ?? undefined,
-                      activityId: activity.id,
-                      exerciseId,
-                      allowed: true,
-                      enabled: sessionQuery.data.tutorEnabled,
-                    }}
-                  />
-                ) : null}
-              </div>
-            ) : null}
           </CardContent>
         </Card>
       ) : !exerciseId ? (

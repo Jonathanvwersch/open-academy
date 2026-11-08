@@ -273,6 +273,7 @@ export function ExerciseForm({
   submitLabel = 'Submit answer',
   explainStep = 'answer',
   readOnlyAnswer,
+  actions,
 }: {
   exercise: ClientExercise;
   onSubmit: (answer: unknown) => void;
@@ -280,6 +281,7 @@ export function ExerciseForm({
   submitLabel?: string;
   explainStep?: 'answer' | 'self-check';
   readOnlyAnswer?: string;
+  actions?: ReactNode;
 }) {
   const [value, setValue] = useState('');
   const [line, setLine] = useState('');
@@ -493,9 +495,12 @@ export function ExerciseForm({
           />
         )
       ) : null}
-      <Button type="submit" disabled={disabled}>
-        {submitLabel}
-      </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button type="submit" disabled={disabled}>
+          {submitLabel}
+        </Button>
+        {actions}
+      </div>
     </form>
   );
 }

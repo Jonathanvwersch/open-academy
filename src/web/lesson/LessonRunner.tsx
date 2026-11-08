@@ -432,18 +432,20 @@ export function LessonRunner({
                       onSubmit={submit}
                       disabled={busy}
                       submitLabel={busy ? 'Saving…' : 'Submit answer'}
+                      actions={
+                        tutorEnabled && state.pendingProblem ? (
+                          <TutorLauncher
+                            context={{
+                              conceptId,
+                              activityId,
+                              lessonProblemId: state.pendingProblem.id,
+                              allowed: true,
+                              enabled: tutorEnabled,
+                            }}
+                          />
+                        ) : null
+                      }
                     />
-                    {tutorEnabled && state.pendingProblem ? (
-                      <TutorLauncher
-                        context={{
-                          conceptId,
-                          activityId,
-                          lessonProblemId: state.pendingProblem.id,
-                          allowed: true,
-                          enabled: tutorEnabled,
-                        }}
-                      />
-                    ) : null}
                   </>
                 )}
               </CardContent>
