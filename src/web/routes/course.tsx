@@ -68,39 +68,62 @@ function CoursePage() {
                           {topic.number}
                         </span>
                         <div className="min-w-0 space-y-1">
-                          <p className="font-medium">{topic.title}</p>
+                          <p
+                            className={`font-medium ${topic.hasLesson ? '' : 'text-muted-foreground'}`}
+                          >
+                            {topic.title}
+                          </p>
                           {contextLine ? (
                             <p className="text-xs text-muted-foreground">{contextLine}</p>
                           ) : null}
                           <div className="flex flex-wrap items-center gap-2">
-                            {topic.status === 'locked' ? (
+                            {topic.hasLesson ? (
+                              <>
+                                {topic.status === 'locked' ? (
+                                  <span className="text-xs text-muted-foreground">
+                                    Needs{' '}
+                                    {topic.needs
+                                      ?.map((prerequisite) => prerequisite.title)
+                                      .join(', ')}
+                                  </span>
+                                ) : topic.status !== 'not_started' ? (
+                                  <Badge
+                                    variant="secondary"
+                                    className={
+                                      topic.status === 'complete'
+                                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                        : ''
+                                    }
+                                  >
+                                    {COURSE_STATUS_LABEL[topic.status]}
+                                  </Badge>
+                                ) : null}
+                                {topic.status !== 'locked' && topic.mastery !== 'Not started' ? (
+                                  <span
+                                    className={`text-xs ${
+                                      topic.status === 'complete'
+                                        ? 'text-emerald-700 dark:text-emerald-300'
+                                        : 'text-muted-foreground'
+                                    }`}
+                                  >
+                                    Mastery: {topic.mastery}
+                                  </span>
+                                ) : null}
+                              </>
+                            ) : (
                               <span className="text-xs text-muted-foreground">
-                                Needs{' '}
-                                {topic.needs?.map((prerequisite) => prerequisite.title).join(', ')}
+                                {topic.status === 'locked' ? (
+                                  <>
+                                    Needs{' '}
+                                    {topic.needs
+                                      ?.map((prerequisite) => prerequisite.title)
+                                      .join(', ')}{' '}
+                                    ·{' '}
+                                  </>
+                                ) : null}
+                                Lesson coming soon
                               </span>
-                            ) : topic.status !== 'not_started' ? (
-                              <Badge
-                                variant="secondary"
-                                className={
-                                  topic.status === 'complete'
-                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                    : ''
-                                }
-                              >
-                                {COURSE_STATUS_LABEL[topic.status]}
-                              </Badge>
-                            ) : null}
-                            {topic.status !== 'locked' && topic.mastery !== 'Not started' ? (
-                              <span
-                                className={`text-xs ${
-                                  topic.status === 'complete'
-                                    ? 'text-emerald-700 dark:text-emerald-300'
-                                    : 'text-muted-foreground'
-                                }`}
-                              >
-                                Mastery: {topic.mastery}
-                              </span>
-                            ) : null}
+                            )}
                           </div>
                         </div>
                       </div>
@@ -113,7 +136,7 @@ function CoursePage() {
                     </>
                   );
                   const rowClassName = `flex items-center justify-between gap-3 px-4 py-3 ${
-                    topic.status === 'locked'
+                    topic.status === 'locked' && topic.hasLesson
                       ? 'text-muted-foreground opacity-60'
                       : topic.status === 'complete'
                         ? 'bg-emerald-50/70 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200'

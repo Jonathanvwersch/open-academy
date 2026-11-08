@@ -12,7 +12,7 @@ weeks:
     sunday: Review foundational ideas.
   - week: 2
     title: Optimization
-    concepts: [gradients, loss-functions, gradient-descent]
+    concepts: [gradients, loss-functions, gradient-descent, matrix-products]
     project: linreg-numpy
 goals:
   - id: g-model-training
