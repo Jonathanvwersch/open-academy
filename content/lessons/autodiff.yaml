@@ -1,0 +1,179 @@
+concept: autodiff
+version: 1
+objective: |
+  **Goal:** explain what `loss.backward()` does.
+where_this_fits: |
+  Backpropagation showed how the chain rule sends a loss derivative through the house-price network. Doing every local calculation by hand becomes tedious as a graph grows. Automatic differentiation fills that gap: a framework records the forward operations and applies their derivative rules in reverse, so you can obtain parameter gradients without writing a separate backward calculation.
+knowledge_points:
+  - id: ad-recording
+    title: Operations are recorded during the forward pass
+    explain: |
+      **What an operation graph is.** An operation graph is a record of calculations: each operation is linked to the values it used and has a local derivative rule.
+
+      **How it works.** PyTorch builds this record as a forward pass runs. Mark a parameter tensor with `requires_grad=True`, and PyTorch tracks operations that depend on it. In the house network, the weight affects the loss through multiplication, ReLU and the output calculation:
+
+      ```python
+      import torch
+
+      w = torch.tensor(0.1, requires_grad=True)
+      area = torch.tensor(12.0)
+      z = w * area
+      h = torch.relu(z)
+      price = 15.0 * h + 306.5
+      loss = (price - 330.0) ** 2
+      print(round(z.item(), 1), round(price.item(), 1), round(loss.item(), 2))
+      ```
+
+      The graph links each result to its inputs, so a later calculation can follow the actual path from loss back to the weight. Constant inputs such as `area` can take part without asking PyTorch to compute their gradients.
+
+      The graph stores the route taken in this forward pass, including which side of a piecewise operation was used.
+
+      **Why this is useful.** The house model's recorded operations let PyTorch reuse the current forward values instead of making you write a separate graph or derivative formula for every parameter.
+    worked: |
+      This example shows the operations recorded for one house prediction.
+
+      The weight is $w=0.1$ and the house area is $a=12$:
+
+      $$z = wa = 0.1 \times 12 = 1.2$$
+
+      ReLU leaves this positive value unchanged:
+
+      $$h = \operatorname{ReLU}(z) = 1.2$$
+
+      The output calculation gives:
+
+      $$\hat y = 15h + 306.5 = 324.5$$
+
+      The loss against the asking-price target is:
+
+      $$L = (\hat y - 330)^2 = (324.5 - 330)^2 = 30.25$$
+
+      The graph connects the weight through each operation to the loss:
+
+      ```svg
+      <svg viewBox="0 0 640 120" aria-label="Forward operation graph from house weight and area to loss" xmlns="http://www.w3.org/2000/svg">
+        <rect x="8" y="32" width="112" height="52" rx="6" fill="#d4d4d4" stroke="#737373"/>
+        <text x="64" y="63" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">w, area</text>
+        <line x1="120" y1="58" x2="132" y2="58" stroke="#737373" stroke-width="2"/>
+        <polygon points="132,53 140,58 132,63" fill="#737373"/>
+        <rect x="140" y="32" width="112" height="52" rx="6" fill="#d4d4d4" stroke="#737373"/>
+        <text x="196" y="63" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">z = w × area</text>
+        <line x1="252" y1="58" x2="264" y2="58" stroke="#737373" stroke-width="2"/>
+        <polygon points="264,53 272,58 264,63" fill="#737373"/>
+        <rect x="272" y="32" width="112" height="52" rx="6" fill="#d4d4d4" stroke="#737373"/>
+        <text x="328" y="63" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">h = ReLU(z)</text>
+        <line x1="384" y1="58" x2="396" y2="58" stroke="#737373" stroke-width="2"/>
+        <polygon points="396,53 404,58 396,63" fill="#737373"/>
+        <rect x="404" y="32" width="112" height="52" rx="6" fill="#d4d4d4" stroke="#737373"/>
+        <text x="460" y="63" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">ŷ = 15h + 306.5</text>
+        <line x1="516" y1="58" x2="528" y2="58" stroke="#737373" stroke-width="2"/>
+        <polygon points="528,53 536,58 528,63" fill="#737373"/>
+        <rect x="536" y="32" width="96" height="52" rx="6" fill="#d4d4d4" stroke="#737373"/>
+        <text x="584" y="63" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">loss</text>
+      </svg>
+      ```
+
+      The recorded path starts at $w$ and ends at $L$, ready for a reverse derivative calculation.
+    problems:
+      [
+        ad-record-basics,
+        ad-record-loss-fixed,
+        ad-record-why,
+        ad-record-branching,
+        ad-record-read,
+        ad-record-complete,
+      ]
+  - id: ad-reverse
+    title: Reverse mode applies the chain rule automatically
+    explain: |
+      **What reverse-mode automatic differentiation is.** It evaluates a function, then propagates derivatives from its output back through recorded operations. It automates the chain-rule calculation called backpropagation.
+
+      **How it works.** In PyTorch, `loss.backward()` starts at the scalar loss and applies local derivative rules in reverse order. The resulting parameter derivatives are stored in each tracked leaf tensor's `.grad`. For the house network, the forward values are $z=1.2$ and $\hat y=324.5$. The backward trace is:
+
+      $$dL/d\hat y = 2(324.5 - 330) = -11$$
+
+      $$dL/dh = (-11) \times 15 = -165$$
+
+      $$dL/dw = (-165) \times 1 \times 12 = -1980$$
+
+      The ReLU derivative is 1 here because $z$ is positive. At a point used by two later operations, reverse mode adds the derivative contributions from both paths. A `.grad` value is added to rather than replaced by each backward call, so clear it with `w.grad.zero_()` before a separate calculation.
+
+      ```python
+      import torch
+
+      w = torch.tensor(2.0, requires_grad=True)
+      loss = (3 * w - 1) ** 2
+      loss.backward()
+      print(w.grad.item())
+      loss = (3 * w - 1) ** 2
+      loss.backward()
+      print(w.grad.item())
+      w.grad.zero_()
+      print(w.grad.item())
+      ```
+
+      **Why this is useful.** One reverse pass gives the house model's slope for every tracked weight, while `.grad.zero_()` keeps one training calculation from leaking into the next.
+    worked: |
+      This example shows one gradient, its accumulation, and how to clear it.
+
+      Set $w=2$ in $L=(3w-1)^2$:
+
+      $$L = (3 \times 2 - 1)^2 = 25$$
+
+      The derivative for this calculation is:
+
+      $$dL/dw = 2(3w-1)\times3 = 30$$
+
+      After one backward call, `.grad` contains 30. Recompute the loss and call backward again without clearing it:
+
+      $$w.\mathrm{grad} = 30 + 30 = 60$$
+
+      Clear the accumulated value before the next independent calculation:
+
+      $$w.\mathrm{grad} = 0$$
+
+      Recomputing the loss creates a fresh forward graph; each backward call then adds that graph's derivative to `.grad`.
+    problems:
+      [
+        ad-reverse-basics,
+        ad-reverse-why,
+        ad-grad-accumulation,
+        ad-backward-read,
+        ad-backward-complete,
+        ad-zero-complete,
+      ]
+  - id: ad-modes
+    title: Forward and reverse mode suit different shapes
+    explain: |
+      **What forward-mode automatic differentiation is.** It carries a derivative alongside each intermediate value as calculations run from input to output. One pass follows one chosen input direction; reverse mode instead sends derivatives from an output back to its inputs.
+
+      **How to choose a mode.** Roughly, forward mode needs one pass for each input direction to build all derivatives, while reverse mode needs one pass for each output. The house network has many trainable parameters but one scalar loss. Forward mode would repeat work for each parameter direction; reverse mode can return all parameter gradients from one traversal of that loss. The exact cost also depends on the operations and hardware, but the input-versus-output count explains the main choice.
+
+      Forward mode can be preferable when there are few inputs and many outputs, because its pass count then stays small.
+
+      **Why this is useful.** Training adjusts many house-model weights to reduce one loss, so reverse mode computes the needed collection of slopes with fewer passes.
+    worked: |
+      This example shows how the number of inputs and outputs guides the choice.
+
+      Suppose one model has 64 parameters and produces one scalar loss:
+
+      $$\text{forward-mode passes} \approx 64$$
+
+      $$\text{reverse-mode passes} \approx 1$$
+
+      Forward mode follows each parameter direction separately. Reverse mode starts from the one loss and sends its derivative back to all 64 parameters.
+    problems:
+      [
+        ad-modes-basics,
+        ad-modes-why,
+        ad-forward-mode-fixed,
+        ad-reverse-mode-fixed,
+        ad-mode-template,
+      ]
+final: ad-explain
+summary: |
+  - PyTorch records operations that depend on tensors marked with `requires_grad=True`.
+  - `loss.backward()` applies the chain rule in reverse and accumulates derivatives in `.grad`.
+  - Reverse mode is efficient when a model has many parameters and one scalar loss.
+
+  **Next:** PyTorch fundamentals uses these gradients in a complete training loop.

@@ -1,0 +1,381 @@
+concept: autodiff
+exercises:
+  - id: ad-record-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What is an operation graph?"
+    options:
+      - id: a
+        text: "A saved list containing only the final parameter values."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The graph keeps the calculations that connect inputs to results, not just the final parameter values."
+      - id: b
+        text: "A record linking each forward operation to its inputs and derivative rule."
+        correct: true
+        feedback: "Correct. The graph records the operations and derivative rules needed for a later backward pass."
+      - id: c
+        text: "A second model that predicts the first model's output."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The graph records how one model computed its result; it is not a separate prediction model."
+      - id: d
+        text: "A table of training examples that contains no calculations."
+        correct: false
+        category: misunderstood_definition
+        feedback: "A dataset stores examples. An operation graph stores the calculations made from them."
+    solution: "An operation graph links each calculation to the values it used, so derivative rules can later follow the path from an output to its inputs."
+  - id: ad-record-loss-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "The house network predicts £324.5 thousand for a target of £330 thousand. Its loss is the squared difference between prediction and target. What is the loss?"
+    answer: 30.25
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 5.5,
+          category: math_error,
+          feedback: "That is the absolute difference. The loss squares the difference, so calculate 5.5 × 5.5.",
+        }
+      - {
+          answer: 324.5,
+          category: misunderstood_definition,
+          feedback: "That is the predicted price. The loss is the squared difference between prediction and target.",
+        }
+    solution: "The difference is $324.5-330=-5.5$, so the squared loss is $(-5.5)^2=30.25$."
+  - id: ad-record-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Why record forward operations instead of expanding a separate full derivative formula for every house-model weight?"
+    options:
+      - id: a
+        text: "The record skips multiplications, making the house prediction itself exact."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Recording does not skip forward calculations; the model still computes its prediction and loss."
+      - id: b
+        text: "The record guarantees that every predicted house price is correct."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A computation graph helps find derivatives; it does not guarantee accurate predictions."
+      - id: c
+        text: "The record removes the need to calculate any local derivatives."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The framework still applies local derivative rules; the graph organises how they are combined."
+      - id: d
+        text: "One later pass can reuse local derivative rules along paths to many weights."
+        correct: true
+    solution: "The recorded operations and their inputs let a backward calculation reuse local derivative rules instead of rebuilding a full formula for each weight."
+  - id: ad-record-branching
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "If two later calculations both use the same recorded value $z$, what must the graph preserve for a correct backward calculation?"
+    options:
+      - id: a
+        text: "Both uses, so their derivative contributions can be combined."
+        correct: true
+      - id: b
+        text: "Only the last use, because earlier calculations are no longer relevant."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Both paths affect the final loss, so both derivative contributions matter."
+      - id: c
+        text: "A copy of the dataset that produced the value $z$."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The graph needs the operations and their connections, not a second copy of the dataset."
+      - id: d
+        text: "The output of one use and the parameter values from another model."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The graph follows connections within this calculation; unrelated model parameters do not represent the second path."
+    solution: "When a value feeds multiple later operations, the backward calculation combines contributions from every path that reaches it."
+  - id: ad-record-read
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "What number does this PyTorch code print?"
+    code: |
+      import torch
+
+      w = torch.tensor(0.1, requires_grad=True)
+      area = torch.tensor(12.0)
+      z = w * area
+      h = torch.relu(z)
+      price = 15.0 * h + 306.5
+      loss = (price - 330.0) ** 2
+      print(round(loss.item(), 2))
+    answer: 30.25
+    tolerance: { abs: 0.001 }
+    solution: "The forward pass gives a price of 324.5, so the squared difference from 330 is 30.25."
+  - id: ad-record-complete
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Complete this tensor creation so PyTorch tracks operations that depend on `w`."
+    code: |
+      import torch
+
+      w = torch.tensor(2.0, ____)
+      x = torch.tensor(3.0)
+      score = w * x
+      print(w.requires_grad, round(score.item(), 1))
+    accept: ["requires_grad=True"]
+    solution: "`requires_grad=True` asks PyTorch to track operations that depend on `w`; the code prints `True 6.0`."
+  - id: ad-reverse-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What does reverse-mode automatic differentiation do when you call `loss.backward()`?"
+    options:
+      - id: a
+        text: "It replaces each parameter with the derivative of the loss."
+        correct: false
+        category: misunderstood_definition
+        feedback: "It stores derivatives in `.grad`; it does not replace the model's parameter values."
+      - id: b
+        text: "It estimates each derivative by slightly changing the parameter."
+        correct: false
+        category: misapplied_technique
+        feedback: "That describes a finite-difference estimate. Reverse mode applies local derivative rules through the graph."
+      - id: c
+        text: "It follows recorded operations backward and accumulates derivatives in `.grad`."
+        correct: true
+        feedback: "Correct. Reverse mode applies the chain rule from the loss through the recorded operations."
+      - id: d
+        text: "It repeats the forward pass without using the chain rule."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The forward pass records operations; `backward()` then uses the chain rule in reverse."
+    solution: "`loss.backward()` starts at the loss, applies local derivatives backward through the graph, and adds the resulting gradients to tracked tensors' `.grad` fields."
+  - id: ad-reverse-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Why clear a tracked tensor's `.grad` before an independent gradient calculation?"
+    options:
+      - id: a
+        text: "Because backward mode deletes the recorded forward operations immediately."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The reason is about the stored gradient value, not the lifetime of the operation graph."
+      - id: b
+        text: "Because clearing `.grad` changes the parameter to its updated value."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Clearing `.grad` resets the stored derivative, not the parameter itself."
+      - id: c
+        text: "Because the chain rule only works when every gradient is zero first."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The chain rule does not require zero gradients; clearing prevents old contributions from being mixed in."
+      - id: d
+        text: "Because each backward call adds its derivative to the existing `.grad`."
+        correct: true
+    solution: "PyTorch accumulates derivatives in `.grad`, so clear it when a new calculation should start without earlier contributions."
+  - id: ad-grad-accumulation
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A fresh, identical loss graph is backpropagated twice without clearing `w.grad`. If the first call adds 30, what does the second call do?"
+    options:
+      - id: a
+        text: "It leaves `.grad` at 30 because backward replaces old values."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Backward accumulates into `.grad`; it does not replace the earlier value."
+      - id: b
+        text: "It adds another 30, leaving `.grad` at 60."
+        correct: true
+      - id: c
+        text: "It clears `.grad` to zero before applying the chain rule."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Gradients are not cleared automatically; zero them explicitly when starting a new calculation."
+      - id: d
+        text: "It changes the weight itself from 30 to 60."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The number stored in `.grad` is a derivative, not the parameter value."
+    solution: "A backward call adds to the existing gradient, so two identical contributions of 30 produce 60."
+  - id: ad-backward-read
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "What number does this PyTorch code print after `loss.backward()`?"
+    code: |
+      import torch
+
+      w = torch.tensor(2.0, requires_grad=True)
+      loss = (3 * w - 1) ** 2
+      loss.backward()
+      print(round(w.grad.item(), 2))
+    answer: 30
+    tolerance: { abs: 0.001 }
+    solution: "The derivative is $2(3w-1)\\times3$, which is 30 at $w=2$."
+  - id: ad-backward-complete
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Complete the code so PyTorch computes the derivative of `loss` and stores it in `w.grad`."
+    code: |
+      import torch
+
+      w = torch.tensor(2.0, requires_grad=True)
+      loss = (3 * w - 1) ** 2
+      ____
+      print(round(w.grad.item(), 2))
+    accept: ["loss.backward()"]
+    solution: "`loss.backward()` applies the chain rule through the recorded operations; this example prints `30.0`."
+  - id: ad-zero-complete
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "After a backward call, complete the line to clear the stored gradient before an independent calculation."
+    code: |
+      import torch
+
+      w = torch.tensor(2.0, requires_grad=True)
+      loss = (3 * w - 1) ** 2
+      loss.backward()
+      w.grad.____
+      print(round(w.grad.item(), 2))
+    accept: ["zero_()"]
+    solution: "`w.grad.zero_()` clears the accumulated derivative in place; the code prints `0.0`."
+  - id: ad-modes-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What is forward-mode automatic differentiation?"
+    options:
+      - id: a
+        text: "A method that changes each parameter until the loss stops moving."
+        correct: false
+        category: misapplied_technique
+        feedback: "That describes parameter optimisation. Forward mode computes derivatives alongside forward values."
+      - id: b
+        text: "A method that stores only the final prediction and discards its inputs."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Forward mode carries derivative information through operations; it does not merely keep the final prediction."
+      - id: c
+        text: "A method that carries one chosen input-direction derivative through the forward calculations."
+        correct: true
+        feedback: "Correct. Forward mode carries one chosen input-direction derivative toward the output."
+      - id: d
+        text: "A method that starts at the loss and sends derivatives back to every input."
+        correct: false
+        category: misunderstood_definition
+        feedback: "That describes reverse mode. Forward mode carries derivative information from inputs toward outputs."
+    solution: "Forward mode carries a derivative for one chosen input direction alongside the values as the calculation proceeds."
+  - id: ad-modes-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A house-price network has thousands of weights but one scalar loss. Why is reverse mode usually a better fit than forward mode for its training gradients?"
+    options:
+      - id: a
+        text: "One reverse pass from the scalar loss can return derivatives for all weights."
+        correct: true
+      - id: b
+        text: "Reverse mode avoids computing a loss for the house predictions."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Both modes need the model's output; reverse mode is useful because one output pass covers many inputs."
+      - id: c
+        text: "Forward mode is unable to calculate derivatives for neural networks."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Forward mode can calculate these derivatives; it would need many input-direction passes."
+      - id: d
+        text: "Reverse mode needs one pass for every weight, while forward mode needs one."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The rough pass counts go the other way: forward mode scales with input directions, reverse mode with outputs."
+    solution: "A training loss is one scalar output and a network can have many parameter inputs, so reverse mode needs fewer passes to get all parameter gradients."
+  - id: ad-forward-mode-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A model has 64 parameters and one scalar loss. Using the rough pass-count comparison, how many forward-mode input directions are needed to obtain all parameter derivatives?"
+    answer: 64
+    tolerance: { abs: 0.001 }
+    solution: "Forward mode follows one input direction per pass, so 64 parameters require about 64 passes."
+  - id: ad-reverse-mode-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A model has 64 parameters and one scalar loss. Using the rough pass-count comparison, how many reverse-mode output passes are needed for all parameter derivatives?"
+    answer: 1
+    tolerance: { abs: 0.001 }
+    solution: "Reverse mode needs about one pass per output; the scalar loss is one output."
+  - id: ad-mode-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A calculation has {{= outputs }} output values. In the rough comparison from this lesson, how many reverse-mode passes are needed to obtain derivatives for all inputs?"
+    params:
+      outputs: { min: 1, max: 5, step: 1 }
+    answer_expr: "outputs"
+    tolerance: { abs: 0.001 }
+    solution: "Reverse mode needs about one pass per output, so it takes {{= outputs }} passes for {{= outputs }} outputs."
+  - id: ad-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain what `loss.backward()` does. Include what PyTorch records during the forward pass, how derivatives reach the parameters, why `.grad` must sometimes be cleared, and when reverse mode is a good fit."
+    rubric:
+      - id: recorded-graph
+        criterion: "Explains that the forward pass records operations and their inputs for tracked tensors."
+        weight: 1
+        required: true
+      - id: reverse-gradients
+        criterion: "Explains that backward applies the chain rule in reverse and stores or accumulates parameter derivatives in `.grad`."
+        weight: 1
+        required: true
+      - id: mode-choice
+        criterion: "Connects reverse mode's efficiency to many parameters and one scalar loss, and notes that accumulated gradients can be zeroed."
+        weight: 1
+        required: false
+    exemplar: "During the forward pass, PyTorch records operations that depend on tensors marked with `requires_grad=True`. Calling `loss.backward()` applies the chain rule backwards through those operations and accumulates each parameter derivative in `.grad`; I clear that field with `zero_()` before an independent calculation. Reverse mode suits a network with many weights and one scalar loss because one output pass gives gradients for all the weights."
