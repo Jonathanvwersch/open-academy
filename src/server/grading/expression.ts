@@ -10,6 +10,57 @@ interface Sample {
 
 type CommonWrongExpression = NonNullable<ExpressionExercise['common_wrong']>[number];
 
+const expressionFunctions = [
+  'exp',
+  'log',
+  'ln',
+  'sqrt',
+  'sin',
+  'cos',
+  'tan',
+  'abs',
+  'tanh',
+  'sigmoid',
+  'max',
+  'min',
+] as const;
+const expressionFunctionSet = new Set<string>(expressionFunctions);
+const expressionConstants = new Set(['e', 'pi']);
+
+export function normalizeLearnerExpression(input: string, variables: string[]): string {
+  const variableSet = new Set(variables);
+  const normalized = input
+    .replaceAll('²', '^2')
+    .replaceAll('³', '^3')
+    .replace(/[−–]/g, '-')
+    .replace(/[×·⋅]/g, '*')
+    .replaceAll('σ', variableSet.has('sigma') ? 'sigma' : 'σ');
+
+  return normalized.replace(/[A-Za-z_][A-Za-z0-9_]*/g, (identifier, offset, source: string) => {
+    if (identifier === 'ln') return 'log';
+    if (
+      variableSet.has(identifier) ||
+      expressionFunctionSet.has(identifier) ||
+      expressionConstants.has(identifier)
+    ) {
+      return identifier;
+    }
+
+    if (source[offset + identifier.length] === '(') {
+      for (const fn of expressionFunctions) {
+        if (identifier.length <= fn.length || !identifier.endsWith(fn)) continue;
+        const prefix = identifier.slice(0, -fn.length);
+        const prefixVariables = splitVariables(prefix, variables);
+        if (prefixVariables) {
+          return `${prefixVariables.join('*')}*${fn === 'ln' ? 'log' : fn}`;
+        }
+      }
+    }
+
+    return splitVariables(identifier, variables)?.join('*') ?? identifier;
+  });
+}
+
 export function gradeExpression(
   exercise: ExpressionExercise,
   answer: unknown,
@@ -26,16 +77,24 @@ export function gradeExpression(
     category: CommonWrongExpression['category'];
     feedback: string;
   }> = [];
+  const variables = Object.keys(exercise.variables);
+  const learnerExpression = normalizeLearnerExpression(answer, variables);
   try {
     expected = parseExpression(exercise.answer) as MathNode;
-    learner = parseExpression(answer) as MathNode;
+    learner = parseExpression(learnerExpression) as MathNode;
     commonWrong = (exercise.common_wrong ?? []).map((entry) => ({
-      node: parseExpression(entry.answer) as MathNode,
+      node: parseExpression(normalizeLearnerExpression(entry.answer, variables)) as MathNode,
       category: entry.category,
       feedback: entry.feedback,
     }));
   } catch {
     return invalid('Expression could not be parsed. Fix the syntax and submit again.');
+  }
+  const unknown = findUnknownSymbols(learner, variables)[0];
+  if (unknown) {
+    return invalid(
+      `Unknown symbol '${unknownSymbolPart(unknown, variables)}'. Use the variables: ${variables.join(', ')}.`,
+    );
   }
 
   const random = options.random ?? Math.random;
@@ -52,6 +111,67 @@ export function gradeExpression(
     }
   }
   return graded(0, 'The expression does not match the expected result at the sampled values.');
+}
+
+function splitVariables(identifier: string, variables: string[]): string[] | undefined {
+  const candidates = [...variables].sort((left, right) => right.length - left.length);
+  const memo = new Map<number, string[] | null>();
+
+  function splitFrom(offset: number): string[] | undefined {
+    if (offset === identifier.length) return [];
+    if (memo.has(offset)) return memo.get(offset) ?? undefined;
+
+    for (const candidate of candidates) {
+      if (!identifier.startsWith(candidate, offset)) continue;
+      const rest = splitFrom(offset + candidate.length);
+      if (rest) {
+        const result = [candidate, ...rest];
+        memo.set(offset, result);
+        return result;
+      }
+    }
+    memo.set(offset, null);
+    return undefined;
+  }
+
+  return splitFrom(0);
+}
+
+function findUnknownSymbols(node: MathNode, variables: string[]): string[] {
+  const symbols = new Set<string>();
+  const functionNames = new Set<string>();
+  node.traverse((child) => {
+    if (child.type === 'FunctionNode') {
+      const functionNode = child as MathNode & { fn: MathNode };
+      if (functionNode.fn.type === 'SymbolNode') {
+        functionNames.add((functionNode.fn as MathNode & { name: string }).name);
+      }
+    }
+    if (child.type === 'SymbolNode') {
+      symbols.add((child as MathNode & { name: string }).name);
+    }
+  });
+
+  const variableSet = new Set(variables);
+  return [...symbols].filter(
+    (name) =>
+      !variableSet.has(name) &&
+      !expressionFunctionSet.has(name) &&
+      !expressionConstants.has(name) &&
+      !functionNames.has(name),
+  );
+}
+
+function unknownSymbolPart(symbol: string, variables: string[]): string {
+  for (let splitAt = 1; splitAt < symbol.length; splitAt += 1) {
+    const prefix = symbol.slice(0, splitAt);
+    const suffix = symbol.slice(splitAt);
+    const prefixIsVariables = splitVariables(prefix, variables) !== undefined;
+    const suffixIsVariables = splitVariables(suffix, variables) !== undefined;
+    if (!prefixIsVariables && suffixIsVariables) return prefix;
+    if (prefixIsVariables && !suffixIsVariables) return suffix;
+  }
+  return symbol;
 }
 
 function sampleValues(

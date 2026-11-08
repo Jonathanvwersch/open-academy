@@ -1,9 +1,10 @@
 import { beforeAll, expect, test } from 'vitest';
 import { loadContent } from '../src/server/content/load.js';
 import type { ContentIndex } from '../src/server/content/types.js';
+import { normalizeLearnerExpression } from '../src/server/grading/expression.js';
 import { gradeExercise } from '../src/server/grading/index.js';
 import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../src/server/grading/multiple-choice.js';
-import type { NumericExercise } from '../src/server/grading/types.js';
+import type { ExpressionExercise, NumericExercise } from '../src/server/grading/types.js';
 
 let content: ContentIndex;
 
@@ -12,6 +13,18 @@ function required<T>(value: T | undefined, label: string): T {
     throw new Error(`Missing fixture ${label}`);
   }
   return value;
+}
+
+function expressionExercise(
+  answer: string,
+  variables: ExpressionExercise['variables'],
+  common_wrong: NonNullable<ExpressionExercise['common_wrong']> = [],
+): ExpressionExercise {
+  const source = required(
+    content.exercises.find((item) => item.type === 'expression'),
+    'expression exercise',
+  );
+  return { ...source, answer, variables, common_wrong };
 }
 
 beforeAll(async () => {
@@ -134,6 +147,91 @@ test('expression grading checks sampled equivalence and rejects parse errors', a
       { random: () => 0.37 },
     ),
   ).toMatchObject({ correct: 0, mistake_category: 'misunderstood_definition' });
+});
+
+test('expression grading accepts implicit multiplication and Unicode notation', async () => {
+  const exercise = expressionExercise('2*(w*x+b-y)*x', {
+    w: [-2, 2],
+    x: [-2, 2],
+    b: [-2, 2],
+    y: [-2, 2],
+  });
+  for (const answer of [
+    '2w x^2+2bx-2xy',
+    '2wx^2+2bx-2xy',
+    '2wx²+2bx−2xy',
+    '2(wx+b-y)x',
+    '2*w*x^2+2*b*x-2*x*y',
+  ]) {
+    expect(await gradeExercise(exercise, answer, { random: () => 0.37 }), answer).toMatchObject({
+      status: 'graded',
+      correct: 1,
+    });
+  }
+  expect(await gradeExercise(exercise, '2wx^2+2bx', { random: () => 0.37 })).toMatchObject({
+    status: 'graded',
+    correct: 0,
+  });
+  expect(await gradeExercise(exercise, '2qx', { random: () => 0.37 })).toMatchObject({
+    status: 'invalid',
+    feedback: "Unknown symbol 'q'. Use the variables: w, x, b, y.",
+  });
+});
+
+test('expression normalization handles function adjacency, Greek sigma, and natural logs', async () => {
+  const exponential = expressionExercise('2*b*exp(a) + a', {
+    a: [-2, 2],
+    b: [-2, 2],
+  });
+  for (const answer of ['2bexp(a)+a', '2b exp(a) + a']) {
+    expect(await gradeExercise(exponential, answer, { random: () => 0.37 }), answer).toMatchObject({
+      status: 'graded',
+      correct: 1,
+    });
+  }
+
+  const powers = expressionExercise('x^2 + 12*x*y^2', { x: [-2, 2], y: [-2, 2] });
+  expect(await gradeExercise(powers, 'x^2+12xy^2', { random: () => 0.37 })).toMatchObject({
+    status: 'graded',
+    correct: 1,
+  });
+  expect(normalizeLearnerExpression('ln(x)', ['x'])).toBe('log(x)');
+  expect(normalizeLearnerExpression('σ + x', ['sigma', 'x'])).toBe('sigma + x');
+  expect(normalizeLearnerExpression('σ + x', ['x'])).toBe('σ + x');
+  expect(normalizeLearnerExpression('w1x', ['w1', 'x'])).toBe('w1*x');
+  expect(normalizeLearnerExpression('foo', ['x'])).toBe('foo');
+});
+
+test('expression common-wrong answers use the same implicit multiplication normalization', async () => {
+  const exercise = expressionExercise(
+    '2*(w*x+b-y)*x',
+    { w: [-2, 2], x: [-2, 2], b: [-2, 2], y: [-2, 2] },
+    [
+      {
+        answer: '2*w*x^2+2*b*x+2*x*y',
+        category: 'math_error',
+        feedback: 'Check the sign on the target term.',
+      },
+    ],
+  );
+  expect(await gradeExercise(exercise, '2wx^2+2bx+2xy', { random: () => 0.37 })).toMatchObject({
+    status: 'graded',
+    correct: 0,
+    mistake_category: 'math_error',
+  });
+});
+
+test('every authored expression answer in content is accepted', async () => {
+  const realContent = await loadContent('content');
+  const expressions = realContent.exercises.filter((exercise) => exercise.type === 'expression');
+  expect(expressions.length).toBeGreaterThan(0);
+
+  for (const exercise of expressions) {
+    expect(
+      await gradeExercise(exercise, exercise.answer, { random: () => 0.37 }),
+      exercise.id,
+    ).toMatchObject({ status: 'graded', correct: 1 });
+  }
 });
 
 test('text accepts normalized answers and regular-expression matches', async () => {
