@@ -10,7 +10,11 @@ knowledge_points:
     explain: |
       **What a perceptron is.** A perceptron multiplies each input feature by a weight, adds a bias, then applies the step activation $\phi(z)$: it outputs 1 when the score is positive and 0 otherwise.
 
-      **How it works.** Let $x=(12,3,20)$ record area, bedrooms and age. The score is $z=w\cdot x+b$. For weights $(0.2,0.1,-0.02)$ and bias $-2.5$, $z=2.4+0.3-0.4-2.5=-0.2$, so the step output is 0. The output can represent a yes/no label such as “sale above asking.”
+      **How it works.** Let $x=(12,3,20)$ record area, bedrooms and age. The score is $z=w\cdot x+b$. For weights $(0.2,0.1,-0.02)$ and bias $-2.5$:
+
+      $$z=2.4+0.3-0.4-2.5=-0.2.$$
+
+      The step output is 0. The output can represent a yes/no label such as “sale above asking.”
 
       A threshold converts the continuous score into one of two decisions.
 

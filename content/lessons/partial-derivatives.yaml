@@ -10,7 +10,27 @@ knowledge_points:
     explain: |
       **What a partial derivative is.** It is the rate of change of a function with respect to one input while every other input is held fixed.
 
-      **How it works.** For $x=(12,3,20)$, sale price $y=330$, and weights $w=(w_1,w_2,w_3)$, the squared loss is $L=(12w_1+3w_2+20w_3-y)^2$. At $w=(25,10,-1)$, prediction is 310 and the error is $e=-20$. If only $w_1$ changes by $h$, the error changes by $12h$. The loss difference divided by $h$ is $((e+12h)^2-e^2)/h=24e+144h$, which approaches $24e=-480$ as $h$ approaches zero.
+      **How it works.** For this house, use:
+
+      $$
+      \begin{aligned}
+      x &= (12,3,20),\\
+      y &= 330,\\
+      w &= (w_1,w_2,w_3).
+      \end{aligned}
+      $$
+
+      The squared loss is:
+
+      $$L=(12w_1+3w_2+20w_3-y)^2.$$
+
+      At $w=(25,10,-1)$, the prediction is 310. The error is $e=-20$. If only $w_1$ changes by $h$, the error changes by $12h$. The loss difference divided by $h$ is:
+
+      $$((e+12h)^2-e^2)/h=24e+144h.$$
+
+      As $h$ approaches zero:
+
+      $$24e=-480.$$
 
       This is an ordinary derivative along one direction through the space of weights. Changing two weights together would combine their effects.
 
@@ -18,7 +38,11 @@ knowledge_points:
     worked: |
       This example shows the area-weight partial while bedrooms and age weights stay fixed.
 
-      Keep $w_2=10$ and $w_3=-1$. Then $L(w_1)=(12w_1+30-20-330)^2$. At $w_1=25$, the error is −20.
+      Keep $w_2=10$ and $w_3=-1$. Then:
+
+      $$L(w_1)=(12w_1+30-20-330)^2.$$
+
+      At $w_1=25$, the error is −20.
 
       $$\frac{\partial L}{\partial w_1}=2(12w_1+30-20-330)\cdot12=-480.$$
 
@@ -69,7 +93,19 @@ knowledge_points:
     explain: |
       **What the bias partial is.** The bias is an adjustable offset added to the model's weighted total for every example. Its partial derivative is the rate at which the loss changes when only the bias changes, with every weight held fixed.
 
-      **How it works.** With prediction $\hat y=w\cdot x+b$, one-house squared loss is $L=(w\cdot x+b-y)^2$. Write the error as $e=w\cdot x+b-y$. Changing the bias by $h$ changes the error by $h$, so the loss difference quotient is $((e+h)^2-e^2)/h=2e+h$, which approaches $2e$. Each weight partial is $2e$ times its feature; the bias partial is $2e$ because its multiplier is 1.
+      **How it works.** With prediction $\hat y=w\cdot x+b$, one-house squared loss is:
+
+      $$L=(w\cdot x+b-y)^2.$$
+
+      Write the error as:
+
+      $$e=w\cdot x+b-y.$$
+
+      Changing the bias by $h$ changes the error by $h$, so the loss difference quotient is:
+
+      $$((e+h)^2-e^2)/h=2e+h.$$
+
+      As $h$ approaches zero, this approaches $2e$. Each weight partial is $2e$ times its feature; the bias partial is $2e$ because its multiplier is 1.
 
       For our house, $e=-20$, so $\partial L/\partial b=-40$. The data values $x$ and $y$ stay fixed: they describe the recorded house and sale, not settings the model can tune.
 

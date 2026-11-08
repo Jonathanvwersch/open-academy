@@ -126,7 +126,15 @@ knowledge_points:
 
       Here $\theta$ ("theta") is the angle between the arrows. The **cosine**, written $\cos$, is a trigonometry function that turns an angle into a number: 1 at $0^\circ$, 0 at $90^\circ$ and $-1$ at $180^\circ$. Rearranged, $a\cdot b=\|a\|_2\|b\|_2\cos\theta$.
 
-      For $a=(1,1)$ and $b=(1,0)$, the lengths are $\sqrt2$ and 1, so the result is $1/\sqrt2\approx0.707$. Doubling $b$ gives $2/(\sqrt2\cdot2)$, the same number.
+      For $a=(1,1)$ and $b=(1,0)$, the lengths are $\sqrt2$ and 1, so the result is:
+
+      $$1/\sqrt2\approx0.707.$$
+
+      Doubling $b$ gives:
+
+      $$2/(\sqrt2\cdot2),$$
+
+      the same number.
 
       Picture shortening or lengthening both arrows until each has length one. Their directions stay fixed, and their dot product is now just the projection: the distance one goes along the other. This explains why dividing by the original lengths removes size. A vector of length one is a **unit vector**.
 
@@ -144,7 +152,13 @@ knowledge_points:
       4. Double $b$ to $(2,0)$. The dot product becomes $1\cdot2+1\cdot0=2$, and its length becomes $\sqrt{4+0}=2$.
       5. Divide again: $2/(\sqrt2\cdot2)=1/\sqrt2\approx0.707$.
 
-      For $a=(3,4)$ and $b=(4,3)$, the dot product is $3\cdot4+4\cdot3=12+12=24$. Both lengths are $\sqrt{9+16}=5$, so cosine similarity is $24/(5\cdot5)=24/25=0.96$.
+      For $a=(3,4)$ and $b=(4,3)$, the dot product is:
+
+      $$3\cdot4+4\cdot3=12+12=24.$$
+
+      Both lengths are $\sqrt{9+16}=5$, so cosine similarity is:
+
+      $$24/(5\cdot5)=24/25=0.96.$$
 
       Multiplying either arrow by a positive number leaves its direction, and therefore its cosine similarity, unchanged. For a robot this compares headings rather than distances travelled.
     problems:

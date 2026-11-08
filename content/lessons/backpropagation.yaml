@@ -15,7 +15,22 @@ knowledge_points:
       **Why this is useful.** Backpropagation supplies all slopes needed to train the same house-price network without repeating the full calculation for each parameter.
     worked: |
       This example shows the calculation.
-      The forward pass stores $z=1.2$, $h=1.2$, $\hat y=324.5$ and $L=30.25$. The backward pass starts with $dL/d\hat y=2(324.5-330)=-11$ and uses the stored values to continue toward earlier weights.
+      The forward pass stores:
+
+      $$
+      \begin{aligned}
+      z &= 1.2,\\
+      h &= 1.2,\\
+      \hat y &= 324.5,\\
+      L &= 30.25.
+      \end{aligned}
+      $$
+
+      The backward pass starts with:
+
+      $$dL/d\hat y=2(324.5-330)=-11.$$
+
+      It uses the stored values to continue toward earlier weights.
     problems:
       [bp-why-backprop-basics, bpp-why-every, bpp-nudge-time, bpp-keep-values, bpp-cost, bpp-exact]
   - id: bp-by-hand
@@ -23,7 +38,34 @@ knowledge_points:
     explain: |
       **What a backward pass is.** It propagates a derivative from the loss toward earlier operations, multiplying by each local derivative.
 
-      **How it works.** Use $z=wa$ with area $a=12$, $h=\operatorname{ReLU}(z)$, $\hat y=15h+306.5$, and $L=(\hat y-330)^2$. At $w=0.1$, the forward values are $z=h=1.2$ and $\hat y=324.5$. Then $dL/d\hat y=-11$, $dL/dh=-11(15)=-165$, and $dL/dw=-165(1)(12)=-1980$. Multiplying local derivatives in reverse order passes the loss sensitivity to each operation's immediate input.
+      **How it works.** Use the following equations for area $a=12$:
+
+      $$
+      \begin{aligned}
+      z &= wa,\\
+      h &= \operatorname{ReLU}(z),\\
+      \hat y &= 15h+306.5,\\
+      L &= (\hat y-330)^2.
+      \end{aligned}
+      $$
+
+      At $w=0.1$, the forward values are:
+
+      $$
+      z=h=1.2,\qquad \hat y=324.5.
+      $$
+
+      Then the backward pass gives:
+
+      $$
+      \begin{aligned}
+      dL/d\hat y &= -11,\\
+      dL/dh &= -11(15)=-165,\\
+      dL/dw &= -165(1)(12)=-1980.
+      \end{aligned}
+      $$
+
+      Multiplying local derivatives in reverse order passes the loss sensitivity to each operation's immediate input.
 
       **Why this is useful.** The resulting weight slope tells gradient descent how this house's error changes when the network weight changes.
     worked: |
@@ -53,7 +95,17 @@ knowledge_points:
       **Why this is useful.** Matrix backpropagation computes house-network gradients for many sales without a separate manual calculation for each row.
     worked: |
       This example shows the calculation.
-      With $B=2$, $d_{\rm in}=3$ house features and $d_{\rm out}=2$ hidden units, $X^\top$ has shape $3\times2$ and $G$ has shape $2\times2$. Thus $dW=X^\top G$ has shape $3\times2$, matching $W$.
+      With $B=2$, $d_{\rm in}=3$ house features and $d_{\rm out}=2$ hidden units:
+
+      $$X^\top\text{ has shape }3\times2.$$
+
+      $$G\text{ has shape }2\times2.$$
+
+      Thus:
+
+      $$dW=X^\top G\text{ has shape }3\times2,$$
+
+      matching $W$.
     problems:
       [
         bp-arrays-basics,

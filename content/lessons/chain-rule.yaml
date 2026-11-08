@@ -10,7 +10,32 @@ knowledge_points:
     explain: |
       **What the chain rule is.** It finds the derivative of a nested calculation by multiplying the derivative at each step.
 
-      **How it works.** For functions $f$ and $g$, $g\circ f$ means apply $f$ first, then $g$. In a small house network, area $a$ sets score $z=0.1a$, the hidden value is $h=\max(0,z)$, and the predicted price is $\hat y=15h+306.5$. At $a=12$, $z=h=1.2$. The local rates are $dh/dz=1$, $d\hat y/dh=15$, and $dz/da=0.1$, so $d\hat y/da=15\cdot1\cdot0.1=1.5$ thousand pounds per feature unit. Multiplying the rates works because each converts a change into the units of the next quantity.
+      **How it works.** For functions $f$ and $g$, $g\circ f$ means apply $f$ first, then $g$. In a small house network, area $a$ sets:
+
+      $$
+      \begin{aligned}
+      z &= 0.1a,\\
+      h &= \max(0,z),\\
+      \hat y &= 15h+306.5.
+      \end{aligned}
+      $$
+
+      At $a=12$:
+
+      $$z=h=1.2.$$
+
+      The local rates are:
+
+      $$
+      \begin{aligned}
+      dh/dz &= 1,\\
+      d\hat y/dh &= 15,\\
+      dz/da &= 0.1,\\
+      d\hat y/da &= 15\cdot1\cdot0.1=1.5.
+      \end{aligned}
+      $$
+
+      The rate is 1.5 thousand pounds per feature unit. Multiplying the rates works because each converts a change into the units of the next quantity.
 
       **Why this is useful.** The product tells how a house input affects the network's final price through its hidden computation.
     worked: |
@@ -33,7 +58,18 @@ knowledge_points:
     explain: |
       **What a composite function is.** It is a function whose input is first transformed by another function.
 
-      **How it works.** For the house network, let $z=0.1a$, $h=\max(0,z)$, $\hat y=15h+306.5$, and $L=(\hat y-330)^2$. At $a=12$, $\hat y=324.5$. The loss slope with respect to area multiplies each local derivative:
+      **How it works.** For the house network, set:
+
+      $$
+      \begin{aligned}
+      z &= 0.1a,\\
+      h &= \max(0,z),\\
+      \hat y &= 15h+306.5,\\
+      L &= (\hat y-330)^2.
+      \end{aligned}
+      $$
+
+      At $a=12$, $\hat y=324.5$. The loss slope with respect to area multiplies each local derivative:
 
       $$\frac{dL}{da}=2(\hat y-330)\cdot15\cdot1\cdot0.1=-16.5.$$
 
@@ -42,7 +78,21 @@ knowledge_points:
       **Why this is useful.** The chain rule connects the house's final price error to an early network weight or input.
     worked: |
       This example shows the calculation.
-      At $a=12$, the loss error is $324.5-330=-5.5$ and the max-operation slope is 1. Therefore $dL/da=2(-5.5)(15)(1)(0.1)=-16.5$. For the weight $0.1$, the final factor is $dz/dw=a=12$, giving $dL/dw=-1980$.
+      At $a=12$, the loss error is:
+
+      $$324.5-330=-5.5.$$
+
+      The max-operation slope is 1. Therefore:
+
+      $$dL/da=2(-5.5)(15)(1)(0.1)=-16.5.$$
+
+      For the weight $0.1$, the final factor is:
+
+      $$dz/dw=a=12.$$
+
+      This gives:
+
+      $$dL/dw=-1980.$$
     problems:
       [
         cr-nested-formulas-basics,
@@ -58,7 +108,30 @@ knowledge_points:
     explain: |
       **What a route is.** It is one sequence of operations through which an input affects an output.
 
-      **How it works.** Suppose area contributes to two hidden values, $h_1=0.1a$ and $h_2=0.05a$, and the price score is $\hat y=15h_1+10h_2+306.5$. The two route rates are $15(0.1)=1.5$ and $10(0.05)=0.5$. Since both routes change the same output, add them: $d\hat y/da=2$. The route rates add because a small area change affects the output through both hidden values.
+      **How it works.** Suppose area contributes to two hidden values:
+
+      $$
+      \begin{aligned}
+      h_1 &= 0.1a,\\
+      h_2 &= 0.05a,\\
+      \hat y &= 15h_1+10h_2+306.5.
+      \end{aligned}
+      $$
+
+      The two route rates are:
+
+      $$
+      \begin{aligned}
+      15(0.1) &= 1.5,\\
+      10(0.05) &= 0.5.
+      \end{aligned}
+      $$
+
+      Since both routes change the same output, add them:
+
+      $$d\hat y/da=1.5+0.5=2.$$
+
+      The route rates add because a small area change affects the output through both hidden values.
 
       **Why this is useful.** Adding paths accounts for every way a house feature can influence the predicted price.
     worked: |

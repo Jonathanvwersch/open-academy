@@ -21,11 +21,13 @@ const courseStructureScreenshotDir = '/home/ubuntu/screenshots/course-structure'
 const courseStructureBatch1ScreenshotDir = `${courseStructureScreenshotDir}/batch1`;
 const courseStructureBatch2ScreenshotDir = `${courseStructureScreenshotDir}/batch2`;
 const courseStructureBatch3ScreenshotDir = `${courseStructureScreenshotDir}/batch3`;
+const mathLinesScreenshotDir = '/home/ubuntu/screenshots/math-lines';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(courseStructureScreenshotDir, { recursive: true });
 mkdirSync(courseStructureBatch1ScreenshotDir, { recursive: true });
 mkdirSync(courseStructureBatch2ScreenshotDir, { recursive: true });
 mkdirSync(courseStructureBatch3ScreenshotDir, { recursive: true });
+mkdirSync(mathLinesScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async ({ page }) => {
@@ -315,6 +317,38 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   await derivativeDiagram.screenshot({
     path: `${courseStructureBatch3ScreenshotDir}/derivatives-kp1.png`,
   });
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  for (const [conceptId, title, knowledgePointTitle, screenshotName] of [
+    [
+      'partial-derivatives',
+      'Partial derivatives',
+      'Change one weight, hold the rest fixed',
+      'pd-hold-fixed',
+    ],
+    ['backpropagation', 'Backpropagation', 'Compute one weight gradient backward', 'bp-by-hand'],
+    ['chain-rule', 'Chain rule', 'Rates along a chain multiply', 'cr-rates-multiply'],
+    [
+      'gradient-descent',
+      'Gradient descent',
+      'Update the house model opposite its gradient',
+      'gd-downhill-update',
+    ],
+  ] as const) {
+    await mockLessonReview(page, conceptId, title);
+    await page.goto(`/lessons/${conceptId}`);
+    await hideTutorLauncher(page);
+    const knowledgePoint = page
+      .locator('article')
+      .filter({ has: page.getByRole('heading', { name: new RegExp(knowledgePointTitle) }) });
+    await expect(knowledgePoint).toHaveCount(1);
+    await expect(knowledgePoint).toContainText('How it works.');
+    await expect(knowledgePoint).toContainText('This example shows');
+    await expect(knowledgePoint.locator('.katex-error')).toHaveCount(0);
+    await knowledgePoint.screenshot({
+      path: `${mathLinesScreenshotDir}/${screenshotName}.png`,
+    });
+  }
 });
 
 async function mockLessonReview(
