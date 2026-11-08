@@ -1,0 +1,482 @@
+concept: probability-basics
+exercises:
+  - id: pb-events-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is an event?"
+    options:
+      - {
+          id: a,
+          text: "One outcome chosen without any condition",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "An event can contain one outcome, but its definition is a set of outcomes selected by a condition.",
+        }
+      - {
+          id: b,
+          text: "The total number of observations in a dataset",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The sample size counts observations; an event says which outcomes to count.",
+        }
+      - {
+          id: c,
+          text: "A set of outcomes that meet a stated condition",
+          correct: true,
+          feedback: "An event collects the outcomes that satisfy a condition.",
+        }
+      - {
+          id: d,
+          text: "A number assigned to every possible outcome",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That describes a random variable, which is introduced in the next step.",
+        }
+    solution: "An event is a set of outcomes selected by a condition, such as sales above asking."
+  - id: pb-frequency-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In eight past house sales, three were above asking. What is the frequency-based probability estimate for an above-asking sale?"
+    hints: ["Divide the number of above-asking sales by the total number of sales."]
+    solution: |
+      Divide the matching count by all eight sales:
+
+      $$\frac{3}{8} = 0.375$$
+    answer: 0.375
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 0.625,
+          category: incorrect_reasoning,
+          feedback: "That is the estimated probability of the complement, not of an above-asking sale.",
+        }
+      - {
+          answer: 0.6,
+          category: math_error,
+          feedback: "The denominator is all eight sales, not just the five that were not above asking.",
+        }
+  - id: pb-complement-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Why is the estimated probability of not selling above asking 0.625 when the above-asking estimate is 0.375?"
+    options:
+      - {
+          id: a,
+          text: "0.625, because the complement fills the rest of the probability total.",
+          correct: true,
+          feedback: "Every sale is either above asking or not, so the complementary probabilities sum to 1.",
+        }
+      - {
+          id: b,
+          text: "0.375, because complements have the same probability.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A complement can have a different probability; five of eight sales were not above asking.",
+        }
+      - {
+          id: c,
+          text: "0.6, from dividing 3 above-asking sales by the 5 other sales.",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "That uses the other outcomes as the denominator; divide by all eight sales.",
+        }
+      - {
+          id: d,
+          text: "1.375, from adding the above-asking estimate to 1.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The two probabilities must add to 1, so subtract 0.375 from 1 instead.",
+        }
+    solution: "The complement covers the remaining sales, so its estimated probability is 1 minus 0.375, or 0.625."
+  - id: pb-frequency-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In a sample of ${{=above + other}}$ house sales, ${{=above}}$ were above asking. What is the frequency-based probability estimate?"
+    hints: ["Use all sampled sales as the denominator."]
+    solution: "The estimate is ${{=above}}/{{=above + other}} = {{=above / (above + other)}}$."
+    answer_expr: "above / (above + other)"
+    params:
+      above: { min: 1, max: 5 }
+      other: { min: 1, max: 5 }
+    tolerance: { abs: 0.00001 }
+  - id: pb-distribution-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is a discrete random variable?"
+    options:
+      - {
+          id: a,
+          text: "A list containing only the most likely outcome",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The variable can take every possible value, not only the most likely one.",
+        }
+      - {
+          id: b,
+          text: "The average of all observed numbers in a dataset",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "An average summarises values; the variable assigns a value to each outcome.",
+        }
+      - {
+          id: c,
+          text: "A probability that must be larger than 1",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A probability is between 0 and 1; a random variable is the number assigned to an outcome.",
+        }
+      - {
+          id: d,
+          text: "A rule that assigns a countable number to each possible outcome",
+          correct: true,
+          feedback: "A discrete random variable assigns a number to each outcome and has countable possible values.",
+        }
+    solution: "A discrete random variable assigns a countable number to each possible outcome."
+  - id: pb-distribution-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Why does a distribution list probabilities beside the possible offer counts?"
+    options:
+      - {
+          id: a,
+          text: "The probabilities make every possible offer count equally likely.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "A distribution records the observed chances; it does not make them equal.",
+        }
+      - {
+          id: b,
+          text: "The probabilities preserve which counts occur more often in the sales.",
+          correct: true,
+          feedback: "The probabilities record the relative frequencies of the possible offer counts.",
+        }
+      - {
+          id: c,
+          text: "The probabilities replace the offer counts with house prices.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The values remain offer counts; probabilities describe how often each count occurs.",
+        }
+      - {
+          id: d,
+          text: "The probabilities show which individual house will receive each count.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "A distribution describes chances across outcomes, not a guaranteed result for one house.",
+        }
+    solution: "A distribution pairs every possible offer count with its relative frequency, retaining differences between counts."
+  - id: pb-distribution-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Four of ten houses received exactly two offers. What probability does the frequency distribution assign to two offers?"
+    hints: ["Divide the count for two offers by all ten sales."]
+    solution: "Four of the ten houses received two offers, so the probability is $4/10 = 0.4$."
+    answer: 0.4
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 0.2,
+          category: recall_failure,
+          feedback: "That is the probability of zero offers; four of ten houses received two offers.",
+        }
+      - {
+          answer: 0.3,
+          category: recall_failure,
+          feedback: "That is the probability of one offer; use the four houses with two offers.",
+        }
+  - id: pb-distribution-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A sample has ${{=zero_count}}$ houses with zero offers, ${{=one_count}}$ with one, ${{=two_count}}$ with two and ${{=three_count}}$ with three. What is the probability of exactly two offers?"
+    hints: ["Use the two-offer count over the total number of houses."]
+    solution: "The two-offer probability is ${{=two_count}}/{{=zero_count + one_count + two_count + three_count}} = {{=two_count / (zero_count + one_count + two_count + three_count)}}$."
+    answer_expr: "two_count / (zero_count + one_count + two_count + three_count)"
+    params:
+      zero_count: { min: 1, max: 5 }
+      one_count: { min: 1, max: 5 }
+      two_count: { min: 1, max: 5 }
+      three_count: { min: 1, max: 5 }
+    tolerance: { abs: 0.00001 }
+  - id: pb-expectation-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is an expectation?"
+    options:
+      - {
+          id: a,
+          text: "The plain average of the possible values, regardless of their probabilities",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The expectation uses the distribution's probabilities, not equal weights for every value.",
+        }
+      - {
+          id: b,
+          text: "The probability-weighted average of a random variable's possible values",
+          correct: true,
+          feedback: "Weighting each value by its probability gives the expectation.",
+        }
+      - {
+          id: c,
+          text: "The most likely value, which every observation will have",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The expectation is an average, not a guarantee or necessarily the most likely value.",
+        }
+      - {
+          id: d,
+          text: "The largest value that the random variable can take",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The largest possible value is not generally the probability-weighted average.",
+        }
+    solution: "An expectation is the average of possible values after each is weighted by its probability."
+  - id: pb-expectation-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Why is the plain average of the possible offer counts not the expectation for these sales?"
+    options:
+      - {
+          id: a,
+          text: "An expectation ignores probabilities and uses only the largest offer count.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The expectation uses every possible value and its probability.",
+        }
+      - {
+          id: b,
+          text: "Every possible count must be equally likely before an average can be calculated.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Unequal chances are handled by weighting each count by its own probability.",
+        }
+      - {
+          id: c,
+          text: "The count that appears most often is always the expectation.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The most likely count and the probability-weighted average can be different.",
+        }
+      - {
+          id: d,
+          text: "The offer counts have different probabilities, so they need different weights.",
+          correct: true,
+          feedback: "The distribution assigns unequal probabilities, so the average must use those weights.",
+        }
+    solution: "The observed probabilities are unequal, so a plain average gives the counts the wrong weights."
+  - id: pb-expectation-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "The probabilities of zero, one, two and three offers are 0.2, 0.3, 0.4 and 0.1. What is the expected number of offers?"
+    hints: ["Multiply each offer count by its probability, then add the products."]
+    solution: |
+      Weight each offer count by its probability:
+
+      $$0 \times 0.2 = 0$$
+
+      $$1 \times 0.3 = 0.3$$
+
+      $$2 \times 0.4 = 0.8$$
+
+      $$3 \times 0.1 = 0.3$$
+
+      $$0 + 0.3 + 0.8 + 0.3 = 1.4$$
+    answer: 1.4
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 1.5,
+          category: incorrect_reasoning,
+          feedback: "That is the plain average of the possible offer counts; weight each count by its probability.",
+        }
+      - {
+          answer: 2,
+          category: misunderstood_definition,
+          feedback: "Two offers is the most likely count, not the probability-weighted average.",
+        }
+  - id: pb-expectation-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A sample has ${{=count0}}$ houses with zero offers, ${{=count1}}$ with one, ${{=count2}}$ with two and ${{=count3}}$ with three. What is the expected number of offers?"
+    hints: ["Weight each offer count by its frequency, then divide by the total."]
+    solution: "The weighted average is ${{=(count1 + 2 * count2 + 3 * count3) / (count0 + count1 + count2 + count3)}}$ offers."
+    answer_expr: "(count1 + 2 * count2 + 3 * count3) / (count0 + count1 + count2 + count3)"
+    params:
+      count0: { min: 1, max: 5 }
+      count1: { min: 1, max: 5 }
+      count2: { min: 1, max: 5 }
+      count3: { min: 1, max: 5 }
+    tolerance: { abs: 0.00001 }
+  - id: pb-conditional-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What is the conditional probability $P(A \\mid B)$?"
+    options:
+      - {
+          id: a,
+          text: "The probability that A occurs among outcomes where B has occurred",
+          correct: true,
+          feedback: "The condition B restricts the outcomes being considered.",
+        }
+      - {
+          id: b,
+          text: "The probability that A and B both occur, without conditioning",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That is the joint probability; a conditional probability divides by the probability of B.",
+        }
+      - {
+          id: c,
+          text: "The probability of A across all outcomes, whether or not B occurred",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That is the overall probability of A, not the probability restricted to B.",
+        }
+      - {
+          id: d,
+          text: "The probability that B occurs among outcomes where A has occurred",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That reverses the condition: $P(B \\mid A)$ asks a different question.",
+        }
+    solution: "The condition B restricts attention to outcomes where B occurred, and then we measure how often A also occurred."
+  - id: pb-independence-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Why do these sales not show independence between selling above asking and receiving at least two offers?"
+    options:
+      - {
+          id: a,
+          text: "The conditional rate is 0.45, while the overall above-asking rate is 0.75.",
+          correct: false,
+          category: math_error,
+          feedback: "For the conditional rate, divide the six above-asking houses by the eight with at least two offers.",
+        }
+      - {
+          id: b,
+          text: "The joint rate is 0.30, which is larger than both overall event rates.",
+          correct: false,
+          category: math_error,
+          feedback: "The joint rate 0.30 is smaller than both 0.40 and 0.45; compare the conditional and overall rates instead.",
+        }
+      - {
+          id: c,
+          text: "The conditional rate is 0.75, while the overall above-asking rate is 0.45.",
+          correct: true,
+          feedback: "Independence would leave the chance of A unchanged after learning B; these rates differ.",
+        }
+      - {
+          id: d,
+          text: "The table has twenty houses, but independence requires equal row totals.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Independence is about whether conditioning changes a probability, not whether the table rows are equal in size.",
+        }
+    solution: "The rate among houses with at least two offers is 0.75, which differs from the overall rate of 0.45."
+  - id: pb-conditional-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Of eight houses with at least two offers, six sold above asking. What is the conditional probability of selling above asking, given at least two offers?"
+    hints: ["Use only the eight houses that meet the condition."]
+    solution: |
+      Restrict the denominator to the eight houses with at least two offers:
+
+      $$\frac{6}{8} = 0.75$$
+    answer: 0.75
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 0.3,
+          category: misapplied_technique,
+          feedback: "That is the joint share among all twenty houses; the condition restricts the denominator to eight.",
+        }
+      - {
+          answer: 0.45,
+          category: misapplied_technique,
+          feedback: "That is the overall above-asking rate; use only houses with at least two offers.",
+        }
+  - id: pb-conditional-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Among ${{=above_and_many + not_above_and_many}}$ houses with at least two offers, ${{=above_and_many}}$ sold above asking. What is the conditional probability of selling above asking?"
+    hints: ["Divide the above-asking count by all houses that meet the condition."]
+    solution: "Among houses with at least two offers, the share above asking is ${{=above_and_many}}/{{=above_and_many + not_above_and_many}} = {{=above_and_many / (above_and_many + not_above_and_many)}}$."
+    answer_expr: "above_and_many / (above_and_many + not_above_and_many)"
+    params:
+      above_and_many: { min: 1, max: 5 }
+      not_above_and_many: { min: 1, max: 5 }
+    tolerance: { abs: 0.00001 }
+  - id: probability-basics-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Use house-sale data to explain the difference between an event probability, a distribution of offer counts, an expected number of offers and a conditional probability. Include how a complement is estimated and how you would check whether selling above asking is independent of receiving at least two offers."
+    rubric:
+      - {
+          id: event-and-complement,
+          criterion: "Defines an event as a set of outcomes and explains that an event and its complement have probabilities summing to one.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: distribution-and-expectation,
+          criterion: "Explains that a distribution lists values with probabilities and that expectation weights values by those probabilities.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: conditional-and-independent,
+          criterion: "Explains that conditional probability restricts the outcomes and that independence means the condition does not change the probability.",
+          weight: 1,
+          required: true,
+        }
+    exemplar: "An event is a set of outcomes, such as houses selling above asking. Its frequency estimates its probability, and the complement covers the remaining sales. A distribution pairs each possible offer count with its probability; the expected count weights each value by that probability. A conditional probability of selling above asking given at least two offers uses only houses with at least two offers. To check independence, compare this rate with the overall above-asking rate; equal rates indicate independence in the data."

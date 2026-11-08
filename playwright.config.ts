@@ -25,7 +25,7 @@ export default defineConfig({
     reuseExistingServer: false,
     env: {
       ...process.env,
-      CONTENT_DIR: 'tests/fixtures/content',
+      CONTENT_DIR: process.env.PLAYWRIGHT_CONTENT_DIR ?? 'tests/fixtures/content',
       PAPER_FIXTURE_DIR: 'tests/fixtures/papers',
       DATABASE_URL:
         process.env.TEST_DATABASE_URL ?? 'postgres://academy:academy@localhost:5433/academy_test',

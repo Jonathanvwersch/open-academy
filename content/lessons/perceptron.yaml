@@ -3,7 +3,7 @@ version: 3
 objective: |
   **Goal:** explain how a perceptron turns house features into a simple yes-or-no decision.
 where_this_fits: |
-  Training and test splits showed how to check price predictions on unseen houses. Week 2 turns the same house measurements into a neural model, beginning with one perceptron. Its thresholded score can answer a yes-or-no question, such as whether a sale exceeds its asking price; later layers will predict the same sale price directly.
+  Probability basics described how likely a sale outcome is, such as selling above asking, from past house sales. Week 2 turns the same house measurements into a neural model, beginning with one perceptron. Its thresholded score can answer a yes-or-no question, such as whether a sale exceeds its asking price; later layers will predict the same sale price directly.
 knowledge_points:
   - id: perc-score-and-step
     title: A weighted score followed by a yes-or-no output
