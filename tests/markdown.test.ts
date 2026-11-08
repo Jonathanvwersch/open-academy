@@ -24,4 +24,42 @@ describe('normalizeDisplayMath', () => {
   it('leaves inline math untouched', () => {
     expect(normalizeDisplayMath('Inline $a$ stays inline.')).toBe('Inline $a$ stays inline.');
   });
+
+  it('normalizes inline TeX math delimiters', () => {
+    expect(normalizeDisplayMath(String.raw`Inline \(x + y\).`)).toBe('Inline $x + y$.');
+  });
+
+  it('normalizes display TeX math delimiters', () => {
+    expect(normalizeDisplayMath(String.raw`Before \[x^2\] after`)).toBe(
+      'Before \n\n$$\nx^2\n$$\n\n after',
+    );
+  });
+
+  it('normalizes multiline display TeX math delimiters', () => {
+    const markdown = String.raw`Before
+\[
+\frac{a}{b}=x
+\]
+After`;
+    expect(normalizeDisplayMath(markdown)).toBe('Before\n$$\n\\frac{a}{b}=x\n$$\nAfter');
+  });
+
+  it('leaves TeX delimiters inside inline code unchanged', () => {
+    const markdown = 'Keep `\\(x\\)` and `\\[y\\]` unchanged.';
+    expect(normalizeDisplayMath(markdown)).toBe(markdown);
+  });
+
+  it('leaves TeX delimiters inside fenced code unchanged', () => {
+    const markdown = '```md\n\\[x\\]\n\\(y\\)\n```\nOutside \\(z\\)';
+    expect(normalizeDisplayMath(markdown)).toBe('```md\n\\[x\\]\n\\(y\\)\n```\nOutside $z$');
+  });
+
+  it('leaves escaped aligned spacing and existing display math unchanged', () => {
+    const markdown = String.raw`$$
+\begin{aligned}
+a &= b \\[2pt]
+\end{aligned}
+$$`;
+    expect(normalizeDisplayMath(markdown)).toBe(markdown);
+  });
 });

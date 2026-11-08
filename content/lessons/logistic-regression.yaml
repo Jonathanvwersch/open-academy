@@ -26,13 +26,7 @@ knowledge_points:
 
       The classifier must turn either score into a value between 0 and 1; a later threshold can turn that probability into a class.
     problems:
-      [
-        lr-classification-basics,
-        lr-score-numeric,
-        lr-score-why,
-        lr-score-read,
-        lr-score-complete,
-      ]
+      [lr-classification-basics, lr-score-numeric, lr-score-why, lr-score-read, lr-score-complete]
   - id: lr-sigmoid
     title: The sigmoid turns a score into a probability
     explain: |
@@ -117,14 +111,7 @@ knowledge_points:
 
       Cross-entropy penalises the confident mistake much more heavily than squared error.
     problems:
-      [
-        lr-bce-basics,
-        lr-bce-why,
-        lr-bce-positive,
-        lr-bce-negative,
-        lr-bce-read,
-        lr-bce-complete,
-      ]
+      [lr-bce-basics, lr-bce-why, lr-bce-positive, lr-bce-negative, lr-bce-read, lr-bce-complete]
   - id: lr-gradient
     title: The score gradient is probability minus label
     explain: |

@@ -19,6 +19,8 @@ const greetingScreenshotDir = '/home/ubuntu/screenshots/tutor-greeting';
 mkdirSync(greetingScreenshotDir, { recursive: true });
 const headerScreenshotDir = '/home/ubuntu/screenshots/tutor-header';
 mkdirSync(headerScreenshotDir, { recursive: true });
+const latexScreenshotDir = '/home/ubuntu/screenshots/tutor-latex';
+mkdirSync(latexScreenshotDir, { recursive: true });
 let sessionId = '';
 
 test.beforeEach(async () => {
@@ -409,6 +411,78 @@ test('Practice activity without a concept can send a tutor message', async ({ pa
     exerciseId: 'slp-input-target',
   });
   expect(requestBody).not.toHaveProperty('conceptId');
+});
+
+test('tutor reply renders TeX inline and display delimiters', async ({ page }) => {
+  const threadId = '00000000-0000-4000-8000-000000000002';
+  const updatedAt = '2026-01-01T12:00:00.002Z';
+  const reply = String.raw`\[ \frac{\partial f}{\partial w}=2(wx+b-y)x \]
+
+\( x \)`;
+  const messages = [
+    {
+      id: 'math-user-message',
+      role: 'user',
+      content: 'Show me the derivative.',
+      createdAt: '2026-01-01T12:00:00.001Z',
+    },
+    {
+      id: 'math-assistant-message',
+      role: 'assistant',
+      content: reply,
+      createdAt: updatedAt,
+    },
+  ];
+  const thread = {
+    id: threadId,
+    conceptId: 'supervised-learning',
+    title: 'Derivative question',
+    updatedAt,
+  };
+  await page.route('**/api/tutor/threads**', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ thread, messages }),
+      });
+      return;
+    }
+    if (route.request().url().endsWith(`/api/tutor/threads/${threadId}`)) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          thread: {
+            ...thread,
+            conceptTitle: 'Supervised learning',
+            messageCount: messages.length,
+            lastMessagePreview: 'Show me the derivative.',
+          },
+          messages,
+        }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.fill('Show me the derivative.');
+  await textarea.press('Enter');
+
+  const assistantMessage = tutor.getByTestId('tutor-assistant-message');
+  await expect(assistantMessage.locator('.katex')).toHaveCount(2);
+  const renderedMath = assistantMessage.locator('.katex-html');
+  const renderedMathText = (await renderedMath.allTextContents()).join('');
+  expect(renderedMathText).not.toContain('\\frac');
+  expect(renderedMathText).not.toContain('\\(');
+  expect(renderedMathText).not.toContain('\\[');
+  await page.screenshot({ path: `${latexScreenshotDir}/reply.png`, fullPage: true });
 });
 
 test('tutor Context follows the session, lesson, and home pages', async ({ page }) => {
