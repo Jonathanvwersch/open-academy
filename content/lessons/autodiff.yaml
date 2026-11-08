@@ -44,7 +44,7 @@ knowledge_points:
 
       $$\hat y = 15h + 306.5 = 324.5$$
 
-      The loss against the asking-price target is:
+      The squared loss against the sale price of 330 is:
 
       $$L = (\hat y - 330)^2 = (324.5 - 330)^2 = 30.25$$
 
@@ -126,11 +126,11 @@ knowledge_points:
 
       After one backward call, `.grad` contains 30. Recompute the loss and call backward again without clearing it:
 
-      $$w.\mathrm{grad} = 30 + 30 = 60$$
+      $$\texttt{w.grad} = 30 + 30 = 60$$
 
       Clear the accumulated value before the next independent calculation:
 
-      $$w.\mathrm{grad} = 0$$
+      $$\texttt{w.grad} = 0$$
 
       Recomputing the loss creates a fresh forward graph; each backward call then adds that graph's derivative to `.grad`.
     problems:
