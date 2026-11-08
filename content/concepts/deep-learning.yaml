@@ -106,7 +106,7 @@ concepts:
     prereqs: [{ id: autodiff }, { id: gradient-descent }]
     objectives:
       - { text: "Write a PyTorch training loop from memory", dimension: implementation }
-    status: stub
+    status: authored
   - id: sgd-minibatch
     title: Stochastic and minibatch gradient descent
     description: Estimating gradients from batches; noise, epochs, batch size.
