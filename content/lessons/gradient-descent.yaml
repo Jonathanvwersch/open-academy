@@ -10,7 +10,22 @@ knowledge_points:
     explain: |
       **What gradient descent is.** Gradient descent repeatedly subtracts a scaled loss gradient from the model parameters.
 
-      **How it works.** For $x=(12,3,20)$, $y=330$, $w=(25,10,-1)$ and $b=0$, the prediction is 310 and $\nabla L=(-480,-120,-800,-40)$. With learning rate $\eta=0.0001$, update weights and bias together:
+      **How it works.** For this house, use:
+
+      $$
+      \begin{aligned}
+      x &= (12,3,20),\\
+      y &= 330,\\
+      w &= (25,10,-1),\\
+      b &= 0.
+      \end{aligned}
+      $$
+
+      The prediction is 310 and the gradient is:
+
+      $$\nabla L=(-480,-120,-800,-40).$$
+
+      With learning rate $\eta=0.0001$, update weights and bias together:
 
       $$w'=w-\eta\nabla_w L=(25.048,10.012,-0.92),\qquad b'=b-\eta\frac{\partial L}{\partial b}=0.004.$$
 
@@ -40,7 +55,21 @@ knowledge_points:
     explain: |
       **What the learning rate is.** The learning rate $\eta$ is the positive scale that sets how far each gradient-descent update moves.
 
-      **How it works.** Each parameter changes by the learning rate times its own slope, so area and age weights move more than the bedroom weight. With $\eta=0.01$, the same update gives $w=(29.8,11.2,7)$ and $b=0.4$, prediction $531.6$, error $201.6$, and loss $201.6^2=40{,}642.56$, up from $400$. With $\eta=0.0001$, the KP1 update gives loss $316.270656\approx316.27$. The area-12 and age-20 features make their slopes large, so the larger rate overshoots and raises loss; a rate that is too small improves slowly.
+      **How it works.** Each parameter changes by the learning rate times its own slope, so area and age weights move more than the bedroom weight. With $\eta=0.01$, the same update gives:
+
+      $$
+      w=(29.8,11.2,7),\qquad b=0.4.
+      $$
+
+      The prediction is 531.6 and the error is 201.6, so the loss is:
+
+      $$201.6^2=40{,}642.56.$$
+
+      This is up from $400$. With $\eta=0.0001$, the KP1 update gives a loss of:
+
+      $$316.270656\approx316.27.$$
+
+      The area-12 and age-20 features make their slopes large, so the larger rate overshoots and raises loss; a rate that is too small improves slowly.
 
       **Why this is useful.** Choosing a cautious rate prevents the large area- and age-feature slopes from destabilising house-price training.
     worked: |
@@ -61,7 +90,24 @@ knowledge_points:
     explain: |
       **What a parameter gradient is.** It is the loss's partial derivative with respect to one adjustable weight or bias.
 
-      **How it works.** For squared error $L=(w\cdot x+b-y)^2$, let $e=\hat y-y$. The partial-derivatives lesson found $\partial L/\partial w_j=2e x_j$ and $\partial L/\partial b=2e$. Thus the house with error $-20$ and features $(12,3,20)$ has weight slopes $(-480,-120,-800)$ and bias slope $-40$. The age slope has larger magnitude than the bedroom slope because its feature is 20, compared with 3 bedrooms.
+      **How it works.** For squared error $L=(w\cdot x+b-y)^2$, let $e=\hat y-y$. The partial-derivatives lesson found:
+
+      $$
+      \begin{aligned}
+      \partial L/\partial w_j &= 2e x_j,\\
+      \partial L/\partial b &= 2e.
+      \end{aligned}
+      $$
+
+      Thus the house with error $-20$ and features $(12,3,20)$ has weight slopes:
+
+      $$(-480,-120,-800).$$
+
+      The bias slope is:
+
+      $$-40.$$
+
+      The age slope has larger magnitude than the bedroom slope because its feature is 20, compared with 3 bedrooms.
 
       **Why this is useful.** The feature-scaled slopes tell training how each house measurement should change its own weight.
     worked: |

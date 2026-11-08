@@ -10,7 +10,22 @@ knowledge_points:
     explain: |
       **What a gradient is.** The gradient is an ordered vector of partial derivatives, one for each adjustable model parameter.
 
-      **How it works.** For $x=(12,3,20)$, sale price $y=330$, weights $w=(25,10,-1)$ and bias $b=0$, the prediction is 310 and the error is $e=-20$. The loss is $L=(w\cdot x+b-y)^2$. The previous lesson found each partial; put them in parameter order:
+      **How it works.** For this house:
+
+      $$
+      \begin{aligned}
+      x &= (12,3,20),\\
+      y &= 330,\\
+      w &= (25,10,-1),\\
+      b &= 0.
+      \end{aligned}
+      $$
+
+      The prediction is 310 and the error is $e=-20$. The loss is:
+
+      $$L=(w\cdot x+b-y)^2.$$
+
+      The previous lesson found each partial; put them in parameter order:
 
       $$\nabla L=\left(\frac{\partial L}{\partial w_1},\frac{\partial L}{\partial w_2},\frac{\partial L}{\partial w_3},\frac{\partial L}{\partial b}\right)=2e(12,3,20,1)=(-480,-120,-800,-40).$$
 
@@ -56,7 +71,15 @@ knowledge_points:
 
       Initially the prediction is 310 and $L=400$. The estimated change is $-14.4$, so the estimated loss is 385.6.
 
-      After the step, $w=(25.01,10.01,-0.99)$ and $b=0.01$. The prediction is $310.36$, so the actual loss is $(-19.64)^2=385.7296$. Its change, $-14.2704$, is close to the estimate.
+      After the step:
+
+      $$w=(25.01,10.01,-0.99),\qquad b=0.01.$$
+
+      The prediction is $310.36$, so the actual loss is:
+
+      $$(-19.64)^2=385.7296.$$
+
+      Its change, $-14.2704$, is close to the estimate.
     problems:
       [
         grad-points-uphill-basics,

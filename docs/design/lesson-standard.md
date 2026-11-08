@@ -84,6 +84,7 @@ Robots get at most one or two sentences of payoff per lesson, in "Why this is us
   a fast algorithm?"); 3Blue1Brown *Neural networks* ch3–4.
 
 ## Writing style
+- **Maths line by line.** When a passage computes or derives something, put each step on its own display line (`$$...$$` in its own paragraph, or one `\begin{aligned}` block with one `&=` step per line), with a short prose sentence before or after saying what the step does. Don't chain more than two equations inside one prose sentence. Inline maths is for naming a symbol or a single value (e.g. "the error $e=-20$").
 - **Voice:** a teacher talking. Standard terms only, no coined phrases ("floor move", "housing app scores buyers");
   define every noun on first use; full sentences that build one step at a time; never "because the formula says so".
 - **Order:** say what the thing is before asking questions about it. Don't open with an invented story.

@@ -10,7 +10,24 @@ knowledge_points:
     explain: |
       **What a computational graph is.** It is a directed diagram of values and operations, with an arrow from each input value to the operation that uses it.
 
-      **How it works.** For the running house, let $z=0.1(12)=1.2$, $h=\max(0,z)=1.2$ (zero for a negative score, otherwise the score), $\hat y=15h+306.5=324.5$, and $L=(\hat y-330)^2=30.25$. Draw one node for each multiply, maximum, add and square; arrows show the order of dependence. Separate operation nodes make each local derivative simple to calculate.
+      **How it works.** For the running house:
+
+      $$z=0.1(12)=1.2.$$
+
+      The maximum operation gives:
+
+      $$h=\max(0,z)=1.2.$$
+
+      It is zero for a negative score, otherwise the score. The predicted price and loss are:
+
+      $$
+      \begin{aligned}
+      \hat y &= 15h+306.5=324.5,\\
+      L &= (\hat y-330)^2=30.25.
+      \end{aligned}
+      $$
+
+      Draw one node for each multiply, maximum, add and square; arrows show the order of dependence. Separate operation nodes make each local derivative simple to calculate.
 
       **Why this is useful.** A graph makes every dependency in the house-price calculation visible before computing its gradients.
     worked: |
@@ -31,12 +48,30 @@ knowledge_points:
     explain: |
       **What a local derivative is.** It is the rate at one operation's output with respect to one of its inputs, holding the other inputs fixed.
 
-      **How it works.** In the house graph, $d(0.1a)/da=0.1$, the maximum operation has slope 1 for this positive score, $d(15h+306.5)/dh=15$, and $d(\hat y-330)^2/d\hat y=2(\hat y-330)=-11$. These are small rules attached to their operation nodes. The forward values provide the current error $\hat y-330$ needed to differentiate the square.
+      **How it works.** In the house graph:
+
+      $$d(0.1a)/da=0.1.$$
+
+      The maximum operation has slope 1 for this positive score. The output multiply has derivative:
+
+      $$d(15h+306.5)/dh=15.$$
+
+      The squared loss has derivative:
+
+      $$d(\hat y-330)^2/d\hat y=2(\hat y-330)=-11.$$
+
+      These are small rules attached to their operation nodes. The forward values provide the current error $\hat y-330$ needed to differentiate the square.
 
       **Why this is useful.** Local derivatives reduce a large house-network gradient calculation to familiar rules for each operation.
     worked: |
       This example shows the calculation.
-      At $\hat y=324.5$, the last operation gives $dL/d\hat y=2(324.5-330)=-11$. The output multiply gives $d\hat y/dh=15$.
+      At $\hat y=324.5$, the last operation gives:
+
+      $$dL/d\hat y=2(324.5-330)=-11.$$
+
+      The output multiply gives:
+
+      $$d\hat y/dh=15.$$
     problems:
       [
         cg-local-derivatives-basics,
@@ -52,7 +87,22 @@ knowledge_points:
     explain: |
       **What a backward path is.** It follows the graph from the final loss toward an earlier input, multiplying the local derivatives along the way.
 
-      **How it works.** From loss back to area weight $w$, the factors are $dL/d\hat y=-11$, $d\hat y/dh=15$, $dh/dz=1$, and $dz/dw=12$. Their product is $dL/dw=-1980$. If a value feeds two later paths, add their contributions. The derivative at the weight is the loss slope needed to update that parameter.
+      **How it works.** From loss back to area weight $w$, the factors are:
+
+      $$
+      \begin{aligned}
+      dL/d\hat y &= -11,\\
+      d\hat y/dh &= 15,\\
+      dh/dz &= 1,\\
+      dz/dw &= 12.
+      \end{aligned}
+      $$
+
+      Their product is:
+
+      $$dL/dw=(-11)(15)(1)(12)=-1980.$$
+
+      If a value feeds two later paths, add their contributions. The derivative at the weight is the loss slope needed to update that parameter.
 
       **Why this is useful.** The graph organizes the route from each house-network weight to the prediction loss.
     worked: |

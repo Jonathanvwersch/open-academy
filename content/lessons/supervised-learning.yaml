@@ -59,7 +59,17 @@ knowledge_points:
 
       The errors add up to $10 + 10 - 20 = 0$, even though every prediction is wrong.
 
-      Squaring gives $10^2 = 100$, $10^2 = 100$, and $(-20)^2 = 400$. The squared errors are all positive, so they do not cancel.
+      Squaring gives:
+
+      $$
+      \begin{aligned}
+      10^2 &= 100,\\
+      10^2 &= 100,\\
+      (-20)^2 &= 400.
+      \end{aligned}
+      $$
+
+      The squared errors are all positive, so they do not cancel.
     problems:
       [
         sl-measuring-error-basics,

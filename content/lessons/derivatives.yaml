@@ -33,7 +33,15 @@ knowledge_points:
       </svg>
       ```
 
-      With $h=0.01$, $L(25.01)=(300.12-330)^2=29.88^2=892.8144$, so the average rate is $(892.8144-900)/0.01=-718.56$. A smaller $h$ brings that rate closer to $-720$. A negative slope means a small increase in the weight lowers this house's loss.
+      With $h=0.01$:
+
+      $$L(25.01)=(300.12-330)^2=29.88^2=892.8144.$$
+
+      The average rate is:
+
+      $$(892.8144-900)/0.01=-718.56.$$
+
+      A smaller $h$ brings that rate closer to $-720$. A negative slope means a small increase in the weight lowers this house's loss.
 
       **Why this is useful.** The derivative tells us whether to raise or lower a house model's weight to reduce its loss.
     worked: |
@@ -94,7 +102,20 @@ knowledge_points:
     explain: |
       **What exponential and logarithm functions are.** The exponential $e^x$ has base $e\approx2.718$. The natural logarithm $\ln x$ asks which power of $e$ equals $x$; it is defined for positive $x$.
 
-      **How it works.** Their derivatives are $(e^x)'=e^x$ and $(\ln x)'=1/x$. The first function's rate equals its value. The logarithm undoes the exponential, so its rate gets smaller as $x$ grows. For example, $\ln 1=0$ because $e^0=1$. For positive $w$, $1/w$ decreases as $w$ grows, so the derivative of $\ln w$ gets smaller too.
+      **How it works.** Their derivatives are:
+
+      $$
+      \begin{aligned}
+      (e^x)' &= e^x,\\
+      (\ln x)' &= 1/x.
+      \end{aligned}
+      $$
+
+      The first function's rate equals its value. The logarithm undoes the exponential, so its rate gets smaller as $x$ grows. For example, $\ln 1=0$ because:
+
+      $$e^0=1.$$
+
+      For positive $w$, $1/w$ decreases as $w$ grows, so the derivative of $\ln w$ gets smaller too.
 
       Sine and cosine are functions of an angle. Their derivatives are $(\sin x)'=\cos x$ and $(\cos x)'=-\sin x$. These rules can be used term by term in sums.
 
@@ -122,7 +143,19 @@ knowledge_points:
     explain: |
       **What the product and quotient rules are.** The product rule differentiates two changing factors: $(uv)'=u'v+uv'$. The quotient rule differentiates a ratio: $(u/v)'=(u'v-uv')/v^2$.
 
-      **How it works.** The house loss is the product of two equal errors, $L(w)=r(w)r(w)$, where $r(w)=12w-330$. Its derivative is $r'r+rr'=12r+12r=24r$. At $w=25$, this gives $24(-30)=-720$. Both factors change, so both contributions count.
+      **How it works.** The house loss is the product of two equal errors:
+
+      $$L(w)=r(w)r(w),\qquad r(w)=12w-330.$$
+
+      Its derivative is:
+
+      $$r'r+rr'=12r+12r=24r.$$
+
+      At $w=25$, this gives:
+
+      $$24(-30)=-720.$$
+
+      Both factors change, so both contributions count.
 
       The quotient rule matters when a prediction error is divided by a changing quantity. It keeps the change in both numerator and denominator; multiplying their derivatives would be wrong.
 
@@ -130,7 +163,13 @@ knowledge_points:
     worked: |
       This example shows the product rule on squared house-price error.
 
-      For $L(w)=(12w-330)(12w-330)$, name both factors $u=v=12w-330$. Then $u'=v'=12$.
+      For $L(w)=(12w-330)(12w-330)$, name both factors:
+
+      $$u=v=12w-330.$$
+
+      Then:
+
+      $$u'=v'=12.$$
 
       $$L'(w)=u'v+uv'=12(12w-330)+(12w-330)12=24(12w-330).$$
 

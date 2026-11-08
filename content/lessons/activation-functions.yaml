@@ -15,7 +15,20 @@ knowledge_points:
       **Why this is useful.** This tells us why a deeper house-price model must place a nonlinear operation between its weighted-sum layers.
     worked: |
       This example shows the calculation.
-      For scalar layers $z_1=2x+1$ and $z_2=3z_1-4$, substitution gives $z_2=3(2x+1)-4=6x-1$, still a straight-line rule.
+      For scalar layers:
+
+      $$
+      \begin{aligned}
+      z_1 &= 2x+1,\\
+      z_2 &= 3z_1-4.
+      \end{aligned}
+      $$
+
+      Substitution gives:
+
+      $$z_2=3(2x+1)-4=6x-1,$$
+
+      still a straight-line rule.
     problems:
       [
         act-stacking-stays-straight-basics,
@@ -36,7 +49,15 @@ knowledge_points:
       **Why this is useful.** ReLU lets hidden house-price units represent bends, while sigmoid can express a bounded yes-or-no probability when the task calls for one.
     worked: |
       This example shows the calculation.
-      For $z=0.5$: $\operatorname{ReLU}(z)=0.5$, $\sigma(z)=1/(1+e^{-0.5})\approx0.62$, and $\tanh(z)\approx0.46$.
+      For $z=0.5$:
+
+      $$
+      \begin{aligned}
+      \operatorname{ReLU}(z) &= 0.5,\\
+      \sigma(z) &= 1/(1+e^{-0.5})\approx0.62,\\
+      \tanh(z) &\approx0.46.
+      \end{aligned}
+      $$
     problems:
       [
         act-relu-sigmoid-tanh-basics,
