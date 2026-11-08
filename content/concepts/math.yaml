@@ -106,7 +106,7 @@ concepts:
     prereqs: []
     objectives:
       - { text: "Compute expectations and conditional probabilities", dimension: math }
-    status: stub
+    status: authored
   - id: gaussian-distribution
     title: Gaussian distribution
     description: Mean, variance, the normal density and why it is everywhere.

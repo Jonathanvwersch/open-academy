@@ -1,0 +1,163 @@
+concept: probability-basics
+version: 1
+objective: |
+  **Goal:** compute expectations and conditional probabilities from house-sale data.
+where_this_fits: |
+  Training and evaluation splits separated house sales used to fit a model from sales used to check it. That check gave us a way to measure performance on unseen examples, but it did not describe how likely different sale outcomes are or how an observed feature changes those chances. Probability basics gives us language for uncertainty in the same house-sale data: events, distributions, expected values and conditional probabilities. It prepares us to make yes-or-no decisions with a perceptron next.
+knowledge_points:
+  - id: pb-events
+    title: Events and probabilities
+    explain: |
+      **What an event is.** An outcome is one possible result of an observation. An event is a set of outcomes. A probability is a number from 0 to 1 describing how likely an event is. Probabilities for all possible outcomes add to 1.
+
+      **How to estimate it.** For a house sale, we record whether it sells above asking or not. Let $A$ be the event that it sells above asking. In eight past sales, three were above asking, so a frequency estimate divides the matching count by the total:
+
+      $$P(A) \approx \frac{3}{8}$$
+
+      $$P(A) \approx 0.375$$
+
+      The **complement** of $A$ is the event that $A$ does not happen. Five sales were not above asking:
+
+      $$\frac{5}{8} = 0.625$$
+
+      The two estimates are between 0 and 1 and sum to 1 because above asking and not above asking cover every sale.
+
+      **Why this is useful.** The probability of an above-asking sale summarises past outcomes without claiming what one particular house will do.
+    worked: |
+      This example shows how sale frequencies estimate an event's probability.
+
+      Of eight past sales, three were above asking and five were not.
+
+      $$\frac{3}{8} = 0.375$$
+
+      $$\frac{5}{8} = 0.625$$
+
+      $$0.375 + 0.625 = 1$$
+
+      These frequencies estimate the chances of the two outcomes; they do not guarantee the next sale.
+    problems: [pb-events-basics, pb-frequency-fixed, pb-complement-why, pb-frequency-template]
+  - id: pb-distributions
+    title: Random variables and distributions
+    explain: |
+      **What a discrete random variable is.** It is a rule that assigns a number to each possible outcome, with a list of values that can be counted. Its **distribution** lists those possible values and the probability of each one.
+
+      **How to build one.** For a house sale, use the number of offers as the value. In ten past sales, two houses received zero offers, three received one, four received two and one received three. Divide each count by all ten sales:
+
+      $$\frac{2}{10} = 0.2$$
+
+      $$\frac{3}{10} = 0.3$$
+
+      $$\frac{4}{10} = 0.4$$
+
+      $$\frac{1}{10} = 0.1$$
+
+      The distribution pairs offer counts $0$, $1$, $2$ and $3$ with these probabilities. The probabilities sum to 1 because every sale has one of those counts. This record keeps frequency differences: two offers happened more often than zero offers.
+
+      **Why this is useful.** A distribution preserves how often each offer count occurred, so you can describe typical activity without treating every possible count as equally common.
+    worked: |
+      This example shows the distribution of offers in ten house sales.
+
+      The counts for zero, one, two and three offers were two, three, four and one:
+
+      $$\frac{2}{10} = 0.2$$
+
+      $$\frac{3}{10} = 0.3$$
+
+      $$\frac{4}{10} = 0.4$$
+
+      $$\frac{1}{10} = 0.1$$
+
+      $$0.2 + 0.3 + 0.4 + 0.1 = 1$$
+
+      The probability of two offers is $0.4$, the largest share in this sample.
+    problems:
+      [pb-distribution-basics, pb-distribution-why, pb-distribution-fixed, pb-distribution-template]
+  - id: pb-expectation
+    title: Expected number of offers
+    explain: |
+      **What an expectation is.** The expectation, or expected value, is the probability-weighted average of a discrete random variable. Multiply each possible value by its probability, then add the products. It describes an average over many comparable observations, not a promise about one house.
+
+      **How to compute it.** Use the offer distribution from ten sales. The value zero contributes nothing; the other counts contribute:
+
+      $$0 \times 0.2 = 0$$
+
+      $$1 \times 0.3 = 0.3$$
+
+      $$2 \times 0.4 = 0.8$$
+
+      $$3 \times 0.1 = 0.3$$
+
+      $$0 + 0.3 + 0.8 + 0.3 = 1.4$$
+
+      The expected number is $1.4$ offers. Why not take the plain average of the possible values? That would give each count equal weight even though the observed probabilities differ:
+
+      $$\frac{0 + 1 + 2 + 3}{4} = 1.5$$
+
+      **Why this is useful.** Expected offers summarise many house sales in one probability-weighted average, while keeping the more frequent counts more influential.
+    worked: |
+      This example shows the expected number of offers using the distribution from ten sales.
+
+      Multiply each count by its probability:
+
+      $$0 \times 0.2 = 0$$
+
+      $$1 \times 0.3 = 0.3$$
+
+      $$2 \times 0.4 = 0.8$$
+
+      $$3 \times 0.1 = 0.3$$
+
+      Add the contributions:
+
+      $$0 + 0.3 + 0.8 + 0.3 = 1.4$$
+
+      The average across many comparable houses is $1.4$ offers.
+    problems:
+      [pb-expectation-basics, pb-expectation-why, pb-expectation-fixed, pb-expectation-template]
+  - id: pb-conditional
+    title: Conditional probability
+    explain: |
+      **What conditional probability is.** It is the chance of an event after you know that another event happened. You restrict attention to outcomes where the known event occurred, so that event must have a non-zero probability.
+
+      **How to compute it.** Let $A$ mean a house sold above asking and $B$ mean it received at least two offers. In twenty sales, six had both properties and eight received at least two offers. The conditional probability is the share of the $B$ houses that also belong to $A$:
+
+      $$P(A \mid B) = \frac{P(A \text{ and } B)}{P(B)}$$
+
+      $$P(A \mid B) = \frac{6/20}{8/20}$$
+
+      $$P(A \mid B) = \frac{6}{8} = 0.75$$
+
+      Rearranging gives the **product rule**:
+
+      $$P(A \text{ and } B) = P(A \mid B) \times P(B)$$
+
+      Events are **independent** when knowing $B$ does not change the chance of $A$, so $P(A \mid B) = P(A)$. Here the conditional estimate is $0.75$ but the overall estimate is $9/20 = 0.45$; these sample rates differ.
+
+      **Why this is useful.** The conditional rate quantifies how often a house sells above asking among houses with at least two offers, rather than mixing them with all sales.
+    worked: |
+      This example shows conditional probability and an independence check from the same sales table.
+
+      | Offers | Above asking | Not above asking | Total |
+      |---|---:|---:|---:|
+      | At least two | 6 | 2 | 8 |
+      | Fewer than two | 3 | 9 | 12 |
+      | **Total** | **9** | **11** | **20** |
+
+      Among the eight houses with at least two offers, six sold above asking:
+
+      $$P(A \mid B) = \frac{6}{8} = 0.75$$
+
+      The overall above-asking probability is:
+
+      $$P(A) = \frac{9}{20} = 0.45$$
+
+      Since the estimates differ, the table does not show independence.
+    problems:
+      [pb-conditional-basics, pb-independence-why, pb-conditional-fixed, pb-conditional-template]
+final: probability-basics-explain
+summary: |
+  - Events describe sets of outcomes; sample frequencies estimate their probabilities and complements.
+  - A distribution records the chances of offer counts, and expectation weights each count by its probability.
+  - Conditional probability restricts attention to a known event; independence means that condition does not change the chance.
+
+  **Next:** Perceptron turns a house's measurements into a yes-or-no decision, such as whether it sells above asking.

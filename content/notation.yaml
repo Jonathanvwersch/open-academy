@@ -115,3 +115,9 @@ terms:
       match: ['\bCNN\b', "convolution"],
       introduced_by: [convolutions],
     }
+  - {
+      id: event-probability,
+      label: "P(A) event-probability notation",
+      match: ['\bP\((?:A|B)'],
+      introduced_by: [probability-basics],
+    }
