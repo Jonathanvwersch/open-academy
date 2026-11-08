@@ -94,7 +94,7 @@ concepts:
     prereqs: [{ id: backpropagation }]
     objectives:
       - { text: "Explain what loss.backward() does", dimension: conceptual }
-    status: stub
+    status: authored
   - id: pytorch-basics
     title: PyTorch fundamentals
     description: Tensors, modules, optimizers, the standard training loop.
