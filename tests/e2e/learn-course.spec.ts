@@ -22,12 +22,14 @@ const courseStructureBatch1ScreenshotDir = `${courseStructureScreenshotDir}/batc
 const courseStructureBatch2ScreenshotDir = `${courseStructureScreenshotDir}/batch2`;
 const courseStructureBatch3ScreenshotDir = `${courseStructureScreenshotDir}/batch3`;
 const mathLinesScreenshotDir = '/home/ubuntu/screenshots/math-lines';
+const courseComingSoonScreenshotDir = '/home/ubuntu/screenshots/course-coming-soon';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(courseStructureScreenshotDir, { recursive: true });
 mkdirSync(courseStructureBatch1ScreenshotDir, { recursive: true });
 mkdirSync(courseStructureBatch2ScreenshotDir, { recursive: true });
 mkdirSync(courseStructureBatch3ScreenshotDir, { recursive: true });
 mkdirSync(mathLinesScreenshotDir, { recursive: true });
+mkdirSync(courseComingSoonScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async ({ page }) => {
@@ -209,14 +211,16 @@ test('VLA titles on Course and π0 descriptions on Map render as plain text', as
   await page.goto('/course');
   const actionHeadsRow = page.getByRole('listitem').filter({ hasText: concepts[0].title });
   await expect(actionHeadsRow).toBeVisible();
+  await expect(actionHeadsRow).toContainText('Lesson coming soon');
   await expect(actionHeadsRow.locator('.katex')).toHaveCount(0);
   await expect(actionHeadsRow.locator('[data-slot="badge"]')).toHaveCount(0);
   await expect(actionHeadsRow).not.toContainText('Mastery:');
   const inProgressUnassessedRow = page
     .getByRole('listitem')
     .filter({ hasText: 'Linear regression' });
-  await expect(inProgressUnassessedRow).toContainText('In progress');
+  await expect(inProgressUnassessedRow).toContainText('Lesson coming soon');
   await expect(inProgressUnassessedRow).not.toContainText('Not started');
+  await expect(inProgressUnassessedRow).not.toContainText('In progress');
   await expect(inProgressUnassessedRow).not.toContainText('Mastery:');
 
   for (const concept of concepts) {
@@ -419,6 +423,28 @@ test('a fresh post-diagnostic learner sees outline order and prerequisite needs'
   await page.goto('/course');
   const secondTopic = page.locator('li').filter({ hasText: '1.2' });
   await expect(secondTopic).toContainText('Needs Vectors');
+  const noLessonRow = page.getByRole('listitem').filter({
+    has: page.getByText('Matrix products', { exact: true }),
+  });
+  await expect(noLessonRow).toContainText('Needs Linear algebra for ML · Lesson coming soon');
+  await expect(noLessonRow.getByRole('link')).toHaveCount(0);
+  await expect(noLessonRow.locator('p.font-medium')).toHaveClass(/text-muted-foreground/);
+  await expect(noLessonRow.locator(':scope > div')).not.toHaveClass(/opacity-60/);
+  const lessonRow = page
+    .getByRole('listitem')
+    .filter({ has: page.getByText('Vectors', { exact: true }) });
+  await expect(lessonRow.getByRole('link')).toHaveCount(1);
+  await expect(lessonRow).not.toContainText('Lesson coming soon');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.screenshot({
+    path: `${courseComingSoonScreenshotDir}/desktop.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${courseComingSoonScreenshotDir}/mobile.png`,
+    fullPage: true,
+  });
   await page.screenshot({ path: `${screenshotDir}/course-fresh.png`, fullPage: true });
 });
 
