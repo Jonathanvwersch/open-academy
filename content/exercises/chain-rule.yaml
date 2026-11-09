@@ -294,7 +294,7 @@ exercises:
         text: "To undo the $-1$ in the bracket."
         correct: false
         feedback: "Subtracting a constant does not change a rate; the $2$ is the slope of the inner step."
-    solution: "The inner rate $du/dx=2$ converts a nudge in $x$ into the nudge in $u$ that the square responds to."
+    solution: "The inner rate $du/dx=2$ converts a nudge in $x$ into the nudge in $u$ that the cube responds to."
   - id: crp-diff-cube
     dimension: math
     type: expression
