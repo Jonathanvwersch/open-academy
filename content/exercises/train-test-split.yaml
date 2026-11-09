@@ -447,10 +447,10 @@ exercises:
         }
       - {
           id: c,
-          text: "Late frames from each object, after training on early frames",
+          text: "The last few seconds of every attempt, after training on the rest",
           correct: false,
           category: misapplied_technique,
-          feedback: "Frames of the same objects still share information between training and test.",
+          feedback: "Every object still appears in training, so this tests the end of familiar attempts, not new objects.",
         }
       - {
           id: d,
@@ -791,7 +791,7 @@ exercises:
     params:
       v: { min: 300, max: 800, step: 10 }
       t: { min: 310, max: 900, step: 10 }
-    constraints: ["t > v"]
+    constraints: ["t > v", "t <= v + 100"]
     tolerance: { abs: 0.000001 }
   - id: ttsp-duplicate-leak
     dimension: conceptual
@@ -860,9 +860,9 @@ exercises:
           text: "Test sizes shaped the average; compute it from test sales only",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "That still uses test information in preprocessing; compute the average from training sales only.",
+          feedback: "That still lets test sales set the fill value; compute the average from training sales only.",
         }
-    solution: "The test sales helped set a value used during preprocessing, even though their prices were not used. Split first, then compute the average size from training sales only."
+    solution: "The test sales helped set the fill value written into the training data, even though their prices were not used. Split first, then compute the average size from training sales only."
   - id: ttsp-same-house
     dimension: transfer
     type: mc
@@ -902,7 +902,7 @@ exercises:
     est_minutes: 2
     prompt: "A robot learns to pick up parcels from 60 recorded attempts, each containing 300 video frames, the individual camera pictures. Randomly assigning pictures puts neighbours from one attempt in both training and test. What is the risk when testing on new attempts, and how should you split?"
     options:
-      - { id: a, text: "Near-duplicate frames leak; hold out whole demonstrations", correct: true }
+      - { id: a, text: "Near-duplicate frames leak; hold out whole attempts", correct: true }
       - {
           id: b,
           text: "Frames are independent; hold out random frames as before",
@@ -922,7 +922,7 @@ exercises:
           text: "Training needs more examples; duplicate the test frames",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "Adding test frames to training would make the leakage worse; keep each demonstration in one set.",
+          feedback: "Adding test frames to training would make the leakage worse; keep each attempt in one set.",
         }
     solution: "Neighbouring pictures look almost identical, so the model can effectively see test scenes during training. Keep each complete recorded attempt in one set to keep these related pictures together."
   - id: ttsp-why-training-average

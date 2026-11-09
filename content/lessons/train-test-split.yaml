@@ -3,7 +3,7 @@ version: 4
 objective: |
   **Goal:** check how well a trained model will do on new examples by holding data out, give the training, validation and test sets their separate jobs, and keep held-out information from leaking into training.
 where_this_fits: |
-  Gradient descent makes a house model's average error small on the sales it trains on. But the model is for pricing houses that haven't sold yet, and a small error on the training sales doesn't tell you how it will do on those: a model can fit the sales it has seen and still price new ones badly. You also need to choose between models without fooling yourself about how good the winner is. This lesson builds an honest check in four steps:
+  Gradient descent, from the earlier lessons, fits a model that predicts a house's sale price from details such as its size, by making its average error small on the sales it trains on. But the model is for pricing houses that haven't sold yet, and a model can fit the sales it has seen and still price new ones badly. You also need to choose between models without fooling yourself about how good the winner is. This lesson builds an honest check in four steps:
 
   1. Score the model on examples kept out of training.
   2. Give training, validation and test sets one job each.
@@ -281,7 +281,7 @@ knowledge_points:
           <path d="M96 115 H184" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="6 4"/>
           <text x="20" y="202" fill="#ef4444">same sale in training and test:</text>
           <text x="20" y="224" fill="#ef4444">the model has seen its price</text>
-          <text x="20" y="252" fill="#3b82f6">fix: keep one copy, in one set</text>
+          <text x="20" y="252" fill="#171717">fix: keep one copy, in one set</text>
           <rect x="340" y="45" width="130" height="130" fill="#3b82f6" fill-opacity="0.10" stroke="#3b82f6" stroke-width="2"/>
           <rect x="490" y="45" width="130" height="130" fill="#f59e0b" fill-opacity="0.10" stroke="#f59e0b" stroke-width="2"/>
           <text x="405" y="68" text-anchor="middle" fill="#3b82f6">training sizes</text>
@@ -296,7 +296,7 @@ knowledge_points:
           </g>
           <text x="340" y="202" fill="#ef4444">mean of all known sizes = 115</text>
           <text x="340" y="224" fill="#ef4444">(includes the test size 160)</text>
-          <text x="340" y="252" fill="#3b82f6">fix: training sizes only, 100</text>
+          <text x="340" y="252" fill="#171717">fix: training sizes only, 100</text>
         </g>
       </svg>
       ```
