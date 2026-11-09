@@ -194,7 +194,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 3
-    prompt: "For score `z = {{z}}`, compute the sigmoid probability `1 / (1 + exp(-z))`."
+    prompt: "For score `z = {{= z}}`, compute the sigmoid probability `1 / (1 + exp(-z))`."
     params:
       z: { min: -2, max: 2, step: 1 }
     constraints: ["z != 0"]

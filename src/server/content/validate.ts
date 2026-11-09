@@ -894,8 +894,8 @@ function validateTemplate(
         throw new Error('answer is not finite');
       }
       answers.add(instance.exercise.answer);
-      if (stringValues(instance.exercise).some((text) => text.includes('{{='))) {
-        throw new Error('unresolved {{= placeholder remains after instantiation');
+      if (stringValues(instance.exercise).some((text) => text.includes('{{'))) {
+        throw new Error('unresolved {{ placeholder remains after instantiation; use {{= name }}');
       }
       for (const text of stringValues(instance.exercise)) {
         const adjacentSign = /[+-]\s*-\d/g;
