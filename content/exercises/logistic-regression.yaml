@@ -5,585 +5,482 @@ exercises:
     type: mc
     role: basics
     difficulty: 1
-    est_minutes: 2
-    prompt: "What is binary classification?"
+    est_minutes: 1
+    prompt: What makes a task binary classification?
     options:
-      - id: a
-        text: "Predicting an exact numerical amount for each input."
-        correct: false
-        category: misunderstood_definition
-        feedback: "That is regression; binary classification predicts one of two labels."
-      - id: b
-        text: "Predicting one of two categories from the input features."
-        correct: true
-        feedback: "Correct. Here the labels record whether a house sells above asking."
-      - id: c
-        text: "Sorting inputs by their feature values without predicting a label."
-        correct: false
-        category: misunderstood_definition
-        feedback: "Classification uses features to predict a category, not just sort the inputs."
-      - id: d
-        text: "Changing model weights until the training error is zero."
-        correct: false
-        category: misunderstood_definition
-        feedback: "That describes a possible training goal, not what classification means."
-    solution: "Binary classification predicts one of two labels from input features, such as above asking or not above asking."
-  - id: lr-score-numeric
+      - {
+          id: a,
+          text: "It predicts one of two possible categories.",
+          correct: true,
+          feedback: "The two labels name categories rather than amounts.",
+        }
+      - {
+          id: b,
+          text: "It predicts an amount using two features.",
+          correct: false,
+          feedback: "Binary refers to the number of categories, not features.",
+        }
+      - {
+          id: c,
+          text: "It predicts any number between two prices.",
+          correct: false,
+          feedback: "A range of amounts is still an amount-prediction task.",
+        }
+    solution: Binary classification predicts one of two categories; the number of input features can vary.
+  - id: lr-classification-reason
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example stop short of calling its score 2 a probability?
+    options:
+      - {
+          id: a,
+          text: "A probability cannot be greater than one.",
+          correct: true,
+          feedback: "The score still needs conversion to a chance.",
+        }
+      - {
+          id: b,
+          text: "Every positive score must be a price.",
+          correct: false,
+          feedback: "Scores are not prices unless the task defines them that way.",
+        }
+      - {
+          id: c,
+          text: "A probability must be either zero or one.",
+          correct: false,
+          feedback: "Those are the labels; probabilities can lie between them.",
+        }
+    solution: The weighted sum can exceed one, but a probability cannot; a score is a different quantity.
+  - id: lr-classification-faded
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "With $w=2$, $x=3$ and $b=-2$, the contribution $wx$ is 6. Complete the score $z=6+b$."
+    answer: 4
+    tolerance: { abs: 0.000001 }
+    solution: Add the bias once after the feature contribution, giving $6-2=4$.
+  - id: lr-classification-template
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "For weights `(0.4, -0.2)`, features `(2, 1)` and bias `0.1`, what is the linear score `z`?"
-    answer: 0.7
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - {
-          answer: 0.6,
-          category: math_error,
-          feedback: "That omits the bias. Add 0.1 to the two weighted feature contributions.",
-        }
-      - {
-          answer: 1.1,
-          category: math_error,
-          feedback: "Check the sign of the second weight: its contribution is `-0.2 × 1`.",
-        }
-    solution: "Compute $0.4(2)=0.8$ and $-0.2(1)=-0.2$, then add the bias: $0.8-0.2+0.1=0.7$."
-  - id: lr-score-why
+    prompt: "A classifier has one feature $x={{x}}$, weight $w={{w}}$ and bias $b={{b}}$. Find its score $z$."
+    params:
+      x: { min: 0, max: 4 }
+      w: { min: 1, max: 3 }
+      b: { min: -3, max: 0 }
+    answer_expr: w*x+b
+    tolerance: { abs: 0.000001 }
+    solution: Multiply the feature by its weight and add the bias once; the score is ${{=w*x+b}}$, not yet a probability.
+  - id: lr-classification-confusion
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "Why can the linear score not be read directly as the probability that a house sells above asking?"
-    options:
-      - id: a
-        text: "It is computed from features, so it is already a calibrated probability."
-        correct: false
-        category: misunderstood_definition
-        feedback: "A weighted sum is not automatically calibrated or restricted to the probability range."
-      - id: b
-        text: "The score is always an integer, but probabilities must be decimals."
-        correct: false
-        category: misunderstood_definition
-        feedback: "A linear score can be fractional; the problem is that it is not restricted to the probability range."
-      - id: c
-        text: "The score already tells us which training example was used."
-        correct: false
-        category: misunderstood_definition
-        feedback: "The score is a model output, not an identifier for a training example."
-      - id: d
-        text: "The score can be negative or greater than 1, outside the probability range."
-        correct: true
-        feedback: "Correct. A probability must lie between 0 and 1, while a linear score is unrestricted."
-    solution: "A weighted score can be any real value, so it must be mapped to the 0-to-1 range before it can represent a probability."
-  - id: lr-score-read
-    dimension: implementation
-    type: code_read
-    role: practice
     difficulty: 2
-    est_minutes: 2
-    prompt: "What linear scores does this NumPy code print?"
-    code: |
-      import numpy as np
-
-      weights = np.array([0.4, -0.2])
-      features = np.array([[2.0, 1.0], [1.0, 3.0]])
-      bias = 0.1
-      scores = features @ weights + bias
-      print(np.round(scores, 2).tolist())
-    accept: ["[0.7, -0.1]"]
-    solution: "The two rows give $0.4(2)-0.2(1)+0.1=0.7$ and $0.4(1)-0.2(3)+0.1=-0.1$."
-  - id: lr-score-complete
-    dimension: implementation
-    type: code_complete
+    est_minutes: 1
+    prompt: A classifier produces score 0. Is it necessarily assigning zero chance to label 1?
+    options:
+      - {
+          id: a,
+          text: "No; a score has not yet been converted to a probability.",
+          correct: true,
+          feedback: "Being in the probability range does not make a score a chance.",
+        }
+      - {
+          id: b,
+          text: "Yes; every zero in a model denotes an impossible outcome.",
+          correct: false,
+          feedback: "Zero can be a score or a label as well as a probability.",
+        }
+      - {
+          id: c,
+          text: "No; a zero score means the target label is missing.",
+          correct: false,
+          feedback: "The score does not tell you whether a target was recorded.",
+        }
+    solution: A score and a probability have different meanings, even when their numerical ranges overlap.
+  - id: lr-classification-transfer
+    dimension: transfer
+    type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 2
-    prompt: "Complete the NumPy expression that calculates the linear score from the features, weights and bias."
-    code: |
-      import numpy as np
-
-      features = np.array([2.0, 1.0])
-      weights = np.array([0.4, -0.2])
-      bias = 0.1
-      score = ____
-      print(round(float(score), 1))
-    accept: ["features @ weights + bias", "np.dot(features, weights) + bias"]
-    solution: "The score is the weighted feature sum plus the bias: $0.4(2)-0.2(1)+0.1=0.7$."
+    prompt: "A robot predicts whether a doorway is blocked. With sensor feature $x=2$ and weight $w=3$, its score is $z=-1$. Find the bias in $z=wx+b$."
+    answer: -7
+    tolerance: { abs: 0.000001 }
+    solution: The feature contribution is 6, so the bias must be $-1-6=-7$ to give the stated score.
   - id: lr-sigmoid-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
-    est_minutes: 2
-    prompt: "What does the sigmoid function do to a linear score?"
+    est_minutes: 1
+    prompt: What does the sigmoid do in logistic regression?
     options:
-      - id: a
-        text: "Maps any real score to a value between 0 and 1."
-        correct: true
-        feedback: "Correct. Its output can be interpreted as a probability for the positive label."
-      - id: b
-        text: "Maps every score to either exactly 0 or exactly 1."
-        correct: false
-        category: misunderstood_definition
-        feedback: "For finite scores, sigmoid returns a probability strictly between 0 and 1."
-      - id: c
-        text: "Adds the score to the house's asking price."
-        correct: false
-        category: misunderstood_definition
-        feedback: "Sigmoid transforms the score; it does not add it to a price."
-      - id: d
-        text: "Forces every score to be positive without an upper limit."
-        correct: false
-        category: misunderstood_definition
-        feedback: "Sigmoid has an upper bound of 1, so its output is a probability-scale value."
-    solution: "The sigmoid maps a real-valued score to a probability strictly between 0 and 1."
-  - id: lr-sigmoid-why
+      - {
+          id: a,
+          text: "It converts a score into an estimated probability.",
+          correct: true,
+          feedback: "The output is strictly between zero and one for finite scores.",
+        }
+      - {
+          id: b,
+          text: "It converts an observed label into a feature.",
+          correct: false,
+          feedback: "The observed label is not the input to the sigmoid.",
+        }
+      - {
+          id: c,
+          text: "It converts every score directly into a class.",
+          correct: false,
+          feedback: "A separate threshold turns the probability into a class.",
+        }
+    solution: The sigmoid maps a freely ranging score to a probability; thresholding is a separate decision step.
+  - id: lr-sigmoid-reason
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
-    est_minutes: 2
-    prompt: "Why does a score of `z = 0` give probability `0.5` and sit at the decision boundary?"
+    est_minutes: 1
+    prompt: Why does step 3 of the worked example predict label 1 after finding probability three quarters?
     options:
-      - id: a
-        text: "The sigmoid treats zero as a missing feature and skips the prediction."
-        correct: false
-        category: misunderstood_definition
-        feedback: "Zero is a valid score; the sigmoid evaluates it normally."
-      - id: b
-        text: "The sigmoid is undefined at zero, so it substitutes one half."
-        correct: false
-        category: misunderstood_definition
-        feedback: "The sigmoid is defined at zero: $1/(1+e^0)=1/2$."
-      - id: c
-        text: "The sigmoid formula gives `1 / (1 + 1)`, exactly one half."
-        correct: true
-        feedback: "Correct. Scores on either side of zero map below or above the 0.5 threshold."
-      - id: d
-        text: "A score of zero means the target label must be one half."
-        correct: false
-        category: misunderstood_definition
-        feedback: "The label remains 0 or 1; 0.5 is the model's predicted probability."
-    solution: "At zero, $e^{-z}=1$, so the sigmoid is $1/(1+1)=0.5$, the threshold between the two predicted classes."
-  - id: lr-sigmoid-fixed
+      - {
+          id: a,
+          text: "The probability is at least the chosen one-half threshold.",
+          correct: true,
+          feedback: "The prediction follows the chosen cut-off.",
+        }
+      - {
+          id: b,
+          text: "The probability proves that the observed label must be one.",
+          correct: false,
+          feedback: "A prediction does not prove the outcome.",
+        }
+      - {
+          id: c,
+          text: "The probability must first be rounded up to exactly one.",
+          correct: false,
+          feedback: "Keep the probability; compare it with the threshold instead.",
+        }
+    solution: The chosen decision rule predicts label 1 at or above one half, while retaining uncertainty in the probability.
+  - id: lr-sigmoid-faded
     dimension: math
     type: numeric
     role: practice
     difficulty: 1
-    est_minutes: 2
-    prompt: "For score `z = 0.5`, what probability does the sigmoid assign to the positive label? Give 3 decimal places."
-    answer: 0.622
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - {
-          answer: 0.5,
-          category: math_error,
-          feedback: "That is the score, not its sigmoid output. Evaluate `1 / (1 + exp(-0.5))`.",
-        }
-      - {
-          answer: 0.378,
-          category: math_error,
-          feedback: "That is approximately the probability of the negative label, `1 - p`.",
-        }
-    solution: "The sigmoid gives $1/(1+e^{-0.5})\\approx0.622459$, so the probability is about 0.622."
+    est_minutes: 1
+    prompt: "For score $z=0$, $e^{-z}=1$. Complete $p=1/(1+1)$."
+    answer: 0.5
+    tolerance: { abs: 0.000001 }
+    solution: The denominator is 2, so the estimated chance of label 1 is one half.
   - id: lr-sigmoid-template
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
-    est_minutes: 3
-    prompt: "For score `z = {{z}}`, compute the sigmoid probability `1 / (1 + exp(-z))`."
-    params:
-      z: { min: -2, max: 2, step: 1 }
-    constraints: ["z != 0"]
-    answer_expr: "1 / (1 + exp(-z))"
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - {
-          answer_expr: "z",
-          category: misunderstood_definition,
-          feedback: "A score is not yet a probability; apply the sigmoid to it.",
-        }
-      - {
-          answer_expr: "1 / (1 + exp(z))",
-          category: math_error,
-          feedback: "The sigmoid exponent is the negative score, `-z`.",
-        }
-    solution: "Substitute the score into $1/(1+e^{-z})$; this maps any real score into a probability between 0 and 1."
-  - id: lr-sigmoid-read
-    dimension: implementation
-    type: code_read
-    role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "What probabilities does this NumPy code print for scores `0`, `0.5` and `-0.5`?"
-    code: |
-      import numpy as np
-
-      scores = np.array([0.0, 0.5, -0.5])
-      probabilities = 1 / (1 + np.exp(-scores))
-      print(np.round(probabilities, 6).tolist())
-    accept: ["[0.5, 0.622459, 0.377541]"]
-    solution: "Applying the sigmoid gives 0.5 at zero, about 0.622 for 0.5, and about 0.378 for -0.5."
-  - id: lr-sigmoid-complete
-    dimension: implementation
-    type: code_complete
+    prompt: 'A score is $z=\ln({{k}})$, so $e^{-z}=1/{{k}}$. Find its sigmoid probability.'
+    params:
+      k: { min: 1, max: 4 }
+    answer_expr: k/(k+1)
+    tolerance: { abs: 0.0001 }
+    solution: Substitute the exponential into $1/(1+e^{-z})$; the probability is ${{=k/(k+1)}}$.
+  - id: lr-sigmoid-confusion
+    dimension: conceptual
+    type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A model gives label 1 probability $3/4$ and predicts label 1. Which interpretation is justified?"
+    options:
+      - {
+          id: a,
+          text: "Label 1 is the decision but label 0 remains possible.",
+          correct: true,
+          feedback: "A thresholded decision does not remove uncertainty.",
+        }
+      - {
+          id: b,
+          text: "Label 1 is certain because its chance exceeds one half.",
+          correct: false,
+          feedback: "Exceeding the threshold is not the same as certainty.",
+        }
+      - {
+          id: c,
+          text: "Label 0 is certain because one quarter remains unused.",
+          correct: false,
+          feedback: "One quarter is the estimated chance of label 0, not certainty.",
+        }
+    solution: A probability of three quarters leaves one quarter for the other label, even though the decision is label 1.
+  - id: lr-sigmoid-transfer
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
     est_minutes: 2
-    prompt: "Complete the NumPy expression so a positive score produces a probability above 0.5."
-    code: |
-      import numpy as np
-
-      z = 0.5
-      probability = 1 / (1 + np.exp(____))
-      print(round(float(probability), 3))
-    accept: ["-z", "-1 * z"]
-    solution: "The sigmoid is $1/(1+e^{-z})$, so the exponent is the negative score."
+    prompt: 'A robot assigns score $z=-\ln3$ to “door blocked”, label 1. Using threshold $1/2$, which label does it predict? Enter 0 or 1.'
+    answer: 0
+    tolerance: { abs: 0.000001 }
+    solution: The sigmoid gives $1/(1+3)=1/4$, below one half, so the predicted label is 0.
   - id: lr-bce-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
-    est_minutes: 2
-    prompt: "What does binary cross-entropy measure?"
+    est_minutes: 1
+    prompt: What does binary cross-entropy penalise most strongly?
     options:
-      - id: a
-        text: "The distance between house features and their average values."
-        correct: false
-        category: misunderstood_definition
-        feedback: "Cross-entropy compares a predicted class probability with its binary label."
-      - id: b
-        text: "The number of houses that belong to the positive class."
-        correct: false
-        category: misunderstood_definition
-        feedback: "It is a loss score for predictions, not a count of examples."
-      - id: c
-        text: "The difference between the score and the probability threshold."
-        correct: false
-        category: misunderstood_definition
-        feedback: "The threshold converts a probability to a class; cross-entropy scores the probability against the label."
-      - id: d
-        text: "A loss for a predicted probability and a binary label."
-        correct: true
-        feedback: "Correct. It is small for a confident correct probability and large for a confident wrong one."
-    solution: "Binary cross-entropy scores how well a probability assigned to the positive class matches the observed binary label."
-  - id: lr-bce-why
+      - {
+          id: a,
+          text: "Giving very little probability to the observed label.",
+          correct: true,
+          feedback: "The negative log grows as that probability shrinks.",
+        }
+      - {
+          id: b,
+          text: "Giving very high probability to the observed label.",
+          correct: false,
+          feedback: "High probability for the true label gives a small loss.",
+        }
+      - {
+          id: c,
+          text: "Giving any probability that is not a whole number.",
+          correct: false,
+          feedback: "Fractional probabilities express uncertainty and are expected.",
+        }
+    solution: Cross-entropy is the negative logarithm of the probability of the true label, so little support for that label incurs a large penalty.
+  - id: lr-bce-reason
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "Why is cross-entropy useful when a house-sale model is confidently wrong?"
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example use negative log of three quarters rather than negative log of one quarter?
     options:
-      - id: a
-        text: "Its loss grows sharply as the model assigns near-zero probability to the true label."
-        correct: true
-        feedback: "Correct. For a positive label, the loss `-ln(p)` grows without bound as `p` approaches zero."
-      - id: b
-        text: "It changes a wrong target label into the predicted probability."
-        correct: false
-        category: misunderstood_definition
-        feedback: "The target remains the observed 0 or 1; the loss scores the model's probability against it."
-      - id: c
-        text: "It caps every incorrect prediction at a loss of one."
-        correct: false
-        category: misunderstood_definition
-        feedback: "Squared error is bounded by one for probabilities; cross-entropy can grow larger."
-      - id: d
-        text: "It ignores predictions that are close to zero or one."
-        correct: false
-        category: misunderstood_definition
-        feedback: "The loss is especially sensitive to confident predictions that give little probability to the true label."
-    solution: "When the true label is 1, assigning probability $p$ incurs $-\\ln(p)$, which becomes large as $p$ approaches zero."
-  - id: lr-bce-positive
+      - {
+          id: a,
+          text: "The observed label is 1, whose assigned probability is three quarters.",
+          correct: true,
+          feedback: "Choose the term for the observed label.",
+        }
+      - {
+          id: b,
+          text: "The loss always chooses whichever of the two probabilities is larger.",
+          correct: false,
+          feedback: "For a confident wrong prediction the true-label probability is smaller.",
+        }
+      - {
+          id: c,
+          text: "The loss always ignores the observed label and uses the predicted class.",
+          correct: false,
+          feedback: "The observed label selects which probability is scored.",
+        }
+    solution: Label 1 selects $p$ in the loss; label 0 would select $1-p$ instead.
+  - id: lr-bce-faded
     dimension: math
     type: numeric
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "For target `y = 1` and probability `p = 0.8`, compute the binary cross-entropy using natural logs."
-    answer: 0.223144
-    tolerance: { abs: 0.00001 }
-    common_wrong:
-      - {
-          answer: 0.8,
-          category: misunderstood_definition,
-          feedback: "The probability is not the loss; use `-ln(p)` when the label is 1.",
-        }
-      - {
-          answer: 0.2,
-          category: math_error,
-          feedback: "That is `1-p`, not its negative natural logarithm.",
-        }
-    solution: "For $y=1$, the formula reduces to $-\\ln(0.8)\\approx0.223144$."
-  - id: lr-bce-negative
+    prompt: 'For $y=1$ and $p=1/2$, the loss is $-\ln(1/2)$. Evaluate it to four decimal places.'
+    answer: 0.69314718056
+    tolerance: { abs: 0.0001 }
+    solution: The observed label selects $p$, giving $-\ln(1/2)=\ln2\approx0.6931$.
+  - id: lr-bce-template
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "For target `y = 0` and probability `p = 0.8` for label 1, compute the binary cross-entropy using natural logs."
-    answer: 1.609438
-    tolerance: { abs: 0.00001 }
-    common_wrong:
+    prompt: "For $y={{y}}$ and predicted probability $p={{k}}/4$ of label 1, calculate binary cross-entropy using natural logarithms. Give four decimal places."
+    params:
+      y: { min: 0, max: 1 }
+      k: { min: 1, max: 3 }
+    answer_expr: -(y*log(k/4)+(1-y)*log(1-k/4))
+    tolerance: { abs: 0.0001 }
+    solution: Choose $p$ for label 1 or $1-p$ for label 0 and take its negative natural logarithm; the loss is ${{=-(y*log(k/4)+(1-y)*log(1-k/4))}}$.
+  - id: lr-bce-confusion
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "With observed label 1, both $p=3/4$ and $p=1/2$ predict label 1 at threshold $1/2$. How do their losses compare?"
+    options:
       - {
-          answer: 0.223144,
-          category: math_error,
-          feedback: "That is the loss for label 1. For label 0, use `-ln(1-p)`.",
+          id: a,
+          text: "Three quarters has smaller loss because it supports the true label more.",
+          correct: true,
+          feedback: "The negative logarithm decreases as true-label probability rises.",
         }
       - {
-          answer: 0.8,
-          category: misunderstood_definition,
-          feedback: "Use the probability assigned to the true label, which is `1-p` here, then take its negative natural log.",
+          id: b,
+          text: "Both have zero loss because both predicted classes are correct.",
+          correct: false,
+          feedback: "The loss scores probabilities rather than just class correctness.",
         }
-    solution: "For $y=0$, the formula reduces to $-\\ln(1-0.8)=-\\ln(0.2)\\approx1.609438$."
-  - id: lr-bce-read
-    dimension: implementation
-    type: code_read
+      - {
+          id: c,
+          text: "One half has smaller loss because uncertainty is always rewarded.",
+          correct: false,
+          feedback: "Cross-entropy rewards probability assigned to the observed label.",
+        }
+    solution: The losses are $\ln(4/3)$ and $\ln2$ respectively; the larger true-label probability has smaller loss.
+  - id: lr-bce-transfer
+    dimension: transfer
+    type: numeric
     role: practice
     difficulty: 3
-    est_minutes: 2
-    prompt: "What loss does this NumPy code print for the positive label and a confident wrong probability?"
-    code: |
-      import numpy as np
-
-      label = 1.0
-      probability = 0.01
-      loss = -(
-          label * np.log(probability)
-          + (1 - label) * np.log(1 - probability)
-      )
-      print(round(float(loss), 5))
-    answer: 4.60517
-    tolerance: { abs: 0.00001 }
-    solution: "With $y=1$, the loss is $-\\ln(0.01)\\approx4.60517$."
-  - id: lr-bce-complete
-    dimension: implementation
-    type: code_complete
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "Complete the positive-label term in the NumPy binary cross-entropy calculation."
-    code: |
-      import numpy as np
-
-      label = 1.0
-      probability = 0.8
-      loss = -(
-          label * ____
-          + (1 - label) * np.log(1 - probability)
-      )
-      print(round(float(loss), 6))
-    accept: ["np.log(probability)", "np.log(float(probability))"]
-    solution: "The positive-label term is $\\ln(p)$, so the loss is $-\\ln(0.8)\\approx0.223144$."
+    est_minutes: 3
+    prompt: "A robot gives “door blocked” probability $3/4$, but the door is clear ($y=0$). Compute its binary cross-entropy to four decimal places."
+    answer: 1.38629436112
+    tolerance: { abs: 0.0001 }
+    solution: The true-label probability is $1-3/4=1/4$, so the loss is $-\ln(1/4)=\ln4\approx1.3863$.
   - id: lr-gradient-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
-    est_minutes: 2
-    prompt: "What does the score gradient `p - y` tell us?"
+    est_minutes: 1
+    prompt: What does probability minus observed label give for sigmoid plus binary cross-entropy?
     options:
-      - id: a
-        text: "The probability that the house is sold at all."
-        correct: false
-        category: misunderstood_definition
-        feedback: "The probability is `p`; `p - y` is the loss derivative with respect to the score."
-      - id: b
-        text: "The number of features used by the linear model."
-        correct: false
-        category: misunderstood_definition
-        feedback: "Feature count is unrelated to this score derivative."
-      - id: c
-        text: "How the loss changes when the linear score changes slightly."
-        correct: true
-        feedback: "Correct. This derivative guides the gradient-descent update to the score and parameters."
-      - id: d
-        text: "The class predicted after applying the 0.5 threshold."
-        correct: false
-        category: misunderstood_definition
-        feedback: "The predicted class is 0 or 1; `p-y` is a derivative that can take other values."
-    solution: "The derivative $p-y$ measures how the binary cross-entropy changes as the linear score changes."
-  - id: lr-convex-why
+      - {
+          id: a,
+          text: "The loss derivative with respect to the score.",
+          correct: true,
+          feedback: "This is the score slope used to build parameter gradients.",
+        }
+      - {
+          id: b,
+          text: "The final class after applying the threshold.",
+          correct: false,
+          feedback: "A class is zero or one; the derivative can be negative.",
+        }
+      - {
+          id: c,
+          text: "The loss derivative for every weight without scaling.",
+          correct: false,
+          feedback: "Each weight slope also needs its feature factor.",
+        }
+    solution: The chain rule simplifies the score derivative to $p-y$, and each weight slope multiplies this by its feature.
+  - id: lr-gradient-reason
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "Why is binary cross-entropy convex in the parameters of logistic regression?"
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does step 2 multiply the score slope by 2 for the weight but not for the bias?
     options:
-      - id: a
-        text: "Every gradient-descent step is guaranteed to reach the global minimum."
-        correct: false
-        category: misunderstood_definition
-        feedback: "Convexity rules out non-global local minima, but a fixed step size can still fail to converge."
-      - id: b
-        text: "Its score curvature is `p(1-p) > 0`, and the score is affine in the parameters."
-        correct: true
-        feedback: "Correct. A convex loss composed with an affine score remains convex in the model parameters."
-      - id: c
-        text: "The sigmoid makes the predicted class exactly correct for every house."
-        correct: false
-        category: misunderstood_definition
-        feedback: "Convexity describes the shape of the loss, not whether each prediction is correct."
-      - id: d
-        text: "The loss is convex because all probabilities are greater than one half."
-        correct: false
-        category: misunderstood_definition
-        feedback: "Probabilities can be below one half; the positive curvature is `p(1-p)` for any `0<p<1`."
-    solution: "The second derivative with respect to the score is $p(1-p)>0$. Because the score is affine in the weights and bias, the loss is convex in those parameters."
-  - id: lr-gradient-formula
+      - {
+          id: a,
+          text: "The feature is 2, while the bias changes the score one-for-one.",
+          correct: true,
+          feedback: "The score derivatives with respect to weight and bias are x and 1.",
+        }
+      - {
+          id: b,
+          text: "There are two labels, so every weight slope must be doubled.",
+          correct: false,
+          feedback: "The factor comes from the feature value, not the label count.",
+        }
+      - {
+          id: c,
+          text: "The bias never affects the score, so its derivative is ignored.",
+          correct: false,
+          feedback: "The bias affects the score directly and has slope p-y.",
+        }
+    solution: In $z=wx+b$, the feature scales a weight change while a bias change enters directly; the chain rule preserves that distinction.
+  - id: lr-gradient-faded
     dimension: math
-    type: expression
+    type: numeric
     role: practice
     difficulty: 1
-    est_minutes: 3
-    prompt: "Enter the derivative of binary cross-entropy with respect to the score, using `p` for probability and `y` for the label."
-    answer: "p - y"
-    variables: { p: [0.1, 0.9], y: [0, 1] }
-    common_wrong:
-      - {
-          answer: "y - p",
-          category: math_error,
-          feedback: "That reverses the derivative's sign; the derivative is probability minus label.",
-        }
-      - {
-          answer: "p - (1 - y)",
-          category: math_error,
-          feedback: "Use the observed label, not its complement, in the probability-minus-label derivative.",
-        }
-    solution: "The chain-rule derivation simplifies to $\\partial L/\\partial z=p-y$."
-  - id: lr-gradient-weight
+    est_minutes: 1
+    prompt: "With $p=1/2$, $y=1$ and $x=4$, the score slope is $-1/2$. Complete the weight slope $(p-y)x$."
+    answer: -2
+    tolerance: { abs: 0.000001 }
+    solution: Multiply the score slope by the feature, giving $(-1/2)(4)=-2$.
+  - id: lr-gradient-template
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "For feature `x = 2`, probability `p = 0.7` and label `y = 1`, what is the weight gradient `(p-y)x`?"
-    answer: -0.6
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - {
-          answer: 0.6,
-          category: math_error,
-          feedback: "The derivative is `p-y`, not `y-p`, so keep the negative sign.",
-        }
-      - {
-          answer: -0.3,
-          category: math_error,
-          feedback: "Multiply the score gradient by the feature value, 2.",
-        }
-    solution: "The score gradient is $0.7-1=-0.3$. Multiply by the feature: $(-0.3)(2)=-0.6$."
-  - id: lr-gradient-read
-    dimension: implementation
-    type: code_read
+    prompt: "For one example, $p={{k}}/4$, $y={{y}}$ and $x={{x}}$. Find the weight gradient $(p-y)x$."
+    params:
+      k: { min: 1, max: 3 }
+      y: { min: 0, max: 1 }
+      x: { min: -2, max: 4 }
+    answer_expr: (k/4-y)*x
+    tolerance: { abs: 0.000001 }
+    solution: Subtract the observed label from the probability, then multiply by the feature; the weight slope is ${{=(k/4-y)*x}}$.
+  - id: lr-gradient-confusion
+    dimension: conceptual
+    type: mc
     role: practice
     difficulty: 2
-    est_minutes: 3
-    prompt: "What weight and bias does this NumPy gradient step produce?"
-    code: |
-      import numpy as np
-
-      features = np.array([2.0])
-      weights = np.array([0.25])
-      bias = 0.0
-      target = 1.0
-      learning_rate = 0.1
-      score = features @ weights + bias
-      probability = 1 / (1 + np.exp(-score))
-      score_gradient = probability - target
-      weight_gradient = score_gradient * features
-      bias_gradient = score_gradient
-      weights = weights - learning_rate * weight_gradient
-      bias = bias - learning_rate * bias_gradient
-      print(round(float(weights[0]), 6), round(float(bias), 6))
-    accept: ["0.325508 0.037754"]
-    solution: "The gradients are about $-0.755081$ for the weight and $-0.377541$ for the bias. Subtracting 0.1 times each gives weight 0.325508 and bias 0.037754."
-  - id: lr-gradient-complete
-    dimension: implementation
-    type: code_complete
+    est_minutes: 1
+    prompt: "If $x=0$ and $p-y$ is nonzero, which gradients does this example produce?"
+    options:
+      - {
+          id: a,
+          text: "A zero weight slope and a nonzero bias slope.",
+          correct: true,
+          feedback: "The zero feature removes the weight contribution but not the bias contribution.",
+        }
+      - {
+          id: b,
+          text: "Nonzero equal slopes for the weight and bias.",
+          correct: false,
+          feedback: "Multiplying the score slope by zero makes the weight slope zero.",
+        }
+      - {
+          id: c,
+          text: "Zero slopes for both the weight and the bias.",
+          correct: false,
+          feedback: "The bias slope is p-y regardless of this feature being zero.",
+        }
+    solution: The weight slope is $(p-y)0=0$, while the bias slope remains $p-y$.
+  - id: lr-gradient-transfer
+    dimension: transfer
+    type: numeric
     role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "Complete the NumPy score gradient from the predicted probability and binary label."
-    code: |
-      import numpy as np
-
-      probability = 0.7
-      label = 1.0
-      score_gradient = ____
-      print(round(float(score_gradient), 1))
-    accept: ["probability - label", "probability + (-label)"]
-    solution: "The score derivative is $p-y$, so here it is $0.7-1=-0.3$."
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot starts with $w=0$, $b=0$, feature $x=-2$, observed label $y=1$, and learning rate $1/2$. After one simultaneous weight-and-bias update, what is its new score for this example?"
+    answer: 1.25
+    tolerance: { abs: 0.000001 }
+    solution: Initially $p=1/2$, so the weight slope is 1 and the bias slope is $-1/2$. The new parameters are $w=-1/2$, $b=1/4$, giving score $(-1/2)(-2)+1/4=5/4$.
   - id: lr-explain-logistic-regression
     dimension: conceptual
     type: explain
     role: core
-    difficulty: 2
+    difficulty: 3
     est_minutes: 5
-    prompt: "Explain how logistic regression turns house features into a probability of selling above asking, how binary cross-entropy scores the result, and how the gradient updates the model."
+    prompt: Explain how you would train a model to predict whether a house sells above asking, rather than its price. Connect the score, probability, decision, loss and parameter update; explain why a correct class can still have nonzero loss.
     rubric:
       - {
-          id: probability,
-          criterion: "Explains that a linear score is mapped by sigmoid to a probability and that a threshold gives a binary class",
+          id: prediction,
+          criterion: "Distinguishes a weighted score from a sigmoid probability and a thresholded binary decision",
           weight: 1,
           required: true,
         }
       - {
           id: loss,
-          criterion: "Gives the binary cross-entropy formula with natural logarithms and explains its penalty for confident wrong predictions",
+          criterion: "Explains negative log probability of the observed label and why a correct class need not have zero loss",
           weight: 1,
           required: true,
         }
       - {
-          id: gradient,
-          criterion: "Derives or states the score gradient p-y and connects it to weight and bias updates",
+          id: update,
+          criterion: "Connects p-y to feature-scaled weight slopes and the bias slope and subtracts scaled gradients",
           weight: 1,
           required: true,
         }
-    exemplar: "The model first computes a linear score z from the house features. The sigmoid maps z to p, the estimated probability that the house sells above asking; a 0.5 threshold predicts the label. For binary label y, cross-entropy is −[y ln p + (1−y) ln(1−p)], using natural logs. It gives a large loss when the model assigns a tiny probability to the true outcome. By the chain rule, the sigmoid derivative p(1−p) multiplied by the BCE derivative simplifies to dL/dz = p−y. The weight gradient is (p−y)x and the bias gradient is p−y, so gradient descent subtracts a learning-rate-scaled gradient from each parameter."
-  - id: lr-score-recover-bias
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "A binary classifier for a robot has one sensor feature $x=2$ and weight $w=3$.
-      Its linear score is $z=-1$. What bias $b$ gives that score in $z=wx+b$?"
-    answer: -7
-    tolerance: { abs: 0.000001 }
-    solution: |
-      Substitute the known score, feature and weight.
-
-      $$-1=3(2)+b.$$
-
-      $$-1=6+b.$$
-
-      Subtract 6 from both sides.
-
-      $$b=-7.$$
-  - id: lr-sigmoid-recover-score
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "A sigmoid classifier assigns probability $p=0.8$ to label 1. What score $z$
-      produced it? Use $p=1/(1+e^{-z})$ and natural logarithms."
-    answer: 1.38629436112
-    tolerance: { abs: 0.000001 }
-    solution: |
-      Rearrange the sigmoid to isolate the exponential.
-
-      $$e^{-z}=\frac{1}{0.8}-1.$$
-
-      $$e^{-z}=0.25.$$
-
-      Take natural logarithms.
-
-      $$-z=\ln(0.25).$$
-
-      $$z=\ln(4)\approx1.386294.$$
+    exemplar: Encode sold above asking as 1 and not as 0. Compute a weighted score plus bias, use the sigmoid to estimate the chance of label 1, and compare that chance with a chosen threshold for the decision. Binary cross-entropy is the negative natural log of the probability assigned to the observed label; even a correct decision can leave that probability below one and hence a positive loss. The score slope is p-y, each weight slope multiplies it by its feature, and the bias slope is p-y. Subtract learning-rate-scaled slopes from the parameters and repeat with fresh predictions.

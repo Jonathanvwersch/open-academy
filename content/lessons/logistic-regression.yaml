@@ -1,194 +1,237 @@
 concept: logistic-regression
-version: 1
+version: 2
 objective: |
-  **Goal:** compute sigmoid probabilities and binary cross-entropy for house-sale predictions.
+  **Goal:** turn a weighted score into a yes-or-no prediction, measure its probability error, and update the model to reduce that error.
 where_this_fits: |
-  Linear regression gave us a weighted score for a house's price, and gradient descent showed how to adjust model parameters. Probability basics introduced events and conditional probabilities, so we can describe the chance that a house sells above asking given its features. A price score can be any real number, not a probability or a yes-or-no answer. This lesson maps that score to a probability and trains it with a binary loss.
+  A model might need to predict whether a house sells above asking, not how much it costs. Training still means changing weights to reduce a loss, but a price prediction is the wrong kind of answer: it can be negative or much larger than one. We need a number that expresses how likely “yes” is, and a loss that checks that number against what actually happened. This lesson builds that model in four steps:
+
+  1. Separate a two-category target from a numerical amount.
+  2. Turn a weighted score into a chance, then a decision.
+  3. Penalise predictions that give little chance to the observed answer.
+  4. Use that penalty's slopes to update the weights.
 knowledge_points:
   - id: lr-classification
-    title: A yes-or-no target needs a classifier
+    title: Predict a category, not an amount
     explain: |
-      **What binary classification is.** Classification predicts a category from input features. Binary classification chooses between two labels, while regression predicts a numerical amount.
+      **The question.** You know how to predict an amount with a weighted sum. What changes when the answer must be “yes” or “no” rather than a price or a distance?
 
-      **How it works.** In the house example, let $y=1$ mean a house sells above asking and $y=0$ mean it does not. A linear model gives a score $z=w\cdot x+b$. Like a price prediction, $z$ can be any real number, so a score of $-2$ or $3$ is not a valid probability. The quantity we want is $P(y=1\mid x)$, the probability of the positive event given the house features. A classifier therefore needs to map its unrestricted score to a value from 0 to 1 before applying a decision threshold. The score ranks evidence; it is not yet a probability or a class.
+      **Picture it.** Imagine sorting cards into two boxes: “yes” has label 1 and “no” has label 0. The numbers name the boxes; they are not amounts you measure. A card's input measurements help you choose its box, but the observed label records where it actually belongs.
 
-      **Why this is useful.** A classifier can answer the house-sale question and report how likely the positive outcome is, rather than predicting a price.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 130" aria-label="Two category boxes: no labelled zero and yes labelled one">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+          <rect x="30" y="20" width="180" height="80" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+          <rect x="270" y="20" width="180" height="80" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+          <text x="75" y="65">no: y = 0</text><text x="310" y="65">yes: y = 1</text>
+        </g>
+      </svg>
+      ```
+
+      **The idea.** Predict which of two categories an input belongs to. **Binary classification** is prediction with exactly two possible labels, usually encoded as $y=0$ and $y=1$, where $y$ is the observed target. Start with a **score**, a number that can range freely, calculated from the input features. With one feature $x$, weight $w$ and bias $b$, write that score as $z=wx+b$; with several features it is $z=w\cdot x+b$. The score is not yet a class or a probability. A probability means a chance from 0 to 1; next you will turn the score into an estimated chance of label 1.
+
+      **Common confusion.** “Because the labels are numbers, this is just predicting an amount.” No: 0 and 1 name categories. A score of 3 is allowed, but it is neither a third category nor a valid probability.
     worked: |
-      This example shows why a price prediction and a class prediction are different quantities.
+      **Worked example.** A card has measurement $x=2$. Use weight $w=2$ and bias $b=-2$ to calculate its score, not its class.
 
-      The linear-regression model predicts a house price of 310 thousand pounds. That is a numerical amount.
+      1. **Find the feature contribution.**
+         $$wx=2(2)=4.$$
+      2. **Add the offset.**
+         $$z=4-2=2.$$
+      3. **Check its meaning.**
+         $$2>1.$$
+         This score is outside the probability range, so another step is needed before you can report a chance.
 
-      For classification, $y=1$ means the house sells above asking, and $y=0$ means it does not.
+      **Compare cases.** Keep the same weight and bias.
 
-      A linear score of 3 is greater than 1, so it cannot be a probability.
+      | Feature $x$ | Score $2x-2$ | Interpretation |
+      | --- | --- | --- |
+      | 0 | -2 | Outside the probability range |
+      | 1 | 0 | In range, but still a score, not a chance |
+      | 2 | 2 | Outside the probability range |
 
-      A score of $-2$ is below 0, so it cannot be a probability either.
-
-      The classifier must turn either score into a value between 0 and 1; a later threshold can turn that probability into a class.
+      **Where it shows up.** For house sales, label 1 can mean “sold above asking” and label 0 “did not”. You train on those observed categories rather than on prices.
     problems:
       [
         lr-classification-basics,
-        lr-score-why,
-        lr-score-complete,
-        lr-score-numeric,
-        lr-score-read,
-        lr-score-recover-bias,
+        lr-classification-reason,
+        lr-classification-faded,
+        lr-classification-template,
+        lr-classification-confusion,
+        lr-classification-transfer,
       ]
   - id: lr-sigmoid
-    title: The sigmoid turns a score into a probability
+    title: Turn a score into a chance and a decision
     explain: |
-      **What the sigmoid is.** The sigmoid function maps any real input to a number strictly between 0 and 1. The activation-functions lesson introduced its formula and derivative; here we use its output as the model's estimated probability of a positive label.
+      **The question.** A score can be any real number, but a chance must lie between 0 and 1. How can you convert the score without losing which inputs have stronger evidence for “yes”?
 
-      **How it works.** If $z$ is the linear score, then $p=\sigma(z)=1/(1+e^{-z})$. The exponential uses base $e$. At $z=0$, the sigmoid returns 0.5. Positive scores give probabilities above 0.5, and negative scores give probabilities below 0.5. With a 0.5 decision threshold, predict $y=1$ when $p\geq0.5$; because the sigmoid is increasing, this is the same as $z\geq0$. The probability is the model's estimate of $P(y=1\mid x)$, not a guarantee about an individual sale.
+      **Picture it.** Read the score along the horizontal axis and the estimated chance of label 1 up the vertical axis. The blue curve rises smoothly: negative scores give chances below one half, zero gives one half, and positive scores give chances above one half. Even very large scores stay below probability 1.
 
-      ```python
-      import numpy as np
-
-      scores = np.array([0.0, 0.5, -0.5])
-      probabilities = 1 / (1 + np.exp(-scores))
-      print(np.round(probabilities, 6).tolist())
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 245" aria-label="Sigmoid probability increases with score, crossing probability one half at score zero">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M60 30 V190 H420 M60 110 H420" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+          <path d="M60 187.122 L105 182.412 L150 170.928 L195 146.969 L240 110 L285 73.031 L330 49.072 L375 37.588 L420 32.878" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="3"/>
+          <circle cx="240" cy="110" r="4" fill="#3b82f6"/>
+          <text x="20" y="35">1</text><text x="14" y="115">0.5</text><text x="20" y="195">0</text>
+          <text x="50" y="213">-4</text><text x="235" y="213">0</text><text x="415" y="213">4</text>
+          <text x="65" y="19">chance of label 1</text><text x="340" y="237">score z</text>
+        </g>
+      </svg>
       ```
 
-      **Why this is useful.** The sigmoid turns a score with no fixed range into a probability that can be compared with the chosen decision threshold.
+      **The idea.** Squeeze the score into a chance while preserving its order. The **sigmoid** is the increasing function $\sigma(z)=1/(1+e^{-z})$, where $e$ is the exponential base and $\sigma$ names the function. **Logistic regression** uses a weighted score followed by this function; write its output as $p=\sigma(z)$, the model's estimated probability of label 1. The chance of label 0 is $1-p$. To make a decision, choose a **threshold**, a cut-off probability: here predict label 1 if $p\geq1/2$, otherwise label 0. Since the curve increases, this is equivalent to checking whether $z\geq0$.
+
+      **Common confusion.** “If the model predicts label 1, that outcome is certain.” No: the threshold turns an uncertain estimate into a decision. Probability $3/4$ still leaves a chance of label 0, and the model's estimate itself can be inaccurate.
     worked: |
-      This example shows how a house score of 0.5 becomes a sale probability.
+      **Worked example.** Take a card with score $z=\ln3$. Here $\ln$ is the natural logarithm, the inverse of the exponential.
 
-      Apply the sigmoid:
+      1. **Evaluate the exponential.**
+         $$e^{-\ln3}=1/3.$$
+      2. **Convert to a probability.**
+         $$p=\frac{1}{1+1/3}=\frac34.$$
+      3. **Apply the threshold.**
+         $$\frac34\geq\frac12.$$
+         Predict label 1, without claiming certainty.
 
-      $$e^{-0.5}\approx0.606531.$$
+      **Compare cases.**
 
-      $$1+0.606531=1.606531.$$
+      | Score | Chance of label 1 | Predicted label at threshold $1/2$ |
+      | --- | --- | --- |
+      | $-\ln3$ | $1/4$ | 0 |
+      | $0$ | $1/2$ | 1 |
+      | $\ln3$ | $3/4$ | 1 |
 
-      $$p=\frac{1}{1+e^{-0.5}}\approx\frac{1}{1.606531}=0.622459.$$
-
-      Compare the probability with the threshold:
-
-      $$0.622459>0.5.$$
-
-      The classifier predicts that the house sells above asking, with an estimated probability of about 62.2%.
+      **Where it shows up.** A house-sale model can report an estimated chance of selling above asking as well as a yes-or-no prediction. The probability retains information that the final label discards.
     problems:
       [
         lr-sigmoid-basics,
-        lr-sigmoid-why,
-        lr-sigmoid-fixed,
+        lr-sigmoid-reason,
+        lr-sigmoid-faded,
         lr-sigmoid-template,
-        lr-sigmoid-complete,
-        lr-sigmoid-read,
-        lr-sigmoid-recover-score,
+        lr-sigmoid-confusion,
+        lr-sigmoid-transfer,
       ]
   - id: lr-binary-cross-entropy
-    title: Binary cross-entropy scores probability errors
+    title: Penalise little probability for the true label
     explain: |
-      **What binary cross-entropy is.** It is a loss that scores a predicted probability against a binary label. Let $y$ be 0 or 1 and let $p$ be the predicted probability of label 1. We use natural logarithms throughout: $\ln$ and NumPy's `np.log` both mean logarithm to base $e$.
+      **The question.** Two predictions can choose the same class but have different confidence. How do you give training a loss that distinguishes a cautious correct prediction from a confident mistake?
 
-      **How it works.** The loss is:
+      **Picture it.** Suppose the observed label is 1. Each green bar shows the probability assigned to that true label: a longer bar is better. Probability $1/4$ gives the observed answer less support than $3/4$, so it should receive a larger loss. If the observed label were 0, you would compare $1-p$ instead.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 160" aria-label="For true label one, probability one quarter has a shorter bar than probability three quarters">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M140 30 H420 M140 90 H420" stroke="#d4d4d4"/>
+          <path d="M140 30 H210 M140 90 H350" stroke="#10b981" stroke-width="10"/>
+          <text x="20" y="35">p = 1/4</text><text x="20" y="95">p = 3/4</text>
+          <text x="130" y="130">0</text><text x="410" y="130">1</text>
+          <text x="160" y="153">probability of true label (y = 1)</text>
+        </g>
+      </svg>
+      ```
+
+      **The idea.** Penalise the model for assigning little probability to what actually happened. **Binary cross-entropy** is the negative natural logarithm of the probability assigned to the observed binary label. With observed label $y$, predicted probability $p$ of label 1, and loss $L$, its general formula is:
 
       $$L=-[y\ln p+(1-y)\ln(1-p)].$$
 
-      If $y=1$, this reduces to $-\ln p$; if $y=0$, it reduces to $-\ln(1-p)$. Assigning a small probability to the true label produces a large loss. For example, when $y=1$ and $p=0.01$, the loss is about 4.605, whereas squared error is only $(0.01-1)^2=0.9801$. Mean squared error treats probabilities as ordinary numeric predictions and stays bounded by 1; binary cross-entropy keeps increasing as a confident prediction approaches the wrong label.
+      For $y=1$, only $-\ln p$ remains; for $y=0$, only $-\ln(1-p)$ remains. The loss approaches zero as the probability of the true label approaches 1, and grows without bound as that probability approaches zero. Finite sigmoid scores give probabilities strictly between the endpoints, so these logarithms are defined in exact arithmetic.
 
-      ```python
-      import numpy as np
+      **Common confusion.** “Once the predicted class is correct, the loss is zero.” No: the loss uses the probability, not the thresholded class. It still rewards raising the probability of the true label, even after you cross the decision threshold.
+    worked: |
+      **Worked example.** The observed label is $y=1$ and the model predicts $p=3/4$. Keep logarithms exact so you can compare losses without rounding.
 
-      labels = np.array([1.0, 1.0])
-      probabilities = np.array([0.8, 0.01])
-      losses = -(
-          labels * np.log(probabilities)
-          + (1 - labels) * np.log(1 - probabilities)
-      )
-      print(np.round(losses, 6).tolist())
+      1. **Select the observed label's term.**
+         $$L=-[1\ln(3/4)+0\ln(1/4)].$$
+      2. **Simplify the loss.**
+         $$L=-\ln(3/4)=\ln(4/3).$$
+      3. **Compare a confident mistake.** For the same label, change the prediction to $p=1/4$.
+         $$L=-\ln(1/4)=\ln4.$$
+         The logarithm increases, so this loss is larger.
+
+      **Compare cases.** Keep $y=1$.
+
+      | Probability $p$ | Loss | Relative penalty |
+      | --- | --- | --- |
+      | $1/4$ | $\ln4$ | Largest |
+      | $1/2$ | $\ln2$ | Middle |
+      | $3/4$ | $\ln(4/3)$ | Smallest |
+
+      **Where it shows up.** For a house that did not sell above asking, training penalises a high predicted chance of selling above asking. Average this loss across the training examples to fit the model.
+    problems:
+      [
+        lr-bce-basics,
+        lr-bce-reason,
+        lr-bce-faded,
+        lr-bce-template,
+        lr-bce-confusion,
+        lr-bce-transfer,
+      ]
+  - id: lr-gradient
+    title: Update with probability minus label
+    explain: |
+      **The question.** You can measure a prediction's loss. Which slopes should gradient descent use to change the weights and bias?
+
+      **Picture it.** Start at score zero, so the model gives each label chance one half. If the observed label is 1, increasing the score raises its probability and lowers the loss; if the label is 0, decreasing the score lowers the loss. The green segments show those loss-reducing directions on the score line, not update sizes.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 160" aria-label="At score zero, move right to lower loss for label one and left for label zero">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M70 50 H410 M70 110 H410" stroke="#d4d4d4"/>
+          <path d="M240 50 H340 L330 44 M340 50 L330 56 M240 110 H140 L150 104 M140 110 L150 116" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="3"/>
+          <circle cx="240" cy="50" r="4" fill="#3b82f6"/><circle cx="240" cy="110" r="4" fill="#3b82f6"/>
+          <text x="20" y="25">y = 1: raise score</text><text x="20" y="85">y = 0: lower score</text>
+          <text x="230" y="145">z = 0</text><text x="360" y="145">score z</text>
+        </g>
+      </svg>
       ```
 
-      **Why this is useful.** Cross-entropy gives a strong penalty when a house-sale classifier is confident but wrong about whether a house sells above asking.
-    worked: |
-      This example shows the binary cross-entropy calculation with natural logarithms.
-
-      For a house that sells above asking, let $y=1$ and let its predicted probability be $p=0.8$:
-
-      $$L=-[1\ln(0.8)+0\ln(0.2)].$$
-
-      $$L=-\ln(0.8)\approx0.223144.$$
-
-      If the same positive label receives probability $p=0.01$:
-
-      $$L=-\ln(0.01)\approx4.605170.$$
-
-      The squared error for that confident wrong prediction is:
-
-      $$(0.01-1)^2=0.9801.$$
-
-      Cross-entropy penalises the confident mistake much more heavily than squared error.
-    problems:
-      [lr-bce-basics, lr-bce-positive, lr-bce-complete, lr-bce-negative, lr-bce-why, lr-bce-read]
-  - id: lr-gradient
-    title: The score gradient is probability minus label
-    explain: |
-      **What the score gradient is.** It is the derivative of the loss with respect to the linear score $z$. It tells gradient descent how a small change in that score changes the loss.
-
-      **How it works.** The sigmoid derivative taught in activation-functions is $\partial p/\partial z=p(1-p)$. Start with binary cross-entropy and differentiate with respect to $p$:
-
-      $$\frac{\partial L}{\partial p}=-\frac{y}{p}+\frac{1-y}{1-p}.$$
-
-      Apply the chain rule by multiplying by the sigmoid derivative:
+      **The idea.** Subtract the observed label from the predicted probability to find the loss slope with respect to the score. The **score derivative** for sigmoid plus binary cross-entropy is $\partial L/\partial z=p-y$. You can check it with the chain rule: differentiating the sigmoid gives $\partial p/\partial z=p(1-p)$. Multiplying by the loss derivative gives:
 
       $$\frac{\partial L}{\partial z}=\left(-\frac{y}{p}+\frac{1-y}{1-p}\right)p(1-p).$$
+      $$\frac{\partial L}{\partial z}=-y(1-p)+(1-y)p=p-y.$$
 
-      Cancel the denominators:
+      For one feature, $z=wx+b$, so the weight slope is $(p-y)x$ and the bias slope is $p-y$. With several features, multiply by each feature to find its weight slope; average the slopes when training on several examples.
 
-      $$\frac{\partial L}{\partial z}=-y(1-p)+(1-y)p.$$
-
-      Expand and collect terms:
-
-      $$\frac{\partial L}{\partial z}=-y+yp+p-yp=p-y.$$
-
-      Since $z=w\cdot x+b$, the parameter gradients are $(p-y)x$ for the weights and $p-y$ for the bias. The second derivative is $p(1-p)>0$, so the loss is convex in the score and in the model's linear parameters.
-
-      **Why this is useful.** The simple gradient lets gradient descent update every house-feature weight in the direction that reduces classification loss.
+      **Common confusion.** “Probability minus label is every weight's gradient.” Not quite: it is the score slope. Each weight needs its own feature factor because changing that weight changes the score by that feature's value.
     worked: |
-      This example shows one gradient-descent update for a house-sale classifier.
+      **Worked example.** Use one card with $x=2$, observed label $y=1$, initial $w=0$, $b=0$, and learning rate $\eta=1/2$.
 
-      Use one scaled feature $x=2$, weight $w=0.25$, bias $b=0$, target $y=1$ and learning rate $\eta=0.1$:
+      1. **Predict with the current parameters.**
+         $$z=0(2)+0=0.$$
+         $$p=\sigma(0)=1/2.$$
+      2. **Find the parameter slopes.**
+         $$p-y=1/2-1=-1/2.$$
+         $$\frac{\partial L}{\partial w}=(-1/2)(2)=-1.$$
+         $$\frac{\partial L}{\partial b}=-1/2.$$
+      3. **Subtract scaled slopes.** Use both slopes from the same prediction.
+         $$w_{\text{new}}=0-(1/2)(-1)=1/2.$$
+         $$b_{\text{new}}=0-(1/2)(-1/2)=1/4.$$
+      4. **Check the direction.**
+         $$z_{\text{new}}=(1/2)(2)+1/4=5/4.$$
+         The score rose, so the true label's probability rose and its loss fell.
 
-      $$z=2(0.25)+0=0.5.$$
+      **Compare cases.** Start from $p=1/2$, $x=2$, $w=b=0$, and the same rate.
 
-      $$p=\sigma(0.5)\approx0.622459.$$
+      | Observed label | Score slope | New weight | New bias |
+      | --- | --- | --- | --- |
+      | 1 | $-1/2$ | $1/2$ | $1/4$ |
+      | 0 | $1/2$ | $-1/2$ | $-1/4$ |
 
-      $$L=-\ln(0.622459)\approx0.474077.$$
-
-      The score and weight gradients are:
-
-      $$\frac{\partial L}{\partial z}=p-y=0.622459-1=-0.377541.$$
-
-      $$\frac{\partial L}{\partial w}=(p-y)x=(-0.377541)(2)=-0.755081.$$
-
-      Apply one gradient-descent update:
-
-      $$w'=0.25-0.1(-0.755081)=0.325508.$$
-
-      $$b'=0-0.1(-0.377541)=0.037754.$$
-
-      Recompute the score, probability and loss with the new parameters:
-
-      $$z'=2(0.325508)+0.037754=0.688770.$$
-
-      $$p'=\sigma(0.688770)\approx0.665693.$$
-
-      $$L'=-\ln(0.665693)\approx0.406926.$$
-
-      The update raises the probability of the observed positive outcome and lowers its loss.
+      **Where it shows up.** A house-sale classifier repeats prediction, loss, fresh gradients and parameter updates just like the price model. The difference is that these slopes come from probability error rather than squared price error.
     problems:
       [
         lr-gradient-basics,
-        lr-gradient-formula,
-        lr-gradient-complete,
-        lr-gradient-weight,
-        lr-gradient-read,
-        lr-convex-why,
+        lr-gradient-reason,
+        lr-gradient-faded,
+        lr-gradient-template,
+        lr-gradient-confusion,
+        lr-gradient-transfer,
       ]
 final: lr-explain-logistic-regression
 summary: |
-  - A linear score can be any real number; sigmoid maps it to a probability for a binary house-sale outcome.
-  - Binary cross-entropy uses natural logarithms and strongly penalises confident wrong probabilities.
-  - Its score gradient is $p-y$, which gradient descent uses to update the model's weights and bias.
+  - Binary classification predicts one of two categories, using a score that is not itself a probability.
+  - Logistic regression turns the score into a probability with the sigmoid, then applies a threshold to choose a label.
+  - Binary cross-entropy penalises assigning little probability to the observed label, even when the predicted class is correct.
+  - The score slope is probability minus label; multiply by each feature for its weight slope, then subtract scaled slopes to train.
 
-  **Next:** Week 3 starts with mini-batch SGD, which updates the model from a few examples at a time.
+  **Next:** The perceptron lesson compares this probability-based decision with a direct threshold on a weighted score.
