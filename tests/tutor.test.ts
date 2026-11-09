@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type { Database } from '../src/server/db/client.js';
 import { calculateCredit } from '../src/server/learning/mastery.js';
@@ -48,6 +49,17 @@ function tutorContext(overrides: Partial<TutorContext> = {}): TutorContext {
 }
 
 describe('buildTutorInput', () => {
+  it('guides the tutor to keep display math narrow and hashes the current prompt', () => {
+    const prompt = buildTutorInput(tutorContext(), 'hint')[0]?.content;
+    if (!prompt) throw new Error('Missing tutor system prompt');
+    expect(prompt).toContain(
+      'The chat panel is narrow (about 45 characters). Keep each display equation short; split a long one over several lines with `$$\\begin{aligned} … \\\\ … \\end{aligned}$$`, one step per line.',
+    );
+    expect(TUTOR_PROMPT_VERSIONS['tutor-system']).toBe(
+      createHash('sha256').update(prompt).digest('hex').slice(0, 12),
+    );
+  });
+
   it('sends context, history, and the latest learner message as separate turns', () => {
     const input = buildTutorInput(
       tutorContext({

@@ -215,8 +215,20 @@ export function FeedbackPanel({ result }: { result: Record<string, unknown> }) {
         : partial
           ? 'border-amber-300 bg-amber-50 text-amber-950'
           : 'border-red-300 bg-red-50 text-red-950';
+  const katexCover =
+    result.status === 'self_check_required'
+      ? 'var(--color-amber-50)'
+      : correct
+        ? 'var(--color-green-50)'
+        : partial
+          ? 'var(--color-amber-50)'
+          : 'var(--color-red-50)';
   return (
-    <Alert role="status" className={`${statusClass} text-base`}>
+    <Alert
+      role="status"
+      className={`${statusClass} text-base`}
+      style={{ '--katex-cover': katexCover } as React.CSSProperties}
+    >
       {title ? <AlertTitle>{title}</AlertTitle> : null}
       {showFeedback ? (
         <AlertDescription className="mt-1 text-base text-inherit">
