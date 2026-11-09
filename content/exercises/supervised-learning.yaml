@@ -262,7 +262,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "A house has size ${{=size}}$ m² and ${{=bedrooms}}$ bedrooms. The model is $\\hat y=w_1\\cdot\\text{size}+w_2\\cdot\\text{bedrooms}+b$, with $w_1={{=w1}}$, $w_2={{=w2}}$, and $b={{=b}}$. What price does it predict, in thousands?"
     hints: ["Substitute each value into the model, then add the three terms."]
@@ -314,7 +314,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "A shop received 50 orders today and needs to plan tomorrow's staffing. A model predicts tomorrow's number of orders from today's temperature and whether it is a weekday. What is the target?"
     options:
@@ -376,7 +376,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "A house sold for {{=target}} thousand and the model predicted {{=prediction}} thousand. What is its squared error?"
     hints: ["Subtract the target from the prediction, then square the difference."]
@@ -442,7 +442,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 1
     prompt: "A pricing mistake of 20 thousand pounds can be much more damaging than one of 10 thousand. Why choose squared rather than absolute errors if we want the larger mistake to count more than twice as much?"
     options:
@@ -471,7 +471,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 1
     prompt: "The house-price model has total squared error 600 on three sales. Why divide by three to report average loss 200 rather than report only the total?"
     options:
@@ -529,7 +529,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 1
     prompt: "We compare settings for a house-price model by their average squared error on past sales. In the training formula, what does $\\arg\\min_\\theta$ ask us to find?"
     options:
@@ -661,7 +661,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "A travel app predicts that a journey will take 25 minutes so you can decide when to leave. Is predicting the number of minutes regression or classification?"
     options:
@@ -692,7 +692,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "A delivery service chooses between two labels, today and tomorrow, to tell a customer when a parcel will arrive. What kind of prediction task is this?"
     options:
@@ -723,7 +723,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "A model has average loss 1 on the 100 houses used to choose its settings. A family wants to price a different house. Why does the small training loss alone not show that the model will help them?"
     options:
@@ -750,3 +750,70 @@ exercises:
           feedback: "A small loss does not imply that the model ignored its inputs. It summarizes performance on the examples used to choose settings; consider how performance might change on a new house.",
         }
     solution: "A model can fit its training houses well but still predict new houses badly, so we test it on houses it did not train on."
+  - id: slp-recover-prediction
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A house sold for 100 thousand pounds. Its squared prediction error is
+      400, and the prediction was higher than the sale price. What was the
+      prediction, in thousands of pounds?
+    answer: 120
+    tolerance:
+      abs: 0
+    solution: |-
+      The prediction is above the target, so take the positive error.
+
+      $$\text{error}=\sqrt{400}=20$$
+
+      $$\text{prediction}=100+20=120$$
+  - id: slp-recover-loss
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A model has mean squared error 10 across two houses. The squared error
+      on the first house is 4. What is the squared error on the second house?
+    answer: 16
+    tolerance:
+      abs: 0
+    solution: >-
+      Multiply the mean by the number of houses to recover the total, then
+      subtract the known loss.
+
+
+      $$\text{total squared error}=2\times10=20$$
+
+
+      $$\text{second squared error}=20-4=16$$
+  - id: slp-target-and-evaluation
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A model predicts whether a house will sell above its asking price. Which
+      pairing gives its task type and a suitable evaluation group?
+    options:
+      - id: a
+        text: Classification; sales not used to choose its settings
+        correct: true
+      - id: b
+        text: Regression; sales not used to choose its settings
+        correct: false
+        feedback: Above asking or not is a category target, not a numerical price.
+      - id: c
+        text: Classification; only sales used to choose its settings
+        correct: false
+        feedback: The task is classification, but evaluation should check sales not used
+          to choose settings.
+      - id: d
+        text: Regression; only sales used to choose its settings
+        correct: false
+        feedback: The target is a category, and training sales alone do not check
+          predictions on new sales.
+    solution: Above asking or not is a category, so the task is classification.
+      Separate sales check predictions beyond the examples used to choose
+      settings.

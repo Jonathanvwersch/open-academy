@@ -300,7 +300,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "A house-price model has training error 0. What can you conclude about its prices for new houses?"
     options:
@@ -331,7 +331,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: |
       A delivery company wants to give customers reliable arrival times. Two models predict delivery times in minutes. Their average squared errors are:
@@ -370,7 +370,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: |
       Three held-out houses have actual prices {{=y1}}, {{=y2}} and {{=y3}} thousand pounds. Their predicted prices are {{=p1}}, {{=p2}} and {{=p3}} thousand pounds.
@@ -429,7 +429,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "A robot learns to grasp objects from 60 recorded attempts involving 10 objects. You want to check how well it will grasp objects it has never seen. What should you hold out?"
     options:
@@ -526,7 +526,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "What goes wrong if an estate agent repeatedly chooses among three models using the 150 test sales, then reports the lowest test error?"
     options:
@@ -561,7 +561,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "You have {{=N}} house sales and use a {{=100-2*validationPct}}/{{=validationPct}}/{{=validationPct}} train/validation/test split. How many sales go in the validation set?"
     hints: ["Multiply the total number of sales by the validation percentage, then divide by 100."]
@@ -575,7 +575,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "An estate agent chooses a house-price model using validation error, tests it once, then tries three more versions on the test sales and reports the lowest test error. What went wrong?"
     options:
@@ -716,7 +716,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "An estate agent tries three house-price models that use different inputs. Why not just choose the input setting with the lowest training error?"
     options:
@@ -747,7 +747,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "Why does choosing the best of 20 settings for a house-price model sometimes make its validation error look too good? Here the winning validation error is 410, but its test error is 455."
     options:
@@ -797,7 +797,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "An exact copy of a house sale appears once in training and once in test. How can this affect the test error?"
     options:
@@ -867,7 +867,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "A house was sold in both 2019 and 2023. You want to test predictions for houses the model has never seen. How should you split these sales?"
     options:
@@ -898,7 +898,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "A robot learns to pick up parcels from 60 recorded attempts, each containing 300 video frames, the individual camera pictures. Randomly assigning pictures puts neighbours from one attempt in both training and test. What is the risk when testing on new attempts, and how should you split?"
     options:
@@ -964,7 +964,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "An estate agent tests a price model on 150 sales. Of these, {{=k}} have identical copies in training and have squared error about 0; the other sales have average squared error {{=e}}. What is the average squared error across all 150 test sales? Round to the nearest 0.001 where needed."
     hints:
@@ -993,3 +993,64 @@ exercises:
     answer: 8
     tolerance: { abs: 0.000001 }
     solution: "Subtract training error from test error: 20 − 12 = 8."
+  - id: ttsp-heldout-procedure
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: You have fitted the house-price model and now want a held-out estimate.
+      Which pair of actions keeps that estimate independent of fitting?
+    options:
+      - id: a
+        text: Predict separate sales; compare with their prices without changing weights
+        correct: true
+      - id: b
+        text: Predict separate sales; change weights using their prices before scoring
+        correct: false
+        feedback: Updating weights from held-out prices makes those sales part of
+          fitting.
+      - id: c
+        text: Predict training sales; compare with their prices without changing weights
+        correct: false
+        feedback: Those prices already influenced the fitted weights, even without
+          another update.
+      - id: d
+        text: Predict training sales; change weights using their prices before scoring
+        correct: false
+        feedback: Training sales are not held out, and further fitting does not make
+          them independent.
+    solution: Use sales excluded from fitting and leave the weights unchanged when
+      comparing predictions with their known prices. Both conditions keep the
+      check separate from training.
+  - id: ttsp-select-input-setting
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Two house-price models use different input choices. The size-only model
+      has validation error 80; the size-and-bedrooms model has validation error
+      60. Which choice and description are correct?
+    options:
+      - id: a
+        text: Choose size and bedrooms; the input choice is a hyperparameter
+        correct: true
+      - id: b
+        text: Choose size only; the input choice is a hyperparameter
+        correct: false
+        feedback: The input choice is a hyperparameter, but size and bedrooms has the
+          lower validation error.
+      - id: c
+        text: Choose size and bedrooms; the input choice is a fitted parameter
+        correct: false
+        feedback: Training fits weights, while the engineer chooses which inputs to
+          include.
+      - id: d
+        text: Choose size only; the input choice is a fitted parameter
+        correct: false
+        feedback: Size only has higher validation error, and the input choice is made
+          outside weight fitting.
+    solution: Choose size and bedrooms because its validation error is smaller. The
+      input choice is a hyperparameter because it is chosen outside the fitted
+      weights.
