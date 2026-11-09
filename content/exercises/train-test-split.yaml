@@ -109,9 +109,9 @@ exercises:
     options:
       - {
           id: a,
-          text: "When information from validation or test data influences training or model choices",
+          text: "When validation or test data shapes the weights, or test data shapes the model choice",
           correct: true,
-          feedback: "Leakage occurs when held-out validation or test information affects fitting or model selection.",
+          feedback: "Held-out data must not fit the weights, and test data must not help choose; choosing by validation error is allowed.",
         }
       - {
           id: b,
@@ -131,7 +131,7 @@ exercises:
           correct: false,
           feedback: "Different split sizes alone do not make held-out information affect training.",
         }
-    solution: "Data leakage occurs when information from outside the training split is used during fitting or model selection."
+    solution: "Data leakage is held-out information reaching the model beyond its set's job: validation or test data shaping the weights, or test data shaping the model choice. Choosing with validation errors is allowed."
   - id: tts-check-purpose
     dimension: conceptual
     type: mc
