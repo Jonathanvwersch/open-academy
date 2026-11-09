@@ -147,7 +147,15 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Choose a learning rate big enough to make quick progress but small enough that every step lowers the loss. In practice: try a rate, watch the loss for some passes, and restart smaller if it rises. Too small, and the loss falls smoothly but slowly. Too large, and each step **overshoots**: it jumps past the bottom. A large overshoot lands higher than it started, so the loss grows every step: training **diverges**. For $f(w)=w^2$, the distance $|w|$ from the bottom shrinks only if $|1-2\eta|<1$, which means $0<\eta<1$: from $-1<1-2\eta<1$, subtract $1$ and divide by $-2$. How large is too large depends on how fast the slope grows: for the steeper bowl $2w^2$, the slope is $4w$, one step multiplies $w$ by $1-4\eta$, and the limit drops to $\eta<0.5$.
+      **The idea.** Choose a learning rate big enough to make quick progress but small enough that every step lowers the loss. In practice: try a rate, watch the loss for some passes, and restart smaller if it rises. Too small, and the loss falls smoothly but slowly. Too large, and each step **overshoots**: it jumps past the bottom. A large overshoot lands higher than it started, so the loss grows every step: training **diverges**. For $f(w)=w^2$, the distance $|w|$ from the bottom shrinks only if the multiplier's size is below $1$:
+
+      $$-1<1-2\eta<1$$
+
+      $$-2<-2\eta<0\quad\text{(subtract 1)}$$
+
+      $$0<\eta<1\quad\text{(divide by }-2\text{, which flips the signs)}$$
+
+      How large is too large depends on how fast the slope grows: for the steeper bowl $2w^2$, the slope is $4w$, one step multiplies $w$ by $1-4\eta$, and the limit drops to $\eta<0.5$.
 
       **Common confusion.** “If $w$ jumps from one side of the bottom to the other, the learning rate is too big.” Only half right. At $\eta=0.75$, $w$ swaps sides every step, yet the loss still falls: $25$, then $6.25$, then $1.5625$. The warning sign is a loss that rises.
     worked: |
@@ -177,7 +185,7 @@ knowledge_points:
       | $1$ | $-1$ | $-5,\ 5$ | $25,\ 25$ | bounces forever |
       | $1.25$ | $-1.5$ | $-7.5,\ 11.25$ | $56.25,\ 126.5625$ | diverges |
 
-      **Where it shows up.** The house-price model from earlier lessons has a loss slope of $-800$ for its age weight, so $\eta=0.01$ moves that weight from $-1$ to $7$. All four parameters move at once, and the prediction jumps from $310$ to $531.6$, far past the price $330$. The error grows from $-20$ to $201.6$, so the loss rises from $400$ to $201.6^2\approx40{,}643$. With $\eta=0.0001$ the age weight moves only to $-0.92$, the prediction becomes about $312$, and the loss falls to about $316$.
+      **Where it shows up.** When a model trains, $\eta$ is the first setting to change if its loss falls too slowly or starts to rise. A steeper loss needs a smaller rate, just as $2w^2$ needs $\eta<0.5$ where $w^2$ allows $\eta<1$.
     problems:
       - gd-step-size-basics
       - gdp-step-size-self-explain
@@ -265,7 +273,7 @@ knowledge_points:
       | $(2,3)$ | $3$ | $0$ | $0$ | $0$ | not at all |
       | $(10,15)$ | $11$ | $-4$ | $-80$ | $-8$ | up, 5 times as far |
 
-      **Where it shows up.** The house model $x=(12,3,20)$, $w=(25,10,-1)$, $b=0$ predicts $310$ against a sale price of $330$, so $e=-20$ and its gradient is $(-480,-120,-800,-40)$. The age slope is the largest in size only because age, $20$, is the largest input.
+      **Where it shows up.** The partial-derivatives lesson's house-price model has three inputs, $x=(12,3,20)$ with age $20$ last, and with $w=(25,10,-1)$, $b=0$ it predicts $310$ against a sale price of $330$, so $e=-20$ and its gradient over $(w_1,w_2,w_3,b)$ is $(-480,-120,-800,-40)$. The age slope is the largest in size only because age, $20$, is the largest input.
     problems:
       - gd-price-gradients-basics
       - gdp-gradient-self-explain
@@ -283,7 +291,7 @@ knowledge_points:
       **Picture it.** Training repeats the same four stages. Each pass through them starts from the weight and bias the previous pass produced. The chart shows the loss of the one-example model from the previous part, measured in each of four passes: it falls to a quarter each time.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Left: the training loop as four boxes in a cycle, predict, measure error and loss, compute slopes, update weight and bias, with an arrow back to predict. Right: bars of the loss after each of four steps, 16, 4, 1 and 0.25">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Left: the training loop as four boxes in a cycle, predict, measure error and loss, compute slopes, update weight and bias, with an arrow back to predict. Right: bars of the loss after each of four steps, 16, 4, 1 and 0.25">
       <defs><marker id="gd4-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
       <rect x="115.0" y="40" width="150" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>

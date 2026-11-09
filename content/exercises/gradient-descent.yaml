@@ -34,9 +34,9 @@ exercises:
     prompt: What does the learning rate set?
     options:
       - id: a
-        text: The number of training houses used to calculate each update's average loss.
+        text: The number of training examples averaged together for each update's loss.
         correct: false
-        feedback: That is the batch size.
+        feedback: That is a count of examples, which the learning rate doesn't set; it only scales the step.
       - id: b
         text: The positive scale controlling how far each gradient-descent step moves.
         correct: true
@@ -63,7 +63,7 @@ exercises:
         correct: false
         feedback: That combines several input changes, not one parameter derivative.
       - id: b
-        text: The average loss value across all houses in one training batch.
+        text: The average loss value across all the training examples.
         correct: false
         feedback: That is a dataset loss such as mean squared error.
       - id: c
@@ -203,9 +203,9 @@ exercises:
     tolerance:
       abs: 0.001
     common_wrong:
-      - answer: 5.4
+      - answer: 5.36
         category: math_error
-        feedback: That point, $(1.2,1.4)$, comes from adding the gradient; subtract it instead.
+        feedback: That is the height at $(1.2,1.4)$, which comes from adding the gradient; subtract it instead.
       - answer: 1.4
         category: math_error
         feedback: That is the new point's coordinates added; evaluate $x^2+2y^2$ there.
@@ -710,7 +710,7 @@ exercises:
       - id: a
         text: "Stop: the loss has almost stopped falling, so more passes will barely help."
         correct: true
-        feedback: The last passes improve the loss by less than $0.1$; training has settled.
+        feedback: The last pass lowers the loss by $0.001$, far less than $0.1\%$ of $10.89$; training has settled.
       - id: b
         text: Raise the learning rate a lot, because the loss is stuck.
         correct: false
@@ -726,7 +726,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: The lowest reachable loss is often above $0$, because no setting fits real data perfectly.
-    solution: The loss fell fast and then levelled off at about $10.89$. Changes below $0.1$ per pass mean the loop has settled, so stop.
+    solution: The loss fell fast and then levelled off at about $10.89$. The last pass changed it by $0.001$, under $0.1\%$ of its value, so the loop has settled and should stop.
   - id: gd-check-step
     dimension: math
     type: numeric
