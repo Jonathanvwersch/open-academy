@@ -32,7 +32,7 @@ export function LessonRunner({
   lessonHref?: string;
   tutorEnabled: boolean;
   resumeRetry: boolean;
-  onContinue: (status: 'completed' | 'needs_retry') => void;
+  onContinue: (status: 'completed' | 'needs_retry') => Promise<void>;
 }) {
   const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
@@ -44,6 +44,7 @@ export function LessonRunner({
   const previousPointId = useRef<string | undefined>(undefined);
   const previousCurrentPointId = useRef(state?.currentPointId);
   const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<'submit' | 'next' | 'continue' | null>(null);
   const [error, setError] = useState('');
   const [viewingPointId, setViewingPointId] = useState<string | null>(null);
   const activePoint = state
@@ -157,6 +158,7 @@ export function LessonRunner({
   const submit = async (answer: unknown) => {
     if (!state?.pending) return;
     setBusy(true);
+    setBusyAction('submit');
     setError('');
     try {
       const response = await apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/run/answer`, {
@@ -173,6 +175,7 @@ export function LessonRunner({
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Your answer was not saved.');
     } finally {
+      setBusyAction(null);
       setBusy(false);
     }
   };
@@ -180,10 +183,21 @@ export function LessonRunner({
   const next = async () => {
     if (!state) return;
     if (state.status === 'needs_retry' || state.status === 'completed') {
-      onContinue(state.status === 'completed' ? 'completed' : 'needs_retry');
+      setBusy(true);
+      setBusyAction('continue');
+      setError('');
+      try {
+        await onContinue(state.status === 'completed' ? 'completed' : 'needs_retry');
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : 'Could not save lesson progress.');
+      } finally {
+        setBusyAction(null);
+        setBusy(false);
+      }
       return;
     }
     setBusy(true);
+    setBusyAction('next');
     setError('');
     try {
       const response = await apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/run`, {
@@ -197,6 +211,7 @@ export function LessonRunner({
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load the next problem.');
     } finally {
+      setBusyAction(null);
       setBusy(false);
     }
   };
@@ -431,8 +446,9 @@ export function LessonRunner({
                     <ExerciseForm
                       exercise={shownProblem.exercise}
                       onSubmit={submit}
-                      disabled={busy}
-                      submitLabel={busy ? 'Saving…' : 'Submit answer'}
+                      loading={busyAction === 'submit'}
+                      disabled={busy && busyAction !== 'submit'}
+                      submitLabel="Submit answer"
                       actions={
                         tutorEnabled && state.pendingProblem ? (
                           <TutorLauncher
@@ -460,16 +476,19 @@ export function LessonRunner({
         </Alert>
       ) : null}
       {!viewingPastStep && !state.pendingProblem ? (
-        <Button type="button" onClick={() => void next()} disabled={busy}>
-          {busy
-            ? 'Saving…'
-            : state.status === 'completed'
+        <Button
+          type="button"
+          onClick={() => void next()}
+          loading={busyAction === 'next' || busyAction === 'continue'}
+          disabled={busy && busyAction !== 'next' && busyAction !== 'continue'}
+        >
+          {state.status === 'completed'
+            ? 'Continue'
+            : state.status === 'needs_retry'
               ? 'Continue'
-              : state.status === 'needs_retry'
-                ? 'Continue'
-                : pointStatus?.status === 'passed'
-                  ? 'Next step'
-                  : 'Next problem'}
+              : pointStatus?.status === 'passed'
+                ? 'Next step'
+                : 'Next problem'}
         </Button>
       ) : null}
     </section>

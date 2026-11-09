@@ -154,6 +154,7 @@ test('project uploads fixture results, records evidence, and reveals reflection'
     mimeType: 'application/json',
     buffer: readFileSync(new URL('../fixtures/project-results.json', import.meta.url)),
   });
+  await page.getByRole('button', { name: 'Upload results', exact: true }).click();
   await expect(page.getByText('1/1 checks passed')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Reflection questions' })).toBeVisible();
   await expect(page.getByText('Complete a gradient update.')).toBeVisible();

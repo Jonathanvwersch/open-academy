@@ -677,10 +677,11 @@ export function TutorContextProvider({
                         }}
                       />
                       <PromptInputSubmit
-                        aria-label={mutation.isPending ? 'Sending…' : 'Send'}
-                        disabled={mutation.isPending || !draft.trim()}
+                        aria-label={mutation.isPending ? undefined : 'Send'}
+                        loading={mutation.isPending}
+                        disabled={!draft.trim()}
                       >
-                        {mutation.isPending ? 'Sending…' : 'Send'}
+                        Send
                       </PromptInputSubmit>
                     </PromptInput>
                     <ContextLine pageLabel={context.pageLabel} />

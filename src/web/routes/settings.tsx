@@ -22,29 +22,42 @@ function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [authError, setAuthError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [loggingOut, setLoggingOut] = useState<'logout' | 'logout-all' | null>(null);
   const [draft, setDraft] = useState(settings);
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
-    const response = await apiFetch('/api/settings', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(draft),
-    });
-    if (!response.ok) {
-      setError('Settings could not be saved.');
-      return;
+    setSaved(false);
+    setSaving(true);
+    try {
+      const response = await apiFetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(draft),
+      });
+      if (!response.ok) {
+        setError('Settings could not be saved.');
+        return;
+      }
+      setSaved(true);
+    } finally {
+      setSaving(false);
     }
-    setSaved(true);
   };
   async function logout(endpoint: 'logout' | 'logout-all') {
     setAuthError('');
-    const response = await apiFetch(`/api/auth/${endpoint}`, { method: 'POST' });
-    if (!response.ok) {
-      setAuthError('Could not log out.');
-      return;
+    setLoggingOut(endpoint);
+    try {
+      const response = await apiFetch(`/api/auth/${endpoint}`, { method: 'POST' });
+      if (!response.ok) {
+        setAuthError('Could not log out.');
+        return;
+      }
+      window.location.replace('/login');
+    } finally {
+      setLoggingOut(null);
     }
-    window.location.replace('/login');
   }
   return (
     <section className="space-y-6">
@@ -121,7 +134,9 @@ function SettingsPage() {
                 <AlertDescription className="text-inherit">Settings saved.</AlertDescription>
               </Alert>
             ) : null}
-            <Button type="submit">Save settings</Button>
+            <Button type="submit" loading={saving}>
+              Save settings
+            </Button>
           </CardContent>
         </Card>
       </form>
@@ -136,10 +151,22 @@ function SettingsPage() {
             </Alert>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={() => void logout('logout')}>
+            <Button
+              type="button"
+              variant="outline"
+              loading={loggingOut === 'logout'}
+              disabled={loggingOut === 'logout-all'}
+              onClick={() => void logout('logout')}
+            >
               Log out
             </Button>
-            <Button type="button" variant="outline" onClick={() => void logout('logout-all')}>
+            <Button
+              type="button"
+              variant="outline"
+              loading={loggingOut === 'logout-all'}
+              disabled={loggingOut === 'logout'}
+              onClick={() => void logout('logout-all')}
+            >
               Log out of all devices
             </Button>
           </div>

@@ -96,9 +96,9 @@ function LearnPage() {
                   type="button"
                   className="w-full"
                   onClick={() => startSession.mutate()}
-                  disabled={startSession.isPending}
+                  loading={startSession.isPending}
                 >
-                  {startSession.isPending ? 'Starting…' : 'Start learning'}
+                  Start learning
                 </Button>
               )}
               {startSession.isError ? (

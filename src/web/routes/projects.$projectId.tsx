@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
+import { Button } from '@/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
 import { Input } from '@/ui/input.js';
 import { Label } from '@/ui/label.js';
@@ -23,10 +24,13 @@ function ProjectPage() {
   const [error, setError] = useState('');
   const [evidence, setEvidence] = useState('');
   const [reflection, setReflection] = useState<Array<{ id: string; prompt: string }>>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const { data } = useSuspenseQuery(projectQueryOptions(projectId));
 
   async function upload(file?: File) {
-    if (!file) return;
+    if (!file || uploading) return;
+    setUploading(true);
     try {
       const response = await apiFetch(`/api/projects/${encodeURIComponent(projectId)}/results`, {
         method: 'POST',
@@ -44,6 +48,8 @@ function ProjectPage() {
       setError('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Invalid results file');
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -85,9 +91,18 @@ function ProjectPage() {
               id="results-file"
               type="file"
               accept=".json,application/json"
-              onChange={(event) => void upload(event.target.files?.[0])}
+              disabled={uploading}
+              onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
             />
           </div>
+          <Button
+            type="button"
+            loading={uploading}
+            disabled={!selectedFile}
+            onClick={() => void upload(selectedFile ?? undefined)}
+          >
+            Upload results
+          </Button>
           {error ? (
             <p role="alert" className="text-sm text-destructive">
               {error}

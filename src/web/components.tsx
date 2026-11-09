@@ -277,6 +277,7 @@ export function ExerciseForm({
   exercise,
   onSubmit,
   disabled = false,
+  loading = false,
   submitLabel = 'Submit answer',
   explainStep = 'answer',
   readOnlyAnswer,
@@ -285,6 +286,7 @@ export function ExerciseForm({
   exercise: ClientExercise;
   onSubmit: (answer: unknown) => void;
   disabled?: boolean;
+  loading?: boolean;
   submitLabel?: string;
   explainStep?: 'answer' | 'self-check';
   readOnlyAnswer?: string;
@@ -513,7 +515,7 @@ export function ExerciseForm({
         )
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button type="submit" disabled={disabled}>
+        <Button type="submit" disabled={disabled} loading={loading}>
           {submitLabel}
         </Button>
         {actions}
@@ -552,50 +554,47 @@ export function HintLadder({
   const showSolution = !canRequestHint;
   const requestHint = async () => {
     setLoading(true);
-    const response = await apiFetch('/api/hints', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        exerciseId,
-        activityId,
-        mode,
-        stuck: mode === 'review',
-        revealSolution: showSolution,
-      }),
-    });
-    const data = await response.json();
-    if (response.ok) {
-      if (data.revealedSolution) {
-        onHint(data);
-        setSolutionShown(true);
-      } else if (typeof data.text === 'string' || data.tutorUnavailable) {
-        onHint({ ...data, text: data.text ?? '' });
-        setLevel(data.level ?? hintCount);
-        setHasMore(Boolean(data.hasMore));
-      } else {
-        setLevel(hintCount);
-        setHasMore(false);
+    try {
+      const response = await apiFetch('/api/hints', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          exerciseId,
+          activityId,
+          mode,
+          stuck: mode === 'review',
+          revealSolution: showSolution,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        if (data.revealedSolution) {
+          onHint(data);
+          setSolutionShown(true);
+        } else if (typeof data.text === 'string' || data.tutorUnavailable) {
+          onHint({ ...data, text: data.text ?? '' });
+          setLevel(data.level ?? hintCount);
+          setHasMore(Boolean(data.hasMore));
+        } else {
+          setLevel(hintCount);
+          setHasMore(false);
+        }
       }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
   if (solutionShown) return null;
   return (
     <Button
       ref={buttonRef}
       type="button"
-      disabled={loading}
+      loading={loading}
       onClick={requestHint}
       variant="outline"
       size="sm"
     >
-      {loading
-        ? 'Loading…'
-        : showSolution
-          ? 'Show solution'
-          : mode === 'review'
-            ? 'Show a hint'
-            : 'Hint'}
+      {showSolution ? 'Show solution' : mode === 'review' ? 'Show a hint' : 'Hint'}
     </Button>
   );
 }

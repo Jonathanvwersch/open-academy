@@ -31,7 +31,7 @@ function DiagnosticPage() {
   const [domainTitle, setDomainTitle] = useState('');
   const [exercise, setExercise] = useState<DiagnosticItem | null>(null);
   const [feedback, setFeedback] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<'submit' | 'skip' | null>(null);
   const runPromise = useRef<Promise<{ id: string }> | null>(null);
 
   const loadNext = useCallback(
@@ -74,40 +74,45 @@ function DiagnosticPage() {
 
   const submit = async (answer: unknown) => {
     if (!exercise || !runId) return;
-    setBusy(true);
-    const response = await apiFetch(`/api/diagnostic/${runId}/answer`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ exerciseId: exercise.id, answer }),
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      setFeedback(result.feedback ?? 'Answer could not be graded.');
-      setBusy(false);
-      return;
+    setBusy('submit');
+    try {
+      const response = await apiFetch(`/api/diagnostic/${runId}/answer`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ exerciseId: exercise.id, answer }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setFeedback(result.feedback ?? 'Answer could not be graded.');
+        return;
+      }
+      setFeedback(result.feedback ?? (result.correct ? 'Correct.' : 'Answer recorded.'));
+      await loadNext(runId);
+    } finally {
+      setBusy(null);
     }
-    setFeedback(result.feedback ?? (result.correct ? 'Correct.' : 'Answer recorded.'));
-    await loadNext(runId);
-    setBusy(false);
   };
 
   const skip = async () => {
     if (!domain || !runId) return;
-    setBusy(true);
-    const response = await apiFetch(`/api/diagnostic/${runId}/skip`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ domain }),
-    });
-    const result = await response.json();
-    if (result.complete) {
-      window.sessionStorage.setItem('diagnosticRunId', runId);
-      queryClient.removeQueries({ queryKey: ['today'] });
-      window.location.href = `/diagnostic/results?id=${encodeURIComponent(runId)}`;
-    } else {
-      await loadNext(runId);
+    setBusy('skip');
+    try {
+      const response = await apiFetch(`/api/diagnostic/${runId}/skip`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ domain }),
+      });
+      const result = await response.json();
+      if (result.complete) {
+        window.sessionStorage.setItem('diagnosticRunId', runId);
+        queryClient.removeQueries({ queryKey: ['today'] });
+        window.location.href = `/diagnostic/results?id=${encodeURIComponent(runId)}`;
+      } else {
+        await loadNext(runId);
+      }
+    } finally {
+      setBusy(null);
     }
-    setBusy(false);
   };
 
   if (pathname === '/diagnostic/results') {
@@ -131,7 +136,13 @@ function DiagnosticPage() {
             </p>
             <ModeBadge mode="assessment" />
             <Markdown>{exercise.prompt}</Markdown>
-            <ExerciseForm key={`${runId}:${exercise.id}`} exercise={exercise} onSubmit={submit} />
+            <ExerciseForm
+              key={`${runId}:${exercise.id}`}
+              exercise={exercise}
+              onSubmit={submit}
+              loading={busy === 'submit'}
+              disabled={busy === 'skip'}
+            />
             {feedback ? (
               <div role="status" className="text-sm text-muted-foreground">
                 <Markdown>{feedback}</Markdown>
@@ -139,7 +150,8 @@ function DiagnosticPage() {
             ) : null}
             <Button
               type="button"
-              disabled={busy}
+              loading={busy === 'skip'}
+              disabled={busy === 'submit'}
               onClick={skip}
               variant="link"
               className="px-0 text-muted-foreground"
