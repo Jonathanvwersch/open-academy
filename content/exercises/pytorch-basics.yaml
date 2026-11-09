@@ -8,10 +8,30 @@ exercises:
     est_minutes: 1
     prompt: "What does a tensor's shape describe?"
     options:
-      - { id: a, text: "The size of each dimension of its array.", correct: true, feedback: "Shape records the arrangement, such as rows and columns." }
-      - { id: b, text: "The numerical value of each of its entries.", correct: false, feedback: "Values can change without changing the array's shape." }
-      - { id: c, text: "The precision used to represent its numbers.", correct: false, feedback: "That is the data type, not the shape." }
-      - { id: d, text: "The derivative of each of its entries.", correct: false, feedback: "Gradients are calculated separately; shape describes sizes." }
+      - {
+          id: a,
+          text: "The size of each dimension of its array.",
+          correct: true,
+          feedback: "Shape records the arrangement, such as rows and columns.",
+        }
+      - {
+          id: b,
+          text: "The numerical value of each of its entries.",
+          correct: false,
+          feedback: "Values can change without changing the array's shape.",
+        }
+      - {
+          id: c,
+          text: "The precision used to represent its numbers.",
+          correct: false,
+          feedback: "That is the data type, not the shape.",
+        }
+      - {
+          id: d,
+          text: "The derivative of each of its entries.",
+          correct: false,
+          feedback: "Gradients are calculated separately; shape describes sizes.",
+        }
     solution: "Shape lists dimension sizes, so `(2, 1)` means two rows and one column."
   - id: ptb-tensors-why
     dimension: implementation
@@ -21,10 +41,30 @@ exercises:
     est_minutes: 2
     prompt: "Why does the worked example use `[[1.0], [2.0]]` rather than `[1.0, 2.0]`?"
     options:
-      - { id: a, text: "It gives each reading its own row with one column.", correct: true, feedback: "The nested lists preserve the two-example table." }
-      - { id: b, text: "It gives each reading its own separate data type.", correct: false, feedback: "All entries share the tensor's data type; nesting specifies shape." }
-      - { id: c, text: "It gives each reading a gradient without further setup.", correct: false, feedback: "Nesting does not enable gradient tracking." }
-      - { id: d, text: "It gives each reading two copies in the result.", correct: false, feedback: "There is still one value per row; no values are duplicated." }
+      - {
+          id: a,
+          text: "It gives each reading its own row with one column.",
+          correct: true,
+          feedback: "The nested lists preserve the two-example table.",
+        }
+      - {
+          id: b,
+          text: "It gives each reading its own separate data type.",
+          correct: false,
+          feedback: "All entries share the tensor's data type; nesting specifies shape.",
+        }
+      - {
+          id: c,
+          text: "It gives each reading a gradient without further setup.",
+          correct: false,
+          feedback: "Nesting does not enable gradient tracking.",
+        }
+      - {
+          id: d,
+          text: "It gives each reading two copies in the result.",
+          correct: false,
+          feedback: "There is still one value per row; no values are duplicated.",
+        }
     solution: "The inner lists are rows, each containing one reading. That makes a `(2, 1)` table for the matrix multiplication."
   - id: ptb-tensor-complete
     dimension: implementation
@@ -63,10 +103,30 @@ exercises:
     est_minutes: 2
     prompt: "Which tensor represents two examples with one feature each?"
     options:
-      - { id: a, text: "`torch.tensor([[3.0, 4.0]])` makes the required table.", correct: false, feedback: "This has one row and two columns: one example with two features." }
-      - { id: b, text: "`torch.tensor([3.0, 4.0])` makes the required table.", correct: false, feedback: "This is a vector of shape `(2,)`, not a two-row table." }
-      - { id: c, text: "`torch.tensor([[3.0], [4.0]])` makes the required table.", correct: true, feedback: "Each inner list holds the one feature of one example." }
-      - { id: d, text: "`torch.tensor([[3.0]])` makes the required table.", correct: false, feedback: "This table contains only one example, not two." }
+      - {
+          id: a,
+          text: "`torch.tensor([[3.0, 4.0]])` makes the required table.",
+          correct: false,
+          feedback: "This has one row and two columns: one example with two features.",
+        }
+      - {
+          id: b,
+          text: "`torch.tensor([3.0, 4.0])` makes the required table.",
+          correct: false,
+          feedback: "This is a vector of shape `(2,)`, not a two-row table.",
+        }
+      - {
+          id: c,
+          text: "`torch.tensor([[3.0], [4.0]])` makes the required table.",
+          correct: true,
+          feedback: "Each inner list holds the one feature of one example.",
+        }
+      - {
+          id: d,
+          text: "`torch.tensor([[3.0]])` makes the required table.",
+          correct: false,
+          feedback: "This table contains only one example, not two.",
+        }
     solution: "Two inner lists create two rows, and one value in each creates one column."
   - id: ptb-tensor-read
     dimension: implementation
@@ -111,10 +171,30 @@ exercises:
     est_minutes: 1
     prompt: "What does a PyTorch linear module provide?"
     options:
-      - { id: a, text: "A prediction rule with registered weights and biases.", correct: true, feedback: "The rule computes outputs and exposes its parameters for training." }
-      - { id: b, text: "A training dataset with recorded inputs and targets.", correct: false, feedback: "A module uses data; it does not supply the training examples." }
-      - { id: c, text: "A loss rule with squared errors and their average.", correct: false, feedback: "A linear module predicts outputs rather than scoring errors." }
-      - { id: d, text: "An update rule with gradients and a learning rate.", correct: false, feedback: "An update changes parameters; Linear only computes predictions." }
+      - {
+          id: a,
+          text: "A prediction rule with registered weights and biases.",
+          correct: true,
+          feedback: "The rule computes outputs and exposes its parameters for training.",
+        }
+      - {
+          id: b,
+          text: "A training dataset with recorded inputs and targets.",
+          correct: false,
+          feedback: "A module uses data; it does not supply the training examples.",
+        }
+      - {
+          id: c,
+          text: "A loss rule with squared errors and their average.",
+          correct: false,
+          feedback: "A linear module predicts outputs rather than scoring errors.",
+        }
+      - {
+          id: d,
+          text: "An update rule with gradients and a learning rate.",
+          correct: false,
+          feedback: "An update changes parameters; Linear only computes predictions.",
+        }
     solution: "A linear module packages weighted sums and biases with the trainable tensors that implement them."
   - id: ptb-linear-why
     dimension: implementation
@@ -124,10 +204,30 @@ exercises:
     est_minutes: 2
     prompt: "Why does the worked example set the weight and bias inside `torch.no_grad()`?"
     options:
-      - { id: a, text: "To set known values without recording setup as a gradient calculation.", correct: true, feedback: "The assignments prepare a reproducible example, not a forward graph." }
-      - { id: b, text: "To stop the model from registering its weight and bias as parameters.", correct: false, feedback: "They remain registered parameters after the setup block." }
-      - { id: c, text: "To make the layer choose different parameters for every input row.", correct: false, feedback: "Every row uses the same parameters, regardless of this block." }
-      - { id: d, text: "To keep future predictions from depending on the weight and bias.", correct: false, feedback: "Future calls still use the parameters and can track their gradients." }
+      - {
+          id: a,
+          text: "To set known values without recording setup as a gradient calculation.",
+          correct: true,
+          feedback: "The assignments prepare a reproducible example, not a forward graph.",
+        }
+      - {
+          id: b,
+          text: "To stop the model from registering its weight and bias as parameters.",
+          correct: false,
+          feedback: "They remain registered parameters after the setup block.",
+        }
+      - {
+          id: c,
+          text: "To make the layer choose different parameters for every input row.",
+          correct: false,
+          feedback: "Every row uses the same parameters, regardless of this block.",
+        }
+      - {
+          id: d,
+          text: "To keep future predictions from depending on the weight and bias.",
+          correct: false,
+          feedback: "Future calls still use the parameters and can track their gradients.",
+        }
     solution: "The block excludes manual setup from operation recording. Subsequent model calls outside it can still build a gradient graph."
   - id: ptb-linear-complete
     dimension: implementation
@@ -168,10 +268,30 @@ exercises:
     est_minutes: 2
     prompt: "What do the arguments in `nn.Linear(2, 1)` mean?"
     options:
-      - { id: a, text: "Two input features and one output for each row.", correct: true, feedback: "They specify feature and output sizes, not parameter values." }
-      - { id: b, text: "Two input rows and one output for the whole table.", correct: false, feedback: "The row count comes from the input table, not the constructor." }
-      - { id: c, text: "Two as every weight and one as the shared bias.", correct: false, feedback: "Initial parameters are random; the arguments are sizes." }
-      - { id: d, text: "Two output features and one input for each row.", correct: false, feedback: "The input size comes first and the output size second." }
+      - {
+          id: a,
+          text: "Two input features and one output for each row.",
+          correct: true,
+          feedback: "They specify feature and output sizes, not parameter values.",
+        }
+      - {
+          id: b,
+          text: "Two input rows and one output for the whole table.",
+          correct: false,
+          feedback: "The row count comes from the input table, not the constructor.",
+        }
+      - {
+          id: c,
+          text: "Two as every weight and one as the shared bias.",
+          correct: false,
+          feedback: "Initial parameters are random; the arguments are sizes.",
+        }
+      - {
+          id: d,
+          text: "Two output features and one input for each row.",
+          correct: false,
+          feedback: "The input size comes first and the output size second.",
+        }
     solution: "Linear takes the input feature count followed by the output count. It applies that mapping independently to each row."
   - id: ptb-linear-read
     dimension: implementation
@@ -221,10 +341,30 @@ exercises:
     est_minutes: 1
     prompt: "Which operation changes parameter values using stored gradients?"
     options:
-      - { id: a, text: "`loss.backward()` calculates and applies the update.", correct: false, feedback: "Backward stores gradients but does not change parameter values." }
-      - { id: b, text: "`optimizer.step()` calculates and applies the update.", correct: true, feedback: "It reads the stored gradients and applies the configured update rule." }
-      - { id: c, text: "`loss.item()` calculates and applies the update.", correct: false, feedback: "Item only extracts a number from a single-entry tensor." }
-      - { id: d, text: "`model.parameters()` calculates and applies the update.", correct: false, feedback: "This provides parameter tensors; it does not change them." }
+      - {
+          id: a,
+          text: "`loss.backward()` calculates and applies the update.",
+          correct: false,
+          feedback: "Backward stores gradients but does not change parameter values.",
+        }
+      - {
+          id: b,
+          text: "`optimizer.step()` calculates and applies the update.",
+          correct: true,
+          feedback: "It reads the stored gradients and applies the configured update rule.",
+        }
+      - {
+          id: c,
+          text: "`loss.item()` calculates and applies the update.",
+          correct: false,
+          feedback: "Item only extracts a number from a single-entry tensor.",
+        }
+      - {
+          id: d,
+          text: "`model.parameters()` calculates and applies the update.",
+          correct: false,
+          feedback: "This provides parameter tensors; it does not change them.",
+        }
     solution: "An optimiser step changes parameters using gradients that backward has already stored."
   - id: ptb-loss-why
     dimension: implementation
@@ -234,10 +374,30 @@ exercises:
     est_minutes: 2
     prompt: "Why does the dial example call `loss.backward()` before `optimizer.step()`?"
     options:
-      - { id: a, text: "The update needs the slope that backward stores for the dial.", correct: true, feedback: "SGD reads that stored slope when it updates the value." }
-      - { id: b, text: "The update needs the target to become a trainable parameter.", correct: false, feedback: "The target stays fixed; only the dial tensor is updated." }
-      - { id: c, text: "The update needs the loss to become an ordinary Python number.", correct: false, feedback: "Backward operates on the tensor loss; item is only for inspection." }
-      - { id: d, text: "The update needs the dial to move before its slope is calculated.", correct: false, feedback: "That reverses the dependency: calculate the current slope first." }
+      - {
+          id: a,
+          text: "The update needs the slope that backward stores for the dial.",
+          correct: true,
+          feedback: "SGD reads that stored slope when it updates the value.",
+        }
+      - {
+          id: b,
+          text: "The update needs the target to become a trainable parameter.",
+          correct: false,
+          feedback: "The target stays fixed; only the dial tensor is updated.",
+        }
+      - {
+          id: c,
+          text: "The update needs the loss to become an ordinary Python number.",
+          correct: false,
+          feedback: "Backward operates on the tensor loss; item is only for inspection.",
+        }
+      - {
+          id: d,
+          text: "The update needs the dial to move before its slope is calculated.",
+          correct: false,
+          feedback: "That reverses the dependency: calculate the current slope first.",
+        }
     solution: "Backward supplies the current gradient. Step then uses it to subtract a scaled slope from the parameter."
   - id: ptb-loss-complete
     dimension: implementation
@@ -284,10 +444,30 @@ exercises:
     est_minutes: 2
     prompt: "The dial starts at 2 and backward stores gradient -4. Before any step, what is the dial value?"
     options:
-      - { id: a, text: "It is still 2, because backward only stored a slope.", correct: true, feedback: "No update has run, so the parameter value is unchanged." }
-      - { id: b, text: "It is now -4, because backward replaced it with its slope.", correct: false, feedback: "The slope is stored separately in grad, not in the parameter value." }
-      - { id: c, text: "It is now 3, because backward used learning rate 0.25.", correct: false, feedback: "Only the optimiser applies the learning rate and changes the value." }
-      - { id: d, text: "It is now 4, because backward copied over the target.", correct: false, feedback: "Backward calculates derivatives; it does not copy targets into parameters." }
+      - {
+          id: a,
+          text: "It is still 2, because backward only stored a slope.",
+          correct: true,
+          feedback: "No update has run, so the parameter value is unchanged.",
+        }
+      - {
+          id: b,
+          text: "It is now -4, because backward replaced it with its slope.",
+          correct: false,
+          feedback: "The slope is stored separately in grad, not in the parameter value.",
+        }
+      - {
+          id: c,
+          text: "It is now 3, because backward used learning rate 0.25.",
+          correct: false,
+          feedback: "Only the optimiser applies the learning rate and changes the value.",
+        }
+      - {
+          id: d,
+          text: "It is now 4, because backward copied over the target.",
+          correct: false,
+          feedback: "Backward calculates derivatives; it does not copy targets into parameters.",
+        }
     solution: "The value remains 2 while its grad contains -4. Separate storage lets the optimiser choose how to use the slope."
   - id: ptb-loss-read
     dimension: implementation
@@ -337,10 +517,30 @@ exercises:
     est_minutes: 1
     prompt: "Which sequence is a complete fresh PyTorch training update?"
     options:
-      - { id: a, text: "Clear gradients, predict, measure loss, run backward, then step.", correct: true, feedback: "The step can use freshly calculated gradients from the current predictions." }
-      - { id: b, text: "Clear gradients, predict, measure loss, take a step, then backward.", correct: false, feedback: "The step runs before the current gradients have been calculated." }
-      - { id: c, text: "Predict, measure loss, run backward, clear gradients, then step.", correct: false, feedback: "This clears the new gradients before the step can use them." }
-      - { id: d, text: "Predict, measure loss, take a step, clear gradients, then backward.", correct: false, feedback: "The update lacks current gradients, and backward happens too late." }
+      - {
+          id: a,
+          text: "Clear gradients, predict, measure loss, run backward, then step.",
+          correct: true,
+          feedback: "The step can use freshly calculated gradients from the current predictions.",
+        }
+      - {
+          id: b,
+          text: "Clear gradients, predict, measure loss, take a step, then backward.",
+          correct: false,
+          feedback: "The step runs before the current gradients have been calculated.",
+        }
+      - {
+          id: c,
+          text: "Predict, measure loss, run backward, clear gradients, then step.",
+          correct: false,
+          feedback: "This clears the new gradients before the step can use them.",
+        }
+      - {
+          id: d,
+          text: "Predict, measure loss, take a step, clear gradients, then backward.",
+          correct: false,
+          feedback: "The update lacks current gradients, and backward happens too late.",
+        }
     solution: "Clear old gradients first, then calculate predictions, loss and gradients before applying the update."
   - id: ptb-loop-why
     dimension: implementation
@@ -350,10 +550,30 @@ exercises:
     est_minutes: 2
     prompt: "Why does the worked loop call `model(x)` again inside the inspection block?"
     options:
-      - { id: a, text: "It needs a prediction using the parameters after the update.", correct: true, feedback: "The earlier prediction and loss used the old parameters." }
-      - { id: b, text: "It needs to apply a second update without another gradient.", correct: false, feedback: "A model call calculates outputs; only step applies updates." }
-      - { id: c, text: "It needs to replace the target with the latest prediction.", correct: false, feedback: "The correct target remains fixed throughout training." }
-      - { id: d, text: "It needs to clear stored gradients by repeating the prediction.", correct: false, feedback: "Model calls do not clear gradients; zero_grad does that." }
+      - {
+          id: a,
+          text: "It needs a prediction using the parameters after the update.",
+          correct: true,
+          feedback: "The earlier prediction and loss used the old parameters.",
+        }
+      - {
+          id: b,
+          text: "It needs to apply a second update without another gradient.",
+          correct: false,
+          feedback: "A model call calculates outputs; only step applies updates.",
+        }
+      - {
+          id: c,
+          text: "It needs to replace the target with the latest prediction.",
+          correct: false,
+          feedback: "The correct target remains fixed throughout training.",
+        }
+      - {
+          id: d,
+          text: "It needs to clear stored gradients by repeating the prediction.",
+          correct: false,
+          feedback: "Model calls do not clear gradients; zero_grad does that.",
+        }
     solution: "The second call measures the changed model. Existing prediction and loss tensors do not automatically recalculate when parameters change."
   - id: ptb-loop-complete
     dimension: implementation
@@ -405,10 +625,30 @@ exercises:
     est_minutes: 2
     prompt: "The first backward call stores weight gradient -4. The next fresh calculation gives gradient -2, but you omit zero_grad. What gradient is stored now?"
     options:
-      - { id: a, text: "It is -6, because the new gradient is added to the old one.", correct: true, feedback: "Backward accumulates: -4 plus -2 gives -6." }
-      - { id: b, text: "It is -2, because the new gradient replaces the old one.", correct: false, feedback: "Replacement requires clearing first; backward adds rather than replaces." }
-      - { id: c, text: "It is -4, because the first gradient remains unchanged.", correct: false, feedback: "The second backward call adds its new contribution." }
-      - { id: d, text: "It is 0, because the optimiser step cleared the old one.", correct: false, feedback: "Step changes parameters but does not clear their stored gradients." }
+      - {
+          id: a,
+          text: "It is -6, because the new gradient is added to the old one.",
+          correct: true,
+          feedback: "Backward accumulates: -4 plus -2 gives -6.",
+        }
+      - {
+          id: b,
+          text: "It is -2, because the new gradient replaces the old one.",
+          correct: false,
+          feedback: "Replacement requires clearing first; backward adds rather than replaces.",
+        }
+      - {
+          id: c,
+          text: "It is -4, because the first gradient remains unchanged.",
+          correct: false,
+          feedback: "The second backward call adds its new contribution.",
+        }
+      - {
+          id: d,
+          text: "It is 0, because the optimiser step cleared the old one.",
+          correct: false,
+          feedback: "Step changes parameters but does not clear their stored gradients.",
+        }
     solution: |
       Without clearing, backward adds the new slope to the stored value.
 
@@ -452,7 +692,11 @@ exercises:
     prompt: "A robot's linear rule has weight 0 and bias 0. Train once on input 2 and target 4 using squared error and SGD learning rate 0.125, updating both parameters. What is the freshly measured squared error after the step?"
     answer: 1
     tolerance: { abs: 0.000001 }
-    hints: ["The starting error is -4, so the weight slope is -16 and the bias slope is -8.", "Update both parameters before making another prediction."]
+    hints:
+      [
+        "The starting error is -4, so the weight slope is -16 and the bias slope is -8.",
+        "Update both parameters before making another prediction.",
+      ]
     solution: |
       Update both parameters, then calculate a fresh prediction and squared error.
 
@@ -473,7 +717,22 @@ exercises:
     est_minutes: 5
     prompt: "From memory, explain how you would train a one-output linear model in PyTorch: how you arrange the input and target tensors, how you connect the module to its loss and optimiser, and what happens in each repeated update. Explain why both clearing gradients and recalculating predictions matter."
     rubric:
-      - { id: setup, criterion: "Describes floating-point input rows, matching target and output shapes, a linear module and SGD receiving model.parameters()", weight: 1, required: true }
-      - { id: order, criterion: "Gives clear gradients, predict, measure loss, backward, step in order and distinguishes gradients from parameter updates", weight: 1, required: true }
-      - { id: fresh, criterion: "Explains accumulation without clearing and why updated parameters require fresh predictions and loss", weight: 1, required: true }
+      - {
+          id: setup,
+          criterion: "Describes floating-point input rows, matching target and output shapes, a linear module and SGD receiving model.parameters()",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: order,
+          criterion: "Gives clear gradients, predict, measure loss, backward, step in order and distinguishes gradients from parameter updates",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: fresh,
+          criterion: "Explains accumulation without clearing and why updated parameters require fresh predictions and loss",
+          weight: 1,
+          required: true,
+        }
     exemplar: "I put examples in rows of a floating-point input tensor and use targets of shape (n, 1) to match the one-output model. I create nn.Linear with the feature count and one output, use nn.MSELoss for error, and give model.parameters() and a learning rate to SGD. Each update clears gradients, calls the model, calculates loss, calls loss.backward(), then optimizer.step(). Backward stores slopes; step changes parameters. Without clearing, slopes accumulate across updates. I call the changed model again to measure its new loss, because old predictions and loss do not recalculate themselves."

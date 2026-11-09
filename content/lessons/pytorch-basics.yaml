@@ -80,7 +80,16 @@ knowledge_points:
       | `[[1.0, 2.0]]` | `(1, 2)` | One row, two columns |
 
       **Where it shows up.** For house data, rows represent houses and columns represent features. Keeping that arrangement explicit prevents a calculation from mixing up houses and measurements.
-    problems: [ptb-tensors-basics, ptb-tensors-why, ptb-tensor-complete, ptb-tensor-template, ptb-tensor-nesting, ptb-tensor-read, ptb-tensor-transfer]
+    problems:
+      [
+        ptb-tensors-basics,
+        ptb-tensors-why,
+        ptb-tensor-complete,
+        ptb-tensor-template,
+        ptb-tensor-nesting,
+        ptb-tensor-read,
+        ptb-tensor-transfer,
+      ]
   - id: ptb-linear
     title: Put the rule and its parameters together
     explain: |
@@ -146,7 +155,16 @@ knowledge_points:
       | `nn.Linear(1, 2)` | `(2, 1)` | `(2, 2)` |
 
       **Where it shows up.** `nn.Linear(3, 1)` can hold the house model's three feature weights and one bias. The prediction rule is unchanged; the module makes its parameters available for training.
-    problems: [ptb-linear-basics, ptb-linear-why, ptb-linear-complete, ptb-linear-template, ptb-linear-sizes, ptb-linear-read, ptb-linear-transfer]
+    problems:
+      [
+        ptb-linear-basics,
+        ptb-linear-why,
+        ptb-linear-complete,
+        ptb-linear-template,
+        ptb-linear-sizes,
+        ptb-linear-read,
+        ptb-linear-transfer,
+      ]
   - id: ptb-loss-optimizer
     title: Connect the loss gradient to an update
     explain: |
@@ -224,7 +242,16 @@ knowledge_points:
       | `0.5` | 4 | 0 |
 
       **Where it shows up.** For a house model, pass `model.parameters()` to SGD instead of `[w]`. The loss measures prediction errors, backward calculates the weight and bias slopes, and SGD updates those parameters.
-    problems: [ptb-loss-basics, ptb-loss-why, ptb-loss-complete, ptb-loss-template, ptb-loss-backward, ptb-loss-read, ptb-loss-transfer]
+    problems:
+      [
+        ptb-loss-basics,
+        ptb-loss-why,
+        ptb-loss-complete,
+        ptb-loss-template,
+        ptb-loss-backward,
+        ptb-loss-read,
+        ptb-loss-transfer,
+      ]
   - id: ptb-training-loop
     title: Repeat with fresh values
     explain: |
@@ -312,7 +339,16 @@ knowledge_points:
       | 2 | 1.75 | 0.75 | 2.5 | 0.25 |
 
       **Where it shows up.** For house-price training, replace the small input and target tables with house measurements and sale prices. The same five operations connect data, model, loss, gradients and parameter updates.
-    problems: [ptb-loop-basics, ptb-loop-why, ptb-loop-complete, ptb-loop-template, ptb-loop-stale, ptb-loop-read, ptb-loop-transfer]
+    problems:
+      [
+        ptb-loop-basics,
+        ptb-loop-why,
+        ptb-loop-complete,
+        ptb-loop-template,
+        ptb-loop-stale,
+        ptb-loop-read,
+        ptb-loop-transfer,
+      ]
 final: ptb-explain-loop
 summary: |
   - A tensor keeps numbers in an explicit shape and data type, so rows and features stay distinct.
