@@ -14,12 +14,12 @@ import { Route as CourseRouteImport } from './routes/course'
 import { Route as DiagnosticRouteImport } from './routes/diagnostic'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as MapRouteImport } from './routes/map'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as DiagnosticResultsRouteImport } from './routes/diagnostic.results'
 import { Route as LessonsConceptIdRouteImport } from './routes/lessons.$conceptId'
 import { Route as PapersPaperIdRouteImport } from './routes/papers.$paperId'
+import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 import { Route as SessionIdRouteImport } from './routes/session.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -47,11 +47,6 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MapRoute = MapRouteImport.update({
-  id: '/map',
-  path: '/map',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ProgressRoute = ProgressRouteImport.update({
   id: '/progress',
   path: '/progress',
@@ -77,6 +72,11 @@ const PapersPaperIdRoute = PapersPaperIdRouteImport.update({
   path: '/papers/$paperId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
+  id: '/projects/$projectId',
+  path: '/projects/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SessionIdRoute = SessionIdRouteImport.update({
   id: '/session/$id',
   path: '/session/$id',
@@ -89,12 +89,12 @@ export interface FileRoutesByFullPath {
   '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
-  '/map': typeof MapRoute
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
   '/diagnostic/results': typeof DiagnosticResultsRoute
   '/lessons/$conceptId': typeof LessonsConceptIdRoute
   '/papers/$paperId': typeof PapersPaperIdRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/session/$id': typeof SessionIdRoute
 }
 export interface FileRoutesByTo {
@@ -103,12 +103,12 @@ export interface FileRoutesByTo {
   '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
-  '/map': typeof MapRoute
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
   '/diagnostic/results': typeof DiagnosticResultsRoute
   '/lessons/$conceptId': typeof LessonsConceptIdRoute
   '/papers/$paperId': typeof PapersPaperIdRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/session/$id': typeof SessionIdRoute
 }
 export interface FileRoutesById {
@@ -118,12 +118,12 @@ export interface FileRoutesById {
   '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
-  '/map': typeof MapRoute
   '/progress': typeof ProgressRoute
   '/settings': typeof SettingsRoute
   '/diagnostic/results': typeof DiagnosticResultsRoute
   '/lessons/$conceptId': typeof LessonsConceptIdRoute
   '/papers/$paperId': typeof PapersPaperIdRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/session/$id': typeof SessionIdRoute
 }
 export interface FileRouteTypes {
@@ -134,12 +134,12 @@ export interface FileRouteTypes {
     | '/diagnostic'
     | '/lab'
     | '/login'
-    | '/map'
     | '/progress'
     | '/settings'
     | '/diagnostic/results'
     | '/lessons/$conceptId'
     | '/papers/$paperId'
+    | '/projects/$projectId'
     | '/session/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -148,12 +148,12 @@ export interface FileRouteTypes {
     | '/diagnostic'
     | '/lab'
     | '/login'
-    | '/map'
     | '/progress'
     | '/settings'
     | '/diagnostic/results'
     | '/lessons/$conceptId'
     | '/papers/$paperId'
+    | '/projects/$projectId'
     | '/session/$id'
   id:
     | '__root__'
@@ -162,12 +162,12 @@ export interface FileRouteTypes {
     | '/diagnostic'
     | '/lab'
     | '/login'
-    | '/map'
     | '/progress'
     | '/settings'
     | '/diagnostic/results'
     | '/lessons/$conceptId'
     | '/papers/$paperId'
+    | '/projects/$projectId'
     | '/session/$id'
   fileRoutesById: FileRoutesById
 }
@@ -177,11 +177,11 @@ export interface RootRouteChildren {
   DiagnosticRoute: typeof DiagnosticRouteWithChildren
   LabRoute: typeof LabRoute
   LoginRoute: typeof LoginRoute
-  MapRoute: typeof MapRoute
   ProgressRoute: typeof ProgressRoute
   SettingsRoute: typeof SettingsRoute
   LessonsConceptIdRoute: typeof LessonsConceptIdRoute
   PapersPaperIdRoute: typeof PapersPaperIdRoute
+  ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
   SessionIdRoute: typeof SessionIdRoute
 }
 
@@ -222,13 +222,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/map': {
-      id: '/map'
-      path: '/map'
-      fullPath: '/map'
-      preLoaderRoute: typeof MapRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/progress': {
       id: '/progress'
       path: '/progress'
@@ -264,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PapersPaperIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects/$projectId': {
+      id: '/projects/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof ProjectsProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/session/$id': {
       id: '/session/$id'
       path: '/session/$id'
@@ -292,11 +292,11 @@ const rootRouteChildren: RootRouteChildren = {
   DiagnosticRoute: DiagnosticRouteWithChildren,
   LabRoute: LabRoute,
   LoginRoute: LoginRoute,
-  MapRoute: MapRoute,
   ProgressRoute: ProgressRoute,
   SettingsRoute: SettingsRoute,
   LessonsConceptIdRoute: LessonsConceptIdRoute,
   PapersPaperIdRoute: PapersPaperIdRoute,
+  ProjectsProjectIdRoute: ProjectsProjectIdRoute,
   SessionIdRoute: SessionIdRoute,
 }
 export const routeTree = rootRouteImport

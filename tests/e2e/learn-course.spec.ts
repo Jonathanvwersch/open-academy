@@ -8,6 +8,7 @@ import {
   diagnosticRuns,
   lessonRuns,
   mastery,
+  projectProgress,
   sessionActivities,
   studySessions,
   users,
@@ -23,6 +24,7 @@ const courseStructureBatch2ScreenshotDir = `${courseStructureScreenshotDir}/batc
 const courseStructureBatch3ScreenshotDir = `${courseStructureScreenshotDir}/batch3`;
 const mathLinesScreenshotDir = '/home/ubuntu/screenshots/math-lines';
 const courseComingSoonScreenshotDir = '/home/ubuntu/screenshots/course-coming-soon';
+const navCleanupScreenshotDir = '/home/ubuntu/screenshots/nav-cleanup';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(courseStructureScreenshotDir, { recursive: true });
 mkdirSync(courseStructureBatch1ScreenshotDir, { recursive: true });
@@ -30,6 +32,7 @@ mkdirSync(courseStructureBatch2ScreenshotDir, { recursive: true });
 mkdirSync(courseStructureBatch3ScreenshotDir, { recursive: true });
 mkdirSync(mathLinesScreenshotDir, { recursive: true });
 mkdirSync(courseComingSoonScreenshotDir, { recursive: true });
+mkdirSync(navCleanupScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async ({ page }) => {
@@ -66,7 +69,7 @@ async function markDiagnosticComplete() {
   });
 }
 
-test('Learn shows XP and tasks, starts a session, and Course links to lessons', async ({
+test('Home shows XP and tasks, starts a session, and Course links to lessons and projects', async ({
   page,
 }) => {
   await markDiagnosticComplete();
@@ -91,8 +94,8 @@ test('Learn shows XP and tasks, starts a session, and Course links to lessons', 
     },
   ]);
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Learn', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Learn' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Home' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
   const lessonTasks = page.locator('li').filter({ has: page.getByText('Lesson', { exact: true }) });
   await expect(lessonTasks.first()).toContainText('Vectors');
@@ -111,7 +114,10 @@ test('Learn shows XP and tasks, starts a session, and Course links to lessons', 
       { exact: false },
     ),
   ).toBeVisible();
-  await expect(page.getByText(/^Project: /).first()).toBeVisible();
+  const weekOneProject = page.getByRole('region', { name: 'Project' }).first();
+  await expect(
+    weekOneProject.getByRole('link', { name: 'Linear regression in NumPy' }),
+  ).toHaveAttribute('href', '/projects/linreg-numpy');
   const supervisedRow = page
     .getByRole('listitem')
     .filter({ has: page.getByText('Supervised learning', { exact: true }) });
@@ -122,6 +128,10 @@ test('Learn shows XP and tasks, starts a session, and Course links to lessons', 
     fullPage: true,
   });
   await page.screenshot({ path: `${screenshotDir}/course.png`, fullPage: true });
+  await weekOneProject.getByRole('link', { name: 'Linear regression in NumPy' }).click();
+  await expect(page).toHaveURL('/projects/linreg-numpy');
+  await expect(page.getByRole('heading', { name: 'Linear regression in NumPy' })).toBeVisible();
+  await page.goto('/course');
   await page
     .getByRole('link', { name: /Vectors/ })
     .first()
@@ -134,101 +144,132 @@ test('Learn shows XP and tasks, starts a session, and Course links to lessons', 
   await expect(page).toHaveURL(/\/session\//);
 });
 
-test('VLA titles on Course and π0 descriptions on Map render as plain text', async ({ page }) => {
-  const concepts = [
-    {
-      id: 'vla-action-heads',
-      title: 'VLA action heads and training mixtures',
-      description:
-        'Continuous actions from a flow-matching action expert (π0, 2024; π0.5, 2025) and co-training on robot, web and human data.',
-    },
-    {
-      id: 'landmark-robot-learning-papers',
-      title: 'Landmark robot learning papers, 2022–2026',
-      description:
-        'A timeline of the papers behind modern robot learning: what each solved, its key idea and what built on it (RT-1, SayCan, Diffusion Policy, ACT, RT-2, Open X-Embodiment, Octo, OpenVLA, DROID, π0, Genie, V-JEPA 2, GR00T N1, Gemini Robotics, UVA, Genie Envisioner, DreamZero).',
-    },
-  ] as const;
-  await page.route('**/api/course', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        weeks: [
-          {
-            week: 10,
-            title: 'Robot learning',
-            intro: '',
-            project: null,
-            papers: [],
-            topics: [
-              {
-                number: '10.1',
-                conceptId: concepts[0].id,
-                title: concepts[0].title,
-                hasLesson: false,
-                status: 'not_started',
-                mastery: 'Not started',
-                buildsOn: [],
-                leadsTo: [],
-                leadsToMore: 0,
-              },
-              {
-                number: '10.2',
-                conceptId: 'linear-regression',
-                title: 'Linear regression',
-                hasLesson: false,
-                status: 'in_progress',
-                mastery: 'Not started',
-                buildsOn: [],
-                leadsTo: [],
-                leadsToMore: 0,
-              },
-            ],
-          },
-        ],
-      }),
-    }),
+test('navigation has four destinations and Lab redirects to Course', async ({ page }) => {
+  await page.goto('/');
+  const navigationLinks = page.locator('nav a');
+  await expect(navigationLinks).toHaveCount(4);
+  await expect(navigationLinks).toHaveText(['Home', 'Course', 'Progress', 'Settings']);
+
+  await page.goto('/lab');
+  await expect(page).toHaveURL(/\/course$/);
+  await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();
+});
+
+test('unknown projects show the unavailable route message', async ({ page }) => {
+  await page.goto('/projects/unknown-project');
+  await expect(page.getByRole('alert')).toHaveText('Project unavailable.');
+});
+
+test('available project rows display learner progress', async ({ page }) => {
+  await db.insert(projectProgress).values({
+    userId,
+    projectId: 'linreg-numpy',
+    status: 'in_progress',
+  });
+  await page.goto('/course');
+  const project = page.getByRole('region', { name: 'Project' }).first();
+  await expect(project.getByRole('link', { name: /Linear regression in NumPy/ })).toContainText(
+    'In progress',
   );
-  await page.route('**/api/concepts/*', (route) => {
-    const concept = concepts.find(({ id }) =>
-      route.request().url().endsWith(`/api/concepts/${id}`),
-    );
-    if (!concept) return route.continue();
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        concept: { ...concept, status: 'stub' },
-        lessonAvailable: false,
-        mastery: [],
-        events: [],
-        debt: [],
-      }),
+});
+
+test('navigation cleanup pages render at desktop and mobile widths', async ({ page }) => {
+  await markDiagnosticComplete();
+  await page.route('**/api/learn', async (route) => {
+    const response = await route.fetch({
+      headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
     });
+    const payload = await response.json();
+    payload.doneToday = [
+      {
+        label: 'Lesson',
+        title: 'Vectors',
+        xp: 20,
+        completedAt: '2026-01-01T10:00:00.000Z',
+      },
+      {
+        label: 'Practice',
+        title: 'Dot product practice',
+        xp: 10,
+        completedAt: '2026-01-01T11:00:00.000Z',
+      },
+    ];
+    await route.fulfill({ response, body: JSON.stringify(payload) });
   });
 
-  await page.goto('/course');
-  const actionHeadsRow = page.getByRole('listitem').filter({ hasText: concepts[0].title });
-  await expect(actionHeadsRow).toBeVisible();
-  await expect(actionHeadsRow).toContainText('Lesson coming soon');
-  await expect(actionHeadsRow.locator('.katex')).toHaveCount(0);
-  await expect(actionHeadsRow.locator('[data-slot="badge"]')).toHaveCount(0);
-  await expect(actionHeadsRow).not.toContainText('Mastery:');
-  const inProgressUnassessedRow = page
-    .getByRole('listitem')
-    .filter({ hasText: 'Linear regression' });
-  await expect(inProgressUnassessedRow).toContainText('Lesson coming soon');
-  await expect(inProgressUnassessedRow).not.toContainText('Not started');
-  await expect(inProgressUnassessedRow).not.toContainText('In progress');
-  await expect(inProgressUnassessedRow).not.toContainText('Mastery:');
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/');
+  await hideTutorLauncher(page);
+  await expect(page.getByRole('heading', { name: 'Done today' })).toBeVisible();
+  const doneTodayCard = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByRole('heading', { name: 'Done today' }) });
+  await expect(doneTodayCard.getByText('Vectors', { exact: true })).toBeVisible();
+  await expect(doneTodayCard.getByText('Dot product practice', { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: `${navCleanupScreenshotDir}/home-desktop.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator('[data-slot="card-title"]')).toHaveText([
+    'Next up',
+    'Done today',
+    'Your progress',
+  ]);
+  await page.screenshot({
+    path: `${navCleanupScreenshotDir}/home-mobile.png`,
+    fullPage: true,
+  });
 
-  for (const concept of concepts) {
-    await page.goto(`/map?concept=${concept.id}`);
-    const descriptionText = page.getByText(concept.description, { exact: true });
-    await expect(descriptionText).toBeVisible();
-    await expect(descriptionText.locator('.katex')).toHaveCount(0);
-  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/course');
+  const weekOneCard = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByRole('heading', { name: 'Week 1 · ML fundamentals' }) });
+  const weekTwoCard = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByRole('heading', { name: 'Week 2 · Optimization' }) });
+  await expect(weekOneCard).toContainText('Linear regression in NumPy');
+  await expect(weekTwoCard).toContainText('Project coming soon');
+  await weekOneCard.screenshot({
+    path: `${navCleanupScreenshotDir}/course-week-1-desktop.png`,
+  });
+  await weekTwoCard.screenshot({
+    path: `${navCleanupScreenshotDir}/course-week-2-desktop.png`,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await weekOneCard.screenshot({
+    path: `${navCleanupScreenshotDir}/course-week-1-mobile.png`,
+  });
+  await weekTwoCard.screenshot({
+    path: `${navCleanupScreenshotDir}/course-week-2-mobile.png`,
+  });
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/progress');
+  await expect(page.getByRole('heading', { name: 'Mastery by domain' })).toBeVisible();
+  await page.screenshot({
+    path: `${navCleanupScreenshotDir}/progress-desktop.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${navCleanupScreenshotDir}/progress-mobile.png`,
+    fullPage: true,
+  });
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/projects/linreg-numpy');
+  await expect(page.getByRole('heading', { name: 'Linear regression in NumPy' })).toBeVisible();
+  await page.screenshot({
+    path: `${navCleanupScreenshotDir}/project-desktop.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${navCleanupScreenshotDir}/project-mobile.png`,
+    fullPage: true,
+  });
 });
 
 test('authored course-structure lessons render their diagrams', async ({ page }) => {
@@ -397,9 +438,9 @@ async function hideTutorLauncher(page: Page) {
   });
 }
 
-test('a fresh learner sees Learn onboarding without XP', async ({ page }) => {
+test('a fresh learner sees Home onboarding without XP', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Learn', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Welcome to Academy' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Start diagnostic' })).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/learn-fresh.png`, fullPage: true });
@@ -435,6 +476,18 @@ test('a fresh post-diagnostic learner sees outline order and prerequisite needs'
     .filter({ has: page.getByText('Vectors', { exact: true }) });
   await expect(lessonRow.getByRole('link')).toHaveCount(1);
   await expect(lessonRow).not.toContainText('Lesson coming soon');
+  const projectSections = page.getByRole('region', { name: 'Project' });
+  const weekOneProject = projectSections.first();
+  await expect(
+    weekOneProject.getByRole('link', { name: 'Linear regression in NumPy' }),
+  ).toHaveAttribute('href', '/projects/linreg-numpy');
+  const weekTwoProject = projectSections.nth(1);
+  const stubProjectTitle = weekTwoProject
+    .locator('.text-muted-foreground')
+    .filter({ hasText: 'Optimization playground' });
+  await expect(stubProjectTitle).toHaveCount(1);
+  await expect(weekTwoProject.getByText('Project coming soon', { exact: true })).toBeVisible();
+  await expect(weekTwoProject.getByRole('link')).toHaveCount(0);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.screenshot({
     path: `${courseComingSoonScreenshotDir}/desktop.png`,

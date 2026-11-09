@@ -237,15 +237,6 @@ test('legacy lesson review presents labelled blocks as cards with checks inside'
   ).toBeVisible();
 });
 
-test('Map concept details link to the lesson', async ({ page }) => {
-  await page.goto('/map');
-  await page.getByText('Vectors', { exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Mastery' })).toBeVisible();
-  await page.getByRole('link', { name: 'View lesson' }).click();
-  await expect(page).toHaveURL(/\/lessons\/vectors$/);
-  await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
-});
-
 test('explain tutor feedback shows rubric and model answer, and survives reload', async ({
   page,
 }) => {

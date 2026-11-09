@@ -49,7 +49,7 @@ function LearnPage() {
   if (today.needsDiagnostic) {
     return (
       <section className="space-y-6">
-        <h1 className="sr-only">Learn</h1>
+        <h1 className="sr-only">Home</h1>
         <Card>
           <CardHeader>
             <CardTitle>Welcome to Academy</CardTitle>
@@ -77,67 +77,95 @@ function LearnPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="sr-only">Learn</h1>
+      <h1 className="sr-only">Home</h1>
       <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
-        <Card>
-          <CardHeader>
-            <CardTitle>Next up</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {data.activeSessionId ? (
-              <Button asChild className="w-full">
-                <Link to="/session/$id" params={{ id: data.activeSessionId }}>
-                  Resume session
-                </Link>
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                className="w-full"
-                onClick={() => startSession.mutate()}
-                disabled={startSession.isPending}
-              >
-                {startSession.isPending ? 'Starting…' : 'Start learning'}
-              </Button>
-            )}
-            {startSession.isError ? (
-              <p role="alert" className="text-sm text-destructive">
-                {startSession.error.message}
-              </p>
-            ) : null}
-            {data.tasks.length ? (
-              <ul className="divide-y">
-                {data.tasks.map((task) => (
-                  <li
-                    key={`${task.activityKind}-${task.conceptId ?? task.title}-${task.title}`}
-                    className="space-y-2 py-4 first:pt-0 last:pb-0"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 space-y-1">
-                        <Badge variant="secondary">{task.label}</Badge>
-                        <h2 className="font-medium leading-6">{task.title}</h2>
+        <div className="space-y-5">
+          <Card>
+            <CardHeader>
+              <CardTitle>Next up</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {data.activeSessionId ? (
+                <Button asChild className="w-full">
+                  <Link to="/session/$id" params={{ id: data.activeSessionId }}>
+                    Resume session
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={() => startSession.mutate()}
+                  disabled={startSession.isPending}
+                >
+                  {startSession.isPending ? 'Starting…' : 'Start learning'}
+                </Button>
+              )}
+              {startSession.isError ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {startSession.error.message}
+                </p>
+              ) : null}
+              {data.tasks.length ? (
+                <ul className="divide-y">
+                  {data.tasks.map((task) => (
+                    <li
+                      key={`${task.activityKind}-${task.conceptId ?? task.title}-${task.title}`}
+                      className="space-y-2 py-4 first:pt-0 last:pb-0"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <Badge variant="secondary">{task.label}</Badge>
+                          <h2 className="font-medium leading-6">{task.title}</h2>
+                        </div>
+                        <span className="shrink-0 text-sm font-medium text-muted-foreground">
+                          +{task.xp} XP
+                        </span>
                       </div>
-                      <span className="shrink-0 text-sm font-medium text-muted-foreground">
-                        +{task.xp} XP
-                      </span>
-                    </div>
-                    {task.prerequisites.some((prerequisite) => !prerequisite.done) ? (
-                      <p className="text-sm text-muted-foreground">
-                        Needs{' '}
-                        {task.prerequisites
-                          .filter((prerequisite) => !prerequisite.done)
-                          .map((prerequisite) => prerequisite.title)
-                          .join(', ')}
-                      </p>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">No tasks planned for today.</p>
-            )}
-          </CardContent>
-        </Card>
+                      {task.prerequisites.some((prerequisite) => !prerequisite.done) ? (
+                        <p className="text-sm text-muted-foreground">
+                          Needs{' '}
+                          {task.prerequisites
+                            .filter((prerequisite) => !prerequisite.done)
+                            .map((prerequisite) => prerequisite.title)
+                            .join(', ')}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">No tasks planned for today.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Done today</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data.doneToday.length ? (
+                <ul className="space-y-3">
+                  {data.doneToday.map((item) => (
+                    <li
+                      key={`${item.label}-${item.title}-${item.completedAt}`}
+                      className="flex items-start justify-between gap-3 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium">{item.title}</p>
+                        <p className="text-muted-foreground">{item.label}</p>
+                      </div>
+                      <span className="shrink-0 text-muted-foreground">+{item.xp} XP</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nothing completed yet.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         <Card>
           <CardHeader>
@@ -232,28 +260,6 @@ function LearnPage() {
                   );
                 })}
               </div>
-            </div>
-
-            <div className="space-y-3 border-t pt-5">
-              <h2 className="text-sm font-medium">Done today</h2>
-              {data.doneToday.length ? (
-                <ul className="space-y-3">
-                  {data.doneToday.map((item) => (
-                    <li
-                      key={`${item.label}-${item.title}-${item.completedAt}`}
-                      className="flex items-start justify-between gap-3 text-sm"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-medium">{item.title}</p>
-                        <p className="text-muted-foreground">{item.label}</p>
-                      </div>
-                      <span className="shrink-0 text-muted-foreground">+{item.xp} XP</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground">Nothing completed yet.</p>
-              )}
             </div>
           </CardContent>
         </Card>

@@ -45,8 +45,7 @@ test('routes fit mobile viewports without horizontal page or navigation overflow
     for (const route of [
       '/',
       '/course',
-      '/map',
-      '/lab',
+      '/projects/linreg-numpy',
       '/progress',
       '/settings',
       '/lessons/linear-models',
@@ -114,6 +113,6 @@ test('root auth pending renders the app-shell skeleton', async ({ page }) => {
   await expect(shell).toBeVisible();
   await expect(shell.locator('header')).toBeVisible();
   await expect(shell.getByTestId('route-skeleton')).toBeVisible();
-  await expect(shell.locator('nav > *')).toHaveCount(6);
+  await expect(shell.locator('nav > *')).toHaveCount(4);
   await expect(shell).toBeHidden();
 });

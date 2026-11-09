@@ -1088,6 +1088,7 @@ test('Saturday allocates a 300-minute lab with a capped review warm-up and refle
 
 test('Saturday plans an extension after a project is complete', () => {
   const state = emptyState();
+  state.currentProjectId = 'linreg-numpy';
   state.projectProgress = [{ projectId: 'linreg-numpy', status: 'completed' }];
   const plan = planSession(state, content, now, 300, 'saturday');
   expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(false);

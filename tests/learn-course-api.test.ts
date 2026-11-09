@@ -9,6 +9,7 @@ import {
   lessonProblems,
   lessonRuns,
   mastery,
+  projectProgress,
   sessionActivities,
   studySessions,
   users,
@@ -106,7 +107,12 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
   const course: {
     weeks: Array<{
       intro: string;
-      project: { id: string; title: string } | null;
+      project: {
+        id: string;
+        title: string;
+        available: boolean;
+        status: 'not_started' | 'in_progress' | 'completed';
+      } | null;
       topics: Array<{
         number: string;
         conceptId: string;
@@ -131,7 +137,12 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
   expect(course.weeks[0]).toMatchObject({
     intro:
       "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales. The maths topics are the tools this model needs, taught in the order it needs them.",
-    project: { id: 'linreg-numpy', title: expect.any(String) },
+    project: {
+      id: 'linreg-numpy',
+      title: expect.any(String),
+      available: true,
+      status: 'not_started',
+    },
   });
   expect(
     course.weeks[0].topics.find((topic) => topic.conceptId === 'supervised-learning'),
@@ -168,6 +179,23 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
     expect(topic.status === 'locked').toBe(locked);
   }
   expect(await rowCounts()).toEqual(before);
+});
+
+test('Course project status reflects the learner project-progress row', async () => {
+  await db.insert(projectProgress).values({
+    userId,
+    projectId: 'linreg-numpy',
+    status: 'in_progress',
+  });
+
+  const response = await get('/course');
+  expect(response.status).toBe(200);
+  const course = await response.json();
+  expect(course.weeks[0].project).toMatchObject({
+    id: 'linreg-numpy',
+    available: true,
+    status: 'in_progress',
+  });
 });
 
 test('active-session tasks, done-today activity, and local-date KP XP are returned read-only', async () => {
