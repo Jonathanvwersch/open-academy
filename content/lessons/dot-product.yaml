@@ -107,7 +107,7 @@ knowledge_points:
   - id: dot-arrow-alignment
     title: For arrows, the dot product measures how far one goes along the other
     explain: |
-      **The question.** Vectors can also be drawn as arrows, and a robot often needs to know whether two arrows, such as its heading and the way to its goal, agree. Can their dot product tell you whether they point roughly the same way, at right angles, or in opposite directions?
+      **The question.** A robot often needs to know whether two arrows agree, such as its heading and the way to its goal. Can their dot product tell you whether they point roughly the same way, at right angles, or in opposite directions?
 
       **Picture it.** Start with the easiest second arrow, $b=(1,0)$: length 1, pointing right. For any arrow $a=(a_1,a_2)$,
 
@@ -143,11 +143,11 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** The **angle** between two arrows is how far you turn one to line it up with the other: from $0^\circ$ (same way) to $180^\circ$ (opposite), with a right angle at $90^\circ$. Drop a line from $a$'s tip to meet the line through $b$ at a right angle (the dashed lines above): the stretch from the origin to where it lands is $a$'s shadow on $b$, the **projection** of $a$ onto $b$, negative if it points backwards. For any two arrows,
+      **The idea.** The **angle** between two arrows is how far you turn one to line it up with the other: $0^\circ$ if they point the same way, up to $180^\circ$ if opposite. Drop a line from $a$'s tip to meet the line through $b$ at a right angle (the dashed lines above): the stretch from the origin to where it lands is $a$'s shadow on $b$, the **projection** of $a$ onto $b$, negative if it points backwards. For any two arrows,
 
       $$a\cdot b=(\text{projection of }a\text{ onto }b)\times\|b\|$$
 
-      where $\|b\|$ is $b$'s length (the L2 norm $\|b\|_2$, written without the 2 from here on). Why the length? Stretch $b$ to $(2,0)$ and the dot products double to $6$, $0$ and $-6$, while the shadows stay the same. It holds for a tilted $b$ too, as the worked example checks. So the sign answers the question: positive when the angle is less than a right angle, zero when the arrows are **perpendicular** (at a right angle), negative when it is more.
+      where $\|b\|$ is $b$'s length (the L2 norm $\|b\|_2$, written without the 2 from here on). Why the length? Stretch $b$ to $(2,0)$ and the dot products double, while the shadows stay the same. It holds for a tilted $b$ too, as the worked example checks. So the sign answers the question: positive when the angle is less than a right angle, zero when the arrows are **perpendicular** (at a right angle), negative when it is more.
 
       **Common confusion.** "A bigger dot product means the arrows point more nearly the same way." Only if the lengths stay fixed: $(1,0)\cdot(1,0)=1$ for arrows pointing the same way, but $(3,4)\cdot(1,0)=3$ although $(3,4)$ points mostly up. The next step removes length.
     worked: |
@@ -256,11 +256,11 @@ knowledge_points:
 
       $$\frac{a\cdot b}{\|a\|\,\|b\|}$$
 
-      Dividing by both lengths is the same as first shrinking each arrow to length 1, a **unit vector**, by dividing its entries by its length: $(3,4)$ becomes $(0.6,0.8)$. Dividing every entry of $a$ by $\|a\|$ divides every product $a_ib_i$ by $\|a\|$, and so divides the whole sum by $\|a\|$; the same goes for $b$. For two length-1 arrows, the dot product is the shadow of one on the other times 1, which depends only on the angle. That shadow is called the **cosine** of $\theta$, written $\cos\theta$: 1 when the arrows agree, 0 at a right angle, $-1$ when opposite. In the picture, $(3,4)$ shrinks to $(0.6,0.8)$ and $b$ to $(1,0)$, and $(0.6,0.8)\cdot(1,0)=0.6$, both panels' score. Multiplying back by the lengths splits any dot product into lengths times $\cos\theta$:
+      Dividing by both lengths is the same as first shrinking each arrow to length 1, a **unit vector**, by dividing its entries by its length: $(3,4)$ becomes $(0.6,0.8)$. Dividing every entry of $a$ by $\|a\|$ divides every product $a_ib_i$, and so the whole sum, by $\|a\|$; likewise for $b$. For two length-1 arrows, the dot product is the shadow of one on the other times 1, which depends only on the angle. That shadow is called the **cosine** of $\theta$, written $\cos\theta$: 1 when the arrows agree, 0 at a right angle, $-1$ when opposite. In the picture, $(3,4)$ and $b$ shrink to $(0.6,0.8)$ and $(1,0)$, and $(0.6,0.8)\cdot(1,0)=0.6$, both panels' score. Multiplying back by the lengths splits any dot product into lengths times $\cos\theta$:
 
       $$a\cdot b=\|a\|\,\|b\|\cos\theta$$
 
-      A zero vector has no direction, and dividing by its zero length is undefined.
+      A zero vector has no direction, so it has no cosine similarity.
 
       **Common confusion.** "A cosine similarity of 1 means the two vectors are equal." No, it means they point the same way. $(1,1)$ and $(10,10)$ score 1, but one is ten times as long as the other.
     worked: |
