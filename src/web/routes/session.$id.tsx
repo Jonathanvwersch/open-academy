@@ -114,12 +114,14 @@ function SessionPage() {
   const tutorSidebar = useTutorSidebar();
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [submitError, setSubmitError] = useState('');
-  const [hint, setHint] = useState<{
-    level: number;
-    text: string;
-    revealedSolution: boolean;
-    tutorUnavailable?: boolean;
-  } | null>(null);
+  const [hints, setHints] = useState<
+    {
+      level: number;
+      text: string;
+      revealedSolution: boolean;
+    }[]
+  >([]);
+  const [tutorUnavailable, setTutorUnavailable] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [completedLessonChecks, setCompletedLessonChecks] = useState<Set<string>>(new Set());
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
@@ -201,7 +203,8 @@ function SessionPage() {
           ? { ...lastAttempt, status: lastAttempt.status ?? 'graded' }
           : null,
       );
-      setHint(null);
+      setHints([]);
+      setTutorUnavailable(false);
       setSubmitError('');
     }
   }, [activity?.id, activity?.lastAttempt, exerciseId]);
@@ -357,11 +360,34 @@ function SessionPage() {
         setSubmitError(typeof data.error === 'string' ? data.error : 'Your answer was not saved.');
       }
       if (response.ok && data.status !== 'invalid') {
-        setHint(null);
+        setHints([]);
+        setTutorUnavailable(false);
       }
     } finally {
       setSubmittingAnswer(false);
     }
+  };
+  const handleHint = (nextHint: {
+    level: number;
+    text: string;
+    revealedSolution: boolean;
+    tutorUnavailable?: boolean;
+  }) => {
+    if (nextHint.text) {
+      const entry = {
+        level: nextHint.level,
+        text: nextHint.text,
+        revealedSolution: nextHint.revealedSolution,
+      };
+      setHints((current) => {
+        const existingIndex = current.findIndex((hint) => hint.level === entry.level);
+        if (existingIndex < 0) return [...current, entry];
+        const updated = [...current];
+        updated[existingIndex] = entry;
+        return updated;
+      });
+    }
+    setTutorUnavailable(Boolean(nextHint.tutorUnavailable));
   };
   const continueNext = async () => {
     setContinuing(true);
@@ -470,7 +496,7 @@ function SessionPage() {
           activityId={activity.id}
           hintCount={exerciseQuery.data?.hintCount ?? 0}
           tutorEnabled={sessionQuery.data.tutorEnabled}
-          onHint={setHint}
+          onHint={handleHint}
           mode={mode === 'review' ? 'review' : 'practice'}
           buttonRef={hintButton}
         />
@@ -692,16 +718,20 @@ function SessionPage() {
                 </AlertDescription>
               </Alert>
             ) : null}
-            {hint?.text ? (
-              <div className="rounded-lg bg-muted p-4 text-sm">
-                <p className="font-medium">
-                  {hint.revealedSolution ? 'Solution' : `Hint ${hint.level}`}
-                </p>
-                <Markdown>{hint.text}</Markdown>
+            {hints.length || tutorUnavailable ? (
+              <div className="space-y-3">
+                {hints.map((hint) => (
+                  <div key={hint.level} className="rounded-lg bg-muted p-4 text-sm">
+                    <p className="font-medium">
+                      {hint.revealedSolution ? 'Solution' : `Hint ${hint.level}`}
+                    </p>
+                    <Markdown>{hint.text}</Markdown>
+                  </div>
+                ))}
+                {tutorUnavailable ? (
+                  <p className="text-xs text-muted-foreground">Tutor unavailable right now.</p>
+                ) : null}
               </div>
-            ) : null}
-            {hint?.tutorUnavailable ? (
-              <p className="text-xs text-muted-foreground">Tutor unavailable right now.</p>
             ) : null}
           </CardContent>
         </Card>
