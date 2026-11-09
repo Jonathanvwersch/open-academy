@@ -22,9 +22,9 @@ export interface MasteryModel {
 }
 
 export function calculateCredit(
-  input: Pick<MasteryAttemptInput, 'correct' | 'hintsUsed' | 'attemptNo' | 'gradedBy'>,
+  input: Pick<MasteryAttemptInput, 'correct' | 'hintsUsed' | 'attemptNo' | 'gradedBy' | 'followUp'>,
 ): number {
-  if (input.correct <= 0) {
+  if (input.correct <= 0 || input.followUp) {
     return 0;
   }
   const hintMultiplier = hintCredit[Math.min(5, Math.max(0, input.hintsUsed))] ?? 0.1;

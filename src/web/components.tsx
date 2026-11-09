@@ -198,13 +198,15 @@ export function FeedbackPanel({
   hideAnswerLines?: boolean;
 }) {
   const baseTitle =
-    result.status === 'self_check_required'
-      ? ''
-      : Number(result.correct) >= 1
-        ? 'Correct'
-        : Number(result.correct) > 0
-          ? 'Partly correct'
-          : 'Not quite';
+    result.followUp === true
+      ? 'Almost'
+      : result.status === 'self_check_required'
+        ? ''
+        : Number(result.correct) >= 1
+          ? 'Correct'
+          : Number(result.correct) > 0
+            ? 'Partly correct'
+            : 'Not quite';
   const title =
     xp !== undefined && Number(result.correct) >= 1 ? `${baseTitle} · +${xp} XP` : baseTitle;
   const feedback = typeof result.feedback === 'string' ? result.feedback.trim() : '';
@@ -220,6 +222,7 @@ export function FeedbackPanel({
     typeof result.solution === 'string' && result.solution.trim() ? result.solution : '';
   const showFeedback = Boolean(feedback) && !repeatsTitle;
   const showSolution =
+    result.followUp !== true &&
     !writtenAnswer &&
     Boolean(solution) &&
     !(correct && showFeedback) &&
@@ -281,7 +284,7 @@ export function FeedbackPanel({
           ) : null}
         </div>
       ) : null}
-      {typeof result.exemplar === 'string' ? (
+      {result.followUp !== true && typeof result.exemplar === 'string' ? (
         <div className="mt-3 border-t border-current/15 pt-3">
           <p className="mb-1 font-medium">Model answer</p>
           <Markdown>{result.exemplar}</Markdown>

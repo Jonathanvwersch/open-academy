@@ -44,6 +44,7 @@ export interface MasteryAttemptInput {
   mode: LearningMode;
   itemRole: MasteryAttemptEvidence['itemRole'];
   gradedBy: GradedBy;
+  followUp?: boolean;
 }
 
 export interface MasteryEvent {

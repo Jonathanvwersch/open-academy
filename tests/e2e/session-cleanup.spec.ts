@@ -403,27 +403,43 @@ test('explain tutor feedback shows rubric and model answer, and survives reload'
   await expect(page.getByLabel('Your answer')).toBeVisible();
   await page.getByLabel('Your answer').fill('Inputs go in and a target comes out.');
   await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByText('Almost', { exact: true })).toBeVisible();
+  await expect(page.getByText('Model answer', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Your answer')).toHaveValue('Inputs go in and a target comes out.');
+  await expect(page.getByLabel('Your answer')).not.toHaveAttribute('readonly', '');
+  await expect(page.getByRole('button', { name: 'Submit again' })).toBeVisible();
   await expect(page.getByText('Rubric', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
   await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('Predict delivery time in minutes', { exact: false })).toBeVisible();
   await expect(
     page.getByText('Inputs and targets are clearly identified', { exact: false }),
   ).toBeVisible();
   const rubricList = page.getByRole('status').locator('ul');
   await expect(rubricList.locator('.katex')).toBeVisible();
   await expect(rubricList).not.toContainText('$');
+
+  await page.reload();
+  await expect(page.getByText('Almost', { exact: true })).toBeVisible();
+  await expect(page.getByText('Model answer', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Your answer')).toHaveValue('Inputs go in and a target comes out.');
+  await expect(page.getByLabel('Your answer')).not.toHaveAttribute('readonly', '');
+  await page
+    .getByLabel('Your answer')
+    .fill('Inputs go in and a target comes out; loss measures error.');
+  await page.getByRole('button', { name: 'Submit again' }).click();
+  await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
+  await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
+  await expect(page.getByText('Predict delivery time in minutes', { exact: false })).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/explain-rubric-feedback.png`, fullPage: true });
   await page.reload();
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
-  await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
   await expect(page.getByLabel('Your answer')).toHaveAttribute('readonly', '');
   await expect(
     page.getByText('Inputs and targets are clearly identified', { exact: false }),
   ).toBeVisible();
 });
 
-test('fallback explain flow reveals the model answer before the self-check step', async ({
+test('fallback explain flow reveals the answer for self-check and then offers Almost', async ({
   page,
 }) => {
   await openExplainActivity(page);
@@ -450,8 +466,12 @@ test('fallback explain flow reveals the model answer before the self-check step'
               status: 'graded',
               correct: 0.5,
               credit: 0.5,
+              attemptNo: 1,
+              retryAllowed: true,
+              followUp: true,
               graded_by: 'self',
               feedback: 'Compare your explanation with the criteria.',
+              yourAnswer: 'A model predicts an answer.',
               rubric: [
                 {
                   id: 'norms',
@@ -459,7 +479,6 @@ test('fallback explain flow reveals the model answer before the self-check step'
                   judgement: 'met',
                 },
               ],
-              exemplar: 'A model maps inputs to a target.',
             },
       ),
     });
@@ -484,11 +503,14 @@ test('fallback explain flow reveals the model answer before the self-check step'
   await page.getByRole('checkbox').nth(1).click();
   await expect(page.getByRole('checkbox').nth(1)).toHaveAttribute('aria-checked', 'true');
   await page.getByRole('button', { name: 'Submit self-check' }).click();
-  await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
+  await expect(page.getByText('Almost', { exact: true })).toBeVisible();
+  await expect(page.getByText('Model answer', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Your answer')).toHaveValue('A model predicts an answer.');
+  await expect(page.getByLabel('Your answer')).not.toHaveAttribute('readonly', '');
+  await expect(page.getByRole('button', { name: 'Submit again' })).toBeVisible();
   const rubricList = page.getByRole('status').locator('ul');
   await expect(rubricList.locator('.katex')).toBeVisible();
   await expect(rubricList).not.toContainText('$');
   await expect(rubricList.locator('.katex-html')).toContainText('∥');
-  await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
 });

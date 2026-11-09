@@ -20,6 +20,7 @@ import {
 import { env } from '../src/server/env.js';
 import { answerOptionsFor } from '../src/server/learning/answer-options.js';
 import { newReviewCard, scheduleInitialReview } from '../src/server/learning/fsrs.js';
+import { calculateCredit } from '../src/server/learning/mastery.js';
 import { FakeProvider } from '../src/server/tutor/provider.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
@@ -378,7 +379,8 @@ test('null tutor keeps authored hints, disables chat, and reports tutor availabi
   expect(chat.status).toBe(503);
 });
 
-test('explain attempts return and persist tutor rubric judgements and the exemplar', async () => {
+test('partial explain answers get one follow-up before the exemplar and activity completion', async () => {
+  await resetLearner();
   const exercise = content.exercisesById.get('sl-explain-setup');
   if (exercise?.type !== 'explain') throw new Error('Missing explain exercise');
   const judgement = {
@@ -389,10 +391,22 @@ test('explain attempts return and persist tutor rubric judgements and the exempl
     ],
     feedback_md: 'Good start.',
   };
-  const gradedApp = createApp({
+  const partialApp = createApp({
     db,
     content,
     tutorProvider: new FakeProvider(undefined, judgement),
+  });
+  const completeApp = createApp({
+    db,
+    content,
+    tutorProvider: new FakeProvider(undefined, {
+      criteria: exercise.rubric.map(({ id }) => ({
+        id,
+        judgement: 'met' as const,
+        evidence: 'all criteria met',
+      })),
+      feedback_md: 'Complete explanation.',
+    }),
   });
   const [session] = await db
     .insert(studySessions)
@@ -412,8 +426,21 @@ test('explain attempts return and persist tutor rubric judgements and the exempl
     })
     .returning();
   if (!activity) throw new Error('Could not create an activity fixture');
+  const [nextActivity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 1,
+      kind: 'practice',
+      conceptId: exercise.concept,
+      exerciseIds: [exercise.id],
+      plannedMinutes: 5,
+      status: 'planned',
+    })
+    .returning();
+  if (!nextActivity) throw new Error('Could not create the next activity fixture');
 
-  const response = await gradedApp.request('/api/attempts', {
+  const firstResponse = await partialApp.request('/api/attempts', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'X-Now': now },
     body: JSON.stringify({
@@ -423,27 +450,161 @@ test('explain attempts return and persist tutor rubric judgements and the exempl
       mode: 'practice',
     }),
   });
-  expect(response.status).toBe(200);
-  const body = await response.json();
-  expect(body).toMatchObject({
+  expect(firstResponse.status).toBe(200);
+  const firstBody = await firstResponse.json();
+  expect(firstBody).toMatchObject({
+    correct: 0.6,
     graded_by: 'llm',
     feedback: 'Good start.',
+    retryAllowed: true,
+    followUp: true,
+    credit: 0,
     rubric: [
       { id: 'r1', judgement: 'met' },
       { id: 'r2', judgement: 'partial' },
       { id: 'r3', judgement: 'missing' },
     ],
-    exemplar: exercise.exemplar,
   });
-  expect(body).not.toHaveProperty('solution');
-  const reloaded = await gradedApp.request(`/api/sessions/${session.id}`);
+  expect(firstBody).not.toHaveProperty('exemplar');
+  expect(firstBody).not.toHaveProperty('solution');
+  expect(firstBody.mastery.credit).toBe(0);
+
+  const reloaded = await partialApp.request(`/api/sessions/${session.id}`);
   const sessionBody = await reloaded.json();
   expect(sessionBody.activities[0].lastAttempt).toMatchObject({
     exerciseId: exercise.id,
-    rubric: body.rubric,
+    followUp: true,
+    retryAllowed: true,
+    yourAnswer: 'Inputs, target, model, loss and data.',
+    rubric: firstBody.rubric,
+  });
+  expect(sessionBody.activities[0].lastAttempt).not.toHaveProperty('exemplar');
+  expect(sessionBody.activities[0].lastAttempt).not.toHaveProperty('solution');
+  const activityStates = await db
+    .select({ id: sessionActivities.id, status: sessionActivities.status })
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, session.id))
+    .orderBy(sessionActivities.idx);
+  expect(activityStates.map((item) => item.status)).toEqual(['in_progress', 'planned']);
+
+  const finalResponse = await completeApp.request('/api/attempts', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': now },
+    body: JSON.stringify({
+      exerciseId: exercise.id,
+      activityId: activity.id,
+      answer: { text: 'Inputs, target, model, loss and data.' },
+      mode: 'practice',
+    }),
+  });
+  expect(finalResponse.status).toBe(200);
+  const finalBody = await finalResponse.json();
+  expect(finalBody).toMatchObject({
+    correct: 1,
+    attemptNo: 2,
+    retryAllowed: false,
+    exemplar: exercise.exemplar,
+    credit: 0.5,
+  });
+  expect(finalBody).not.toHaveProperty('followUp');
+  expect(finalBody).not.toHaveProperty('solution');
+  expect(firstBody.credit + finalBody.credit).toBe(
+    calculateCredit({ correct: 1, hintsUsed: 0, attemptNo: 1, gradedBy: 'llm' }),
+  );
+  const completedStates = await db
+    .select({ id: sessionActivities.id, status: sessionActivities.status })
+    .from(sessionActivities)
+    .where(eq(sessionActivities.sessionId, session.id))
+    .orderBy(sessionActivities.idx);
+  expect(completedStates.map((item) => item.status)).toEqual(['completed', 'in_progress']);
+
+  const activityXp = await db
+    .select()
+    .from(xpEvents)
+    .where(eq(xpEvents.sourceKey, `activity:${activity.id}`));
+  expect(activityXp).toHaveLength(1);
+  expect(activityXp[0]?.amount).toBe(4);
+
+  const thirdResponse = await completeApp.request('/api/attempts', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': now },
+    body: JSON.stringify({
+      exerciseId: exercise.id,
+      activityId: activity.id,
+      answer: { text: 'A further explanation.' },
+      mode: 'practice',
+    }),
+  });
+  expect(thirdResponse.status).toBe(409);
+  expect(await thirdResponse.json()).toMatchObject({ error: 'No retries remain.' });
+});
+
+test('review mode partial explain answers do not allow a follow-up', async () => {
+  await resetLearner();
+  const exercise = content.exercisesById.get('sl-explain-setup');
+  if (exercise?.type !== 'explain') throw new Error('Missing explain exercise');
+  const partialApp = createApp({
+    db,
+    content,
+    tutorProvider: new FakeProvider(undefined, {
+      criteria: [
+        { id: 'r1', judgement: 'met', evidence: 'inputs and target' },
+        { id: 'r2', judgement: 'partial', evidence: 'loss' },
+        { id: 'r3', judgement: 'missing', evidence: null },
+      ],
+      feedback_md: 'Good start.',
+    }),
+  });
+  const [session] = await db
+    .insert(studySessions)
+    .values({ userId, plannedMinutes: 15, status: 'active', kind: 'weekday' })
+    .returning();
+  if (!session) throw new Error('Could not create a session fixture');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'review',
+      conceptId: exercise.concept,
+      exerciseIds: [exercise.id],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Could not create a review activity fixture');
+
+  const response = await partialApp.request('/api/attempts', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': now },
+    body: JSON.stringify({
+      exerciseId: exercise.id,
+      activityId: activity.id,
+      answer: { text: 'A partial explanation.' },
+      mode: 'review',
+    }),
+  });
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(body).toMatchObject({
+    correct: 0.6,
+    graded_by: 'llm',
+    feedback: 'Good start.',
+    retryAllowed: false,
     exemplar: exercise.exemplar,
   });
-  expect(sessionBody.activities[0].lastAttempt).not.toHaveProperty('solution');
+  expect(body).not.toHaveProperty('followUp');
+  const secondResponse = await partialApp.request('/api/attempts', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': now },
+    body: JSON.stringify({
+      exerciseId: exercise.id,
+      activityId: activity.id,
+      answer: { text: 'A second explanation.' },
+      mode: 'review',
+    }),
+  });
+  expect(secondResponse.status).toBe(409);
 });
 
 test('no-tutor explain flow returns model answer before the capped self-check result', async () => {
