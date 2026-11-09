@@ -66,6 +66,28 @@ test('real authored paper content loads and indexes by ID and week', async () =>
   expect([...content.papersByWeek.values()].flat()).toHaveLength(content.papers.length);
 });
 
+test('every real lesson knowledge point has non-basics problems at difficulties one through three', async () => {
+  const content = await loadContent('content');
+  const missingDifficulties: string[] = [];
+
+  for (const lesson of content.lessons) {
+    for (const point of lesson.knowledge_points ?? []) {
+      const difficulties = new Set(
+        point.problems.flatMap((id) => {
+          const exercise = content.exercisesById.get(id);
+          return exercise && exercise.role !== 'basics' ? [exercise.difficulty] : [];
+        }),
+      );
+      const missing = [1, 2, 3].filter((difficulty) => !difficulties.has(difficulty));
+      if (missing.length > 0) {
+        missingDifficulties.push(`${lesson.concept}/${point.id}: missing ${missing.join(', ')}`);
+      }
+    }
+  }
+
+  expect(missingDifficulties).toEqual([]);
+});
+
 test('paper validation rejects unsafe sources, malformed identifiers, invalid question sets, and unknown references', async () => {
   const data = await notationFixture();
   const base = data.papers[0];

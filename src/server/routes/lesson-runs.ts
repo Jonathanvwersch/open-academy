@@ -271,9 +271,14 @@ export function registerLessonRunRoutes(
         (item) => item.id === state.currentPointId,
       );
       if (!point) return existing;
-      const pointRows = problems.filter(
-        (problem) => problem.knowledgePointId === point.id && problem.round === round,
-      );
+      const pointRows = problems
+        .filter((problem) => problem.knowledgePointId === point.id && problem.round === round)
+        .map(({ exerciseId, seed, position, correct }) => ({
+          exerciseId,
+          seed,
+          position,
+          correct,
+        }));
       const usedSeeds = new Set(
         problems.flatMap((problem) => (problem.seed === null ? [] : [problem.seed])),
       );

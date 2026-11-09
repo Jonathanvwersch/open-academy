@@ -43,6 +43,23 @@ export function xpForPassedPoint(problemsUsed: number): number {
   return XP_BY_PROBLEMS_USED[problemsUsed as keyof typeof XP_BY_PROBLEMS_USED] ?? 0;
 }
 
+function nextDifficulty(
+  difficulties: readonly number[],
+  last: { difficulty: number; correct: number } | undefined,
+): number {
+  if (!last) return Math.min(...difficulties);
+  const higher = difficulties.filter((difficulty) => difficulty > last.difficulty);
+  const lower = difficulties.filter((difficulty) => difficulty < last.difficulty);
+  if (last.correct === 1) {
+    if (higher.length > 0) return Math.min(...higher);
+    if (difficulties.includes(last.difficulty)) return last.difficulty;
+    return Math.max(...lower);
+  }
+  if (lower.length > 0) return Math.max(...lower);
+  if (difficulties.includes(last.difficulty)) return last.difficulty;
+  return Math.min(...higher);
+}
+
 function orderedRows<Row extends LessonProblemRow>(rows: readonly Row[]): Row[] {
   return [...rows].sort(
     (left, right) =>
@@ -151,7 +168,7 @@ export interface SelectedLessonProblem {
 export function selectNextProblem(
   point: Pick<KnowledgePoint, 'problems'>,
   exercises: ReadonlyMap<string, Exercise>,
-  roundProblems: readonly Pick<LessonProblemRow, 'exerciseId' | 'seed' | 'position'>[],
+  roundProblems: readonly Pick<LessonProblemRow, 'exerciseId' | 'seed' | 'position' | 'correct'>[],
   templateSeed: number,
   usedSeeds: ReadonlySet<number> = new Set(),
 ): SelectedLessonProblem | undefined {
@@ -160,13 +177,42 @@ export function selectNextProblem(
   );
   if (countedProblems.length >= 5) return undefined;
   const served = new Set(roundProblems.map((problem) => problem.exerciseId));
-  const templates: string[] = [];
+  const position = roundProblems.length + 1;
+
   for (const id of point.problems) {
-    const exercise = exercises.get(id);
-    if (exercise?.type === 'numeric' && 'answer_expr' in exercise) templates.push(id);
+    if (served.has(id)) continue;
+    if (exercises.get(id)?.role === 'basics') return { exerciseId: id, seed: null, position };
   }
 
-  const position = roundProblems.length + 1;
+  const templates = point.problems.flatMap((id) => {
+    const exercise = exercises.get(id);
+    if (exercise?.role !== 'basics' && exercise?.type === 'numeric' && 'answer_expr' in exercise) {
+      return [
+        {
+          id,
+          difficulty: exercise.difficulty,
+          served: roundProblems.filter((problem) => problem.exerciseId === id).length,
+        },
+      ];
+    }
+    return [];
+  });
+  const candidates = point.problems.flatMap((id) => {
+    if (served.has(id)) return [];
+    const exercise = exercises.get(id);
+    return exercise && exercise.role !== 'basics' ? [{ id, exercise }] : [];
+  });
+
+  const countedAnswers = countedProblems
+    .filter((problem) => problem.correct !== null)
+    .sort((left, right) => right.position - left.position);
+  const last = countedAnswers[0];
+  const lastExercise = last ? exercises.get(last.exerciseId) : undefined;
+  const lastAttempt =
+    last && lastExercise
+      ? { difficulty: lastExercise.difficulty, correct: last.correct as number }
+      : undefined;
+
   const newTemplate = (exerciseId: string): SelectedLessonProblem => {
     const seeds = new Set([
       ...usedSeeds,
@@ -177,19 +223,31 @@ export function selectNextProblem(
     return { exerciseId, seed, position };
   };
 
-  for (const id of point.problems) {
-    if (served.has(id)) continue;
-    const exercise = exercises.get(id);
-    if (!exercise) continue;
-    if (exercise.type === 'numeric' && 'answer_expr' in exercise) return newTemplate(id);
-    return { exerciseId: id, seed: null, position };
+  if (candidates.length > 0) {
+    const difficulty = nextDifficulty(
+      candidates.map(({ exercise }) => exercise.difficulty),
+      lastAttempt,
+    );
+    const candidate = candidates.find(({ exercise }) => exercise.difficulty === difficulty);
+    if (!candidate) return undefined;
+    if (candidate.exercise.type === 'numeric' && 'answer_expr' in candidate.exercise) {
+      return newTemplate(candidate.id);
+    }
+    return { exerciseId: candidate.id, seed: null, position };
   }
 
   if (templates.length === 0) return undefined;
-  const templateCount = roundProblems.filter((problem) =>
-    templates.includes(problem.exerciseId),
-  ).length;
-  const nextTemplate = templates[templateCount % templates.length];
+  const difficulty = nextDifficulty(
+    templates.map((template) => template.difficulty),
+    lastAttempt,
+  );
+  let nextTemplate: (typeof templates)[number] | undefined;
+  for (const id of point.problems) {
+    const template = templates.find((item) => item.id === id && item.difficulty === difficulty);
+    if (template && (!nextTemplate || template.served < nextTemplate.served)) {
+      nextTemplate = template;
+    }
+  }
   if (!nextTemplate) return undefined;
-  return newTemplate(nextTemplate);
+  return newTemplate(nextTemplate.id);
 }
