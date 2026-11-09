@@ -42,10 +42,10 @@ knowledge_points:
     problems:
       [
         mlp-layer-of-neurons-basics,
-        mlpp-layer-values,
-        mlpp-unit-score-template,
         mlpp-why-matrix,
         mlpp-weight-entry,
+        mlpp-layer-values,
+        mlpp-unit-score-template,
         mlpp-why-activation,
         mlpp-robot-layer,
       ]
@@ -69,10 +69,10 @@ knowledge_points:
       [
         mlp-two-layers-basics,
         mlpp-forward-order,
+        mlpp-hidden-meaning,
         mlpp-forward-template,
         mlpp-forward-fixed,
         mlpp-why-no-sigmoid-output,
-        mlpp-hidden-meaning,
         mlpp-robot-forward,
       ]
   - id: mlp-shapes
@@ -94,8 +94,8 @@ knowledge_points:
         mlpp-batch-shape,
         mlpp-params-template,
         mlpp-why-shared-weights,
-        mlpp-hidden-array-size,
         mlpp-why-transpose,
+        mlpp-hidden-array-size,
         mlpp-robot-shapes,
       ]
 final: mlp-explain

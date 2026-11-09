@@ -1,5 +1,100 @@
 concept: pytorch-basics
 exercises:
+  - id: ptb-tensor-recover-input
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot's floating-point sensor row is `(r, 3)` and its weight vector is `(2, -1)`. With no bias, `features @ weights` returns 13. What value of `r` was in the sensor row?"
+    hints:
+      - "Write the two weighted contributions, then solve for the missing sensor value."
+    solution: |
+      The tensor multiplication pairs each sensor value with its weight:
+
+      $$2r + (-1) \times 3 = 13$$
+
+      Undo the known contribution:
+
+      $$2r = 13 + 3 = 16$$
+
+      Divide by the first weight:
+
+      $$r = \frac{16}{2} = 8$$
+
+      Substituting 8 gives $2 \times 8 - 3 = 13$, as required.
+    answer: 8
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 5,
+          category: math_error,
+          feedback: "The second contribution is −3, so add 3 to the output before dividing by 2.",
+        }
+  - id: ptb-linear-robot-forward
+    dimension: transfer
+    type: code_read
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot controller combines two sensor readings using a linear module. What command value does this code print?"
+    code: |
+      import torch
+      from torch import nn
+
+      model = nn.Linear(2, 1)
+      with torch.no_grad():
+          model.weight.copy_(torch.tensor([[2.0, -1.0]]))
+          model.bias.copy_(torch.tensor([0.5]))
+      sensors = torch.tensor([[3.0, 1.0]])
+      print(model(sensors).item())
+    answer: 5.5
+    tolerance: { abs: 0.000001 }
+    solution: |
+      Calculate each weighted sensor contribution:
+
+      $$2 \times 3 = 6$$
+
+      $$(-1) \times 1 = -1$$
+
+      Sum the contributions, then add the module's bias:
+
+      $$6 - 1 = 5$$
+
+      $$5 + 0.5 = 5.5$$
+
+      The module returns one command for the one sensor row.
+  - id: ptb-loss-robot-batch
+    dimension: transfer
+    type: code_read
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot predicts its distance from a wall for two sensor readings. What mean squared error does this code print?"
+    code: |
+      import torch
+      from torch import nn
+
+      prediction = torch.tensor([[2.0], [5.0]])
+      target = torch.tensor([[4.0], [4.0]])
+      loss = nn.MSELoss()(prediction, target)
+      print(loss.item())
+    answer: 2.5
+    tolerance: { abs: 0.000001 }
+    solution: |
+      Compute each prediction's error and square it:
+
+      $$2 - 4 = -2$$
+
+      $$(-2)^2 = 4$$
+
+      $$5 - 4 = 1$$
+
+      $$1^2 = 1$$
+
+      MSE takes the mean across both squared errors:
+
+      $$\frac{4 + 1}{2} = 2.5$$
   - id: ptb-tensors-basics
     dimension: conceptual
     type: mc
@@ -32,7 +127,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "Use house features `(12, 3, 20)` and weights `(25, 10, -1)`. What prediction does `features @ weights` make, in thousands of pounds?"
     answer: 310
@@ -53,7 +148,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Why use a floating-point data type for the house measurements and weights?"
     options:
@@ -110,7 +205,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Complete the tensor creation so PyTorch tracks operations that depend on `weight`."
     code: |
@@ -153,7 +248,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Why must each house row passed to `nn.Linear(3, 1)` contain three feature values?"
     options:
@@ -197,7 +292,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Complete the model so it accepts the three house features and returns one price."
     code: |
@@ -306,7 +401,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Complete the loss function so the code calculates mean squared error."
     code: |
@@ -323,7 +418,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Complete the optimiser so it can update the linear model's parameters with stochastic gradient descent."
     code: |
@@ -369,7 +464,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "What goes wrong if `optimizer.zero_grad()` is omitted between training-loop iterations?"
     options:
@@ -397,7 +492,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Add the step that clears gradients from the previous update."
     code: |
@@ -421,7 +516,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Complete the training step so PyTorch calculates parameter gradients from the loss."
     code: |
@@ -445,7 +540,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Complete the final line so SGD applies the calculated gradients to the model."
     code: |
@@ -510,7 +605,7 @@ exercises:
     dimension: implementation
     type: code_read
     role: practice
-    difficulty: 3
+    difficulty: 2
     est_minutes: 3
     prompt: "Starting from the known house weights, what loss does the code print after one SGD update?"
     code: |

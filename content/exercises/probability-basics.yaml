@@ -1,5 +1,158 @@
 concept: probability-basics
 exercises:
+  - id: pb-complement-counts
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Of twelve house sales, nine were above asking. What is the frequency-based probability estimate for a sale that was not above asking?"
+    hints:
+      - "Find the number not above asking before dividing by all twelve sales."
+    solution: |
+      First find the count in the complement:
+
+      $$12 - 9 = 3$$
+
+      Then divide by the total number of sales:
+
+      $$\frac{3}{12} = 0.25$$
+    answer: 0.25
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 0.75,
+          category: incorrect_reasoning,
+          feedback: "That is the above-asking estimate; the question asks for its complement.",
+        }
+      - {
+          answer: 3,
+          category: incomplete_explanation,
+          feedback: "Three is the number of matching sales. Divide by all twelve to get a probability.",
+        }
+  - id: pb-event-recover-total
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot completed 18 test grasps successfully. Its frequency-based success probability was exactly 0.75. How many grasps were tested in total?"
+    hints:
+      - "The estimate is the successful count divided by the total count. Work backwards from that ratio."
+    solution: |
+      Let $n$ be the total number of test grasps. The frequency estimate gives:
+
+      $$\frac{18}{n} = 0.75$$
+
+      Multiply by $n$, then divide by 0.75:
+
+      $$18 = 0.75n$$
+
+      $$n = \frac{18}{0.75} = 24$$
+
+      There were 24 test grasps, of which 18 succeeded.
+    answer: 24
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 13.5,
+          category: misapplied_technique,
+          feedback: "Multiplying 18 by 0.75 treats 18 as the total, but 18 is already the successful count.",
+        }
+  - id: pb-distribution-missing
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot makes exactly zero, one or two stops on a route. The probabilities of zero and one stop are 0.25 and 0.5. What probability must its distribution assign to two stops?"
+    hints:
+      - "These are all the possible stop counts, so their probabilities must sum to 1."
+    solution: |
+      Add the two known probabilities:
+
+      $$0.25 + 0.5 = 0.75$$
+
+      The remaining probability belongs to two stops:
+
+      $$1 - 0.75 = 0.25$$
+
+      The completed distribution sums to 1.
+    answer: 0.25
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 0.75,
+          category: incomplete_explanation,
+          feedback: "That is the probability already assigned to zero or one stop. Subtract it from 1.",
+        }
+  - id: pb-expectation-recover-count
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot inspection finds zero faults with probability 0.5, one fault with probability 0.25, or $k$ faults with probability 0.25. These are the only possible counts. If the expected number of faults is 1.25, what is $k$?"
+    hints:
+      - "Write the probability-weighted average with the unknown count included."
+    solution: |
+      Weight each possible fault count by its probability:
+
+      $$0 \times 0.5 + 1 \times 0.25 + k \times 0.25 = 1.25$$
+
+      Subtract the known contribution:
+
+      $$0.25k = 1.25 - 0.25 = 1$$
+
+      Divide by the unknown count's probability:
+
+      $$k = \frac{1}{0.25} = 4$$
+
+      Four faults is the remaining possible count, not the average across inspections.
+    answer: 4
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 5,
+          category: incomplete_explanation,
+          feedback: "The one-fault outcome already contributes 0.25 to the expectation. Subtract that contribution before dividing.",
+        }
+  - id: pb-conditional-empty
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "In a sample of twenty house sales, no house received at least two offers. What can you report as the frequency-based probability of selling above asking, given at least two offers?"
+    options:
+      - {
+          id: a,
+          text: "Zero, because no house in the sample met the condition.",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "Zero successes out of a non-empty group would give zero. Here the conditioned group itself is empty.",
+        }
+      - {
+          id: b,
+          text: "The overall above-asking rate, using all twenty sales instead.",
+          correct: false,
+          category: misapplied_technique,
+          feedback: "That changes the question: a conditional rate uses only houses meeting the condition.",
+        }
+      - {
+          id: c,
+          text: "No defined estimate, because the conditioned group is empty.",
+          correct: true,
+          feedback: "The conditional frequency would divide zero by zero, so this sample provides no defined conditional rate.",
+        }
+      - {
+          id: d,
+          text: "One, because every house in the empty group qualifies.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "There are no observations in the conditioned group. An empty group does not supply a probability of one.",
+        }
+    solution: "The conditioned group contains zero houses, so the conditional frequency would be $0/0$, which is undefined. A frequency-based conditional estimate requires a non-empty conditioned group; it is not the overall rate or a zero probability."
   - id: pb-events-basics
     dimension: conceptual
     type: mc
@@ -209,7 +362,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "A sample has ${{=zero_count}}$ houses with zero offers, ${{=one_count}}$ with one, ${{=two_count}}$ with two and ${{=three_count}}$ with three. What is the probability of exactly two offers?"
     hints: ["Use the two-offer count over the total number of houses."]
@@ -297,7 +450,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "The probabilities of zero, one, two and three offers are 0.2, 0.3, 0.4 and 0.1. What is the expected number of offers?"
     hints: ["Multiply each offer count by its probability, then add the products."]
@@ -330,7 +483,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "A sample has ${{=count0}}$ houses with zero offers, ${{=count1}}$ with one, ${{=count2}}$ with two and ${{=count3}}$ with three. What is the expected number of offers?"
     hints: ["Weight each offer count by its frequency, then divide by the total."]
@@ -382,7 +535,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "Why do these sales not show independence between selling above asking and receiving at least two offers?"
     options:

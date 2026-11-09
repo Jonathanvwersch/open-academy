@@ -247,7 +247,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: |
       A layer has
@@ -349,7 +349,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 1
     prompt: "Why does a hidden layer apply an activation such as ReLU to its scores $W_1 x + b_1$?"
     options:
@@ -377,7 +377,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 1
     prompt: "A robot has 5 distance sensors. Its first layer has 8 neurons, each reading all 5 sensors. What shapes are this layer's weight matrix $W$ and bias $b$?"
     options:
@@ -496,7 +496,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 1
     prompt: "A network predicts house prices directly in thousands of pounds, including a target of 250. Why leave its output as $W_2 h + b_2$ instead of applying sigmoid?"
     options:
@@ -559,7 +559,7 @@ exercises:
     dimension: transfer
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "A balancing robot reads one input, its tilt $x$. Hidden neuron 1 has weight 2 and bias $-1$; hidden neuron 2 has weight $-1$ and bias 1; both use ReLU. The output has weights $(1, 2)$ and bias 0. What is the output when $x = 0.25$?"
     answer: 1.5
@@ -641,7 +641,7 @@ exercises:
     dimension: implementation
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 1
     prompt: "A house model's batch grows from 8 houses to 32 with no change to its layers. Why does its number of parameters stay the same?"
     options:
@@ -676,7 +676,7 @@ exercises:
     dimension: implementation
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "A batch of 8 images, each flattened to 784 numbers, goes through a hidden layer of 128 neurons, then an output layer of 10. How many numbers are in the hidden array $H$?"
     answer: 1024
@@ -726,7 +726,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 1
     prompt: "A robot arm controller processes 20 camera frames at once. Each frame is summarised as 64 numbers, a hidden layer has 32 neurons, and the output layer gives 4 motor commands. What shape is the output array?"
     options:
