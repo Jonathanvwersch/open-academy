@@ -56,6 +56,7 @@ type MasteryApplier = (input: {
   mode: 'practice';
   gradedBy: 'deterministic' | 'llm' | 'self';
   now: Date;
+  timeZone: string;
 }) => Promise<unknown>;
 
 export function registerLessonRunRoutes(
@@ -400,6 +401,7 @@ export function registerLessonRunRoutes(
         mode: 'practice',
         gradedBy: graded.graded_by ?? 'deterministic',
         now,
+        timeZone: context.get('timeZone'),
       });
       await tx
         .update(lessonProblems)

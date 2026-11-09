@@ -598,3 +598,13 @@ async function answerCurrentProblem(page: Page) {
   await page.getByRole('button', { name: 'Submit answer' }).click();
   await expect(page.getByRole('status')).toContainText('Correct');
 }
+
+test.describe('learner timezone header', () => {
+  test.use({ timezoneId: 'America/Los_Angeles' });
+
+  test('sends the browser timezone with API requests', async ({ page }) => {
+    const request = page.waitForRequest((candidate) => candidate.url().endsWith('/api/today'));
+    await page.goto('/');
+    expect((await request).headers()['x-time-zone']).toBe('America/Los_Angeles');
+  });
+});

@@ -21,6 +21,7 @@ import {
   sessionActivities,
   studySessions,
   users,
+  xpEvents,
 } from '../db/schema.js';
 import { env } from '../env.js';
 import { gradeExercise } from '../grading/index.js';
@@ -58,6 +59,7 @@ import {
 } from '../learning/scheduler.js';
 import type { LearningMode, MasteryRecord } from '../learning/types.js';
 import { initialMastery, masteryRank } from '../learning/types.js';
+import { localDateKey } from '../learning/xp.js';
 import type { PaperFetcher } from '../papers/fetcher.js';
 import { createTutorProvider, E2ETutorProvider, type TutorProvider } from '../tutor/provider.js';
 import { scoreRubric } from '../tutor/scoring.js';
@@ -103,8 +105,25 @@ export function createApiRoutes(deps: {
     if (!user) {
       return context.json({ error: 'Seed the default learner before using the API.' }, 503);
     }
+    const requestedTimeZone = context.req.header('X-Time-Zone');
+    const timeZone = isValidTimeZone(requestedTimeZone) ? requestedTimeZone : user.timezone;
+    if (timeZone !== user.timezone) {
+      await db.transaction(async (tx) => {
+        await tx.update(users).set({ timezone: timeZone }).where(eq(users.id, user.id));
+        const events = await tx
+          .select({ id: xpEvents.id, earnedAt: xpEvents.earnedAt })
+          .from(xpEvents)
+          .where(eq(xpEvents.userId, user.id));
+        for (const event of events) {
+          await tx
+            .update(xpEvents)
+            .set({ localDate: localDateKey(event.earnedAt, timeZone) })
+            .where(eq(xpEvents.id, event.id));
+        }
+      });
+    }
     context.set('userId', user.id);
-    context.set('timeZone', user.timezone);
+    context.set('timeZone', timeZone);
     await next();
   });
 
@@ -150,7 +169,7 @@ export function createApiRoutes(deps: {
     };
     const weekday = new Intl.DateTimeFormat('en-US', {
       weekday: 'short',
-      timeZone: user?.timezone ?? 'Europe/London',
+      timeZone: context.get('timeZone'),
     }).format(now);
     const sessionKind = weekday === 'Sat' ? 'saturday' : weekday === 'Sun' ? 'sunday' : 'weekday';
     const budget = sessionBudget(sessionKind, prefs);
@@ -950,6 +969,7 @@ export function createApiRoutes(deps: {
       mode: body.data.mode,
       gradedBy,
       now,
+      timeZone: context.get('timeZone'),
     });
     if (body.data.mode === 'review') {
       const [card] = await db
@@ -965,12 +985,11 @@ export function createApiRoutes(deps: {
         .limit(1);
       if (card) {
         const rating = mapReviewRating({ correct: result.correct, hintsUsed, attemptNo });
-        const timezone = (await repo.user())?.timezone ?? 'UTC';
         const scheduled = scheduleReview(
           card.fsrs as never,
           now,
           rating,
-          timezone,
+          context.get('timeZone'),
           process.env.NODE_ENV !== 'test',
         );
         await db
@@ -1212,6 +1231,7 @@ export function createApiRoutes(deps: {
       mode: 'diagnostic',
       gradedBy: result.graded_by ?? 'deterministic',
       now,
+      timeZone: context.get('timeZone'),
     });
     const nextState = answer.state;
     for (const prerequisiteId of answer.inferredPrerequisiteIds) {
@@ -1608,8 +1628,7 @@ export function createApiRoutes(deps: {
   api.get('/progress', async (context) => {
     const index = await content();
     const repo = withRepo(context);
-    const [user, records, recent, events, flags, submissions, sessions] = await Promise.all([
-      repo.user(),
+    const [records, recent, events, flags, submissions, sessions] = await Promise.all([
       repo.masteryRecords(),
       repo.recentAttempts(100),
       db
@@ -1647,7 +1666,7 @@ export function createApiRoutes(deps: {
         submissions,
         sessions,
         now: requestNow(context),
-        timeZone: user?.timezone ?? 'Europe/London',
+        timeZone: context.get('timeZone'),
       }),
     );
   });
@@ -1673,6 +1692,7 @@ async function applyMastery(input: {
   mode: LearningMode;
   gradedBy: 'deterministic' | 'llm' | 'self';
   now: Date;
+  timeZone: string;
 }) {
   const previous = await input.repo.masteryRecord(input.exercise.concept, input.exercise.dimension);
   const open = await input.repo.openFlags();
@@ -1738,12 +1758,11 @@ async function applyMastery(input: {
         hintsUsed: input.hintsUsed,
         attemptNo: input.attemptNo,
       });
-      const timezone = (await input.repo.user())?.timezone ?? 'UTC';
       const scheduled = scheduleInitialReview(
         card,
         input.now,
         rating,
-        timezone,
+        input.timeZone,
         process.env.NODE_ENV !== 'test',
       );
       await input.repo.db.insert(reviewCards).values({
@@ -1759,6 +1778,16 @@ async function applyMastery(input: {
     }
   }
   return { mastery: result.mastery, event: result.event, credit: result.credit };
+}
+
+function isValidTimeZone(value: string | undefined): value is string {
+  if (!value || value.length > 64) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function requestNow(context: { req: { header(name: string): string | undefined } }): Date {

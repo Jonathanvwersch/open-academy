@@ -157,7 +157,7 @@ export class LearnerRepository {
         conceptId: run.conceptId,
         status: run.status,
       })),
-      startDate: user?.startDate || now.toISOString(),
+      startDate: user?.startDate || localDateKey(now, user?.timezone ?? 'UTC'),
     };
   }
 
