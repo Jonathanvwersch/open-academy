@@ -77,7 +77,7 @@ exercises:
       import torch
       x = torch.tensor([[1.0], [2.0]], dtype=____)
       print(x.dtype)
-    accept: ["torch.float32"]
+    accept: ["torch.float32", "torch.float"]
     solution: "`torch.float32` specifies floating-point numbers, suitable for the calculations and gradients used here."
   - id: ptb-tensor-template
     dimension: implementation
@@ -88,13 +88,13 @@ exercises:
     params:
       x: { min: 1, max: 4 }
       w: { min: 1, max: 3 }
-    prompt: "A one-row table is `[[{{x}}.0]]` and its weight matrix is `[[{{w}}.0]]`. Matrix multiplication pairs the entries: ${{x}}\\times{{w}}$. What number is in the result?"
+    prompt: "A one-row table is `[[{{= x }}.0]]` and its weight matrix is `[[{{= w }}.0]]`. Matrix multiplication pairs the entries: ${{= x }}\\times{{= w }}$. What number is in the result?"
     answer_expr: "x * w"
     tolerance: { abs: 0.000001 }
     solution: |
       The row has one entry, so multiply it by the matching weight.
 
-      $${{x}}\times{{w}}={{= x * w }}.$$
+      $${{= x }}\times{{= w }}={{= x * w }}.$$
   - id: ptb-tensor-nesting
     dimension: implementation
     type: mc
@@ -241,7 +241,13 @@ exercises:
       from torch import nn
       model = ____
       print(tuple(model(torch.tensor([[1.0], [2.0]])).shape))
-    accept: ["nn.Linear(1, 1)", "torch.nn.Linear(1, 1)"]
+    accept:
+      [
+        "nn.Linear(1, 1)",
+        "torch.nn.Linear(1, 1)",
+        "nn.Linear(in_features=1, out_features=1)",
+        "torch.nn.Linear(in_features=1, out_features=1)",
+      ]
     solution: "The arguments specify one feature and one output, so two input rows give an output of shape `(2, 1)`."
   - id: ptb-linear-template
     dimension: implementation
@@ -253,13 +259,13 @@ exercises:
       x: { min: 1, max: 4 }
       w: { min: 1, max: 3 }
       b: { min: 0, max: 2 }
-    prompt: "A one-input linear module has weight {{w}}, bias {{b}} and input {{x}}. Its weighted contribution is {{= w * x }}. What is its output after adding the bias?"
+    prompt: "A one-input linear module has weight {{= w }}, bias {{= b }} and input {{= x }}. Its weighted contribution is {{= w * x }}. What is its output after adding the bias?"
     answer_expr: "w * x + b"
     tolerance: { abs: 0.000001 }
     solution: |
       The same linear rule multiplies the input by its weight, then adds the bias.
 
-      $${{w}}({{x}})+{{b}}={{= w * x + b }}.$$
+      $${{= w }}({{= x }})+{{= b }}={{= w * x + b }}.$$
   - id: ptb-linear-sizes
     dimension: implementation
     type: mc
@@ -429,13 +435,13 @@ exercises:
     params:
       w: { min: 1, max: 4 }
       t: { min: 5, max: 8 }
-    prompt: "A tracked dial value is {{w}} and its target is {{t}}. The squared-error gradient is {{= 2 * (w - t) }}. With SGD learning rate 0.25, what value does `step()` produce?"
+    prompt: "A tracked dial value is {{= w }} and its target is {{= t }}. The squared-error gradient is {{= 2 * (w - t) }}. With SGD learning rate 0.25, what value does `step()` produce?"
     answer_expr: "w - 0.25 * 2 * (w - t)"
     tolerance: { abs: 0.000001 }
     solution: |
       SGD subtracts the scaled gradient from the current value.
 
-      $${{w}}-0.25({{= 2 * (w - t) }})={{= w - 0.25 * 2 * (w - t) }}.$$
+      $${{= w }}-0.25({{= 2 * (w - t) }})={{= w - 0.25 * 2 * (w - t) }}.$$
   - id: ptb-loss-backward
     dimension: implementation
     type: mc
@@ -595,7 +601,13 @@ exercises:
       loss.backward()
       optimizer.step()
       print(model(torch.tensor([[1.0]])).item())
-    accept: ["optimizer.zero_grad()", "optimizer.zero_grad(set_to_none=True)"]
+    accept:
+      [
+        "optimizer.zero_grad()",
+        "optimizer.zero_grad(set_to_none=True)",
+        "model.zero_grad()",
+        "model.zero_grad(set_to_none=True)",
+      ]
     solution: "Zero_grad clears any stored gradients, so this update uses only the current loss gradient. The new prediction is 2."
   - id: ptb-loop-template
     dimension: implementation
@@ -606,7 +618,7 @@ exercises:
     params:
       w: { min: 0, max: 2 }
       t: { min: 3, max: 5 }
-    prompt: "A one-input model starts with weight {{w}}, bias 0, input 1 and target {{t}}. Both parameter gradients are {{= 2 * (w - t) }}. One fresh SGD step uses learning rate 0.125. What is the new prediction, including the updated bias?"
+    prompt: "A one-input model starts with weight {{= w }}, bias 0, input 1 and target {{= t }}. Both parameter gradients are {{= 2 * (w - t) }}. One fresh SGD step uses learning rate 0.125. What is the new prediction, including the updated bias?"
     answer_expr: "w - 0.5 * (w - t)"
     tolerance: { abs: 0.000001 }
     solution: |
@@ -616,7 +628,7 @@ exercises:
 
       $$\text{bias change}=-0.125({{= 2 * (w - t) }}).$$
 
-      $$\text{new prediction}={{w}}-0.5({{w}}-{{t}})={{= w - 0.5 * (w - t) }}.$$
+      $$\text{new prediction}={{= w }}-0.5({{= w }}-{{= t }})={{= w - 0.5 * (w - t) }}.$$
   - id: ptb-loop-stale
     dimension: implementation
     type: mc

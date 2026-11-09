@@ -154,7 +154,7 @@ knowledge_points:
       | `nn.Linear(2, 1)` | `(2, 2)` | `(2, 1)` |
       | `nn.Linear(1, 2)` | `(2, 1)` | `(2, 2)` |
 
-      **Where it shows up.** `nn.Linear(3, 1)` can hold the house model's three feature weights and one bias. The prediction rule is unchanged; the module makes its parameters available for training.
+      **Where it shows up.** The linear-regression lesson's house-price model has three feature weights and one bias; `nn.Linear(3, 1)` holds exactly those. The prediction rule is unchanged; the module makes its parameters available for training.
     problems:
       [
         ptb-linear-basics,
@@ -178,7 +178,7 @@ knowledge_points:
           <path d="M60 100 H500 M100 95 V105 M280 95 V105 M460 95 V105" stroke="#737373" fill="#171717" fill-opacity="0"/>
           <circle cx="100" cy="100" r="5" fill="#171717"/><circle cx="280" cy="100" r="5" fill="#10b981"/><circle cx="460" cy="100" r="5" fill="#171717"/>
           <path d="M100 70 H280 L270 64 M280 70 L270 76" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2"/>
-          <text x="125" y="45">update: +1</text><text x="85" y="130">2</text><text x="265" y="130">3</text><text x="415" y="130">target: 4</text>
+          <text x="190" y="45" text-anchor="middle">update: +1</text><text x="100" y="130" text-anchor="middle">2</text><text x="280" y="130" text-anchor="middle">3</text><text x="460" y="130" text-anchor="middle">target: 4</text>
         </g>
       </svg>
       ```
@@ -266,8 +266,8 @@ knowledge_points:
           <circle cx="80" cy="100" r="5" fill="#171717"/><circle cx="280" cy="100" r="5" fill="#10b981"/><circle cx="380" cy="100" r="5" fill="#10b981"/>
           <path d="M80 65 H280 L270 59 M280 65 L270 71 M280 65 H380 L370 59 M380 65 L370 71" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2"/>
           <path d="M480 90 V110" stroke="#171717"/>
-          <text x="65" y="130">1</text><text x="265" y="130">2</text><text x="365" y="130">2.5</text><text x="435" y="130">target: 3</text>
-          <text x="115" y="40">first update</text><text x="300" y="40">second</text>
+          <text x="80" y="130" text-anchor="middle">1</text><text x="280" y="130" text-anchor="middle">2</text><text x="380" y="130" text-anchor="middle">2.5</text><text x="480" y="130" text-anchor="middle">target: 3</text>
+          <text x="180" y="40" text-anchor="middle">first update</text><text x="330" y="40" text-anchor="middle">second update</text>
         </g>
       </svg>
       ```
