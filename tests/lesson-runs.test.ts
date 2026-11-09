@@ -189,10 +189,17 @@ test('basics does not count toward the two correct answers or the XP award', asy
     const body = await response.json();
     run = body.state;
     expect(run.lastAnsweredProblem.id).toBe(pending.id);
-    expect(run.lastAnsweredProblem.result).toMatchObject({
+    const resultExpectation = {
       yourAnswer: expect.any(String),
       correctAnswer: expect.any(String),
-    });
+    };
+    expect(run.lastAnsweredProblem.result).toMatchObject(resultExpectation);
+    if (content.exercisesById.get(pending.exerciseId)?.type === 'mc') {
+      expect(run.lastAnsweredProblem.result.answerOptions).toMatchObject({
+        selected: expect.any(Array),
+        correct: expect.any(Array),
+      });
+    }
     if (count === 0) expect(run.points[0]).toMatchObject({ answered: 0, streak: 0 });
     if (count < 2) run = (await (await startRun()).json()).run;
   }

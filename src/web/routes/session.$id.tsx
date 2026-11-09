@@ -7,7 +7,14 @@ import { Badge } from '@/ui/badge.js';
 import { Button } from '@/ui/button.js';
 import { Card, CardContent } from '@/ui/card.js';
 import { apiFetch } from '../authenticated-fetch.js';
-import { ExerciseForm, FeedbackPanel, HintLadder, LessonBlock, Markdown } from '../components';
+import {
+  type AnswerOptions,
+  ExerciseForm,
+  FeedbackPanel,
+  HintLadder,
+  LessonBlock,
+  Markdown,
+} from '../components';
 import { LessonRunner } from '../lesson/LessonRunner.js';
 import {
   exerciseQueryOptions,
@@ -404,11 +411,10 @@ function SessionPage() {
     result.status === 'invalid' ||
     result.status === 'self_check_required' ||
     (Number(result?.correct) === 0 && result?.retryAllowed === true);
-  const canAskForHelp = !result || result.status === 'invalid' || result.retryAllowed === true;
   const triesLeft = Math.max(0, 2 - Number(result?.attemptNo ?? 1));
-  const helpActions = canAskForHelp ? (
-    <div className="flex flex-wrap gap-2">
-      {mode !== 'assessment' ? (
+  const helpActions =
+    mode !== 'assessment' ? (
+      <div className="flex flex-wrap gap-2">
         <HintLadder
           exerciseId={exerciseId ?? ''}
           activityId={activity.id}
@@ -418,21 +424,25 @@ function SessionPage() {
           mode={mode === 'review' ? 'review' : 'practice'}
           buttonRef={hintButton}
         />
-      ) : null}
-      {mode === 'practice' && exerciseId && sessionQuery.data.tutorEnabled ? (
-        <TutorLauncher
-          context={{
-            conceptId: activity.conceptId ?? undefined,
-            conceptTitle: activity.conceptTitle ?? undefined,
-            activityId: activity.id,
-            exerciseId,
-            allowed: true,
-            enabled: sessionQuery.data.tutorEnabled,
-          }}
-        />
-      ) : null}
-    </div>
-  ) : null;
+        {mode === 'practice' && exerciseId && sessionQuery.data.tutorEnabled ? (
+          <TutorLauncher
+            context={{
+              conceptId: activity.conceptId ?? undefined,
+              conceptTitle: activity.conceptTitle ?? undefined,
+              activityId: activity.id,
+              exerciseId,
+              allowed: true,
+              enabled: sessionQuery.data.tutorEnabled,
+            }}
+            greeting={
+              result && result.status !== 'invalid'
+                ? 'What would you like to know about this answer?'
+                : undefined
+            }
+          />
+        ) : null}
+      </div>
+    ) : null;
   const submitLabel =
     result?.status === 'self_check_required'
       ? 'Submit self-check'
@@ -592,7 +602,32 @@ function SessionPage() {
                 hides shortcuts
               </div>
             ) : null}
-            {result && result.status !== 'invalid' ? <FeedbackPanel result={result} /> : null}
+            <ExerciseForm
+              key={`${activity.id}:${exerciseId}`}
+              exercise={exerciseQuery.data}
+              onSubmit={submitAnswer}
+              explainStep={result?.status === 'self_check_required' ? 'self-check' : 'answer'}
+              readOnlyAnswer={
+                typeof result?.yourAnswer === 'string' ? result.yourAnswer : undefined
+              }
+              submittedAnswer={result?.yourAnswer}
+              answerOptions={result?.answerOptions as AnswerOptions | undefined}
+              locked={!canSubmitAnswer && result?.status !== 'invalid'}
+              submitLabel={submitLabel}
+              primaryAction={
+                !canSubmitAnswer
+                  ? { label: 'Continue', onClick: () => void continueNext(), loading: continuing }
+                  : undefined
+              }
+              loading={submittingAnswer}
+              actions={helpActions}
+            />
+            {result && result.status !== 'invalid' ? (
+              <FeedbackPanel
+                result={result}
+                hideAnswerLines={['mc', 'debug'].includes(exerciseQuery.data.type)}
+              />
+            ) : null}
             {result?.status === 'invalid' ? (
               <Alert variant="destructive">
                 <AlertDescription>
@@ -611,27 +646,6 @@ function SessionPage() {
             {hint?.tutorUnavailable ? (
               <p className="text-xs text-muted-foreground">Tutor unavailable right now.</p>
             ) : null}
-            {canSubmitAnswer ? (
-              <ExerciseForm
-                key={`${activity.id}:${exerciseId}`}
-                exercise={exerciseQuery.data}
-                onSubmit={submitAnswer}
-                explainStep={result?.status === 'self_check_required' ? 'self-check' : 'answer'}
-                readOnlyAnswer={
-                  typeof result?.yourAnswer === 'string' ? result.yourAnswer : undefined
-                }
-                submitLabel={submitLabel}
-                loading={submittingAnswer}
-                actions={helpActions}
-              />
-            ) : (
-              <>
-                <Button type="button" onClick={continueNext} loading={continuing}>
-                  Continue
-                </Button>
-                {helpActions}
-              </>
-            )}
           </CardContent>
         </Card>
       ) : !exerciseId ? (

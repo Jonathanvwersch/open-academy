@@ -25,6 +25,8 @@ import {
 import { env } from '../env.js';
 import { gradeExercise } from '../grading/index.js';
 import { updateActivityAndAdvance } from '../learning/activity-completion.js';
+import { answerDisplay } from '../learning/answer-display.js';
+import { answerOptionsFor } from '../learning/answer-options.js';
 import { deriveLearningDebt } from '../learning/debt.js';
 import {
   createDiagnosticState,
@@ -337,13 +339,19 @@ export function createApiRoutes(deps: {
               .map((attempt) => {
                 const feedback = attempt.feedback as Record<string, unknown>;
                 const answer = attempt.answer;
+                const retryAllowed =
+                  attempt.mode === 'practice' && attempt.correct === 0 && attempt.attemptNo < 2;
+                const exercise = index.exercisesById.get(attempt.exerciseId);
+                const answerOptions = exercise
+                  ? answerOptionsFor(exercise, answer, !retryAllowed)
+                  : undefined;
                 return {
                   exerciseId: attempt.exerciseId,
                   status: feedback.status ?? 'graded',
                   correct: attempt.correct,
                   attemptNo: attempt.attemptNo,
-                  retryAllowed:
-                    attempt.mode === 'practice' && attempt.correct === 0 && attempt.attemptNo < 2,
+                  retryAllowed,
+                  ...(answerOptions ? { answerOptions } : {}),
                   feedback: feedback.message ?? '',
                   rubric: feedback.rubric,
                   exemplar: feedback.exemplar,
@@ -356,7 +364,9 @@ export function createApiRoutes(deps: {
                     'text' in answer &&
                     typeof answer.text === 'string'
                       ? answer.text
-                      : undefined),
+                      : exercise
+                        ? answerDisplay(exercise, answer)
+                        : undefined),
                 };
               })[0],
           })),
@@ -984,6 +994,7 @@ export function createApiRoutes(deps: {
     }
     const retryAllowed = body.data.mode === 'practice' && result.correct === 0 && attemptNo < 2;
     const revealSolution = result.correct === 0 && !retryAllowed;
+    const answerOptions = answerOptionsFor(exercise, body.data.answer, !retryAllowed);
     if (activityRow && activity && (result.correct > 0 || !retryAllowed)) {
       const progress = activity.progress as {
         completedExerciseIds?: string[];
@@ -1048,6 +1059,7 @@ export function createApiRoutes(deps: {
       credit,
       mastery: masteryResult,
       retryAllowed,
+      ...(answerOptions ? { answerOptions } : {}),
       ...(result.correct === 0 && (body.data.mode !== 'practice' || revealSolution)
         ? exercise.type === 'explain'
           ? {}

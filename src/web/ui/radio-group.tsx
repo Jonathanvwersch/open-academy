@@ -19,8 +19,9 @@ function RadioGroup({
 
 function RadioGroupItem({
   className,
+  indicator,
   ...props
-}: React.ComponentProps<typeof RadioGroupPrimitive.Item>) {
+}: React.ComponentProps<typeof RadioGroupPrimitive.Item> & { indicator?: React.ReactNode }) {
   return (
     <RadioGroupPrimitive.Item
       data-slot="radio-group-item"
@@ -30,12 +31,21 @@ function RadioGroupItem({
       )}
       {...props}
     >
-      <RadioGroupPrimitive.Indicator
-        data-slot="radio-group-indicator"
-        className="flex size-4 items-center justify-center"
-      >
-        <span className="absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-foreground" />
-      </RadioGroupPrimitive.Indicator>
+      {indicator ? (
+        <span
+          data-slot="radio-group-status"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        >
+          {indicator}
+        </span>
+      ) : (
+        <RadioGroupPrimitive.Indicator
+          data-slot="radio-group-indicator"
+          className="flex size-4 items-center justify-center"
+        >
+          <span className="absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-foreground" />
+        </RadioGroupPrimitive.Indicator>
+      )}
     </RadioGroupPrimitive.Item>
   )
 }

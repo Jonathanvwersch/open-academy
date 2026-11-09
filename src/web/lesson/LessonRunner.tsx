@@ -41,8 +41,16 @@ export function LessonRunner({
   const lesson = useSuspenseQuery(lessonQueryOptions(conceptId)).data;
   const state = query.data.run;
   const starting = useRef(false);
-  const previousPointId = useRef<string | undefined>(undefined);
+  const visibleProblemId = state?.pendingProblem?.id ?? state?.lastAnsweredProblem?.id;
+  const previousProblemId = useRef(visibleProblemId);
+  const problemCardRef = useRef<HTMLDivElement>(null);
+  const problemPromptRef = useRef<HTMLDivElement>(null);
   const previousCurrentPointId = useRef(state?.currentPointId);
+  const [stableCardHeights, setStableCardHeights] = useState<{
+    pointId: string;
+    prompt: number;
+    inputs: number;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [busyAction, setBusyAction] = useState<'submit' | 'next' | 'continue' | null>(null);
   const [error, setError] = useState('');
@@ -84,11 +92,17 @@ export function LessonRunner({
       : pageLabel;
 
   useEffect(() => {
-    if (previousPointId.current !== undefined && previousPointId.current !== pointId) {
-      window.scrollTo({ top: 0 });
+    if (previousProblemId.current && visibleProblemId !== previousProblemId.current) {
+      const cardTop = problemCardRef.current?.getBoundingClientRect().top;
+      const navHeight =
+        document.querySelector('nav[aria-label="Main navigation"]')?.getBoundingClientRect()
+          .height ?? 0;
+      if (cardTop !== undefined && cardTop < navHeight) {
+        window.scrollBy({ top: cardTop - navHeight, behavior: 'auto' });
+      }
     }
-    previousPointId.current = pointId;
-  }, [pointId]);
+    previousProblemId.current = visibleProblemId;
+  }, [visibleProblemId]);
 
   useEffect(() => {
     if (previousCurrentPointId.current === state?.currentPointId) return;
@@ -196,6 +210,24 @@ export function LessonRunner({
       }
       return;
     }
+    if (state.currentPointId) {
+      const promptHeight = problemPromptRef.current?.getBoundingClientRect().height ?? 0;
+      const inputAreaHeight =
+        problemCardRef.current
+          ?.querySelector('[data-testid="exercise-inputs"]')
+          ?.getBoundingClientRect().height ?? 0;
+      setStableCardHeights((current) => ({
+        pointId: state.currentPointId as string,
+        prompt: Math.max(
+          current?.pointId === state.currentPointId ? current.prompt : 0,
+          promptHeight,
+        ),
+        inputs: Math.max(
+          current?.pointId === state.currentPointId ? current.inputs : 0,
+          inputAreaHeight,
+        ),
+      }));
+    }
     setBusy(true);
     setBusyAction('next');
     setError('');
@@ -227,6 +259,8 @@ export function LessonRunner({
   const pointStatus = state.points.find((item) => item.id === point?.id);
   const shownProblem = state.pendingProblem ?? state.lastAnsweredProblem;
   const showingAnswer = Boolean(state.lastAnsweredProblem && !state.pendingProblem);
+  const stableHeightForCurrentPoint =
+    stableCardHeights?.pointId === state.currentPointId ? stableCardHeights : null;
   const problemLabel = (exerciseId: string, pending = false) => {
     if (basicsExerciseId === exerciseId) return 'Basics question';
     return `Problem ${(pointStatus?.answered ?? 0) + (pending ? 1 : 0)} · up to 5`;
@@ -236,7 +270,7 @@ export function LessonRunner({
       ? 'Back to summary'
       : `Back to step ${Math.max(0, currentPointIndex) + 1}`;
   const stepContent = displayedPoint ? (
-    <section className="space-y-4">
+    <section data-testid="lesson-step-content" className="space-y-4">
       <h2 className="text-xl font-semibold">{displayedPoint.title}</h2>
       {displayedPoint.id === lesson?.knowledge_points?.[0]?.id &&
       (lesson?.where_this_fits ?? state.where_this_fits) ? (
@@ -385,88 +419,105 @@ export function LessonRunner({
         <>
           {stepContent}
           {shownProblem ? (
-            <Card
-              className="space-y-5"
-              data-testid="lesson-problem"
-              data-problem-id={shownProblem.id}
-            >
-              <CardContent className="space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-sm font-medium">
-                    {problemLabel(shownProblem.exercise.id, Boolean(state.pendingProblem))}
-                  </h3>
-                  {basicsExerciseId !== shownProblem.exercise.id ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div
-                        role="img"
-                        aria-label={`${pointStatus?.streak ?? 0} correct in a row`}
-                        className="flex gap-2"
-                      >
-                        {[0, 1].map((index) => (
-                          <span
-                            key={index}
-                            className={`h-3 w-3 rounded-full border ${
-                              index < (pointStatus?.streak ?? 0)
-                                ? 'border-green-600 bg-green-500'
-                                : 'border-border bg-background'
-                            }`}
-                          />
-                        ))}
+            <div ref={problemCardRef}>
+              <Card
+                className="space-y-5"
+                data-testid="lesson-problem"
+                data-problem-id={shownProblem.id}
+              >
+                <CardContent className="space-y-5">
+                  <div
+                    data-testid="lesson-problem-header"
+                    className="flex flex-wrap items-center justify-between gap-3"
+                  >
+                    <h3 className="text-sm font-medium">
+                      {problemLabel(shownProblem.exercise.id, Boolean(state.pendingProblem))}
+                    </h3>
+                    {basicsExerciseId !== shownProblem.exercise.id ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div
+                          role="img"
+                          aria-label={`${pointStatus?.streak ?? 0} correct in a row`}
+                          className="flex gap-2"
+                        >
+                          {[0, 1].map((index) => (
+                            <span
+                              key={index}
+                              className={`h-3 w-3 rounded-full border ${
+                                index < (pointStatus?.streak ?? 0)
+                                  ? 'border-green-600 bg-green-500'
+                                  : 'border-border bg-background'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span>2 in a row to move on</span>
                       </div>
-                      <span>2 in a row to move on</span>
-                    </div>
-                  ) : null}
-                </div>
-                <div data-testid="lesson-problem-prompt">
-                  <Markdown>{shownProblem.exercise.prompt}</Markdown>
-                </div>
-                {showingAnswer && state.lastAnsweredProblem ? (
-                  <>
-                    <FeedbackPanel result={state.lastAnsweredProblem.result} />
-                    {pointStatus?.status === 'passed' ? (
-                      <p className="font-semibold text-green-800">+{pointStatus.xpEarned} XP</p>
                     ) : null}
-                    {tutorEnabled ? (
-                      <TutorLauncher
-                        context={{
-                          conceptId,
-                          activityId,
-                          lessonProblemId: state.lastAnsweredProblem.id,
-                          allowed: true,
-                          enabled: tutorEnabled,
-                        }}
-                        greeting="What would you like to know about this answer?"
-                      >
-                        Ask the tutor about this
-                      </TutorLauncher>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <ExerciseForm
-                      exercise={shownProblem.exercise}
-                      onSubmit={submit}
-                      loading={busyAction === 'submit'}
-                      disabled={busy && busyAction !== 'submit'}
-                      submitLabel="Submit answer"
-                      actions={
-                        tutorEnabled && state.pendingProblem ? (
-                          <TutorLauncher
-                            context={{
-                              conceptId,
-                              activityId,
-                              lessonProblemId: state.pendingProblem.id,
-                              allowed: true,
-                              enabled: tutorEnabled,
-                            }}
-                          />
-                        ) : null
-                      }
+                  </div>
+                  <div
+                    ref={problemPromptRef}
+                    data-testid="lesson-problem-prompt"
+                    style={{ minHeight: stableHeightForCurrentPoint?.prompt }}
+                  >
+                    <Markdown>{shownProblem.exercise.prompt}</Markdown>
+                  </div>
+                  <ExerciseForm
+                    key={shownProblem.id}
+                    exercise={shownProblem.exercise}
+                    onSubmit={submit}
+                    loading={busyAction === 'submit'}
+                    disabled={busy && busyAction !== 'submit'}
+                    locked={showingAnswer}
+                    submittedAnswer={
+                      showingAnswer ? state.lastAnsweredProblem?.result.yourAnswer : undefined
+                    }
+                    answerOptions={
+                      showingAnswer ? state.lastAnsweredProblem?.result.answerOptions : undefined
+                    }
+                    submitLabel="Submit answer"
+                    inputAreaMinHeight={stableHeightForCurrentPoint?.inputs}
+                    primaryAction={
+                      showingAnswer
+                        ? {
+                            label: pointStatus?.status === 'passed' ? 'Next step' : 'Next problem',
+                            onClick: () => void next(),
+                            loading: busyAction === 'next',
+                            disabled: busy && busyAction !== 'next',
+                          }
+                        : undefined
+                    }
+                    actions={
+                      tutorEnabled ? (
+                        <TutorLauncher
+                          context={{
+                            conceptId,
+                            activityId,
+                            lessonProblemId: shownProblem.id,
+                            allowed: true,
+                            enabled: tutorEnabled,
+                          }}
+                          greeting={
+                            showingAnswer
+                              ? 'What would you like to know about this answer?'
+                              : undefined
+                          }
+                        />
+                      ) : null
+                    }
+                  />
+                  {showingAnswer && state.lastAnsweredProblem ? (
+                    <FeedbackPanel
+                      result={state.lastAnsweredProblem.result}
+                      xp={pointStatus?.status === 'passed' ? pointStatus.xpEarned : undefined}
+                      hideAnswerLines={['mc', 'debug'].includes(
+                        state.lastAnsweredProblem.exercise.type,
+                      )}
                     />
-                  </>
-                )}
-              </CardContent>
-            </Card>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </div>
           ) : null}
         </>
       )}
@@ -475,7 +526,9 @@ export function LessonRunner({
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      {!viewingPastStep && !state.pendingProblem ? (
+      {!viewingPastStep &&
+      !state.pendingProblem &&
+      (state.status === 'completed' || state.status === 'needs_retry') ? (
         <Button
           type="button"
           onClick={() => void next()}
