@@ -13,9 +13,9 @@ exercises:
         correct: true
         feedback: "Nodes and arrows make dependencies explicit."
       - id: b
-        text: "The input nudges tried during a training run."
+        text: "The input values listed from smallest to largest."
         correct: false
-        feedback: "A graph describes one calculation, not a training history."
+        feedback: "A graph shows which operations use each input, not an ordering by size."
       - id: c
         text: "The output values plotted against each input."
         correct: false
@@ -84,22 +84,22 @@ exercises:
     prompt: "How many operation nodes does $(x+y)^2$ need when squaring is one operation?"
     options:
       - id: a
-        text: "One: square the inputs together."
+        text: "One: apply squaring to the inputs together."
         correct: false
-        feedback: "The addition and square are distinct operations."
+        feedback: "Addition and squaring are distinct operations."
       - id: b
-        text: "Two: add first, then square."
+        text: "Two: add first, then apply squaring."
         correct: true
-        feedback: "The addition produces the square's input."
+        feedback: "The addition produces the squaring operation's input."
       - id: c
-        text: "Three: add, then square twice."
+        text: "Three: add, then apply squaring twice."
         correct: false
-        feedback: "There is only one square in the expression."
+        feedback: "There is only one squaring operation in the expression."
       - id: d
         text: "Four: copy both inputs first."
         correct: false
         feedback: "Input nodes are not operation nodes, and no copies are needed."
-    solution: "There is one addition node followed by one square node, giving two operation nodes."
+    solution: "There is one addition node followed by one squaring node, giving two operation nodes."
   - id: cgp-forward-template
     dimension: "math"
     type: "numeric"
@@ -158,21 +158,21 @@ exercises:
     prompt: "What does a local derivative measure?"
     options:
       - id: a
-        text: "The final output rate for every graph input together."
+        text: "The final output's derivative for every graph input together."
         correct: false
         feedback: "That is not a derivative for one operation and input."
       - id: b
-        text: "One operation's output rate for one of its inputs."
+        text: "One operation's output derivative for one of its inputs."
         correct: true
         feedback: "Other inputs to that operation are held fixed."
       - id: c
         text: "One operation's output value at the current inputs."
         correct: false
-        feedback: "A value is not a rate of change."
+        feedback: "A value is not a derivative."
       - id: d
         text: "The number of later operations using an input value."
         correct: false
-        feedback: "Counting dependencies does not measure a rate."
+        feedback: "Counting dependencies does not give a derivative."
     solution: "A local derivative concerns one operation's output and one of its own inputs, holding its other inputs fixed."
   - id: cgp-why-store-values
     dimension: "conceptual"
@@ -183,22 +183,22 @@ exercises:
     prompt: "Why does the worked example use the forward value $e=1$ when differentiating $L=e^2$?"
     options:
       - id: a
-        text: "Because the square's local rate is its output $L$."
+        text: "Because squaring's local derivative is its output $L$."
         correct: false
         feedback: "The output is e squared, not the derivative."
       - id: b
-        text: "Because the square's local rate is its input $e$."
+        text: "Because squaring's local derivative is its input $e$."
         correct: false
         feedback: "The power rule gives 2e, not e."
       - id: c
-        text: "Because the square's local rate is twice its input $e$."
+        text: "Because squaring's local derivative is twice its input $e$."
         correct: true
-        feedback: "The square rule needs the current input value."
+        feedback: "The squaring rule needs the current input value."
       - id: d
-        text: "Because the square's local rate is always the number 2."
+        text: "Because squaring's local derivative is always the number 2."
         correct: false
         feedback: "The factor 2 still multiplies the current input."
-    solution: "The rule is $\\partial L/\\partial e=2e$, so the forward value $e=1$ gives local rate 2."
+    solution: "The rule is $\\partial L/\\partial e=2e$, so the forward value $e=1$ gives local derivative 2."
   - id: cgp-add-local
     dimension: "conceptual"
     type: "mc"
@@ -222,7 +222,7 @@ exercises:
       - id: d
         text: "It is $q$, the current output value."
         correct: false
-        feedback: "The output value is not the addition's rate."
+        feedback: "The output value is not the addition's local derivative."
     solution: "Increasing $y$ by a small amount increases $q$ by the same amount, so the local derivative is 1."
   - id: cgp-multiply-template
     dimension: "math"
@@ -250,7 +250,7 @@ exercises:
       - id: b
         text: "How $f$ responds when only $x$ changes."
         correct: false
-        feedback: "The rate for f also depends on the later multiplication."
+        feedback: "The derivative for f also depends on the later multiplication."
       - id: c
         text: "How $q$ responds when only $z$ changes."
         correct: false
@@ -266,18 +266,18 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 2
-    prompt: "A new graph computes $s=u^2$, then $v=s+5$. At $u={{u}}$, what is the local derivative $\\partial s/\\partial u$ of the square node alone?"
+    prompt: "A new graph computes $s=u^2$, then $v=s+5$. At $u={{u}}$, what is the local derivative $\\partial s/\\partial u$ of the squaring node alone?"
     params: { "u": { "min": -4, "max": -1 } }
     answer_expr: "2*u"
     tolerance: { abs: 0.001 }
-    solution: "The square rule gives $\\partial s/\\partial u=2u={{= 2*u}}$; the later addition is not part of this local derivative."
+    solution: "The squaring rule gives $\\partial s/\\partial u=2u={{= 2*u}}$; the later addition is not part of this local derivative."
   - id: cgp-robot-subtract
     dimension: "conceptual"
     type: "mc"
     role: "practice"
     difficulty: 3
     est_minutes: 2
-    prompt: "A robot computes error $e=p-t$, where $p$ is position and $t$ is the target. What is the local rate $\\partial e/\\partial t$?"
+    prompt: "A robot computes error $e=p-t$, where $p$ is position and $t$ is the target. What is the local derivative $\\partial e/\\partial t$?"
     options:
       - id: a
         text: "It is $1$: raising the target raises the error."
@@ -288,14 +288,14 @@ exercises:
         correct: true
         feedback: "With position fixed, one extra target unit removes one error unit."
       - id: c
-        text: "It is $p$: the rate equals the other input."
+        text: "It is $p$: the derivative equals the other input."
         correct: false
         feedback: "Using the other input is the multiplication rule."
       - id: d
-        text: "It is $e$: the rate equals the present error."
+        text: "It is $e$: the derivative equals the present error."
         correct: false
-        feedback: "The subtraction's rate does not depend on the error value."
-    solution: "With $p$ fixed, increasing the subtracted target decreases $e$ by the same amount, giving rate $-1$."
+        feedback: "The subtraction's local derivative does not depend on the error value."
+    solution: "With $p$ fixed, increasing the subtracted target decreases $e$ by the same amount, giving local derivative $-1$."
   - id: cg-chaining-paths-basics
     dimension: "conceptual"
     type: "mc"
@@ -307,7 +307,7 @@ exercises:
       - id: a
         text: "Add along each path, then multiply the paths."
         correct: false
-        feedback: "Successive rates multiply; separate routes add."
+        feedback: "Local derivatives along a path multiply; separate path products add."
       - id: b
         text: "Multiply along each path, then add the paths."
         correct: true
@@ -319,8 +319,8 @@ exercises:
       - id: d
         text: "Add the forward values, then divide by the input."
         correct: false
-        feedback: "Values are not rates of change."
-    solution: "Multiply local rates along every path from the input to the output, then add those path products."
+        feedback: "Forward values are not derivatives."
+    solution: "Multiply local derivatives along every path from the input to the output, then add those path products."
   - id: cgp-why-multiply-path
     dimension: "conceptual"
     type: "mc"
@@ -334,42 +334,42 @@ exercises:
         correct: true
         feedback: "The derivative for each node links its input change to its output change."
       - id: b
-        text: "Each operation receives the original weight change independently."
+        text: "Each factor is a separate path contribution, so they should add."
         correct: false
-        feedback: "That would describe separate routes, not successive steps."
+        feedback: "These factors belong to one path through e and p, not separate paths."
       - id: c
-        text: "Each operation contributes its forward value rather than its rate."
+        text: "Each factor is a forward value, so their product gives the loss."
         correct: false
-        feedback: "Forward values give p, e and L, not the required rates."
+        feedback: "The factors are local derivatives, not the forward values p, e and L."
       - id: d
-        text: "Each operation's rate replaces the earlier rate instead of combining."
+        text: "Each factor can give the loss derivative alone, so only one is needed."
         correct: false
-        feedback: "The later operation receives the change already produced earlier."
-    solution: "The weight changes $p$ at rate 3, $p$ changes $e$ at rate 1, and $e$ changes $L$ at rate 2, so the chain's rates multiply."
+        feedback: "One local derivative describes only one node; the loss derivative needs every factor on the path."
+    solution: "The local derivatives are $\\partial L/\\partial e=2$, $\\partial e/\\partial p=1$ and $\\partial p/\\partial w=3$; multiplying them gives the loss derivative 6."
   - id: cgp-path-product
     dimension: "conceptual"
     type: "mc"
     role: "practice"
     difficulty: 1
     est_minutes: 2
-    prompt: "A single path has local rates 2, 4 and 3. What is its contribution to the output derivative?"
+    prompt: "A single path has local derivatives 2, 4 and 3. What is its contribution to the output derivative?"
     options:
       - id: a
-        text: "$24$, from multiplying all three rates."
+        text: "$24$, from multiplying all three derivatives."
         correct: true
-        feedback: "Successive rates multiply to 24."
+        feedback: "The three local derivatives multiply to 24."
       - id: b
-        text: "$9$, from adding all three rates."
+        text: "$9$, from adding all three derivatives."
         correct: false
-        feedback: "Adding rates is for separate routes, not successive steps."
+        feedback: "Add separate path products, not local derivatives along one path."
       - id: c
-        text: "$3$, from keeping only the final rate."
+        text: "$3$, from keeping only the final derivative."
         correct: false
-        feedback: "The earlier rates also scale the nudge."
+        feedback: "The other local derivatives on the path also contribute."
       - id: d
-        text: "$2$, from keeping only the first rate."
+        text: "$2$, from keeping only the first derivative."
         correct: false
-        feedback: "The later rates also scale the nudge."
+        feedback: "The other local derivatives on the path also contribute."
     solution: "A path contribution is $2\\cdot4\\cdot3=24$: each local derivative gives a node's output change per unit change in its input, and the chain rule multiplies them."
   - id: cgp-chain-template
     dimension: "math"
@@ -382,7 +382,7 @@ exercises:
       { "w": { "min": 2, "max": 4 }, "x": { "min": 2, "max": 4 }, "t": { "min": 1, "max": 3 } }
     answer_expr: "2*(w*x-t)*x"
     tolerance: { abs: 0.001 }
-    solution: "The path rates are $2e$, 1 and $x$, giving $2(w x-t)x={{= 2*(w*x-t)*x}}$."
+    solution: "The path's local derivatives are $2e$, 1 and $x$, giving $2(w x-t)x={{= 2*(w*x-t)*x}}$."
   - id: cgp-one-path-only
     dimension: "conceptual"
     type: "mc"
@@ -398,7 +398,7 @@ exercises:
       - id: b
         text: "Multiply by 3 from the route through $b=y+z$."
         correct: false
-        feedback: "Multiplication is for rates along one route, not separate routes."
+        feedback: "Multiply local derivatives along one route, not separate route contributions."
       - id: c
         text: "Subtract 3 from the route through $b=y+z$."
         correct: false
@@ -431,7 +431,7 @@ exercises:
       { "k": { "min": 2, "max": 4 }, "u": { "min": 2, "max": 4 }, "t": { "min": 1, "max": 3 } }
     answer_expr: "2*(k*u-t)*k"
     tolerance: { abs: 0.001 }
-    solution: "Trace the command's path: the local rates are $k$, 1 and $2e$, so $\\partial C/\\partial u=2(k u-t)k={{= 2*(k*u-t)*k}}$."
+    solution: "Trace the command's path: the local derivatives are $k$, 1 and $2e$, so $\\partial C/\\partial u=2(k u-t)k={{= 2*(k*u-t)*k}}$."
   - id: cg-check-1
     dimension: "math"
     type: "numeric"
@@ -483,7 +483,7 @@ exercises:
         {
           "answer": 3,
           "category": "incomplete_explanation",
-          "feedback": "That is only the multiply node's local rate; the square contributes 2e=0.",
+          "feedback": "That is only the multiply node's local derivative; squaring contributes 2e=0.",
         },
       ]
     solution: "Here $p=-3$ and $e=0$, so the path product is $2e\\cdot1\\cdot x=0$."
@@ -514,4 +514,4 @@ exercises:
           "required": true,
         }
     exemplar: "I draw one node per input and simple operation, joining each value to every operation that uses it. I compute the nodes in arrow order to get their forward values. For each operation, I find the derivative of its output with respect to each of its inputs while holding the others fixed; these local rules may use the forward values. I then trace every path from the chosen input to the final output, multiply the local derivatives along each path, and add the path products. That gives the output's derivative without differentiating the whole formula at once."
-    solution: "The graph exposes the dependencies, local rules supply each small rate, and the chain rule combines every path product into the full output derivative."
+    solution: "The graph exposes the dependencies, local rules supply each local derivative, and the chain rule combines every path product into the full output derivative."

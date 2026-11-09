@@ -1,5 +1,5 @@
 concept: computational-graphs
-version: 5
+version: 6
 objective: |
   **Goal:** draw a calculation as a graph of simple operations, find each operation's local derivative, and multiply along paths back from the output to find its derivative with respect to any input.
 where_this_fits: |
@@ -9,7 +9,7 @@ where_this_fits: |
   2. Find each operation's local derivatives.
   3. Multiply derivatives along each path and add the path contributions.
 
-  Backpropagation, the next lesson, organises this backward walk to find every weight's derivative in one sweep.
+  Backpropagation, the next lesson, reuses shared products during one backward sweep to find every weight's derivative.
 knowledge_points:
   - id: cg-drawing-graphs
     title: Break a calculation into simple operations
@@ -41,7 +41,7 @@ knowledge_points:
 
       **The idea.** Make each small operation visible. A **computational graph** is a diagram with one node per input and per simple operation, such as addition, multiplication or squaring. An arrow connects each value to every operation that uses it; arrows point forward, with no loops. Computing each node in arrow order is the **forward pass**; the computed values are called **forward values**. Each operation node stands for both the operation and the value it produces: $q$ is the value of the $+$ node.
 
-      **Common confusion.** “If a value is used twice, I draw it twice.” No: draw one node with two outgoing arrows. For $(x+y)\cdot(y+z)$, one $y$ feeds both additions, as shown below. Later you will need to count both ways $y$ affects the output.
+      **Common confusion.** “If a value is used twice, I draw it twice.” No: draw one node with two outgoing arrows. For $(x+y)\cdot(y+z)$, one $y$ feeds both additions, as shown below. You will add up both ways $y$ affects the output; the third point shows how.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" aria-label="One y input feeds two additions a and b, whose outputs feed multiplication g">
@@ -73,7 +73,7 @@ knowledge_points:
       2. **Draw the graph.** The blue labels show the values computed in step 3.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 370" aria-label="Inputs w, x and t feed multiplication p, subtraction e, and square L">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 370" aria-label="Inputs w, x and t feed multiplication p, subtraction e, and squaring L">
       <defs><marker id="cg5-grey" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="cg5-green" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker></defs>
       <path d="M74 63.25 L187.3 102.2" stroke="#737373" stroke-width="2" marker-end="url(#cg5-grey)"/>
       <path d="M74 156.75 L187.3 117.8" stroke="#737373" stroke-width="2" marker-end="url(#cg5-grey)"/>
@@ -86,7 +86,7 @@ knowledge_points:
       <rect x="26" y="251" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="280" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">t</text><text x="50" y="321" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">5</text>
       <circle cx="210" cy="110" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="210" y="115" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">×</text><text x="210" y="156" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">p = 6</text>
       <circle cx="370" cy="195" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="370" y="200" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">−</text><text x="370" y="241" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">e = 1</text>
-      <circle cx="540" cy="195" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text font-size="13" x="540" y="199" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">square</text><text x="540" y="241" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">L = 1</text>
+      <circle cx="540" cy="195" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="540" y="200" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">( )²</text><text x="540" y="241" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">L = 1</text>
       </g>
       </svg>
       ```
@@ -98,16 +98,16 @@ knowledge_points:
 
       **Compare cases.**
 
-      | Expression | Operation nodes (square = one node) | Inputs used more than once |
+      | Expression | Operation nodes (squaring = one node) | Inputs used more than once |
       | --- | --- | --- |
       | $x+y$ | 1 | None |
       | $(x+y)\cdot z$ | 2 | None |
       | $(x+y)^2$ | 2 | None |
       | $(x+y)\cdot(y+z)$ | 3 | $y$ |
 
-      In $(x+y)^2$, compute $x+y$ once and feed that value to one square node.
+      In $(x+y)^2$, compute $x+y$ once and feed that value to one squaring node.
 
-      **Where it shows up.** A model's prediction and loss form such a graph of multiplies, adds and squares. Once drawn, its derivatives can be found one node at a time, as the next two points show.
+      **Where it shows up.** A model's prediction and loss form such a graph of multiplication, addition and squaring. Once drawn, its derivatives can be found one node at a time, as the next two points show.
     problems:
       - cg-drawing-graphs-basics
       - cgp-why-order
@@ -121,7 +121,7 @@ knowledge_points:
     explain: |
       **The question.** To see how the output changes with an input, must you differentiate the whole formula at once? Or can you start with one operation at a time?
 
-      **Picture it.** Return to $f=(x+y)\cdot z$ at $x=1$, $y=2$, $z=4$. A derivative is a rate of change. Multiplication $q\cdot z$ changes by $z$ per unit change in $q$, holding $z$ fixed, so $\partial f/\partial q=z=4$. Blue labels are forward values; amber labels are local derivatives. Rounded squares are inputs; circles are operations.
+      **Picture it.** Return to $f=(x+y)\cdot z$ at $x=1$, $y=2$, $z=4$. Hold $z$ fixed: raising $q$ by 1 adds one more $z$ to $q\cdot z$, so $f$ grows by $z=4$. Therefore $\partial f/\partial q=z=4$. Blue labels are forward values; amber labels are local derivatives.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 370" aria-label="Inputs x and y feed addition q; q and z feed multiplication f">
@@ -137,7 +137,7 @@ knowledge_points:
       <circle cx="250" cy="110" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="250" y="115" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+</text><text x="250" y="156" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">q = 3</text>
       <circle cx="520" cy="195" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="520" y="200" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">×</text><text x="520" y="241" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">f = 12</text>
       <text x="150" y="55" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂q/∂x = 1</text>
-      <text x="150" y="190" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂q/∂y = 1</text>
+      <text x="150" y="120" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂q/∂y = 1</text>
       <text x="390" y="100" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂f/∂q = z = 4</text>
       <text x="320" y="300" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂f/∂z = q = 3</text>
       </g>
@@ -162,10 +162,10 @@ knowledge_points:
          $$\frac{\partial e}{\partial p}=1.$$
          $$\frac{\partial e}{\partial t}=-1.$$
 
-      3. **Differentiate the square.**
+      3. **Differentiate the squaring operation.**
          $$\frac{\partial L}{\partial e}=2e=2.$$
 
-      4. **Check one local rate with a nudge.** Hold $x=3$ fixed and increase $w$ from 2 to 2.01.
+      4. **Check one local derivative with a nudge.** A **nudge** is a small change to one input, used to check a derivative numerically. Hold $x=3$ fixed and increase $w$ from 2 to 2.01.
          $$p_{\text{new}}=2.01\cdot3=6.03.$$
          $$p_{\text{new}}-p=0.03=0.01\cdot3.$$
          $$\frac{0.03}{0.01}=3=\frac{\partial p}{\partial w}=x.$$
@@ -180,7 +180,7 @@ knowledge_points:
       | 2 | 6 | 1 | 3 | 2 |
       | 3 | 9 | 4 | 3 | 8 |
 
-      The square's local derivative depends on the current forward value $e$; the multiplication's derivative with respect to $w$ depends only on $x$.
+      Squaring's local derivative depends on the current forward value $e$; the multiplication's derivative with respect to $w$ depends only on $x$.
 
       **Where it shows up.** A loss built from these operations needs only this short list of local rules, even when its graph is large.
     problems:
@@ -196,7 +196,9 @@ knowledge_points:
     explain: |
       **The question.** How do you combine local derivatives to find the output's derivative for an early input, especially one used twice?
 
-      **Picture it.** For $g=(x+y)\cdot(y+z)$ at $(x,y,z)=(1,2,4)$, the sums are $a=3$, $b=6$, giving $g=18$. Rounded squares are inputs; circles are operations. Blue marks forward values, amber local derivatives, and green the two paths from $y$ and their products. By the multiplication rule, $\partial g/\partial a=b=6$ and $\partial g/\partial b=a=3$.
+      **Picture it.** For $g=(x+y)\cdot(y+z)$ at $(x,y,z)=(1,2,4)$, the sums are $a=3$, $b=6$, giving $g=18$. Blue marks forward values, amber local derivatives, and green the paths from $y$ and their products. By the multiplication rule, $\partial g/\partial a=b=6$ and $\partial g/\partial b=a=3$.
+
+      Why start backward? Products built near the output are shared by inputs further back: for example, $\partial L/\partial e\cdot\partial e/\partial p$ serves both $w$ and $x$ in the worked calculation. A backward walk reuses those products to find every input's derivative, which is why we write factors output-side first.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" aria-label="One y input feeds two additions a and b, whose outputs feed multiplication g">
@@ -214,6 +216,8 @@ knowledge_points:
       <circle cx="250" cy="95" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="250" y="100" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+</text><text x="250" y="141" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">a = 3</text>
       <circle cx="250" cy="255" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="250" y="260" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+</text><text x="250" y="301" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">b = 6</text>
       <circle cx="520" cy="175" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="520" y="180" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">×</text><text x="520" y="221" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">g = 18</text>
+      <text x="145" y="50" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂a/∂x = 1</text>
+      <text x="145" y="290" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂b/∂z = 1</text>
       <text x="145" y="110" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂a/∂y = 1</text>
       <text x="145" y="245" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂b/∂y = 1</text>
       <text x="405" y="95" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂g/∂a = b = 6</text>
@@ -227,7 +231,7 @@ knowledge_points:
 
       Via $a$, the product is $6\cdot1=6$; via $b$, it is $3\cdot1=3$. A small change in $y$ changes both $a$ and $b$; each change moves $g$, so the effects add, giving 9.
 
-      **The idea.** Multiply along each path, then add the results. On a **computational graph**, the output's derivative with respect to any value is the sum of the products of local derivatives along every path from that value to the output. The Chain rule lesson taught both parts: rates multiply along a chain, and derivatives add when an input has two routes.
+      **The idea.** Multiply along each path, then add the results. On a **computational graph**, the output's derivative with respect to any value is the sum of the products of local derivatives along every path from that value to the output. The Chain rule lesson taught both parts: derivatives multiply along a chain and add when an input has two routes.
 
       To trace backward, start at the output and walk the arrows in reverse, multiplying the local derivative on each arrow you cross; the arrows in the drawing still point forward.
 
@@ -235,7 +239,9 @@ knowledge_points:
       $$g=xy+xz+y^2+yz.$$
       $$\frac{\partial g}{\partial y}=x+2y+z=1+4+4=9.$$
     worked: |
-      **Worked example.** Return to the squared error $L=(w\cdot x-t)^2$ at $w=2$, $x=3$, $t=5$. With $p=w\cdot x=6$ and $e=p-t=1$, find the loss rate for each input.
+      **Worked example.** Return to the squared error $L=(w\cdot x-t)^2$ at $w=2$, $x=3$, $t=5$. With $p=w\cdot x=6$ and $e=p-t=1$, find the loss derivative for each input.
+
+      Training changes $w$; we also differentiate with respect to $x$ and $t$ to show reuse: $w$ and $x$ share $\partial L/\partial e\cdot\partial e/\partial p=2$, while $t$ shares only $\partial L/\partial e=2$.
 
       1. **Trace back to the weight.**
          $$\frac{\partial L}{\partial w}=\frac{\partial L}{\partial e}\cdot\frac{\partial e}{\partial p}\cdot\frac{\partial p}{\partial w}.$$
@@ -253,7 +259,9 @@ knowledge_points:
          $$L_{\text{new}}=(2.01\cdot3-5)^2=1.0609.$$
          $$L_{\text{new}}-L=0.0609\approx0.01\cdot6=0.06.$$
 
-      The derivative predicts the change for a small nudge, not an exact finite change.
+      The derivative predicts the change for a small nudge, not an exact finite change. The exact change is:
+      $$L(2.01)-L(2)=6(0.01)+9(0.01)^2=0.0609.$$
+      The extra $0.0009$ comes from squaring's curve; this term shrinks much faster than the nudge.
 
       **Compare cases.** For the two-sum graph $g=(x+y)\cdot(y+z)$ pictured above:
 
@@ -263,7 +271,7 @@ knowledge_points:
       | $y$ | 2 | $6\cdot1$ and $3\cdot1$ | $\partial g/\partial y=9$ |
       | $z$ | 1 | $3\cdot1$ | $\partial g/\partial z=3$ |
 
-      **Where it shows up.** Training needs $\partial L/\partial w$ for every weight; start at the loss and walk the arrows in reverse, multiplying local derivatives. Backpropagation, the next lesson, organises this backward walk so all a model's weight derivatives are found in one sweep.
+      **Where it shows up.** Training needs $\partial L/\partial w$ for every weight. Backpropagation, the next lesson, starts at the loss: one backward sweep reuses shared products for every weight.
     problems:
       - cg-chaining-paths-basics
       - cgp-why-multiply-path
@@ -278,4 +286,4 @@ summary: |
   - I can find one operation's local derivative while holding its other inputs fixed.
   - I can multiply local derivatives along every path and add the path contributions.
 
-  **Next:** Backpropagation organises the backward walk to find every model weight's derivative in one sweep.
+  **Next:** Backpropagation reuses shared products in one backward sweep to find every model weight's derivative.
