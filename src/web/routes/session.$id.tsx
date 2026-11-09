@@ -250,11 +250,7 @@ function SessionPage() {
         event.preventDefault();
         hintButton.current?.click();
       } else if (event.key.toLowerCase() === 'n' || event.key === 'ArrowRight') {
-        if (
-          result &&
-          result.status !== 'invalid' &&
-          (Number(result.correct) > 0 || !result.retryAllowed)
-        ) {
+        if (result && result.status !== 'invalid' && !result.retryAllowed) {
           event.preventDefault();
           void queryClient.invalidateQueries({ queryKey: ['session', id] });
         }
@@ -486,6 +482,7 @@ function SessionPage() {
     !result ||
     result.status === 'invalid' ||
     result.status === 'self_check_required' ||
+    (result.followUp === true && result.retryAllowed === true) ||
     (Number(result?.correct) === 0 && result?.retryAllowed === true);
   const triesLeft = Math.max(0, 2 - Number(result?.attemptNo ?? 1));
   const helpActions =
@@ -522,9 +519,11 @@ function SessionPage() {
   const submitLabel =
     result?.status === 'self_check_required'
       ? 'Submit self-check'
-      : Number(result?.correct) === 0 && result?.retryAllowed === true
-        ? `Try again · ${triesLeft} ${triesLeft === 1 ? 'try' : 'tries'} left`
-        : 'Submit answer';
+      : result?.followUp === true && result.retryAllowed === true
+        ? 'Submit again'
+        : Number(result?.correct) === 0 && result?.retryAllowed === true
+          ? `Try again · ${triesLeft} ${triesLeft === 1 ? 'try' : 'tries'} left`
+          : 'Submit answer';
   const currentResultOutcome =
     result &&
     result.exerciseId === exerciseId &&

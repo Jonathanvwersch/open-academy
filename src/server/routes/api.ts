@@ -444,8 +444,11 @@ export function createApiRoutes(deps: {
               .map((attempt) => {
                 const feedback = attempt.feedback as Record<string, unknown>;
                 const answer = attempt.answer;
+                const followUp = feedback.followUp === true;
                 const retryAllowed =
-                  attempt.mode === 'practice' && attempt.correct === 0 && attempt.attemptNo < 2;
+                  attempt.mode === 'practice' &&
+                  attempt.attemptNo < 2 &&
+                  (attempt.correct === 0 || followUp);
                 const exercise = index.exercisesById.get(attempt.exerciseId);
                 const answerOptions = exercise
                   ? answerOptionsFor(exercise, answer, !retryAllowed)
@@ -456,6 +459,7 @@ export function createApiRoutes(deps: {
                   correct: attempt.correct,
                   attemptNo: attempt.attemptNo,
                   retryAllowed,
+                  ...(followUp ? { followUp: true } : {}),
                   ...(answerOptions ? { answerOptions } : {}),
                   feedback: feedback.message ?? '',
                   rubric: feedback.rubric,
@@ -995,6 +999,12 @@ export function createApiRoutes(deps: {
         result.status === 'invalid' ? 422 : 200,
       );
     }
+    const followUp =
+      body.data.mode === 'practice' &&
+      exercise.type === 'explain' &&
+      result.correct > 0 &&
+      result.correct < 1 &&
+      attemptNo < 2;
     const now = requestNow(context);
     const attemptId = crypto.randomUUID();
     const gradedBy = result.graded_by ?? 'deterministic';
@@ -1009,6 +1019,7 @@ export function createApiRoutes(deps: {
       hintsUsed,
       attemptNo,
       gradedBy,
+      followUp,
     });
     const sessionId = activityRow?.sessionId;
     await db.insert(attempts).values({
@@ -1032,12 +1043,13 @@ export function createApiRoutes(deps: {
         status: result.status,
         ...('yourAnswer' in result ? { yourAnswer: result.yourAnswer } : {}),
         ...('rubric' in result ? { rubric: result.rubric } : {}),
-        ...(exercise.type === 'explain'
+        ...(exercise.type === 'explain' && !followUp
           ? {
               exemplar: exercise.exemplar,
               ...(exercise.solution ? { solution: exercise.solution } : {}),
             }
           : {}),
+        ...(followUp ? { followUp: true } : {}),
       },
       mistakeCategory: result.mistake_category,
       durationMs: body.data.durationMs,
@@ -1054,6 +1066,7 @@ export function createApiRoutes(deps: {
       attemptNo,
       mode: body.data.mode,
       gradedBy,
+      followUp,
       now,
       timeZone: context.get('timeZone'),
     });
@@ -1097,10 +1110,11 @@ export function createApiRoutes(deps: {
         });
       }
     }
-    const retryAllowed = body.data.mode === 'practice' && result.correct === 0 && attemptNo < 2;
+    const retryAllowed =
+      body.data.mode === 'practice' && attemptNo < 2 && (result.correct === 0 || followUp);
     const revealSolution = result.correct === 0 && !retryAllowed;
     const answerOptions = answerOptionsFor(exercise, body.data.answer, !retryAllowed);
-    if (activityRow && activity && (result.correct > 0 || !retryAllowed)) {
+    if (activityRow && activity && !retryAllowed) {
       const progress = activity.progress as {
         completedExerciseIds?: string[];
         outcomes?: Record<string, 'correct' | 'incorrect'>;
@@ -1156,14 +1170,20 @@ export function createApiRoutes(deps: {
         ),
       });
     }
+    const resultForResponse: Record<string, unknown> = { ...result };
+    if (followUp) {
+      delete resultForResponse.exemplar;
+      delete resultForResponse.solution;
+    }
     return context.json({
-      ...result,
+      ...resultForResponse,
       attemptId,
       attemptNo,
       hintsUsed,
       credit,
       mastery: masteryResult,
       retryAllowed,
+      ...(followUp ? { followUp: true } : {}),
       ...(answerOptions ? { answerOptions } : {}),
       ...(result.correct === 0 && (body.data.mode !== 'practice' || revealSolution)
         ? exercise.type === 'explain'
@@ -1172,8 +1192,12 @@ export function createApiRoutes(deps: {
         : {}),
       ...(exercise.type === 'explain'
         ? {
-            exemplar: exercise.exemplar,
-            ...(exercise.solution ? { solution: exercise.solution } : {}),
+            ...(!followUp
+              ? {
+                  exemplar: exercise.exemplar,
+                  ...(exercise.solution ? { solution: exercise.solution } : {}),
+                }
+              : {}),
             ...('rubric' in result ? { rubric: result.rubric } : {}),
           }
         : {}),
@@ -1777,6 +1801,7 @@ async function applyMastery(input: {
   attemptNo: number;
   mode: LearningMode;
   gradedBy: 'deterministic' | 'llm' | 'self';
+  followUp?: boolean;
   now: Date;
   timeZone: string;
 }) {
@@ -1796,6 +1821,7 @@ async function applyMastery(input: {
       mode: input.mode,
       itemRole: input.exercise.role,
       gradedBy: input.gradedBy,
+      followUp: input.followUp,
     },
     input.now,
     { remediationOpen: open.some((flag) => flag.conceptId === input.exercise.concept) },
