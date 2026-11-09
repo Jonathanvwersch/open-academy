@@ -116,7 +116,7 @@ knowledge_points:
 
       $$(x^n)'=nx^{n-1}$$
 
-      so $(x^2)'=2x$ and $(x^3)'=3x^2$. Three more rules let you handle any polynomial, a sum of powers times numbers. Writing $f'$ alone means the derivative at every input, like $d'(t)=2t$. A fixed number $c$ multiplying a function multiplies its slope: $(cf)'=cf'$. To **differentiate** means to find the derivative, and a sum is differentiated term by term: $(f+g)'=f'+g'$. A constant on its own has slope $0$, because it never changes.
+      so $(x^2)'=2x$ and $(x^3)'=3x^2$. Three more rules let you handle any polynomial, a sum of powers times numbers. Writing $f'$ alone means the derivative at every input, like $d'(t)=2t$. The **constant-multiple rule**: a fixed number $c$ multiplying a function multiplies its slope, $(cf)'=cf'$. To **differentiate** means to find the derivative, and the **sum rule** differentiates a sum term by term: $(f+g)'=f'+g'$. A constant on its own has slope $0$, because it never changes.
 
       **Common confusion.** "Constants disappear, so the 3 in $3x^2$ goes too." Only an added constant disappears. Adding 5 lifts the whole curve without making it steeper. Multiplying by 3 makes every rise three times as big, so the slope triples: $(3x^2)'=6x$.
     worked: |
@@ -171,7 +171,7 @@ knowledge_points:
           <circle cx="194" cy="328" r="4.5" fill="#171717"/>
           <circle cx="266" cy="221.5" r="4.5" fill="#171717"/>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="60" y="315" fill="#3b82f6">x = 0: slope 1</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="88" y="215" fill="#3b82f6">x = 1: slope 2.72</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="215" fill="#3b82f6">x = 1: slope 2.72</text>
           <text x="355" y="40">y = ln x</text>
           <path d="M345 270 H625 M355 405 V60" stroke="#737373" fill="#ffffff" fill-opacity="0"/>
           <path d="M365.4 385.9 L370.6 356.7 L375.8 336 L381 319.9 L386.2 306.8 L391.4 295.7 L396.6 286.1 L401.8 277.6 L407 270 L412.2 263.1 L417.4 256.9 L422.6 251.1 L427.8 245.8 L433 240.8 L438.2 236.2 L443.4 231.8 L448.6 227.7 L453.8 223.8 L459 220.1 L464.2 216.6 L469.4 213.2 L474.6 210 L479.8 207 L485 204 L490.2 201.2 L495.4 198.5 L500.6 195.9 L505.8 193.3 L511 190.9 L516.2 188.5 L521.4 186.3 L526.6 184 L531.8 181.9 L537 179.8 L542.2 177.8 L547.4 175.8 L552.6 173.9 L557.8 172 L563 170.2 L568.2 168.4 L573.4 166.7 L578.6 165 L583.8 163.3 L589 161.7 L594.2 160.1 L599.4 158.6 L604.6 157.1 L609.8 155.6 L615 154.1" stroke="#171717" stroke-width="2.5" fill="#ffffff" fill-opacity="0"/>
@@ -194,7 +194,7 @@ knowledge_points:
 
       $$(\ln x)'=\frac1x$$
 
-      The number, sum and constant rules still apply, so $(5e^x)'=5e^x$.
+      The constant-multiple, sum and constant rules still apply, so $(5e^x)'=5e^x$.
 
       **Common confusion.** "Use the power rule: $(e^x)'=xe^{x-1}$." The power rule only works when the power is a fixed number. In $e^x$ the power is the input, so it needs its own rule.
     worked: |

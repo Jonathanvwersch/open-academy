@@ -12,7 +12,7 @@ exercises:
           id: a,
           text: "The total output change across a wide input interval, rather than the rate at one point.",
           correct: false,
-          feedback: "That is a finite-interval change; a derivative gives the local rate at one input value.",
+          feedback: "That is the change over a whole stretch; a derivative gives the rate at one input value.",
         }
       - {
           id: b,
@@ -30,7 +30,7 @@ exercises:
           id: d,
           text: "The input value where a function reaches its minimum, rather than a local rate.",
           correct: false,
-          feedback: "That input is a minimizer; the derivative is a rate evaluated at an input.",
+          feedback: "That is where the output is lowest; the derivative is a rate measured at an input.",
         }
     solution: "A derivative is the rate at which a function's output changes per unit of input at one point."
   - id: der-power-rule-basics
@@ -129,7 +129,7 @@ exercises:
           id: d,
           text: "A nested function whose input is transformed by an inner function.",
           correct: false,
-          feedback: "That is the chain rule's setting; product and quotient rules handle products and ratios.",
+          feedback: "A function fed into another function needs a different rule; product and quotient rules handle products and ratios.",
         }
     solution: "The product rule differentiates two changing factors, while the quotient rule differentiates their ratio."
   - id: der-check-power
@@ -511,7 +511,7 @@ exercises:
         text: "Changing $x$ never changes the added 10, so that term contributes no change in output"
         correct: true
       - id: b
-        text: "The 10 is a coefficient of $x$, so its derivative should be 10"
+        text: "The 10 multiplies $x$, so its derivative should be 10"
         correct: false
         category: misunderstood_definition
         feedback: "The expression adds 10; it does not multiply $x$ by 10. An added constant stays fixed as $x$ changes."
@@ -1029,10 +1029,10 @@ exercises:
         correct: true
         feedback: "Those are the two strips of the rectangle: $u'v = 2 \\cdot 1$ and $uv' = 2 \\cdot 3$."
       - id: b
-        text: "The 2 is the slope of the first factor and the 6 is the product of the two factors' slopes."
+        text: "The two parts are the slopes of $u$ and $v$ at $x = 1$, which are added together."
         correct: false
         category: misunderstood_definition
-        feedback: "Multiplying the slopes is the mistake the rule avoids. The 6 is $u \\cdot v' = 2 \\cdot 3$."
+        feedback: "The slopes are $u' = 2$ and $v' = 3$, which add to 5, not 8. Each part of the rule mixes one slope with the other factor's value."
       - id: c
         text: "The two parts are the values of $u$ and $v$ at $x = 1$, which are added together."
         correct: false
