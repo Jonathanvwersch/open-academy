@@ -374,7 +374,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "Two arrows have dot product 6. Reverse the second arrow without changing its length. What is their new dot product?"
+    prompt: "Arrows $a$ and $b$ have dot product 6. Reverse $b$ without changing its length. What is the new dot product of $a$ with the reversed arrow?"
     solution: "Reversing one vector negates each matching product. Their sum becomes $-6$, because $a$ now goes against the reversed arrow's direction."
     options:
       - {
