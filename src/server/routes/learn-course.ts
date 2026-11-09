@@ -20,7 +20,7 @@ import {
 } from '../learning/course-status.js';
 import { deriveLessonState } from '../learning/lesson-runner.js';
 import { compareOutlinePosition, masteryKey, prerequisiteMet } from '../learning/prerequisites.js';
-import type { PlannedActivity } from '../learning/scheduler.js';
+import type { PlannedActivity, SessionPreferences } from '../learning/scheduler.js';
 import { planSession, type SessionKind, sessionBudget } from '../learning/scheduler.js';
 import {
   averageDailyXp,
@@ -57,6 +57,7 @@ export function registerLearnCourseRoutes(
       deps.db.select().from(xpEvents).where(eq(xpEvents.userId, userId)),
       repo.activeSession(now),
     ]);
+    const prefs = (user?.prefs ?? {}) as SessionPreferences;
     const todayLocal = localDateKey(now, timeZone);
     const totalXp = events.reduce((total, event) => total + event.amount, 0);
     const todayXp = events
@@ -104,7 +105,7 @@ export function registerLearnCourseRoutes(
       ? activeSession.activities.filter(
           (activity) => activity.status === 'planned' || activity.status === 'in_progress',
         )
-      : plannedActivities(state, index, user?.prefs, timeZone, now);
+      : plannedActivities(state, index, prefs, timeZone, now);
 
     const tasks = activities.map((activity) => {
       const conceptId = activity.conceptId;
@@ -177,20 +178,26 @@ export function registerLearnCourseRoutes(
             topics.length - topicsDone,
             averageDailyXp(events, todayLocal),
             todayLocal,
+            prefs,
           )
+        : null;
+    const estimatedFinishAtGoal =
+      topicsDone < topics.length
+        ? estimatedFinishDate(topics.length - topicsDone, 0, todayLocal, prefs)
         : null;
     return context.json({
       xp: {
         total: totalXp,
         today: todayXp,
-        goal: xpGoalFor(todayLocal),
-        week: weekXp(events, todayLocal),
+        goal: xpGoalFor(todayLocal, prefs),
+        week: weekXp(events, todayLocal, prefs),
       },
       course: {
         percentComplete: coursePercent(topicsDone, topics.length),
         topicsDone,
         topicsTotal: topics.length,
         estimatedFinish,
+        estimatedFinishAtGoal,
       },
       tasks,
       doneToday,

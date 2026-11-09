@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -50,7 +50,7 @@ import {
   recordLessonViewed,
 } from '../learning/mastery.js';
 import { buildProgress } from '../learning/progress.js';
-import type { PlannedActivity } from '../learning/scheduler.js';
+import type { PlannedActivity, SessionPreferences } from '../learning/scheduler.js';
 import {
   currentCurriculumWeek,
   planSession,
@@ -59,7 +59,7 @@ import {
 } from '../learning/scheduler.js';
 import type { LearningMode, MasteryRecord } from '../learning/types.js';
 import { initialMastery, masteryRank } from '../learning/types.js';
-import { localDateKey } from '../learning/xp.js';
+import { localDateKey, xpGoalFor } from '../learning/xp.js';
 import type { PaperFetcher } from '../papers/fetcher.js';
 import { createTutorProvider, E2ETutorProvider, type TutorProvider } from '../tutor/provider.js';
 import { scoreRubric } from '../tutor/scoring.js';
@@ -323,7 +323,8 @@ export function createApiRoutes(deps: {
   });
 
   api.get('/sessions/:id', async (context) => {
-    const session = await withRepo(context).session(context.req.param('id'));
+    const repo = withRepo(context);
+    const session = await repo.session(context.req.param('id'));
     const index = await content();
     const activityIds = session?.activities.map((activity) => activity.id) ?? [];
     const activityAttempts = activityIds.length
@@ -338,9 +339,42 @@ export function createApiRoutes(deps: {
           )
           .orderBy(desc(attempts.createdAt), desc(attempts.attemptNo))
       : [];
+    const xp = session
+      ? await (async () => {
+          const now = requestNow(context);
+          const todayLocal = localDateKey(now, context.get('timeZone'));
+          const sessionStartedAt = session.startedAt ?? now;
+          const sessionEndedAt = session.endedAt ?? now;
+          const [user, sessionEvents, todayEvents] = await Promise.all([
+            repo.user(),
+            db
+              .select({ amount: xpEvents.amount })
+              .from(xpEvents)
+              .where(
+                and(
+                  eq(xpEvents.userId, context.get('userId')),
+                  gte(xpEvents.earnedAt, sessionStartedAt),
+                  lte(xpEvents.earnedAt, sessionEndedAt),
+                ),
+              ),
+            db
+              .select({ amount: xpEvents.amount })
+              .from(xpEvents)
+              .where(
+                and(eq(xpEvents.userId, context.get('userId')), eq(xpEvents.localDate, todayLocal)),
+              ),
+          ]);
+          return {
+            session: sessionEvents.reduce((total, event) => total + event.amount, 0),
+            today: todayEvents.reduce((total, event) => total + event.amount, 0),
+            goal: xpGoalFor(todayLocal, (user?.prefs ?? {}) as SessionPreferences),
+          };
+        })()
+      : undefined;
     return session
       ? context.json({
           ...session,
+          xp,
           activities: session.activities.map((activity) => ({
             ...activity,
             conceptTitle: activity.conceptId

@@ -16,6 +16,13 @@ describe('XP calculations', () => {
     expect(xpGoalFor('2026-01-11')).toBe(60);
   });
 
+  test('uses study preferences for weekday, Saturday, and Sunday goals', () => {
+    const prefs = { scheduleMinutes: 30, saturdayMinutes: 45, sundayMinutes: 75 };
+    expect(xpGoalFor('2026-01-09', prefs)).toBe(30);
+    expect(xpGoalFor('2026-01-10', prefs)).toBe(45);
+    expect(xpGoalFor('2026-01-11', prefs)).toBe(75);
+  });
+
   test('buckets weekly XP by user-local dates from Monday through Sunday', () => {
     const buckets = weekXp(
       [
@@ -34,6 +41,13 @@ describe('XP calculations', () => {
       { date: '2026-01-09', xp: 0, goal: 60 },
       { date: '2026-01-10', xp: 0, goal: 300 },
       { date: '2026-01-11', xp: 80, goal: 60 },
+    ]);
+  });
+
+  test('uses study preferences for each weekly goal', () => {
+    const prefs = { scheduleMinutes: 30, saturdayMinutes: 45, sundayMinutes: 75 };
+    expect(weekXp([], '2026-01-07', prefs).map((day) => day.goal)).toEqual([
+      30, 30, 30, 30, 30, 45, 75,
     ]);
   });
 
@@ -71,6 +85,13 @@ describe('XP calculations', () => {
   test('estimates finish using recent XP or the daily-goal average', () => {
     expect(estimatedFinishDate(2, 20, '2026-01-01')).toBe('2026-01-05');
     expect(estimatedFinishDate(1, 0, '2026-01-01')).toBe('2026-01-02');
+    expect(
+      estimatedFinishDate(1, 0, '2026-01-01', {
+        scheduleMinutes: 30,
+        saturdayMinutes: 45,
+        sundayMinutes: 75,
+      }),
+    ).toBe('2026-01-03');
     expect(estimatedFinishDate(0, 0, '2026-01-01')).toBe('2026-01-01');
     expect(
       averageDailyXp(

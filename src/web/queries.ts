@@ -36,6 +36,7 @@ export interface LearnPayload {
     topicsDone: number;
     topicsTotal: number;
     estimatedFinish: string | null;
+    estimatedFinishAtGoal: string | null;
   };
   tasks: Array<{
     activityKind: string;
@@ -120,6 +121,7 @@ export interface SessionPayload {
   startedAt?: string;
   serverNow?: string;
   tutorEnabled: boolean;
+  xp: { session: number; today: number; goal: number };
 }
 
 export interface LessonPayload {

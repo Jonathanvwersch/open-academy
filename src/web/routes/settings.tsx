@@ -88,6 +88,9 @@ function SettingsPage() {
                     min
                   </span>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Daily goal: {draft.scheduleMinutes} XP · 1 XP ≈ 1 minute
+                </p>
               </div>
               {(['saturdayMinutes', 'sundayMinutes'] as const).map((key) => (
                 <div className="grid gap-2" key={key}>
@@ -111,6 +114,9 @@ function SettingsPage() {
                       min
                     </span>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Daily goal: {draft[key]} XP · 1 XP ≈ 1 minute
+                  </p>
                 </div>
               ))}
             </div>
