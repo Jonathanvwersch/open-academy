@@ -5,11 +5,11 @@ import { Button } from '@/ui/button.js';
 import { LessonBlock, Markdown } from '../components.js';
 import { exerciseQueryOptions, lessonReviewQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
-import { LessonSkeleton } from '../skeletons.js';
+import { LessonReviewSkeleton } from '../skeletons.js';
 import { useTutorSidebar } from '../tutor/TutorSidebar.js';
 
 export const Route = createFileRoute('/lessons/$conceptId')({
-  pendingComponent: LessonSkeleton,
+  pendingComponent: LessonReviewSkeleton,
   validateSearch: (search: Record<string, unknown>) => ({
     from: typeof search.from === 'string' ? search.from : undefined,
   }),

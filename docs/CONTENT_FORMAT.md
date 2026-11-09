@@ -113,7 +113,7 @@ Type-specific fields:
 Knowledge-point lessons require a `final` exercise ID. It must identify a core `explain`
 exercise for the same concept and must not appear in any knowledge point's `problems`. The
 loader adds this exercise as the final check block, after the knowledge points and before the
-summary. See the [lesson style guide](LESSON_STYLE.md) for authoring guidance.
+summary. See the [write-lesson skill](../.agents/skills/write-lesson/SKILL.md) for authoring guidance.
 
 Fenced `svg` blocks in lesson and exercise Markdown render as accessible diagrams. Each SVG
 must be well-formed XML with an `<svg>` root, a `viewBox`, and a non-empty `aria-label`.

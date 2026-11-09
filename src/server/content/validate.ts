@@ -895,9 +895,7 @@ function validateTemplate(
       }
       answers.add(instance.exercise.answer);
       if (stringValues(instance.exercise).some((text) => text.includes('{{'))) {
-        throw new Error(
-          'unresolved {{= placeholder remains after instantiation (write {{=name}}, not {{name}})',
-        );
+        throw new Error('unresolved {{ placeholder remains after instantiation; use {{=name}}');
       }
       for (const text of stringValues(instance.exercise)) {
         const adjacentSign = /[+-]\s*-\d/g;

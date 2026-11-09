@@ -9,10 +9,12 @@ const screenshotDir = '/home/ubuntu/screenshots/shadcn';
 const lessonCardScreenshotDir = '/home/ubuntu/screenshots/lesson-cards';
 const questionDotsScreenshotDir = '/home/ubuntu/screenshots/question-dots';
 const xpFinishScreenshotDir = '/home/ubuntu/screenshots/xp-finish';
+const lessonReviewScreenshotDir = '/home/ubuntu/lesson-review';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(questionDotsScreenshotDir, { recursive: true });
 mkdirSync(xpFinishScreenshotDir, { recursive: true });
+mkdirSync(lessonReviewScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async () => {
@@ -115,6 +117,63 @@ test('wrong numeric answers offer one persisted retry', async ({ page }) => {
   await page.screenshot({ path: `${screenshotDir}/wrong-numeric-retry.png`, fullPage: true });
   await page.reload();
   await expect(page.getByRole('button', { name: 'Try again · 1 try left' })).toBeVisible();
+});
+
+test('session hints stack in order and remain until the answer is graded', async ({ page }) => {
+  const sessionId = await createActivity('derivatives', 'derivatives-fixture-practice-1');
+  await page.route('**/api/sessions/*', async (route) => {
+    const requestUrl = new URL(route.request().url());
+    if (
+      route.request().method() !== 'GET' ||
+      requestUrl.pathname !== `/api/sessions/${sessionId}`
+    ) {
+      await route.continue();
+      return;
+    }
+    const response = await route.fetch();
+    const data = await response.json();
+    await route.fulfill({ response, json: { ...data, tutorEnabled: false } });
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/session/${sessionId}`);
+
+  const hint1 = page.getByText('Hint 1', { exact: true });
+  const hint2 = page.getByText('Hint 2', { exact: true });
+  await page.getByRole('button', { name: 'Hint', exact: true }).click();
+  await expect(hint1).toBeVisible();
+  await page.getByRole('button', { name: 'Hint', exact: true }).click();
+  await expect(hint1).toBeVisible();
+  await expect(hint2).toBeVisible();
+
+  const firstHintBox = await hint1.boundingBox();
+  const secondHintBox = await hint2.boundingBox();
+  if (!firstHintBox || !secondHintBox) throw new Error('Hint headings must have bounding boxes');
+  expect(firstHintBox.y + firstHintBox.height).toBeLessThanOrEqual(secondHintBox.y);
+  await page.screenshot({
+    path: `${lessonReviewScreenshotDir}/stacked-hints.png`,
+    fullPage: true,
+  });
+
+  await page.getByRole('button', { name: 'Show solution', exact: true }).click();
+  const solution = page.getByText('Solution', { exact: true });
+  await expect(hint1).toBeVisible();
+  await expect(hint2).toBeVisible();
+  await expect(solution).toBeVisible();
+  const secondHintAfterSolution = await hint2.boundingBox();
+  const solutionBox = await solution.boundingBox();
+  if (!secondHintAfterSolution || !solutionBox) {
+    throw new Error('Solution and hint headings must have bounding boxes');
+  }
+  expect(secondHintAfterSolution.y + secondHintAfterSolution.height).toBeLessThanOrEqual(
+    solutionBox.y,
+  );
+
+  await page.getByLabel('Your answer').fill('0');
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByText('Not quite', { exact: true })).toBeVisible();
+  await expect(hint1).toHaveCount(0);
+  await expect(hint2).toHaveCount(0);
+  await expect(solution).toHaveCount(0);
 });
 
 test('session completion shows XP and daily goal progress', async ({ page }) => {

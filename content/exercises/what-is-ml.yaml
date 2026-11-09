@@ -8,97 +8,51 @@ exercises:
     est_minutes: 1
     prompt: "What is machine learning?"
     options:
-      - {
-          id: a,
-          text: "Writing every rule by hand to map inputs to outputs before seeing examples.",
-          correct: false,
-          feedback: "That is hand-coded programming, not learning from data.",
-        }
-      - {
-          id: b,
-          text: "Fitting a model to examples so it can make predictions for new inputs",
-          correct: true,
-          feedback: "The model fits patterns from examples and uses them to predict outputs for new inputs.",
-        }
-      - {
-          id: c,
-          text: "Memorising the known training targets and returning them only when those same examples appear.",
-          correct: false,
-          feedback: "A learned model is intended to make predictions on new inputs.",
-        }
-      - {
-          id: d,
-          text: "Choosing an output for each input without learning from any past examples.",
-          correct: false,
-          feedback: "Machine learning uses examples and inputs to make predictions.",
-        }
-    solution: "Machine learning learns a model from examples so it can make predictions on new inputs."
-  - id: ml-house-model-basics
+      - id: a
+        text: "Having a person write every rule by hand before the computer sees any examples."
+        correct: false
+        feedback: "That is ordinary programming, the thing machine learning replaces when nobody knows the rule."
+      - id: b
+        text: "Fitting a rule to examples so the computer can make predictions for new inputs."
+        correct: true
+        feedback: "The rule, called a model, is chosen to fit the examples and then used on inputs it hasn't seen."
+      - id: c
+        text: "Storing the examples so the computer can repeat their answers when they come up again."
+        correct: false
+        feedback: "A stored list only answers for those examples; a learned model also predicts for new inputs."
+      - id: d
+        text: "Letting the computer pick any output for each input without looking at past examples."
+        correct: false
+        feedback: "Machine learning depends on examples: they are what the rule is fitted to."
+    solution: "Machine learning fits a rule, the model, to examples so it can make predictions on new inputs."
+  - id: ml-fit-self-explain
     dimension: conceptual
     type: mc
-    role: basics
+    role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "In the house-price model, what is the target?"
+    prompt: "In the worked example, the guess $w=2$ predicts 100 for a house that sold for 150. Why does that tell you to raise $w$?"
     options:
-      - {
-          id: a,
-          text: "The sale price the model is trying to predict",
-          correct: true,
-          feedback: "The target is the known sale price that the model is trained to predict.",
-        }
-      - {
-          id: b,
-          text: "The house's measurements, such as area and bedrooms",
-          correct: false,
-          feedback: "Those measurements are features, the inputs that describe the house.",
-        }
-      - {
-          id: c,
-          text: "The numbers the model learns to multiply each measurement by",
-          correct: false,
-          feedback: "Those learned multipliers are weights that set each feature's influence on the prediction.",
-        }
-      - {
-          id: d,
-          text: "The price the model currently estimates for a house",
-          correct: false,
-          feedback: "That is the prediction, the model's current estimate of the house's sale price.",
-        }
-    solution: "Features are recorded inputs, weights are adjustable settings, prediction is the model's output, and target is the known answer."
-  - id: ml-to-robots-basics
-    dimension: conceptual
-    type: mc
-    role: basics
-    difficulty: 1
-    est_minutes: 1
-    prompt: "What stays the same when machine learning is applied to harder robot tasks?"
-    options:
-      - {
-          id: a,
-          text: "The same loop: a model with weights, a loss that scores its errors, and training to reduce it",
-          correct: true,
-          feedback: "The same model, loss, and training loop apply even when a task uses different inputs and outputs.",
-        }
-      - {
-          id: b,
-          text: "The same house measurements and sale-price targets, even for tasks with different inputs and desired outcomes.",
-          correct: false,
-          feedback: "Robot tasks use their own inputs and targets.",
-        }
-      - {
-          id: c,
-          text: "The same model prediction for every new input, regardless of the robot task or situation.",
-          correct: false,
-          feedback: "A model should respond to the input rather than return one fixed prediction.",
-        }
-      - {
-          id: d,
-          text: "The same hand-written action rule for every possible robot situation and input type.",
-          correct: false,
-          feedback: "Learning uses examples and training rather than one fixed action rule.",
-        }
-    solution: "The learning loop stays the same: a model has weights, a loss measures its errors, and training reduces that loss."
+      - id: a
+        text: "The prediction is $w$ times the area, so a larger $w$ gives a larger prediction, closer to 150."
+        correct: true
+        feedback: "Raising $w$ raises every prediction, and $w=3$ gives exactly 150."
+      - id: b
+        text: "A larger $w$ makes the house's area larger, so it then matches its recorded sale price."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The area is part of the example and never changes; only the weight is adjusted."
+      - id: c
+        text: "Each new guess must be larger than the last one until all of the predictions match."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "If a prediction were too high, you would lower $w$ instead, as $w=4$ shows."
+      - id: d
+        text: "Raising $w$ changes the recorded sale price so that it agrees with the prediction."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The sale price is the target, which stays fixed; learning changes the rule, not the data."
+    solution: "The prediction is $w\\times$ area, so it grows with $w$. A prediction that is too low needs a larger $w$; here $w=3$ gives $3\\times50=150$."
   - id: ml-fit-task
     dimension: conceptual
     type: mc
@@ -107,28 +61,25 @@ exercises:
     est_minutes: 1
     prompt: "Which task is a good fit for machine learning rather than hand-written rules?"
     options:
-      - { id: a, text: "Recognising whether a camera image contains a cup", correct: true }
-      - {
-          id: b,
-          text: "Converting metres to centimetres",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The exact rule is known: multiply by 100. No examples needed.",
-        }
-      - {
-          id: c,
-          text: "Sorting names alphabetically",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "A fixed procedure already does this perfectly.",
-        }
-      - {
-          id: d,
-          text: "Adding up a shopping bill",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Addition is an exact rule you can write down.",
-        }
+      - id: a
+        text: "Recognising whether a camera image contains a cup"
+        correct: true
+        feedback: "Nobody can write down which pixels make a cup, so the rule has to be learned from examples."
+      - id: b
+        text: "Converting a length in metres to centimetres"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The exact rule is known: multiply by 100. No examples needed."
+      - id: c
+        text: "Sorting a list of names into alphabetical order"
+        correct: false
+        category: misunderstood_definition
+        feedback: "A fixed procedure already does this perfectly."
+      - id: d
+        text: "Adding up the prices on a shopping bill"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Addition is an exact rule you can write down."
     solution: "Nobody can write down which pixels make a cup, so we learn the rule from labelled images. The other tasks have exact rules already."
   - id: ml-learns-from
     dimension: conceptual
@@ -138,29 +89,26 @@ exercises:
     est_minutes: 1
     prompt: "In supervised learning, what does the computer learn its rule from?"
     options:
-      - { id: a, text: "Examples where the correct answer is known", correct: true }
-      - {
-          id: b,
-          text: "Instructions a person writes for every case",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "That is ordinary programming, the thing machine learning replaces.",
-        }
-      - {
-          id: c,
-          text: "Nothing: it guesses until a person approves",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "It needs examples to measure its mistakes against.",
-        }
-      - {
-          id: d,
-          text: "Only the final test results",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Test data is kept back to check the model, not to train it.",
-        }
-    solution: "Supervised learning fits a rule from examples whose correct answers are known."
+      - id: a
+        text: "Examples where the correct answer is known"
+        correct: true
+        feedback: "Each example's answer, its target, is what the predictions are compared against."
+      - id: b
+        text: "Instructions a person writes for every case"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is ordinary programming, the thing machine learning replaces."
+      - id: c
+        text: "Nothing: it guesses until a person approves"
+        correct: false
+        category: misunderstood_definition
+        feedback: "It needs examples to measure its mistakes against."
+      - id: d
+        text: "Its own predictions, with no answers to check"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Without known answers it could not tell whether a prediction was too high or too low."
+    solution: "Supervised learning fits a rule to examples whose correct answers, the targets, are known."
   - id: ml-why-not-hand
     dimension: conceptual
     type: mc
@@ -169,33 +117,54 @@ exercises:
     est_minutes: 1
     prompt: "Why not just write a house-price rule by hand?"
     options:
-      - {
-          id: a,
-          text: "Price depends on many measurements in amounts nobody knows exactly, but past sales show what the real prices were",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "Computers can't do arithmetic on prices",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "They can; the problem is knowing which arithmetic to do.",
-        }
-      - {
-          id: c,
-          text: "A learned rule is always exactly right",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "Learned models make mistakes too; they are just usually much smaller than a guessed rule's.",
-        }
-      - {
-          id: d,
-          text: "Hand-written rules can't use numbers",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "They can; the hard part is choosing the right numbers.",
-        }
-    solution: "Past sales provide examples for learning how the many measurements combine to determine price."
+      - id: a
+        text: "Price depends on many details in amounts nobody knows exactly, but past sales show the real prices"
+        correct: true
+        feedback: "The past sales are examples, so the rule can be fitted to them instead of guessed."
+      - id: b
+        text: "Computers can't do the arithmetic needed to work out a house's price from its details"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "They can; the problem is knowing which arithmetic to do."
+      - id: c
+        text: "A rule learned from past sales is always exactly right, while a hand-written one never is"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Learned models make mistakes too; they are just usually much smaller than a guessed rule's."
+      - id: d
+        text: "Hand-written rules can only use words, so they cannot work with prices or areas at all"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "They can use numbers; the hard part is choosing the right numbers."
+    solution: "Nobody knows exactly how area, bedrooms, age and the rest combine into a price, but past sales provide examples to fit the rule to."
+  - id: ml-adjust-direction
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "The rule is price $=w\\times$ area (price in £ thousands, area in m²). With $w=4$, a 60 m² house is predicted at 240, but it sold for 180. How should $w$ change?"
+    options:
+      - id: a
+        text: "Lower $w$, because the prediction is too high"
+        correct: true
+        feedback: "A smaller $w$ gives a smaller prediction; $w=3$ gives exactly 180."
+      - id: b
+        text: "Raise $w$, because the prediction is too far off"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Raising $w$ makes the prediction even larger, so further from 180."
+      - id: c
+        text: "Keep $w$, because 240 and 180 are both prices"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The prediction is 60 too high, so the rule does not fit this sale yet."
+      - id: d
+        text: "Change the area to 45 m² so that it matches"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The area is part of the example and stays fixed; only the weight is adjusted."
+    solution: "$4\\times60=240$ is above the target 180, so $w$ must go down. $w=3$ gives $3\\times60=180$."
   - id: ml-fit-weight
     dimension: conceptual
     type: numeric
@@ -203,9 +172,68 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: "Two houses sold: 40 m² for 120 thousand pounds and 60 m² for 180 thousand pounds. The rule is price = w × area (thousands of pounds per m²). Which value of w fits both sales?"
-    solution: "40 × 3 = 120 and 60 × 3 = 180, so w = 3."
+    common_wrong:
+      - {
+          answer: 40,
+          category: misunderstood_definition,
+          feedback: "That is the first house's area; $w$ is the number you multiply the area by.",
+        }
+    solution: "Each price divided by its area gives 3: 40 × 3 = 120 and 60 × 3 = 180, so w = 3."
     answer: 3
     tolerance: { abs: 0 }
+  - id: ml-house-model-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the house-price model, what is the target?"
+    options:
+      - id: a
+        text: "The sale price that the model is trying to predict"
+        correct: true
+        feedback: "The target is the known sale price that training pushes the predictions towards."
+      - id: b
+        text: "The house's measurements, such as area and bedrooms"
+        correct: false
+        feedback: "Those measurements are the inputs, the numbers that describe the house."
+      - id: c
+        text: "The numbers the model multiplies each measurement by"
+        correct: false
+        feedback: "Those are the weights, which training adjusts."
+      - id: d
+        text: "The price that the model currently predicts for a house"
+        correct: false
+        feedback: "That is the prediction; the loss measures how far it is from the target."
+    solution: "The target is the known sale price. The measurements are inputs, the multipliers are weights, and the model's output is the prediction."
+  - id: ml-weight-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the compare-cases table, raising the area weight from 25 to 26 raises the prediction by 12, but raising the bedrooms weight from 10 to 12 raises it by only 6. Why?"
+    options:
+      - id: a
+        text: "Each weight multiplies its own measurement: 1 more times area 12 is 12, and 2 more times 3 bedrooms is 6."
+        correct: true
+        feedback: "A weight's effect is its change times the measurement it multiplies."
+      - id: b
+        text: "The area weight is larger than the bedrooms weight, so any change to it counts for more."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The size of the weight itself doesn't matter here; the measurement it multiplies does."
+      - id: c
+        text: "Raising a weight by more makes each extra unit count for less, so the 2-unit bedrooms change adds less."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Each extra unit of the bedrooms weight adds 3, one per bedroom, so the 2-unit change adds 2 × 3 = 6."
+      - id: d
+        text: "Bedrooms matter less than area to every buyer, so the model limits how far that weight can move."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Nothing limits the weight; the bigger rise comes from area being recorded as 12."
+    solution: "The prediction adds weight × measurement for each input. Changing the area weight by 1 changes the prediction by $1\\times12=12$; changing the bedrooms weight by 2 changes it by $2\\times3=6$."
   - id: ml-step-vector
     dimension: conceptual
     type: mc
@@ -214,29 +242,26 @@ exercises:
     est_minutes: 1
     prompt: "A house is recorded as (12, 3, 20): area in tens of square metres, bedrooms and age. What is this list called?"
     options:
-      - { id: a, text: "A vector", correct: true }
-      - {
-          id: b,
-          text: "A loss",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "A loss measures how wrong a prediction is.",
-        }
-      - {
-          id: c,
-          text: "A gradient",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "A gradient says which way to change the weights.",
-        }
-      - {
-          id: d,
-          text: "A weight",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Weights are the adjustable numbers that multiply the measurements.",
-        }
-    solution: "A vector is a list of numbers that records the house's measurements."
+      - id: a
+        text: "A vector"
+        correct: true
+        feedback: "A vector is a list of numbers, here one per measurement."
+      - id: b
+        text: "A loss"
+        correct: false
+        category: misunderstood_definition
+        feedback: "A loss measures how wrong a prediction is."
+      - id: c
+        text: "A gradient"
+        correct: false
+        category: misunderstood_definition
+        feedback: "A gradient says which way to change the weights."
+      - id: d
+        text: "A weight"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Weights are the adjustable numbers that multiply the measurements."
+    solution: "A vector is a list of numbers; this one records the house's measurements."
   - id: ml-step-next
     dimension: conceptual
     type: mc
@@ -245,29 +270,47 @@ exercises:
     est_minutes: 1
     prompt: "The model predicts £310k, but the house sold for £330k. What does training do next?"
     options:
-      - { id: a, text: "Change the weights so the prediction moves closer to £330k", correct: true }
-      - {
-          id: b,
-          text: "Change the recorded sale price to £310k",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "The sale price is the known answer; training changes the model, not the data.",
-        }
-      - {
-          id: c,
-          text: "Remove the house from the data",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "Mistakes are exactly what training learns from.",
-        }
-      - {
-          id: d,
-          text: "Nothing; £20k is close enough",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "Training keeps reducing the loss across all houses.",
-        }
+      - id: a
+        text: "Change the weights so the prediction moves closer to £330k"
+        correct: true
+        feedback: "Training adjusts the weights to make the gap, and so the loss, smaller."
+      - id: b
+        text: "Change the recorded sale price to £310k"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The sale price is the known answer; training changes the model, not the data."
+      - id: c
+        text: "Remove this house from the set of examples"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Mistakes are exactly what training learns from."
+      - id: d
+        text: "Nothing, since £20k is close enough already"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Training keeps reducing the loss across all houses."
     solution: "Training changes the model's weights to bring its prediction closer to the known sale price."
+  - id: ml-predict-house
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "With the worked example's weights (25, 10, −1), in £ thousands per unit, what price does the model predict for a 90 m², 2-bedroom house that is 10 years old? Record area in tens of square metres. Answer in £ thousands."
+    answer: 235
+    tolerance: { abs: 0 }
+    common_wrong:
+      - {
+          answer: 255,
+          category: math_error,
+          feedback: "The age weight is −1, so 10 years subtracts 10 rather than adding it.",
+        }
+      - {
+          answer: 2260,
+          category: math_error,
+          feedback: "Record the area in tens of square metres: 90 m² is 9, not 90.",
+        }
+    solution: "The house is $(9,\\ 2,\\ 10)$. Then $25\\times9=225$, $10\\times2=20$ and $-1\\times10=-10$, which add to $235$."
   - id: ml-why-derivatives
     dimension: conceptual
     type: mc
@@ -276,32 +319,25 @@ exercises:
     est_minutes: 1
     prompt: "Why does the course teach derivatives before gradient descent?"
     options:
-      - {
-          id: a,
-          text: "Gradient descent needs to know which way to change each weight, and derivatives tell you that",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "Derivatives store the house measurements",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "That's what vectors do.",
-        }
-      - {
-          id: c,
-          text: "Derivatives replace the need for a loss",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Derivatives are taken of the loss; they need it.",
-        }
-      - {
-          id: d,
-          text: "It's an arbitrary order",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "Each Week 1 topic answers a question raised by the previous topic.",
-        }
+      - id: a
+        text: "Gradient descent needs to know which way to change each weight, and derivatives tell you that"
+        correct: true
+        feedback: "Derivatives say whether nudging a weight up makes the loss rise or fall."
+      - id: b
+        text: "Derivatives are where the house's measurements are stored before the model uses them"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That's what vectors do."
+      - id: c
+        text: "Derivatives replace the loss, so once you have them you no longer need to score mistakes"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Derivatives are taken of the loss; they need it."
+      - id: d
+        text: "The order is arbitrary, and the lessons could be taken the other way round just as well"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Each Week 1 topic answers a question raised by the previous topic."
     solution: "Derivatives tell gradient descent how the loss changes as each weight changes."
   - id: ml-why-new-houses
     dimension: conceptual
@@ -311,33 +347,79 @@ exercises:
     est_minutes: 1
     prompt: "Why test the trained model on houses it never saw during training?"
     options:
-      - {
-          id: a,
-          text: "Its error on training houses can look good just because it has fitted those exact houses",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "New houses have no prices",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Test houses do have known prices; that is how we measure the error.",
-        }
-      - {
-          id: c,
-          text: "Testing makes the model more accurate",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Testing measures accuracy; it doesn't change the model.",
-        }
-      - {
-          id: d,
-          text: "Training houses can't be used twice",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "They are reused many times during training.",
-        }
-    solution: "Unseen houses show whether the model works beyond the sales it trained on."
+      - id: a
+        text: "Its error on training houses can look good just because it has fitted those exact houses"
+        correct: true
+        feedback: "Only unseen houses show whether the rule works beyond the examples it was fitted to."
+      - id: b
+        text: "The new houses have no known prices, so the model's guesses for them are all that matters"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Test houses do have known prices; that is how we measure the error."
+      - id: c
+        text: "Testing on new houses changes the weights again, which makes the model more accurate"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Testing measures accuracy; it doesn't change the model."
+      - id: d
+        text: "Each training house can be used only once, so there are none left over for checking"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Training houses are reused many times during training."
+    solution: "Unseen houses show whether the model works beyond the sales it trained on, the way it must for a house that comes up for sale tomorrow."
+  - id: ml-to-robots-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What stays the same when machine learning is applied to harder robot tasks?"
+    options:
+      - id: a
+        text: "The loop: a model with weights, a loss that scores its mistakes, and training to lower it."
+        correct: true
+        feedback: "The inputs and outputs change, but the model, loss and training loop carry over."
+      - id: b
+        text: "The house measurements and sale prices, which are reused as inputs and targets for robots."
+        correct: false
+        feedback: "Robot tasks use their own inputs, such as camera images, and their own targets."
+      - id: c
+        text: "The model's output, which stays the same whatever the robot sees or is asked to do."
+        correct: false
+        feedback: "A model should respond to its input rather than return one fixed prediction."
+      - id: d
+        text: "A hand-written action rule, which a person keeps the same for every robot situation."
+        correct: false
+        feedback: "Learning uses examples and training rather than one fixed hand-written rule."
+    solution: "The learning loop stays the same: a model has weights, a loss measures its mistakes, and training changes the weights to lower the loss."
+  - id: ml-robot-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, why is the miss $6-10=-4$ what training works to bring towards 0?"
+    options:
+      - id: a
+        text: "It measures how far the policy's elbow turn is from the person's, which is what the loss scores."
+        correct: true
+        feedback: "Like the price gap for a house, it is the mistake the weights are changed to reduce."
+      - id: b
+        text: "It is the turn the policy should output next time, so the robot should now turn the elbow by 4°."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The target is the person's 10°; the −4 is how far the prediction missed it."
+      - id: c
+        text: "It measures how far the cup is from the robot's hand, so shrinking it moves the hand closer."
+        correct: false
+        category: misunderstood_definition
+        feedback: "It compares two elbow turns, the predicted and the demonstrated, not positions in the scene."
+      - id: d
+        text: "It changes the camera image and joint angles until they agree with the recorded demonstration."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The inputs are recorded data and stay fixed; training changes the network's weights."
+    solution: "The −4 is the difference between the policy's prediction and the target, the person's movement. The loss scores gaps like this, and training changes the weights to shrink them, just as with house prices."
   - id: ml-robot-target
     dimension: conceptual
     type: mc
@@ -346,28 +428,25 @@ exercises:
     est_minutes: 1
     prompt: "A robot learns to pick up a cup from recorded human demonstrations. In supervised-learning terms, what is the target?"
     options:
-      - { id: a, text: "The movement the person made at each moment", correct: true }
-      - {
-          id: b,
-          text: "The camera image",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "That's an input: what the robot sees when it decides.",
-        }
-      - {
-          id: c,
-          text: "The cup",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The cup is part of the scene, not a number the model predicts.",
-        }
-      - {
-          id: d,
-          text: "The loss",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The loss compares the model's movement with the target.",
-        }
+      - id: a
+        text: "The movement the person made at each moment"
+        correct: true
+        feedback: "The demonstrated movement is the answer the policy is trained to reproduce."
+      - id: b
+        text: "The camera image at each moment"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That's an input: what the robot sees when it decides."
+      - id: c
+        text: "The cup the robot is picking up"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The cup is part of the scene, not a number the model predicts."
+      - id: d
+        text: "The loss after training is done"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The loss compares the model's movement with the target."
     solution: "The target is the movement demonstrated by the person."
   - id: ml-which-week
     dimension: conceptual
@@ -377,28 +456,25 @@ exercises:
     est_minutes: 1
     prompt: "Which part of the course teaches a robot to learn by trial and error from rewards?"
     options:
-      - { id: a, text: "Week 8, reinforcement learning", correct: true }
-      - {
-          id: b,
-          text: "Week 7, imitation learning",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Imitation learning copies demonstrations instead of using rewards.",
-        }
-      - {
-          id: c,
-          text: "Week 1, ML fundamentals",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Week 1 learns from examples with known answers.",
-        }
-      - {
-          id: d,
-          text: "Week 4, transformers",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Transformers are a model design, not a way of learning from rewards.",
-        }
+      - id: a
+        text: "Week 8, reinforcement learning"
+        correct: true
+        feedback: "Reinforcement learning has no answers to copy, only a reward score."
+      - id: b
+        text: "Week 7, imitation learning"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Imitation learning copies demonstrations instead of using rewards."
+      - id: c
+        text: "Week 1, ML fundamentals"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Week 1 learns from examples with known answers."
+      - id: d
+        text: "Week 4, transformers"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Transformers are a model design, not a way of learning from rewards."
     solution: "Week 8 covers reinforcement learning, which learns by trial and error from rewards."
   - id: ml-why-houses
     dimension: conceptual
@@ -408,33 +484,51 @@ exercises:
     est_minutes: 1
     prompt: "Why does a course aimed at robotics start with house prices?"
     options:
-      - {
-          id: a,
-          text: "The house model uses the same loop as a robot policy (model, loss, training) with numbers small enough to check by hand",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "Robots are trained on house data",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "They're trained on robot data; only the method is shared.",
-        }
-      - {
-          id: c,
-          text: "House prices are harder than robotics",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "They're chosen because they are simpler.",
-        }
-      - {
-          id: d,
-          text: "Robots don't use loss functions",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "They do: behavioral cloning measures how far the robot's movement is from the demonstrated one.",
-        }
-    solution: "House prices make the model, loss and training loop small enough to check by hand."
+      - id: a
+        text: "The house model uses the same loop as a robot policy, with numbers small enough to check by hand"
+        correct: true
+        feedback: "Model, loss and training carry over; only the inputs and outputs grow."
+      - id: b
+        text: "Robots are trained on house data, so the house model is the first part of every robot policy"
+        correct: false
+        category: misunderstood_definition
+        feedback: "They're trained on robot data; only the method is shared."
+      - id: c
+        text: "House prices are a harder problem than robotics, so mastering them first makes robots easy"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "They're chosen because they are simpler."
+      - id: d
+        text: "Robots don't use a loss, so the course needs a separate problem where a loss can be taught"
+        correct: false
+        category: misunderstood_definition
+        feedback: "They do: behavioral cloning measures how far the robot's movement is from the demonstrated one."
+    solution: "House prices make the model, loss and training loop small enough to check by hand, and the same loop trains a robot policy."
+  - id: ml-robot-sorter
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot learns to sort red and blue blocks from human demonstrations. Its camera image is the input. Which pairing correctly describes its target and loss?"
+    options:
+      - id: a
+        text: "Target: the demonstrated bin; loss: how wrong the chosen bin is"
+        correct: true
+        feedback: "The person's choice is the answer to copy, and the loss scores how far the robot's choice is from it."
+      - id: b
+        text: "Target: the camera image; loss: how wrong the chosen bin is"
+        correct: false
+        feedback: "The camera image is the input; the demonstrated bin is the answer to copy."
+      - id: c
+        text: "Target: the demonstrated bin; loss: the number of recorded images"
+        correct: false
+        feedback: "Counting images does not measure how wrong a prediction is."
+      - id: d
+        text: "Target: the adjustable weights; loss: the number of recorded images"
+        correct: false
+        feedback: "Weights are adjusted during training, not copied as targets; the loss measures prediction mistakes."
+    solution: "The target is the demonstrated choice of bin, just as the house target is the known sale price. The loss must measure mistakes in the predicted choice, not the amount of data."
   - id: ml-explain
     dimension: conceptual
     type: explain
@@ -461,33 +555,3 @@ exercises:
           weight: 1,
         }
     exemplar: "Machine learning means a computer learns a rule from examples instead of a person writing the rule. For house prices, the inputs are a house's measurements, the target is its sale price, and the model multiplies the measurements by weights. The loss measures how far the predicted prices are from the real ones, and training changes the weights to make the loss smaller. For a robot arm, the inputs are the camera image and joint angles, and the target is the movement the person made. A neural network predicts a movement, the loss measures how far it is from the person's movement, and training changes the network's weights to shrink that gap."
-  - id: ml-robot-sorter
-    dimension: transfer
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: A robot learns to sort red and blue blocks from human demonstrations.
-      Its camera image is the input. Which pairing correctly describes its
-      target and loss?
-    options:
-      - id: a
-        text: "Target: the demonstrated bin; loss: how wrong the chosen bin is"
-        correct: true
-      - id: b
-        text: "Target: the camera image; loss: how wrong the chosen bin is"
-        correct: false
-        feedback: The camera image is the input; the demonstrated bin is the answer to
-          copy.
-      - id: c
-        text: "Target: the demonstrated bin; loss: the number of recorded images"
-        correct: false
-        feedback: Counting images does not measure how wrong a prediction is.
-      - id: d
-        text: "Target: the adjustable weights; loss: the number of recorded images"
-        correct: false
-        feedback: Weights are adjusted during training, not copied as targets; loss
-          measures prediction mistakes.
-    solution: The target is the demonstrated choice of bin, just as the house target
-      is the known sale price. The loss must measure mistakes in the predicted
-      choice, not the amount of data.

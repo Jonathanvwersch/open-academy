@@ -8,64 +8,341 @@ exercises:
     est_minutes: 1
     prompt: "What is a vector?"
     options:
-      - {
-          id: a,
-          text: "An ordered list of numbers with fixed positions.",
-          correct: true,
-          feedback: "The fixed order preserves which feature or coordinate each component represents.",
-        }
-      - {
-          id: b,
-          text: "An unordered set of measurements with no fixed entry positions.",
-          correct: false,
-          feedback: "Vectors keep their entries in a fixed order.",
-        }
-      - {
-          id: c,
-          text: "A rectangular grid of numbers with rows and columns.",
-          correct: false,
-          feedback: "That is a matrix.",
-        }
-      - {
-          id: d,
-          text: "A single number made by combining two feature lists.",
-          correct: false,
-          feedback: "That describes a dot product.",
-        }
-    solution: "A vector is an ordered list of numbers, with a fixed position and meaning for each entry."
+      - id: a
+        text: "An ordered list of numbers, where each position has its own meaning."
+        correct: true
+        feedback: "The order says what each number means, such as east first and north second."
+      - id: b
+        text: "A collection of numbers whose order can change without changing its meaning."
+        correct: false
+        feedback: "Order matters: $(2,5)$ is 2 east and 5 north, while $(5,2)$ is a different place."
+      - id: c
+        text: "A single number that measures how far something has moved in total."
+        correct: false
+        feedback: "That single number is a length, which comes later in this lesson. A vector keeps several numbers."
+      - id: d
+        text: "A list of numbers that must all be measured in exactly the same units."
+        correct: false
+        feedback: "A feature vector can mix units, such as square metres, bedrooms and years."
+    solution: "A vector is an ordered list of numbers. Each position has a fixed meaning, so swapping entries changes the vector."
+  - id: vecp-add-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, why does step 1 add $1+2$, the two east components, rather than $1+3$?"
+    options:
+      - id: a
+        text: "Both are distances east, so their sum is the total east; the 3 is a distance north."
+        correct: true
+        feedback: "Matching components share a meaning, so only they can be added together."
+      - id: b
+        text: "The first and last numbers written down are always added, whatever they mean."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Position in the vector decides what to add, not position on the page: east goes with east."
+      - id: c
+        text: "Adding $1+3$ would give the same end point, since numbers add in any order."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$1+3$ mixes an east distance with a north one, giving a wrong east total of 4."
+      - id: d
+        text: "North components can't be added, so only the east components are combined."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Step 2 adds the north components too: $3+1=4$."
+    solution: "Vector addition adds matching components. The 1 and the 2 are both east distances; the 3 is a north distance, so mixing it in would be meaningless."
+  - id: vecp-add-template
+    dimension: math
+    type: numeric
+    tolerance: { abs: 0.000001 }
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A robot moves $({{=a}},{{=b}})$ and then $({{=c}},{{=d}})$, in metres east and north. What is the north component of its combined move, in metres?"
+    solution: "Add the north (second) components: ${{=b}}+({{=d}})={{=b+d}}$. The east components only affect the first component."
+    params:
+      a: { min: -5, max: 5 }
+      b: { min: -5, max: 5 }
+      c: { min: -5, max: 5 }
+      d: { min: -5, max: 5 }
+    answer_expr: "b+d"
+  - id: vecp-feature
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A house's feature vector is $(120,3,15)$, in the order area in square metres, bedrooms, age in years. What does it represent?"
+    solution: "All three components describe the same house. The order gives their meaning: 120 square metres, 3 bedrooms and 15 years old."
+    options:
+      - id: a
+        text: "One house, with one component for each of its measurements."
+        correct: true
+        feedback: "Each component is one measurement of that house, in the stated order."
+      - id: b
+        text: "A robot's position, 120 metres east and 3 metres north."
+        correct: false
+        feedback: "These components are house measurements, not distances from a dock."
+      - id: c
+        text: "Three different houses, with one measurement for each house."
+        correct: false
+        feedback: "All three components belong to the same house."
+  - id: vecp-entry
+    dimension: math
+    type: numeric
+    tolerance: { abs: 0.000001 }
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A house has feature vector $x=(120,3,15)$: area in square metres, bedrooms, age in years. What is $x_2$, its second component?"
+    solution: "The subscript picks a component by position. The second component is 3, the number of bedrooms."
+    answer: 3
+  - id: vecp-add
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Follow arrow $a=(1,2)$, then arrow $b=(3,-1)$, with east first and north second. Which vector goes straight from the start to the final end point?"
+    solution: "Add matching components: $(1+3,\\;2+(-1))=(4,1)$. The end point is 4 units east and 1 north of the start."
+    options:
+      - id: a
+        text: "$(4,1)$"
+        correct: true
+        feedback: "East: $1+3=4$. North: $2+(-1)=1$."
+      - id: b
+        text: "$(4,3)$"
+        correct: false
+        feedback: "The second arrow goes 1 unit south, so the north total is $2-1=1$."
+      - id: c
+        text: "$(3,-2)$"
+        correct: false
+        feedback: "Multiplying components does not combine moves; add them instead."
+  - id: vecp-new-moves
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A warehouse robot moves $(2,-3)$ metres, then $(-1,5)$ metres, east first and north second. What is its combined move?"
+    solution: "East: $2+(-1)=1$. North: $-3+5=2$. The combined move is $(1,2)$ metres."
+    options:
+      - id: a
+        text: "$(1,2)$ metres"
+        correct: true
+        feedback: "Adding matching components gives 1 metre east and 2 north."
+      - id: b
+        text: "$(3,2)$ metres"
+        correct: false
+        feedback: "The second move goes 1 metre west, so the east total is $2-1=1$."
+      - id: c
+        text: "$(1,-8)$ metres"
+        correct: false
+        feedback: "The second move goes 5 metres north, so the north total is $-3+5=2$."
+  - id: vecp-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A robot records positions in metres east and north of its dock. Why must it tell $(2,5)$ apart from $(5,2)$ when finding a parcel?"
+    solution: "The first component is the distance east and the second the distance north. Swapping them sends the robot to a different place."
+    options:
+      - id: a
+        text: "Swapping the components changes the destination."
+        correct: true
+        feedback: "Each position has its own direction, so the two vectors mark different places."
+      - id: b
+        text: "Swapping the components changes how many there are."
+        correct: false
+        feedback: "Both vectors still have two components."
+      - id: c
+        text: "Swapping the components makes the position invalid."
+        correct: false
+        feedback: "Both are valid positions; they are just different places."
+  - id: vecp-missing-move
+    dimension: math
+    type: numeric
+    tolerance: { abs: 0.000001 }
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot's first move from its dock is $(2,-1)$ metres east and north. After a second move it is at $(5,2)$. What is the north component of the second move, in metres?"
+    solution: "The two moves must add to $(5,2)$, so the second move's north component $n$ satisfies $-1+n=2$, giving $n=3$. The whole second move is $(3,3)$."
+    answer: 3
   - id: vec-change-move-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What does scaling a vector do?"
+    prompt: "What does multiplying a vector by a scalar do?"
     options:
-      - {
-          id: a,
-          text: "It adds the same amount to every entry, rather than multiplying.",
-          correct: false,
-          feedback: "Adding a number is not scaling and can change direction.",
-        }
-      - {
-          id: b,
-          text: "It multiplies every entry by the same number",
-          correct: true,
-          feedback: "Multiplying every entry by one scalar changes length and may reverse direction.",
-        }
-      - {
-          id: c,
-          text: "It replaces each entry with its absolute value, removing its sign.",
-          correct: false,
-          feedback: "That takes component-wise absolute values; scaling multiplies every entry by the same scalar.",
-        }
-      - {
-          id: d,
-          text: "It replaces the vector with its length, a single number.",
-          correct: false,
-          feedback: "That distance is the vector's length or norm.",
-        }
-    solution: "Scaling multiplies every vector entry by the same number, changing its length and possibly its direction."
+      - id: a
+        text: "It multiplies every component of the vector by that same number."
+        correct: true
+        feedback: "That stretches, shrinks or reverses the arrow along the same line."
+      - id: b
+        text: "It adds that same number to every component of the vector."
+        correct: false
+        feedback: "Adding a number usually turns the arrow; scaling multiplies instead."
+      - id: c
+        text: "It multiplies only the first component of the vector by that number."
+        correct: false
+        feedback: "Scaling multiplies every component; changing only one usually turns the arrow."
+      - id: d
+        text: "It turns the vector into a single number, its total length."
+        correct: false
+        feedback: "The result is still a vector with the same number of components."
+    solution: "Scaling multiplies every component by the same number. The arrow stays on its line, changing length and, for a negative scalar, direction."
+  - id: vecp-scale-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In step 4 of the worked example, why does checking $b+(a-b)=a$ show what $a-b$ means?"
+    options:
+      - id: a
+        text: "Starting at $b$'s tip and making the move $a-b$ lands on $a$'s tip, so it is the move from $b$ to $a$."
+        correct: true
+        feedback: "Adding a move to a starting point gives the end point, and here the end point is $a$."
+      - id: b
+        text: "It shows that $a-b$ equals $a$, so subtracting $b$ leaves the vector $a$ unchanged."
+        correct: false
+        category: misunderstood_definition
+        feedback: "$a-b=(-1,2)$, which is not $a=(1,3)$. The check adds $b$ back on."
+      - id: c
+        text: "It shows that $a-b$ is just $b$ reversed, the same arrow as $-b$ in step 2."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$-b=(-2,-1)$, but $a-b=(-1,2)$: subtracting adds $-b$ to $a$, not to the origin."
+      - id: d
+        text: "It shows that $a-b$ is the move from $a$'s tip to $b$'s tip, read backwards."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The check starts at $b$ and ends at $a$. The move from $a$ to $b$ is $b-a=(1,-2)$."
+    solution: "$b+(a-b)$ means: stand at $b$'s tip and make the move $a-b$. Landing on $a$ shows that $a-b$ is the move from $b$ to $a$."
+  - id: vecp-scale-template
+    dimension: math
+    type: numeric
+    tolerance: { abs: 0.000001 }
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A robot's planned move is $x=({{=a}},{{=b}})$ metres east and north. It scales the move by $c={{=c}}$. What is the east component of $cx$, in metres?"
+    solution: "Multiply the first component by the scalar: ${{=c}}\\cdot({{=a}})={{=c*a}}$. Scaling multiplies every component the same way."
+    params:
+      a: { min: -5, max: 5 }
+      b: { min: -5, max: 5 }
+      c: { min: -3, max: 3 }
+    answer_expr: "c*a"
+  - id: vecp-half
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A robot's planned move is $(6,2)$ metres east and north. A parcel sits halfway along that move. Which move reaches it?"
+    solution: "Multiply both components by $0.5$: $(0.5\\cdot6,\\;0.5\\cdot2)=(3,1)$. A positive scalar keeps the direction."
+    options:
+      - id: a
+        text: "$(3,1)$ metres"
+        correct: true
+        feedback: "Multiply every component by one half."
+      - id: b
+        text: "$(3,2)$ metres"
+        correct: false
+        feedback: "Halving only one component turns the arrow."
+      - id: c
+        text: "$(-3,-1)$ metres"
+        correct: false
+        feedback: "This is half as long but reversed; the scalar here is $-0.5$, not $0.5$."
+  - id: vecp-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A robot cancels its planned move of $(3,4)$ metres east and north by multiplying the vector by zero. What move remains?"
+    solution: "Both components become zero, so there is no move. The zero vector has no direction."
+    options:
+      - id: a
+        text: "$(0,0)$: no move and no direction."
+        correct: true
+        feedback: "Every component is multiplied by zero."
+      - id: b
+        text: "$(3,4)$: the original move is kept."
+        correct: false
+        feedback: "Multiplying by one keeps a vector; zero does not."
+      - id: c
+        text: "$(0,4)$: 4 metres north only."
+        correct: false
+        feedback: "Zero multiplies both components, not just the first."
+  - id: vecp-why-scale-all
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Why must you double both components of the arrow $(1,2)$ to make it twice as long without turning it?"
+    solution: "Doubling both gives $(2,4)$, which still goes twice as far north as east. Doubling only the first gives $(2,2)$, which points in a different direction."
+    options:
+      - id: a
+        text: "Doubling both keeps the same ratio of north to east, so the direction stays."
+        correct: true
+        feedback: "$(1,2)$ and $(2,4)$ both go twice as far north as east."
+      - id: b
+        text: "Adding the same number to both components would also keep the direction."
+        correct: false
+        feedback: "Adding 1 gives $(2,3)$, which no longer goes twice as far north as east."
+      - id: c
+        text: "Only the signs set the direction, so doubling one component would work too."
+        correct: false
+        feedback: "$(1,2)$ and $(2,2)$ both point north-east, but at different angles."
+  - id: vecp-negative
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot moved $(2,-3)$ metres east and north. Which move takes it straight back, found by multiplying the vector by $-1$?"
+    solution: "Multiplying every component by $-1$ gives $(-2,3)$: the same length, the opposite direction."
+    options:
+      - id: a
+        text: "It should move $(-2,3)$ metres."
+        correct: true
+        feedback: "Both signs flip, so the arrow points straight back."
+      - id: b
+        text: "It should move $(-2,-3)$ metres."
+        correct: false
+        feedback: "Both components must flip sign, not just the first."
+      - id: c
+        text: "It should move $(2,3)$ metres."
+        correct: false
+        feedback: "Both components must flip sign, not just the second."
+  - id: vecp-subtract
+    dimension: math
+    type: numeric
+    tolerance: { abs: 0.000001 }
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot's moves are $a=(1,2)$ and $b=(3,-1)$ metres east and north. It makes move $a$ three times, then move $b$ reversed. What is the north component of $3a-b$, in metres?"
+    solution: "First $3a=(3,6)$. Subtract the north component of $b$: $6-(-1)=7$, because subtracting a negative number adds its size."
+    answer: 7
+  - id: vecp-find-scalar
+    dimension: math
+    type: numeric
+    tolerance: { abs: 0.000001 }
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot's standard move is $(2,1)$ metres east and north. One instruction scales it to $(-6,-3)$. What scalar $c$ was used?"
+    solution: "Each component was multiplied by the same number: $2c=-6$ and $1c=-3$, so $c=-3$. The negative sign means the move is reversed and three times as long."
+    answer: -3
   - id: vec-length-distance-basics
     dimension: conceptual
     type: mc
@@ -74,327 +351,97 @@ exercises:
     est_minutes: 1
     prompt: "What is the L2 norm of a vector?"
     options:
-      - {
-          id: a,
-          text: "The sum of the vector's entries, including their signs.",
-          correct: false,
-          feedback: "That is a signed sum, not the L2 length.",
-        }
-      - {
-          id: b,
-          text: "The largest absolute entry, which defines the vector's maximum norm.",
-          correct: false,
-          feedback: "That is the maximum norm.",
-        }
-      - {
-          id: c,
-          text: "The square root of the sum of the squared entries.",
-          correct: true,
-          feedback: "Squaring components, summing them, and taking the square root gives straight-line length.",
-        }
-      - {
-          id: d,
-          text: "The dot product of the vector with a different vector.",
-          correct: false,
-          feedback: "The L2 norm uses the vector's own squared entries.",
-        }
-    solution: "The L2 norm is the square root of the sum of a vector's squared entries."
-  - id: vecp-add
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "Follow arrow $a=(1,2)$, then $b=(3,-1)$, with right first and up second. Which vector joins the original start to the final endpoint?"
-    solution: "Add matching coordinates: $(1+3,2+(-1))=(4,1)$. The endpoint is 4 units right and 1 up from the start."
-    options:
-      - {
-          id: a,
-          text: "$(4,1)$",
-          correct: true,
-          feedback: "Add matching entries: one plus three, then two minus one.",
-        }
-      - {
-          id: b,
-          text: "$(4,3)$",
-          correct: false,
-          feedback: "The second arrow goes 1 unit down, not up.",
-        }
-      - {
-          id: c,
-          text: "$(3,-2)$",
-          correct: false,
-          feedback: "Multiplying entries does not combine moves.",
-        }
-  - id: vecp-add-template
-    dimension: math
-    type: numeric
-    tolerance: { abs: 0.000001 }
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "A robot travels $({{=a}},{{=b}})$ then $({{=c}},{{=d}})$, in metres east and north. What is the northward component of its combined movement, in metres?"
-    solution: "Add the second entries: ${{=b}}+({{=d}})={{=b+d}}$. The first entries affect only the first component."
-    params:
-      a: { min: -5, max: 5 }
-      b: { min: -5, max: 5 }
-      c: { min: -5, max: 5 }
-      d: { min: -5, max: 5 }
-    answer_expr: "b+d"
-
-  - id: vecp-feature
+      - id: a
+        text: "The square root of the sum of its squared components."
+        correct: true
+        feedback: "That is the vector's straight-line length, from Pythagoras' theorem."
+      - id: b
+        text: "The sum of its components, keeping each one's sign."
+        correct: false
+        feedback: "Signs can cancel: $(3,-3)$ sums to 0 but still has a length."
+      - id: c
+        text: "The sum of its components' sizes, ignoring signs."
+        correct: false
+        feedback: "That is the route along the grid: 7 for $(3,4)$, not the straight-line 5."
+      - id: d
+        text: "The largest of its components, ignoring the sign."
+        correct: false
+        feedback: "For $(3,4)$ that gives 4, but the straight-line length is 5."
+    solution: "The L2 norm squares each component, adds the squares and takes the square root. It is the vector's straight-line length."
+  - id: vecp-distance-self-explain
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A house vector is $(120,3,15)$ in the order (area in square metres, bedrooms, age in years). What does it represent?"
-    solution: "The three coordinates describe one house. Their meanings come from the stated order: 120 square metres, 3 bedrooms, and 15 years old."
+    prompt: "In step 4 of the worked example, why subtract $p$ from $q$ before measuring a length?"
     options:
-      - {
-          id: a,
-          text: "It describes one house, with one coordinate per measurement.",
-          correct: true,
-          feedback: "Each entry is one feature, in the stated order.",
-        }
-      - {
-          id: b,
-          text: "It gives a robot's position, 120 metres east and 3 north.",
-          correct: false,
-          feedback: "These coordinates are house measurements, not distances from a dock.",
-        }
-      - {
-          id: c,
-          text: "It describes three houses, with one measurement each.",
-          correct: false,
-          feedback: "All three entries describe the same house.",
-        }
-  - id: vecp-order
+      - id: a
+        text: "$q-p$ is the move from $p$ to $q$, and the distance is the length of that move."
+        correct: true
+        feedback: "The distance between two points is how long the arrow joining them is."
+      - id: b
+        text: "Subtracting makes every component positive, which the square root needs."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Components can be negative; squaring already handles signs. Subtracting finds the joining move."
+      - id: c
+        text: "The length of $q$ alone is the distance; subtracting $p$ just makes it simpler."
+        correct: false
+        category: misunderstood_definition
+        feedback: "$\\|q\\|_2=\\sqrt{41}$ is the distance from the origin to $q$, not from $p$ to $q$."
+      - id: d
+        text: "Subtracting moves both points so $p$ is at the origin, which changes the distance."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Shifting both points by the same move keeps the gap between them, which is why this works."
+    solution: "$q-p=(3,4)$ is the arrow from $p$ to $q$. The distance between the points is the length of that arrow, $\\sqrt{3^2+4^2}=5$."
+  - id: vecp-norm-meaning
     dimension: conceptual
     type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "A robot records positions in metres east and north of its dock. Why must it distinguish $(2,5)$ from $(5,2)$ when finding a parcel?"
-    solution: "The first entry gives the eastward distance and the second the northward distance. Swapping them sends the robot to a different destination."
-    options:
-      - {
-          id: a,
-          text: "Swapping entries changes the destination.",
-          correct: true,
-          feedback: "The entries specify different directions.",
-        }
-      - {
-          id: b,
-          text: "Swapping entries changes the number of entries.",
-          correct: false,
-          feedback: "Both vectors still have two entries.",
-        }
-      - {
-          id: c,
-          text: "Swapping entries makes the position invalid.",
-          correct: false,
-          feedback: "Both are valid positions, but they describe different places.",
-        }
-  - id: vecp-new-moves
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "A warehouse robot travels $(2,-3)$ metres, then $(-1,5)$ metres, in east, north order. What is its combined movement?"
-    solution: "The eastward distances total $2+(-1)=1$ and the northward distances total $-3+5=2$. The combined movement is $(1,2)$ metres."
-    options:
-      - {
-          id: a,
-          text: "$(1,2)$ metres",
-          correct: true,
-          feedback: "Adding matching entries gives 1 metre east and 2 north.",
-        }
-      - {
-          id: b,
-          text: "$(3,2)$ metres",
-          correct: false,
-          feedback: "The second journey goes 1 metre west, so subtract one from the eastward total.",
-        }
-      - {
-          id: c,
-          text: "$(1,-8)$ metres",
-          correct: false,
-          feedback: "The second journey goes 5 metres north, so add five to the northward total.",
-        }
-  - id: vecp-entry
-    dimension: math
-    type: numeric
-    tolerance: { abs: 0.000001 }
     role: practice
     difficulty: 1
-    est_minutes: 2
-    prompt: "A house has vector $x=(120,3,15)$ for area in square metres, bedrooms, and age in years. What is $x_2$, the second entry?"
-    solution: "The subscript selects an entry by position. The second entry is 3, not the total number of entries or their sum."
-    answer: 3
-
-  - id: vecp-why-scale-all
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "Why must you double both entries of arrow $(1,2)$ to make it twice as long without turning?"
-    solution: "Doubling both entries gives $(2,4)$, keeping twice as much upward as rightward distance. Doubling only the first gives $(2,2)$, which points in a different direction."
+    est_minutes: 1
+    prompt: "What does the L2 norm of a vector measure?"
     options:
-      - {
-          id: a,
-          text: "Doubling both entries preserves the proportions of travel in each direction.",
-          correct: true,
-          feedback: "Both arrows reach twice as far up as right.",
-        }
-      - {
-          id: b,
-          text: "Adding the same number to both entries would also preserve direction.",
-          correct: false,
-          feedback: "Adding two gives $(3,4)$, which no longer has twice as much upward as rightward distance. Multiplication preserves that proportion; addition does not.",
-        }
-      - {
-          id: c,
-          text: "The signs alone determine direction, so doubling only one entry would work too.",
-          correct: false,
-          feedback: "$(1,2)$ and $(2,2)$ both point right and up, but at different angles. Signs do not tell you the exact direction.",
-        }
-  - id: vecp-scale-template
-    dimension: math
-    type: numeric
-    tolerance: { abs: 0.000001 }
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "A robot's planned movement is $x=({{=a}},{{=b}})$ metres east and north. It scales this by $c={{=c}}$. What is the eastward entry of $cx$, in metres?"
-    solution: "Multiply the first entry by the scalar: ${{=c}}\\cdot({{=a}})={{=c*a}}$. Scaling applies this same multiplication to every entry."
-    params:
-      a: { min: -5, max: 5 }
-      b: { min: -5, max: 5 }
-      c: { min: -3, max: 3 }
-    answer_expr: "c*a"
-
-  - id: vecp-negative
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A robot travels $(2,-3)$ metres east and north. Which instruction retraces this journey by multiplying its vector by $-1$?"
-    solution: "Multiplying every entry by $-1$ gives $(-2,3)$. It has the same length and the opposite direction."
-    options:
-      - {
-          id: a,
-          text: "It should travel $(-2,3)$ metres.",
-          correct: true,
-          feedback: "Both signs reverse, so the arrow points back.",
-        }
-      - {
-          id: b,
-          text: "It should travel $(-2,-3)$ metres.",
-          correct: false,
-          feedback: "You must reverse both components, not just the first.",
-        }
-      - {
-          id: c,
-          text: "It should travel $(2,3)$ metres.",
-          correct: false,
-          feedback: "You must reverse both components, not just the second.",
-        }
-  - id: vecp-zero
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "A robot cancels its planned journey of $(3,4)$ metres east and north by multiplying the vector by zero. What instruction remains?"
-    solution: "Both entries become zero, so there is no movement. The zero vector has no direction."
-    options:
-      - {
-          id: a,
-          text: "It gets $(0,0)$, meaning no movement and no direction.",
-          correct: true,
-          feedback: "Every entry becomes zero.",
-        }
-      - {
-          id: b,
-          text: "It gets $(3,4)$, keeping the original journey.",
-          correct: false,
-          feedback: "Multiplying by one preserves a vector; zero does not.",
-        }
-      - {
-          id: c,
-          text: "It gets $(0,4)$, meaning 4 metres north.",
-          correct: false,
-          feedback: "Zero multiplies both entries, not just the first.",
-        }
-  - id: vecp-subtract
-    dimension: math
-    type: numeric
-    tolerance: { abs: 0.000001 }
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A robot's movements are $a=(1,2)$ and $b=(3,-1)$ metres east and north. It travels $a$ three times, then reverses $b$. What is the northward entry of $3a-b$, in metres?"
-    solution: "First $3a=(3,6)$. Subtracting the second entry of $b$ gives $6-(-1)=7$, because subtracting a negative adds its positive value."
-    answer: 7
-
-  - id: vecp-half
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A robot's planned journey is $(6,2)$ metres east and north. A parcel is halfway along that direction. Which movement reaches it?"
-    solution: "Multiply both entries by $1/2$: $(6/2,2/2)=(3,1)$. A positive scalar preserves the direction."
-    options:
-      - {
-          id: a,
-          text: "$(3,1)$ metres",
-          correct: true,
-          feedback: "Multiply every entry by one half.",
-        }
-      - {
-          id: b,
-          text: "$(3,2)$ metres",
-          correct: false,
-          feedback: "Halving only one entry turns the arrow.",
-        }
-      - {
-          id: c,
-          text: "$(-3,-1)$ metres",
-          correct: false,
-          feedback: "This halves the length but reverses the direction.",
-        }
+      - id: a
+        text: "The straight-line length of its arrow"
+        correct: true
+        feedback: "Square, add, take the square root: that gives the length of the arrow."
+      - id: b
+        text: "The sum of its signed components"
+        correct: false
+        feedback: "Signed components can cancel; the L2 norm measures straight-line length."
+      - id: c
+        text: "The number of components in its list"
+        correct: false
+        feedback: "The number of components is $n$ in $\\mathbb{R}^n$, not the arrow's length."
+      - id: d
+        text: "The direction in which its arrow points"
+        correct: false
+        feedback: "A norm is a length, not a direction; opposite arrows have the same norm."
+    solution: "The L2 norm is the straight-line length of the vector's arrow. It is never negative and says nothing about direction."
   - id: vecp-norm
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot travels $(3,-4)$ metres east and north. Which calculation gives its straight-line distance from its starting point?"
-    solution: "The squared entries are 9 and 16, so their sum is 25 and its square root is 5. Negative entries still contribute positive squares."
+    prompt: "A robot moves $(3,-4)$ metres east and north. Which calculation gives its straight-line distance from where it started?"
+    solution: "The squares are 9 and 16, which add to 25, whose square root is 5. A negative component still gives a positive square."
     options:
-      - {
-          id: a,
-          text: "$\\sqrt{3^2+(-4)^2}=5$",
-          correct: true,
-          feedback: "Square both entries, add them, then take the square root.",
-        }
-      - {
-          id: b,
-          text: "$3+4=7$",
-          correct: false,
-          feedback: "Adding the distances measures a route east then south, not the straight line.",
-        }
-      - {
-          id: c,
-          text: "$3^2+(-4)^2=25$",
-          correct: false,
-          feedback: "This is the squared length; take its square root.",
-        }
+      - id: a
+        text: "$\\sqrt{3^2+(-4)^2}=5$"
+        correct: true
+        feedback: "Square both components, add them, then take the square root."
+      - id: b
+        text: "$3+4=7$"
+        correct: false
+        feedback: "7 is the route east then south, not the straight line."
+      - id: c
+        text: "$3^2+(-4)^2=25$"
+        correct: false
+        feedback: "This is the squared length; take its square root."
   - id: vecp-norm-template
     dimension: math
     type: numeric
@@ -402,77 +449,63 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot is $(3\\cdot{{=k}},-4\\cdot{{=k}})$ metres east and north of its dock. What is its straight-line distance to the dock, in metres?"
-    solution: "The entries are ${{=3*k}}$ and ${{=-4*k}}$, whose squares add to ${{=9*k*k}}+{{=16*k*k}}={{=25*k*k}}$. The square root is ${{=5*k}}$, the straight-line length."
+    prompt: "A robot is $({{=3*k}},{{=-4*k}})$ metres east and north of its dock. What is its straight-line distance to the dock, in metres?"
+    solution: "The squares are ${{=9*k*k}}$ and ${{=16*k*k}}$, which add to ${{=25*k*k}}$. Its square root, ${{=5*k}}$, is the straight-line length."
     params:
       k: { min: 1, max: 6 }
     answer_expr: "5*k"
-
-  - id: vecp-distance
-    dimension: math
-    type: numeric
-    tolerance: { abs: 0.000001 }
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "A robot is at $(1,1)$ and a parcel is at $(4,5)$, in metres east and north of the charging dock. What is the straight-line distance between them, in metres?"
-    solution: "Subtract coordinates to get $(4-1,5-1)=(3,4)$. Its length is $\\sqrt{3^2+4^2}=\\sqrt{25}=5$ metres."
-    answer: 5
-
   - id: vecp-why-root
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot is 3 metres east and 4 north of its dock. Why must it take the square root after adding the squared distances to find how far away the dock is?"
-    solution: "Pythagoras gives the squared diagonal length. The root recovers the diagonal itself: for $(3,4)$ metres, the squared steps sum to 25 square metres, but the length is 5 metres."
+    prompt: "A robot is 3 metres east and 4 metres north of its dock. Why must it take the square root after adding the squared distances to find how far away the dock is?"
+    solution: "Pythagoras' theorem gives the square of the straight-line length. For $(3,4)$ the squares add to 25 square metres, and the square root gives the length, 5 metres."
     options:
-      - {
-          id: a,
-          text: "Pythagoras gives squared length, so the root is needed to recover length in metres.",
-          correct: true,
-          feedback: "The squared steps give square metres, and their square root gives metres.",
-        }
-      - {
-          id: b,
-          text: "The root is what makes negative entries contribute positively.",
-          correct: false,
-          feedback: "Squaring already makes each contribution nonnegative. The root recovers length from squared length.",
-        }
-      - {
-          id: c,
-          text: "The root converts the straight-line distance into the route east then north.",
-          correct: false,
-          feedback: "Travelling east then north covers 7 metres here. Squaring, adding, and taking the square root gives the straight-line distance of 5 metres instead.",
-        }
+      - id: a
+        text: "The squares add up to the squared length, so the root is needed to get back to metres."
+        correct: true
+        feedback: "The squared distances are in square metres; their square root is in metres."
+      - id: b
+        text: "The root is the step that makes negative components count as positive amounts."
+        correct: false
+        feedback: "Squaring already makes each contribution positive. The root turns squared length into length."
+      - id: c
+        text: "The root turns the straight-line distance into the route east and then north."
+        correct: false
+        feedback: "The route east then north is 7 metres. Square, add and take the root to get the straight line, 5 metres."
+  - id: vecp-distance
+    dimension: math
+    type: numeric
+    tolerance: { abs: 0.000001 }
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot is at $(1,1)$ and a parcel is at $(4,5)$, in metres east and north of the charging dock. What is the straight-line distance between them, in metres?"
+    solution: "The move from robot to parcel is $(4-1,\\;5-1)=(3,4)$. Its length is $\\sqrt{3^2+4^2}=\\sqrt{25}=5$ metres."
+    answer: 5
   - id: vecp-units
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "A house app compares $(2,5)$ with $(4,1)$, recording room count and kilometres to the town centre. It converts kilometres to metres without adjusting anything else. What happens to its distance comparisons?"
-    solution: "Converting kilometres to metres multiplies those coordinate gaps by 1,000 and their squared contributions by 1,000,000. Rescaling features to comparable ranges avoids one unit choice dominating similarity."
+    prompt: "A house app compares houses $(2,5)$ and $(4,1)$, recording number of rooms and kilometres to the town centre. It switches the second component from kilometres to metres and changes nothing else. What happens to its distance comparisons?"
+    solution: "In metres, the town-centre gaps become 1,000 times larger, and their squares 1,000,000 times larger. Rescaling measurements to similar ranges stops one choice of units dominating the comparison."
     options:
-      - {
-          id: a,
-          text: "Distance to the town centre can have much more influence on the comparison.",
-          correct: true,
-          feedback: "Its differences become 1,000 times larger before squaring.",
-        }
-      - {
-          id: b,
-          text: "The comparisons stay unchanged when the units change.",
-          correct: false,
-          feedback: "The physical houses stay the same, but the numerical gaps change.",
-        }
-      - {
-          id: c,
-          text: "Room count must now have the greatest influence.",
-          correct: false,
-          feedback: "The room gaps stay unchanged while the other feature grows.",
-        }
+      - id: a
+        text: "Distance to the town centre can now have much more influence on the comparison."
+        correct: true
+        feedback: "Its gaps become 1,000 times larger before squaring."
+      - id: b
+        text: "The comparisons stay exactly the same, because the houses themselves have not changed."
+        correct: false
+        feedback: "The houses are the same, but the numbers that get squared and added are not."
+      - id: c
+        text: "Number of rooms must now have the greatest influence on the comparison."
+        correct: false
+        feedback: "The room gaps stay the same while the other component grows."
   - id: vecp-zero-length
     dimension: math
     type: numeric
@@ -480,8 +513,8 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "A house model records differences in area, bedroom count and age as $(0,0,0)$. What is the L2 length of this difference vector?"
-    solution: "All squared entries are zero, so their sum is zero. Taking the square root still gives zero."
+    prompt: "A house model records the differences in area, bedrooms and age between two houses as $(0,0,0)$. What is the L2 length of this difference vector?"
+    solution: "Every squared component is zero, so the sum is zero, and the square root of zero is zero. The two houses have identical measurements."
     answer: 0
   - id: vec-check-combo
     dimension: math
@@ -645,29 +678,3 @@ exercises:
         }
     exemplar: "Each measurement is one coordinate in a fixed order, so all three numbers describe the same house. Distance adds squared differences for each coordinate; an area difference of 50 adds 2500, while two bedrooms add only 4. Area can therefore overwhelm the comparison even if bedrooms matter to the buyer. Rescaling the measurements to comparable numerical ranges makes this comparison more useful."
     solution: "Each coordinate records a feature of one house. The units and numerical ranges affect how strongly each feature contributes to distance."
-  - id: vecp-norm-meaning
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: What does the L2 norm of a vector measure?
-    options:
-      - id: a
-        text: The straight-line length of its arrow
-        correct: true
-      - id: b
-        text: The sum of its signed components
-        correct: false
-        feedback: Signed components can cancel; the L2 norm measures straight-line length.
-      - id: c
-        text: The number of entries in its list
-        correct: false
-        feedback: The entry count is the dimension, not the length of the arrow.
-      - id: d
-        text: The direction in which its arrow points
-        correct: false
-        feedback: A norm gives a length, not a direction; opposite arrows can have the same norm.
-    solution:
-      The L2 norm is the straight-line length of the vector’s arrow. It is non-negative and does not
-      specify a direction.

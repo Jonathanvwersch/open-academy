@@ -442,7 +442,7 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   await page.goto('/lessons/derivatives');
   await hideTutorLauncher(page);
   const derivativeDiagram = page.getByRole('img', {
-    name: 'Parabola of squared house-price loss from weight 22 to 33, marked at weight 25 with slope minus 720 and minimum at 27.5',
+    name: 'The curve d equals t squared with the point at t equals 3, an amber line to t equals 4 with average slope 7, and a blue tangent line at t equals 3 with slope 6',
   });
   await expect(derivativeDiagram).toBeVisible();
   await derivativeDiagram.evaluate((image) => {
@@ -454,20 +454,34 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   });
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  for (const [conceptId, title, knowledgePointTitle, screenshotName] of [
+  for (const [conceptId, title, knowledgePointTitle, screenshotName, expectedTexts] of [
     [
       'partial-derivatives',
       'Partial derivatives',
-      'Change one weight, hold the rest fixed',
+      'Move one input, hold the rest fixed',
       'pd-hold-fixed',
+      ['The question.', 'Compare cases.'],
     ],
-    ['backpropagation', 'Backpropagation', 'Compute one weight gradient backward', 'bp-by-hand'],
-    ['chain-rule', 'Chain rule', 'Rates along a chain multiply', 'cr-rates-multiply'],
+    [
+      'backpropagation',
+      'Backpropagation',
+      'Compute one weight gradient backward',
+      'bp-by-hand',
+      ['The idea.', 'Worked example.'],
+    ],
+    [
+      'chain-rule',
+      'Chain rule',
+      'Rates along a chain multiply',
+      'cr-rates-multiply',
+      ['The question.', 'Picture it.', 'The idea.', 'Common confusion.'],
+    ],
     [
       'gradient-descent',
       'Gradient descent',
-      'Update the house model opposite its gradient',
+      'Step against the gradient',
       'gd-downhill-update',
+      ['The question.', 'Picture it.', 'The idea.', 'Common confusion.'],
     ],
   ] as const) {
     await mockLessonReview(page, conceptId, title);
@@ -477,8 +491,13 @@ test('authored course-structure lessons render their diagrams', async ({ page })
       .locator('article')
       .filter({ has: page.getByRole('heading', { name: new RegExp(knowledgePointTitle) }) });
     await expect(knowledgePoint).toHaveCount(1);
-    await expect(knowledgePoint).toContainText('How it works.');
-    await expect(knowledgePoint).toContainText('This example shows');
+    const usesWriteLessonLabels = conceptId === 'chain-rule' || conceptId === 'gradient-descent';
+    for (const expectedText of expectedTexts) {
+      await expect(knowledgePoint).toContainText(expectedText);
+    }
+    if (usesWriteLessonLabels) {
+      await expect(knowledgePoint.locator('figure img[alt]')).toHaveCount(1);
+    }
     await expect(knowledgePoint.locator('.katex-error')).toHaveCount(0);
     await knowledgePoint.screenshot({
       path: `${mathLinesScreenshotDir}/${screenshotName}.png`,

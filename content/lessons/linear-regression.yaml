@@ -1,112 +1,279 @@
 concept: linear-regression
-version: 3
+version: 4
 objective: |
-  **Goal:** write a linear house-price model in vector form, interpret its weights and bias, and make vectorised NumPy predictions for a batch of houses.
+  **Goal:** predict a number with a linear regression model (each feature times its weight, added up, plus a bias), say what each weight and the bias mean, and compute predictions for many examples at once with `X @ w + b`.
 where_this_fits: |
-  In the matrices lesson, one multiplication used the same weights to predict prices for several houses. That gave us the batch calculation, but not yet the full rule for one house or what each adjustable number means. This lesson writes the prediction as a weighted sum plus a bias, then applies it to a batch. The next lesson asks how to change the weights to reduce prediction error.
+  You want to predict a number, such as a house's sale price, from a few measurements of it. You already have the pieces: the dot product turns measurements and weights into one total, and a matrix product does that for many houses at once. What you don't have yet is the model built from them: what its fixed extra amount does, what each of its numbers says, and how one line of code prices a whole dataset. This lesson assembles **linear regression**, a model that predicts a number from a weighted sum of measurements, in three steps:
+
+  1. Build one prediction from weighted measurements plus a bias.
+  2. Read what each weight and the bias mean.
+  3. Predict a whole batch of examples with one matrix product.
 knowledge_points:
   - id: lr-add-contributions
-    title: Build a price from weighted house features
+    title: One prediction from weighted features plus a bias
     explain: |
-      **What a linear regression model is.** It predicts a number by multiplying each input feature by a weight, adding the contributions, then adding a bias. A feature is a recorded input; a weight is its adjustable multiplier; a bias is a shared offset.
+      **The question.** You know two things about a house, its area and its number of bedrooms, and you want one predicted sale price. What is the simplest rule that turns both measurements into one number, letting each push the price by its own amount?
 
-      **How it works.** For the house $x=(12,3,20)$, the entries are area in tens of square metres, bedrooms and age in years. With $w=(25,10,-1)$ and $b=0$, the prediction in thousands of pounds is
+      **Picture it.** Take a house with area $100$ m² and $2$ bedrooms, and a rule with three numbers: $3$ (thousand pounds per m²), $10$ (thousand pounds per bedroom) and $50$ (thousand pounds). Each measurement becomes one piece of the price: area gives $3\times100=300$ and bedrooms give $10\times2=20$. Then a fixed $50$ is added, whatever the house. The bar stacks the pieces into the prediction: $370$ thousand pounds.
 
-      $$\hat y=w\cdot x+b=25\cdot12+10\cdot3+(-1)\cdot20=310.$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="A bar built from three pieces for the house with area 100 square metres and 2 bedrooms: area contributes 3 times 100 equals 300, bedrooms contribute 10 times 2 equals 20, and the bias adds 50, so the prediction is 370 thousand pounds">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <rect x="40" y="80" width="420" height="44" fill="#3b82f6" fill-opacity="0.25" stroke="#3b82f6" stroke-width="2"/>
+          <rect x="460" y="80" width="28" height="44" fill="#f59e0b" fill-opacity="0.35" stroke="#f59e0b" stroke-width="2"/>
+          <rect x="488" y="80" width="70" height="44" fill="#10b981" fill-opacity="0.25" stroke="#10b981" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="250" y="107" fill="#3b82f6" text-anchor="middle">area: 3 × 100 = 300</text>
+          <path d="M474 124 V146" stroke="#f59e0b" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="474" y="164" fill="#f59e0b" text-anchor="middle">bedrooms: 10 × 2 = 20</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="523" y="68" fill="#10b981" text-anchor="middle">bias: 50</text>
+          <path d="M40 188 V194 H558 V188" stroke="#171717" stroke-width="1.5" fill="#171717" fill-opacity="0"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="299" y="216" text-anchor="middle">prediction ŷ = 300 + 20 + 50 = 370</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="40" y="68" fill="#737373" text-anchor="middle">0</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="558" y="142" fill="#737373" text-anchor="middle">370</text>
+        </g>
+      </svg>
+      ```
 
-      The dot product pairs entries in order. The bias is added once, after those products; it lets every prediction shift by the same amount. A linear model assumes each feature has a fixed per-unit effect while the other features stay fixed.
+      **The idea.** Multiply each measurement by its own number, add the results, then add one fixed number. A **linear regression model** predicts a numeric target this way. Its inputs are **features**, the measurements of one example, collected in a vector $x$. Each feature has a **weight**, collected in a vector $w$ in the same order. The **bias** $b$ is a single number added once:
 
-      **Why this is useful.** The house-price model turns several measurements into one price using a rule that can be fitted from past sales.
+      $$\hat y=w\cdot x+b.$$
+
+      The hat on $\hat y$ marks a prediction, as opposed to the true target $y$. Without $b$, an example whose features are all $0$ would always be predicted $0$; the bias shifts every prediction by the same amount. It is called linear because each feature adds a fixed amount per unit, so plotting the predictions against one feature, with the others held fixed, gives a straight line.
+
+      **Common confusion.** “Each feature gets the bias, so with two features I add it twice.” No: the bias belongs to the whole prediction, not to a feature. It is added once, which is why the bar has one green piece: $300+20+50=370$.
     worked: |
-      This example shows how the three house measurements contribute to one prediction.
+      Predict the price of a house with area $90$ m² and $4$ bedrooms, using weights $w=(3,10)$ and bias $b=50$.
 
-      1. Area contributes $25\cdot12=300$ thousand pounds.
-      2. Bedrooms contribute $10\cdot3=30$ thousand pounds.
-      3. Age contributes $-1\cdot20=-20$ thousand pounds.
-      4. Add the contributions and bias: $300+30-20+0=310$.
+      1. **Write the house as a feature vector, in the same order as the weights.**
+         $$x=(90,4),\qquad w=(3,10).$$
 
-      The model predicts £310,000 for this house.
+      2. **Take the dot product: one piece per feature.**
+         $$w\cdot x=3(90)+10(4)=270+40=310.$$
+
+      3. **Add the bias once.**
+         $$\hat y=w\cdot x+b=310+50=360.$$
+
+      The model predicts £360,000.
+
+      **Compare cases.**
+
+      | Calculation for $x=(90,4)$ | Result |
+      | --- | --- |
+      | Weighted sum only, $w\cdot x$ | $310$ |
+      | Weighted sum plus bias, $w\cdot x+b$ | $360$ |
+      | Bias added once per feature (wrong) | $410$ |
+      | Weights in the wrong order, $(10,3)\cdot(90,4)+50$ (wrong) | $962$ |
+
+      **Where it shows up.** In supervised learning, training chooses $w$ and $b$ so that predictions like this land close to the known sale prices. A delivery robot can estimate a trip's time the same way, from features such as distance and number of parcels.
     problems:
-      [
-        lr-add-contributions-basics,
-        lrp-why-bias,
-        lrp-bias-once,
-        lrp-price-template,
-        lrp-dot-template,
-        lrp-order,
-        lrp-new-task,
-      ]
+      - lr-add-contributions-basics
+      - lrp-why-bias
+      - lrp-bias-once
+      - lrp-dot-template
+      - lrp-price-template
+      - lrp-order
+      - lrp-new-task
   - id: lr-interpret-weights
-    title: Read each weight in its own units
+    title: What each weight and the bias mean
     explain: |
-      **What a weight means.** A weight is the prediction change for a one-unit increase in its feature, with every other feature held fixed. Its units are the prediction's unit per unit of the feature, such as thousand pounds per bedroom.
+      **The question.** The house model has weight $3$ for area, weight $10$ for bedrooms and bias $50$. What does each number say about the predictions, and does $10>3$ mean bedrooms matter more?
 
-      **How it works.** In this model, area has weight 25 thousand pounds per ten square metres. If area rises by 2 tens of square metres while bedrooms and age stay the same, the prediction rises by $25\cdot2=50$ thousand pounds. The bedroom weight is 10 thousand pounds per bedroom; the age weight is −1 thousand pounds per year.
+      **Picture it.** Fix the bedroom count and plot the predicted price against area. For $2$-bedroom houses the rule becomes $3\cdot\text{area}+70$; for $3$ bedrooms it becomes $3\cdot\text{area}+80$. Both are straight lines. Along either line, $10$ more m² raises the price by $30$ (blue), so $3$ per m². Jumping from the lower line to the upper one at the same area adds one bedroom and raises the price by $10$ (amber).
 
-      These are effects in the model, not proof that changing a real house causes the same price change. Comparing weight numbers alone is misleading if their feature units differ.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 450" aria-label="Predicted price against area for 2-bedroom and 3-bedroom houses: two parallel straight lines; along a line, 10 more square metres raises the price by 30, and the 3-bedroom line sits 10 above the 2-bedroom line">
+        <defs>
+          <marker id="lr2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M90 395 H542 M90 395 V56" stroke="#737373" fill="#171717" fill-opacity="0"/>
+          <path d="M110 395 v5" stroke="#737373"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="110" y="415" fill="#737373" text-anchor="middle">90</text>
+          <path d="M250 395 v5" stroke="#737373"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="250" y="415" fill="#737373" text-anchor="middle">100</text>
+          <path d="M390 395 v5" stroke="#737373"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="390" y="415" fill="#737373" text-anchor="middle">110</text>
+          <path d="M530 395 v5" stroke="#737373"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="530" y="415" fill="#737373" text-anchor="middle">120</text>
+          <path d="M90 380 h-5" stroke="#737373"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="82" y="385" fill="#737373" text-anchor="end">340</text>
+          <path d="M90 290 h-5" stroke="#737373"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="82" y="295" fill="#737373" text-anchor="end">370</text>
+          <path d="M90 200 h-5" stroke="#737373"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="82" y="205" fill="#737373" text-anchor="end">400</text>
+          <path d="M90 110 h-5" stroke="#737373"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="82" y="115" fill="#737373" text-anchor="end">430</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="435" fill="#737373" text-anchor="middle">area (m²)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="90" y="46" fill="#737373" text-anchor="start">predicted price (£ thousand)</text>
+          <path d="M110 380 L530 110" stroke="#171717" stroke-width="2.5"/>
+          <path d="M110 350 L530 80" stroke="#171717" stroke-width="2.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="538" y="85">3 bedrooms</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="538" y="119">2 bedrooms</text>
+          <path d="M250 290 H390 V200" stroke="#3b82f6" stroke-width="2.5" stroke-dasharray="6 5" fill="#171717" fill-opacity="0"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="312" fill="#3b82f6" text-anchor="middle">+10 m²</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="398" y="250" fill="#3b82f6">+30</text>
+          <path d="M180 335 V307" stroke="#f59e0b" stroke-width="3" marker-end="url(#lr2-amber)"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="190" y="359" fill="#f59e0b">+10 for one more bedroom</text>
+          <circle cx="250" cy="290" r="4" fill="#171717"/>
+          <circle cx="250" cy="260" r="4" fill="#171717"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="242" y="250" text-anchor="end">380</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="254" y="310" text-anchor="start">370</text>
+        </g>
+      </svg>
+      ```
 
-      **Why this is useful.** Reading a weight in its units is how you check a trained model makes sense: an area weight of 25 thousand pounds per ten square metres is plausible, and 25 million would mean something went wrong.
+      **The idea.** A weight says how much the prediction moves when its feature rises by one unit and nothing else changes. In general, write $x_i$ for feature number $i$ and $w_i$ for its weight. Then $w_i$ is the change in $\hat y$ when $x_i$ rises by $1$ while every other feature stays fixed, and raising $x_i$ by any number $k$ of units changes $\hat y$ by $w_i k$. Its units are the target's units per unit of the feature: here, thousand pounds per m² and thousand pounds per bedroom. The bias is the prediction when every feature is $0$: the starting amount the feature pieces build on, even though no real house has zero area.
+
+      These numbers describe the model's predictions, not a proven effect of renovating a real house.
+
+      **Common confusion.** “The bedroom weight is bigger, so bedrooms matter more than area.” No: a weight's size depends on its feature's units. One bedroom adds $10$, but $10$ m² adds $30$. Measure area in hundreds of m² instead, and a $100$ m² house has area $1$; keeping its piece at $300$ needs an area weight of $300$.
     worked: |
-      This example shows the effect of changing one house feature while holding the others fixed.
+      Start from the house $(100,2)$: area $100$ m², $2$ bedrooms, predicted price $370$ thousand pounds.
 
-      Start with $x=(12,3,20)$ and $w=(25,10,-1)$.
+      1. **Add one bedroom, keeping the area at $100$ m².**
+         $$\hat y=3(100)+10(3)+50=380.$$
 
-      1. Add one bedroom: its contribution changes by $10\cdot1=10$ thousand pounds.
-      2. Add one year of age: its contribution changes by $-1\cdot1=-1$ thousand pounds.
-      3. Increase area by 2 tens of square metres: its contribution changes by $25\cdot2=50$ thousand pounds.
+      2. **Subtract the two predictions: the area piece and the bias cancel.**
+         $$380-370=10(3-2)=10.$$
 
-      Each calculation changes one feature only, so the corresponding weight gives the prediction change.
+      3. **Now also add $10$ m².**
+         $$\hat y=3(110)+10(3)+50=410.$$
+
+      4. **Split the total change into one piece per feature.**
+         $$410-370=3(10)+10(1)=30+10=40.$$
+
+      **Compare cases.**
+
+      | New house (area, bedrooms) | Prediction | Change from $370$ |
+      | --- | --- | --- |
+      | $(101,2)$ | $373$ | $+3$ |
+      | $(110,2)$ | $400$ | $+30$ |
+      | $(100,3)$ | $380$ | $+10$ |
+      | $(110,3)$ | $410$ | $+40$ |
+      | $(100,1)$ | $360$ | $-10$ |
+
+      **Where it shows up.** After training, reading each weight in its units is a quick sanity check: $3$ thousand pounds per m² is plausible, while $3$ million per m² would mean something went wrong. A robot's trip-time model with weight $2$ seconds per metre says each extra metre adds $2$ seconds to the predicted time, if its other features stay the same.
     problems:
-      [
-        lr-interpret-weights-basics,
-        lrp-why-hold-fixed,
-        lrp-change-template,
-        lrp-negative,
-        lrp-both-template,
-        lrp-units,
-        lrp-zero-input,
-      ]
+      - lr-interpret-weights-basics
+      - lrp-why-hold-fixed
+      - lrp-change-template
+      - lrp-negative
+      - lrp-zero-input
+      - lrp-both-template
+      - lrp-units
+      - lrp-robot-change
   - id: lr-batch-predictions
-    title: Predict every row with one matrix operation
+    title: Predict every example with one matrix product
     explain: |
-      **What a batch prediction is.** A batch prediction computes a model's predictions for many examples in one operation instead of one at a time. Each example's feature vector becomes one row of an input matrix $X$, and the same weights and bias are applied to every row. For the house model, $X$ has one row per house and the result is one predicted price per house.
+      **The question.** A dataset has hundreds of houses, and the model must price every one with the same weights and bias. How do you get all the predictions in one calculation instead of one dot product at a time?
 
-      **How it works.** If there are $n$ houses and $d$ features, $X$ has shape $(n,d)$ and $w$ has $d$ entries. Multiplying $Xw$ computes one dot product per row, producing $n$ predictions. The bias is added to each one:
+      **Picture it.** Stack the houses as the rows of a matrix $X$, each row holding one house's features in the same order as $w$. Multiplying $X$ by $w$ takes one dot product per row, and the bias is then added to each result. Row 1, $(100,2)$, gives $3\times100+10\times2+50=370$; the other rows give $320$ and $420$. Three rows in, three prices out.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="A 3 by 2 matrix X of houses, area and bedrooms, multiplied by the weight vector (3, 10) plus bias 50 gives three predictions 370, 320 and 420; the first row and its prediction are highlighted">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="84" y="56" fill="#737373" text-anchor="middle">X (one house per row)</text>
+          <rect x="20" y="70" width="64" height="40" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="52" y="95" text-anchor="middle">100</text>
+          <rect x="84" y="70" width="64" height="40" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="116" y="95" text-anchor="middle">2</text>
+          <rect x="20" y="110" width="64" height="40" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="52" y="135" text-anchor="middle">80</text>
+          <rect x="84" y="110" width="64" height="40" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="116" y="135" text-anchor="middle">3</text>
+          <rect x="20" y="150" width="64" height="40" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="52" y="175" text-anchor="middle">120</text>
+          <rect x="84" y="150" width="64" height="40" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="116" y="175" text-anchor="middle">1</text>
+          <rect x="20" y="70" width="128" height="40" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="3"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="52" y="212" fill="#737373" text-anchor="middle">area</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="116" y="212" fill="#737373" text-anchor="middle">bedrooms</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="178" y="135" text-anchor="middle">@</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="235" y="56" fill="#737373" text-anchor="middle">w</text>
+          <rect x="203" y="90.0" width="64" height="40" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="235" y="115" text-anchor="middle">3</text>
+          <rect x="203" y="130.0" width="64" height="40" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="235" y="155" text-anchor="middle">10</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="297" y="135" text-anchor="middle">+</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="327" y="135" fill="#10b981" text-anchor="middle">50</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="357" y="135" text-anchor="middle">=</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="409" y="56" fill="#737373" text-anchor="middle">ŷ</text>
+          <rect x="377" y="70" width="64" height="40" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="3"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="409" y="95" fill="#3b82f6" text-anchor="middle">370</text>
+          <rect x="377" y="110" width="64" height="40" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="409" y="135" text-anchor="middle">320</text>
+          <rect x="377" y="150" width="64" height="40" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="409" y="175" text-anchor="middle">420</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="453" y="95" fill="#3b82f6">3×100 + 10×2 + 50</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="453" y="135" fill="#737373">3×80 + 10×3 + 50</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="453" y="175" fill="#737373">3×120 + 10×1 + 50</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="409" y="212" fill="#737373" text-anchor="middle">one price per row</text>
+        </g>
+      </svg>
+      ```
+
+      **The idea.** A **batch prediction** computes a model's predictions for many examples in one operation. Put $n$ examples with $d$ features each as the rows of $X$, so $X$ has shape $(n,d)$ and $w$ has $d$ entries. Then
 
       $$\hat y=Xw+b\mathbf 1.$$
 
-      Here $\mathbf 1$ is a vector of $n$ ones. In NumPy, `X @ w + b` broadcasts the single bias across all rows. Each row uses the same weights, but no row's measurements enter another house's prediction.
+      Here $\mathbf 1$ is a vector of $n$ ones, so $b\mathbf 1$ adds $b$ to every entry. The result $\hat y$ has $n$ entries, one prediction per row. In NumPy this is `X @ w + b`. Adding a single number to an array adds it to every entry, which NumPy calls broadcasting. NumPy writes the shape of a vector with $d$ entries as `(d,)`. Every row uses the same weights, but no row's features enter another row's prediction.
 
-      **Why this is useful.** One matrix operation applies the same house-price rule to an entire sales dataset without writing a separate calculation for each house.
+      **Common confusion.** “`X * w + b` does the same thing.” No: `*` multiplies each row's entries by the matching entries of $w$ but doesn't add them, so each house keeps two separate pieces, such as $300$ and $20$, instead of one price. `@` adds the pieces within each row.
     worked: |
-      This example shows two house predictions using one matrix multiplication.
+      Price three houses at once with $w=(3,10)$ and $b=50$.
 
       ```python
       import numpy as np
-      X = np.array([[12., 3., 20.], [8., 2., 5.]])
-      w = np.array([25., 10., -1.])
-      b = 0.
+      X = np.array([[100., 2.], [80., 3.], [120., 1.]])
+      w = np.array([3., 10.])
+      b = 50.
       y_hat = X @ w + b
-      # array([310., 215.]), shape (2,)
+      print(y_hat)        # [370. 320. 420.]
+      print(y_hat.shape)  # (3,)
       ```
 
-      The first row gives $25\cdot12+10\cdot3-20=310$. The second gives $25\cdot8+10\cdot2-5=215$. Both prices are in thousands of pounds.
+      1. **Check that the shapes fit.** $X$ has $2$ columns and $w$ has $2$ entries, so each row pairs with $w$. There are $3$ rows, so there will be $3$ predictions.
+         $$(3,2)\ \text{with}\ (2,)\ \to\ (3,)$$
 
-      The matrix has shape $(2,3)$, the weight vector has shape $(3,)$, and the result has shape $(2,)$.
+      2. **Take one dot product per row.**
+         $$Xw=(300+20,\ 240+30,\ 360+10)=(320,\ 270,\ 370).$$
+
+      3. **Add the bias to every entry.**
+         $$\hat y=(320,\ 270,\ 370)+50\,\mathbf 1=(370,\ 320,\ 420).$$
+
+      4. **Let a column of ones carry the bias instead.** Some code stores the bias this way so that one product does all the work. Append $1$ to each row and put $b$ last in the weights, so row 1 becomes $(100,2,1)$ and the weights become $(3,10,50)$.
+         $$(100,2,1)\cdot(3,10,50)=300+20+50=370.$$
+
+      The extra $1$ is the same in every row, so it isn't a measurement of the house. Every row gains $1\times50$, so the new product gives the same three prices with no separate bias.
+
+      **Compare cases.** Continue the code above with the column of ones:
+
+      ```python
+      X1 = np.column_stack([X, np.ones(3)])  # append a column of ones
+      w1 = np.array([3., 10., 50.])
+      ```
+
+      | Expression | Shape | Result |
+      | --- | --- | --- |
+      | `X @ w + b` | `(3,)` | `[370, 320, 420]` |
+      | `X1 @ w1` | `(3,)` | `[370, 320, 420]` |
+      | `X1 @ w1 + b` (bias twice, wrong) | `(3,)` | `[420, 370, 470]` |
+      | `X * w + b` (no adding, wrong) | `(3, 2)` | `[[350, 70], [290, 80], [410, 60]]` |
+
+      **Where it shows up.** Training needs a prediction for every example in the dataset, again and again, and `X @ w + b` gives them all in one line. A robot choosing between candidate paths does the same to predict each path's travel time: one row of features per path, one predicted time per row.
     problems:
-      [
-        lr-batch-predictions-basics,
-        lrp-code,
-        lrp-shape,
-        lrp-why-matrix-product,
-        lrp-batch-template,
-        lrp-augmented-template,
-        lrp-bias-trick,
-      ]
+      - lr-batch-predictions-basics
+      - lrp-why-matrix-product
+      - lrp-code
+      - lrp-shape
+      - lrp-batch-template
+      - lrp-augmented-template
+      - lrp-bias-trick
+      - lrp-robot-batch
 final: lr-explain-model
 summary: |
-  - A linear price model adds matching weight-times-feature contributions and one bias: $\hat y=w\cdot x+b$.
-  - Each weight gives a per-unit prediction change while other features stay fixed; its units matter.
-  - Use `X @ w + b` for one prediction per house in a batch.
+  - A linear regression model multiplies each feature by its weight, adds the pieces, then adds one bias: $\hat y=w\cdot x+b$.
+  - A weight is how much the prediction changes for one more unit of its feature with the other features fixed, in the target's units per feature unit; the bias is the prediction when every feature is $0$.
+  - For many examples, put one per row of $X$: `X @ w + b` gives one prediction per row, and a column of ones can carry the bias.
 
-  **Next:** Derivatives show how nudging one weight changes the house-price model's loss and by how much.
+  **Next:** The coming lessons measure how far these predictions are from the true prices and change $w$ and $b$ to shrink that error.
