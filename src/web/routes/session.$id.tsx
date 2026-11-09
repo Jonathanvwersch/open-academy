@@ -86,6 +86,10 @@ function SessionPage() {
   } | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [completedLessonChecks, setCompletedLessonChecks] = useState<Set<string>>(new Set());
+  const [submittingAnswer, setSubmittingAnswer] = useState(false);
+  const [continuing, setContinuing] = useState(false);
+  const [endingSession, setEndingSession] = useState(false);
+  const [markingLessonViewed, setMarkingLessonViewed] = useState(false);
   const hintButton = useRef<HTMLButtonElement>(null);
   const [timeAnchor, setTimeAnchor] = useState<{ serverTime: number; clientTime: number } | null>(
     null,
@@ -261,56 +265,76 @@ function SessionPage() {
 
   const markLessonViewed = async () => {
     if (!activity) return;
-    await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...(activity.progress ?? {}), lessonViewed: true }),
-    });
-    await queryClient.invalidateQueries({ queryKey: ['session', id] });
+    setMarkingLessonViewed(true);
+    try {
+      await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...(activity.progress ?? {}), lessonViewed: true }),
+      });
+      await queryClient.invalidateQueries({ queryKey: ['session', id] });
+    } finally {
+      setMarkingLessonViewed(false);
+    }
   };
 
   const completeActivity = async () => {
     if (!activity) return;
-    await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...(activity.progress ?? {}), complete: true }),
-    });
-    await queryClient.invalidateQueries({ queryKey: ['session', id] });
+    setContinuing(true);
+    try {
+      await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ ...(activity.progress ?? {}), complete: true }),
+      });
+      await queryClient.invalidateQueries({ queryKey: ['session', id] });
+    } finally {
+      setContinuing(false);
+    }
   };
 
   const submitAnswer = async (answer: unknown) => {
     if (!exerciseId || !activity) return;
+    setSubmittingAnswer(true);
     const mode =
       activity.kind === 'quick_check' || activity.kind === 'diagnostic'
         ? 'assessment'
         : activity.kind === 'review'
           ? 'review'
           : 'practice';
-    const response = await apiFetch('/api/attempts', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ exerciseId, activityId: activity.id, answer, mode }),
-    });
-    const data = await response.json();
-    setResult(data);
-    if (response.ok && data.status !== 'invalid') {
-      setHint(null);
+    try {
+      const response = await apiFetch('/api/attempts', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ exerciseId, activityId: activity.id, answer, mode }),
+      });
+      const data = await response.json();
+      setResult(data);
+      if (response.ok && data.status !== 'invalid') {
+        setHint(null);
+      }
+    } finally {
+      setSubmittingAnswer(false);
     }
   };
   const continueNext = async () => {
-    if (showingCompletedFinal && activity) {
-      await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          ...(activity.progress ?? {}),
-          complete: true,
-          finalQuestionContinued: true,
-        }),
-      });
+    setContinuing(true);
+    try {
+      if (showingCompletedFinal && activity) {
+        await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            ...(activity.progress ?? {}),
+            complete: true,
+            finalQuestionContinued: true,
+          }),
+        });
+      }
+      await queryClient.invalidateQueries({ queryKey: ['session', id] });
+    } finally {
+      setContinuing(false);
     }
-    await queryClient.invalidateQueries({ queryKey: ['session', id] });
   };
   const continueLessonRunner = async (status: 'completed' | 'needs_retry') => {
     if (!activity) return;
@@ -331,8 +355,13 @@ function SessionPage() {
   };
 
   const endSession = async () => {
-    await apiFetch(`/api/sessions/${id}/end`, { method: 'POST' });
-    window.location.href = '/';
+    setEndingSession(true);
+    try {
+      await apiFetch(`/api/sessions/${id}/end`, { method: 'POST' });
+      window.location.href = '/';
+    } finally {
+      setEndingSession(false);
+    }
   };
 
   if (!activity) {
@@ -340,7 +369,7 @@ function SessionPage() {
       <section className="space-y-4">
         <h1 className="text-3xl font-semibold">Session complete</h1>
         <p className="text-muted-foreground">Your progress has been saved.</p>
-        <Button type="button" onClick={endSession}>
+        <Button type="button" onClick={endSession} loading={endingSession}>
           Finish session
         </Button>
       </section>
@@ -426,7 +455,7 @@ function SessionPage() {
         lessonHref={lessonHref}
         tutorEnabled={sessionQuery.data.tutorEnabled}
         resumeRetry={activity.status !== 'completed'}
-        onContinue={(status) => void continueLessonRunner(status)}
+        onContinue={continueLessonRunner}
       />
     );
   }
@@ -505,7 +534,12 @@ function SessionPage() {
             </LessonBlock>
           ))}
         </div>
-        <Button type="button" onClick={markLessonViewed} disabled={checksPending}>
+        <Button
+          type="button"
+          onClick={markLessonViewed}
+          loading={markingLessonViewed}
+          disabled={checksPending}
+        >
           Continue to practice
         </Button>
         {checksPending ? (
@@ -566,11 +600,12 @@ function SessionPage() {
                   typeof result?.yourAnswer === 'string' ? result.yourAnswer : undefined
                 }
                 submitLabel={submitLabel}
+                loading={submittingAnswer}
                 actions={helpActions}
               />
             ) : (
               <>
-                <Button type="button" onClick={continueNext}>
+                <Button type="button" onClick={continueNext} loading={continuing}>
                   Continue
                 </Button>
                 {helpActions}
@@ -591,7 +626,7 @@ function SessionPage() {
                     ? 'Take a moment to reflect on what you learned and what remains unclear.'
                     : 'No eligible exercise is available for this activity yet.'}
             </p>
-            <Button type="button" onClick={completeActivity}>
+            <Button type="button" onClick={completeActivity} loading={continuing}>
               Continue
             </Button>
           </CardContent>
@@ -632,9 +667,18 @@ function PaperActivity({
   tutorEnabled: boolean;
   onSkip: () => Promise<void>;
 }) {
+  const [skipping, setSkipping] = useState(false);
   const { data: papersData } = useSuspenseQuery(papersQueryOptions());
   const { data: today } = useSuspenseQuery(todayQueryOptions());
   const papers = papersData.weeks.find((week) => week.week === today.week)?.papers ?? [];
+  const skip = async () => {
+    setSkipping(true);
+    try {
+      await onSkip();
+    } finally {
+      setSkipping(false);
+    }
+  };
   if (completed) {
     return <p role="status">Paper reading complete.</p>;
   }
@@ -671,7 +715,7 @@ function PaperActivity({
           </li>
         ))}
       </ul>
-      <Button type="button" variant="outline" onClick={() => void onSkip()}>
+      <Button type="button" variant="outline" loading={skipping} onClick={() => void skip()}>
         Skip for today
       </Button>
       {!tutorEnabled ? (
@@ -691,16 +735,22 @@ function InlineLessonCheck({
   onDone: () => void;
 }) {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const { data: exercise } = useSuspenseQuery(exerciseQueryOptions(exerciseId));
   const submit = async (answer: unknown) => {
-    const response = await apiFetch('/api/attempts', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ exerciseId, activityId, answer, mode: 'practice' }),
-    });
-    const data = await response.json();
-    setResult(data);
-    if (response.ok && data.status !== 'invalid') onDone();
+    setSubmitting(true);
+    try {
+      const response = await apiFetch('/api/attempts', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ exerciseId, activityId, answer, mode: 'practice' }),
+      });
+      const data = await response.json();
+      setResult(data);
+      if (response.ok && data.status !== 'invalid') onDone();
+    } finally {
+      setSubmitting(false);
+    }
   };
   return (
     <Card>
@@ -714,6 +764,7 @@ function InlineLessonCheck({
                 key={`${activityId}:${exerciseId}`}
                 exercise={exercise}
                 onSubmit={submit}
+                loading={submitting}
               />
             ) : null}
           </>

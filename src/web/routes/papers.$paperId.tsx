@@ -333,31 +333,33 @@ function PaperReaderPage() {
 
   const submitSummary = async () => {
     setSubmitting(true);
-    const response = await apiFetch(`/api/papers/${encodeURIComponent(paperId)}/summary`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ summary, ...(activity ? { activityId: activity } : {}) }),
-    });
-    const result = (await response.json()) as {
-      judgement: PaperSummaryJudgement | null;
-      rubric?: PaperSummaryRubric[];
-      reason?: string;
-      error?: string;
-    };
-    if (!response.ok) {
-      setGradingReason(result.error ?? 'Summary could not be saved.');
+    try {
+      const response = await apiFetch(`/api/papers/${encodeURIComponent(paperId)}/summary`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ summary, ...(activity ? { activityId: activity } : {}) }),
+      });
+      const result = (await response.json()) as {
+        judgement: PaperSummaryJudgement | null;
+        rubric?: PaperSummaryRubric[];
+        reason?: string;
+        error?: string;
+      };
+      if (!response.ok) {
+        setGradingReason(result.error ?? 'Summary could not be saved.');
+        return;
+      }
+      setJudgement(result.judgement);
+      setRubric(result.rubric ?? []);
+      setGradingReason(result.reason ?? null);
+      setSubmitted(true);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['paper', paperId] }),
+        queryClient.invalidateQueries({ queryKey: ['papers'] }),
+      ]);
+    } finally {
       setSubmitting(false);
-      return;
     }
-    setJudgement(result.judgement);
-    setRubric(result.rubric ?? []);
-    setGradingReason(result.reason ?? null);
-    setSubmitted(true);
-    setSubmitting(false);
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['paper', paperId] }),
-      queryClient.invalidateQueries({ queryKey: ['papers'] }),
-    ]);
   };
 
   const original = data.originalUrl;
@@ -571,7 +573,11 @@ function PaperReaderPage() {
                 maxLength={4000}
                 onChange={(event) => setSummary(event.target.value)}
               />
-              <Button disabled={submitting || !summary.trim()} onClick={() => void submitSummary()}>
+              <Button
+                disabled={!summary.trim()}
+                loading={submitting}
+                onClick={() => void submitSummary()}
+              >
                 Submit summary
               </Button>
               {judgement ? <FeedbackPanel result={paperFeedbackResult(judgement, rubric)} /> : null}

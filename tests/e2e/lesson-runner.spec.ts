@@ -10,11 +10,13 @@ const lessonCardScreenshotDir = '/home/ubuntu/screenshots/lesson-cards';
 const stepReviewScreenshotDir = '/home/ubuntu/ui-audit/step-review';
 const feedbackCorrectScreenshotDir = '/home/ubuntu/screenshots/feedback-correct';
 const mcShuffleScreenshotDir = '/home/ubuntu/screenshots/mc-shuffle';
+const buttonLoadingScreenshotDir = '/home/ubuntu/screenshots/button-loading';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
 mkdirSync(feedbackCorrectScreenshotDir, { recursive: true });
 mkdirSync(mcShuffleScreenshotDir, { recursive: true });
+mkdirSync(buttonLoadingScreenshotDir, { recursive: true });
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -289,7 +291,42 @@ test('passes every knowledge point and restores the exact problem and result aft
     .fill(
       'Predict delivery time in minutes from distance and time of day. Inputs: distance and time of day; target: delivery time. Model: a line that combines the two inputs. Loss: squared error. Data: 5,000 past deliveries.',
     );
-  await page.getByRole('button', { name: 'Submit answer' }).click();
+  const problemCard = page.getByTestId('session-exercise');
+  const submitButton = problemCard.locator('button[type="submit"]');
+  const submitButtonBefore = await submitButton.boundingBox();
+  if (!submitButtonBefore) throw new Error('Submit answer button is not visible');
+  await expect(submitButton.getByTestId('button-spinner')).toHaveCount(0);
+  await problemCard.screenshot({ path: `${buttonLoadingScreenshotDir}/submit-idle.png` });
+  let markGradingRequestStarted!: () => void;
+  let releaseGradingRequest!: () => void;
+  const gradingRequestStarted = new Promise<void>((resolve) => {
+    markGradingRequestStarted = resolve;
+  });
+  const gradingRequestGate = new Promise<void>((resolve) => {
+    releaseGradingRequest = resolve;
+  });
+  await page.route('**/api/attempts', async (route) => {
+    markGradingRequestStarted();
+    await gradingRequestGate;
+    const response = await route.fetch();
+    await route.fulfill({ response });
+  });
+  await submitButton.click();
+  await gradingRequestStarted;
+  await expect(submitButton).toHaveAttribute('aria-busy', 'true');
+  await expect(submitButton).toHaveAttribute('data-loading', 'true');
+  await expect(submitButton).toBeDisabled();
+  await expect(submitButton.getByTestId('button-spinner')).toBeVisible();
+  await expect(submitButton.getByText('Submit answer', { exact: true })).not.toBeVisible();
+  const submitButtonAfter = await submitButton.boundingBox();
+  if (!submitButtonAfter) throw new Error('Loading Submit answer button is not visible');
+  expect(Math.abs(submitButtonAfter.width - submitButtonBefore.width)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(submitButtonAfter.height - submitButtonBefore.height)).toBeLessThanOrEqual(0.5);
+  await expect
+    .poll(() => submitButton.evaluate((element) => getComputedStyle(element).opacity))
+    .toBe('1');
+  await problemCard.screenshot({ path: `${buttonLoadingScreenshotDir}/submit-busy.png` });
+  releaseGradingRequest();
   const selfCheck = page.getByRole('button', { name: 'Submit self-check' });
   const retry = page.getByRole('button', { name: /Try again/ });
   await expect

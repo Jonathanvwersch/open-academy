@@ -84,8 +84,19 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
       }
     }).observe({ type: 'layout-shift', buffered: true });
   });
+  let markTutorRequestStarted!: () => void;
+  let releaseTutorRequest!: () => void;
+  const tutorRequestStarted = new Promise<void>((resolve) => {
+    markTutorRequestStarted = resolve;
+  });
+  const tutorRequestGate = new Promise<void>((resolve) => {
+    releaseTutorRequest = resolve;
+  });
   await page.route('**/api/tutor/threads**', async (route) => {
-    if (route.request().method() === 'POST') await page.waitForTimeout(1800);
+    if (route.request().method() === 'POST') {
+      markTutorRequestStarted();
+      await tutorRequestGate;
+    }
     await route.continue();
   });
   await page.goto(`/session/${sessionId}`);
@@ -134,20 +145,36 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
 
   const textarea = tutor.getByLabel('Ask the tutor');
   await textarea.fill('Explain the first step');
+  const sendButton = tutor.locator('form button[type="submit"]');
+  const sendButtonBefore = await sendButton.boundingBox();
+  if (!sendButtonBefore) throw new Error('Tutor Send button is not visible');
   await textarea.press('Enter');
+  await tutorRequestStarted;
   await expect(textarea).toHaveValue('');
   await expect(
     tutor.getByTestId('tutor-user-message').filter({ hasText: 'Explain the first step' }),
   ).toHaveCount(1);
   await expect(tutor.getByRole('status', { name: 'Tutor is responding' })).toBeVisible();
   await expect(tutor.getByTestId('tutor-thinking-bubble')).toBeVisible();
+  await expect(sendButton).toHaveAttribute('aria-busy', 'true');
+  await expect(sendButton).toHaveAttribute('data-loading', 'true');
+  await expect(sendButton.getByTestId('button-spinner')).toBeVisible();
+  await expect(sendButton.getByText('Send', { exact: true })).not.toBeVisible();
+  const sendButtonAfter = await sendButton.boundingBox();
+  if (!sendButtonAfter) throw new Error('Loading Tutor Send button is not visible');
+  expect(Math.abs(sendButtonAfter.width - sendButtonBefore.width)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(sendButtonAfter.height - sendButtonBefore.height)).toBeLessThanOrEqual(0.5);
+  await expect
+    .poll(() => sendButton.evaluate((element) => getComputedStyle(element).opacity))
+    .toBe('1');
   await textarea.fill('Draft while waiting');
   await expect(textarea).toHaveValue('Draft while waiting');
-  await expect(tutor.getByRole('button', { name: 'Sending…' })).toBeDisabled();
+  await expect(sendButton).toBeDisabled();
   await textarea.fill('');
   await expect(textarea).toHaveValue('');
   await page.screenshot({ path: `${screenshotDir}/tutor-pending.png` });
 
+  releaseTutorRequest();
   await expect(tutor.getByText('Tutor reply to: Explain the first step')).toBeVisible();
   await expect(
     tutor.getByTestId('tutor-user-message').filter({ hasText: 'Explain the first step' }),

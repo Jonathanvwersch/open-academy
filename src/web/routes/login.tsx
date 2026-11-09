@@ -78,7 +78,7 @@ function LoginPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             ) : null}
-            <Button className="w-full" type="submit" disabled={submitting}>
+            <Button className="w-full" type="submit" loading={submitting}>
               Log in
             </Button>
           </form>
