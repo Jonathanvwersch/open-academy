@@ -4,10 +4,10 @@ import { Button } from '@/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
 import { diagnosticResultsQueryOptions, latestDiagnosticQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
-import { PageSkeleton } from '../skeletons.js';
+import { DiagnosticResultsSkeleton } from '../skeletons.js';
 
 export const Route = createFileRoute('/diagnostic/results')({
-  pendingComponent: PageSkeleton,
+  pendingComponent: DiagnosticResultsSkeleton,
   validateSearch: (search: Record<string, unknown>) => ({
     id: typeof search.id === 'string' ? search.id : undefined,
   }),

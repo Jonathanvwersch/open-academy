@@ -12,7 +12,7 @@ exercises:
           id: a,
           text: "The total output change across a wide input interval, rather than the rate at one point.",
           correct: false,
-          feedback: "That is a finite-interval change; a derivative gives the local rate at one input value.",
+          feedback: "That is the change over a whole stretch; a derivative gives the rate at one input value.",
         }
       - {
           id: b,
@@ -30,7 +30,7 @@ exercises:
           id: d,
           text: "The input value where a function reaches its minimum, rather than a local rate.",
           correct: false,
-          feedback: "That input is a minimizer; the derivative is a rate evaluated at an input.",
+          feedback: "That is where the output is lowest; the derivative is a rate measured at an input.",
         }
     solution: "A derivative is the rate at which a function's output changes per unit of input at one point."
   - id: der-power-rule-basics
@@ -45,7 +45,7 @@ exercises:
           id: a,
           text: "Its derivative is $x^{n+1}/(n+1)$ for every fixed power.",
           correct: false,
-          feedback: "That raises the exponent as in integration; differentiation lowers it by one.",
+          feedback: "That raises the power; differentiating lowers it by one and brings the old power down in front.",
         }
       - {
           id: b,
@@ -129,7 +129,7 @@ exercises:
           id: d,
           text: "A nested function whose input is transformed by an inner function.",
           correct: false,
-          feedback: "That is the chain rule's setting; product and quotient rules handle products and ratios.",
+          feedback: "A function fed into another function needs a different rule; product and quotient rules handle products and ratios.",
         }
     solution: "The product rule differentiates two changing factors, while the quotient rule differentiates their ratio."
   - id: der-check-power
@@ -511,7 +511,7 @@ exercises:
         text: "Changing $x$ never changes the added 10, so that term contributes no change in output"
         correct: true
       - id: b
-        text: "The 10 is a coefficient of $x$, so its derivative should be 10"
+        text: "The 10 multiplies $x$, so its derivative should be 10"
         correct: false
         category: misunderstood_definition
         feedback: "The expression adds 10; it does not multiply $x$ by 10. An added constant stays fixed as $x$ changes."
@@ -600,24 +600,25 @@ exercises:
     prompt: "Why is the slope of $f(x) = e^x$ at any point equal to the function's value there?"
     options:
       - id: a
-        text: "Base $e$ makes exponential growth proportional to its current value with factor 1"
+        text: "Base $e$ makes the slope at 0 exactly 1, and near any $x$ the curve is that piece stretched by $e^x$"
         correct: true
+        feedback: "Since $e^{x+h} = e^x e^h$, the slope at $x$ is $e^x$ times the slope at 0, which is 1."
       - id: b
-        text: "The power rule treats the variable exponent as a fixed power"
+        text: "The power rule treats the variable exponent $x$ as if it were a fixed power"
         correct: false
         category: misapplied_technique
         feedback: "The power rule applies to a fixed exponent such as $x^2$. Here $x$ is the exponent; $e^x$ has its own derivative rule."
       - id: c
-        text: "The derivative is the constant base $e$, independent of the input"
+        text: "The derivative is the constant base $e$, which stays the same for every input"
         correct: false
         category: misunderstood_definition
         feedback: "The base is constant, but the function's value and slope change with $x$. Both equal $e^x$."
       - id: d
-        text: "Because $e$ is constant, the derivative of $e^x$ is zero"
+        text: "Because the base $e$ is a constant, the derivative of $e^x$ must be zero"
         correct: false
         category: misunderstood_definition
         feedback: "The base $e$ is constant, but the whole expression $e^x$ changes with $x$; it is not a constant function."
-    solution: "Exponential growth is proportional to the amount already present. The base $e$ makes the proportionality factor 1, so the rate of change is $e^x$ itself."
+    solution: "The base $e$ is chosen so that the slope of $e^x$ at 0 is 1. Because $e^{x+h} = e^x \\cdot e^h$, the slope at any $x$ is $e^x \\cdot 1 = e^x$, the value itself."
   - id: derp-ln-meaning
     dimension: conceptual
     type: mc
@@ -643,22 +644,6 @@ exercises:
         category: misunderstood_definition
         feedback: "A logarithm undoes a power, not a multiplication."
     solution: "$\\ln 20$ is the power of $e$ that gives 20, so $e^3 \\approx 20$ (in fact $e^3 \\approx 20.09$)."
-  - id: derp-sin-cos
-    dimension: math
-    type: expression
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "Differentiate $f(x) = 3\\sin x + 2\\cos x$ (write `sin(x)` and `cos(x)`)."
-    answer: "3*cos(x) - 2*sin(x)"
-    variables: { x: [-3, 3] }
-    common_wrong:
-      - {
-          answer: "3*cos(x) + 2*sin(x)",
-          category: recall_failure,
-          feedback: "Check the sign: the derivative of $\\cos x$ is $-\\sin x$.",
-        }
-    solution: "$\\sin x \\to \\cos x$ and $\\cos x \\to -\\sin x$, so $f'(x) = 3\\cos x - 2\\sin x$."
   - id: derp-tank-level
     dimension: math
     type: expression
@@ -925,3 +910,137 @@ exercises:
       $$w = 4$$
 
       Below $w = 4$ the slope is negative and above it the slope is positive, so the loss is lowest there.
+  - id: derp-why-shrink
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, why does step 1 work out the average speed for steps of 1, 0.1 and 0.01 seconds instead of stopping at the 1-second step?"
+    options:
+      - id: a
+        text: "The 1-second average also counts how the speed changed later; shorter steps get closer to the speed at exactly $t = 3$."
+        correct: true
+        feedback: "Each shorter step measures less of the later speeding up, so the averages 7, 6.1, 6.01 close in on 6."
+      - id: b
+        text: "The 1-second step gives the wrong distance, so its average speed of 7 cannot be trusted."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The distance $16 - 9 = 7$ m is correct; it is just an average over the whole second, not the speed at $t = 3$."
+      - id: c
+        text: "Smaller steps make the distance travelled smaller, so the speed also gets smaller and smaller."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The distance and the time both shrink, and their ratio settles at 6. It does not keep falling towards 0."
+      - id: d
+        text: "Averaging the three step results together gives a more accurate answer than any single one."
+        correct: false
+        category: misapplied_technique
+        feedback: "The steps are not averaged together; the answer is the value the average slope approaches as the step shrinks."
+    solution: "The average over a long step mixes in the speed at later times. As the step shrinks, the average speed (7, 6.1, 6.01) approaches the speed at the instant $t = 3$, which is 6 m/s."
+  - id: derp-why-keep-constant
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, why is the derivative of $3x^2$ equal to $6x$ rather than $2x$?"
+    options:
+      - id: a
+        text: "The 3 multiplies every height by 3, so every rise and therefore every slope is three times as big."
+        correct: true
+        feedback: "A number multiplying a function multiplies its slope: $3 \\cdot 2x = 6x$."
+      - id: b
+        text: "The power rule brings down the 3 in front instead of the power 2, giving $3 \\cdot 2x$."
+        correct: false
+        category: misapplied_technique
+        feedback: "The power rule brings down the power 2. The 3 stays in front because a number multiplying a function multiplies its slope."
+      - id: c
+        text: "The 3 is added to the power first, so the power becomes 5 before the rule is applied."
+        correct: false
+        category: misapplied_technique
+        feedback: "A multiplier does not change the power. $3x^2$ is 3 times $x^2$, and its slope is 3 times $2x$."
+      - id: d
+        text: "Constants always disappear, so the 6 comes from doubling the 3 left over in front."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Only an added constant disappears. A multiplied constant stays and multiplies the slope."
+    solution: "$3x^2$ is 3 times $x^2$. Tripling every height triples every slope, so $(3x^2)' = 3 \\cdot 2x = 6x$."
+  - id: derp-why-six-over-x
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, why is the slope of $6\\ln x$ at $x = 2$ equal to 3?"
+    options:
+      - id: a
+        text: "The slope of $\\ln x$ is $\\frac1x$, which is $\\frac12$ at $x = 2$, and the 6 in front multiplies it."
+        correct: true
+        feedback: "Numbers multiply slopes, so $6 \\cdot \\frac12 = 3$."
+      - id: b
+        text: "The power rule on $\\ln x$ brings down a 1, so the slope is $6 \\div 2$ from the input alone."
+        correct: false
+        category: misapplied_technique
+        feedback: "$\\ln x$ is not a power of $x$. Its own rule gives slope $\\frac1x$, and the 6 multiplies that."
+      - id: c
+        text: "The value $\\ln 2$ is about 0.69, and six times that rounds to the slope 3."
+        correct: false
+        category: misunderstood_definition
+        feedback: "$6\\ln 2 \\approx 4.16$ is the height of the term at $x = 2$, not its slope."
+      - id: d
+        text: "The slope of $\\ln x$ equals its input, so at $x = 2$ it is 2 and the term adds 1."
+        correct: false
+        category: recall_failure
+        feedback: "The slope of $\\ln x$ is $\\frac1x$, which shrinks as $x$ grows, so at $x = 2$ it is $\\frac12$."
+    solution: "$(6\\ln x)' = 6 \\cdot \\frac1x = \\frac6x$, and at $x = 2$ that is $\\frac62 = 3$."
+  - id: derp-exp-value
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Let $f(x) = 3e^x - 2x$. What is the slope $f'(0)$?"
+    answer: 1
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 3,
+          category: math_error,
+          feedback: "That is only the slope of $3e^x$. The $-2x$ term adds a slope of $-2$.",
+        }
+      - {
+          answer: -2,
+          category: recall_failure,
+          feedback: "The slope of $3e^x$ is $3e^x$, which is 3 at $x = 0$, not 0.",
+        }
+    hints: ["$(e^x)' = e^x$, and $e^0 = 1$."]
+    solution: "$f'(x) = 3e^x - 2$, so $f'(0) = 3 \\cdot 1 - 2 = 1$."
+  - id: derp-why-two-parts
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, why is $f'(1)$ the sum of two parts, $2$ and $6$?"
+    options:
+      - id: a
+        text: "Both factors change with $x$; 2 is the change from $u$ times $v$, and 6 is $u$ times the change from $v$."
+        correct: true
+        feedback: "Those are the two strips of the rectangle: $u'v = 2 \\cdot 1$ and $uv' = 2 \\cdot 3$."
+      - id: b
+        text: "The two parts are the slopes of $u$ and $v$ at $x = 1$, which are added together."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The slopes are $u' = 2$ and $v' = 3$, which add to 5, not 8. Each part of the rule mixes one slope with the other factor's value."
+      - id: c
+        text: "The two parts are the values of $u$ and $v$ at $x = 1$, which are added together."
+        correct: false
+        category: misunderstood_definition
+        feedback: "At $x = 1$, $u = 2$ and $v = 1$, which add to 3. Each part of the rule mixes one slope with the other factor's value."
+      - id: d
+        text: "The sum rule splits every function into two terms, and each term gets its own slope."
+        correct: false
+        category: misapplied_technique
+        feedback: "The sum rule is for added terms. Here the two factors are multiplied, so the product rule applies."
+    solution: "With $u = x^2 + 1$ and $v = 3x - 2$, at $x = 1$: $u'v = 2 \\cdot 1 = 2$ from the change in $u$, and $uv' = 2 \\cdot 3 = 6$ from the change in $v$, so $f'(1) = 8$."

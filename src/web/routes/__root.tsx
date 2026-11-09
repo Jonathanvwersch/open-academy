@@ -11,7 +11,19 @@ import { Logo } from '@/ui/logo.js';
 import { Skeleton } from '@/ui/skeleton.js';
 import { TooltipProvider } from '@/ui/tooltip.js';
 import { authQueryOptions } from '../queries.js';
-import { PageSkeleton } from '../skeletons.js';
+import {
+  CourseSkeleton,
+  DiagnosticResultsSkeleton,
+  DiagnosticSkeleton,
+  LearnSkeleton,
+  LessonReviewSkeleton,
+  PageSkeleton,
+  PaperSkeleton,
+  ProgressSkeleton,
+  ProjectSkeleton,
+  SessionSkeleton,
+  SettingsSkeleton,
+} from '../skeletons.js';
 import { TutorContextProvider } from '../tutor/TutorSidebar.js';
 
 interface RouterContext {
@@ -26,8 +38,25 @@ const navigation = [
 ] as const;
 
 function AppShellSkeleton() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isPaperReader = pathname.startsWith('/papers/');
+  let pageSkeleton = <PageSkeleton />;
+  if (pathname.startsWith('/papers/')) pageSkeleton = <PaperSkeleton />;
+  else if (pathname.startsWith('/session/')) pageSkeleton = <SessionSkeleton />;
+  else if (pathname.startsWith('/lessons/')) pageSkeleton = <LessonReviewSkeleton />;
+  else if (pathname.startsWith('/projects/')) pageSkeleton = <ProjectSkeleton />;
+  else if (pathname === '/diagnostic/results') pageSkeleton = <DiagnosticResultsSkeleton />;
+  else if (pathname === '/diagnostic') pageSkeleton = <DiagnosticSkeleton />;
+  else if (pathname === '/settings') pageSkeleton = <SettingsSkeleton />;
+  else if (pathname === '/progress') pageSkeleton = <ProgressSkeleton />;
+  else if (pathname === '/course') pageSkeleton = <CourseSkeleton />;
+  else if (pathname === '/') pageSkeleton = <LearnSkeleton />;
   return (
-    <div aria-hidden="true" data-testid="app-shell-skeleton" className="min-h-screen bg-background">
+    <div
+      aria-hidden="true"
+      data-testid="app-shell-skeleton"
+      className={`min-h-screen bg-background ${isPaperReader ? 'flex flex-col' : ''}`}
+    >
       <header className="h-14 border-b bg-background">
         <div className="mx-auto flex h-full w-full max-w-3xl items-center justify-between gap-4 px-4 sm:px-6">
           <Skeleton className="hidden h-4 w-20 sm:block" />
@@ -38,8 +67,14 @@ function AppShellSkeleton() {
           </nav>
         </div>
       </header>
-      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
-        <PageSkeleton />
+      <div
+        className={
+          isPaperReader
+            ? 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0'
+            : 'mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-8'
+        }
+      >
+        {pageSkeleton}
       </div>
     </div>
   );
