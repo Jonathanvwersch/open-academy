@@ -60,7 +60,8 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: A recorded calculation uses $w={{w}}$, fixed $x={{x}}$ and fixed $y={{y}}$. It computes
+    prompt:
+      A recorded calculation uses $w={{=w}}$, fixed $x={{=x}}$ and fixed $y={{=y}}$. It computes
       $z=wx$, $e=z-y$, then $L=e^2$. What is the forward value of $L$?
     params:
       w:
@@ -77,7 +78,8 @@ exercises:
     hints:
       - "Find $z=wx$, then $e=z-y$."
       - "Square $e$ to get $L$."
-    solution: The record stores $z={{w}}\cdot{{x}}$ and $e={{w}}\cdot{{x}}-{{y}}$. Squaring that
+    solution:
+      The record stores $z={{=w}}\cdot{{=x}}$ and $e={{=w}}\cdot{{=x}}-{{=y}}$. Squaring that
       difference gives the final value $L$; it is a value, not a derivative.
   - id: ad-record-constants
     dimension: conceptual
@@ -221,7 +223,7 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt:
-      For $L=(wx-y)^2$, use $w={{w}}$, fixed $x={{x}}$ and fixed $y={{y}}$. The backward pass has
+      For $L=(wx-y)^2$, use $w={{=w}}$, fixed $x={{=x}}$ and fixed $y={{=y}}$. The backward pass has
       reached $dL/dz=2(wx-y)$ for $z=wx$. What is $dL/dw$?
     params:
       w:
@@ -274,8 +276,8 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A leaf's `.grad` already holds {{old}}. A fresh forward record gives another gradient
-      contribution of {{new}}. After calling backward on that record without clearing `.grad`, what
+    prompt: A leaf's `.grad` already holds {{=old}}. A fresh forward record gives another gradient
+      contribution of {{=new}}. After calling backward on that record without clearing `.grad`, what
       does it hold?
     params:
       old:
@@ -290,7 +292,7 @@ exercises:
       - "Backward adds to `.grad`; it does not replace it."
     solution:
       PyTorch adds the new contribution to the existing gradient. Without clearing, the stored
-      result is ${{old}}+{{new}}$.
+      result is ${{=old}}+{{=new}}$.
   - id: ad-reverse-robot
     dimension: implementation
     type: numeric
@@ -298,7 +300,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt:
-      A robot's joint angle $q={{q}}$ affects $a=2q$, $b=a+q$ and $L=b^2$. What gradient does one
+      A robot's joint angle $q={{=q}}$ affects $a=2q$, $b=a+q$ and $L=b^2$. What gradient does one
       backward pass store for $q$, starting with no stored gradient?
     params:
       q:
@@ -372,7 +374,7 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt:
-      A calculation has {{inputs}} adjustable inputs and {{outputs}} outputs. How many ordinary
+      A calculation has {{=inputs}} adjustable inputs and {{=outputs}} outputs. How many ordinary
       forward-mode derivative passes find every input-output derivative?
     params:
       inputs:
@@ -423,7 +425,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A calculation has {{inputs}} inputs and {{outputs}} outputs. Including one forward recording pass, how many total passes does reverse mode need to find every input-output derivative?
+    prompt: A calculation has {{=inputs}} inputs and {{=outputs}} outputs. Including one forward recording pass, how many total passes does reverse mode need to find every input-output derivative?
     params:
       inputs:
         min: 2
