@@ -16,10 +16,10 @@ knowledge_points:
     explain: |
       **The question.** The dot-product lesson priced one house. With measurements $x=(12,3,20)$ and weights $w=(25,10,-1)$, it predicted $w\cdot x=310$ thousand pounds. Now there are two houses, or two thousand. How do you write all their measurements down together and price every house in one calculation?
 
-      **Picture it.** Write each house as one row of a table, always with the same three measurements in the same order: area in tens of square metres (so 12 means 120 m²), number of bedrooms, and age in years. House 1 is $(12,3,20)$ and house 2 is $(8,2,5)$. The three weights stand beside it as a column, so each row can be laid against them entry by entry. Each blue row is paired with the amber weights entry by entry, as in a dot product, giving one green price.
+      **Picture it.** Write each house as one row of a table, always with the same three measurements in the same order: area in tens of square metres (so 12 means 120 m²), number of bedrooms, and age in years. House 1 is $(12,3,20)$ and house 2 is $(8,2,5)$. The three weights stand beside it as a column, so each row can be laid against them entry by entry.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 245" aria-label="House rows (12, 3, 20) and (8, 2, 5) are each dotted with weights (25, 10, minus 1) to give prices 310 and 215" font-family="sans-serif">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 245" aria-label="House rows (12, 3, 20) and (8, 2, 5) are each dotted with weights (25, 10, minus 1) to give prices 310 and 215" font-family="ui-sans-serif, system-ui, sans-serif">
       <text x="112" y="50" text-anchor="middle" font-size="13" fill="#737373">area</text>
       <text x="156" y="50" text-anchor="middle" font-size="13" fill="#737373">beds</text>
       <text x="200" y="50" text-anchor="middle" font-size="13" fill="#737373">age</text>
@@ -43,7 +43,7 @@ knowledge_points:
       <text x="388" y="116" text-anchor="start" font-size="13" fill="#171717">8·25 + 2·10 + 5·(−1) = 215</text>
       <text x="156" y="195" text-anchor="middle" font-size="13" fill="#737373">X: 2 × 3</text>
       <text x="272" y="195" text-anchor="middle" font-size="13" fill="#737373">3 entries</text>
-      <text x="382" y="195" text-anchor="middle" font-size="13" fill="#737373">2 entries</text>
+      <text x="352" y="195" text-anchor="middle" font-size="13" fill="#737373">2 entries</text>
       <text x="320" y="228" text-anchor="middle" font-size="14" fill="#171717">Each blue row is dotted with the amber weights and gives one green price.</text>
       </svg>
       ```
@@ -96,7 +96,7 @@ knowledge_points:
       **Picture it.** Put each weight list in its own column of a second matrix $W$: price weights $(25,10,-1)$ in column 1 and rent weights $(100,50,-5)$ in column 2: pounds a month per 10 m², per bedroom and per year of age. House 1 (blue) with the rent weights (amber) gives the green entry 1250: house 1's predicted rent.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 270" aria-label="Row 1 of X, (12, 3, 20), is dotted with column 2 of W, (100, 50, minus 5), to give entry 1250 in row 1, column 2 of the 2 by 2 product" font-family="sans-serif">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 270" aria-label="Row 1 of X, (12, 3, 20), is dotted with column 2 of W, (100, 50, minus 5), to give entry 1250 in row 1, column 2 of the 2 by 2 product" font-family="ui-sans-serif, system-ui, sans-serif">
       <text x="112" y="70" text-anchor="middle" font-size="13" fill="#737373">area</text>
       <text x="156" y="70" text-anchor="middle" font-size="13" fill="#737373">beds</text>
       <text x="200" y="70" text-anchor="middle" font-size="13" fill="#737373">age</text>
@@ -144,7 +144,7 @@ knowledge_points:
       1. **Check the shapes.** The inner sizes are both 3, so the product exists; the outer sizes give its shape.
          $$(2\times3)(3\times2)\to2\times2$$
 
-      2. **Reuse the price column.** Column 1 holds the same weights as the first step, so it gives the same prices: 310 for house 1 and 215 for house 2.
+      2. **Reuse the price column.** Column 1 holds the same weights as in *One dot product per row*, so it gives the same prices: 310 for house 1 and 215 for house 2.
 
       3. **House 1 with the rent column.**
          $$12\cdot100+3\cdot50+20\cdot(-5)=1200+150-100=1250$$
@@ -163,9 +163,9 @@ knowledge_points:
       | --- | --- | --- |
       | $2\times3$ | $3\times2$ | $2\times2$ |
       | $2\times3$ | $3\times4$ | $2\times4$ |
-      | $3\times2$ | $2\times3$ | $3\times3$: the first row's shapes in the other order |
+      | $3\times2$ | $2\times3$ | $3\times3$: the first case with the shapes swapped |
       | $2\times3$ | $2\times3$ | Undefined: inner sizes 3 and 2 differ |
-      | $2\times3$ | $3\times1$ | $2\times1$: the matrix–vector product of the first step |
+      | $2\times3$ | $3\times1$ | $2\times1$: the matrix–vector product from *One dot product per row* |
 
       **Where it shows up.** A model with several outputs keeps one weight column per output. A robot that turns 3 sensor readings into speeds for its 2 wheels does the same thing with a $3\times2$ weight matrix.
     problems:
@@ -185,7 +185,7 @@ knowledge_points:
       **Picture it.** The blue $X$ holds 5 houses as 5 rows of 3 measurements, and the amber $W$ holds the price and rent weights as 2 columns. Their product is the green $Y$: a price and a rent for every house. The amber $b$ holds one bias per output, 20 for price and 100 for rent; the dashed rows show it copied down to every house.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 255" aria-label="Shape blocks: X with 5 rows and 3 columns, matrix-multiplied by W with 3 rows and 2 columns, plus b copied to all 5 rows, gives Y with 5 rows and 2 columns" font-family="sans-serif">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 255" aria-label="Shape blocks: X with 5 rows and 3 columns, matrix-multiplied by W with 3 rows and 2 columns, plus b copied to all 5 rows, gives Y with 5 rows and 2 columns" font-family="ui-sans-serif, system-ui, sans-serif">
       <rect x="30" y="50" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
       <rect x="56" y="50" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
       <rect x="82" y="50" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
@@ -211,38 +211,38 @@ knowledge_points:
       <rect x="178" y="102" width="26" height="26" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/>
       <text x="178" y="205" text-anchor="middle" font-size="13" fill="#737373">W (3, 2)</text>
       <text x="226" y="115" text-anchor="middle" font-size="18" fill="#171717">+</text>
-      <rect x="248" y="50" width="26" height="26" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/><text x="261" y="68" text-anchor="middle" font-size="13" fill="#171717">20</text>
-      <rect x="274" y="50" width="26" height="26" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/><text x="287" y="68" text-anchor="middle" font-size="13" fill="#171717">100</text>
-      <rect x="248" y="76" width="26" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="261" y="94" text-anchor="middle" font-size="13" fill="#737373">20</text>
-      <rect x="274" y="76" width="26" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="287" y="94" text-anchor="middle" font-size="13" fill="#737373">100</text>
-      <rect x="248" y="102" width="26" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="261" y="120" text-anchor="middle" font-size="13" fill="#737373">20</text>
-      <rect x="274" y="102" width="26" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="287" y="120" text-anchor="middle" font-size="13" fill="#737373">100</text>
-      <rect x="248" y="128" width="26" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="261" y="146" text-anchor="middle" font-size="13" fill="#737373">20</text>
-      <rect x="274" y="128" width="26" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="287" y="146" text-anchor="middle" font-size="13" fill="#737373">100</text>
-      <rect x="248" y="154" width="26" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="261" y="172" text-anchor="middle" font-size="13" fill="#737373">20</text>
-      <rect x="274" y="154" width="26" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="287" y="172" text-anchor="middle" font-size="13" fill="#737373">100</text>
-      <text x="274" y="205" text-anchor="middle" font-size="13" fill="#737373">b (2,)</text>
-      <text x="322" y="115" text-anchor="middle" font-size="18" fill="#171717">=</text>
-      <rect x="344" y="50" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="370" y="50" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="344" y="76" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="370" y="76" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="344" y="102" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="370" y="102" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="344" y="128" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="370" y="128" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="344" y="154" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="370" y="154" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
-      <text x="370" y="205" text-anchor="middle" font-size="13" fill="#737373">Y (5, 2)</text>
-      <text x="416" y="90" text-anchor="start" font-size="13" fill="#171717">one row per house:</text>
-      <text x="416" y="110" text-anchor="start" font-size="13" fill="#171717">price and rent</text>
-      <text x="416" y="150" text-anchor="start" font-size="13" fill="#737373">dashed rows: b copied</text>
-      <text x="416" y="170" text-anchor="start" font-size="13" fill="#737373">to every house</text>
+      <rect x="248" y="50" width="36" height="26" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/><text x="266" y="68" text-anchor="middle" font-size="13" fill="#171717">20</text>
+      <rect x="284" y="50" width="36" height="26" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/><text x="302" y="68" text-anchor="middle" font-size="13" fill="#171717">100</text>
+      <rect x="248" y="76" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="266" y="94" text-anchor="middle" font-size="13" fill="#737373">20</text>
+      <rect x="284" y="76" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="302" y="94" text-anchor="middle" font-size="13" fill="#737373">100</text>
+      <rect x="248" y="102" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="266" y="120" text-anchor="middle" font-size="13" fill="#737373">20</text>
+      <rect x="284" y="102" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="302" y="120" text-anchor="middle" font-size="13" fill="#737373">100</text>
+      <rect x="248" y="128" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="266" y="146" text-anchor="middle" font-size="13" fill="#737373">20</text>
+      <rect x="284" y="128" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="302" y="146" text-anchor="middle" font-size="13" fill="#737373">100</text>
+      <rect x="248" y="154" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="266" y="172" text-anchor="middle" font-size="13" fill="#737373">20</text>
+      <rect x="284" y="154" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="302" y="172" text-anchor="middle" font-size="13" fill="#737373">100</text>
+      <text x="284" y="205" text-anchor="middle" font-size="13" fill="#737373">b (2,)</text>
+      <text x="342" y="115" text-anchor="middle" font-size="18" fill="#171717">=</text>
+      <rect x="364" y="50" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="390" y="50" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="364" y="76" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="390" y="76" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="364" y="102" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="390" y="102" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="364" y="128" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="390" y="128" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="364" y="154" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="390" y="154" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <text x="390" y="205" text-anchor="middle" font-size="13" fill="#737373">Y (5, 2)</text>
+      <text x="436" y="90" text-anchor="start" font-size="13" fill="#171717">one row per house:</text>
+      <text x="436" y="110" text-anchor="start" font-size="13" fill="#171717">price and rent</text>
+      <text x="436" y="150" text-anchor="start" font-size="13" fill="#737373">dashed rows: b copied</text>
+      <text x="436" y="170" text-anchor="start" font-size="13" fill="#737373">to every house</text>
       <text x="320" y="238" text-anchor="middle" font-size="14" fill="#171717">Inner sizes 3 and 3 match, so X @ W has shape (5, 2); b is broadcast to all 5 rows.</text>
       </svg>
       ```
 
-      **The idea.** **NumPy** is a Python library for grids of numbers, which it calls arrays; `import numpy as np` loads it under the short name `np`, and `np.array([[12, 3, 20], [8, 2, 5]])` builds one from a list of rows. An array's `.shape` gives its size as (rows, columns), and `@` multiplies matrices. The supervised-learning lesson called the fixed amount a model adds, whatever the inputs, a **bias**: a base amount every prediction starts from. In `X @ W + b`, NumPy **broadcasts** `b`: because `b` has one entry per column, it is reused for every row. The **transpose**, written $W^\top$ in maths and `W.T` in NumPy, swaps rows and columns, so a (3, 2) array becomes (2, 3). Code sometimes stores weights with one row per output; `.T` turns those rows into the columns `@` expects.
+      **The idea.** **NumPy** is a Python library for grids of numbers, which it calls arrays; `import numpy as np` loads it under the short name `np`, and `np.array([[12, 3, 20], [8, 2, 5]])` builds one from a list of rows. An array's `.shape` gives its size as (rows, columns), and `@` multiplies matrices. Many models also add a fixed amount to every prediction, whatever the inputs: a **bias**, the base amount every prediction starts from. In `X @ W + b`, NumPy **broadcasts** `b`: because `b` has one entry per column, it is reused for every row. The **transpose**, written $W^\top$ in maths and `W.T` in NumPy, swaps rows and columns, so a (3, 2) array becomes (2, 3). Code sometimes stores weights with one row per output; `.T` turns those rows into the columns `@` expects.
 
       **Common confusion.** “`X * W` does the same as `X @ W`.” No: `*` multiplies the numbers in matching positions and adds nothing up. For two (1, 3) arrays, `[[1, 2, 3]] * [[4, 5, 6]]` gives `[[4, 10, 18]]`, not the dot product 32. For shapes (2, 3) and (3, 2) it stops with an error, because there are no matching positions.
     worked: |
@@ -264,7 +264,7 @@ knowledge_points:
       print(X @ W_rows.T + b)      # the same Y again
       ```
 
-      1. **Multiply.** `X @ W` is the product from the last step.
+      1. **Multiply.** `X @ W` is the product $XW$ from *Multiplying two matrices*.
          $$XW=\begin{bmatrix}310&1250\\215&875\end{bmatrix}$$
 
       2. **Broadcast the bias.** `b` is copied down to both rows.

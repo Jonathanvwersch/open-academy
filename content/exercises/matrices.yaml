@@ -148,7 +148,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: |
-      A house has measurements $({{=u}},{{=v}})$ and the model's weights are $({{=a}},{{=b}})$. What score does the row-vector product give?
+      A house has two measurements $({{=u}},{{=v}})$, written as a $1\times2$ matrix, and the model's weights are $({{=a}},{{=b}})$. What single number does the matrix times the weight vector give?
     solution: 'Multiply matching entries and add: ${{=u}}\cdot{{=a}}+{{=v}}\cdot{{=b}}={{=u*a+v*b}}$.'
     tolerance:
       abs: 1.0e-06
@@ -219,7 +219,7 @@ exercises:
       - id: d
         text: A list of the entries that appear in both of the two matrices.
         correct: false
-        feedback: Matching dimensions determine whether a product is valid.
+        feedback: A product doesn't look for shared entries; each output entry is one left row dotted with one right column.
     solution: A matrix product combines two number grids, with each output entry formed from a left row and right column.
   - id: matp-products-self-explain
     dimension: conceptual
@@ -432,11 +432,11 @@ exercises:
       - id: a
         text: It adds the two adjustments to every house row.
         correct: true
-        feedback: Each score column receives its matching bias for every house.
+        feedback: Each output column receives its matching bias for every house.
       - id: b
         text: It adds two new columns to every row.
         correct: false
-        feedback: Bias addition changes values, not the number of score columns.
+        feedback: Bias addition changes values, not the number of output columns.
       - id: c
         text: It adds the adjustments only to the first row.
         correct: false
@@ -448,7 +448,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: A model stores five houses with three measurements each in NumPy array X, shape (5, 3). W holds weights for sale price and monthly rent, shape (3, 2), and b holds one fixed adjustment for each output, shape (2,). Which line gives both adjusted predictions for every house?
-    solution: X rows dot W columns, giving shape (5, 2). Adding b broadcasts one bias per score across all five houses.
+    solution: X rows dot W columns, giving shape (5, 2). Adding b broadcasts one bias per output across all five houses.
     options:
       - id: a
         text: "`Y = X @ W + b`"
@@ -468,7 +468,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A house has area ${{=a}}$ tens of square metres and ${{=b}}$ bedrooms. A simplified sale-price model uses weights $(2,-1)$ thousand pounds per measurement unit and adds a bias of {{=c}} thousand pounds. What is its predicted sale price, in thousands of pounds?
+    prompt: A house has area ${{=a}}$ tens of square metres and a bedroom count of ${{=b}}$. A simplified sale-price model uses weights $(2,-1)$ thousand pounds per measurement unit and adds a bias of ${{=c}}$ thousand pounds. What is its predicted sale price, in thousands of pounds?
     solution: 'First take the dot product: $2\cdot{{=a}}-{{=b}}={{=2*a-b}}$. Add the bias to get ${{=2*a-b}}+({{=c}})={{=2*a-b+c}}$.'
     tolerance:
       abs: 1.0e-06
@@ -510,21 +510,21 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: Why use `X @ W` instead of a Python loop of separate house-score dot products, and why isn't `X * W` a substitute?
-    solution: A loop can compute the same predictions, but `@` groups the row-column dot products for efficient numerical-library execution. For house row $(12,3,20)$ and price weights $(25,10,-1)$, the prediction is $12\cdot25+3\cdot10+20\cdot(-1)=310$. Elementwise multiplication does not sum those contributions.
+    prompt: You could price houses one at a time, dotting each house row with each weight column. How does `X @ W` relate to doing that, and why isn't `X * W` a substitute?
+    solution: Each entry of `X @ W` is one house row dotted with one weight column, exactly what pricing house by house computes; `@` does them all in one line. For house row $(12,3,20)$ and price weights $(25,10,-1)$ that entry is $12\cdot25+3\cdot10+20\cdot(-1)=310$. `*` multiplies matching positions and never adds them up.
     options:
       - id: a
-        text: "`@` groups the same dot products efficiently, while `*` does not add the measurement contributions."
+        text: "`X @ W` does the same row-column dot products in one line, while `*` never adds the products."
         correct: true
-        feedback: The loop is mathematically valid, but `@` handles the repeated house-score calculation in the library.
+        feedback: Same dot products, one line. `*` only multiplies numbers in matching positions.
       - id: b
-        text: A loop cannot compute these scores correctly, regardless of how it is written.
+        text: Pricing one house at a time gives different predictions, because `@` pairs the weights differently.
         correct: false
-        feedback: Correctly written loops give the same scores. The benefit is organised, efficient execution, not different mathematics.
+        feedback: Each entry of `X @ W` is the same row-column dot product, so the predictions are identical.
       - id: c
-        text: "`*` gives the same scores as `@` whenever both arrays have equal row and column counts."
+        text: "`*` gives the same predictions as `@` whenever both arrays have equal row and column counts."
         correct: false
-        feedback: "Square shapes do not change the operations: `*` multiplies corresponding entries without summing across measurements."
+        feedback: "Even for equal shapes, `*` multiplies matching positions and adds nothing, so no dot product is formed."
   - id: matp-robot-dot-count
     dimension: math
     type: numeric
