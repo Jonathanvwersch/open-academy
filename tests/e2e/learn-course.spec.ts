@@ -27,6 +27,7 @@ const mathLinesScreenshotDir = '/home/ubuntu/screenshots/math-lines';
 const courseComingSoonScreenshotDir = '/home/ubuntu/screenshots/course-coming-soon';
 const navCleanupScreenshotDir = '/home/ubuntu/screenshots/nav-cleanup';
 const xpFinishScreenshotDir = '/home/ubuntu/screenshots/xp-finish';
+const chooseLessonScreenshotDir = '/home/ubuntu/screenshots/choose-lesson';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(brandScreenshotDir, { recursive: true });
 mkdirSync(courseStructureScreenshotDir, { recursive: true });
@@ -37,6 +38,7 @@ mkdirSync(mathLinesScreenshotDir, { recursive: true });
 mkdirSync(courseComingSoonScreenshotDir, { recursive: true });
 mkdirSync(navCleanupScreenshotDir, { recursive: true });
 mkdirSync(xpFinishScreenshotDir, { recursive: true });
+mkdirSync(chooseLessonScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async ({ page }) => {
@@ -170,6 +172,77 @@ test('navigation has four destinations and Lab redirects to Course', async ({ pa
   await page.goto('/lab');
   await expect(page).toHaveURL(/\/course$/);
   await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();
+});
+
+test('Home offers alternative lessons and starts the selected lesson', async ({ page }) => {
+  await markDiagnosticComplete();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/');
+  const learn = await page.evaluate(async () => {
+    const response = await fetch('/api/learn');
+    return response.json() as Promise<{
+      choices: Array<{
+        conceptId: string;
+        title: string;
+        xp: number;
+        recommended: boolean;
+      }>;
+    }>;
+  });
+  expect(learn.choices.length).toBeGreaterThan(1);
+  const chosen = learn.choices.find((choice) => !choice.recommended);
+  if (!chosen) throw new Error('Expected a non-recommended lesson choice');
+
+  await expect(page.getByRole('heading', { name: 'Or pick a lesson', exact: true })).toBeVisible();
+  const choicesList = page
+    .getByRole('heading', { name: 'Or pick a lesson', exact: true })
+    .locator('..')
+    .getByRole('list');
+  await expect(choicesList.getByRole('listitem')).toHaveCount(learn.choices.length);
+  for (const choice of learn.choices) {
+    await expect(choicesList.getByText(choice.title, { exact: true })).toBeVisible();
+  }
+  const recommended = learn.choices.find((choice) => choice.recommended);
+  if (recommended) {
+    await expect(
+      choicesList
+        .getByRole('listitem')
+        .filter({ hasText: recommended.title })
+        .getByText('Recommended', { exact: true }),
+    ).toBeVisible();
+  }
+  const chosenRow = choicesList.getByRole('listitem').filter({ hasText: chosen.title });
+  await expect(chosenRow.getByText(`+${chosen.xp} XP`, { exact: true })).toBeVisible();
+  await expect(chosenRow.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
+  await page.screenshot({
+    path: `${chooseLessonScreenshotDir}/home-desktop.png`,
+    fullPage: true,
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({
+    path: `${chooseLessonScreenshotDir}/home-mobile.png`,
+    fullPage: true,
+  });
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await chosenRow.getByRole('button', { name: 'Start', exact: true }).click();
+  await expect(page).toHaveURL(/\/session\//);
+  await expect(page.getByRole('heading', { name: chosen.title, exact: true })).toBeVisible();
+  const sessionId = new URL(page.url()).pathname.split('/').at(-1);
+  if (!sessionId) throw new Error('Expected a session id after starting the lesson');
+  const session = await page.evaluate(async (id) => {
+    const response = await fetch(`/api/sessions/${id}`);
+    return response.json() as Promise<{
+      activities: Array<{ kind: string; conceptId?: string }>;
+    }>;
+  }, sessionId);
+  expect(
+    session.activities.some(
+      (activity) => activity.kind === 'learn' && activity.conceptId === chosen.conceptId,
+    ),
+  ).toBe(true);
 });
 
 test('unknown projects show the unavailable route message', async ({ page }) => {

@@ -182,6 +182,140 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
   expect(await rowCounts()).toEqual(before);
 });
 
+test('lesson choices exclude locked, completed and stub concepts and retain the recommended lesson past five', async () => {
+  const outlineIds = Array.from(
+    new Set(
+      (content.curriculum?.weeks ?? [])
+        .slice()
+        .sort((left, right) => left.week - right.week)
+        .flatMap((week) => week.concepts),
+    ),
+  );
+  const initial = await (await get('/learn')).json();
+  expect(initial.choices.map((choice: { conceptId: string }) => choice.conceptId)).not.toContain(
+    'dot-product',
+  );
+  const stubConceptId = outlineIds.find(
+    (conceptId) => content.conceptsById.get(conceptId)?.status === 'stub',
+  );
+  if (!stubConceptId) throw new Error('Expected a stub concept in the course outline');
+  expect(initial.choices.map((choice: { conceptId: string }) => choice.conceptId)).not.toContain(
+    stubConceptId,
+  );
+
+  const targets: typeof content.concepts = [];
+  for (const conceptId of outlineIds) {
+    const concept = content.conceptsById.get(conceptId);
+    const lesson = content.lessonsByConcept.get(conceptId);
+    if (
+      concept?.status !== 'authored' ||
+      !lesson?.knowledge_points?.length ||
+      concept.prereqs.some((prerequisite) =>
+        targets.some((target) => target.id === prerequisite.id),
+      ) ||
+      targets.some((target) => target.prereqs.some((prerequisite) => prerequisite.id === conceptId))
+    ) {
+      continue;
+    }
+    targets.push(concept);
+    if (targets.length === 6) break;
+  }
+  if (targets.length !== 6) throw new Error('Expected six independent authored lessons');
+  const targetIds = new Set(targets.map((concept) => concept.id));
+  await db
+    .update(users)
+    .set({ prefs: { scheduleMinutes: 600 } })
+    .where(eq(users.id, userId));
+  await db.insert(lessonRuns).values(
+    content.concepts
+      .filter((concept) => !targetIds.has(concept.id))
+      .map((concept) => ({
+        userId,
+        conceptId: concept.id,
+        status: 'completed' as const,
+        completedAt: new Date('2026-01-07T11:00:00.000Z'),
+      })),
+  );
+  const recommendedConcept = targets[5];
+  if (!recommendedConcept) throw new Error('Expected a sixth lesson target');
+  await db.insert(lessonRuns).values({
+    userId,
+    conceptId: recommendedConcept.id,
+    status: 'in_progress',
+  });
+
+  const learn = await (await get('/learn')).json();
+  const recommendedConceptId = learn.tasks.find(
+    (task: { activityKind: string; conceptId?: string }) => task.activityKind === 'learn',
+  )?.conceptId;
+  expect(recommendedConceptId).toBe(recommendedConcept.id);
+  expect(learn.choices.map((choice: { conceptId: string }) => choice.conceptId)).toEqual([
+    ...targets.slice(0, 5).map((concept) => concept.id),
+    recommendedConcept.id,
+  ]);
+  expect(learn.choices).toHaveLength(6);
+  expect(learn.choices[5]).toMatchObject({
+    conceptId: recommendedConcept.id,
+    recommended: true,
+  });
+  expect(
+    learn.choices.slice(0, 5).every((choice: { recommended: boolean }) => !choice.recommended),
+  ).toBe(true);
+  expect(learn.choices.map((choice: { conceptId: string }) => choice.conceptId)).not.toContain(
+    'dot-product',
+  );
+  expect(learn.choices[0]?.xp).toBe(
+    (content.lessonsByConcept.get(targets[0]?.id ?? '')?.knowledge_points?.length ?? 0) * 10,
+  );
+});
+
+test('lesson choices are empty while a session is active', async () => {
+  const started = await app.request('/api/sessions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': '2026-01-07T12:00:00.000Z' },
+    body: JSON.stringify({ budgetMinutes: 60 }),
+  });
+  expect(started.status).toBe(201);
+  const response = await get('/learn');
+  expect((await response.json()).choices).toEqual([]);
+});
+
+test('a focused session replaces the default new lesson and rejects locked concepts', async () => {
+  const learnResponse = await get('/learn');
+  const learn = await learnResponse.json();
+  const focusedChoice = learn.choices.find(
+    (choice: { recommended: boolean }) => !choice.recommended,
+  );
+  if (!focusedChoice) throw new Error('Expected a non-recommended lesson choice');
+  const response = await app.request('/api/sessions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': '2026-01-07T12:00:00.000Z' },
+    body: JSON.stringify({ budgetMinutes: 60, focusConceptId: focusedChoice.conceptId }),
+  });
+  expect(response.status).toBe(201);
+  const session = await response.json();
+  const learnActivities = session.activities.filter(
+    (activity: { kind: string }) => activity.kind === 'learn',
+  );
+  expect(learnActivities.map((activity: { conceptId: string }) => activity.conceptId)).toEqual([
+    focusedChoice.conceptId,
+  ]);
+  const recommendedConceptId = learn.tasks.find(
+    (task: { activityKind: string; conceptId?: string }) => task.activityKind === 'learn',
+  )?.conceptId;
+  expect(
+    learnActivities.map((activity: { conceptId: string }) => activity.conceptId),
+  ).not.toContain(recommendedConceptId);
+
+  const locked = await app.request('/api/sessions', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': '2026-01-07T12:00:00.000Z' },
+    body: JSON.stringify({ focusConceptId: 'dot-product' }),
+  });
+  expect(locked.status).toBe(409);
+  expect(await locked.json()).toEqual({ error: 'Finish Vectors and vector operations first' });
+});
+
 test('Course project status reflects the learner project-progress row', async () => {
   await db.insert(projectProgress).values({
     userId,

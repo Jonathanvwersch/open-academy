@@ -43,6 +43,20 @@ function LearnPage() {
       window.location.href = `/session/${id}`;
     },
   });
+  const startChoice = useMutation({
+    mutationFn: async (focusConceptId: string) => {
+      const response = await apiFetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ focusConceptId }),
+      });
+      if (!response.ok) throw new Error('Could not start the selected lesson');
+      return response.json() as Promise<{ id: string }>;
+    },
+    onSuccess: ({ id }) => {
+      window.location.href = `/session/${id}`;
+    },
+  });
   const maxXp = Math.max(1, ...data.xp.week.flatMap((day) => [day.xp, day.goal]));
   const dayTotal = data.xp.week.reduce((total, day) => total + day.xp, 0);
 
@@ -137,6 +151,45 @@ function LearnPage() {
               ) : (
                 <p className="text-sm text-muted-foreground">No tasks planned for today.</p>
               )}
+              {!data.activeSessionId && data.choices.length > 1 ? (
+                <div className="space-y-3 border-t pt-4">
+                  <h3 className="text-sm font-medium">Or pick a lesson</h3>
+                  <ul className="divide-y">
+                    {data.choices.map((choice) => (
+                      <li
+                        key={choice.conceptId}
+                        className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                      >
+                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="min-w-0 font-medium leading-5">{choice.title}</span>
+                          {choice.recommended ? (
+                            <Badge variant="secondary">Recommended</Badge>
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-3">
+                          <span className="text-sm text-muted-foreground">+{choice.xp} XP</span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => startChoice.mutate(choice.conceptId)}
+                            loading={
+                              startChoice.isPending && startChoice.variables === choice.conceptId
+                            }
+                          >
+                            Start
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  {startChoice.isError ? (
+                    <p role="alert" className="text-sm text-destructive">
+                      {startChoice.error.message}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 
