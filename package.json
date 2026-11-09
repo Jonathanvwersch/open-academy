@@ -22,7 +22,8 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "build": "vite build --config vite.config.ts && tsc -p tsconfig.server.json",
-    "start": "tsx src/server/prod.ts"
+    "start": "tsx src/server/prod.ts",
+    "vercel-build": "pnpm build && tsx scripts/vercel-migrate.ts"
   },
   "dependencies": {
     "@dagrejs/dagre": "3.1.3",
