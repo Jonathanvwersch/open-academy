@@ -105,7 +105,7 @@ exercises:
     role: check
     difficulty: 2
     est_minutes: 3
-    prompt: "A two-layer network has ($W_1 = \\begin{pmatrix}1&0\\\\-1&1\\end{pmatrix}$, $b_1 = (0,-2)$, ReLU, $W_2 = (2, 3)$, $b_2 = 1$), compute $\\hat y$ for $x = (1, 4)$."
+    prompt: "A two-layer network has $W_1 = \\begin{pmatrix}1&0\\\\-1&1\\end{pmatrix}$, $b_1 = (0,-2)$, ReLU, $W_2 = (2, 3)$ and $b_2 = 1$. Compute $\\hat y$ for $x = (1, 4)$."
     answer: 6
     tolerance: { abs: 0.001 }
     hints: ["$W_1 x + b_1 = (1, 3) + (0, -2)$."]
@@ -269,7 +269,13 @@ exercises:
       p: { min: -3, max: 3 }
       x1: { min: 1, max: 3 }
       x2: { min: 1, max: 3 }
-    constraints: ["p != 0", "w1 != 0", "a * x1 + c * x2 + q != w1 * x1 + w2 * x2 + p"]
+    constraints:
+      [
+        "p != 0",
+        "w1 != 0",
+        "a * x1 + c * x2 + q != w1 * x1 + w2 * x2 + p",
+        "a * x1 + c * x2 + q != w1 * x1 + w2 * x2",
+      ]
     tolerance: { abs: 0.001 }
     common_wrong:
       - {
@@ -328,7 +334,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "Each row calculates one neuron's weighted sum, so a computer can process many neuron calculations together without changing their results",
+          text: "Each row gives one neuron's weighted sum, so one product computes every score at once",
           correct: true,
         }
       - {
@@ -361,11 +367,7 @@ exercises:
     est_minutes: 1
     prompt: "A layer has $W = \\begin{pmatrix}1 & 1\\\\ -1 & 1\\end{pmatrix}$ and reads the input $x = (x_1, x_2)$. What does the $-1$ in row 2, column 1 mean?"
     options:
-      - {
-          id: a,
-          text: "Neuron 2's weight on $x_1$: a larger $x_1$ lowers neuron 2's score",
-          correct: true,
-        }
+      - { id: a, text: "Neuron 2's weight on $x_1$", correct: true }
       - {
           id: b,
           text: "Neuron 1's weight on $x_2$",
@@ -391,19 +393,19 @@ exercises:
     options:
       - {
           id: a,
-          text: "Without it the next layer's weighted sum would collapse the two layers into one",
+          text: "Without it, the two layers would collapse into one weighted sum",
           correct: true,
         }
       - {
           id: b,
-          text: "To make the matrix product possible",
+          text: "So that the matrix product of the two layers is possible",
           correct: false,
           category: incorrect_reasoning,
           feedback: "The product works with or without an activation. The activation is about what the network can represent.",
         }
       - {
           id: c,
-          text: "To turn the scores into 0 or 1 answers",
+          text: "To turn every score into an answer of 0 or 1",
           correct: false,
           category: misunderstood_definition,
           feedback: "That's the step rule. ReLU keeps positive scores as they are.",
@@ -491,7 +493,8 @@ exercises:
       u: { min: 1, max: 3 }
       v: { min: 1, max: 3 }
       r: { min: 1, max: 3 }
-    constraints: ["a * x1 + b * x2 + p > 0", "c * x1 + d * x2 + q < 0"]
+    constraints:
+      ["a * x1 + b * x2 + p > 0", "c * x1 + d * x2 + q < 0", "v * (c * x1 + d * x2 + q) != -r"]
     tolerance: { abs: 0.001 }
     common_wrong:
       - {
@@ -571,14 +574,10 @@ exercises:
     est_minutes: 1
     prompt: "What are a network's hidden values $h$?"
     options:
-      - {
-          id: a,
-          text: "Numbers the network computes between its input and output; they aren't in the data",
-          correct: true,
-        }
+      - { id: a, text: "Values the network computes between its input and output", correct: true }
       - {
           id: b,
-          text: "Inputs the learner can't see",
+          text: "Extra inputs that are kept out of view",
           correct: false,
           category: misunderstood_definition,
           feedback: "Every input is given. Hidden values are computed from them by the first layer.",
@@ -696,7 +695,7 @@ exercises:
     params:
       din: { min: 2, max: 20 }
       dh: { min: 2, max: 16 }
-      dout: { min: 1, max: 5 }
+      dout: { min: 2, max: 5 }
     tolerance: { abs: 0.5 }
     common_wrong:
       - {
@@ -743,7 +742,7 @@ exercises:
           category: misunderstood_definition,
           feedback: "Hidden values are computed results, not adjustable weights or biases. More results require more storage, not more model parameters.",
         }
-    solution: "A layer with 2 inputs and 2 neurons has $2 \\times 2 + 2 = 6$ parameters whether it sees 8 or 32 houses. Its output grows from $8 \\times 2$ to $32 \\times 2$, but all rows reuse the same 6 parameters."
+    solution: "The weights and biases belong to the layers, not to the houses, so every row reuses them. For example, a layer with 2 inputs and 2 neurons has $2 \\times 2 + 2 = 6$ parameters whether it sees 8 or 32 houses; only its output grows, from $8 \\times 2$ to $32 \\times 2$."
   - id: mlpp-hidden-array-size
     dimension: implementation
     type: numeric
@@ -776,7 +775,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "$W^\\top$ is $d_\\text{in} \\times d_\\text{out}$, so the inner sizes match and each row of $X$ is dotted with each neuron's weights",
+          text: "$W^\\top$ is $d_\\text{in} \\times d_\\text{out}$, so the inner sizes match",
           correct: true,
         }
       - {
