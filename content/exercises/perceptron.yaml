@@ -324,7 +324,7 @@ exercises:
           answer: 1.5,
           tolerance: { abs: 0.001 },
           category: math_error,
-          feedback: "That score leaves out the bias. Add $b = -0.5$ before applying the step rule.",
+          feedback: "That score adds the bias as $+0.5$. The bias is $-0.5$, so the score is $2 - 1 - 0.5 = 0.5$.",
         }
     solution: "The score is $z = 1 \\cdot 2 + (-2) \\cdot 0.5 - 0.5 = 2 - 1 - 0.5 = 0.5$. It's above 0, so the step rule outputs 1: shortlist it."
   - id: percp-score-template
@@ -350,6 +350,7 @@ exercises:
       b: { min: -3, max: -1 }
       x1: { min: 0.5, max: 2, step: 0.5 }
       x2: { min: 0.5, max: 3, step: 0.5 }
+    constraints: ["2 * w2 * x2 != b"]
     tolerance: { abs: 0.001 }
     common_wrong:
       - {

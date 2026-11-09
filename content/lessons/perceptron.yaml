@@ -3,11 +3,11 @@ version: 4
 objective: |
   **Goal:** compute a perceptron's yes-or-no output, see how a straight line splits its yes and no inputs, and explain why one perceptron cannot compute XOR.
 where_this_fits: |
-  A gripper's rule says which answer we want: close only if an object is detected and the fingers are not already closed. A perceptron, the simplest model neuron, turns weighted measurements into yes or no. Can it match every required answer? Each input is 0 or 1, so there are four pairs: (0,0),(1,0),(0,1),(1,1) — the corners of a square.
+  A robot gripper needs a yes-or-no decision: close only if an object is detected and the fingers are not already closed. Linear regression's weighted sum plus a bias gives a number, such as 0.5 or −1.5, not a decision. A perceptron, the simplest model neuron, turns that score into yes or no. With inputs of 0 or 1 there are four input pairs, (0,0),(1,0),(0,1),(1,1): the corners of a square. Which yes-or-no rules on those corners can one perceptron match?
 
   1. Turn a weighted score into a yes-or-no answer.
   2. Draw the straight line separating the inputs that get each answer.
-  3. Test AND, OR, NAND and XOR rules: which required answers can one line separate?
+  3. Test rules such as "both inputs are 1" and "exactly one input is 1": which can one line separate?
 
   Next, you'll replace the on/off step with smoother functions.
 knowledge_points:
@@ -113,7 +113,7 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** A **decision boundary** is the set of inputs scoring zero. With at least one weight not zero, two input measurements give a line; three give a plane (both weights zero means score $b$ everywhere, no separating line).
+      **The idea.** A **decision boundary** is the set of inputs scoring zero. With at least one weight not zero, two input measurements give a line; three give a plane. If every weight is zero, the score is $b$ everywhere, so there is no boundary.
 
       This flat (straight, without curves) boundary is a **hyperplane**. Changing the weights' ratio turns it; scaling all of $w$ and $b$ together by a positive factor leaves it unchanged. The Compare cases table after the worked example shows this.
 
