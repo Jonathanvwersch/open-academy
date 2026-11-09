@@ -51,7 +51,7 @@ async function createSession(page: Page, focusConcept = true) {
   ).toEqual(['sl-explain-setup']);
   await page.goto(`/session/${session.session.id}`);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
-  await expect(page.getByText(/^Learn · \d+ of \d+ today$/)).toBeVisible();
+  await expect(page.getByText(/^Learn · Activity \d+ of \d+ today$/)).toBeVisible();
   await expect.poll(async () => (await currentRun(page))?.pendingProblem?.id).toBeTruthy();
   return session.session.id as string;
 }
