@@ -211,7 +211,7 @@ knowledge_points:
       <path d="M50 160 Q230 112 410 40" stroke="#737373" stroke-width="2" fill="#171717" fill-opacity="0"/>
       <path d="M170 125.333333 L290 85.333333" stroke="#3b82f6" stroke-width="2"/>
       <circle cx="170" cy="125.333333" r="4" fill="#3b82f6"/><circle cx="290" cy="85.333333" r="4" fill="#3b82f6"/><circle cx="230" cy="106" r="4" fill="#171717"/>
-      <text x="75" y="112">7.84</text><text x="300" y="78">10.24</text><text x="235" y="140">L = 9</text>
+      <text x="162" y="113.333333" text-anchor="end">7.84</text><text x="300" y="109.333333">10.24</text><text x="238" y="130">L = 9</text>
       <text x="155" y="220">0.9</text><text x="225" y="220">1</text><text x="280" y="220">1.1</text><text x="400" y="235">w</text><text x="15" y="25">loss</text>
       </g>
       </svg>
@@ -248,7 +248,7 @@ knowledge_points:
       | 0.1 | 12 | 12 |
       | 0.01 | 12 | 12 |
 
-      **Where it shows up.** Check a few network parameters before trusting a new backward implementation. A batch-size factor mismatch often points to averaging twice or not averaging at all.
+      **Where it shows up.** Check a few network parameters before trusting a new backward implementation. If the backward slope and the estimate differ by a factor equal to the number of examples, the mean was probably divided twice or not at all.
     problems:
       [
         bp-checking-basics,
