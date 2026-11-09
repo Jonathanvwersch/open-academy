@@ -570,7 +570,9 @@ export function TutorContextProvider({
                             <p className="w-full text-left text-xs font-medium text-muted-foreground">
                               Tutor
                             </p>
-                            <MessageContent>
+                            <MessageContent
+                              style={{ '--katex-cover': 'var(--sidebar)' } as React.CSSProperties}
+                            >
                               <Markdown>{greeting.text}</Markdown>
                             </MessageContent>
                           </Message>
@@ -592,7 +594,14 @@ export function TutorContextProvider({
                             >
                               {message.role === 'user' ? 'You' : 'Tutor'}
                             </p>
-                            <MessageContent>
+                            <MessageContent
+                              style={
+                                {
+                                  '--katex-cover':
+                                    message.role === 'user' ? 'var(--secondary)' : 'var(--sidebar)',
+                                } as React.CSSProperties
+                              }
+                            >
                               <Markdown>{message.content}</Markdown>
                             </MessageContent>
                           </Message>
@@ -610,7 +619,11 @@ export function TutorContextProvider({
                               <p className="w-full text-right text-xs font-medium text-muted-foreground">
                                 You
                               </p>
-                              <MessageContent>
+                              <MessageContent
+                                style={
+                                  { '--katex-cover': 'var(--secondary)' } as React.CSSProperties
+                                }
+                              >
                                 <Markdown>{visiblePendingSend.content}</Markdown>
                               </MessageContent>
                             </Message>
@@ -619,7 +632,10 @@ export function TutorContextProvider({
                                 <p className="w-full text-xs font-medium text-muted-foreground">
                                   Tutor
                                 </p>
-                                <MessageContent className="rounded-lg bg-muted px-4 py-3">
+                                <MessageContent
+                                  className="rounded-lg bg-muted px-4 py-3"
+                                  style={{ '--katex-cover': 'var(--muted)' } as React.CSSProperties}
+                                >
                                   <div
                                     role="status"
                                     aria-label="Tutor is responding"

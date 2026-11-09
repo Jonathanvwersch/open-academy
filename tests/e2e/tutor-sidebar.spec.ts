@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { eq } from 'drizzle-orm';
 import { createDb } from '../../src/server/db/client.js';
 import { sessionActivities, studySessions, users } from '../../src/server/db/schema.js';
@@ -21,6 +21,8 @@ const headerScreenshotDir = '/home/ubuntu/screenshots/tutor-header';
 mkdirSync(headerScreenshotDir, { recursive: true });
 const latexScreenshotDir = '/home/ubuntu/screenshots/tutor-latex';
 mkdirSync(latexScreenshotDir, { recursive: true });
+const tutorMathScreenshotDir = '/home/ubuntu/screenshots/tutor-math';
+mkdirSync(tutorMathScreenshotDir, { recursive: true });
 let sessionId = '';
 
 test.beforeEach(async () => {
@@ -57,6 +59,69 @@ test.beforeEach(async () => {
   sessionId = session.id;
   await db.$client.end();
 });
+
+async function openMockedTutorReply(page: Page, threadId: string, question: string, reply: string) {
+  const updatedAt = '2026-01-01T12:00:00.002Z';
+  const messages = [
+    {
+      id: `${threadId}-user`,
+      role: 'user',
+      content: question,
+      createdAt: '2026-01-01T12:00:00.001Z',
+    },
+    {
+      id: `${threadId}-assistant`,
+      role: 'assistant',
+      content: reply,
+      createdAt: updatedAt,
+    },
+  ];
+  const thread = {
+    id: threadId,
+    conceptId: 'supervised-learning',
+    title: 'Math display test',
+    updatedAt,
+  };
+
+  await page.route('**/api/tutor/threads**', async (route) => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ thread, messages }),
+      });
+      return;
+    }
+    if (route.request().url().endsWith(`/api/tutor/threads/${threadId}`)) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          thread: {
+            ...thread,
+            conceptTitle: 'Supervised learning',
+            messageCount: messages.length,
+            lastMessagePreview: question,
+          },
+          messages,
+        }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.fill(question);
+  await textarea.press('Enter');
+  const assistantMessage = tutor.getByTestId('tutor-assistant-message');
+  await expect(assistantMessage.locator('.katex-display')).toHaveCount(1);
+  return { tutor, assistantMessage };
+}
 
 test('Course tutor sidebar fills at least 90 percent of the viewport height', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -510,6 +575,100 @@ test('tutor reply renders TeX inline and display delimiters', async ({ page }) =
   expect(renderedMathText).not.toContain('\\(');
   expect(renderedMathText).not.toContain('\\[');
   await page.screenshot({ path: `${latexScreenshotDir}/reply.png`, fullPage: true });
+});
+
+test('long tutor display math scrolls within its message and panel at desktop and mobile widths', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const reply = String.raw`$$\mathrm{MSE}(c)=\frac{(c-23)^2+(c-26)^2+(c-41)^2}{3}$$`;
+  const { tutor } = await openMockedTutorReply(
+    page,
+    '00000000-0000-4000-8000-000000000003',
+    'Show the mean squared error formula.',
+    reply,
+  );
+  const display = page.getByTestId('tutor-assistant-message').locator('.katex-display');
+  const measure = async (viewport: string) => {
+    const geometry = await display.evaluate((element) => {
+      const displayRect = element.getBoundingClientRect();
+      const messageContent = element.closest('.markdown')?.parentElement;
+      const messageRect = messageContent?.getBoundingClientRect();
+      const panelRect = element.closest('.bg-sidebar')?.getBoundingClientRect();
+      if (!messageRect || !panelRect) throw new Error('Tutor math containers were not found');
+      return {
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+        displayLeft: displayRect.left,
+        displayRight: displayRect.right,
+        messageContentRight: messageRect.right,
+        panelRight: panelRect.right,
+      };
+    });
+    console.log(`tutor math ${viewport}: ${JSON.stringify(geometry)}`);
+    expect(geometry.scrollWidth).toBeGreaterThan(geometry.clientWidth);
+    expect(geometry.displayRight).toBeLessThanOrEqual(geometry.messageContentRight + 0.5);
+    expect(geometry.messageContentRight).toBeLessThanOrEqual(geometry.panelRight + 0.5);
+    return geometry;
+  };
+
+  await tutor.screenshot({
+    path: `${tutorMathScreenshotDir}/long-equation-desktop.png`,
+    animations: 'disabled',
+  });
+  await measure('desktop');
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileTutor = page.locator('[data-slot="sidebar"][data-mobile="true"]');
+  await expect(mobileTutor).toBeVisible();
+  await mobileTutor.screenshot({
+    path: `${tutorMathScreenshotDir}/long-equation-mobile.png`,
+    animations: 'disabled',
+  });
+  await measure('mobile');
+});
+
+test('short tutor display math fits without scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { tutor, assistantMessage } = await openMockedTutorReply(
+    page,
+    '00000000-0000-4000-8000-000000000004',
+    'Show a short equation.',
+    '$$x^2+y^2=1$$',
+  );
+  const display = assistantMessage.locator('.katex-display');
+  await expect(assistantMessage.locator('.katex-error')).toHaveCount(0);
+  await expect
+    .poll(() => display.evaluate((element) => element.scrollWidth - element.clientWidth))
+    .toBe(0);
+  await tutor.screenshot({
+    path: `${tutorMathScreenshotDir}/short-equation.png`,
+    animations: 'disabled',
+  });
+});
+
+test('aligned tutor display math fits at desktop panel width', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const reply = String.raw`Let $S$ be the sum of squared errors.
+
+$$\begin{aligned}
+\mathrm{MSE} &= \frac{S}{n}\\
+S &= \sum_i e_i^2
+\end{aligned}$$`;
+  const { tutor, assistantMessage } = await openMockedTutorReply(
+    page,
+    '00000000-0000-4000-8000-000000000005',
+    'Show the mean squared error in two steps.',
+    reply,
+  );
+  const display = assistantMessage.locator('.katex-display');
+  await expect(assistantMessage.locator('.katex-error')).toHaveCount(0);
+  await expect
+    .poll(() => display.evaluate((element) => element.scrollWidth - element.clientWidth))
+    .toBe(0);
+  await tutor.screenshot({
+    path: `${tutorMathScreenshotDir}/aligned-equation.png`,
+    animations: 'disabled',
+  });
 });
 
 test('tutor Context follows the session, lesson, and home pages', async ({ page }) => {
