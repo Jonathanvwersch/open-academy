@@ -739,28 +739,8 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
           `knowledge-point explain has ${explanationWords} words; maximum is 250`,
         );
       }
-      if (
-        !point.explain
-          .split(/\r?\n/)
-          .some((line) => line.trimStart().startsWith('**Why this is useful.**'))
-      ) {
-        addIssue(
-          issues,
-          file,
-          point.id,
-          'knowledge-point explain must contain a line starting with "**Why this is useful.**"',
-        );
-      }
       if (!point.worked.trim())
         addIssue(issues, file, point.id, 'knowledge-point worked must not be empty');
-      if (!point.worked.trimStart().startsWith('This example shows')) {
-        addIssue(
-          issues,
-          file,
-          point.id,
-          'knowledge-point worked must start with "This example shows"',
-        );
-      }
       if (point.problems.length < 3) {
         addIssue(issues, file, point.id, 'knowledge point must reference at least 3 problems');
       }
