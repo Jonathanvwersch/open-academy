@@ -43,15 +43,13 @@ knowledge_points:
 
       For a robot using metres east and north, this same sum means 4 metres east and 1 north of its start.
     problems:
-      [
-        vec-points-moves-basics,
-        vecp-add,
-        vecp-add-template,
-        vecp-feature,
-        vecp-order,
-        vecp-new-moves,
-        vecp-entry,
-      ]
+      - vec-points-moves-basics
+      - vecp-add-template
+      - vecp-feature
+      - vecp-entry
+      - vecp-add
+      - vecp-order
+      - vecp-new-moves
   - id: vec-change-move
     title: Changing length without changing direction
     explain: |
@@ -87,15 +85,13 @@ knowledge_points:
 
       The result $(0,7)$ points straight up. Subtracting a negative entry adds its positive value.
     problems:
-      [
-        vec-change-move-basics,
-        vecp-why-scale-all,
-        vecp-scale-template,
-        vecp-negative,
-        vecp-zero,
-        vecp-subtract,
-        vecp-half,
-      ]
+      - vec-change-move-basics
+      - vecp-scale-template
+      - vecp-why-scale-all
+      - vecp-negative
+      - vecp-subtract
+      - vecp-half
+      - vecp-zero
   - id: vec-length-distance
     title: Measuring an arrow's length and the distance between points
     explain: |
@@ -143,15 +139,14 @@ knowledge_points:
 
       This numerical house distance is not measured in metres. Changing the units of a feature changes how strongly it affects the comparison.
     problems:
-      [
-        vec-length-distance-basics,
-        vecp-norm,
-        vecp-norm-template,
-        vecp-distance,
-        vecp-why-root,
-        vecp-units,
-        vecp-zero-length,
-      ]
+      - vec-length-distance-basics
+      - vecp-norm-meaning
+      - vecp-norm
+      - vecp-norm-template
+      - vecp-why-root
+      - vecp-distance
+      - vecp-units
+      - vecp-zero-length
 final: vec-explain
 summary: |
   - A vector is an ordered list of numbers. It can record a robot's position or measurements about a house. Add entries with matching meanings and units.
