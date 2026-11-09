@@ -20,6 +20,7 @@ import {
   todayQueryOptions,
 } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
+import { QuestionProgress, type QuestionState } from '../session/QuestionProgress.js';
 import { SessionActivityHeader } from '../session/SessionActivityHeader.js';
 import { LessonSkeleton } from '../skeletons.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
@@ -309,7 +310,7 @@ function SessionPage() {
         body: JSON.stringify({ exerciseId, activityId: activity.id, answer, mode }),
       });
       const data = await response.json();
-      setResult(data);
+      setResult({ ...data, exerciseId });
       if (response.ok && data.status !== 'invalid') {
         setHint(null);
       }
@@ -438,6 +439,25 @@ function SessionPage() {
       : Number(result?.correct) === 0 && result?.retryAllowed === true
         ? `Try again · ${triesLeft} ${triesLeft === 1 ? 'try' : 'tries'} left`
         : 'Submit answer';
+  const currentResultOutcome =
+    result &&
+    result.exerciseId === exerciseId &&
+    result.status !== 'invalid' &&
+    result.status !== 'self_check_required'
+      ? Number(result.correct) > 0
+        ? 'correct'
+        : 'incorrect'
+      : null;
+  const completedExerciseIds = new Set(activity.progress?.completedExerciseIds ?? []);
+  const questionStates: QuestionState[] = activity.exerciseIds.map((candidate) => {
+    if (candidate === exerciseId) {
+      return currentResultOutcome ?? 'current';
+    }
+    if (completedExerciseIds.has(candidate)) {
+      return activity.progress?.outcomes?.[candidate] ?? 'done';
+    }
+    return 'upcoming';
+  });
   if (
     activity.kind === 'learn' &&
     activity.conceptId &&
@@ -562,6 +582,7 @@ function SessionPage() {
       {exerciseQuery.data ? (
         <Card data-testid="session-exercise">
           <CardContent className="space-y-5">
+            <QuestionProgress states={questionStates} />
             <div data-testid="exercise-prompt">
               <Markdown>{exerciseQuery.data.prompt}</Markdown>
             </div>

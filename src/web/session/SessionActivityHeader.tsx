@@ -18,7 +18,7 @@ export function SessionActivityHeader({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {label} · {position} of {total} today
+          {label} · Activity {position} of {total} today
         </p>
       </div>
       <div className="flex items-center gap-2">
