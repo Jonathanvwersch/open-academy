@@ -137,6 +137,64 @@ export function registerLearnCourseRoutes(
       };
     });
 
+    const recommendedConceptId = tasks.find((task) => task.activityKind === 'learn')?.conceptId;
+    const masteryByKey = new Map(
+      state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+    );
+    const lessonRunState = runRows.map(({ conceptId, status }) => ({ conceptId, status }));
+    const outlineConceptIds = Array.from(
+      new Set(
+        (index.curriculum?.weeks ?? [])
+          .slice()
+          .sort((left, right) => left.week - right.week)
+          .flatMap((week) => week.concepts),
+      ),
+    );
+    const eligibleChoices = active
+      ? []
+      : outlineConceptIds.flatMap((conceptId) => {
+          const concept = index.conceptsById.get(conceptId);
+          const lesson = index.lessonsByConcept.get(conceptId);
+          if (
+            !concept ||
+            !lesson ||
+            concept.status === 'stub' ||
+            completedConcept(conceptId) ||
+            !concept.prereqs
+              .filter((prerequisite) => prerequisite.strength === 'hard')
+              .every((prerequisite) =>
+                prerequisiteMet(prerequisite.id, masteryByKey, lessonRunState, index),
+              )
+          ) {
+            return [];
+          }
+          const run = runsByConcept.get(conceptId);
+          const lessonState = lesson.knowledge_points?.length
+            ? run
+              ? deriveLessonState(lesson, problemsByRun.get(run.id) ?? [], index.exercisesById)
+              : { points: lesson.knowledge_points.map(() => ({ status: 'active' })) }
+            : undefined;
+          return [
+            {
+              conceptId,
+              title: concept.title,
+              xp: estimateTaskXp(
+                { kind: 'learn', plannedMinutes: concept.est_minutes },
+                lessonState,
+              ),
+              recommended: conceptId === recommendedConceptId,
+            },
+          ];
+        });
+    const choices = eligibleChoices.slice(0, 5);
+    const recommendedChoice = eligibleChoices.find((choice) => choice.recommended);
+    if (
+      recommendedChoice &&
+      !choices.some((choice) => choice.conceptId === recommendedChoice.conceptId)
+    ) {
+      choices.push(recommendedChoice);
+    }
+
     const todayDone = completedRows
       .filter(
         ({ activity }) =>
@@ -200,6 +258,7 @@ export function registerLearnCourseRoutes(
         estimatedFinishAtGoal,
       },
       tasks,
+      choices,
       doneToday,
       activeSessionId: active?.id ?? null,
     });

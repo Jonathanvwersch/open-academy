@@ -46,6 +46,12 @@ export interface LearnPayload {
     xp: number;
     prerequisites: Array<{ id: string; title: string; done: boolean }>;
   }>;
+  choices: Array<{
+    conceptId: string;
+    title: string;
+    xp: number;
+    recommended: boolean;
+  }>;
   doneToday: Array<{ label: string; title: string; xp: number; completedAt: string }>;
   activeSessionId: string | null;
 }

@@ -49,6 +49,7 @@ import {
   inferPrerequisite,
   recordLessonViewed,
 } from '../learning/mastery.js';
+import { compareOutlinePosition, masteryKey, prerequisiteMet } from '../learning/prerequisites.js';
 import { buildProgress } from '../learning/progress.js';
 import type { PlannedActivity, SessionPreferences } from '../learning/scheduler.js';
 import {
@@ -231,17 +232,55 @@ export function createApiRoutes(deps: {
       if (focusConcept.status === 'stub') {
         return context.json({ error: 'Concept is not yet authored' }, 409);
       }
+      const masteryByKey = new Map(
+        state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+      );
+      const unmetPrerequisite = focusConcept.prereqs
+        .filter((prerequisite) => prerequisite.strength === 'hard')
+        .slice()
+        .sort((left, right) => compareOutlinePosition(left.id, right.id, index))
+        .find(
+          (prerequisite) =>
+            !prerequisiteMet(prerequisite.id, masteryByKey, state.lessonRuns ?? [], index),
+        );
+      if (unmetPrerequisite) {
+        const prerequisiteTitle =
+          index.conceptsById.get(unmetPrerequisite.id)?.title ?? unmetPrerequisite.id;
+        return context.json({ error: `Finish ${prerequisiteTitle} first` }, 409);
+      }
       state.inProgressConceptId = body.data.focusConceptId;
     }
     const plan = planSession(state, index, now, budgetMinutes, body.data.kind);
+    if (body.data.focusConceptId) {
+      const inProgressLessonConcepts = new Set(
+        (state.lessonRuns ?? [])
+          .filter((run) => run.status === 'in_progress' || run.status === 'needs_retry')
+          .map((run) => run.conceptId),
+      );
+      const keptActivities = plan.activities
+        .map((activity, index) => ({ activity, reason: plan.reasons[index] }))
+        .filter(
+          ({ activity }) =>
+            activity.kind !== 'learn' ||
+            activity.conceptId === body.data.focusConceptId ||
+            inProgressLessonConcepts.has(activity.conceptId ?? ''),
+        );
+      plan.activities = keptActivities.map(({ activity }) => activity);
+      plan.reasons = keptActivities.flatMap(({ reason }) => (reason ? [reason] : []));
+    }
     if (
       body.data.focusConceptId &&
-      !plan.activities.some((activity) => activity.conceptId === body.data.focusConceptId)
+      !plan.activities.some(
+        (activity) => activity.kind === 'learn' && activity.conceptId === body.data.focusConceptId,
+      )
     ) {
       const concept = index.conceptsById.get(body.data.focusConceptId);
-      const exercise = index.exercisesByConcept
-        .get(body.data.focusConceptId)
-        ?.find((item) => item.role === 'core' || item.role === 'check');
+      const lesson = index.lessonsByConcept.get(body.data.focusConceptId);
+      const exercise = lesson?.final
+        ? index.exercisesById.get(lesson.final)
+        : index.exercisesByConcept
+            .get(body.data.focusConceptId)
+            ?.find((item) => item.role === 'core' || item.role === 'check');
       if (!concept || !exercise) {
         return context.json({ error: 'No eligible exercise exists for this concept.' }, 409);
       }
@@ -255,13 +294,26 @@ export function createApiRoutes(deps: {
         summary: 'Manual study override selected from the knowledge map.',
       };
       plan.activities.unshift({
-        kind: priorEvidence ? 'practice' : 'learn',
+        kind: lesson ? 'learn' : priorEvidence ? 'practice' : 'learn',
         conceptId: concept.id,
         exerciseIds: [exercise.id],
         plannedMinutes: exercise.est_minutes,
         reason,
       });
       plan.reasons.unshift(reason);
+    }
+    if (body.data.focusConceptId) {
+      const focusedIndex = plan.activities.findIndex(
+        (activity) => activity.kind === 'learn' && activity.conceptId === body.data.focusConceptId,
+      );
+      if (focusedIndex > 0) {
+        const [focusedActivity] = plan.activities.splice(focusedIndex, 1);
+        const [focusedReason] = plan.reasons.splice(focusedIndex, 1);
+        if (focusedActivity && focusedReason) {
+          plan.activities.unshift(focusedActivity);
+          plan.reasons.unshift(focusedReason);
+        }
+      }
     }
     await db
       .update(studySessions)
