@@ -30,10 +30,10 @@ knowledge_points:
       [
         lr-add-contributions-basics,
         lrp-why-bias,
+        lrp-bias-once,
         lrp-price-template,
         lrp-dot-template,
         lrp-order,
-        lrp-bias-once,
         lrp-new-task,
       ]
   - id: lr-interpret-weights
@@ -61,9 +61,9 @@ knowledge_points:
         lr-interpret-weights-basics,
         lrp-why-hold-fixed,
         lrp-change-template,
+        lrp-negative,
         lrp-both-template,
         lrp-units,
-        lrp-negative,
         lrp-zero-input,
       ]
   - id: lr-batch-predictions
@@ -96,11 +96,11 @@ knowledge_points:
     problems:
       [
         lr-batch-predictions-basics,
+        lrp-code,
+        lrp-shape,
         lrp-why-matrix-product,
         lrp-batch-template,
         lrp-augmented-template,
-        lrp-code,
-        lrp-shape,
         lrp-bias-trick,
       ]
 final: lr-explain-model

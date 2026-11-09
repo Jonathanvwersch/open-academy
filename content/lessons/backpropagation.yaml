@@ -32,7 +32,16 @@ knowledge_points:
 
       It uses the stored values to continue toward earlier weights.
     problems:
-      [bp-why-backprop-basics, bpp-why-every, bpp-nudge-time, bpp-keep-values, bpp-cost, bpp-exact]
+      [
+        bp-why-backprop-basics,
+        bpp-exact,
+        bpp-forward-purpose,
+        bpp-reuse-plan,
+        bpp-why-every,
+        bpp-nudge-time,
+        bpp-keep-values,
+        bpp-cost,
+      ]
   - id: bp-by-hand
     title: Compute one weight gradient backward
     explain: |
@@ -75,10 +84,10 @@ knowledge_points:
       [
         bp-by-hand-basics,
         bpp-upstream-rule,
-        bpp-w2-template,
-        bpp-gate-closed,
         bpp-reverse-order,
+        bpp-w2-template,
         bpp-w1-template,
+        bpp-gate-closed,
         bpp-branch-sum,
       ]
   - id: bp-arrays
@@ -130,12 +139,13 @@ knowledge_points:
     problems:
       [
         bp-checking-basics,
-        bpp-why-check-nudges,
+        bpp-check-purpose,
         bpp-check-template,
+        bpp-check-w1,
+        bpp-why-check-nudges,
         bpp-sign-bug,
         bpp-gate-bug,
         bpp-batch-bug,
-        bpp-check-w1,
       ]
 final: bp-explain
 summary: |

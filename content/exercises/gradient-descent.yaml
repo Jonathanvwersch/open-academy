@@ -468,7 +468,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt:
       A house-price weight is 4 and the slope of its loss is +2. With a positive learning rate,
@@ -494,7 +494,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: At weight 3, the house-price loss $(w-3)^2$ has slope zero. What does the next
       gradient-descent update do?
@@ -517,7 +517,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: A house-price model has an area weight, a bedroom weight and a bias. What does its loss
       gradient contain?
@@ -542,7 +542,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: After moving the price weight from 0 to 1.5, what should you use for the next step?
     options:
@@ -614,7 +614,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: For the bowl $L(w)={{=a}}(w-3)^2$, positive learning rates must be strictly below which
       threshold to converge from a weight other than 3? Give the threshold, not the
@@ -640,7 +640,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt:
       House-price training losses go 10 → 6 → 12 → 40 → 180. What is the first sensible adjustment
@@ -695,7 +695,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: Why does a downhill direction still need a learning rate to control the step on the house-price loss bowl?
     options:
@@ -811,7 +811,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: You repeat every training sale twice. What happens to the MSE gradient at the same parameters?
     options:
@@ -857,7 +857,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: Which order gives one correct house-price training update?
     options:
@@ -925,7 +925,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: Complete the weight update. `dw` is the gradient at the current weights and `lr` is the
       learning rate.
@@ -940,7 +940,7 @@ exercises:
     dimension: implementation
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: What goes wrong if the house-price training loop computes residuals `r` once and reuses them for every update?
     options:
@@ -962,7 +962,7 @@ exercises:
     dimension: implementation
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt:
       For 200 sales and 5 features, `X` has shape `(200, 5)` and `r` has shape `(200,)`. What is
@@ -1019,3 +1019,19 @@ exercises:
       predictions for the next step. A small rate can be slow; if a cautious increase helps without
       instability I can keep it, whereas growing losses suggest reducing the rate; crossing the
       minimum is not itself failure if distance and loss shrink.
+  - id: gdp-error-definition
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: 'The prediction error is $e=\hat y-y$. A house-price prediction is $\hat y=5$
+      and its target is $y=3$, both in the same units. What is the error $e$?'
+    answer: 2
+    tolerance: { abs: 0.000001 }
+    solution: |
+      Subtract the target from the prediction.
+
+      $$e=5-3.$$
+
+      $$e=2.$$

@@ -29,11 +29,11 @@ knowledge_points:
       [
         loss-measure-misses-basics,
         lossp-why-not-count,
+        lossp-units,
         lossp-mse-template,
         lossp-mae-template,
         lossp-cancellation,
         lossp-repeat,
-        lossp-units,
       ]
   - id: loss-large-errors
     title: Why a large miss pulls harder under squared error
@@ -54,10 +54,10 @@ knowledge_points:
     problems:
       [
         loss-large-errors-basics,
-        lossp-outlier,
         lossp-slope-template,
-        lossp-why-square,
         lossp-mae-slope,
+        lossp-outlier,
+        lossp-why-square,
         lossp-corner,
         lossp-sensor,
       ]
@@ -82,9 +82,9 @@ knowledge_points:
     problems:
       [
         loss-constant-choice-basics,
+        lossp-median-template,
         lossp-why-median,
         lossp-mean-template,
-        lossp-median-template,
         lossp-extreme-sale,
         lossp-even,
         lossp-route,

@@ -32,7 +32,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "For weights `(0.4, -0.2)`, features `(2, 1)` and bias `0.1`, what is the linear score `z`?"
     answer: 0.7
@@ -53,7 +53,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Why can the linear score not be read directly as the probability that a house sells above asking?"
     options:
@@ -98,7 +98,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Complete the NumPy expression that calculates the linear score from the features, weights and bias."
     code: |
@@ -143,7 +143,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Why does a score of `z = 0` give probability `0.5` and sit at the decision boundary?"
     options:
@@ -171,7 +171,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "For score `z = 0.5`, what probability does the sigmoid assign to the positive label? Give 3 decimal places."
     answer: 0.622
@@ -192,7 +192,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 3
     prompt: "For score `z = {{z}}`, compute the sigmoid probability `1 / (1 + exp(-z))`."
     params:
@@ -231,7 +231,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Complete the NumPy expression so a positive score produces a probability above 0.5."
     code: |
@@ -274,7 +274,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "Why is cross-entropy useful when a house-sale model is confidently wrong?"
     options:
@@ -302,7 +302,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "For target `y = 1` and probability `p = 0.8`, compute the binary cross-entropy using natural logs."
     answer: 0.223144
@@ -344,7 +344,7 @@ exercises:
     dimension: implementation
     type: code_read
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "What loss does this NumPy code print for the positive label and a confident wrong probability?"
     code: |
@@ -364,7 +364,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Complete the positive-label term in the NumPy binary cross-entropy calculation."
     code: |
@@ -411,7 +411,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "Why is binary cross-entropy convex in the parameters of logistic regression?"
     options:
@@ -439,7 +439,7 @@ exercises:
     dimension: math
     type: expression
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 3
     prompt: "Enter the derivative of binary cross-entropy with respect to the score, using `p` for probability and `y` for the label."
     answer: "p - y"
@@ -481,7 +481,7 @@ exercises:
     dimension: implementation
     type: code_read
     role: practice
-    difficulty: 3
+    difficulty: 2
     est_minutes: 3
     prompt: "What weight and bias does this NumPy gradient step produce?"
     code: |
@@ -506,7 +506,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Complete the NumPy score gradient from the predicted probability and binary label."
     code: |
@@ -545,3 +545,45 @@ exercises:
           required: true,
         }
     exemplar: "The model first computes a linear score z from the house features. The sigmoid maps z to p, the estimated probability that the house sells above asking; a 0.5 threshold predicts the label. For binary label y, cross-entropy is −[y ln p + (1−y) ln(1−p)], using natural logs. It gives a large loss when the model assigns a tiny probability to the true outcome. By the chain rule, the sigmoid derivative p(1−p) multiplied by the BCE derivative simplifies to dL/dz = p−y. The weight gradient is (p−y)x and the bias gradient is p−y, so gradient descent subtracts a learning-rate-scaled gradient from each parameter."
+  - id: lr-score-recover-bias
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A binary classifier for a robot has one sensor feature $x=2$ and weight $w=3$.
+      Its linear score is $z=-1$. What bias $b$ gives that score in $z=wx+b$?"
+    answer: -7
+    tolerance: { abs: 0.000001 }
+    solution: |
+      Substitute the known score, feature and weight.
+
+      $$-1=3(2)+b.$$
+
+      $$-1=6+b.$$
+
+      Subtract 6 from both sides.
+
+      $$b=-7.$$
+  - id: lr-sigmoid-recover-score
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A sigmoid classifier assigns probability $p=0.8$ to label 1. What score $z$
+      produced it? Use $p=1/(1+e^{-z})$ and natural logarithms."
+    answer: 1.38629436112
+    tolerance: { abs: 0.000001 }
+    solution: |
+      Rearrange the sigmoid to isolate the exponential.
+
+      $$e^{-z}=\frac{1}{0.8}-1.$$
+
+      $$e^{-z}=0.25.$$
+
+      Take natural logarithms.
+
+      $$-z=\ln(0.25).$$
+
+      $$z=\ln(4)\approx1.386294.$$

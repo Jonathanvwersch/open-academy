@@ -229,7 +229,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: Why does the house-price model use a bias of 50 as well as weights of 3 for area and 10 for bedroom count?
     options:
@@ -304,7 +304,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: The house-price model uses features (area, bedrooms) and weights (3, 10). You swap the
       feature order to (bedrooms, area). How do you keep the predictions unchanged?
@@ -327,7 +327,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt:
       The model's area weight times a house's area gives 300 thousand pounds. Its bedroom weight
@@ -352,7 +352,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt:
       A delivery robot estimates how long a trip will take so it can give an arrival time. Its rule
@@ -378,7 +378,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: Why does interpreting the bedroom weight of 10 require comparing houses with the same area, such as two 100 m² houses with 2 and 3 bedrooms?
     options:
@@ -400,7 +400,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt:
       In the house model, the area weight is 3 thousand pounds per m². Area increases by {{=d}} m²
@@ -450,7 +450,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt:
       A house-price model has an area weight of 3 thousand pounds per square metre. You now measure
@@ -476,7 +476,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: A linear model has weight −2 for distance from a town centre, in thousands of pounds per
       kilometre. What does the model predict if only that distance rises by 1 km?
@@ -500,7 +500,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: In the house-price model $3\cdot\text{area}+10\cdot\text{bedrooms}+50$, prices are in thousands of pounds. What does the bias of 50 mean?
     options:
@@ -570,7 +570,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: A house has area {{=a}} m² and {{=k}} bedrooms. To include the bias in the dot product,
       the program stores the house as [{{=a}}, {{=k}}, 1] and uses weights [3, 10, 50]. What is its
@@ -598,7 +598,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: An estate agent needs a function that predicts all house prices at once. `X` stores one
       house per row and one feature per column. For `n` houses and `d` features, `X` has shape
@@ -618,7 +618,7 @@ exercises:
     dimension: implementation
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: For 200 houses with 5 features, `X` has shape `(200, 5)` and `w` has shape `(5,)`. What
       shape does `X @ w + 50` have?
@@ -644,7 +644,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt:
       The house-price model uses area and bedroom count with weights (3, 10) and bias 50. You add
