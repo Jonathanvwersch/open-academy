@@ -9,10 +9,10 @@ import { Input } from '@/ui/input.js';
 import { Label } from '@/ui/label.js';
 import { apiFetch } from '../authenticated-fetch.js';
 import { settingsQueryOptions } from '../queries.js';
-import { PageSkeleton } from '../skeletons.js';
+import { SettingsSkeleton } from '../skeletons.js';
 
 export const Route = createFileRoute('/settings')({
-  pendingComponent: PageSkeleton,
+  pendingComponent: SettingsSkeleton,
   loader: ({ context }) => context.queryClient.ensureQueryData(settingsQueryOptions()),
   component: SettingsPage,
 });

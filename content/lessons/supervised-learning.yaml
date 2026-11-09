@@ -1,142 +1,300 @@
 concept: supervised-learning
-version: 4
+version: 5
 objective: |
-  **Goal:** identify the inputs, targets, model, loss and training data in any supervised problem, and explain why training means making the average loss small.
+  **Goal:** for any prediction problem, name its inputs, target, model and parameters, score a model with average squared error, and explain why training picks the parameters with the smallest average loss and then checks them on new examples.
 where_this_fits: |
-  The introduction showed that machine learning learns a rule from examples, using house details to predict sale prices. We now need names for the inputs, target and model, and a way to measure a model's mistakes. This lesson names those parts and explains how known sale prices let us compare possible rules before using them on new houses.
+  The first lesson said a model learns from examples, such as past house sales with known prices. To train one, a computer needs the problem stated exactly: what goes in, what should come out, which numbers it may change, and how to score a guess. "Make the predictions close to the real prices" is not yet something a computer can work with. This lesson builds that exact setup in four steps:
+
+  1. Name the parts: inputs, target, and a model with adjustable numbers.
+  2. Score one prediction with its squared error.
+  3. Score each choice of the adjustable numbers by its average loss over all the examples, and keep the best choice.
+  4. Tell number targets from category targets, and check the model on houses it has not seen.
 knowledge_points:
   - id: sl-inputs-targets
-    title: Inputs, targets and the model
+    title: Inputs, target and a model with adjustable numbers
     explain: |
-      **What supervised learning is.** Supervised learning fits a model to examples that include both input measurements and known answers. For house prices, each example pairs a house's details with its sale price.
+      **The question.** You have past house sales: each house's size and the price it sold for. You want a rule that prices a house that is for sale now. What exactly goes into the rule, what should come out, and what is the computer allowed to change?
 
-      **How it works.** A supervised problem has five ingredients:
+      **Picture it.** Take one past sale: a 100 m² house that sold for 370 thousand pounds. The rule multiplies the size by one number and adds another: $3\times100+50=350$. The 3 and the 50 are the parts the computer may change. The known price, 370, never goes into the rule; it waits at the end to be compared with the guess.
 
-      1. **Inputs** $x$: what you know when you make the prediction (the house's size and number of bedrooms).
-      2. **Target** $y$: the answer you want to predict (the sale price).
-      3. **Model** $f_\theta$: a rule that turns inputs into a prediction. It has adjustable settings called **parameters**, written $\theta$ ("theta").
-      4. **Loss** $L$: a number that says how wrong a prediction is.
-      5. **Dataset**: the past examples, each one an $(x, y)$ pair.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="The input, a 100 square metre house, goes into a model with adjustable numbers w equals 3 and b equals 50, which outputs the prediction 350; the known target 370 is only compared with the prediction">
+        <defs>
+          <marker id="sl1-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <rect x="10" y="40" width="150" height="70" rx="8" fill="#ffffff" stroke="#d4d4d4"/>
+          <text x="24" y="68" font-weight="700">input x</text>
+          <text x="24" y="92">size 100 m²</text>
+          <path d="M160 75 H200" stroke="#737373" stroke-width="2" marker-end="url(#sl1-arrow)"/>
+          <rect x="205" y="20" width="230" height="110" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+          <text x="219" y="48" font-weight="700">model</text>
+          <text x="219" y="74">ŷ = w × size + b</text>
+          <text x="219" y="100" fill="#3b82f6">parameters: w = 3, b = 50</text>
+          <text x="219" y="120" font-size="13" fill="#737373">(training may change these)</text>
+          <path d="M435 75 H475" stroke="#737373" stroke-width="2" marker-end="url(#sl1-arrow)"/>
+          <rect x="480" y="40" width="150" height="70" rx="8" fill="#ffffff" stroke="#d4d4d4"/>
+          <text x="494" y="68" font-weight="700">prediction ŷ</text>
+          <text x="494" y="92">350</text>
+          <rect x="480" y="170" width="150" height="70" rx="8" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+          <text x="494" y="198" font-weight="700">target y</text>
+          <text x="494" y="222">370 (known price)</text>
+          <path d="M555 112 V166" stroke="#737373" stroke-width="2" stroke-dasharray="5 4"/>
+          <text x="565" y="145" fill="#737373">compare</text>
+        </g>
+      </svg>
+      ```
 
-      This works because each known sale price gives us an answer to compare with the model's prediction. We can judge its settings by the size of those mistakes rather than by whether a rule sounds plausible.
+      **The idea.** You learn a rule from examples whose correct answers are already known. In general, **supervised learning** fits a rule to a **dataset** of example pairs $(x,y)$. The **input** $x$ is what you know when you make a prediction. The **target** $y$ is the answer you want, known for every example in the dataset. The **model** $f_\theta$ is a rule that turns an input into a prediction, written $\hat y$ ("y-hat"). Its adjustable numbers are its **parameters**, together called $\theta$ ("theta"). Here the model is $\hat y=w\cdot\text{size}+b$: $w$ is a **weight** (how much each m² adds), $b$ is a **bias** (a fixed amount added to every prediction), and $\theta$ is the pair $(w,b)$. One choice of $\theta$ is called a **setting**.
 
-      **Why this is useful.** Known sale prices let us compare a house-price model's predictions with real outcomes and adjust its parameters rather than hand-writing a separate rule for every house.
+      **Common confusion.** "The model sees the price, since the price is in the data." No: the target, the final sale price, is only known for past sales. For a house on sale today it is exactly what you are trying to find, so it can never be an input. It is used only to check the model's guesses.
     worked: |
-      This example shows that a model is a rule with adjustable settings, and different settings give different predictions.
+      Use the model $\hat y=w\cdot\text{size}+b$, with prices in thousands of pounds, on the 100 m² house that sold for 370.
 
-      A simple model combines size and bedroom count by multiplying each by a setting and adding a starting amount. Prices below are in thousands of pounds:
+      1. **Name the input and the target.** The input is the size, $x=100$. The target is the sale price, $y=370$.
 
-      $$\hat y = w_1 \cdot \text{size} + w_2 \cdot \text{bedrooms} + b$$
+      2. **Predict with Setting A, $w=3$ and $b=50$.**
+         $$\hat y=3\times100+50=350.$$
 
-      The hat on $\hat y$ means "predicted price", to tell it apart from the true price $y$. The multipliers $w_1$ and $w_2$ are called **weights**. The added starting amount $b$ is called a **bias**. Together they are the parameters $\theta$. Changing them changes every prediction:
+      3. **Predict with Setting B, $w=1.5$ and $b=230$.**
+         $$\hat y=1.5\times100+230=380.$$
 
-      - **Setting A:** $w_1 = 3,\ w_2 = 10,\ b = 50$. For a 100 m², 2-bedroom house, the predicted price is $3\cdot100 + 10\cdot2 + 50 = 370$ thousand pounds.
-      - **Setting B:** $w_1 = 2,\ w_2 = 20,\ b = 100$. For the same house, the predicted price is $2\cdot100 + 20\cdot2 + 100 = 340$ thousand pounds.
+      The house and its price did not change; only the parameters did, and the prediction moved with them.
 
-      Training means choosing the setting. To choose, we need a way to say which one is better.
+      **Compare cases.** The same 100 m² house under different parameters:
+
+      | $w$ | $b$ | Prediction $\hat y$ |
+      | --- | --- | --- |
+      | $3$ | $50$ | $350$ |
+      | $1.5$ | $230$ | $380$ |
+      | $3$ | $0$ | $300$ |
+      | $4$ | $0$ | $400$ |
+
+      **Where it shows up.** Every model in this course has this shape: inputs in, a prediction out, and parameters that training adjusts. For a robot learning from demonstrations, the input is a camera image and the target is the movement command a human sent.
     problems:
       - sl-inputs-targets-basics
+      - slp-why-price-not-input
       - slp-why-targets
       - slp-parameters
       - slp-predict
       - slp-input-target
   - id: sl-measuring-error
-    title: "Measuring how wrong: squared error"
+    title: "Scoring one prediction: squared error"
     explain: |
-      **What squared-error loss is.** It is the square of the prediction minus the true value: $(\hat y-y)^2$.
+      **The question.** Setting A predicts 350 for a house that sold for 370. To improve the model, the computer needs "how wrong" as a single number it can try to make smaller. Which number?
 
-      **How it works.** Suppose a model, called Setting A, predicts 370 thousand pounds for a house that sold for 360. Its **error** (prediction minus true price) is +10. An error of −10 on another house would cancel it in an ordinary average. Squaring makes both losses 100, so opposite errors cannot cancel.
+      **Picture it.** The first try is the **error**: prediction minus target. Our three past sales give errors $+10$, $-20$ and $+10$ (worked out below). Adding them gives $10-20+10=0$, as if every price were right, because misses that are too high cancel misses that are too low. Squaring each error fixes this. The curve shows error squared: an error of $+10$ and an error of $-10$ both score 100, and the error of $-20$ scores 400.
 
-      Squaring makes an error of 20 count four times as much as an error of 10, rather than twice as much. Why square instead of using the error's absolute value? Both prevent cancellation, but squaring gives extra weight to large mistakes.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 430" aria-label="The curve squared error equals error squared, for errors from minus 25 to 25, with points at error plus 10 scoring 100 and error minus 20 scoring 400, and a hollow point at minus 10 also scoring 100">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M60 380 H590" stroke="#737373"/>
+          <path d="M320 390 V50" stroke="#d4d4d4"/>
+          <path d="M70 67.5 Q320 692.5 570 67.5" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2.5"/>
+          <path d="M420 380 V330 M120 380 V180 M220 380 V330" stroke="#737373" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <circle cx="420" cy="330" r="5" fill="#3b82f6"/>
+          <circle cx="120" cy="180" r="5" fill="#3b82f6"/>
+          <circle cx="220" cy="330" r="5" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="432" y="352">houses 1 and 3: +10 → 100</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="132" y="176">house 2: −20 → 400</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="205" y="345" text-anchor="end" fill="#737373">−10 → 100</text>
+          <text x="112" y="402">−20</text>
+          <text x="210" y="402">−10</text>
+          <text x="316" y="402">0</text>
+          <text x="410" y="402">+10</text>
+          <text x="508" y="402">+20</text>
+          <text x="210" y="424" fill="#737373">error = prediction − target</text>
+          <text x="330" y="60" fill="#3b82f6">squared error</text>
+        </g>
+      </svg>
+      ```
 
-      **Why this is useful.** The house-price model needs a score that penalises both overestimates and underestimates; squared error also makes a large pricing miss count more heavily.
+      **The idea.** Square each error so every miss counts as positive and big misses count much more, since one house mispriced by 40 usually hurts more than two mispriced by 20. In general, a **loss** is a rule that turns one prediction and its target into one number, larger the worse the prediction is. The **squared error** is the loss
+
+      $$L(\hat y,y)=(\hat y-y)^2.$$
+
+      Here $L$ stands for the loss, $\hat y$ for the prediction and $y$ for the target.
+
+      **Common confusion.** "If the errors add up to zero, the model is perfect." No: errors of $+10$, $-20$ and $+10$ add up to zero while every prediction is wrong. A signed total only says whether the misses balance out, not how big they are.
     worked: |
-      This example shows why signed errors can cancel and how squaring prevents it.
+      Score Setting A ($w=3$, $b=50$) on three past sales, in thousands of pounds.
 
-      Three past sales:
+      1. **Predict each house.**
+         $$3\times80+50=290,\qquad 3\times100+50=350,\qquad 3\times120+50=410.$$
 
-      | house | size (m²) | bedrooms | sold for $y$ | Setting A predicts | error |
-      |---|---|---|---|---|---|
-      | 1 | 100 | 2 | 360 | 370 | +10 |
-      | 2 | 80 | 1 | 290 | 300 | +10 |
-      | 3 | 150 | 4 | 560 | 540 | −20 |
+      2. **Find each error, prediction minus target.**
 
-      The errors add up to $10 + 10 - 20 = 0$, even though every prediction is wrong.
+         | House | Size (m²) | Sold for $y$ | Predicted $\hat y$ | Error $\hat y-y$ |
+         | --- | --- | --- | --- | --- |
+         | 1 | 80 | 280 | 290 | $+10$ |
+         | 2 | 100 | 370 | 350 | $-20$ |
+         | 3 | 120 | 400 | 410 | $+10$ |
 
-      Squaring gives:
+      3. **Add the signed errors to see them cancel.**
+         $$10+(-20)+10=0.$$
 
-      $$
-      \begin{aligned}
-      10^2 &= 100,\\
-      10^2 &= 100,\\
-      (-20)^2 &= 400.
-      \end{aligned}
-      $$
+      4. **Square each error instead.**
+         $$10^2=100,\qquad (-20)^2=400,\qquad 10^2=100.$$
 
-      The squared errors are all positive, so they do not cancel.
+      **Compare cases.** The size of a miss, ignoring its sign, is its absolute error. Doubling an error doubles the absolute error but multiplies the squared error by four:
+
+      | Error | Absolute error | Squared error |
+      | --- | --- | --- |
+      | $-20$ | $20$ | $400$ |
+      | $-10$ | $10$ | $100$ |
+      | $0$ | $0$ | $0$ |
+      | $+10$ | $10$ | $100$ |
+      | $+20$ | $20$ | $400$ |
+
+      **Where it shows up.** Squared error is the usual loss when the target is a number, such as a price or how far a robot gripper should move. A later lesson compares it with absolute error.
     problems:
       - sl-measuring-error-basics
+      - slp-why-add-signed
       - slp-why-square
       - slp-squared-error
       - slp-error-sum
       - slp-why-square-not-absolute
       - slp-recover-prediction
   - id: sl-training-loss
-    title: Training chooses the smallest average loss
+    title: Training picks the setting with the smallest average loss
     explain: |
-      **What mean squared error (MSE) is.** MSE is the average of the squared losses across the examples.
+      **The question.** Squared error scores one house. You have many houses, and every choice of $w$ and $b$ gives different predictions. How do you give a whole setting one score, and which setting should training keep?
 
-      **How it works.** Setting A has squared errors 100, 100 and 400 on three house sales. Average them so every sale contributes; dividing by the number of houses means the score is error per house, not a total that grows with dataset size.
+      **Picture it.** Average the squared errors over the houses: Setting A's are 100, 400 and 100, so its average is 200. Now keep $w=3$ and try other values of $b$, so that only one number changes and the scores fit on one curve: moving $b$ either way from 50 raises the average. Setting A sits at the bottom.
 
-      **The loss on one house.** The small number $i$ below a symbol identifies the house. House $i$ has inputs $x_i$, true price $y_i$ and prediction $f_\theta(x_i)$. Its loss is $L\big(f_\theta(x_i), y_i\big)$, which is $\big(f_\theta(x_i) - y_i\big)^2$ for squared error.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" aria-label="Average squared error against b with w fixed at 3: 600 at b equals 30, 300 at 40, 200 at 50, 300 at 60 and 600 at 70, lowest at b equals 50, Setting A">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M70 380 H600" stroke="#737373"/>
+          <path d="M70 390 V40" stroke="#737373"/>
+          <path d="M80 50 Q330 550 580 50" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+          <path d="M130 380 V140 M230 380 V260 M330 380 V300 M430 380 V260 M530 380 V140" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <circle cx="130" cy="140" r="5" fill="#737373"/>
+          <circle cx="230" cy="260" r="5" fill="#737373"/>
+          <circle cx="430" cy="260" r="5" fill="#737373"/>
+          <circle cx="530" cy="140" r="5" fill="#737373"/>
+          <circle cx="330" cy="300" r="6" fill="#3b82f6"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="142" y="136">600</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="242" y="256">300</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="418" y="256" text-anchor="end">300</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="518" y="136" text-anchor="end">600</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="300" y="336" fill="#3b82f6">Setting A: 200</text>
+          <text x="118" y="402">30</text>
+          <text x="218" y="402">40</text>
+          <text x="318" y="402">50</text>
+          <text x="418" y="402">60</text>
+          <text x="518" y="402">70</text>
+          <text x="250" y="428" fill="#737373">b, with w = 3</text>
+          <text x="80" y="32" fill="#737373">average squared error</text>
+        </g>
+      </svg>
+      ```
 
-      Add up the loss for all $n$ houses and divide by $n$:
+      **The idea.** Give each setting one score, its average loss over the dataset, and keep the setting with the smallest score. Number the examples $i=1,\ldots,n$. Example $i$ has input $x_i$, target $y_i$ and prediction $f_\theta(x_i)$, so its loss is $L\big(f_\theta(x_i),y_i\big)$. The **average loss** adds these up and divides by $n$; with squared error it is the **mean squared error (MSE)**:
 
-      $$\frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(x_i), y_i\big)$$
+      $$\frac{1}{n}\sum_{i=1}^{n}L\big(f_\theta(x_i),y_i\big).$$
 
-      The symbol $\sum_{i=1}^{n}$ means "add this up for $i = 1, 2, \dots, n$". In the worked example $n = 3$.
+      The symbol $\sum_{i=1}^{n}$ means "add this up for $i=1,2,\ldots,n$". **Training** picks
 
-      Training searches for the $\theta$ with the smallest average loss:
+      $$\theta^\star=\arg\min_\theta\ \frac{1}{n}\sum_{i=1}^{n}L\big(f_\theta(x_i),y_i\big).$$
 
-      $$\theta^\star = \arg\min_\theta \frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(x_i), y_i\big)$$
+      Read $\arg\min_\theta$ as "the $\theta$ that makes what follows smallest", and $\theta^\star$ ("theta star") as the name of that best setting.
 
-      Read $\arg\min_\theta$ as "the settings that make this average smallest". The symbol $\theta^\star$ ("theta star") names those settings. Gradient descent explains how to search for them automatically.
-
-      **Why this is useful.** Comparing average loss gives one fair score for each candidate house-price model, even when the training sets contain different numbers of sales.
+      **Common confusion.** "Training changes the data until it fits the model." No: the inputs and targets stay fixed. Training changes only the parameters $\theta$.
     worked: |
-      This example shows two settings compared by their average squared error.
+      Compare Setting A ($w=3$, $b=50$) and Setting B ($w=1.5$, $b=230$) on the three sales, using squared error.
 
-      | house | Setting A: squared error | Setting B predicts | Setting B: squared error |
-      |---|---|---|---|
-      | 1 | $10^2 = 100$ | 340 | $(-20)^2 = 400$ |
-      | 2 | $10^2 = 100$ | 280 | $(-10)^2 = 100$ |
-      | 3 | $(-20)^2 = 400$ | 480 | $(-80)^2 = 6400$ |
-      | **average** | **200** | | **2300** |
+      1. **Add Setting A's squared errors and divide by 3.**
+         $$\frac{100+400+100}{3}=\frac{600}{3}=200.$$
 
-      Setting A averages 200 and Setting B averages 2300, so Setting A fits these sales much better.
+      2. **Find Setting B's errors.** It predicts $1.5\times80+230=350$, $1.5\times100+230=380$ and $1.5\times120+230=410$, so its errors are $+70$, $+10$ and $+10$.
+
+      3. **Average Setting B's squared errors.**
+         $$\frac{70^2+10^2+10^2}{3}=\frac{4900+100+100}{3}=\frac{5100}{3}=1700.$$
+
+      4. **Keep the setting with the smaller average.** $200<1700$, so training prefers Setting A, even though Setting B is closer on house 2.
+
+      **Compare cases.** Average squared error on these three sales:
+
+      | $w$ | $b$ | Errors | Average squared error |
+      | --- | --- | --- | --- |
+      | $3$ | $40$ | $0,\ -30,\ 0$ | $300$ |
+      | $3$ | $50$ | $+10,\ -20,\ +10$ | $200$ |
+      | $3$ | $60$ | $+20,\ -10,\ +20$ | $300$ |
+      | $1.5$ | $230$ | $+70,\ +10,\ +10$ | $1700$ |
+
+      Trying only a few settings cannot prove which is best, but a calculation beyond this lesson shows that no choice of $w$ and $b$ beats 200 on these three sales, so here $\theta^\star=(3,50)$.
+
+      **Where it shows up.** With millions of parameters you cannot try settings by hand; gradient descent, later in Week 1, finds the smallest average loss automatically.
     problems:
       - sl-training-loss-basics
+      - slp-why-every-house
       - slp-argmin
       - slp-best-setting
       - slp-average-mse
       - slp-why-average
       - slp-recover-loss
   - id: sl-new-data-targets
-    title: New houses and two kinds of target
+    title: New houses, and number or category targets
     explain: |
-      **What regression and classification are.** **Regression** predicts a number, such as a house's sale price. **Classification** predicts a category, such as whether that sale was above its asking price.
+      **The question.** Training made the average loss small on past sales. But the point is to price houses that have not sold yet, and sometimes the answer you want is not a number at all. How do you check the model, and what changes when the target is a category?
 
-      **How it works.** The house details are inputs in either case. The known sale price is a numerical target for regression; the above-asking label is a category target for classification. The model is trained on known examples and evaluated on sales whose targets were not used to choose its settings. Why not use squared error for category names? A category has no numerical difference to square.
+      **Picture it.** Keep some sales back. The three training sales chose $w$ and $b$; two held-back sales are only scored. Setting A averages 200 on the training sales and 250 on the held-back ones. Only the second number says how it does on houses it never learned from.
 
-      **Why this is useful.** The target tells us what kind of prediction and loss the house model needs, while testing on new sales checks whether its learned rule works beyond examples it has already seen.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="Five past sales split into three training sales, used to choose w and b with average squared error 200, and two held-back sales, only scored, with average squared error 250">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <text x="20" y="30" font-weight="700" fill="#10b981">training sales: choose w and b</text>
+          <rect x="20" y="45" width="110" height="60" rx="8" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+          <text x="34" y="72">80 m²</text><text x="34" y="94" fill="#737373">sold 280</text>
+          <rect x="140" y="45" width="110" height="60" rx="8" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+          <text x="154" y="72">100 m²</text><text x="154" y="94" fill="#737373">sold 370</text>
+          <rect x="260" y="45" width="110" height="60" rx="8" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+          <text x="274" y="72">120 m²</text><text x="274" y="94" fill="#737373">sold 400</text>
+          <text x="400" y="30" font-weight="700" fill="#f59e0b">held back: only scored</text>
+          <rect x="400" y="45" width="110" height="60" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+          <text x="414" y="72">90 m²</text><text x="414" y="94" fill="#737373">sold 330</text>
+          <rect x="520" y="45" width="110" height="60" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+          <text x="534" y="72">110 m²</text><text x="534" y="94" fill="#737373">sold 360</text>
+          <path d="M20 140 H370" stroke="#10b981" stroke-width="3"/>
+          <path d="M400 140 H630" stroke="#f59e0b" stroke-width="3"/>
+          <text x="20" y="172">Setting A: average squared error 200</text>
+          <text x="400" y="172">Setting A: average 250</text>
+          <text x="400" y="196" fill="#737373">how it does on new houses</text>
+        </g>
+      </svg>
+      ```
+
+      **The idea.** Judge a trained model on examples that did not help choose its parameters, and let the kind of target decide the kind of task. **Regression** predicts a number, such as a price. **Classification** predicts a category, a label from a fixed list, such as "sold above asking price: yes or no". The inputs can be the same; the target changes, so you train a new model whose output is a category. Squared error needs a number to subtract, so category targets need a different loss, which later lessons build.
+
+      **Common confusion.** "A small training loss proves the model will work on new houses." No: training only made the score small on the sales it was chosen with. A model can fit those well and still price new houses badly, which only held-back sales reveal.
     worked: |
-      This example shows numerical and category targets for the same house-price model.
+      Check Setting A ($w=3$, $b=50$) on the two held-back sales, then look at a category target for the same houses.
 
-      1. Predicting a house's sale price in thousands of pounds is regression because the target is a number.
-      2. Predicting whether the house sold above its asking price is classification because the target is one of two labels.
-      3. Use only training sales to choose model settings. Compare predictions with separate evaluation sales to check performance on new examples.
+      1. **Predict the held-back houses.** They are 90 m² and 110 m², and sold for 330 and 360.
+         $$3\times90+50=320,\qquad 3\times110+50=380.$$
+
+      2. **Find their errors.**
+         $$320-330=-10,\qquad 380-360=+20.$$
+
+      3. **Average their squared errors.**
+         $$\frac{(-10)^2+20^2}{2}=\frac{100+400}{2}=250.$$
+
+      4. **Change the target to a category.** If the target is "sold above asking price: yes or no", the answer is a label, so the task is classification. "Yes minus no" is not a number, so squared error does not apply.
+
+      **Compare cases.** The same house inputs with different targets:
+
+      | Target | Example answer | Kind | Task |
+      | --- | --- | --- | --- |
+      | Sale price (thousand pounds) | $370$ | number | regression |
+      | Days until it sells | $21$ | number | regression |
+      | Sold above asking price? | yes | category | classification |
+      | Sold within a month? | no | category | classification |
+
+      **Where it shows up.** A robot gripper's next move in centimetres is a regression target; "which of 10 objects is this?" is a classification target. A later lesson on train and test splits turns holding sales back into a standard method.
     problems:
       - sl-new-data-targets-basics
+      - slp-why-held-back
       - slp-new-houses
       - slp-regression-classification
       - slp-target-and-evaluation
@@ -145,8 +303,9 @@ knowledge_points:
       - slp-low-training-loss
 final: sl-explain-setup
 summary: |
-  - A supervised problem uses inputs $x$, a target $y$, a model $f_\theta$ with adjustable parameters $\theta$, a loss $L$, and a dataset of known $(x, y)$ pairs.
-  - The loss turns "how wrong" into a number. Squaring stops errors that are too high and too low from cancelling out.
-  - Training picks the parameters with the smallest average loss on the training data, but what matters is performance on new data.
+  - A supervised problem has inputs $x$, a known target $y$ for each example, and a model $f_\theta$ whose parameters $\theta$ training may change.
+  - A loss scores one prediction; squared error $(\hat y-y)^2$ stops misses that are too high and too low from cancelling, and counts big misses more.
+  - Training picks the parameters with the smallest average loss on the training examples.
+  - Regression predicts numbers and classification predicts categories, and a model is judged on examples it did not learn from.
 
-  **Next:** Vectors give us a fixed-order way to hold a house's input measurements together before we combine them into predictions.
+  **Next:** Vectors give us a fixed-order way to hold a house's several input measurements together.

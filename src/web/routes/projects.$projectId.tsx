@@ -9,10 +9,10 @@ import { apiFetch } from '../authenticated-fetch.js';
 import { Markdown } from '../components.js';
 import { projectQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
-import { PageSkeleton } from '../skeletons.js';
+import { ProjectSkeleton } from '../skeletons.js';
 
 export const Route = createFileRoute('/projects/$projectId')({
-  pendingComponent: PageSkeleton,
+  pendingComponent: ProjectSkeleton,
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(projectQueryOptions(params.projectId)),
   errorComponent: () => <RouteLoadError message="Project unavailable." role="alert" />,

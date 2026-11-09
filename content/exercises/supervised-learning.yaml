@@ -22,9 +22,9 @@ exercises:
         }
       - {
           id: c,
-          text: "Choosing a model by checking its final test-set score repeatedly.",
+          text: "Learning by trial and error, guided by a reward score.",
           correct: false,
-          feedback: "Repeated test-set selection leaks information from the test set.",
+          feedback: "That is reinforcement learning: it learns from rewards, not from known correct answers.",
         }
       - {
           id: d,
@@ -55,15 +55,15 @@ exercises:
         }
       - {
           id: c,
-          text: "The number of training examples whose predicted categories differ from their target labels.",
+          text: "The largest error among all of the model's predictions on the training examples.",
           correct: false,
-          feedback: "That is an error count, not squared-error loss.",
+          feedback: "That is the single worst miss. Squared error scores each prediction on its own: the square of prediction minus target.",
         }
       - {
           id: d,
-          text: "The gap between average training loss and average test loss for the model.",
+          text: "The number of predictions that were too high minus the number that were too low.",
           correct: false,
-          feedback: "That is a generalization gap.",
+          feedback: "That counts directions of misses and ignores their size; squared error measures how far each prediction is from its target.",
         }
     solution: "Squared-error loss measures the squared difference between a model prediction and its target."
   - id: sl-training-loss-basics
@@ -214,7 +214,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A house-price model has average squared loss 200 with one set of settings and 2300 with another, on the same past sales. What does training choose in supervised learning?"
+    prompt: "A house-price model has average squared loss 200 with one set of settings and 1700 with another, on the same past sales. What does training choose in supervised learning?"
     options:
       - {
           id: a,
@@ -235,7 +235,7 @@ exercises:
           category: misunderstood_definition,
           feedback: "The loss is chosen by the engineer, not learned.",
         }
-    solution: "Training chooses the adjustable model settings that make the average loss on the known examples as small as possible. Here the settings with average loss 200 fit the sales better than those with loss 2300."
+    solution: "Training chooses the adjustable model settings that make the average loss on the known examples as small as possible. Here the settings with average loss 200 fit the sales better than those with loss 1700."
   - id: sl-explain-setup
     dimension: conceptual
     type: explain
@@ -566,7 +566,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "Setting A has average squared error 200 and Setting B has average squared error 2300 on the same sales. Which setting fits those sales better?"
+    prompt: "Setting A has average squared error 200 and Setting B has average squared error 1700 on the same sales. Which setting fits those sales better?"
     options:
       - { id: a, text: "Setting A, because its average loss is smaller", correct: true }
       - {
@@ -740,7 +740,7 @@ exercises:
           text: "The training loss must always be larger than the loss on new houses",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "Training loss is not guaranteed to be higher than test loss; models can fit training examples especially well. Ask what a low training score tells you about houses not used to tune the settings.",
+          feedback: "Nothing forces the training loss to be larger than the loss on held-back sales; a model often fits its training examples especially well. Ask what a low training score tells you about houses not used to tune the settings.",
         }
       - {
           id: d,
@@ -817,3 +817,135 @@ exercises:
     solution: Above asking or not is a category, so the task is classification.
       Separate sales check predictions beyond the examples used to choose
       settings.
+  - id: slp-why-price-not-input
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, the model gets the size, 100 m², and predicts 350, while the sale price 370 is kept to one side. Why is the sale price not one of the model's inputs?"
+    options:
+      - {
+          id: a,
+          text: "For a house on sale today the price is unknown, so it is what the model must predict.",
+          correct: true,
+          feedback: "Right: an input must be known when you predict, and the price is not.",
+        }
+      - {
+          id: b,
+          text: "The price is too large a number for the model to multiply by the weight.",
+          correct: false,
+          feedback: "Size of the number is not the issue; any known number could be an input. Ask whether the price is known for a house on sale today.",
+        }
+      - {
+          id: c,
+          text: "The price only matters for houses bigger than 100 square metres.",
+          correct: false,
+          feedback: "The price is the answer for every house, whatever its size. The issue is that it is unknown when you need a prediction.",
+        }
+      - {
+          id: d,
+          text: "The price is one of the parameters that training changes.",
+          correct: false,
+          feedback: "The parameters are $w$ and $b$. The price is the target: known for past sales, unknown for new ones.",
+        }
+    solution: "An input must be available when you make a prediction. A house on sale today has no sale price yet, so the price is the target, used only to check predictions on past sales."
+  - id: slp-why-add-signed
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, Setting A's errors $+10$, $-20$ and $+10$ add up to 0. Why does step 3 add the signed errors before squaring them?"
+    options:
+      - {
+          id: a,
+          text: "To show that misses in opposite directions cancel, so a signed total can hide real mistakes.",
+          correct: true,
+          feedback: "Right: the total is 0 while every prediction is wrong, which is why the errors are squared.",
+        }
+      - {
+          id: b,
+          text: "To show that Setting A predicts every one of the three houses exactly right.",
+          correct: false,
+          feedback: "Every prediction misses: 290 against 280, 350 against 370, 410 against 400. The zero total comes from cancelling.",
+        }
+      - {
+          id: c,
+          text: "To find the squared error, which is the signed total multiplied by itself.",
+          correct: false,
+          feedback: "Squaring the total gives $0^2=0$. Squared error squares each error separately: 100, 400 and 100.",
+        }
+      - {
+          id: d,
+          text: "To find the prices, which are needed before the predictions can be made.",
+          correct: false,
+          feedback: "The prices are known from the sales. Step 3 checks whether a signed total is a fair score, and finds it is not.",
+        }
+    solution: "The signed total of $+10$, $-20$ and $+10$ is 0 even though all three predictions miss. That cancellation is the reason the lesson squares each error instead."
+  - id: slp-why-every-house
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, Setting B is closer than Setting A on house 2 (error $+10$ against $-20$), yet training keeps Setting A. Why?"
+    options:
+      - {
+          id: a,
+          text: "Training compares the average loss over all the houses, and Setting A's is smaller.",
+          correct: true,
+          feedback: "Right: 200 against 1700. One house does not decide; the average over all of them does.",
+        }
+      - {
+          id: b,
+          text: "Training prefers the setting with the larger weight, and Setting A has $w=3$.",
+          correct: false,
+          feedback: "The size of $w$ is not a rule. Setting A wins because its average squared error is smaller.",
+        }
+      - {
+          id: c,
+          text: "House 2 is ignored because its error was negative rather than positive.",
+          correct: false,
+          feedback: "Every house counts, and squaring makes the sign irrelevant. Compare the averages: 200 and 1700.",
+        }
+      - {
+          id: d,
+          text: "Training keeps whichever setting it tried first and only changes it if it fails.",
+          correct: false,
+          feedback: "Training keeps the setting with the smallest average loss, whichever was tried first.",
+        }
+    solution: "Training scores each setting by its average loss over every example: 200 for Setting A and 1700 for Setting B. One house being closer does not outweigh Setting B's error of 70 on house 1."
+  - id: slp-why-held-back
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, Setting A averages 200 on the three training sales and 250 on the two held-back sales. Which number tells you more about pricing houses that are for sale now?"
+    options:
+      - {
+          id: a,
+          text: "The 250, because those sales played no part in choosing $w$ and $b$.",
+          correct: true,
+          feedback: "Right: the held-back sales act like new houses, so their score shows how the model does on unseen houses.",
+        }
+      - {
+          id: b,
+          text: "The 200, because the training sales are the ones the model fits best.",
+          correct: false,
+          feedback: "Fitting best is exactly why 200 is optimistic: $w$ and $b$ were chosen to make that number small.",
+        }
+      - {
+          id: c,
+          text: "Both equally, because they use the same model and the same loss.",
+          correct: false,
+          feedback: "Same model and loss, but only the held-back sales were unseen while choosing $w$ and $b$.",
+        }
+      - {
+          id: d,
+          text: "Neither, because a house for sale now has no known sale price.",
+          correct: false,
+          feedback: "True of the new house itself, which is why you score held-back sales: they have known prices but played no part in training.",
+        }
+    solution: "The training score was made small on purpose, so it flatters the model. The held-back sales were not used to choose $w$ and $b$, so their score of 250 is the fair guide to new houses."
