@@ -75,7 +75,8 @@ exercises:
     answer_expr: (w*x-y)^2
     tolerance: { abs: 0 }
     hints:
-      - Write the intermediate values first, then apply the rule taught in this knowledge point.
+      - "Find $z=wx$, then $e=z-y$."
+      - "Square $e$ to get $L$."
     solution: The record stores $z={{w}}\cdot{{x}}$ and $e={{w}}\cdot{{x}}-{{y}}$. Squaring that
       difference gives the final value $L$; it is a value, not a derivative.
   - id: ad-record-constants
@@ -235,7 +236,8 @@ exercises:
     answer_expr: 2*(w*x-y)*x
     tolerance: { abs: 0 }
     hints:
-      - Write the intermediate values first, then apply the rule taught in this knowledge point.
+      - "The local slope of $z=wx$ with respect to $w$ is $x$."
+      - "Multiply $dL/dz$ by that local slope."
     solution: The local slope of $z=wx$ with respect to $w$ is $x$. The chain rule therefore gives
       $dL/dw=2(wx-y)x$, including the inner multiplier.
   - id: ad-reverse-update
@@ -285,7 +287,7 @@ exercises:
     answer_expr: old+new
     tolerance: { abs: 0 }
     hints:
-      - Write the intermediate values first, then apply the rule taught in this knowledge point.
+      - "Backward adds to `.grad`; it does not replace it."
     solution:
       PyTorch adds the new contribution to the existing gradient. Without clearing, the stored
       result is ${{old}}+{{new}}$.
@@ -305,7 +307,8 @@ exercises:
     answer_expr: 18*q
     tolerance: { abs: 0 }
     hints:
-      - Write the intermediate values first, then apply the rule taught in this knowledge point.
+      - "Find $db/dq$ by adding the two paths: $2$ through $a$ and $1$ directly."
+      - "Then $dL/dq=2b\\cdot db/dq$ with $b=3q$."
     solution: The two paths from $q$ to $b$ have slopes $2$ and $1$, so $db/dq=3$. Since $b=3q$, the
       chain rule gives $dL/dq=2(3q)\cdot3=18q$.
   - id: ad-modes-basics
@@ -381,7 +384,7 @@ exercises:
     answer_expr: inputs
     tolerance: { abs: 0 }
     hints:
-      - Write the intermediate values first, then apply the rule taught in this knowledge point.
+      - "Each forward pass follows one chosen input."
     solution:
       Forward mode chooses one input per pass and carries that input's effects to all outputs.
       The number of passes is therefore the number of inputs.
@@ -431,7 +434,7 @@ exercises:
     answer_expr: 1 + outputs
     tolerance: { abs: 0 }
     hints:
-      - Write the intermediate values first, then apply the rule taught in this knowledge point.
+      - "Count one forward recording pass, then one backward pass per output."
     solution: One backward pass gives one chosen output's derivatives with respect to every input. Add one forward recording pass to the number of outputs to get the total.
   - id: ad-modes-robot
     dimension: conceptual
