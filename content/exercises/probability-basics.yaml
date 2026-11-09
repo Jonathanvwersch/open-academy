@@ -387,27 +387,30 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A house gets 0, 1 or 2 offers with probabilities 0.3, 0.4 and 0.3. An agent is selling 50 such houses. About how many offers should the agent expect in total?"
+    prompt: "A house gets 0, 1 or 2 offers with probabilities 0.4, 0.4 and 0.2. An agent is selling 50 such houses. About how many offers should the agent expect in total?"
     hints:
       - "Find the expected number of offers for one house first."
       - "The expected value is a long-run average per house."
     solution: |
       Find the expected offers for one house:
 
-      $$E[X]=0(0.3)+1(0.4)+2(0.3)=1$$
+      $$E[X]=0(0.4)+1(0.4)+2(0.2)=0.8$$
 
       Multiply the average per house by the number of houses:
 
-      $$50\times1=50$$
-    answer: 50
+      $$50\times0.8=40$$
+    answer: 40
     tolerance: { abs: 0.000001 }
     common_wrong:
-      - answer: 1
+      - answer: 0.8
         category: incomplete_explanation
-        feedback: "One offer is the expected value for a single house. Multiply by 50 houses."
+        feedback: "0.8 offers is the expected value for a single house. Multiply by 50 houses."
       - answer: 100
         category: misapplied_technique
-        feedback: "That treats every house as getting the largest count, 2. Use the expected value, 1, per house."
+        feedback: "That treats every house as getting the largest count, 2. Use the expected value, 0.8, per house."
+      - answer: 50
+        category: misunderstood_definition
+        feedback: "That uses the plain average of 0, 1 and 2. Weight each count by its probability: 0.8 per house."
   - id: pb-expectation-template
     dimension: math
     type: numeric
