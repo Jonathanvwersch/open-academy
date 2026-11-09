@@ -22,9 +22,9 @@ exercises:
         }
       - {
           id: c,
-          text: "A validation score used to compare model versions before final test evaluation.",
+          text: "A ranking of models made by people judging their predictions by eye.",
           correct: false,
-          feedback: "Validation error guides model selection; a loss itself measures prediction error.",
+          feedback: "A loss is computed from the errors themselves, not from human judgement.",
         }
       - {
           id: d,
@@ -90,13 +90,13 @@ exercises:
           id: c,
           text: "A model that predicts a different price for every feature.",
           correct: false,
-          feedback: "A baseline may use one constant prediction for every house.",
+          feedback: "A baseline is deliberately simple; a constant baseline predicts one value for every example.",
         }
       - {
           id: d,
-          text: "A model that uses the test set to choose its weights.",
+          text: "A model that memorises every training example exactly.",
           correct: false,
-          feedback: "The test set must stay separate from fitting and model selection.",
+          feedback: "Memorising the training data is the opposite of a simple reference model.",
         }
     solution: "A baseline is a simple model used to check whether a more detailed house-price model is useful."
   - id: loss-check-mse
@@ -310,7 +310,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 3
+    difficulty: 1
     est_minutes: 2
     prompt:
       A price model misses one house by +20 and another by −20. What does their signed average of
@@ -679,6 +679,107 @@ exercises:
         feedback: The middle value stays at 10 even with the long trip.
     solution: The median remains at the typical short trip, while the mean is (10 + 10 + 60)/3, so
       squared error favours a larger constant.
+  - id: lossp-measure-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example the errors are $+3$, $+3$ and $-6$. MAE is $4$, yet MSE is $18$ rather than $4^2=16$. Why?"
+    options:
+      - id: a
+        text: "Squaring each error before averaging lets the $-6$ count as $36$ of the total $54$, though it is only half the total size."
+        correct: true
+        feedback: "MSE squares first and averages second, so the one large miss gets extra weight."
+      - id: b
+        text: "MSE divides the total by a different count than MAE, so the two averages always differ."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Both divide by the same count, 3. The difference comes from what is averaged."
+      - id: c
+        text: "The signed errors cancel under MAE but not under MSE, so MSE keeps more of the total."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Neither loss lets errors cancel: MAE drops the signs and MSE squares them."
+      - id: d
+        text: "Squaring always adds a little extra, so MSE beats MAE squared by a fixed amount for any errors."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "For errors $4$, $4$, $4$, MSE is $16$, exactly MAE squared. The gap comes from the errors being unequal."
+    solution: "MSE squares each error first: $(9+9+36)/3=18$. Squaring the average size instead gives $4^2=16$ and loses the extra weight on the large $-6$ miss."
+  - id: lossp-mae-backwards
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "Two predictions have an MAE of $5$. One error is $-2$ and the other error is positive. What is the positive error?"
+    answer: 8
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 12
+        category: misunderstood_definition
+        feedback: "That treats $-2$ as signed. MAE uses its size, $2$."
+      - answer: 3
+        category: math_error
+        feedback: "MAE is an average: the two sizes must add to $2\\times5=10$."
+    solution: "The two sizes must add to $2\\times5=10$. The first size is $|-2|=2$, so the positive error is $10-2=8$."
+  - id: lossp-large-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In step 4 of the worked example, raising the third prediction by $0.1$ lowers its squared error by about $1.2$ but its absolute error by only $0.1$. Why the difference?"
+    options:
+      - id: a
+        text: "At an error of $-6$ the squared-error slope is $2e=-12$, while the absolute-error slope is $-1$."
+        correct: true
+        feedback: "Change is about slope times nudge: $-12\\times0.1$ against $-1\\times0.1$."
+      - id: b
+        text: "Absolute error only changes in whole steps, so a nudge of $0.1$ barely registers."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Absolute error changes smoothly away from 0: it fell by exactly $0.1$, from $6$ to $5.9$."
+      - id: c
+        text: "Squaring makes the nudge itself twelve times bigger before it changes the error."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The nudge changes the error by $0.1$ under both losses; what differs is how steeply each cost changes per unit of error."
+      - id: d
+        text: "Absolute error has a corner at an error of $-6$, so its slope there is undefined."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The corner is at an error of $0$. At $-6$ the absolute-error slope is $-1$."
+    solution: "For a small nudge, change is about slope times nudge. The squared-error slope at $-6$ is $-12$, giving about $-1.2$; the absolute-error slope is $-1$, giving $-0.1$."
+  - id: lossp-constant-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In step 3 of the worked example, for the values $1$, $2$ and $6$, why does the total absolute error rise for every $c$ between $2$ and $6$?"
+    options:
+      - id: a
+        text: "Two values lie below $c$ and one above, so the slopes add to $(+1)+(+1)+(-1)=+1$."
+        correct: true
+        feedback: "Each value pulls with size 1, so the slope is the count below $c$ minus the count above."
+      - id: b
+        text: "Most of that range lies above the mean $3$, and the total always rises above the mean."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The mean is where squared error is lowest. Absolute error depends on how many values lie on each side of $c$."
+      - id: c
+        text: "The value $6$ is far from $c$, so its pull outweighs the two nearby values."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Under absolute error every value pulls with size 1, however far away it is."
+      - id: d
+        text: "Total absolute error always rises as $c$ gets larger, whatever the values are."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Between $1$ and $2$ the slope is $-1$, so the total falls there."
+    solution: "Between 2 and 6, raising $c$ moves it further from 1 and 2 and closer to 6. Two distances grow and one shrinks, so the slope is $+1$ and the total rises."
   - id: loss-explain-choice
     dimension: conceptual
     type: explain
