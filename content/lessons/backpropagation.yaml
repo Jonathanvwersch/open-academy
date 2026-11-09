@@ -28,7 +28,7 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Work back once and reuse the loss slope wherever earlier routes meet. **Backpropagation** is the reverse application of the chain rule through a computational graph to find the loss derivative for every parameter. The forward pass saves intermediate values; the backward pass uses them to evaluate local derivatives. Here the same derivative of the square serves both dial routes. In $\partial L/\partial z$, the symbol $\partial$ denotes a partial derivative: the loss slope when only $z$ changes.
+      **The idea.** Both dials affect the same total $z$, so calculate its loss slope once and reuse it for both dials. **Backpropagation** is the reverse application of the chain rule through a computational graph to find the loss derivative for every parameter. The forward pass saves intermediate values; the backward pass uses them to evaluate local derivatives. In $\partial L/\partial z$, the symbol $\partial$ denotes a partial derivative: the loss slope when only $z$ changes.
 
       **Common confusion.** “Going backwards means undoing the prediction.” No: you pass rates of change backwards, not original inputs. You keep the forward values until their local derivatives have been calculated; the backward pass itself does not change the dials.
     worked: |
@@ -40,17 +40,17 @@ knowledge_points:
 
       $$L=z^2=9$$
 
-      2. Differentiate the shared square once.
+      2. Find how loss changes with the total: the slope of $L=z^2$ is $2z$.
 
       $$\frac{\partial L}{\partial z}=2z=6$$
 
-      3. Continue to each dial using its local multiplier.
+      3. Find each dial's loss slope. Multiply by the local slope of $z=2w+b$: 2 for $w$ and 1 for $b$.
 
       $$\frac{\partial L}{\partial w}=6\cdot2=12$$
 
       $$\frac{\partial L}{\partial b}=6\cdot1=6$$
 
-      **Compare cases.** Keep the other dial fixed in each row.
+      **Compare cases.** Keep the other dial fixed in each row so the slope measures only the named dial's effect.
 
       | Dial you change | Local slope of total | Loss slope |
       | --- | --- | --- |
@@ -84,7 +84,7 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** At each operation, multiply the arriving loss slope by that operation's local slope. A **backward step** converts the loss derivative with respect to an operation's output into the derivative with respect to an input. If a value feeds two later operations, changing it affects the loss through both routes: add their loss-slope contributions before continuing. For ReLU the local slope is 1 at positive scores and 0 at negative scores. At exactly zero the ordinary derivative is undefined; here we use the common implementation choice of 0.
+      **The idea.** At each operation, multiply the arriving loss slope by that operation's local slope. A **backward step** converts the loss derivative with respect to an operation's output into the derivative with respect to an input. If a value feeds two later operations, changing it affects the loss through both routes: add their loss-slope contributions before continuing. For ReLU the local slope is 1 at positive scores and 0 at negative scores. At zero those slopes meet without a single slope; our calculation uses 0 there by convention.
 
       **Common confusion.** “The ReLU slope is its saved output.” No: at score 2 the output is 2, but the slope is 1. The saved score tells you which side of the gate you are on, not what number to multiply by directly.
     worked: |
@@ -94,7 +94,7 @@ knowledge_points:
 
       $$\frac{\partial L}{\partial p}=2(p-t)=2(6-5)=2$$
 
-      2. Cross the output multiplication.
+      2. Find the loss slope for $h$: multiply by the local slope of $p=3h$, which is 3.
 
       $$\frac{\partial L}{\partial h}=2\cdot3=6$$
 
@@ -102,7 +102,7 @@ knowledge_points:
 
       $$\frac{\partial L}{\partial z}=6\cdot1=6$$
 
-      4. Cross the input multiplication, keeping $x$ fixed.
+      4. Find the weight's loss slope: multiply by the local slope of $z=wx$ with respect to $w$, which is the fixed input $x=2$.
 
       $$\frac{\partial L}{\partial w}=6\cdot2=12$$
 
@@ -129,7 +129,11 @@ knowledge_points:
     explain: |
       **The question.** If several examples use the same weight and bias, how do their backward contributions become one slope per parameter?
 
-      **Picture it.** Use $p=wx+b$ on two inputs, 1 and 2. Put them in column $X$, one example per row. The backward calculation has already found how loss changes with each prediction: slopes 2 and 4. Put these in column $G$. For a mean loss, this earlier calculation includes division by the number of examples; do not divide again.
+      **Picture it.** Use $p=wx+b$ on two inputs. Stack them in column $X$, one example per row:
+
+      $$X=\begin{pmatrix}1\\2\end{pmatrix}$$
+
+      The backward calculation has found loss slopes 2 and 4 for the predictions; stack these in column $G$. For a mean loss, these slopes already include division by the example count.
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 150" aria-label="Two example contributions to a shared weight add: 1 times 2 plus 2 times 4 equals 10">
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
@@ -142,13 +146,13 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Add contributions wherever a parameter is shared. A **batch gradient** collects parameter loss derivatives from a group of examples. Here the weight contributions are input times output slope: $1(2)$ and $2(4)$. Transposing $X$, written $X^\top$, turns its column into a row. Multiplying that row by column $G$ adds those matching products. For several inputs and outputs, the same operation gives the weight-gradient array $dW=X^\top G$. These entries are slopes for the weights, not changes to make to them.
+      **The idea.** Add contributions wherever a parameter is shared. A **batch gradient** gives one loss slope per parameter for a group of examples. Here the weight contributions are input times output slope: $1(2)$ and $2(4)$. Transposing $X$, written $X^\top$, turns its column into a row. Multiplying that row by column $G$ adds those matching products. For several inputs and outputs, the same operation gives the weight-gradient array $dW=X^\top G$: slopes, not parameter changes.
 
-      A bias adds equally to every prediction: its local multiplier is 1. Its contributions are therefore $1(2)$ and $1(4)$; add each output column of $G$ to get that output's bias slope.
+      A bias adds equally to every prediction: its local slope is 1. Add down its output's column of $G$, here $2+4$, to get the bias slope.
 
-      ReLU instead uses a separate local slope for each saved score. Write those slopes as $\mathbf{1}[z>0]$: 1 for a positive score $z$, otherwise 0. This is an **indicator** array. The symbol $\odot$ means multiply entries in matching positions; it does not sum them.
+      ReLU uses one local slope per saved score. The **indicator** $\mathbf{1}[z>0]$ reads “1 if score $z$ is greater than zero, otherwise 0”. For arrays, $\odot$ multiplies matching entries without summing.
 
-      **Common confusion.** “A batch always means averaging the gradients at the end.” No: averaging again divides twice if $G$ already includes the mean loss's scaling.
+      **Common confusion.** “Always average gradients at the end.” No: if $G$ already includes mean-loss scaling, dividing again makes slopes too small by the example count.
     worked: |
       **Worked example.** This example combines two rows without dividing their already-scaled slopes again.
 
@@ -217,7 +221,7 @@ knowledge_points:
 
       $$\frac{L(w+\varepsilon)-L(w-\varepsilon)}{2\varepsilon}$$
 
-      **Common confusion.** “A smaller nudge always gives a better check.” No: extremely small differences can lose accuracy in computer arithmetic. Try several modestly small sizes on a smooth part of the calculation; avoid a ReLU corner. Agreement supports the implementation at the tested points, not a proof that every case is correct.
+      **Common confusion.** “A smaller nudge always gives a better check.” No: extremely small differences can lose accuracy in computer arithmetic. Try several modestly small sizes. Avoid nudges across ReLU's zero score: its slope jumps there, so the estimate mixes two slopes. Agreement supports the implementation at the tested points, not a proof that every case is correct.
     worked: |
       **Worked example.** This example checks the backward weight slope 12 with both dials initially at 1.
 
@@ -229,7 +233,7 @@ knowledge_points:
 
       $$L(0.9)=(2(0.9)+1)^2=7.84$$
 
-      2. Divide the loss difference by the full distance between weights.
+      2. Divide the loss difference by the distance between the two tested weights: they are two nudges apart, so the distance is $2\varepsilon=0.2$.
 
       $$\frac{10.24-7.84}{0.2}=12$$
 
