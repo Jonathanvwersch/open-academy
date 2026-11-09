@@ -581,6 +581,87 @@ test('shows a correct lesson-run solution inline when no feedback exists', async
   });
 });
 
+test('Enter advances a correct knowledge-point answer without another answer POST', async ({
+  page,
+}) => {
+  const db = createDb(env.TEST_DATABASE_URL);
+  const [learner] = await db.select({ id: users.id }).from(users).limit(1);
+  if (!learner) throw new Error('Missing E2E learner');
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId: learner.id,
+      kind: 'weekday',
+      plannedMinutes: 20,
+      status: 'active',
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create lesson session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: 'loss-functions',
+      exerciseIds: [],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  await db.$client.end();
+  if (!activity) throw new Error('Could not create lesson activity');
+
+  await page.goto(`/session/${session.id}`);
+  await expect(page.getByText('Basics question', { exact: true })).toBeVisible();
+  let run = await currentRun(page, 'loss-functions');
+  run = await answerAndReload(page, true, 'loss-functions');
+  run = await nextProblemAndReload(page, 'loss-functions');
+  expect(run.pendingProblem.exercise.id).toBe('loss-functions-fixture-practice-1');
+  expect(run.pendingProblem.exercise.type).toBe('numeric');
+  const answer = await page.evaluate(async (problemId: string) => {
+    const response = await fetch(`/api/test/lesson-problems/${problemId}/answer`);
+    return (await response.json()).answer;
+  }, run.pendingProblem.id);
+  const problemId = run.pendingProblem.id as string;
+  let answerPostCount = 0;
+  page.on('request', (request) => {
+    if (
+      request.url().endsWith('/api/lessons/loss-functions/run/answer') &&
+      request.method() === 'POST'
+    ) {
+      answerPostCount += 1;
+    }
+  });
+
+  const answerField = page.getByLabel('Your answer');
+  await answerField.fill(String(answer));
+  const answerResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/lessons/loss-functions/run/answer') &&
+      response.request().method() === 'POST',
+  );
+  await answerField.press('Enter');
+  expect((await answerResponse).status()).toBe(200);
+  await expect(page.getByText('Correct', { exact: true })).toBeVisible();
+  await expect(answerField).toBeFocused();
+
+  const nextResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/lessons/loss-functions/run') &&
+      response.request().method() === 'POST',
+  );
+  await answerField.press('Enter');
+  await nextResponse;
+  await expect(page.getByTestId('lesson-problem')).not.toHaveAttribute(
+    'data-problem-id',
+    problemId,
+  );
+  await expect(page.getByText('Not quite', { exact: true })).toHaveCount(0);
+  expect(answerPostCount).toBe(1);
+});
+
 test('a legacy v1 learn activity resumes through the KP runner and final question', async ({
   page,
 }) => {
