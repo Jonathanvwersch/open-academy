@@ -111,7 +111,7 @@ export function buildTutorPageContent(input: {
       `Lesson available: ${lesson ? 'yes' : 'no'}`,
       ...(lesson
         ? [
-            section('Where this fits', lesson.where_this_fits ?? ''),
+            section("What you're learning", lesson.where_this_fits ?? ''),
             section('Summary', summaryFor(lesson)),
           ]
         : []),
@@ -126,7 +126,7 @@ export function buildTutorPageContent(input: {
     const pointIndex = knowledgePointId
       ? points.findIndex((point) => point.id === knowledgePointId)
       : -1;
-    const whereThisFits = section('Where this fits', lesson.where_this_fits ?? '');
+    const whereThisFits = section("What you're learning", lesson.where_this_fits ?? '');
     if (pointIndex < 0) {
       return sanitizePageContent(
         [`# ${title}`, whereThisFits, section('Summary', summaryFor(lesson))]
@@ -155,7 +155,7 @@ export function buildTutorPageContent(input: {
     return sanitizePageContent(
       [
         `# ${title}`,
-        section('Where this fits', lesson.where_this_fits ?? ''),
+        section("What you're learning", lesson.where_this_fits ?? ''),
         ...points.flatMap((point) => [
           `## ${point.title}`,
           point.explain,

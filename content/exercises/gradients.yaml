@@ -6,99 +6,75 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What is a gradient?"
+    prompt: "At a point, what does the gradient contain?"
     options:
-      - {
-          id: a,
-          text: "A scalar loss score for one training example, rather than a derivative for model parameters.",
-          correct: false,
-          feedback: "A loss is a score; a gradient is a vector of derivatives.",
-        }
-      - {
-          id: b,
-          text: "A vector of the loss's partial derivatives, one for each weight and bias",
-          correct: true,
-          feedback: "Each vector entry is the loss's partial derivative for one weight or bias.",
-        }
-      - {
-          id: c,
-          text: "A vector of input features describing the measurements of one house.",
-          correct: false,
-          feedback: "That is a feature vector.",
-        }
-      - {
-          id: d,
-          text: "A direction that always increases the model's predicted output, regardless of its loss slope.",
-          correct: false,
-          feedback: "It points toward increasing loss here; it does not always increase a model's prediction.",
-        }
-    solution: "A gradient is an ordered vector containing one partial derivative for each adjustable model parameter."
+      - id: a
+        text: "The function's height at that point, written as one number."
+        correct: false
+        feedback: "That is the function value; the gradient contains slopes."
+      - id: b
+        text: "One partial derivative for each input, in input order."
+        correct: true
+        feedback: "Each component is the slope for its matching input."
+      - id: c
+        text: "The coordinates of the nearest minimum of the function."
+        correct: false
+        feedback: "The gradient describes local slopes, not the location of a minimum."
+      - id: d
+        text: "One number equal to the sum of all partial derivatives."
+        correct: false
+        feedback: "Adding the partials loses which input each slope belongs to."
+    solution: "The gradient is the vector of partial derivatives, with one component for each input."
   - id: grad-points-uphill-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What is a directional change?"
+    prompt: "If you know the gradient and choose a unit direction, how do you find the slope in that direction?"
     options:
-      - {
-          id: a,
-          text: "The exact output difference after changing one input by an arbitrary amount.",
-          correct: false,
-          feedback: "A directional change is a first-order approximation for several inputs moving a small amount.",
-        }
-      - {
-          id: b,
-          text: "An estimate of how output changes when several inputs move a small amount together.",
-          correct: true,
-          feedback: "A small move combines changes across inputs to estimate the output change.",
-        }
-      - {
-          id: c,
-          text: "The output difference between current inputs and the all-zero input setting.",
-          correct: false,
-          feedback: "That is one finite change; a directional change estimates a small move along a chosen direction.",
-        }
-      - {
-          id: d,
-          text: "The local rate of one output with respect to one selected input.",
-          correct: false,
-          feedback: "That is a partial derivative; a directional change combines several input movements.",
-        }
-    solution: "A directional change approximates the output change caused by moving several inputs a small amount together."
+      - id: a
+        text: "Take the dot product of the gradient and the chosen direction."
+        correct: true
+        feedback: "The dot product gives the gradient's component along that unit direction."
+      - id: b
+        text: "Add the gradient's components and use that total as the slope."
+        correct: false
+        feedback: "The total ignores which way you chose to move."
+      - id: c
+        text: "Use the gradient's length for every possible direction."
+        correct: false
+        feedback: "The gradient length is the slope only in the steepest-uphill direction."
+      - id: d
+        text: "Read the function value at the starting point as the slope."
+        correct: false
+        feedback: "The function value is height; the slope depends on the chosen direction."
+    solution: "The dot product projects the gradient onto the chosen unit direction, giving one slope."
   - id: grad-steepest-descent-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What does steepest descent mean?"
+    prompt: "Among unit directions, what does steepest descent mean?"
     options:
-      - {
-          id: a,
-          text: "The direction that changes the most input values at once.",
-          correct: false,
-          feedback: "Changing more coordinates does not ensure the fastest decrease per unit distance.",
-        }
-      - {
-          id: b,
-          text: "The direction in which the gradient gets steeper fastest.",
-          correct: false,
-          feedback: "Steepest descent lowers the function locally rather than making its gradient grow.",
-        }
-      - {
-          id: c,
-          text: "The direction that reaches the global minimum in one update.",
-          correct: false,
-          feedback: "A local step may lower the function without reaching any minimum, let alone the global one.",
-        }
-      - {
-          id: d,
-          text: "The direction in which a small step lowers the function fastest",
-          correct: true,
-          feedback: "Among unit-length directions, this one gives the greatest local decrease for a small step.",
-        }
-    solution: "Steepest descent is the direction that lowers a function fastest per unit distance for a small step."
+      - id: a
+        text: "The direction that lowers the function fastest nearby."
+        correct: true
+        feedback: "Steepest descent is the largest local decrease per unit distance."
+      - id: b
+        text: "The direction that reaches the lowest point in one step."
+        correct: false
+        feedback: "A steepest local step need not reach any minimum."
+      - id: c
+        text: "The direction that changes the greatest number of inputs."
+        correct: false
+        feedback: "Changing more inputs does not guarantee a faster decrease."
+      - id: d
+        text: "The direction in which the gradient's length grows fastest."
+        correct: false
+        feedback: "Descent is about lowering the function, not changing gradient length."
+    solution: "Steepest descent is the unit direction that gives the greatest local decrease."
   - id: grad-check-1
     dimension: math
     type: text
@@ -219,503 +195,510 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Explain in 2–4 sentences why stepping along the negative gradient decreases a function fastest, for small steps."
+    prompt: 'Using $f(x,y)=x^2+2y^2$ at $P=(1.5,1)$, or a hill of your own, explain in your own words: what the gradient at a point tells you, how you get the slope in any chosen direction from it, and why gradient descent steps along $-\nabla f$.'
     rubric:
       - {
-          id: r1,
-          criterion: "Estimates the change using the current slopes: $f(x+\\delta) \\approx f(x) + \\nabla f\\cdot\\delta$ (or describes the change as a dot product with the gradient)",
+          id: what-gradient,
+          criterion: "Says the gradient is the vector of partial derivatives, pointing in the direction of steepest ascent, with length equal to that steepest slope.",
           weight: 2,
           required: true,
         }
       - {
-          id: r2,
-          criterion: "Argues the dot product is most negative when $\\delta$ points opposite to $\\nabla f$ (angle 180°)",
+          id: directional,
+          criterion: "Says the slope in a chosen unit direction u is the dot product ∇f·u (the directional derivative), a single number for each direction.",
           weight: 2,
           required: true,
         }
-      - { id: r3, criterion: "Notes that the estimate only applies to small changes", weight: 1 }
-    exemplar: "For a small displacement δ, estimate the change in f using ∇f·δ = |∇f||δ|cosθ. For equal distances, this is most negative when cosθ = -1, so δ points opposite the gradient. This uses the slopes at the starting point; a larger move can pass the lowest point and raise the value again."
-  - id: gradp-compute
-    dimension: math
-    type: text
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "For $f(x, y) = 2x^2 + xy$, what is $\\nabla f$ at $(1, 3)$? Answer as `(a, b)`."
-    accept: ["(7,1)", "(7, 1)", "7,1", "7, 1", "[7,1]", "[7, 1]"]
-    hints:
-      ["$\\frac{\\partial f}{\\partial x} = 4x + y$ and $\\frac{\\partial f}{\\partial y} = x$."]
-    solution: "$\\nabla f = (4x + y,\\ x)$, so at $(1, 3)$ it is $(4 + 3,\\ 1) = (7, 1)$."
-  - id: gradp-component
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "For $f(x, y) = {{=a}}x^2 + {{=b}}xy$, what is the first component of $\\nabla f$ (the partial in $x$) at $(x, y) = ({{=x0}}, {{=y0}})$?"
-    hints: ["The first component is $\\frac{\\partial f}{\\partial x} = {{=2*a}}x + {{=b}}y$."]
-    solution: "$\\frac{\\partial f}{\\partial x} = {{=2*a}}x + {{=b}}y = {{=2*a}} \\times {{=x0}} + {{=b}} \\times {{=y0}} = {{=2*a*x0+b*y0}}$."
-    answer_expr: "2*a*x0 + b*y0"
-    params:
-      a: { min: 1, max: 4, step: 1 }
-      b: { min: 1, max: 5, step: 1 }
-      x0: { min: 1, max: 4, step: 1 }
-      y0: { min: 1, max: 4, step: 1 }
-    constraints: ["b*x0 != 2*a*x0 + b*y0"]
-    tolerance: { abs: 0.001 }
-    common_wrong:
       - {
-          answer_expr: "b*x0",
-          category: misunderstood_definition,
-          feedback: "That is the second component, $\\frac{\\partial f}{\\partial y}$. The first component is the partial in $x$.",
+          id: descent,
+          criterion: "Explains that ∇f·u = ‖∇f‖cosθ is most negative at θ=180°, so −∇f gives the steepest local decrease.",
+          weight: 1,
         }
-      - {
-          answer_expr: "2*a*x0",
-          category: math_error,
-          feedback: "The term ${{=b}}xy$ also contains $x$, so it contributes ${{=b}}y$.",
-        }
+    exemplar: "The gradient at a point collects the partial derivatives, here (3, 4). As an arrow it points in the direction where f rises fastest, and its length, 5, is that fastest slope. To get the slope in any other direction, take a unit vector u for that direction and compute ∇f·u: for u=(0.6, 0.8) it is 5, for (0.8, −0.6) it is 0, and for (−0.6, −0.8) it is −5. Because ∇f·u = ‖∇f‖cosθ, the slope is most negative when u points opposite the gradient, so stepping along −∇f lowers f fastest for a small step, which is what gradient descent does."
   - id: gradp-why-vector
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
-    est_minutes: 1
-    prompt: "Why keep the partial derivatives of $f(x, y)$ as a vector instead of adding them into one number?"
+    est_minutes: 2
+    prompt: "In the worked example, why keep the slopes as $(3,4)$ instead of adding them to get $7$?"
     options:
       - id: a
-        text: "Each partial belongs to a different input direction, and the vector preserves that information"
+        text: "The 3 is the x-slope and 4 is the y-slope; the order keeps each slope tied to its input."
         correct: true
+        feedback: "The first entry is the x-partial and the second is the y-partial; their sum loses that assignment."
       - id: b
-        text: "Adding the partials always gives 0, even on a slope"
+        text: "The 3 and 4 are the coordinates of $P$; adding them gives the bowl's height there."
         correct: false
         category: misunderstood_definition
-        feedback: "The sum need not be 0: partials 3 and 4 sum to 7. The problem is losing which slope belongs to which direction."
+        feedback: "Coordinates locate $P$; the gradient contains the slopes, which are 3 along x and 4 along y."
       - id: c
-        text: "A vector stores the height as well as the slopes"
+        text: "The entries measure the x-slope at different steps; adding them combines both changes."
         correct: false
         category: misunderstood_definition
-        feedback: "Neither partial stores the height. Both are rates of change, and their vector still contains only rates."
+        feedback: "The entries are slopes for separate inputs at the same point, not repeated x-slopes."
       - id: d
-        text: "Only the largest partial matters; the other component can be discarded"
+        text: "A gradient is one total slope, so adding 3 and 4 gives its rate regardless of direction."
         correct: false
-        category: misunderstood_definition
-        feedback: "A step can change both inputs. Discarding one partial loses its contribution to the output change."
-    solution: "Partials 3 and 4 describe different slopes. Their sum 7 loses which input has slope 3 and which has slope 4; the vector keeps both so a step's effects can be computed."
-  - id: gradp-three-inputs
-    dimension: math
-    type: text
-    role: practice
-    difficulty: 2
-    est_minutes: 3
-    prompt: "For $f(x, y, z) = x^2 + yz$, what is $\\nabla f$ at $(1, 2, 3)$? Answer as `(a, b, c)`."
-    accept: ["(2,3,2)", "(2, 3, 2)", "2,3,2", "2, 3, 2", "[2,3,2]", "[2, 3, 2]"]
-    hints: ["One partial per input: $2x$, $z$ and $y$."]
-    solution: "$\\nabla f = (2x,\\ z,\\ y)$, so at $(1, 2, 3)$ it is $(2, 3, 2)$. Three inputs give three components."
+        category: incorrect_reasoning
+        feedback: "The slope depends on direction; the ordered vector preserves enough information to find it."
+    solution: "The 3 is the slope along x and the 4 is the slope along y. Keeping their order preserves which input each slope belongs to; the sum 7 loses that information."
   - id: gradp-order
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "For $h(x, y) = x^2 + 2y^2$, a classmate writes $\\nabla h(1.5, 1) = (4, 3)$. What went wrong?"
+    prompt: "For $f(x,y)=x^2+2y^2$ at $(1.5,1)$, a learner writes the gradient as $(4,3)$. What is the mistake?"
     options:
       - id: a
-        text: "The components are swapped; the partial in $x$ comes first, giving $(3, 4)$"
+        text: "The partial derivatives are in the wrong input order."
         correct: true
+        category: misunderstood_definition
+        feedback: "The x-partial is 3 and the y-partial is 4, so the gradient is $(3,4)$."
       - id: b
-        text: "Nothing; the order of components doesn't matter"
+        text: "The two partial derivatives should be added into one number."
         correct: false
         category: misunderstood_definition
-        feedback: "$(4, 3)$ and $(3, 4)$ point in different directions. The components follow the order of the inputs."
+        feedback: "Adding them gives 7 and loses which input each slope belongs to."
       - id: c
-        text: "The gradient should be a single number, 7"
+        text: "The gradient should contain the function value as well."
         correct: false
         category: misunderstood_definition
-        feedback: "The gradient is a vector of partials, not their sum."
+        feedback: "The function value is 4.25; the gradient contains only partial derivatives."
       - id: d
-        text: "Both components should be 0 because $h$ is a valley"
+        text: "Both partial derivatives should be zero away from the bowl's bottom."
         correct: false
         category: incorrect_reasoning
-        feedback: "The gradient is only $(0, 0)$ at the valley floor, $(0, 0)$, not on the slope."
-    solution: "$\\frac{\\partial h}{\\partial x} = 2x = 3$ and $\\frac{\\partial h}{\\partial y} = 4y = 4$, and the components follow the order of the inputs: $(3, 4)$."
-  - id: gradp-exp-component
+        feedback: "The slopes are 3 and 4 at this point; they are both zero only at the bottom."
+    solution: "The x-partial is 3 and comes first; the y-partial is 4 and comes second, so the gradient is $(3,4)$."
+  - id: gradp-compute
     dimension: math
-    type: expression
+    type: text
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "For $f(x, y) = x\\,e^y + \\ln x$, give the second component of $\\nabla f$, the partial in $y$ (write `exp(y)`)."
-    answer: "x*exp(y)"
-    variables: { x: [0.5, 3], y: [-1, 1] }
-    common_wrong:
-      - {
-          answer: "exp(y) + 1/x",
-          category: misunderstood_definition,
-          feedback: "That is the first component, the partial in $x$.",
-        }
-    solution: "Freeze $x$: $x\\,e^y \\to x\\,e^y$ and $\\ln x \\to 0$, so the second component is $x\\,e^y$."
-  - id: gradp-uphill
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "On a hillside, the gradient of the height at your position is $(2, -1)$. Which way does it point?"
-    options:
-      - id: a
-        text: "The direction in which the height increases fastest"
-        correct: true
-      - id: b
-        text: "Straight towards the lowest point of the hill"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The gradient only describes the slope where you stand. Its direction is the steepest way up."
-      - id: c
-        text: "Along a contour, where the height stays the same"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Steps along a contour are at right angles to the gradient."
-      - id: d
-        text: "The direction in which the height decreases fastest"
-        correct: false
-        category: incorrect_reasoning
-        feedback: 'That is $-\nabla h$. The gradient itself points uphill.'
-    solution: "For a small step $\\delta$ the height changes by about $\\nabla h \\cdot \\delta$, which is largest for steps along the gradient, so the gradient points steepest uphill."
-  - id: gradp-approx
+    prompt: "For $f(x,y)=x^2+2y^2$, compute $\\nabla f$ at $P=(1.5,1)$. Answer as `(a, b)`."
+    accept: ["(3,4)", "(3, 4)", "3,4", "3, 4", "[3,4]", "[3, 4]"]
+    hints: ["Differentiate with respect to x and y separately."]
+    solution: "The partials are $2x=3$ and $4y=4$ at $P$, so in input order $\\nabla f(P)=(3,4)$."
+  - id: gradp-component
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
-    prompt: "At a point $p$, a function has $\\nabla f(p) = ({{=g1}}, {{=g2}})$. Estimate the change in $f$ for the small step $\\delta = ({{=d1}}, {{=d2}})$."
-    hints:
-      ["The change is about $\\nabla f \\cdot \\delta$.", "Multiply matching components and add."]
-    solution: "$\\nabla f \\cdot \\delta = ({{=g1}})({{=d1}}) + ({{=g2}})({{=d2}}) = {{=g1*d1+g2*d2}}$."
-    answer_expr: "g1*d1 + g2*d2"
-    params:
-      g1: { min: -5, max: 5, step: 1 }
-      g2: { min: -5, max: 5, step: 1 }
-      d1: { min: -0.2, max: 0.2, step: 0.1 }
-      d2: { min: -0.2, max: 0.2, step: 0.1 }
-    constraints:
-      [
-        "g1 != 0",
-        "g2 != 0",
-        "d1 != 0",
-        "d2 != 0",
-        "g1*d1 + g2*d2 != 0",
-        "g1*d2 + g2*d1 != g1*d1 + g2*d2",
-      ]
+    prompt: "For $g(x,y)=2x^2+xy$, what is the x-component of $\\nabla g$ at $(1,2)$?"
+    answer: 6
     tolerance: { abs: 0.001 }
     common_wrong:
       - {
-          answer_expr: "g1*d2 + g2*d1",
+          answer: 2,
           category: math_error,
-          feedback: "Pair matching components: the first with the first, the second with the second.",
+          feedback: "Differentiate $2x^2$ to get $4x$ and $xy$ with respect to x to get $y$; then substitute $(1,2)$.",
         }
-  - id: gradp-contour
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 1
-    prompt: "A hillside has gradient $\\nabla h = (3, 4)$ where you stand. Using the slopes at this point, which small displacement gives a predicted height change of 0?"
-    options:
-      - { id: a, text: "$(0.08, -0.06)$", correct: true }
-      - id: b
-        text: "$(0.06, 0.08)$"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "This is along the gradient: $0.18 + 0.32 = 0.5$, the biggest climb."
-      - id: c
-        text: "$(-0.06, -0.08)$"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "This is opposite the gradient: the change is $-0.5$, the biggest drop."
-      - id: d
-        text: "$(0.1, 0)$"
-        correct: false
-        category: math_error
-        feedback: '$\nabla h \cdot \delta = 3 \times 0.1 = 0.3$, so the height rises.'
-    solution: "$\\nabla h \\cdot (0.08, -0.06) = 0.24 - 0.24 = 0$. The step is at right angles to the gradient, along a contour."
-  - id: gradp-length
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 1
-    prompt: "On a hill, $\\nabla h = (1, 0)$ at point A and $(6, 8)$ at point B. What does this tell you?"
-    options:
-      - id: a
-        text: "The ground is steeper at B, because its gradient is longer"
-        correct: true
-      - id: b
-        text: "The ground is steeper at A, because its gradient points due east"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The direction says which way is uphill. The length says how steep it is."
-      - id: c
-        text: "B is higher up than A"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The gradient describes the slope, not the height itself."
-      - id: d
-        text: "Both are equally steep, because gradients always have length 1"
-        correct: false
-        category: misunderstood_definition
-        feedback: 'Gradient lengths vary: $\|(6, 8)\| = 10$ and $\|(1, 0)\| = 1$.'
-    solution: "$\\|(6, 8)\\| = 10$ and $\\|(1, 0)\\| = 1$, so the height changes 10 times as fast per unit step at B."
-  - id: gradp-predict-height
+    solution: "The x-partial is $4x+y$. At $(1,2)$ it is $4+2=6$."
+  - id: gradp-three-inputs
     dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "At $(2, 1)$, a valley has height $h = 6$ m and gradient $\\nabla h = (4, 4)$. Estimate the height after the small step $\\delta = (-0.1, 0.05)$."
-    answer: 5.8
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - {
-          answer: -0.2,
-          category: incomplete_explanation,
-          feedback: "That is the change in height. Add it to the starting height of 6 m.",
-        }
-      - {
-          answer: 6.6,
-          category: math_error,
-          feedback: "Check the sign of the first component: $4 \\times (-0.1) = -0.4$.",
-        }
-    hints: ["$h(p + \\delta) \\approx h(p) + \\nabla h \\cdot \\delta$."]
-    solution: "$\\nabla h \\cdot \\delta = 4 \\times (-0.1) + 4 \\times 0.05 = -0.2$, so the height is about $6 - 0.2 = 5.8$ m."
-  - id: gradp-small-step
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 1
-    prompt: "Why does $f(p + \\delta) \\approx f(p) + \\nabla f \\cdot \\delta$ only work for small steps?"
-    options:
-      - id: a
-        text: "The gradient describes the slope at $p$, and the slope can change as you move away"
-        correct: true
-      - id: b
-        text: "Dot products are only defined for short vectors"
-        correct: false
-        category: misunderstood_definition
-        feedback: "You can take the dot product of any two vectors of the same size."
-      - id: c
-        text: "Large steps always make $f$ smaller"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "A large step can raise or lower $f$. The issue is that the prediction can be wrong."
-      - id: d
-        text: "It works for any step size"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "On $h = x^2 + 2y^2$ the gradient changes from point to point, so a long step uses an out-of-date slope."
-    solution: "The approximation treats the function as having the slope $\\nabla f(p)$ everywhere. That is only accurate close to $p$."
-  - id: gradp-descent-unit
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "The gradient of $f$ is $(-5, 12)$ and has length 13. Which direction vector of length 1 gives the greatest estimated decrease in $f$ per unit distance?"
-    options:
-      - { id: a, text: '$\left(\frac{5}{13}, -\frac{12}{13}\right)$', correct: true }
-      - id: b
-        text: '$\left(-\frac{5}{13}, \frac{12}{13}\right)$'
-        correct: false
-        category: incorrect_reasoning
-        feedback: 'That is along $+\nabla f$, the direction of steepest increase.'
-      - id: c
-        text: "$(5, -12)$"
-        correct: false
-        category: misapplied_technique
-        feedback: 'This has the right direction, but its length is 13. Divide by $\|\nabla f\| = 13$ to get length 1.'
-      - id: d
-        text: "$(0, -1)$"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "This decreases $f$ at rate 12, but the best unit step gives 13."
-    solution: "Steepest descent is $-\\frac{\\nabla f}{\\|\\nabla f\\|} = \\frac{(5, -12)}{13}$, where $f$ falls at rate 13."
-  - id: gradp-steepest-rate
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "At a point, $\\nabla f = ({{=a}}, {{=b}})$. For a step of length 1 in the steepest-descent direction, about how much does $f$ change? Round to 2 decimal places."
-    hints:
-      [
-        "Along $-\\frac{\\nabla f}{\\|\\nabla f\\|}$, the change per unit step is $-\\|\\nabla f\\|$.",
-        "$\\|\\nabla f\\| = \\sqrt{a^2 + b^2}$.",
-      ]
-    solution: "$\\|\\nabla f\\| = \\sqrt{ {{=a^2}} + {{=b^2}} } \\approx {{=sqrt(a^2+b^2)}}$. Stepping opposite the gradient, $f$ changes by about $-{{=sqrt(a^2+b^2)}}$."
-    answer_expr: "-sqrt(a^2 + b^2)"
-    params:
-      a: { min: 1, max: 8, step: 1 }
-      b: { min: 1, max: 8, step: 1 }
-    tolerance: { abs: 0.01 }
-    common_wrong:
-      - {
-          answer_expr: "sqrt(a^2 + b^2)",
-          category: incorrect_reasoning,
-          feedback: "That is the rate going uphill. Stepping opposite the gradient makes $f$ go down.",
-        }
-      - {
-          answer_expr: "-(a + b)",
-          category: math_error,
-          feedback: "The length of a vector is $\\sqrt{a^2 + b^2}$, not $a + b$.",
-        }
-  - id: gradp-direction-rate
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "A hillside's height $f$ has gradient $(3, 4)$ where you stand. Using those slopes, what is the estimated rate of height change per unit distance due west, in direction $(-1, 0)$?"
-    answer: -3
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - { answer: 3, category: math_error, feedback: "Check the sign: $3 \\times (-1) = -3$." }
-      - {
-          answer: -5,
-          category: incorrect_reasoning,
-          feedback: "$-5$ is the rate in the steepest-descent direction $(-0.6, -0.8)$. Due west is less steep.",
-        }
-    solution: "$\\nabla f \\cdot (-1, 0) = -3$. That is downhill, but less steep than the $-5$ you get opposite the gradient."
-  - id: gradp-why-180
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "For steps $\\delta$ of a fixed small length, why is $\\nabla f \\cdot \\delta$ most negative when $\\delta$ points opposite $\\nabla f$?"
-    options:
-      - id: a
-        text: '$\nabla f \cdot \delta = \|\nabla f\|\,\|\delta\|\cos\theta$, and $\cos\theta$ is smallest, $-1$, at $\theta = 180^\circ$'
-        correct: true
-      - id: b
-        text: 'Because $\cos\theta$ is 0 at $\theta = 180^\circ$'
-        correct: false
-        category: recall_failure
-        feedback: '$\cos 180^\circ = -1$. The cosine is 0 at $90^\circ$, which gives no change.'
-      - id: c
-        text: "Because opposite steps are longer"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "Every step here has the same length, so only the angle matters."
-      - id: d
-        text: "Because the gradient is always negative"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The gradient is a vector, and its components can have either sign."
-    solution: "With both lengths fixed, the change depends only on $\\cos\\theta$, which is smallest at $\\theta = 180^\\circ$, i.e. stepping exactly opposite the gradient."
-  - id: gradp-not-at-minimum
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "In the valley $h(x, y) = x^2 + 2y^2$ at $(1.5, 1)$, $-\\nabla h = (-3, -4)$. The floor is at $(0, 0)$, in the direction $(-1.5, -1)$ from you. What does this show?"
-    options:
-      - id: a
-        text: "The steepest way down right here need not point straight at the lowest point"
-        correct: true
-      - id: b
-        text: 'The gradient has been computed wrongly, because $-\nabla h$ always points at the minimum'
-        correct: false
-        category: misunderstood_definition
-        feedback: "The gradient only uses the slope where you stand. Here it is steeper in $y$, so it tilts towards $y$."
-      - id: c
-        text: 'Walking along $-\nabla h$ makes you go uphill'
-        correct: false
-        category: incorrect_reasoning
-        feedback: 'For a small step along $-\nabla h$ the height falls, at rate $\|\nabla h\| = 5$.'
-      - id: d
-        text: "The valley has no lowest point"
-        correct: false
-        category: incorrect_reasoning
-        feedback: 'The floor is at $(0, 0)$, where $h = 0$ and $\nabla h = (0, 0)$.'
-    solution: "The negative gradient uses the slopes where you stand, not the location of the lowest point. Here the height changes at rates 3 eastward and 4 northward, so the steepest downhill direction is $(-3, -4)$. That is not parallel to $(-1.5, -1)$, the direction toward the lowest point."
-  - id: gradp-descent-step
-    dimension: math
-    type: numeric
+    type: text
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: "At $(1.5, 1)$ the valley has $h = 4.25$ and $\\nabla h = (3, 4)$. You take the small step $\\delta = -0.02\\,\\nabla h$. Estimate the new height."
-    answer: 3.75
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - {
-          answer: -0.5,
-          category: incomplete_explanation,
-          feedback: "That is the change. Add it to the starting height 4.25.",
-        }
-      - {
-          answer: 4.75,
-          category: math_error,
-          feedback: "The step is opposite the gradient, so the height should go down.",
-        }
-    hints: ["$\\delta = (-0.06, -0.08)$.", "Change $\\approx \\nabla h \\cdot \\delta$."]
-    solution: "$\\delta = (-0.06, -0.08)$, so $\\nabla h \\cdot \\delta = -0.18 - 0.32 = -0.5$ and the height is about $4.25 - 0.5 = 3.75$ m."
+    prompt: "For $q(x,y,z)=x^2+yz$, compute $\\nabla q$ at $(1,2,3)$. Answer as `(a, b, c)`."
+    accept: ["(2,3,2)", "(2, 3, 2)", "2,3,2", "2, 3, 2", "[2,3,2]", "[2, 3, 2]"]
+    hints: ["Take one partial for x, one for y and one for z."]
+    solution: "The partials are $2x$, $z$ and $y$, so at $(1,2,3)$ the gradient is $(2,3,2)$."
   - id: gradp-flat-point
     dimension: math
     type: text
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "For $f(x, y) = x^2 - 2x + y^2 + 4y$, at which point $(x, y)$ is $\\nabla f = (0, 0)$? Answer as `(a, b)`."
+    prompt: "For $f(x,y)=x^2-2x+y^2+4y$, at which point is $\\nabla f=(0,0)$? Answer as `(a, b)`."
     accept: ["(1,-2)", "(1, -2)", "1,-2", "1, -2", "[1,-2]", "[1, -2]"]
     hints:
-      - "$\\nabla f = (2x - 2,\\ 2y + 4)$."
-      - "Set each component to zero separately."
-    solution: |
-      Find each partial derivative:
-
-      $$\frac{\partial f}{\partial x} = 2x - 2$$
-
-      $$\frac{\partial f}{\partial y} = 2y + 4$$
-
-      Set each component to zero:
-
-      $$2x - 2 = 0 \Rightarrow x = 1$$
-
-      $$2y + 4 = 0 \Rightarrow y = -2$$
-
-      So $\nabla f = (0, 0)$ at $(1, -2)$, where no small step changes $f$ to first order.
-  - id: gradp-target-drop
+      - "$\\nabla f=(2x-2,2y+4)$."
+      - "Set both components to zero."
+    solution: "Setting $2x-2=0$ and $2y+4=0$ gives $x=1$ and $y=-2$, so the gradient is zero at $(1,-2)$."
+  - id: gradp-robot-gradient
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot is at $(1,2)$ on a surface with height $h(x,y)=x^2+3y^2$. Which vector is the gradient of its height there?"
+    options:
+      - id: a
+        text: "$(2,12)$, one height slope for each coordinate."
+        correct: true
+        feedback: "The partials are $2x=2$ and $6y=12$ at $(1,2)$."
+      - id: b
+        text: "$(2,6)$, using the coefficients of the squared terms."
+        correct: false
+        category: math_error
+        feedback: "The y-partial is $6y$, so substitute $y=2$ to get 12."
+      - id: c
+        text: "$(1,12)$, using the x-coordinate without differentiating."
+        correct: false
+        category: math_error
+        feedback: "The x-partial is $2x$, which is 2 at $x=1$."
+      - id: d
+        text: "$(1,2)$, the robot's current position."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The position gives the input coordinates; the gradient contains the surface's partial derivatives."
+    solution: "The partial derivatives are $(2x,6y)$, which equal $(2,12)$ at $(1,2)$."
+  - id: gradp-approx
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, why does the dot product give one number for a chosen direction, and why must $\\mathbf u$ have length 1?"
+    options:
+      - id: a
+        text: "It adds each gradient component's contribution along $\\mathbf u$; unit length makes the result change per unit distance."
+        correct: true
+        feedback: "The dot product projects the gradient onto one direction, and a unit vector represents one unit of travel."
+      - id: b
+        text: "It selects the largest gradient component; unit length makes that selected component a per-unit slope."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Both components can contribute; the dot product weights them by the chosen direction."
+      - id: c
+        text: "It returns the gradient's length in every direction; unit length removes any scaling from the angle."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Only the gradient direction gives its full length; other directions give different projections."
+      - id: d
+        text: "It measures distance walked; unit length turns that distance into the function's slope."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The dot product gives a rate of change, not distance; unit length sets the distance scale."
+    solution: "The dot product combines the gradient components along one chosen direction, so it gives one slope. A unit vector represents one unit of travel, making that slope a rate per unit distance."
+  - id: gradp-direction-rate
     dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "At $P$, $\\nabla f(P)=(3,4)$. What is the slope in the unit direction $(1,0)$?"
+    answer: 3
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 4,
+          category: math_error,
+          feedback: "The vector $(1,0)$ selects the x-component, which is 3.",
+        }
+    solution: "$\\nabla f(P)\\cdot(1,0)=3(1)+4(0)=3$."
+  - id: gradp-contour
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "At $P$, $\\nabla f(P)=(3,4)$. Which unit direction gives a predicted slope of zero?"
+    options:
+      - id: a
+        text: "$(0.8,-0.6)$"
+        correct: true
+        feedback: "$3(0.8)+4(-0.6)=2.4-2.4=0$."
+      - id: b
+        text: "$(0.6,0.8)$"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "This points along the gradient and has slope 5."
+      - id: c
+        text: "$(-0.6,-0.8)$"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "This points opposite the gradient and has slope -5."
+      - id: d
+        text: "$(1,0)$"
+        correct: false
+        category: math_error
+        feedback: "The slope along $+x$ is 3, not zero."
+    solution: "The dot product with $(0.8,-0.6)$ is $3(0.8)+4(-0.6)=0$, so it has zero slope."
+  - id: gradp-predict-height
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "At $P$, $f(P)=4.25$ and $\\nabla f(P)=(3,4)$. For the small step $\\delta=(0.01,0.02)$, estimate the new value of $f$."
+    answer: 4.36
+    tolerance: { abs: 0.001 }
+    hints:
+      - "Estimate the change with $\\nabla f(P)\\cdot\\delta$."
+      - "Add that change to 4.25."
+    solution: "The estimated change is $3(0.01)+4(0.02)=0.11$, so the estimated new value is $4.25+0.11=4.36$."
+  - id: gradp-small-step
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "At $P$, a learner computes $\\nabla f(P)\\cdot(2,0)=6$ and calls 6 the slope per unit distance. What should they correct?"
+    options:
+      - id: a
+        text: "The vector $(2,0)$ has length 2, so 6 is the change estimate for a two-unit step; the slope per unit distance is 3."
+        correct: true
+        category: misunderstood_definition
+        feedback: "Divide the two-unit change estimate by 2, or use the unit direction $(1,0)$."
+      - id: b
+        text: "The vector $(2,0)$ has length 2, so 6 is the slope per unit distance."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The dot product scales with step length; use a unit vector for the slope per unit distance."
+      - id: c
+        text: "A direction cannot have a zero second component, so the calculation is invalid."
+        correct: false
+        category: misunderstood_definition
+        feedback: "$(1,0)$ is a valid unit direction along the x-axis."
+      - id: d
+        text: "The gradient should be added to the step, giving $(5,4)$."
+        correct: false
+        category: math_error
+        feedback: "The dot product, not vector addition, combines slopes with a step."
+    solution: "The vector $(2,0)$ is twice as long as the unit direction $(1,0)$, so the dot product 6 is twice the per-unit slope 3."
+  - id: gradp-target-drop
+    dimension: transfer
     type: numeric
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A model with two weights has loss gradient $\\nabla L = (3, -2)$ at its current weights. You will change only the second weight, so the step is $\\delta = (0, \\delta_2)$. Using $\\nabla L \\cdot \\delta$, what $\\delta_2$ lowers the loss by about 0.1?"
+    prompt: "A model loss has gradient $(3,-2)$. If only the second parameter changes, what step in that parameter estimates a loss decrease of 0.1?"
     answer: 0.05
     tolerance: { abs: 0.001 }
     common_wrong:
       - {
           answer: -0.05,
           category: math_error,
-          feedback: "Check the sign: the second partial is $-2$, so increasing the second weight lowers the loss.",
+          feedback: "The second partial is -2, so a positive step makes the estimated loss change negative.",
+        }
+      - { answer: 0.2, category: math_error, feedback: "Set $-2\\delta_2=-0.1$ and divide by -2." }
+    hints:
+      - "The step is $(0,\\delta_2)$, so the estimated change is $-2\\delta_2$."
+      - "Set that change equal to $-0.1$."
+    solution: "Solve $-2\\delta_2=-0.1$ to get $\\delta_2=0.05$. The positive step lowers the loss because its partial derivative is negative."
+  - id: gradp-robot-direction
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot is at $(1,1)$ on a surface with height $h(x,y)=x^2+3y^2$. Its unit walking direction is $(0.6,0.8)$. What is the directional derivative of its height?"
+    answer: 6
+    tolerance: { abs: 0.001 }
+    hints: ["At $(1,1)$, the gradient is $(2,6)$. Take its dot product with the walking direction."]
+    solution: "The gradient is $(2,6)$, so the slope is $(2,6)\\cdot(0.6,0.8)=1.2+4.8=6$."
+  - id: gradp-steepest-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, why does the gradient direction give slope 5, the opposite direction slope -5, and a perpendicular direction slope 0?"
+    options:
+      - id: a
+        text: "For unit $\\mathbf u$, the slope is $5\\cos\\theta$: the cosines are 1 along, -1 opposite, and 0 perpendicular."
+        correct: true
+        feedback: "The dot-product formula is $D_{\\mathbf u}f=\\|\\nabla f\\|\\cos\\theta$, and here the gradient length is 5."
+      - id: b
+        text: "The gradient has length 5 in every direction, so all three slopes should have magnitude 5."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The length is the steepest slope; other directions scale it by the cosine of their angle."
+      - id: c
+        text: "The opposite vector has length -1 and the perpendicular vector length 0, scaling the gradient."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "All three directions are unit length; the sign and zero come from their angles, not their lengths."
+      - id: d
+        text: "The signs of the direction's coordinates alone determine the three slopes, regardless of the angle."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The dot product depends on the angle between the vectors, not just the coordinate signs."
+    solution: "For a unit direction, the slope is $\\|\\nabla f\\|\\cos\\theta=5\\cos\\theta$. The directions along, opposite, and perpendicular to the gradient have cosines 1, -1, and 0, giving slopes 5, -5, and 0."
+  - id: gradp-why-180
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "For equal-length unit directions, why is the slope most negative at an angle of $180^\\circ$ to the gradient?"
+    options:
+      - id: a
+        text: "The cosine is -1 there, the smallest possible value."
+        correct: true
+        feedback: "The dot-product formula makes the slope smallest when $\\cos\\theta=-1$."
+      - id: b
+        text: "The cosine is 0 there, so the slope disappears."
+        correct: false
+        category: recall_failure
+        feedback: "The cosine is 0 at $90^\\circ$; at $180^\\circ$ it is -1."
+      - id: c
+        text: "The opposite direction has a greater length than the others."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "All directions are unit length, so their lengths are equal."
+      - id: d
+        text: "Every gradient points in the negative coordinate directions."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Gradient components can have either sign; the angle explains the decrease."
+    solution: "For unit directions the slope is $\\|\\nabla f\\|\\cos\\theta$. The cosine is smallest, at -1, when the direction is opposite the gradient."
+  - id: gradp-length
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "For $f(x,y)=x^2+2y^2$, compare $P=(1.5,1)$ and $Q=(0,1)$. Where is the steepest uphill slope larger?"
+    options:
+      - id: a
+        text: "At P, because its gradient has length 5 rather than 4."
+        correct: true
+        feedback: "The gradient lengths are $\\sqrt{3^2+4^2}=5$ at P and 4 at Q."
+      - id: b
+        text: "At Q, because its y-coordinate is larger than P's."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Height and steepness are different; compare the gradient lengths."
+      - id: c
+        text: "They are equal because every gradient is a unit vector."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Gradients are not necessarily unit vectors; their lengths measure steepest slope."
+      - id: d
+        text: "At Q, because its gradient has two non-zero components."
+        correct: false
+        category: math_error
+        feedback: "At Q the gradient is $(0,4)$, with length 4; at P it is $(3,4)$, with length 5."
+    solution: "At P the gradient length is 5; at Q the gradient is $(0,4)$ with length 4. The steepest uphill slope is therefore larger at P."
+  - id: gradp-descent-unit
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "At $P$, $\\nabla f(P)=(3,4)$. Which unit direction gives the steepest local decrease?"
+    options:
+      - id: a
+        text: "$(-0.6,-0.8)$"
+        correct: true
+        feedback: "This is $-\\nabla f/\\|\\nabla f\\|$, the unit direction opposite the gradient."
+      - id: b
+        text: "$(0.6,0.8)$"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "This points along the gradient and gives steepest increase."
+      - id: c
+        text: "$(0.8,-0.6)$"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "This is perpendicular to the gradient, so its first-order slope is zero."
+      - id: d
+        text: "$(-3,-4)$"
+        correct: false
+        category: misapplied_technique
+        feedback: "It points downhill but has length 5; divide by 5 to make a unit direction."
+    solution: "The gradient has length 5, so the opposite unit direction is $-(3,4)/5=(-0.6,-0.8)$."
+  - id: gradp-steepest-rate
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "At $P$, $\\nabla f(P)=(3,4)$. What is the slope for a unit step in the steepest-downhill direction?"
+    answer: -5
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 5,
+          category: incorrect_reasoning,
+          feedback: "The gradient length 5 is the uphill slope; the opposite direction has slope -5.",
+        }
+    solution: "The steepest-downhill slope is the negative gradient length, $-\\sqrt{3^2+4^2}=-5$."
+  - id: gradp-descent-step
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "At $P$, $f(P)=4.25$ and $\\nabla f(P)=(3,4)$. For the small step $\\delta=-0.02\\nabla f(P)$, estimate the new value of $f$."
+    answer: 3.75
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: -0.5,
+          category: incomplete_explanation,
+          feedback: "That is the estimated change. Add it to the starting value 4.25.",
         }
       - {
-          answer: 0.2,
-          category: misapplied_technique,
-          feedback: "That multiplies the loss change by the slope. Divide the change by the slope instead.",
+          answer: 4.75,
+          category: math_error,
+          feedback: "A step opposite the gradient should lower the function.",
         }
     hints:
-      - "The estimated change is $3 \\cdot 0 + (-2)\\,\\delta_2$."
-      - "Set the estimated change equal to $-0.1$."
-    solution: |
-      The estimated loss change for the step $\delta = (0, \delta_2)$ is:
-
-      $$\nabla L \cdot \delta = 3 \cdot 0 + (-2)\,\delta_2 = -2\,\delta_2$$
-
-      Lowering the loss by 0.1 means a change of $-0.1$:
-
-      $$-2\,\delta_2 = -0.1$$
-
-      $$\delta_2 = 0.05$$
+      - "$\\delta=(-0.06,-0.08)$."
+      - "Estimate the change with $\\nabla f(P)\\cdot\\delta$."
+    solution: "The estimated change is $3(-0.06)+4(-0.08)=-0.5$, so the estimated new value is $4.25-0.5=3.75$."
+  - id: gradp-not-at-minimum
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "For $f(x,y)=x^2+2y^2$ at $(1.5,1)$, the negative gradient is $(-3,-4)$, but the direction to the bottom $(0,0)$ is $(-1.5,-1)$. What does this show?"
+    options:
+      - id: a
+        text: "The steepest downhill direction nearby need not point straight at the minimum."
+        correct: true
+        category: misunderstood_definition
+        feedback: "The negative gradient uses the local slopes; it is not a route to the minimum."
+      - id: b
+        text: "The gradient must be wrong because it should point directly at the bottom."
+        correct: false
+        category: math_error
+        feedback: "The partials are $(3,4)$; their opposite gives the steepest local decrease."
+      - id: c
+        text: "A step along the negative gradient increases the function."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The dot product with $(-3,-4)$ is negative, so a small step lowers the function."
+      - id: d
+        text: "The function has no minimum because the two directions differ."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The function's minimum is still at $(0,0)$; the local steepest direction need not point there."
+    solution: "The negative gradient is the steepest local downhill direction, while the vector to the minimum depends on where the minimum is."
+  - id: gradp-robot-descent
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot is at $(3,4)$ on a surface with height $h(x,y)=x^2+y^2$. Which unit direction gives the steepest local decrease, and what is its slope?"
+    options:
+      - id: a
+        text: "$(-0.6,-0.8)$, with slope $-10$."
+        correct: true
+        feedback: "The gradient is $(6,8)$ with length 10; its opposite unit direction has slope -10."
+      - id: b
+        text: "$(0.6,0.8)$, with slope $10$."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "That is the steepest uphill direction, not downhill."
+      - id: c
+        text: "$(-1,0)$, with slope $-6$."
+        correct: false
+        category: misapplied_technique
+        feedback: "This lowers the height, but less steeply than the direction opposite $(6,8)$."
+      - id: d
+        text: "$(-0.8,-0.6)$, with slope $-9.6$."
+        correct: false
+        category: math_error
+        feedback: "This is a downhill direction, but its slope is -9.6, not the steepest possible slope -10."
+    solution: "The gradient is $(6,8)$ with length 10, so the steepest downhill unit direction is $-(6,8)/10=(-0.6,-0.8)$ and its slope is $-10$."

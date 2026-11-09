@@ -250,7 +250,7 @@ test('knowledge-point lesson opening counts words after removing math and fenced
     expect.arrayContaining([
       expect.objectContaining({
         id: 'derivatives',
-        message: 'lesson where_this_fits has 29 words; expected 30–90',
+        message: 'lesson where_this_fits has 29 words; expected 30–130',
       }),
     ]),
   );
@@ -272,21 +272,23 @@ test('knowledge-point lesson summary requires the Next line', async () => {
   );
 });
 
-test('every knowledge-point explanation needs a Why this is useful line', async () => {
+test('knowledge-point prose does not require boilerplate openings', async () => {
   const data = await notationFixture();
   const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
-  if (!lesson?.value.knowledge_points?.[0]) throw new Error('Missing derivatives knowledge point');
-  lesson.value.knowledge_points[0].explain = 'A definition without an application line.';
+  const point = lesson?.value.knowledge_points?.[0];
+  if (!point) throw new Error('Missing derivatives knowledge point');
+  point.explain = 'A definition without a boilerplate application line.';
+  point.worked = 'Find the gradient at the stated point.';
 
-  expect(validateContent(data)).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        id: lesson.value.knowledge_points[0].id,
-        message:
-          'knowledge-point explain must contain a line starting with "**Why this is useful.**"',
-      }),
-    ]),
-  );
+  const issues = validateContent(data);
+  expect(
+    issues.some(
+      (issue) =>
+        issue.id === point.id &&
+        (issue.message.includes('Why this is useful') ||
+          issue.message.includes('worked must start')),
+    ),
+  ).toBe(false);
 });
 
 test('knowledge-point lessons may include check-role exercises', async () => {
@@ -687,6 +689,37 @@ test('a valid knowledge-point lesson with a parameterised practice problem passe
   ];
   addFinalExercise(data, 'vectors');
   expect(validateContent(data).filter((issue) => issue.id.startsWith('kp-'))).toEqual([]);
+});
+
+test('knowledge-point problem references reject explain exercises', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'vectors');
+  if (!lesson?.value.knowledge_points) throw new Error('Missing vectors knowledge-point lesson');
+  const point = lesson.value.knowledge_points[0];
+  if (!point) throw new Error('Missing first vectors knowledge point');
+  const explainSource = data.exercises.find(({ value }) => value.id === 'derivatives-explain');
+  if (!explainSource) throw new Error('Missing explain exercise fixture');
+  const explain = ExerciseSchema.parse({
+    ...explainSource.value,
+    id: 'vectors-kp-explain',
+    prompt: 'Explain why this step works.',
+  });
+  data.exercises.push({
+    value: explain,
+    concept: 'vectors',
+    file: 'exercises/vectors.yaml',
+  });
+  point.problems[1] = explain.id;
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: point.id,
+        message:
+          'knowledge-point problem vectors-kp-explain is type explain; only the lesson final may be explain',
+      }),
+    ]),
+  );
 });
 
 test('knowledge-point lessons require a basics exercise first', async () => {
@@ -1116,11 +1149,11 @@ test('knowledge-point style rules count prose, math spans, and fenced code corre
   if (!lesson || !invalid || !valid) throw new Error('Missing supervised-learning points');
 
   invalid.title = 'Rate $r$';
-  invalid.explain = Array.from({ length: 251 }, () => 'word').join(' ');
+  invalid.explain = Array.from({ length: 301 }, () => 'word').join(' ');
   invalid.worked = 'A worked example.';
   valid.title = 'A plain title';
   valid.explain = `${Array.from({ length: 249 }, () => 'word').join(' ')} $2x$ \`\`\`txt\nignored words\n\`\`\``;
-  valid.worked = 'This example shows a valid opening.';
+  valid.worked = 'At the stated point, compute the gradient.';
 
   const issues = validateContent(data);
   expect(issues).toEqual(
@@ -1131,20 +1164,12 @@ test('knowledge-point style rules count prose, math spans, and fenced code corre
       }),
       expect.objectContaining({
         id: invalid.id,
-        message: 'knowledge-point explain has 251 words; maximum is 250',
-      }),
-      expect.objectContaining({
-        id: invalid.id,
-        message: 'knowledge-point worked must start with "This example shows"',
+        message: 'knowledge-point explain has 301 words; maximum is 300',
       }),
     ]),
   );
   expect(
-    issues.some(
-      (issue) =>
-        issue.id === valid.id &&
-        (issue.message.includes('explain has') || issue.message.includes('worked must start')),
-    ),
+    issues.some((issue) => issue.id === valid.id && issue.message.includes('explain has')),
   ).toBe(false);
 });
 

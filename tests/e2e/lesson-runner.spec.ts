@@ -328,7 +328,7 @@ test('passes every knowledge point and restores the exact problem and result aft
     const lesson = await response.json();
     return lesson.knowledge_points[0].title as string;
   });
-  const fitsHeading = page.getByRole('heading', { name: 'Where this fits', exact: true });
+  const fitsHeading = page.getByRole('heading', { name: "What you're learning", exact: true });
   await expect(fitsHeading).toBeVisible();
   const workedExample = page.getByRole('heading', { name: 'Worked example', exact: true });
   await expect(workedExample).toBeVisible();
@@ -524,7 +524,9 @@ test('passes every knowledge point and restores the exact problem and result aft
   expect(finalActivity.lastAttempt.yourAnswer).toContain('Predict delivery time');
   expect(page.url()).toContain(`/session/${sessionId}`);
   await page.goto('/lessons/supervised-learning');
-  await expect(page.getByRole('heading', { name: 'Where this fits', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: "What you're learning", exact: true }),
+  ).toBeVisible();
 });
 
 test('shows a correct lesson-run solution inline when no feedback exists', async ({ page }) => {

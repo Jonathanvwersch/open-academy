@@ -1,129 +1,259 @@
 concept: gradients
-version: 3
+version: 4
 objective: |
-  **Goal:** compute the gradient $\nabla f$ of a function of several inputs, use it to estimate how the output changes for a small step, and explain why the negative gradient is the direction of steepest descent.
+  **Goal:** explain what the gradient tells you, find the slope in any chosen direction, and show why its negative gives the steepest local decrease.
 where_this_fits: |
-  The partial-derivatives lesson gave us one loss slope for each house-model weight, with the other weights held fixed. Looking at those numbers separately does not show the combined direction in which the loss rises fastest. The gradient puts the partial derivatives in one vector, so its opposite points toward the steepest local decrease. The next lesson uses that direction to update the weights repeatedly.
+  A model learns by nudging its weights so that its loss gets smaller. With one weight, the derivative tells you which way to nudge. The partial-derivatives lesson gave you one slope per weight, but a real model moves all its weights at once, and the separate slopes don't directly tell you the best combined move. This lesson builds the tool that does, the **gradient**, in three steps:
+
+  1. Collect all the slopes at a point into one vector.
+  2. Use that vector to get the slope in any direction you choose.
+  3. Find the direction that goes downhill fastest.
+
+  That direction is what the next lesson, gradient descent, follows.
 knowledge_points:
   - id: grad-vector-of-partials
-    title: The gradient collects every partial derivative
+    title: The gradient collects the slopes
     explain: |
-      **What a gradient is.** The gradient is an ordered vector of partial derivatives, one for each adjustable model parameter.
+      **The question.** Picture the loss of a model with just two weights, $x$ and $y$, as a landscape: above each point $(x,y)$ on a map, the height of the ground is the loss. Training means walking downhill. Standing at one spot, you can measure the slope going in the $x$ direction (only $x$ changes) and in the $y$ direction (only $y$ changes): those are the two partial derivatives. How do you describe the slope at that spot as one thing?
 
-      **How it works.** For this house:
+      **Picture it.** We'll use the simplest such landscape, $f(x,y)=x^2+2y^2$: a bowl whose lowest point is $(0,0)$. The left picture shows the bowl from the side. The right one shows it from above as a **contour map**, like a hiking map: each ring joins points at the same height, and rings further out are higher. We stand at $P=(1.5,1)$, where the height is $f(P)=4.25$. There the slope in the $x$ direction is $3$ and in the $y$ direction is $4$ (worked out below). The blue arrow combines them as $(3,4)$.
 
-      $$
-      \begin{aligned}
-      x &= (12,3,20),\\
-      y &= 330,\\
-      w &= (25,10,-1),\\
-      b &= 0.
-      \end{aligned}
-      $$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" aria-label="An oblique 3D side view of the bowl x squared plus 2y squared with lifted level ellipses and cross-section parabolas, beside a contour map from above with the point P and slope arrows">
+        <defs>
+          <marker id="g1-muted-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
+          <marker id="g1-blue-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="16" y="35">from the side</text>
+          <ellipse cx="0" cy="0" rx="1" ry="1" transform="matrix(18 10 9.899495 -7.071068 145 324)" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+          <ellipse cx="0" cy="0" rx="1" ry="1" transform="matrix(27 15 14.849242 -10.606602 145 304)" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+          <ellipse cx="0" cy="0" rx="1" ry="1" transform="matrix(37.107951 20.615528 20.408332 -14.577380 145 272)" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2.25" vector-effect="non-scaling-stroke"/>
+          <ellipse cx="0" cy="0" rx="1" ry="1" transform="matrix(50.911688 28.284271 28 -20 145 212)" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+          <path d="M94.088 183.716 Q145 468 195.912 240.284 M117 232 Q145 468 173 192" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+          <circle cx="145" cy="340" r="4" fill="#171717"/>
+          <circle cx="186" cy="277" r="4.5" fill="#171717"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="200" y="280">P, height 4.25</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="12" y="373">lowest point (0,0)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="374" y="35">from above</text>
+          <ellipse cx="438" cy="315" rx="25" ry="17.677670" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <ellipse cx="438" cy="315" rx="37.5" ry="26.516504" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <ellipse cx="438" cy="315" rx="51.538820" ry="36.443449" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2.25"/>
+          <ellipse cx="438" cy="315" rx="70.710678" ry="50" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <path d="M438 315 H616 M438 315 V90" stroke="#737373" fill="#171717" fill-opacity="0"/>
+          <path d="M475.5 290 H505.5" stroke="#737373" stroke-width="2.5" marker-end="url(#g1-muted-arrow)"/>
+          <path d="M475.5 290 V250" stroke="#737373" stroke-width="2.5" marker-end="url(#g1-muted-arrow)"/>
+          <path d="M475.5 290 L505.5 250" stroke="#3b82f6" stroke-width="3.5" marker-end="url(#g1-blue-arrow)"/>
+          <circle cx="475.5" cy="290" r="4" fill="#171717"/>
+          <path d="M540 112 H551" stroke="#737373" stroke-width="2.25"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="557" y="117">f = 4.25</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="518" y="344">P</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="512" y="285">3 along x</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="381" y="244">4 along y</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="516" y="234">(3,4)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="621" y="310">x</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="444" y="87">y</text>
+        </g>
+      </svg>
+      ```
 
-      The prediction is 310 and the error is $e=-20$. The loss is:
+      **The idea.** At each point, collect one partial derivative per input into a vector: the **gradient**. Write it as $\nabla f$, read “gradient of $f$”; $\nabla$ is called nabla. For $n$ inputs $x_1,\ldots,x_n$, $\nabla f=(\partial f/\partial x_1,\ldots,\partial f/\partial x_n)$, one component per input in the same order. At $P$, $\nabla f(P)$ means the gradient evaluated there: $(3,4)$.
 
-      $$L=(w\cdot x+b-y)^2.$$
+      **Common confusion.** “The gradient is just one number telling me how steep the hill is.” No: it is a vector, so its components record how each input contributes. Its length is one number; the third part connects it to the steepest slope.
 
-      The previous lesson found each partial; put them in parameter order:
-
-      $$\nabla L=\left(\frac{\partial L}{\partial w_1},\frac{\partial L}{\partial w_2},\frac{\partial L}{\partial w_3},\frac{\partial L}{\partial b}\right)=2e(12,3,20,1)=(-480,-120,-800,-40).$$
-
-      Each component is the loss slope for its matching weight or bias. The order must match the order of the parameters.
-
-      **Why this is useful.** Training can use one vector to track how every adjustable part of a house-price model affects its loss.
     worked: |
-      This example shows the four partials for the same house.
+      Find the gradient of $f(x,y)=x^2+2y^2$ at $P=(1.5,1)$.
 
-      The prediction is $12\cdot25+3\cdot10+20(-1)+0=310$, so $e=-20$.
+      1. **Find the slope along $x$.**
+         $$\frac{\partial f}{\partial x}=2x=2(1.5)=3.$$
 
-      1. Area weight: $2e\cdot12=-480$.
-      2. Bedroom weight: $2e\cdot3=-120$.
-      3. Age weight: $2e\cdot20=-800$.
-      4. Bias: $2e=-40$.
+      2. **Find the slope along $y$.**
+         $$\frac{\partial f}{\partial y}=4y=4(1)=4.$$
 
-      Thus $\nabla L=(-480,-120,-800,-40)$.
+      3. **Collect the two slopes in input order.**
+         $$\nabla f(P)=(3,4).$$
+
+      **Compare cases.**
+
+      | Point | Gradient |
+      | --- | --- |
+      | $(0,0)$ | $(0,0)$ |
+      | $(1.5,0)$ | $(3,0)$ |
+      | $(0,1)$ | $(0,4)$ |
+      | $(1.5,1)$ | $(3,4)$ |
+
+      **Where it shows up.** The partial-derivatives lesson used a house-price model with three weights and a bias, an extra adjustable number. Its loss slopes were $(-480,-120,-800,-40)$, one for each parameter; collected together, they form that model's gradient.
     problems:
-      [
-        grad-vector-of-partials-basics,
-        gradp-why-vector,
-        gradp-order,
-        gradp-exp-component,
-        gradp-compute,
-        gradp-component,
-        gradp-three-inputs,
-        gradp-flat-point,
-      ]
+      - grad-vector-of-partials-basics
+      - gradp-why-vector
+      - gradp-order
+      - gradp-compute
+      - gradp-component
+      - gradp-three-inputs
+      - gradp-flat-point
+      - gradp-robot-gradient
   - id: grad-points-uphill
-    title: The gradient predicts a small loss change
+    title: The slope in any direction
     explain: |
-      **What a directional change is.** It is the approximate output change caused by moving several inputs a small amount together.
+      **The question.** You are standing at $P$ on the bowl and choose a direction to walk. How quickly does its height rise or fall along that route, rather than just along the $x$- or $y$-axis?
 
-      **How it works.** At the same house and weights, $\nabla L=(-480,-120,-800,-40)$. For the small step $\delta=(0.01,0.01,0.01,0.01)$, the dot product estimates the change:
+      **Picture it.** The blue arrow is $\nabla f(P)=(3,4)$; the amber unit direction $\mathbf u=(1,0)$ is one step along $+x$. Its dashed projection points along $\mathbf u$ and has length $3$, so the slope is $+3$.
 
-      $$\Delta L\approx\nabla L\cdot\delta=-4.8-1.2-8-0.4=-14.4.$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 460" aria-label="At P, the gradient arrow (3,4) projects onto unit direction u=(1,0) with projected length 3 and separated labels">
+        <defs>
+          <marker id="g2-blue-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+          <marker id="g2-amber-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <ellipse cx="150" cy="360" rx="40" ry="28.284271" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <ellipse cx="150" cy="360" rx="60" ry="42.426407" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <ellipse cx="150" cy="360" rx="82.462113" ry="58.309519" fill="#171717" fill-opacity="0" stroke="#a3a3a3" stroke-width="2.25"/>
+          <ellipse cx="150" cy="360" rx="113.137085" ry="80" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <path d="M150 360 H610 M150 360 V40" stroke="#737373" fill="#171717" fill-opacity="0"/>
+          <path d="M210 320 L282 224" stroke="#3b82f6" stroke-width="3.5" marker-end="url(#g2-blue-arrow)"/>
+          <path d="M210 320 H282" stroke="#3b82f6" stroke-width="2.5" stroke-dasharray="6 5" marker-end="url(#g2-blue-arrow)"/>
+          <path d="M210 320 H266" stroke="#f59e0b" stroke-width="3.5" marker-end="url(#g2-amber-arrow)"/>
+          <circle cx="210" cy="320" r="4" fill="#171717"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="285" y="350">P = (1.5,1)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="305" y="315" fill="#f59e0b">u = (1,0)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="294" y="218">∇f(P) = (3,4)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="294" y="292" fill="#3b82f6">projection = 3</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="615" y="355">x</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="156" y="36">y</text>
+        </g>
+      </svg>
+      ```
 
-      This first-order approximation uses the slopes at the starting point. It works because a smooth loss changes almost linearly in a small region around that point. The dot product adds each parameter's slope multiplied by its own small step.
+      **The idea.** The dot product is a projection: it measures how much the gradient points along your chosen direction. For a unit vector $\mathbf u$, the **directional derivative** $D_{\mathbf u}f(P)$ is the slope of $f$ at $P$ in direction $\mathbf u$:
 
-      **Why this is useful.** The estimate lets us check whether a proposed small update to house-model weights should lower the loss.
+      $$D_{\mathbf u}f(P)=\nabla f(P)\cdot\mathbf u.$$
+
+      A unit vector has length $1$, so the dot product gives slope per unit distance. For a tiny step, the surface is nearly straight, so change is about distance times slope: $\Delta f\approx hD_{\mathbf u}f(P)$.
+
+      **Common confusion.** “Isn't the directional derivative just the gradient?” Not quite. The gradient is one vector for the point. The directional derivative is one number for each direction you might walk, and you get every one of them from the gradient with a dot product. The partial derivatives are just two of them: $\mathbf u=(1,0)$ gives $3$ and $\mathbf u=(0,1)$ gives $4$.
     worked: |
-      This example shows the calculation.
-      This example compares the estimate with the actual loss after the four-parameter step.
+      At $P=(1.5,1)$, use $\nabla f(P)=(3,4)$. Choose $\mathbf u=(0.6,0.8)$ to make both coordinates contribute; it is easy to check that this direction has unit length.
 
-      Initially the prediction is 310 and $L=400$. The estimated change is $-14.4$, so the estimated loss is 385.6.
+      1. **Check that the direction is a unit vector.**
+         $$\|\mathbf u\|=\sqrt{0.6^2+0.8^2}=1.$$
 
-      After the step:
+      2. **Find the slope in that direction.**
+         $$D_{\mathbf u}f(P)=\nabla f(P)\cdot\mathbf u=3(0.6)+4(0.8)=5.$$
 
-      $$w=(25.01,10.01,-0.99),\qquad b=0.01.$$
+      3. **Switch to a separate $+x$ walk and check a small step of length $h=0.01$.**
+         $$\Delta f\approx hD_{(1,0)}f(P)=0.01(3)=0.03.$$
 
-      The prediction is $310.36$, so the actual loss is:
+      4. **Compare with the actual change.**
+         $$f(1.51,1)-f(1.5,1)=4.2801-4.25=0.0301.$$
 
-      $$(-19.64)^2=385.7296.$$
+      **Compare cases.**
 
-      Its change, $-14.2704$, is close to the estimate.
+      | Direction $\mathbf u$ | Slope $\nabla f(P)\cdot\mathbf u$ |
+      | --- | --- |
+      | $(1,0)$ | $3$ |
+      | $(0,1)$ | $4$ |
+      | $(0.6,0.8)$ | $5$ |
+      | $(0.8,-0.6)$ | $0$ |
+      | $(-1,0)$ | $-3$ |
+      | $(-0.6,-0.8)$ | $-5$ |
+
+      **Where it shows up.** In machine learning, $L$ is the training loss, a score of model errors. An update is a small change to the model's parameters; call its vector of changes $\delta$. The dot product $\nabla L\cdot\delta$ predicts how that update changes the loss.
     problems:
-      [
-        grad-points-uphill-basics,
-        gradp-uphill,
-        gradp-approx,
-        gradp-contour,
-        gradp-length,
-        gradp-predict-height,
-        gradp-small-step,
-        gradp-target-drop,
-      ]
+      - grad-points-uphill-basics
+      - gradp-approx
+      - gradp-direction-rate
+      - gradp-contour
+      - gradp-predict-height
+      - gradp-small-step
+      - gradp-target-drop
+      - gradp-robot-direction
   - id: grad-steepest-descent
-    title: The negative gradient is steepest descent
+    title: Steepest uphill and steepest downhill
     explain: |
-      **What steepest descent means.** It is the direction that lowers a function fastest per unit distance for a small step.
+      **The question.** Of all unit directions from $P$, which one climbs fastest, and which one lowers $f$ fastest?
 
-      **How it works.** For the house loss, the gradient is $(-480,-120,-800,-40)$, so the opposite direction is $(480,120,800,40)$. Divide by its length to compare unit steps. Let $\theta$ be the angle between the gradient and a unit step $u$. The dot product formula is
+      **Picture it.** The grey ellipse is the $f=4.25$ contour through $P$. The blue gradient arrow points uphill fastest; amber unit arrows show parallel, opposite and tangent walks, with slopes $5$, $-5$ and $0$.
 
-      $$\nabla L\cdot u=\|\nabla L\|\|u\|\cos\theta.$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 520" aria-label="At P on the f equals 4.25 contour, the gradient slope is 5, the opposite slope is minus 5, the tangent slope is zero, and a dashed red arrow points to the minimum">
+        <defs>
+          <marker id="g3-blue-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+          <marker id="g3-amber-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+          <marker id="g3-red-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <ellipse cx="160" cy="380" rx="60" ry="42.426407" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <ellipse cx="160" cy="380" rx="90" ry="63.639610" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <ellipse cx="160" cy="380" rx="123.693169" ry="87.464278" fill="#171717" fill-opacity="0" stroke="#a3a3a3" stroke-width="2.25"/>
+          <path d="M160 380 H605 M160 380 V35" stroke="#737373" fill="#171717" fill-opacity="0"/>
+          <path d="M250 320 L160 380" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#g3-red-arrow)"/>
+          <path d="M250 320 L286 272" stroke="#3b82f6" stroke-width="3.5" marker-end="url(#g3-blue-arrow)"/>
+          <path d="M250 320 L214 368" stroke="#f59e0b" stroke-width="3" marker-end="url(#g3-amber-arrow)"/>
+          <path d="M250 320 L290 350" stroke="#f59e0b" stroke-width="3" marker-end="url(#g3-amber-arrow)"/>
+          <circle cx="160" cy="380" r="3.5" fill="#171717"/>
+          <circle cx="250" cy="320" r="4" fill="#171717"/>
+          <path d="M14 230 H27" stroke="#a3a3a3" stroke-width="2.25"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="34" y="235">f = 4.25</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="299" y="265" fill="#3b82f6">∇f(P) = (3,4)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="299" y="294" fill="#3b82f6">slope 5</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="326">P = (1.5,1)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="302" y="367" fill="#f59e0b">slope 0</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="255" y="444" fill="#f59e0b">slope −5 (−∇f)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="10" y="285" fill="#ef4444">to the minimum</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="614" y="375">x</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="168" y="29">y</text>
+        </g>
+      </svg>
+      ```
 
-      With both lengths fixed, the smallest cosine is −1, so the negative gradient gives the steepest local decrease. The gradient length is $\sqrt{480^2+120^2+800^2+40^2}=40\sqrt{554}$.
+      **The idea.** Let $\theta$ be the angle between the gradient and a chosen unit direction $\mathbf u$. The dot product is gradient length times direction length times the cosine of that angle. Since $\|\mathbf u\|=1$:
 
-      **Why this is useful.** Gradient descent uses the negative gradient to update house-model weights toward a lower price loss.
+      $$D_{\mathbf u}f(P)=\nabla f(P)\cdot\mathbf u=\|\nabla f(P)\|\|\mathbf u\|\cos\theta=\|\nabla f(P)\|\cos\theta.$$
+
+      At $0^\circ$, $\cos\theta=1$, so the formula gives slope $\|\nabla f(P)\|$, the largest possible. At $180^\circ$, the slope is $-\|\nabla f(P)\|$, so $-\nabla f$ points steepest downhill. A contour joins equal-height points; moving along its tangent keeps the height unchanged nearby, so at $90^\circ$ the slope is $0$.
+
+      **Common confusion.** “The negative gradient points straight at the minimum.” It gives steepest local decrease, not the destination: from $P$, the vector to $(0,0)$ is $(0,0)-(1.5,1)=(-1.5,-1)$, not parallel to $-\nabla f(P)=(-3,-4)$.
+
     worked: |
-      This example shows the steepest local decrease for the same house loss.
+      At $P=(1.5,1)$, $\nabla f(P)=(3,4)$.
 
-      The gradient is $(-480,-120,-800,-40)$ and its length is $40\sqrt{554}$.
+      1. **Find the gradient length.**
+         $$\|\nabla f(P)\|=\sqrt{3^2+4^2}=5.$$
 
-      Its opposite unit direction is $(12,3,20,1)/\sqrt{554}$. The predicted loss change per unit step is $-40\sqrt{554}$.
+      2. **Find the unit steepest-uphill direction.**
+         $$\frac{\nabla f(P)}{\|\nabla f(P)\|}=\left(\frac35,\frac45\right)=(0.6,0.8).$$
+
+      3. **Reverse it for the steepest-downhill direction.**
+         $$\mathbf u=-\frac{\nabla f(P)}{\|\nabla f(P)\|}=(-0.6,-0.8).$$
+
+      4. **Check that a perpendicular unit direction has zero slope.**
+         $$\mathbf u=(0.8,-0.6),\qquad \nabla f(P)\cdot\mathbf u=3(0.8)+4(-0.6)=0.$$
+
+      **Compare cases.**
+
+      | Angle $\theta$ | $\cos\theta$ | Slope $5\cos\theta$ |
+      | --- | --- | --- |
+      | $0^\circ$ | $1$ | $5$ |
+      | $60^\circ$ | $0.5$ | $2.5$ |
+      | $90^\circ$ | $0$ | $0$ |
+      | $120^\circ$ | $-0.5$ | $-2.5$ |
+      | $180^\circ$ | $-1$ | $-5$ |
+
+      **Where it shows up.** Gradient descent takes small steps along $-\nabla L$ because this is the direction of steepest local loss decrease.
     problems:
-      [
-        grad-steepest-descent-basics,
-        gradp-direction-rate,
-        gradp-descent-unit,
-        gradp-steepest-rate,
-        gradp-why-180,
-        gradp-descent-step,
-        gradp-not-at-minimum,
-      ]
+      - grad-steepest-descent-basics
+      - gradp-steepest-self-explain
+      - gradp-why-180
+      - gradp-length
+      - gradp-descent-unit
+      - gradp-steepest-rate
+      - gradp-descent-step
+      - gradp-not-at-minimum
+      - gradp-robot-descent
 final: grad-explain
 summary: |
-  - The gradient is the vector of all partial derivatives, one component per model parameter.
-  - Its dot product with a small parameter step estimates the resulting house-loss change.
-  - For equal small steps, the negative gradient gives the steepest local decrease.
-
-  **Next:** Gradient descent uses the negative gradient to step house-model weights toward lower loss.
+  - The gradient collects one partial derivative per input, in input order.
+  - The slope in any unit direction is the dot product of the gradient and that direction.
+  - The gradient gives the steepest uphill direction; its negative gives the steepest local downhill direction.
+  **Next:** The next lesson uses this direction in gradient descent.

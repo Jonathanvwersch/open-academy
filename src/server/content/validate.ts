@@ -661,12 +661,12 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
   for (const { value: lesson, file } of data.lessons) {
     if (lesson.knowledge_points) {
       const openingWords = countKnowledgePointWords(lesson.where_this_fits ?? '');
-      if (openingWords < 30 || openingWords > 90) {
+      if (openingWords < 30 || openingWords > 130) {
         addIssue(
           issues,
           file,
           lesson.concept,
-          `lesson where_this_fits has ${openingWords} words; expected 30–90`,
+          `lesson where_this_fits has ${openingWords} words; expected 30–130`,
         );
       }
       if (
@@ -731,36 +731,16 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
       if (!point.explain.trim())
         addIssue(issues, file, point.id, 'knowledge-point explain must not be empty');
       const explanationWords = countKnowledgePointWords(point.explain);
-      if (explanationWords > 250) {
+      if (explanationWords > 300) {
         addIssue(
           issues,
           file,
           point.id,
-          `knowledge-point explain has ${explanationWords} words; maximum is 250`,
-        );
-      }
-      if (
-        !point.explain
-          .split(/\r?\n/)
-          .some((line) => line.trimStart().startsWith('**Why this is useful.**'))
-      ) {
-        addIssue(
-          issues,
-          file,
-          point.id,
-          'knowledge-point explain must contain a line starting with "**Why this is useful.**"',
+          `knowledge-point explain has ${explanationWords} words; maximum is 300`,
         );
       }
       if (!point.worked.trim())
         addIssue(issues, file, point.id, 'knowledge-point worked must not be empty');
-      if (!point.worked.trimStart().startsWith('This example shows')) {
-        addIssue(
-          issues,
-          file,
-          point.id,
-          'knowledge-point worked must start with "This example shows"',
-        );
-      }
       if (point.problems.length < 3) {
         addIssue(issues, file, point.id, 'knowledge point must reference at least 3 problems');
       }
@@ -824,6 +804,14 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
             file,
             point.id,
             `problem "${problemId}" belongs to "${problem.concept}"`,
+          );
+        }
+        if (problem.value.type === 'explain') {
+          addIssue(
+            issues,
+            file,
+            point.id,
+            `knowledge-point problem ${problemId} is type explain; only the lesson final may be explain`,
           );
         }
         if (

@@ -132,7 +132,7 @@ export type LessonBlockKind =
 
 const lessonBlockLabels: Partial<Record<LessonBlockKind, string>> = {
   objective: 'Goal',
-  fits: 'Where this fits',
+  fits: "What you're learning",
   example: 'Example',
   math: 'Key formula',
   worked: 'Worked example',
