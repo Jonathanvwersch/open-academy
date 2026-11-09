@@ -36,6 +36,7 @@ async function createActivity(
   conceptId: string,
   exerciseIds: string | string[],
   kind: 'practice' | 'learn' = 'practice',
+  progress?: Record<string, unknown>,
 ) {
   const [session] = await db
     .insert(studySessions)
@@ -56,12 +57,15 @@ async function createActivity(
     exerciseIds: Array.isArray(exerciseIds) ? exerciseIds : [exerciseIds],
     plannedMinutes: 10,
     status: 'in_progress',
+    ...(progress ? { progress } : {}),
   });
   return session.id;
 }
 
 async function openExplainActivity(page: Page) {
-  const sessionId = await createActivity('supervised-learning', 'sl-explain-setup');
+  const sessionId = await createActivity('supervised-learning', 'sl-explain-setup', 'learn', {
+    lessonRunnerContinued: true,
+  });
   await page.goto(`/session/${sessionId}`);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
   return sessionId;
@@ -301,6 +305,7 @@ test('explain tutor feedback shows rubric and model answer, and survives reload'
   await page.getByRole('button', { name: 'Submit answer' }).click();
   await expect(page.getByText('Rubric', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
+  await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Predict delivery time in minutes', { exact: false })).toBeVisible();
   await expect(
     page.getByText('Inputs and targets are clearly identified', { exact: false }),
@@ -311,6 +316,8 @@ test('explain tutor feedback shows rubric and model answer, and survives reload'
   await page.screenshot({ path: `${screenshotDir}/explain-rubric-feedback.png`, fullPage: true });
   await page.reload();
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
+  await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Your answer')).toHaveAttribute('readonly', '');
   await expect(
     page.getByText('Inputs and targets are clearly identified', { exact: false }),
   ).toBeVisible();
@@ -360,12 +367,13 @@ test('fallback explain flow reveals the model answer before the self-check step'
   await page.getByLabel('Your answer').fill('A model predicts an answer.');
   await page.getByRole('button', { name: 'Submit answer' }).click();
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
-  await expect(page.getByText('Your answer:', { exact: true })).toBeVisible();
+  await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
   await expect(
     page.getByRole('status').getByText('A model predicts an answer.', { exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await expect(page.getByLabel('Your answer')).toHaveCount(1);
   await expect(page.getByLabel('Your answer')).toHaveAttribute('readonly', '');
+  await expect(page.getByLabel('Your answer')).toHaveValue('A model predicts an answer.');
   await expect(page.getByText('Which of these did your answer include?')).toBeVisible();
   await expect(page.getByText('key point', { exact: true })).toHaveCount(2);
   await expect(page.getByRole('checkbox')).toHaveCount(3);
@@ -377,6 +385,7 @@ test('fallback explain flow reveals the model answer before the self-check step'
   await expect(page.getByRole('checkbox').nth(1)).toHaveAttribute('aria-checked', 'true');
   await page.getByRole('button', { name: 'Submit self-check' }).click();
   await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
+  await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
   const rubricList = page.getByRole('status').locator('ul');
   await expect(rubricList.locator('.katex')).toBeVisible();
   await expect(rubricList).not.toContainText('$');

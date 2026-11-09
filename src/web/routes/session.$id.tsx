@@ -328,12 +328,26 @@ function SessionPage() {
   const continueNext = async () => {
     setContinuing(true);
     try {
-      if (showingCompletedFinal && activity) {
-        await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
+      const currentActivityId = activity?.id;
+      const currentExerciseId = exerciseId;
+      const freshSession = await queryClient.fetchQuery({
+        ...sessionQueryOptions(id),
+        staleTime: 0,
+      });
+      const freshActivity = freshSession.activities.find((item) => item.id === currentActivityId);
+      if (
+        currentExerciseId &&
+        freshActivity?.kind === 'learn' &&
+        freshActivity.status === 'completed' &&
+        freshActivity.progress?.lessonRunnerContinued &&
+        !freshActivity.progress.finalQuestionContinued &&
+        (freshActivity.progress.completedExerciseIds ?? []).includes(currentExerciseId)
+      ) {
+        await apiFetch(`/api/sessions/${id}/activities/${freshActivity.id}/progress`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            ...(activity.progress ?? {}),
+            ...(freshActivity.progress ?? {}),
             complete: true,
             finalQuestionContinued: true,
           }),
@@ -625,7 +639,7 @@ function SessionPage() {
             {result && result.status !== 'invalid' ? (
               <FeedbackPanel
                 result={result}
-                hideAnswerLines={['mc', 'debug'].includes(exerciseQuery.data.type)}
+                hideAnswerLines={['mc', 'debug', 'explain'].includes(exerciseQuery.data.type)}
               />
             ) : null}
             {result?.status === 'invalid' ? (
@@ -793,7 +807,15 @@ function InlineLessonCheck({
         {exercise ? (
           <>
             <Markdown>{exercise.prompt}</Markdown>
-            {result ? <FeedbackPanel result={result} /> : null}
+            {result ? (
+              <FeedbackPanel
+                result={result}
+                hideAnswerLines={
+                  ['mc', 'debug', 'explain'].includes(exercise.type) &&
+                  (result.status === 'invalid' || result.retryAllowed === true)
+                }
+              />
+            ) : null}
             {!result || result.status === 'invalid' || result.retryAllowed ? (
               <ExerciseForm
                 key={`${activityId}:${exerciseId}`}

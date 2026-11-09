@@ -11,12 +11,14 @@ const stepReviewScreenshotDir = '/home/ubuntu/ui-audit/step-review';
 const feedbackCorrectScreenshotDir = '/home/ubuntu/screenshots/feedback-correct';
 const mcShuffleScreenshotDir = '/home/ubuntu/screenshots/mc-shuffle';
 const buttonLoadingScreenshotDir = '/home/ubuntu/screenshots/button-loading';
+const finalContinueScreenshotDir = '/home/ubuntu/screenshots/final-continue';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
 mkdirSync(feedbackCorrectScreenshotDir, { recursive: true });
 mkdirSync(mcShuffleScreenshotDir, { recursive: true });
 mkdirSync(buttonLoadingScreenshotDir, { recursive: true });
+mkdirSync(finalContinueScreenshotDir, { recursive: true });
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -346,7 +348,7 @@ test('passes every knowledge point and restores the exact problem and result aft
   await page.reload();
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
   await expect(page.getByText('Solution', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('Your answer:', { exact: true })).toBeVisible();
+  await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
   const finalActivity = await page.evaluate(async (session) => {
     const response = await fetch(`/api/sessions/${session}`);
     const data = await response.json();
@@ -505,7 +507,20 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
     await retry.click();
   }
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
+  await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
+  await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('Your answer')).toHaveAttribute('readonly', '');
+  await page.screenshot({
+    path: `${finalContinueScreenshotDir}/after-submit.png`,
+    fullPage: true,
+  });
   await continueButton.click();
+  await expect(page.getByRole('heading', { name: 'Session complete', exact: true })).toBeVisible();
+  await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
+  await page.screenshot({
+    path: `${finalContinueScreenshotDir}/after-single-continue.png`,
+    fullPage: true,
+  });
   const completed = await page.evaluate(
     async ({ sessionId, activityId }) => {
       const response = await fetch(`/api/sessions/${sessionId}`);
@@ -515,6 +530,7 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
     { sessionId: session.id, activityId: activity.id },
   );
   expect(completed.status).toBe('completed');
+  expect(completed.progress.finalQuestionContinued).toBe(true);
   expect(completed.lastAttempt.exerciseId).toBe('vectors-fixture-final');
 });
 
