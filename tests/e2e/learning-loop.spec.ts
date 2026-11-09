@@ -54,7 +54,7 @@ test('diagnostic to KP runner starts point one and preserves progress', async ({
     });
   });
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Welcome to Academy' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome to Open Academy' })).toBeVisible();
   await page.evaluate(async () => {
     await fetch('/api/settings', {
       method: 'PUT',
@@ -212,7 +212,7 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
   };
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Welcome to Academy' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome to Open Academy' })).toBeVisible();
   await assertStable('/');
   for (const route of [
     { name: 'Progress', path: '/progress', heading: 'Progress' },

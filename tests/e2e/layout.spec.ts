@@ -80,7 +80,7 @@ test('routes fit mobile viewports without horizontal page or navigation overflow
   }
 });
 
-test('course route skeleton aligns with the Academy wordmark', async ({ page }) => {
+test('course route skeleton aligns with the Open Academy wordmark', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   await page.route('**/api/course*', async (route) => {
@@ -93,7 +93,9 @@ test('course route skeleton aligns with the Academy wordmark', async ({ page }) 
   const skeleton = page.getByTestId('route-skeleton');
   await expect(skeleton).toBeVisible();
   const skeletonBounds = await skeleton.boundingBox();
-  const wordmarkBounds = await page.getByRole('link', { name: 'Academy' }).boundingBox();
+  const wordmark = page.getByRole('link', { name: 'Open Academy', exact: true });
+  await expect(wordmark.locator('svg')).toHaveAttribute('viewBox', '0 0 16 16');
+  const wordmarkBounds = await wordmark.boundingBox();
   expect(skeletonBounds).not.toBeNull();
   expect(wordmarkBounds).not.toBeNull();
   expect(Math.abs((skeletonBounds?.x ?? 0) - (wordmarkBounds?.x ?? 0))).toBeLessThanOrEqual(1);

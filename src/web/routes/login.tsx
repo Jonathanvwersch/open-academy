@@ -8,6 +8,7 @@ import { Button } from '../ui/button.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card.js';
 import { Input } from '../ui/input.js';
 import { Label } from '../ui/label.js';
+import { Logo } from '../ui/logo.js';
 
 export const Route = createFileRoute('/login')({
   validateSearch: z.object({ redirect: z.string().optional() }),
@@ -57,7 +58,8 @@ function LoginPage() {
     <main className="flex min-h-svh items-center justify-center bg-background px-4 py-8">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">Academy</CardTitle>
+          <Logo className="size-8" />
+          <CardTitle className="text-xl">Open Academy</CardTitle>
           <CardDescription>Enter your password to continue.</CardDescription>
         </CardHeader>
         <CardContent>
