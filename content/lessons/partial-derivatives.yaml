@@ -215,7 +215,8 @@ knowledge_points:
           <path d="M521 120 V176" stroke="#737373" stroke-width="1.5" marker-end="url(#pd3-arrow)"/>
           <rect x="418" y="180" width="206" height="50" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
           <text x="430" y="210">loss e² = 400</text>
-          <text x="16" y="284"><tspan fill="#f59e0b">amber: adjusted by training</tspan>   <tspan fill="#737373">grey: recorded data, fixed</tspan></text>
+          <text x="16" y="284" fill="#f59e0b">amber: adjusted by training</text>
+          <text x="260" y="284" fill="#737373">grey: recorded data, fixed</text>
         </g>
       </svg>
       ```
