@@ -1,25 +1,97 @@
 concept: train-test-split
-version: 3
+version: 4
 objective: |
-  **Goal:** separate house sales used to fit a model from sales used to choose it and evaluate it fairly.
+  **Goal:** check how well a trained model will do on new examples by holding data out, give the training, validation and test sets their separate jobs, and keep held-out information from leaking into training.
 where_this_fits: |
-  Gradient descent adjusted the house-price model to reduce errors on observed sales. A low training loss alone does not show that the model predicts new houses well, because it may have fitted details of those examples. We need to hold out sales and check prediction errors on houses the model has not seen.
+  Gradient descent makes a house model's average error small on the sales it trains on. But the model is for pricing houses that haven't sold yet, and a small error on the training sales doesn't tell you how it will do on those: a model can fit the sales it has seen and still price new ones badly. You also need to choose between models without fooling yourself about how good the winner is. This lesson builds an honest check in four steps:
+
+  1. Score the model on examples kept out of training.
+  2. Give training, validation and test sets one job each.
+  3. Choose settings that training can't learn, such as the learning rate, with the validation set.
+  4. Stop information from held-out examples leaking into training.
 knowledge_points:
   - id: tts-why-hold-out
-    title: Test on houses the model has not seen
+    title: Score the model on houses it hasn't seen
     explain: |
-      **What a held-out test is.** A test set is a group of examples kept out of training, so the trained model's error on them estimates how well it predicts data it has never seen. For the house model, it is a group of past sales the weights were never fitted to.
+      **The question.** Gradient descent made the house model's average squared error small on the sales it trained on. But you want the model for houses that haven't sold yet. Does a small error on the training sales tell you how far off those predictions will be?
 
-      **How it works.** Fit the weights using training houses, then predict prices for separate test houses without updating the model from their sale prices. Compare each prediction with its known sale. If the model memorised the training examples, its training error can be small while test error remains large.
+      **Picture it.** Take six past sales. Hide two of them (amber) and train on the other four (blue). Then compare two models. The **weights model** is the usual weights-and-bias model fitted by gradient descent: it misses every house by 10 or 20 thousand pounds. The **memoriser** stores the four training prices, and for any other house predicts the stored price of the training house closest in size. On the training houses it is exactly right; on the two hidden houses it misses by 40 and 50.
 
-      Test sale prices must stay hidden during training because adjusting weights with them would make the test dependent.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" aria-label="Six house sales: four blue training houses and two amber test houses. Below each house, the weights model's error and the memoriser's error. The weights model misses every house by 10 or 20; the memoriser is exact on the training houses but misses the test houses by 40 and 50.">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <text x="294" y="38" text-anchor="middle" fill="#3b82f6">training set: the model is fitted to these</text>
+          <text x="548" y="38" text-anchor="middle" fill="#f59e0b">test set: kept out</text>
+          <rect x="150" y="55" width="60" height="50" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+          <rect x="226" y="55" width="60" height="50" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+          <rect x="302" y="55" width="60" height="50" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+          <rect x="378" y="55" width="60" height="50" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+          <rect x="480" y="55" width="60" height="50" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="2"/>
+          <rect x="556" y="55" width="60" height="50" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="2"/>
+          <g font-size="13" text-anchor="middle">
+            <text x="180" y="85">house 1</text>
+            <text x="256" y="85">house 2</text>
+            <text x="332" y="85">house 3</text>
+            <text x="408" y="85">house 4</text>
+            <text x="510" y="85">house 5</text>
+            <text x="586" y="85">house 6</text>
+          </g>
+          <path d="M459 50 V185" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <text x="10" y="140">weights model</text>
+          <text x="10" y="172">memoriser</text>
+          <g text-anchor="middle">
+            <text x="180" y="140">+10</text>
+            <text x="256" y="140">−10</text>
+            <text x="332" y="140">+20</text>
+            <text x="408" y="140">−20</text>
+            <text x="510" y="140">+20</text>
+            <text x="586" y="140">−20</text>
+            <text x="180" y="172">0</text>
+            <text x="256" y="172">0</text>
+            <text x="332" y="172">0</text>
+            <text x="408" y="172">0</text>
+            <text x="510" y="172">+40</text>
+            <text x="586" y="172">−50</text>
+          </g>
+          <text x="150" y="215" font-size="13" fill="#737373">error = prediction − sale price, in thousands of pounds</text>
+        </g>
+      </svg>
+      ```
 
-      **Why this is useful.** A held-out score checks whether house-price predictions work beyond the sales used to fit the weights.
+      On training houses the memoriser looks perfect. The hidden houses were picked at random from the same kind of sales, so they stand in for new houses, and on them it is worse.
+
+      **The idea.** A small training error can come from fitting the training examples themselves, so it can't tell you how a model does on anything else. To find out, keep some examples out of training. The examples a model is trained on are its **training set**, and its average loss on them is the **training error**. A **test set** is a group of examples the model is never trained on; its average loss on them, the **test error**, estimates its error on new examples of the same kind.
+
+      **Common confusion.** "If the training error is tiny, the model must be good." No: the memoriser has training error 0 and is the worse model. Only held-out examples show how it handles new ones.
     worked: |
-      This example shows the calculation.
-      Suppose a model fits 700 sales and predicts 150 different sales. If it predicts those held-out prices with small errors, that is evidence of generalisation; the fitting error alone cannot provide that evidence.
+      Compute both models' training and test errors from the errors in the picture. The errors are in thousands of pounds, so the averages below are in squared thousands of pounds.
+
+      1. **Average the weights model's squared training errors.**
+         $$\frac{10^2+(-10)^2+20^2+(-20)^2}{4}=\frac{100+100+400+400}{4}=250.$$
+
+      2. **Do the same on its two test houses.**
+         $$\frac{20^2+(-20)^2}{2}=\frac{400+400}{2}=400.$$
+
+      3. **Average the memoriser's squared training errors.**
+         $$\frac{0+0+0+0}{4}=0.$$
+
+      4. **Do the same on its two test houses.**
+         $$\frac{40^2+(-50)^2}{2}=\frac{1600+2500}{2}=2050.$$
+
+      **Compare cases.**
+
+      | Model | Training error | Test error |
+      | --- | ---: | ---: |
+      | weights model | 250 | 400 |
+      | memoriser | 0 | 2050 |
+      | lower error | memoriser | weights model |
+
+      Training error favours the memoriser; test error shows the weights model is the one you would want for pricing new houses. Picking a model by its test error, though, starts to spoil the test score; the next section shows how to choose properly.
+
+      **Where it shows up.** A robot that learns to grasp from recorded attempts is scored on attempts it never trained on, for the same reason.
     problems:
       - tts-why-hold-out-basics
+      - ttsp-hold-out-self-explain
       - ttsp-honest-estimate
       - ttsp-why-hold-out
       - ttsp-heldout-procedure
@@ -28,18 +100,69 @@ knowledge_points:
       - ttsp-pick-model
       - ttsp-robot-heldout
   - id: tts-three-splits
-    title: Separate training, validation and test houses
+    title: Three sets, three jobs
     explain: |
-      **What the three splits are.** Training data fits model parameters; validation data chooses between model versions or settings; test data gives the final evaluation.
+      **The question.** Usually you have several candidate models, say versions A, B and C trained in different ways. You could train all three, pick the one with the lowest test error and report that error. Is the reported number still a fair estimate for new houses?
 
-      **How it works.** Split house sales before fitting. Use training sales to calculate gradients and update weights. Compare alternatives on validation sales, but do not fit weights on them. After choosing, report the selected model's score once on the test sales. Why keep test houses separate from model selection? Repeatedly choosing by their scores indirectly fits the model to them.
+      **Picture it.** Split 1,000 past sales once, before any training, into three sets. Each sale goes in exactly one set, and each set has one job.
 
-      **Why this is useful.** Three separate groups let you tune a house-price model without making its final score optimistic.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="A bar of 1,000 house sales split in proportion into 700 blue training sales, 150 green validation sales and 150 amber test sales, each labelled with its job: training fits the weights, validation chooses the model, test scores the chosen model once.">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <text x="40" y="62">1,000 house sales</text>
+          <rect x="40" y="75" width="392" height="50" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="2"/>
+          <rect x="432" y="75" width="84" height="50" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="2"/>
+          <rect x="516" y="75" width="84" height="50" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="2"/>
+          <g text-anchor="middle">
+            <text x="236" y="105">700</text>
+            <text x="474" y="105">150</text>
+            <text x="558" y="105">150</text>
+          </g>
+          <path d="M236 125 V148" stroke="#3b82f6" stroke-width="1.5"/>
+          <path d="M474 125 V188" stroke="#10b981" stroke-width="1.5"/>
+          <path d="M558 125 V228" stroke="#f59e0b" stroke-width="1.5"/>
+          <text x="236" y="166" text-anchor="middle" fill="#3b82f6">training: fits the weights</text>
+          <text x="500" y="206" text-anchor="end" fill="#10b981">validation: chooses the model</text>
+          <text x="600" y="246" text-anchor="end" fill="#f59e0b">test: scores the chosen model once</text>
+        </g>
+      </svg>
+      ```
+
+      Gradient descent fits the weights to the training sales only. The validation sales score each trained candidate so you can choose one. The test sales are used once, at the end, to score the chosen model.
+
+      **The idea.** Any score on 150 houses wobbles: a different 150 would give a somewhat different number. Picture two equally good models scored on the same 150 houses: one happens by luck to price a few of those houses better and wins. So when you pick the lowest of several scores, the winner's score on the set used for choosing is likely a little too good. Hence choosing and final scoring need different sets. The **validation set** is the held-out examples used to compare candidates and choose one. The test set is used only after every choice is made, so its score played no part in any decision.
+
+      **Common confusion.** "The test sales never trained the weights, so choosing with them is harmless." No: choosing is also a kind of fitting, done on whole models instead of weights. Once test scores pick the winner, its reported test error is likely too good, just as the validation winner's is. If the final test score disappoints, you can still go back and change the model, but the test set has then helped choose, so you need fresh test sales for an honest number.
     worked: |
-      This example shows the calculation.
-      From 1,000 house sales, one split might use 700 for training, 150 for validation and 150 for test. Only training sales update weights; validation selects a version; test evaluates the chosen version.
+      Use 1,000 sales, a 70/15/15 train/validation/test split (a common choice, not a rule) and three candidate models A, B and C.
+
+      1. **Split before any training.**
+         $$
+         \begin{aligned}
+         \text{training} &= 1000\times0.70=700,\\
+         \text{validation} &= 1000\times0.15=150,\\
+         \text{test} &= 1000\times0.15=150.
+         \end{aligned}
+         $$
+
+      2. **Train each candidate on the 700 training sales only.** The validation and test sales play no part in fitting any weights.
+
+      3. **Score each candidate on the 150 validation sales and choose the lowest.** The validation errors are A 620, B 460 and C 510, so choose B.
+
+      4. **Score B once on the 150 test sales, and report that.** B's test error is 480. Report 480, not 460: 460 helped pick B, so it is likely a little low.
+
+      **Compare cases.**
+
+      | Set | Sales | Job | Can its scores change the model? |
+      | --- | ---: | --- | --- |
+      | training | 700 | fit the weights | yes, directly |
+      | validation | 150 | choose between candidates | yes, through the choice |
+      | test | 150 | score the chosen model once | no |
+
+      **Where it shows up.** A robotics team picks among saved versions of a grasping model using validation attempts, then reports its success rate on a separate set of test attempts.
     problems:
       - tts-three-splits-basics
+      - ttsp-splits-self-explain
       - ttsp-which-set-fit
       - ttsp-which-set-choose
       - ttsp-split-counts
@@ -47,20 +170,87 @@ knowledge_points:
       - ttsp-why-separate-test
       - ttsp-swap-after-test
   - id: tts-hyperparameters
-    title: Choose settings without tuning on the test set
+    title: Choose settings with the validation set
     explain: |
-      **What a hyperparameter is.** It is a model setting chosen outside the fitted weights, such as the number of hidden units.
+      **The question.** Gradient descent learns the weights and bias, but some things it doesn't learn. Someone has to choose the learning rate $\eta$, and which inputs the model uses: size only, or size and bedrooms. How should you choose those?
 
-      **How it works.** Train each candidate on the training houses and compare their validation errors. Select settings using validation data, then evaluate the selected model once on test houses. If many candidates are tried, the best validation score may partly reflect luck in that particular split.
+      **Picture it.** Try three input choices. Train each on the same training sales, score each on the validation sales, and keep the lowest. Only the chosen model goes on to the test set.
 
-      Choosing the number of hidden units from test error would make test examples part of model selection.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="Three columns, one per input choice: size; size and bedrooms; size, bedrooms and 12 more details. Each is fitted on the training set, with training errors 610, 450 and 280, then scored on the validation set, with validation errors 640, 470 and 530. The lowest validation error, 470, is chosen and goes on to the test set once, with test error 490.">
+        <defs>
+          <marker id="tts3-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717" text-anchor="middle">
+          <rect x="20" y="20" width="180" height="52" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+          <rect x="230" y="20" width="180" height="52" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+          <rect x="440" y="20" width="180" height="52" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+          <text x="110" y="51">size</text>
+          <text x="320" y="51">size, bedrooms</text>
+          <text x="530" y="42">size, bedrooms</text>
+          <text x="530" y="62">+ 12 more details</text>
+          <path d="M110 72 V98" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+          <path d="M320 72 V98" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+          <path d="M530 72 V98" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+          <rect x="20" y="102" width="180" height="58" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+          <rect x="230" y="102" width="180" height="58" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+          <rect x="440" y="102" width="180" height="58" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+          <text x="110" y="126">fit on training set</text>
+          <text x="320" y="126">fit on training set</text>
+          <text x="530" y="126">fit on training set</text>
+          <text x="110" y="148">training error 610</text>
+          <text x="320" y="148">training error 450</text>
+          <text x="530" y="148">training error 280</text>
+          <path d="M110 160 V186" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+          <path d="M320 160 V186" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+          <path d="M530 160 V186" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+          <rect x="20" y="190" width="180" height="58" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="2"/>
+          <rect x="230" y="190" width="180" height="58" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="4"/>
+          <rect x="440" y="190" width="180" height="58" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="2"/>
+          <text x="110" y="214">validation error</text>
+          <text x="320" y="214">validation error</text>
+          <text x="530" y="214">validation error</text>
+          <text x="110" y="236">640</text>
+          <text x="320" y="236" font-weight="700">470</text>
+          <text x="530" y="236">530</text>
+          <path d="M320 248 V296" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+          <text x="332" y="278" text-anchor="start">lowest: chosen</text>
+          <rect x="230" y="300" width="180" height="58" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="2"/>
+          <text x="320" y="324">test set, used once</text>
+          <text x="320" y="346">test error 490</text>
+        </g>
+      </svg>
+      ```
 
-      **Why this is useful.** Validation data helps choose house-model settings while keeping the final test score meaningful.
+      The model with 14 inputs has the lowest training error, 280, but size and bedrooms has the lowest validation error, 470, so that one is chosen.
+
+      **The idea.** The numbers gradient descent learns, the weights and bias, are the model's **parameters**. A **hyperparameter** is a setting fixed before training that training itself doesn't change, such as the learning rate, the number of gradient-descent steps or which inputs to use. To choose one, train a model for each candidate setting on the training set and keep the setting whose model has the lowest validation error. The more settings you try, the more chances one has to score low on the validation set by luck, so the test set stays untouched until the end.
+
+      **Common confusion.** "Pick the setting with the lowest training error." That rewards whichever setting fits the training houses most closely, and more inputs give the weights more ways to fit quirks of those particular houses. Here training error falls from 610 to 280 as inputs are added, while validation error rises from 470 to 530 at 14 inputs.
     worked: |
-      This example shows the calculation.
-      If house-price models have different numbers of hidden units, fit each on the same training split, select using validation error, and reserve test houses for the final check.
+      Choose which inputs the house model uses. The steps are the same train, validate, test routine as before; what is new is that the candidates differ only in a hyperparameter.
+
+      1. **Sort the numbers into parameters and hyperparameters.** The weights and bias are parameters: gradient descent sets them. The input choice and the learning rate are hyperparameters: you fix them before training starts.
+
+      2. **Train one model per input choice on the training sales.** Their training errors are 610, 450 and 280.
+
+      3. **Compare validation errors and keep the lowest.** They are 640, 470 and 530, so choose size and bedrooms.
+
+      4. **Score the chosen model once on the test sales.** Its test error is 490, and that is the number to report.
+
+      **Compare cases.**
+
+      | Inputs | Training error | Validation error |
+      | --- | ---: | ---: |
+      | size | 610 | 640 |
+      | size, bedrooms | 450 | 470 |
+      | size, bedrooms + 12 more | 280 | 530 |
+      | lowest | size, bedrooms + 12 more | size, bedrooms |
+
+      **Where it shows up.** A robot grasping model's learning rate and number of training steps are hyperparameters too, chosen by its success on validation attempts.
     problems:
       - tts-hyperparameters-basics
+      - ttsp-hyper-self-explain
       - ttsp-param-or-hyper-w
       - ttsp-param-or-hyper-inputs
       - ttsp-gap-calc
@@ -68,20 +258,85 @@ knowledge_points:
       - ttsp-why-not-train-choose
       - ttsp-why-best-of-many
   - id: tts-leakage
-    title: Prevent information leakage across house splits
+    title: Stop held-out information leaking in
     explain: |
-      **What data leakage is.** Leakage happens when information from held-out examples influences fitting or model selection before final evaluation.
+      **The question.** Suppose the three sets are kept apart and the test set is used once. Can information from the test houses still reach training, even if nobody uses their prices?
 
-      **How it works.** Keep every record for the same house in one split. Calculate preprocessing values, such as a mean used to fill a missing area, from training houses only, then apply that value to validation and test houses. Otherwise held-out information can make the score look better than real future predictions.
+      **Picture it.** Two common leaks, marked in red.
 
-      Duplicate records can leak information because the same sale in training and test lets the model see the answer before evaluation.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 270" aria-label="Two leaks. Left: sale 17 appears in both the training set and the test set, joined by a red dashed line. Right: training sizes 80, 100, 120 and one missing; test sizes 160 and one missing. The mean of all known sizes is 115 because it includes the test size 160; the mean of training sizes only is 100.">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <text x="20" y="30">1. The same sale in two sets</text>
+          <text x="340" y="30">2. A fill value from all houses</text>
+          <rect x="20" y="45" width="130" height="130" fill="#3b82f6" fill-opacity="0.10" stroke="#3b82f6" stroke-width="2"/>
+          <rect x="170" y="45" width="130" height="130" fill="#f59e0b" fill-opacity="0.10" stroke="#f59e0b" stroke-width="2"/>
+          <text x="85" y="68" text-anchor="middle" fill="#3b82f6">training</text>
+          <text x="235" y="68" text-anchor="middle" fill="#f59e0b">test</text>
+          <text x="40" y="95">sale 3</text>
+          <text x="40" y="120">sale 17</text>
+          <text x="40" y="145">sale 24</text>
+          <text x="190" y="120">sale 17</text>
+          <text x="190" y="145">sale 41</text>
+          <path d="M96 115 H184" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="6 4"/>
+          <text x="20" y="202" fill="#ef4444">same sale in training and test:</text>
+          <text x="20" y="224" fill="#ef4444">the model has seen its price</text>
+          <text x="20" y="252" fill="#3b82f6">fix: keep one copy, in one set</text>
+          <rect x="340" y="45" width="130" height="130" fill="#3b82f6" fill-opacity="0.10" stroke="#3b82f6" stroke-width="2"/>
+          <rect x="490" y="45" width="130" height="130" fill="#f59e0b" fill-opacity="0.10" stroke="#f59e0b" stroke-width="2"/>
+          <text x="405" y="68" text-anchor="middle" fill="#3b82f6">training sizes</text>
+          <text x="555" y="68" text-anchor="middle" fill="#f59e0b">test sizes</text>
+          <g text-anchor="middle">
+            <text x="405" y="95">80 m²</text>
+            <text x="405" y="117">100 m²</text>
+            <text x="405" y="139">120 m²</text>
+            <text x="405" y="161" fill="#737373">missing</text>
+            <text x="555" y="95" fill="#ef4444">160 m²</text>
+            <text x="555" y="117" fill="#737373">missing</text>
+          </g>
+          <text x="340" y="202" fill="#ef4444">mean of all known sizes = 115</text>
+          <text x="340" y="224" fill="#ef4444">(includes the test size 160)</text>
+          <text x="340" y="252" fill="#3b82f6">fix: training sizes only, 100</text>
+        </g>
+      </svg>
+      ```
 
-      **Why this is useful.** Preventing leakage keeps house-price test errors representative of genuinely unseen sales.
+      On the left, a sale recorded twice was split into both sets, so the model has seen that test house's price. On the right, some sizes are missing. Dropping those houses would waste their prices, so a common fix is to fill each gap with the average size. Averaging over all houses lets the test house's 160 m² push the fill value from 100 up to 115, and that value is written into the training data, so the model is partly shaped by a test house.
+
+      **The idea.** **Data leakage** is any route by which held-out information reaches the model beyond its set's job: validation or test examples shaping the weights, or test examples shaping the choice of model. Choosing with validation errors is allowed. Leakage can make held-out scores look better than the model will do on new houses. Three rules stop the common cases:
+
+      1. Remove exact duplicate records, then split, before any processing that computes values from the data.
+      2. Compute every value the processing needs, such as a fill-in average, from the training set only, then apply that same value to validation and test examples.
+      3. Keep related records together: two sales of the same house share its size, bedrooms and location, so even if the price changed, the model has seen that exact house; both go in one set.
+
+      **Common confusion.** "Leakage only happens if test prices are used in training." No: test inputs leak too. The test house's size changed the fill value without its price ever being used.
     worked: |
-      This example shows the calculation.
-      If two rows describe the same house sale, assign both to training or both to test, never one to each. Compute a missing-area fill value from training sales only.
+      Work out the fill value, then what duplicates do to a test error.
+
+      1. **Average the training sizes only.** The known training sizes are 80, 100 and 120 m²:
+         $$\frac{80+100+120}{3}=100.$$
+
+      2. **Compare with the leaky average over every known size.** The extra 15 comes from the test house's 160 m², so fill the missing sizes in all three sets with 100, not 115.
+         $$\frac{80+100+120+160}{4}=115.$$
+
+      3. **Find the test error when 15 of 150 test sales are copies of training sales.** A model fitted closely to its training sales prices those copies almost exactly (squared error about 0), and the other 135 have average squared error 500:
+         $$\frac{15\times0+135\times500}{150}=\frac{67500}{150}=450.$$
+
+      4. **Compare with the honest figure.** The 135 genuinely unseen sales average 500, the better guide to new houses; the copies pull the reported error down to 450.
+
+      **Compare cases.**
+
+      | Setup | Leaks? | Fix |
+      | --- | --- | --- |
+      | fill value averaged over all 1,000 sales | yes | average the training sales only |
+      | fill value averaged over training sales | no | none needed |
+      | same sale copied into training and test | yes | keep one copy, in one set |
+      | one house sold in 2019 and 2023, sales split apart | yes | put both sales in one set |
+
+      **Where it shows up.** A robot's recorded attempts are runs of hundreds of near-identical camera pictures, so robot data is split by whole attempt, never by picture.
     problems:
       - tts-leakage-basics
+      - ttsp-leakage-self-explain
       - ttsp-duplicate-leak
       - ttsp-fill-average
       - ttsp-why-training-average
@@ -90,8 +345,9 @@ knowledge_points:
       - ttsp-robot-frames
 final: tts-explain
 summary: |
-  - Test predictions on sales the model did not use for fitting.
-  - Use training to fit, validation to choose, and test once for final evaluation.
-  - Keep duplicates and preprocessing information within the correct split to prevent leakage.
+  - A model's error on held-out test examples, not its training error, estimates how well it will do on new examples.
+  - Training fits the weights, validation chooses between models, and test scores the chosen model once.
+  - Hyperparameters, such as the learning rate or the input choice, are fixed before training and chosen by validation error.
+  - Data leakage lets held-out information into training: split first, compute processing values from training only, and keep related records in one set.
 
   **Next:** Probability basics describes uncertainty in data and model predictions.
