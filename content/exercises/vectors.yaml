@@ -145,7 +145,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 3
+    difficulty: 1
     est_minutes: 2
     prompt: "A robot records positions in metres east and north of its dock. Why must it tell $(2,5)$ apart from $(5,2)$ when finding a parcel?"
     solution: "The first component is the distance east and the second the distance north. Swapping them sends the robot to a different place."
@@ -187,11 +187,11 @@ exercises:
       - id: b
         text: "It adds that same number to every component of the vector."
         correct: false
-        feedback: "Adding a number turns the arrow; scaling multiplies instead."
+        feedback: "Adding a number usually turns the arrow; scaling multiplies instead."
       - id: c
         text: "It multiplies only the first component of the vector by that number."
         correct: false
-        feedback: "Scaling multiplies every component; changing only one turns the arrow."
+        feedback: "Scaling multiplies every component; changing only one usually turns the arrow."
       - id: d
         text: "It turns the vector into a single number, its total length."
         correct: false
@@ -480,7 +480,7 @@ exercises:
     type: numeric
     tolerance: { abs: 0.000001 }
     role: practice
-    difficulty: 3
+    difficulty: 2
     est_minutes: 2
     prompt: "A robot is at $(1,1)$ and a parcel is at $(4,5)$, in metres east and north of the charging dock. What is the straight-line distance between them, in metres?"
     solution: "The move from robot to parcel is $(4-1,\\;5-1)=(3,4)$. Its length is $\\sqrt{3^2+4^2}=\\sqrt{25}=5$ metres."
