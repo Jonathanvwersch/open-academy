@@ -47,11 +47,12 @@ knowledge_points:
     problems:
       [
         ptb-tensors-basics,
-        ptb-tensor-numeric,
         ptb-tensors-why,
         ptb-tensor-shape,
-        ptb-tensor-matmul,
         ptb-requires-grad,
+        ptb-tensor-numeric,
+        ptb-tensor-matmul,
+        ptb-tensor-recover-input,
       ]
   - id: ptb-linear
     title: A linear module holds the house model
@@ -100,7 +101,14 @@ knowledge_points:
 
       The output is one predicted price in thousands of pounds. `nn.Linear` performs the same weighted-sum rule as the house model.
     problems:
-      [ptb-linear-basics, ptb-linear-why, ptb-linear-shape, ptb-linear-complete, ptb-linear-forward]
+      [
+        ptb-linear-basics,
+        ptb-linear-why,
+        ptb-linear-complete,
+        ptb-linear-shape,
+        ptb-linear-forward,
+        ptb-linear-robot-forward,
+      ]
   - id: ptb-loss-optimizer
     title: Loss measures error and SGD updates parameters
     explain: |
@@ -148,7 +156,15 @@ knowledge_points:
       ```
 
       With one output, the mean is the single squared error, 400. Squaring keeps the loss non-negative and penalises larger errors more.
-    problems: [ptb-loss-basics, ptb-loss-why, ptb-loss-read, ptb-loss-complete, ptb-sgd-complete]
+    problems:
+      [
+        ptb-loss-basics,
+        ptb-loss-complete,
+        ptb-sgd-complete,
+        ptb-loss-why,
+        ptb-loss-read,
+        ptb-loss-robot-batch,
+      ]
   - id: ptb-training-loop
     title: Run the five steps of a training update
     explain: |
@@ -244,12 +260,12 @@ knowledge_points:
     problems:
       [
         ptb-loop-basics,
-        ptb-loop-why,
         ptb-loop-zero-complete,
         ptb-loop-backward-complete,
         ptb-loop-step-complete,
-        ptb-loop-debug,
         ptb-loop-read,
+        ptb-loop-why,
+        ptb-loop-debug,
       ]
 final: ptb-explain-loop
 summary: |

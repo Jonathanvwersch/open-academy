@@ -28,11 +28,11 @@ knowledge_points:
     problems:
       [
         perc-score-and-step-basics,
+        percp-weight-sign,
         percp-output,
         percp-score-template,
-        percp-score-zero,
-        percp-weight-sign,
         percp-why-bias,
+        percp-score-zero,
         percp-robot-gripper,
       ]
   - id: perc-straight-boundary
@@ -52,10 +52,10 @@ knowledge_points:
       [
         perc-straight-boundary-basics,
         percp-boundary-meaning,
-        percp-crossing-template,
         percp-which-side,
         percp-bias-shift,
         percp-why-straight,
+        percp-crossing-template,
         percp-no-curve,
       ]
   - id: perc-and-or-xor
@@ -76,9 +76,9 @@ knowledge_points:
         perc-and-or-xor-basics,
         percp-xor-why,
         percp-count-yes-template,
-        percp-or-bias,
         percp-nand-output,
         percp-which-pattern,
+        percp-or-bias,
         percp-robot-bumpers,
       ]
 final: perc-explain

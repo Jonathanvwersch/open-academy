@@ -32,11 +32,11 @@ knowledge_points:
     problems:
       [
         act-stacking-stays-straight-basics,
-        actp-stack-collapse,
-        actp-collapse-template,
         actp-why-not-more-layers,
         actp-what-bends,
         actp-linear-candidate,
+        actp-stack-collapse,
+        actp-collapse-template,
         actp-robot-linear,
       ]
   - id: act-relu-sigmoid-tanh
@@ -62,11 +62,11 @@ knowledge_points:
       [
         act-relu-sigmoid-tanh-basics,
         actp-relu-values,
+        actp-tanh-range,
         actp-relu-sum-template,
         actp-sigmoid-template,
         actp-relu-bend,
         actp-why-sigmoid-output,
-        actp-tanh-range,
       ]
   - id: act-slopes
     title: Activation slopes guide training
@@ -85,8 +85,8 @@ knowledge_points:
         actp-relu-slope,
         actp-sigmoid-slope-template,
         actp-nudge-estimate,
-        actp-why-saturation,
         actp-tanh-slope,
+        actp-why-saturation,
         actp-dead-unit,
       ]
 final: act-explain-layers

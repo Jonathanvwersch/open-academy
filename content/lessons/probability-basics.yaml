@@ -35,7 +35,15 @@ knowledge_points:
       $$0.375 + 0.625 = 1$$
 
       These frequencies estimate the chances of the two outcomes; they do not guarantee the next sale.
-    problems: [pb-events-basics, pb-frequency-fixed, pb-complement-why, pb-frequency-template]
+    problems:
+      [
+        pb-events-basics,
+        pb-frequency-fixed,
+        pb-complement-why,
+        pb-frequency-template,
+        pb-complement-counts,
+        pb-event-recover-total,
+      ]
   - id: pb-distributions
     title: Random variables and distributions
     explain: |
@@ -71,7 +79,13 @@ knowledge_points:
 
       The probability of two offers is $0.4$, the largest share in this sample.
     problems:
-      [pb-distribution-basics, pb-distribution-why, pb-distribution-fixed, pb-distribution-template]
+      [
+        pb-distribution-basics,
+        pb-distribution-why,
+        pb-distribution-fixed,
+        pb-distribution-template,
+        pb-distribution-missing,
+      ]
   - id: pb-expectation
     title: Expected number of offers
     explain: |
@@ -113,7 +127,13 @@ knowledge_points:
 
       The average across many comparable houses is $1.4$ offers.
     problems:
-      [pb-expectation-basics, pb-expectation-why, pb-expectation-fixed, pb-expectation-template]
+      [
+        pb-expectation-basics,
+        pb-expectation-why,
+        pb-expectation-fixed,
+        pb-expectation-template,
+        pb-expectation-recover-count,
+      ]
   - id: pb-conditional
     title: Conditional probability
     explain: |
@@ -153,7 +173,13 @@ knowledge_points:
 
       Since the estimates differ, the table does not show independence.
     problems:
-      [pb-conditional-basics, pb-independence-why, pb-conditional-fixed, pb-conditional-template]
+      [
+        pb-conditional-basics,
+        pb-conditional-fixed,
+        pb-conditional-template,
+        pb-independence-why,
+        pb-conditional-empty,
+      ]
 final: probability-basics-explain
 summary: |
   - Events describe sets of outcomes; sample frequencies estimate their probabilities and complements.

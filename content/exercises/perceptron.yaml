@@ -218,7 +218,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: |
       A shortlisting neuron has weights $w = (1, -2)$ and bias $b = -0.5$, and uses the step rule: output 1 if the score is above 0, otherwise 0.
@@ -247,7 +247,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: |
       A neuron has weights $w = ({{=w1}}, {{=w2}})$ and bias $b = {{=b}}$. A house has size $x_1 = {{=x1}}$ (hundreds of m²) and is $x_2 = {{=x2}}$ km from the station.
@@ -282,7 +282,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "A perceptron uses the step rule: output 1 if $z > 0$, otherwise 0. A house's score comes out at exactly $z = 0$. What does the perceptron output?"
     options:
@@ -379,7 +379,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "A robot gripper closes when a neuron outputs 1. The neuron's score is $z = 3p - 2d - 1$, where $p$ is the pressure reading on the fingers and $d$ is the gap between them in cm. Which numbers are the neuron's weights?"
     options:
@@ -441,7 +441,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: |
       A shortlisting neuron has weights $w = ({{=w1}}, {{=w2}})$ and bias $b = {{=b}}$, where $x_1$ is size (hundreds of m²) and $x_2$ is distance to the station (km).
@@ -532,7 +532,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 1
     prompt: "Why can't changing a single perceptron's weights and bias turn its boundary in a size-versus-distance plot into a closed circle?"
     options:
@@ -567,7 +567,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "A buyer wants every house within 1 km of a park, in any direction. The inputs are a house's position east and north of the park, in km. Can one perceptron say yes to exactly those houses?"
     options:
@@ -602,7 +602,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "With yes/no inputs $x_1$ (garden) and $x_2$ (near the station), why can no single perceptron output 1 for exactly one of the two, and 0 otherwise?"
     options:
@@ -666,7 +666,7 @@ exercises:
     dimension: math
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "A perceptron has weights $w = (1, 1)$ and the step rule, on yes/no inputs. Which bias makes it compute OR: 1 if at least one input is 1?"
     options:
@@ -697,7 +697,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "A perceptron has weights $w = (-1, -1)$, bias $b = 1.5$ and the step rule. What does it output for the house with a garden that's also near the station, $x = (1, 1)$?"
     answer: 0
@@ -745,7 +745,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "A robot has a left and a right bump sensor, each reading 1 when pressed and 0 otherwise. It should turn when exactly one sensor is pressed, and not when neither or both are. Can a single perceptron make this decision?"
     options:

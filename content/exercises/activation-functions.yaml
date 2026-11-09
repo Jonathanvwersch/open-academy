@@ -245,7 +245,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 1
     prompt: "A house score goes through two rules with nothing between them: $u = 4x + 2$, then $y = 3u - 1$. What kind of rule is $y$ in terms of $x$?"
     options:
@@ -269,7 +269,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: |
       Two rules are stacked with no activation between them: $u = {{=a}}x + {{=c}}$, then $y = {{=d}}u + {{=e}}$.
@@ -373,7 +373,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 1
     prompt: "Which of these candidate activations $\\phi(z)$, placed between layers, would still leave the whole network a single straight-line rule?"
     options:
@@ -397,7 +397,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: 'A robot''s grip strength should rise slowly for light objects and sharply for heavy ones, a curved relationship. An engineer builds a controller from three layers of weighted sums plus biases, with no activation between them, and says "three layers is deep enough to learn the curve". What''s wrong?'
     options:
@@ -456,7 +456,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: |
       Three neurons have scores $z_1 = {{=z1}}$, $z_2 = {{=z2}}$ and $z_3 = {{=z3}}$. Each passes its score through ReLU.
@@ -539,7 +539,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "Why choose sigmoid rather than ReLU or a step rule for an output meant to express how likely an email is to be spam?"
     options:
@@ -674,7 +674,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "A sigmoid neuron already outputs 0.999. Why does a small increase in its score barely change the output?"
     options:
@@ -733,7 +733,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "In a robot's obstacle detector, one ReLU neuron has a large negative bias, so its score is negative for every sensor reading the robot ever sees. What happens to this neuron?"
     options:
