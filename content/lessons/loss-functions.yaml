@@ -1,98 +1,301 @@
 concept: loss-functions
-version: 3
+version: 4
 objective: |
-  **Goal:** compute MSE and MAE, explain how their slopes treat large errors, and choose the best constant prediction for each loss.
+  **Goal:** compute MSE and MAE, explain why squared error weighs a large miss much more heavily, and find the best single prediction under each loss: the mean or the median.
 where_this_fits: |
-  The derivatives lesson showed how a small change to one house-model weight changes a loss. We still need to choose what loss to calculate: signed errors can cancel, and a very large price miss may deserve more attention than a small one. This lesson compares mean squared error and mean absolute error, then finds the best constant-price baseline. The next lesson separates the loss slope for each of a model's weights.
+  Training chooses the model whose average loss is smallest, so the loss decides what a good model means. The supervised-learning lesson squared each error so that misses above and below the target could not cancel. Dropping the sign does that too, but the two choices disagree about large misses, so they can train different models from the same data. This lesson compares them in three steps:
+
+  1. Turn a set of errors into one score: mean squared error (MSE) and mean absolute error (MAE).
+  2. See how each score, and its slope, responds to one large miss.
+  3. Find the single best prediction under each loss.
 knowledge_points:
   - id: loss-measure-misses
-    title: Two ways to measure a missed price
+    title: Turning errors into one score
     explain: |
-      **What a loss is.** A loss is a non-negative score for how far a model's predictions are from the true values: 0 means every prediction is exact, and larger means worse. For the house model, the true values are sale prices. Mean squared error (MSE) squares each miss and averages; mean absolute error (MAE) takes each miss's absolute value and averages.
+      **The question.** A model makes many predictions, each with an error: prediction minus true value. Some errors are positive, some negative. How do you turn all of them into one score that says how wrong the model is?
 
-      For $n$ houses, $\hat y_i$ is house $i$'s predicted price and $y_i$ its sale price. Absolute value, written with bars, is distance from zero, so $|-20|=20$.
+      **Picture it.** Take the simplest case: three predictions with errors $+3$, $+3$ and $-6$. Each arrow starts at $0$ and shows one error's size and direction. Averaging the signed errors gives $0$, as if the model were perfect. Dropping the signs (green) or squaring (blue) stops the cancelling, and the two averages come out as $4$ and $18$.
 
-      **How it works.** The error is predicted price minus sale price. For three houses with errors $10,10,-20$ thousand pounds, the signed average is zero even though none is exact. Squaring or taking absolute values prevents opposite errors from cancelling. The formulas are:
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Three errors drawn as arrows from zero on a number line: plus 3, plus 3 and minus 6. Their signed average is 0; the average of their sizes is 4 (MAE) and the average of their squares is 18 (MSE)">
+      <defs><marker id="l1-muted-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M32 190 H608" stroke="#737373"/>
+      <path d="M104 184 V196" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="104" y="214" text-anchor="middle">−6</text>
+      <path d="M212 184 V196" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="212" y="214" text-anchor="middle">−3</text>
+      <path d="M320 184 V196" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="214" text-anchor="middle">0</text>
+      <path d="M428 184 V196" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="428" y="214" text-anchor="middle">+3</text>
+      <path d="M536 184 V196" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="536" y="214" text-anchor="middle">+6</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="608" y="180" fill="#737373" text-anchor="end">error</text>
+      <path d="M320 60 H428" stroke="#737373" stroke-width="3" marker-end="url(#l1-muted-arrow)"/>
+      <circle cx="320" cy="60" r="3.5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="440" y="65">prediction 1: +3</text>
+      <path d="M320 105 H428" stroke="#737373" stroke-width="3" marker-end="url(#l1-muted-arrow)"/>
+      <circle cx="320" cy="105" r="3.5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="440" y="110">prediction 2: +3</text>
+      <path d="M320 150 H104" stroke="#737373" stroke-width="3" marker-end="url(#l1-muted-arrow)"/>
+      <circle cx="320" cy="150" r="3.5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="332" y="155">prediction 3: −6</text>
+      <path d="M320 40 V190" stroke="#d4d4d4" stroke-dasharray="4 4"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="40" y="252" fill="#737373">signed average: (3 + 3 − 6) / 3 = 0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="40" y="279" fill="#10b981">absolute (MAE): (3 + 3 + 6) / 3 = 4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="40" y="306" fill="#3b82f6">squared (MSE): (9 + 9 + 36) / 3 = 18</text>
+      </g></svg>
+      ```
 
-      $$\text{MSE}=\frac{1}{n}\sum_{i=1}^n(\hat y_i-y_i)^2,\qquad \text{MAE}=\frac{1}{n}\sum_{i=1}^n|\hat y_i-y_i|.$$
+      **The idea.** Both scores are losses: non-negative scores that are $0$ only when every prediction is exact and grow as predictions move away from their targets. The **mean absolute error (MAE)** averages the error sizes. The **mean squared error (MSE)** averages the squared errors. For $n$ examples, write $\hat y_i$ for the prediction on example $i$ and $y_i$ for its true value:
 
-      MSE is in squared thousands of pounds; MAE is in thousands of pounds.
+      $$\text{MAE}=\frac{1}{n}\sum_{i=1}^{n}|\hat y_i-y_i|$$
 
-      **Why this is useful.** Averaging the house-price losses gives one score that can compare models without overpricing cancelling underpricing.
+      $$\text{MSE}=\frac{1}{n}\sum_{i=1}^{n}(\hat y_i-y_i)^2$$
+
+      The bars $|\cdot|$ mean absolute value, a number's distance from zero, so $|-6|=6$. The $\sum$ adds the term for every example from $i=1$ to $i=n$. MAE is in the target's units, such as pounds; MSE is in squared units, such as pounds squared, so compare MSE values with each other rather than with prices.
+
+      **Common confusion.** “Isn't MSE just MAE squared?” No. Here MAE is $4$, and $4^2=16$, but MSE is $18$. Squaring each error before averaging lets the big $-6$ count as $36$ of the total $54$, two thirds of it, though it is only half of the total size $12$. The next step shows why that matters.
     worked: |
-      This example shows both losses for three house sales.
+      Three predictions miss by $+3$, $+3$ and $-6$. Find the signed average, the MAE and the MSE.
 
-      The errors are $10,10,-20$ thousand pounds. Their squared errors are $100,100,400$, so MSE is $600/3=200$. Their absolute errors are $10,10,20$, so MAE is $40/3\approx13.33$.
+      1. **Average the signed errors.**
+         $$\frac{3+3+(-6)}{3}=0$$
 
-      Repeating each sale does not change either average because both the total and the house count double.
+      2. **Take each error's size.**
+         $$|3|=3,\qquad |3|=3,\qquad |-6|=6$$
+
+      3. **Average the sizes for MAE.**
+         $$\text{MAE}=\frac{3+3+6}{3}=4$$
+
+      4. **Square each error.**
+         $$3^2=9,\qquad 3^2=9,\qquad (-6)^2=36$$
+
+      5. **Average the squares for MSE.**
+         $$\text{MSE}=\frac{9+9+36}{3}=18$$
+
+      **Compare cases.** Every row below has MAE $4$, but MSE changes with how the error is spread out.
+
+      | Errors | Signed average | MAE | MSE |
+      | --- | --- | --- | --- |
+      | $4,4,4$ | $4$ | $4$ | $16$ |
+      | $3,3,-6$ | $0$ | $4$ | $18$ |
+      | $6,-6,0$ | $0$ | $4$ | $24$ |
+      | $0,0,12$ | $4$ | $4$ | $48$ |
+
+      **Where it shows up.** In the supervised-learning lesson, three house prices were missed by $+10$, $+10$ and $-20$ thousand pounds. Their MAE says the model is off by about $13.3$ thousand pounds per house, and their MSE is $200$ in units of (thousand pounds) squared, a number you compare only with other MSEs.
     problems:
-      [
-        loss-measure-misses-basics,
-        lossp-why-not-count,
-        lossp-units,
-        lossp-mse-template,
-        lossp-mae-template,
-        lossp-cancellation,
-        lossp-repeat,
-      ]
+      - loss-measure-misses-basics
+      - lossp-measure-self-explain
+      - lossp-cancellation
+      - lossp-why-not-count
+      - lossp-units
+      - lossp-mae-template
+      - lossp-mse-template
+      - lossp-repeat
+      - lossp-mae-backwards
   - id: loss-large-errors
-    title: Why a large miss pulls harder under squared error
+    title: Why squared error weighs a large miss more
     explain: |
-      **What changes when an error is large.** Squared loss makes a large miss count disproportionately more; absolute loss increases at a constant rate as the miss grows.
+      **The question.** In the last table, four sets of errors all had MAE $4$, but their MSE ranged from $16$ to $48$. Why does MSE care so much about one large miss? And if training nudges a prediction, how fast does each miss's loss change?
 
-      **How it works.** For one house with area 12 and sale price 330, the one-weight model has prediction $12w$ and squared loss $L(w)=(12w-330)^2=144w^2-7920w+108900$. Its derivative is $288w-7920$, which is $-720$ at $w=25$. There, the MAE is $330-12w$, so its slope is $-12$. Above the exact price its slope is $+12$, and at the exact price it has a corner with no ordinary derivative.
+      **Picture it.** The plot shows the cost of one error $e$ under each loss, drawn to the same scale. The blue curve is the squared error $e^2$; the green V is the absolute error $|e|$. At $e=3$ the costs are $9$ and $3$; at $e=-6$ they are $36$ and $6$. Doubling the miss doubles the green cost but multiplies the blue cost by four. The amber segments show each curve's slope at $e=-6$: $-12$ for squared error, $-1$ for absolute error.
 
-      A nine-thousand-pound miss contributes 81 to squared error but 9 to absolute error. This is why a wrongly recorded extreme sale can dominate MSE; MAE limits its pull.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 350" aria-label="The cost of one error e, drawn to the same scale: the squared-error curve e squared reaches 9 at e equals 3 and 36 at e equals minus 6, while the absolute-error V reaches only 3 and 6. Short amber tangents at e equals minus 6 show slopes minus 12 and minus 1">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M23 300 H617 M320 300 V30" stroke="#737373"/>
+      <path d="M50 295 V305" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="50" y="324" text-anchor="middle">−6</text>
+      <path d="M185 295 V305" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="185" y="324" text-anchor="middle">−3</text>
+      <path d="M455 295 V305" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="455" y="324" text-anchor="middle">3</text>
+      <path d="M590 295 V305" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="590" y="324" text-anchor="middle">6</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="324" text-anchor="middle">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="621" y="305">e</text>
+      <polyline points="41.0 30.92 45.5 39.53 50.0 48.0 54.5 56.33 59.0 64.52 63.5 72.57 68.0 80.48 72.5 88.25 77.0 95.88 81.5 103.37 86.0 110.72 90.5 117.93 95.0 125.0 99.5 131.93 104.0 138.72 108.5 145.37 113.0 151.88 117.5 158.25 122.0 164.48 126.5 170.57 131.0 176.52 135.5 182.33 140.0 188.0 144.5 193.53 149.0 198.92 153.5 204.17 158.0 209.28 162.5 214.25 167.0 219.08 171.5 223.77 176.0 228.32 180.5 232.73 185.0 237.0 189.5 241.13 194.0 245.12 198.5 248.97 203.0 252.68 207.5 256.25 212.0 259.68 216.5 262.97 221.0 266.12 225.5 269.13 230.0 272.0 234.5 274.73 239.0 277.32 243.5 279.77 248.0 282.08 252.5 284.25 257.0 286.28 261.5 288.17 266.0 289.92 270.5 291.53 275.0 293.0 279.5 294.33 284.0 295.52 288.5 296.57 293.0 297.48 297.5 298.25 302.0 298.88 306.5 299.37 311.0 299.72 315.5 299.93 320.0 300.0 324.5 299.93 329.0 299.72 333.5 299.37 338.0 298.88 342.5 298.25 347.0 297.48 351.5 296.57 356.0 295.52 360.5 294.33 365.0 293.0 369.5 291.53 374.0 289.92 378.5 288.17 383.0 286.28 387.5 284.25 392.0 282.08 396.5 279.77 401.0 277.32 405.5 274.73 410.0 272.0 414.5 269.13 419.0 266.12 423.5 262.97 428.0 259.68 432.5 256.25 437.0 252.68 441.5 248.97 446.0 245.12 450.5 241.13 455.0 237.0 459.5 232.73 464.0 228.32 468.5 223.77 473.0 219.08 477.5 214.25 482.0 209.28 486.5 204.17 491.0 198.92 495.5 193.53 500.0 188.0 504.5 182.33 509.0 176.52 513.5 170.57 518.0 164.48 522.5 158.25 527.0 151.88 531.5 145.37 536.0 138.72 540.5 131.93 545.0 125.0 549.5 117.93 554.0 110.72 558.5 103.37 563.0 95.88 567.5 88.25 572.0 80.48 576.5 72.57 581.0 64.52 585.5 56.33 590.0 48.0 594.5 39.53 599.0 30.92" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2.5"/>
+      <path d="M32 255.2 L320 300 L608 255.2" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2.5"/>
+      <path d="M34.25 18.6 L65.75 77.4" stroke="#f59e0b" stroke-width="3"/>
+      <path d="M18.5 253.1 L81.5 262.9" stroke="#f59e0b" stroke-width="3"/>
+      <circle cx="50" cy="48" r="4" fill="#171717"/>
+      <circle cx="455" cy="237" r="4" fill="#171717"/>
+      <circle cx="50" cy="258" r="4" fill="#171717"/>
+      <circle cx="455" cy="279" r="4" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="64" y="53" fill="#3b82f6">36, slope −12</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="46" y="244" fill="#10b981">6, slope −1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="467" y="242" fill="#3b82f6">9</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="459" y="267" fill="#10b981">3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="374" y="40" fill="#3b82f6">squared error e²</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="374" y="64" fill="#10b981">absolute error |e|</text>
+      </g></svg>
+      ```
 
-      **Why this is useful.** Choose MAE for house sales when an extreme or misrecorded price should not dominate the model's fit.
+      **The idea.** Squared error grows faster and faster as an error grows; absolute error grows at a constant rate. The slope of a loss with respect to the prediction $\hat y$ says how much the cost changes per unit nudge of $\hat y$, with the true value $y$ fixed. For one example with error $e=\hat y-y$:
+
+      $$\frac{d}{d\hat y}(\hat y-y)^2=2(\hat y-y)=2e$$
+
+      $$\frac{d}{d\hat y}|\hat y-y|=\begin{cases}+1 & \text{if } e>0\\ -1 & \text{if } e<0\end{cases}$$
+
+      The squared-error slope is proportional to the miss, so the largest miss pushes hardest. The absolute-error slope has size $1$ for every miss, big or small. At $e=0$ the V has a corner where the slope jumps from $-1$ to $+1$, so no single slope, and no derivative, exists there.
+
+      **Common confusion.** “MAE ignores large errors.” No. Under MAE a miss of $6$ still costs twice a miss of $3$, and it still pushes. MAE counts every unit of error in full; it just doesn't magnify large misses the way squaring does.
     worked: |
-      This example shows how error size changes each house-price loss.
+      Use the errors $+3$, $+3$ and $-6$ again. Compare how strongly each loss reacts to the large miss.
 
-      For a miss of 1 thousand pounds, squared error is $1^2=1$ and absolute error is 1. For a miss of 9, squared error is $9^2=81$ and absolute error is 9.
+      1. **Find the squared-error slope for each prediction.** Expand with $y$ fixed, then differentiate term by term:
+         $$(\hat y-y)^2=\hat y^2-2y\hat y+y^2$$
+         $$\frac{d}{d\hat y}\left(\hat y^2-2y\hat y+y^2\right)=2\hat y-2y=2e$$
+         $$2(3)=6,\qquad 2(3)=6,\qquad 2(-6)=-12$$
 
-      MSE gives the larger miss 81 times the squared-error cost; MAE gives it 9 times the cost. Thus MSE emphasizes large misses more strongly.
+      2. **Find the absolute-error slope for each prediction.**
+         $$+1,\qquad +1,\qquad -1$$
+
+      3. **Find the large miss's share of each total.**
+         $$\text{squared: }\frac{36}{9+9+36}=\frac{2}{3}$$
+         $$\text{absolute: }\frac{6}{3+3+6}=\frac{1}{2}$$
+
+      4. **Check the slopes with a small nudge.** Raise the third prediction by $0.1$, so its error goes from $-6$ to $-5.9$.
+         $$(-5.9)^2-(-6)^2=34.81-36=-1.19\approx -12\times 0.1$$
+         $$|-5.9|-|-6|=5.9-6=-0.1=-1\times 0.1$$
+
+      **Compare cases.**
+
+      | Error $e$ | $e^2$ | $\lvert e\rvert$ | Squared slope $2e$ | Absolute slope |
+      | --- | --- | --- | --- | --- |
+      | $0.5$ | $0.25$ | $0.5$ | $1$ | $1$ |
+      | $1$ | $1$ | $1$ | $2$ | $1$ |
+      | $3$ | $9$ | $3$ | $6$ | $1$ |
+      | $6$ | $36$ | $6$ | $12$ | $1$ |
+      | $12$ | $144$ | $12$ | $24$ | $1$ |
+
+      **Where it shows up.** Training changes the weights, which changes the predictions, so an example whose loss changes fast with its prediction has the most say in which way the weights move. A wrongly recorded house sale far from the model's prediction gets a huge squared-error slope and drags the model towards it; under MAE it pushes no harder than any other wrongly priced house.
     problems:
-      [
-        loss-large-errors-basics,
-        lossp-slope-template,
-        lossp-mae-slope,
-        lossp-outlier,
-        lossp-why-square,
-        lossp-corner,
-        lossp-sensor,
-      ]
+      - loss-large-errors-basics
+      - lossp-large-self-explain
+      - lossp-slope-template
+      - lossp-mae-slope
+      - lossp-outlier
+      - lossp-why-square
+      - lossp-corner
+      - lossp-sensor
   - id: loss-constant-choice
-    title: Which single price should you predict
+    title: "The best single prediction: mean or median"
     explain: |
-      **What a baseline is.** A baseline is a deliberately simple model used as a reference: a more detailed model is only worth using if it beats the baseline. A constant baseline predicts the same value for every example, such as one price for every house.
+      **The question.** The simplest model ignores its inputs and predicts the same number $c$ for every example; any real model has to beat it. Which $c$ gives the smallest loss? The answer depends on the loss.
 
-      **How it works.** The mean is the arithmetic average; the median is the middle value after prices are sorted. Under MSE, the best constant is the mean because squared-error slopes balance at the average. Under MAE, a median minimizes the total absolute distance because at least half the prices lie on each side.
+      **Picture it.** Take three true values: $1$, $2$ and $6$ (the black dots). The left plot shows the total squared error $(c-1)^2+(c-2)^2+(c-6)^2$ for each choice of $c$. It is a bowl, lowest at $c=3$. The right plot shows the total absolute error $|c-1|+|c-2|+|c-6|$. It is made of straight pieces and is lowest at $c=2$, the middle value. The far value $6$ drags only the squared-error choice towards itself.
 
-      For sale prices 290, 300 and 560 thousand pounds, the mean is about 383.33 and the median is 300. The mean is pulled toward the high sale; the median is not. For an even number of prices, any value between the middle pair minimizes MAE.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="For the values 1, 2 and 6, the total squared error of a constant prediction c is a bowl that is lowest, 14, at c equals 3, the mean; the total absolute error is made of straight pieces and is lowest, 5, at c equals 2, the median">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="40" y="40">total squared error</text>
+      <path d="M40 320 H302.8" stroke="#737373"/>
+      <path d="M40 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="40" y="342" text-anchor="middle">0</text>
+      <path d="M76 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="76" y="342" text-anchor="middle">1</text>
+      <path d="M112 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="112" y="342" text-anchor="middle">2</text>
+      <path d="M148 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="148" y="342" text-anchor="middle">3</text>
+      <path d="M184 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="184" y="342" text-anchor="middle">4</text>
+      <path d="M220 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="220" y="342" text-anchor="middle">5</text>
+      <path d="M256 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="256" y="342" text-anchor="middle">6</text>
+      <path d="M292 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="292" y="342" text-anchor="middle">7</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="306.8" y="325">c</text>
+      <circle cx="76" cy="320" r="5" fill="#171717"/>
+      <circle cx="112" cy="320" r="5" fill="#171717"/>
+      <circle cx="256" cy="320" r="5" fill="#171717"/>
+      <polyline points="40.0 156.0 43.6 163.08 47.2 169.92 50.8 176.52 54.4 182.88 58.0 189.0 61.6 194.88 65.2 200.52 68.8 205.92 72.4 211.08 76.0 216.0 79.6 220.68 83.2 225.12 86.8 229.32 90.4 233.28 94.0 237.0 97.6 240.48 101.2 243.72 104.8 246.72 108.4 249.48 112.0 252.0 115.6 254.28 119.2 256.32 122.8 258.12 126.4 259.68 130.0 261.0 133.6 262.08 137.2 262.92 140.8 263.52 144.4 263.88 148.0 264.0 151.6 263.88 155.2 263.52 158.8 262.92 162.4 262.08 166.0 261.0 169.6 259.68 173.2 258.12 176.8 256.32 180.4 254.28 184.0 252.0 187.6 249.48 191.2 246.72 194.8 243.72 198.4 240.48 202.0 237.0 205.6 233.28 209.2 229.32 212.8 225.12 216.4 220.68 220.0 216.0 223.6 211.08 227.2 205.92 230.8 200.52 234.4 194.88 238.0 189.0 241.6 182.88 245.2 176.52 248.8 169.92 252.4 163.08 256.0 156.0 259.6 148.68 263.2 141.12 266.8 133.32 270.4 125.28 274.0 117.0 277.6 108.48 281.2 99.72 284.8 90.72 288.4 81.48 292.0 72.0" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2.5"/>
+      <path d="M148 264 V320" stroke="#3b82f6" stroke-dasharray="5 4"/>
+      <circle cx="148" cy="264" r="4.5" fill="#3b82f6"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="128" y="292" fill="#3b82f6">lowest: 14 at c = 3 (mean)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="350" y="40">total absolute error</text>
+      <path d="M350 320 H612.8" stroke="#737373"/>
+      <path d="M350 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="350" y="342" text-anchor="middle">0</text>
+      <path d="M386 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="386" y="342" text-anchor="middle">1</text>
+      <path d="M422 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="422" y="342" text-anchor="middle">2</text>
+      <path d="M458 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="458" y="342" text-anchor="middle">3</text>
+      <path d="M494 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="494" y="342" text-anchor="middle">4</text>
+      <path d="M530 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="530" y="342" text-anchor="middle">5</text>
+      <path d="M566 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="566" y="342" text-anchor="middle">6</text>
+      <path d="M602 316 V324" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="602" y="342" text-anchor="middle">7</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="616.8" y="325">c</text>
+      <circle cx="386" cy="320" r="5" fill="#171717"/>
+      <circle cx="422" cy="320" r="5" fill="#171717"/>
+      <circle cx="566" cy="320" r="5" fill="#171717"/>
+      <polyline points="350.0 140.0 353.6 146.0 357.2 152.0 360.8 158.0 364.4 164.0 368.0 170.0 371.6 176.0 375.2 182.0 378.8 188.0 382.4 194.0 386.0 200.0 389.6 202.0 393.2 204.0 396.8 206.0 400.4 208.0 404.0 210.0 407.6 212.0 411.2 214.0 414.8 216.0 418.4 218.0 422.0 220.0 425.6 218.0 429.2 216.0 432.8 214.0 436.4 212.0 440.0 210.0 443.6 208.0 447.2 206.0 450.8 204.0 454.4 202.0 458.0 200.0 461.6 198.0 465.2 196.0 468.8 194.0 472.4 192.0 476.0 190.0 479.6 188.0 483.2 186.0 486.8 184.0 490.4 182.0 494.0 180.0 497.6 178.0 501.2 176.0 504.8 174.0 508.4 172.0 512.0 170.0 515.6 168.0 519.2 166.0 522.8 164.0 526.4 162.0 530.0 160.0 533.6 158.0 537.2 156.0 540.8 154.0 544.4 152.0 548.0 150.0 551.6 148.0 555.2 146.0 558.8 144.0 562.4 142.0 566.0 140.0 569.6 134.0 573.2 128.0 576.8 122.0 580.4 116.0 584.0 110.0 587.6 104.0 591.2 98.0 594.8 92.0 598.4 86.0 602.0 80.0" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2.5"/>
+      <path d="M422 220 V320" stroke="#10b981" stroke-dasharray="5 4"/>
+      <circle cx="422" cy="220" r="4.5" fill="#10b981"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="430" y="246" fill="#10b981">lowest: 5 at c = 2 (median)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="40" y="368" fill="#737373">black dots: the values 1, 2 and 6</text>
+      </g></svg>
+      ```
 
-      **Why this is useful.** Comparing a fitted model with the mean-price baseline shows whether its house features improve on predicting one average price.
+      **The idea.** A **baseline** is a deliberately simple model used as a reference: a more detailed model is only worth using if it beats the baseline's loss. For a constant baseline, the best $c$ is:
+      - under MSE, the **mean**: the sum of the values divided by how many there are;
+      - under MAE, the **median**: the middle value once the values are sorted. With an even count, every value between the two middle ones gives the same total, so any of them is best.
+
+      Why: by the slopes from the last step, under squared error each value pulls on $c$ in proportion to its distance, so the pulls balance at the mean. Under absolute error each value pulls with size $1$, so the pulls balance where as many values lie above $c$ as below. Dividing a total by $n$ doesn't move its lowest point, so the total loss and the average loss pick the same $c$.
+
+      **Common confusion.** “The best single prediction is always the average.” Only under MSE. Under MAE the average $3$ gives total absolute error $2+1+3=6$, worse than the median's $1+0+4=5$.
     worked: |
-      This example shows why the mean and median win under different losses.
+      Find the best constant $c$ for the values $1$, $2$ and $6$ under each loss.
 
-      For prices 290, 300 and 560, the mean is $(290+300+560)/3=383.33$ and the median is 300.
+      1. **Find the slope of the total squared error.** Use the slope $2(c-y)$ for each value and add:
+         $$\frac{d}{dc}\left[(c-1)^2+(c-2)^2+(c-6)^2\right]=2(c-1)+2(c-2)+2(c-6)$$
+         $$=6c-18$$
 
-      At 383.33, the squared-error total is approximately $93.33^2+83.33^2+(-176.67)^2=46{,}866.67$. At 300, it is $10^2+0^2+(-260)^2=67{,}700$.
+      2. **Set the slope to zero.** The total is a U-shaped curve, and its bottom is where its slope is zero:
+         $$6c-18=0\quad\Rightarrow\quad c=3=\frac{1+2+6}{3}$$
 
-      At 383.33, the absolute-error total is about 353.33. At 300, it is $10+0+260=270$. The mean minimizes squared error; the median minimizes absolute error.
+      3. **Find the slope of the total absolute error on each side of 2.** Each value below $c$ adds $+1$; each value above adds $-1$.
+         $$1<c<2:\quad (+1)+(-1)+(-1)=-1$$
+         $$2<c<6:\quad (+1)+(+1)+(-1)=+1$$
+      4. **Check the ends and read off the lowest point.** Below $1$ the slope is $-3$ and above $6$ it is $+3$, so the total falls until $c=2$ and rises after it: $c=2$ is lowest.
+
+      5. **Compare the totals at both choices.**
+         $$c=3:\quad \text{squared } 4+1+9=14,\qquad \text{absolute } 2+1+3=6$$
+         $$c=2:\quad \text{squared } 1+0+16=17,\qquad \text{absolute } 1+0+4=5$$
+
+      **Compare cases.**
+
+      | Values | Mean (best under MSE) | Median (best under MAE) |
+      | --- | --- | --- |
+      | $1,2,3$ | $2$ | $2$ |
+      | $1,2,6$ | $3$ | $2$ |
+      | $1,2,12$ | $5$ | $2$ |
+      | $1,2,6,7$ | $4$ | any value from $2$ to $6$ |
+
+      **Where it shows up.** For house prices, a constant baseline predicts one price for every house, and a fitted model is only worth its house details if its loss beats that baseline's. Changing the priciest sale into a mansion price raises the mean price, the MSE baseline, but leaves the median price, the MAE baseline, where it was.
     problems:
-      [
-        loss-constant-choice-basics,
-        lossp-median-template,
-        lossp-why-median,
-        lossp-mean-template,
-        lossp-extreme-sale,
-        lossp-even,
-        lossp-route,
-      ]
+      - loss-constant-choice-basics
+      - lossp-constant-self-explain
+      - lossp-median-template
+      - lossp-why-median
+      - lossp-mean-template
+      - lossp-extreme-sale
+      - lossp-even
+      - lossp-route
 final: loss-explain-choice
 summary: |
-  - MSE averages squared house-price errors; MAE averages their absolute values.
-  - Squared loss pulls more strongly on large errors, while MAE is less affected by an extreme sale.
-  - The mean is the best constant under MSE; a median is best under MAE.
+  - MAE averages the sizes of the errors and MSE averages their squares; both stop opposite errors cancelling.
+  - Squared error's slope is twice the error, so a large miss pulls hardest; absolute error pulls with the same size, 1, on every miss.
+  - The best constant prediction is the mean under MSE and the median under MAE.
 
-  **Next:** Partial derivatives find the loss slope for each weight while holding the others fixed.
+  **Next:** Partial derivatives find the loss slope for each of a model's weights while holding the others fixed.
