@@ -8,7 +8,7 @@ exercises:
       difficulty: 1,
       est_minutes: 1,
       prompt: "Compute 1 + 1.",
-      hints: ["Add the numbers."],
+      hints: ["Add the numbers.", "Check how many ones are being added."],
       solution: "1 + 1 = 2.",
       answer: 2,
       tolerance: { abs: 0 },
