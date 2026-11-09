@@ -15,14 +15,18 @@ knowledge_points:
     explain: |
       **The question.** You know how to predict an amount with a weighted sum. What changes when the answer must be “yes” or “no” rather than a price or a distance?
 
-      **Picture it.** Imagine sorting cards into two boxes: “yes” has label 1 and “no” has label 0. The numbers name the boxes; they are not amounts you measure. A card's input measurements help you choose its box, but the observed label records where it actually belongs.
+      **Picture it.** You want to predict whether a seed has sprouted from the days since you watered it. Each dot below is an observed seed: the horizontal position is its age in days, and the label records whether it has sprouted.
+
+      Label 1 means “yes”; label 0 means “no”. These labels name categories, not amounts of growth.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 130" aria-label="Two category boxes: no labelled zero and yes labelled one">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 145" aria-label="Observed seeds on a days-since-watering line: day zero and day one have label zero, day two has label one">
         <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
-          <rect x="30" y="20" width="180" height="80" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
-          <rect x="270" y="20" width="180" height="80" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
-          <text x="75" y="65">no: y = 0</text><text x="310" y="65">yes: y = 1</text>
+          <path d="M60 70 H420" stroke="#d4d4d4"/>
+          <circle cx="60" cy="70" r="5" fill="#171717"/><circle cx="240" cy="70" r="5" fill="#171717"/><circle cx="420" cy="70" r="5" fill="#171717"/>
+          <text x="30" y="40">y = 0</text><text x="210" y="40">y = 0</text><text x="390" y="40">y = 1</text>
+          <text x="55" y="100">0</text><text x="235" y="100">1</text><text x="415" y="100">2</text>
+          <text x="135" y="135">days since watering (x)</text>
         </g>
       </svg>
       ```
@@ -31,22 +35,21 @@ knowledge_points:
 
       **Common confusion.** “Because the labels are numbers, this is just predicting an amount.” No: 0 and 1 name categories. A score of 3 is allowed, but it is neither a third category nor a valid probability.
     worked: |
-      **Worked example.** A card has measurement $x=2$. Use weight $w=2$ and bias $b=-2$ to calculate its score, not its class.
+      **Worked example.** A seed was watered two days ago, so $x=2$. Use weight $w=2$ and bias $b=-2$ to calculate its score, not its class.
 
       1. **Find the feature contribution.**
          $$wx=2(2)=4.$$
       2. **Add the offset.**
          $$z=4-2=2.$$
       3. **Check its meaning.**
-         $$2>1.$$
-         This score is outside the probability range, so another step is needed before you can report a chance.
+         A chance must be between 0 and 1, but this score is 2. It cannot mean “200% likely to sprout”; you still need a rule that converts scores to chances.
 
       **Compare cases.** Keep the same weight and bias.
 
       | Feature $x$ | Score $2x-2$ | Interpretation |
       | --- | --- | --- |
       | 0 | -2 | Outside the probability range |
-      | 1 | 0 | In range, but still a score, not a chance |
+      | 1 | 0 | Contributions cancel; this does not mean sprouting is impossible |
       | 2 | 2 | Outside the probability range |
 
       **Where it shows up.** For house sales, label 1 can mean “sold above asking” and label 0 “did not”. You train on those observed categories rather than on prices.
@@ -79,11 +82,15 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Squeeze the score into a chance while preserving its order. The **sigmoid** is the increasing function $\sigma(z)=1/(1+e^{-z})$, where $e$ is the exponential base and $\sigma$ names the function. **Logistic regression** uses a weighted score followed by this function; write its output as $p=\sigma(z)$, the model's estimated probability of label 1. The chance of label 0 is $1-p$. To make a decision, choose a **threshold**, a cut-off probability: here predict label 1 if $p\geq1/2$, otherwise label 0. Since the curve increases, this is equivalent to checking whether $z\geq0$.
+      **The idea.** Convert scores to chances so a higher score gives a higher chance. The **sigmoid** is the increasing function $\sigma(z)=1/(1+e^{-z})$; $\sigma$ names the function and $e\approx2.718$ is the exponential base from the derivatives lesson. **Logistic regression** applies it to a weighted score, giving $p=\sigma(z)$, the estimated probability of label 1; label 0 has chance $1-p$.
+
+      If you need a yes-or-no answer rather than just a chance, use a **threshold**, a cut-off probability. Here predict 1 if $p\geq1/2$, otherwise 0.
+
+      At score zero, $e^0=1$, so $\sigma(0)=1/(1+1)=1/2$. Because higher scores give higher chances, $p\geq1/2$ means exactly $z\geq0$.
 
       **Common confusion.** “If the model predicts label 1, that outcome is certain.” No: the threshold turns an uncertain estimate into a decision. Probability $3/4$ still leaves a chance of label 0, and the model's estimate itself can be inaccurate.
     worked: |
-      **Worked example.** Take a card with score $z=\ln3$. Here $\ln$ is the natural logarithm, the inverse of the exponential.
+      **Worked example.** A seed receives score $z=\ln3$. As in the derivatives lesson, $\ln3$ asks which power of $e$ gives 3, so $e^{\ln3}=3$.
 
       1. **Evaluate the exponential.**
          $$e^{-\ln3}=1/3.$$
@@ -130,15 +137,17 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Penalise the model for assigning little probability to what actually happened. **Binary cross-entropy** is the negative natural logarithm of the probability assigned to the observed binary label. With observed label $y$, predicted probability $p$ of label 1, and loss $L$, its general formula is:
+      **The idea.** Penalise the model for assigning little probability to what actually happened. Why use a negative logarithm? It gives zero penalty at probability 1, increases as the true-label probability falls, and has no upper limit as that probability approaches zero.
+
+      **Binary cross-entropy** is this negative natural logarithm of the probability assigned to the observed binary label. With observed label $y$, predicted probability $p$ of label 1, and loss $L$, its formula is:
 
       $$L=-[y\ln p+(1-y)\ln(1-p)].$$
 
-      For $y=1$, only $-\ln p$ remains; for $y=0$, only $-\ln(1-p)$ remains. The loss approaches zero as the probability of the true label approaches 1, and grows without bound as that probability approaches zero. Finite sigmoid scores give probabilities strictly between the endpoints, so these logarithms are defined in exact arithmetic.
+      For $y=1$, only $-\ln p$ remains; for $y=0$, only $-\ln(1-p)$ remains.
 
       **Common confusion.** “Once the predicted class is correct, the loss is zero.” No: the loss uses the probability, not the thresholded class. It still rewards raising the probability of the true label, even after you cross the decision threshold.
     worked: |
-      **Worked example.** The observed label is $y=1$ and the model predicts $p=3/4$. Keep logarithms exact so you can compare losses without rounding.
+      **Worked example.** The observed label is $y=1$ and the model predicts $p=3/4$.
 
       1. **Select the observed label's term.**
          $$L=-[1\ln(3/4)+0\ln(1/4)].$$
@@ -156,7 +165,7 @@ knowledge_points:
       | $1/2$ | $\ln2$ | Middle |
       | $3/4$ | $\ln(4/3)$ | Smallest |
 
-      **Where it shows up.** For a house that did not sell above asking, training penalises a high predicted chance of selling above asking. Average this loss across the training examples to fit the model.
+      **Where it shows up.** For a house that did not sell above asking, training penalises a high predicted chance of selling above asking. Average the losses so each training example contributes equally to one number that you can minimise.
     problems:
       [
         lr-bce-basics,
@@ -185,16 +194,22 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Subtract the observed label from the predicted probability to find the loss slope with respect to the score. The **score derivative** for sigmoid plus binary cross-entropy is $\partial L/\partial z=p-y$. You can check it with the chain rule: differentiating the sigmoid gives $\partial p/\partial z=p(1-p)$. Multiplying by the loss derivative gives:
+      **The idea.** Every weight affects the loss through the score, so first find how the loss changes with that score. The **score derivative** for sigmoid plus binary cross-entropy is $\partial L/\partial z=p-y$: probability minus observed label.
+
+      First, differentiate the loss with respect to probability:
+
+      $$\frac{\partial L}{\partial p}=-\frac{y}{p}+\frac{1-y}{1-p}.$$
+
+      Differentiating the sigmoid gives $\partial p/\partial z=p(1-p)$. The **chain rule** multiplies the slopes along a sequence of calculations: score to probability, then probability to loss.
 
       $$\frac{\partial L}{\partial z}=\left(-\frac{y}{p}+\frac{1-y}{1-p}\right)p(1-p).$$
       $$\frac{\partial L}{\partial z}=-y(1-p)+(1-y)p=p-y.$$
 
-      For one feature, $z=wx+b$, so the weight slope is $(p-y)x$ and the bias slope is $p-y$. With several features, multiply by each feature to find its weight slope; average the slopes when training on several examples.
+      For $z=wx+b$, the weight slope is $(p-y)x$ and the bias slope is $p-y$: changing the weight changes the score by $x$ times as much, while changing the bias changes it one-for-one. Each additional weight uses its own feature factor for the same reason.
 
       **Common confusion.** “Probability minus label is every weight's gradient.” Not quite: it is the score slope. Each weight needs its own feature factor because changing that weight changes the score by that feature's value.
     worked: |
-      **Worked example.** Use one card with $x=2$, observed label $y=1$, initial $w=0$, $b=0$, and learning rate $\eta=1/2$.
+      **Worked example.** A seed watered two days ago has sprouted: $x=2$, $y=1$. Use initial $w=0$, $b=0$, and learning rate $\eta=1/2$.
 
       1. **Predict with the current parameters.**
          $$z=0(2)+0=0.$$
@@ -203,7 +218,7 @@ knowledge_points:
          $$p-y=1/2-1=-1/2.$$
          $$\frac{\partial L}{\partial w}=(-1/2)(2)=-1.$$
          $$\frac{\partial L}{\partial b}=-1/2.$$
-      3. **Subtract scaled slopes.** Use both slopes from the same prediction.
+      3. **Subtract scaled slopes.** Update the weight and bias together using the slopes just calculated; do not recalculate $p$ between them, because both slopes describe the starting model.
          $$w_{\text{new}}=0-(1/2)(-1)=1/2.$$
          $$b_{\text{new}}=0-(1/2)(-1/2)=1/4.$$
       4. **Check the direction.**
@@ -217,7 +232,7 @@ knowledge_points:
       | 1 | $-1/2$ | $1/2$ | $1/4$ |
       | 0 | $1/2$ | $-1/2$ | $-1/4$ |
 
-      **Where it shows up.** A house-sale classifier repeats prediction, loss, fresh gradients and parameter updates just like the price model. The difference is that these slopes come from probability error rather than squared price error.
+      **Where it shows up.** A house-sale classifier repeats prediction, loss, fresh gradients and parameter updates just like the price model. For several examples, average their slopes because the slope of the average loss is the average of their slopes.
     problems:
       [
         lr-gradient-basics,
