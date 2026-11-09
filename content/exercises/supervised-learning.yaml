@@ -55,9 +55,9 @@ exercises:
         }
       - {
           id: c,
-          text: "The number of training examples whose predicted categories differ from their target labels.",
+          text: "The largest error among all of the model's predictions on the training examples.",
           correct: false,
-          feedback: "That is an error count, not squared-error loss.",
+          feedback: "That is the single worst miss. Squared error scores each prediction on its own: the square of prediction minus target.",
         }
       - {
           id: d,
@@ -740,7 +740,7 @@ exercises:
           text: "The training loss must always be larger than the loss on new houses",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "Training loss is not guaranteed to be higher than test loss; models can fit training examples especially well. Ask what a low training score tells you about houses not used to tune the settings.",
+          feedback: "Nothing forces the training loss to be larger than the loss on held-back sales; a model often fits its training examples especially well. Ask what a low training score tells you about houses not used to tune the settings.",
         }
       - {
           id: d,

@@ -95,7 +95,7 @@ knowledge_points:
           <circle cx="420" cy="330" r="5" fill="#3b82f6"/>
           <circle cx="120" cy="180" r="5" fill="#3b82f6"/>
           <circle cx="220" cy="330" r="5" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="432" y="325">houses 1 and 3: +10 → 100</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="432" y="352">houses 1 and 3: +10 → 100</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="132" y="176">house 2: −20 → 400</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="205" y="345" text-anchor="end" fill="#737373">−10 → 100</text>
           <text x="112" y="402">−20</text>
@@ -176,8 +176,8 @@ knowledge_points:
           <circle cx="330" cy="300" r="6" fill="#3b82f6"/>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="142" y="136">600</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="242" y="256">300</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="442" y="256">300</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="542" y="136">600</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="418" y="256" text-anchor="end">300</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="518" y="136" text-anchor="end">600</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="300" y="336" fill="#3b82f6">Setting A: 200</text>
           <text x="118" y="402">30</text>
           <text x="218" y="402">40</text>
