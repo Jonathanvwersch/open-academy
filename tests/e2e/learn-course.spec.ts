@@ -387,7 +387,7 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   await hideTutorLauncher(page);
   await expect(page.locator('article > h2').first()).toContainText('1.');
   const matrixDiagram = page.getByRole('img', {
-    name: 'Two panels show row one and row two dotted with the same vector to produce outputs 5 and 1',
+    name: 'House rows (12, 3, 20) and (8, 2, 5) are each dotted with weights (25, 10, minus 1) to give prices 310 and 215',
   });
   await expect(matrixDiagram).toBeVisible();
   await matrixDiagram.evaluate((image) => {

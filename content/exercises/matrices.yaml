@@ -6,210 +6,141 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What is a matrix?"
+    prompt: What is a matrix?
     options:
-      - {
-          id: a,
-          text: "A rectangular grid of numbers with a shape given by rows, then columns.",
-          correct: true,
-          feedback: "Rows and columns form a rectangular grid, and their counts determine its shape.",
-        }
-      - {
-          id: b,
-          text: "An ordered list of numbers with one position for each feature.",
-          correct: false,
-          feedback: "That is a vector.",
-        }
-      - {
-          id: c,
-          text: "A single number made by multiplying matching vector entries and adding them.",
-          correct: false,
-          feedback: "That is a dot product.",
-        }
-      - {
-          id: d,
-          text: "A collection of training examples paired with their known target values.",
-          correct: false,
-          feedback: "That is a labeled dataset; a matrix is only a rectangular arrangement of numbers.",
-        }
-    solution: "A matrix is a rectangular grid of numbers; its shape lists the number of rows and then columns."
-  - id: mat-matrix-products-basics
+      - id: a
+        text: A rectangular grid of numbers with a shape given by rows, then columns.
+        correct: true
+        feedback: Rows and columns form a rectangular grid, and their counts determine its shape.
+      - id: b
+        text: An ordered list of numbers with one position for each measurement.
+        correct: false
+        feedback: That is a vector.
+      - id: c
+        text: A single number made by multiplying matching vector entries and adding them.
+        correct: false
+        feedback: That is a dot product.
+      - id: d
+        text: A collection of training examples paired with their known target values.
+        correct: false
+        feedback: That is a labeled dataset; a matrix is only a rectangular arrangement of numbers.
+    solution: A matrix is a rectangular grid of numbers; its shape lists the number of rows and then columns.
+  - id: matp-rows-self-explain
     dimension: conceptual
-    type: mc
-    role: basics
-    difficulty: 1
-    est_minutes: 1
-    prompt: "What does a matrix product combine?"
-    options:
-      - {
-          id: a,
-          text: "The rows of both matrices paired with other rows to fill output entries.",
-          correct: false,
-          feedback: "Matrix multiplication pairs each left row with a right column to form one output entry.",
-        }
-      - {
-          id: b,
-          text: "A matrix whose entries are dot products of rows and columns from the two input grids.",
-          correct: true,
-          feedback: "Each output entry comes from a dot product of one left row with one right column.",
-        }
-      - {
-          id: c,
-          text: "Two vectors into one number by matching entries and adding the paired products.",
-          correct: false,
-          feedback: "That describes the dot product of vectors.",
-        }
-      - {
-          id: d,
-          text: "The two matrix shapes combined into a list of entries that they share.",
-          correct: false,
-          feedback: "Matching dimensions determine whether a product is valid.",
-        }
-    solution: "A matrix product combines two number grids, with each output entry formed from a left row and right column."
-  - id: mat-batches-transpose-basics
-    dimension: conceptual
-    type: mc
-    role: basics
-    difficulty: 1
-    est_minutes: 1
-    prompt: "When each row of $X$ is a house and $w$ holds feature weights, what does $X @ w$ compute?"
-    options:
-      - {
-          id: a,
-          text: "One weighted prediction for each house row in $X$, returned as a vector.",
-          correct: true,
-          feedback: "Each row's dot product with $w$ combines that house's features into one prediction.",
-        }
-      - {
-          id: b,
-          text: "The element-wise product of each house row and the weight vector, with no sum.",
-          correct: false,
-          feedback: "That is element-wise multiplication; matrix multiplication sums matching feature products.",
-        }
-      - {
-          id: c,
-          text: "One shared prediction formed by summing every feature across all house rows.",
-          correct: false,
-          feedback: "That collapses rows together; matrix multiplication returns a separate result for each row.",
-        }
-      - {
-          id: d,
-          text: "A column sum of the input matrix, scaled by the matching model weights.",
-          correct: false,
-          feedback: "A column sum combines houses; $X @ w$ instead takes a weighted sum within each house row.",
-        }
-    solution: "$X @ w$ takes each house row's dot product with the feature weights, producing one prediction per row."
-  - id: matp-shape
-    dimension: math
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A matrix has shape $2\\times3$ and another has shape $3\\times4$. What is the shape of their product in that order?"
-    solution: "Each of two left rows meets each of four right columns. This gives two rows and four columns of outputs."
+    prompt: In the worked example, why does $Xw$ have 2 entries even though each house has 3 measurements?
     options:
-      - {
-          id: a,
-          text: "$2\\times4$",
-          correct: true,
-          feedback: "The inner threes match; the outer counts remain.",
-        }
-      - {
-          id: b,
-          text: "$3\\times3$",
-          correct: false,
-          feedback: "The matching inner counts do not become the output shape.",
-        }
-      - {
-          id: c,
-          text: "$4\\times2$",
-          correct: false,
-          feedback: "Keep the left row count first and the right column count second.",
-        }
-  - id: matp-entry-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "The second row of $A$ is $({{=a}},{{=b}})$ and the first column of $B$ is $({{=c}},{{=d}})$. What is the entry in row 2, column 1 of $AB$?"
-    solution: "Dot the selected row with the selected column: ${{=a}}\\cdot{{=c}}+({{=b}})\\cdot{{=d}}={{=a*c+b*d}}$. One row-column pair produces one output entry."
-    tolerance: { abs: 0.000001 }
-    params:
-      a: { min: 1, max: 5 }
-      b: { min: -3, max: 3 }
-      c: { min: 1, max: 4 }
-      d: { min: 1, max: 4 }
-    answer_expr: "a*c+b*d"
-
+      - id: a
+        text: "$X$ has 2 rows, and each row's 3 products are added into one dot product: one price per house."
+        correct: true
+        feedback: The 3 measurements are used up inside each row's dot product; the 2 rows set the number of answers.
+      - id: b
+        text: Age has a negative weight, so its product cancels out and that entry is dropped from the answer.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A negative weight only lowers the sum; no entry is dropped. Each row still gives exactly one number.
+      - id: c
+        text: Only the first two weights are used, because $X$ has two rows and each row takes one weight.
+        correct: false
+        category: misunderstood_definition
+        feedback: Every row uses all 3 weights, one for each of its measurements.
+      - id: d
+        text: The answer keeps one entry per column of $X$, and only two columns are paired with weights.
+        correct: false
+        category: misunderstood_definition
+        feedback: All 3 columns are paired with weights. The answer has one entry per row, not per column.
+    solution: "Each row of $X$ is dotted with all 3 weights, which adds its 3 products into one number. $X$ has 2 rows, so $Xw$ has 2 entries: 310 and 215."
   - id: matp-vector
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A matrix has three rows and two columns. It multiplies a two-entry column vector. What comes out?"
-    solution: "The shapes are $(3\\times2)(2\\times1)$, giving $3\\times1$. There is one output entry per matrix row."
+    prompt: A matrix has three rows and two columns. It multiplies a two-entry column vector. What comes out?
+    solution: The shapes are $(3\times2)(2\times1)$, giving $3\times1$. There is one output entry per matrix row.
     options:
-      - {
-          id: a,
-          text: "The result is a column vector with three entries.",
-          correct: true,
-          feedback: "Each matrix row produces one dot product.",
-        }
-      - {
-          id: b,
-          text: "The result is a column vector with two entries.",
-          correct: false,
-          feedback: "The input entry count is not the output entry count.",
-        }
-      - {
-          id: c,
-          text: "The result is one number combining all six entries.",
-          correct: false,
-          feedback: "Each row gives its own number, rather than one total for the matrix.",
-        }
+      - id: a
+        text: The result is a column vector with three entries.
+        correct: true
+        feedback: Each matrix row produces one dot product.
+      - id: b
+        text: The result is a column vector with two entries.
+        correct: false
+        feedback: The input entry count is not the output entry count.
+      - id: c
+        text: The result is one number combining all six entries.
+        correct: false
+        feedback: Each row gives its own number, rather than one total for the matrix.
   - id: matp-vector-shape
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
-    est_minutes: 1
-    prompt: "A house has three measurements and the model has one weight for each measurement. If the three weights are arranged as one matrix row, how many output numbers does the matrix-vector product produce?"
+    est_minutes: 2
+    prompt: One house's three measurements are written as a $1\times3$ matrix and multiplied by the 3-entry weight vector. How many numbers come out?
     options:
-      - { id: a, text: "One score for the house", correct: true }
-      - {
-          id: b,
-          text: "Three scores, one for each measurement",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The matrix has one row, so it produces one output entry.",
-        }
-      - {
-          id: c,
-          text: "No output until there are two houses",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "A single row can produce a score for one house.",
-        }
-      - {
-          id: d,
-          text: "One output for every weight and measurement pair",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The matching products are added into one dot product.",
-        }
-    solution: "One row makes one dot product with the house's measurement vector, producing one score."
+      - id: a
+        text: One price for that house.
+        correct: true
+        feedback: The matrix has one row, so there is one dot product.
+      - id: b
+        text: Three numbers, one for each measurement.
+        correct: false
+        category: misunderstood_definition
+        feedback: The three products are added into one dot product, so they do not stay separate.
+      - id: c
+        text: None, because a product needs at least two houses.
+        correct: false
+        category: misunderstood_definition
+        feedback: A matrix with one row is allowed; it gives one answer.
+      - id: d
+        text: Nine numbers, one for each measurement and weight pair.
+        correct: false
+        category: misunderstood_definition
+        feedback: Only matching entries are paired, and their 3 products are added together.
+    solution: A $1\times3$ matrix has one row, and its dot product with the 3 weights gives one price.
+  - id: matp-why-rows
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why does each row of a matrix produce exactly one output when the matrix multiplies a vector?
+    options:
+      - id: a
+        text: Each row is dotted with the vector, and one dot product adds its products into one number.
+        correct: true
+        feedback: One row, one dot product, one number.
+      - id: b
+        text: Each column of the matrix is copied directly into the output.
+        correct: false
+        category: misunderstood_definition
+        feedback: The output is built from rows dotted with the vector; no column is copied.
+      - id: c
+        text: All the matrix entries are added together first, then the vector is used.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each row is dotted with the vector separately, so rows are never mixed.
+      - id: d
+        text: The matrix's number of columns sets how many outputs there are.
+        correct: false
+        category: misunderstood_definition
+        feedback: The columns must match the vector's length; the rows set the number of outputs.
+    solution: Each row is dotted with the same vector, which multiplies matching entries and adds them into one number. So every row gives one output.
   - id: matp-vector-entry
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "A house has area 4 tens of square metres and 1 bedroom. A simplified model uses weights $(2,-1)$ thousand pounds per unit. What sale-price prediction does their matrix-vector product give, in thousands of pounds?"
-    solution: "Multiply matching entries and add: $4\\cdot2+1\\cdot(-1)=8-1=7$."
+    prompt: A house has area 4 tens of square metres and 1 bedroom. A simplified model uses weights $(2,-1)$ thousand pounds per unit. What sale-price prediction does their matrix-vector product give, in thousands of pounds?
+    solution: 'Multiply matching entries and add: $4\cdot2+1\cdot(-1)=8-1=7$.'
     answer: 7
-    tolerance: { abs: 0.000001 }
+    tolerance:
+      abs: 1.0e-06
   - id: matp-vector-template
     dimension: math
     type: numeric
@@ -217,406 +148,31 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: |
-      A house has measurements $({{=u}},{{=v}})$ and the model's weights are $({{=a}},{{=b}})$. What score does the row-vector product give?
-    solution: "Multiply matching entries and add: ${{=u}}\\cdot{{=a}}+{{=v}}\\cdot{{=b}}={{=u*a+v*b}}$."
-    tolerance: { abs: 0.000001 }
+      A house has two measurements $({{=u}},{{=v}})$, written as a $1\times2$ matrix, and the model's weights are $({{=a}},{{=b}})$. What single number does the matrix times the weight vector give?
+    solution: 'Multiply matching entries and add: ${{=u}}\cdot{{=a}}+{{=v}}\cdot{{=b}}={{=u*a+v*b}}$.'
+    tolerance:
+      abs: 1.0e-06
     params:
-      u: { min: 1, max: 10 }
-      v: { min: 1, max: 5 }
-      a: { min: 1, max: 4 }
-      b: { min: 1, max: 3 }
-    answer_expr: "u*a+v*b"
-  - id: matp-why-rows
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "Why does each row of a matrix produce one output when it multiplies a vector?"
-    options:
-      - {
-          id: a,
-          text: "Each row is a set of weights, and its dot product with the same input gives one output.",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "Each column is copied directly into the output.",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The output is computed from the rows paired with the input vector.",
-        }
-      - {
-          id: c,
-          text: "All matrix entries are added together before the vector is used.",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Each row is multiplied with the vector separately.",
-        }
-      - {
-          id: d,
-          text: "The matrix's columns determine the number of output entries.",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The number of rows determines the number of output entries.",
-        }
-    solution: "Each matrix row has its own weights, so its dot product with the input produces one output number."
-  - id: matp-invalid
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "Why can't a $2\\times3$ matrix multiply a $2\\times4$ matrix in that order, even though both have two rows?"
-    solution: "Each left row has three entries but each right column has two. Their dot product is undefined, so this matrix product is undefined."
-    options:
-      - {
-          id: a,
-          text: "Each left row has three entries, but each right column has only two.",
-          correct: true,
-          feedback: "A dot product needs a matching partner for every entry. These lists have different lengths.",
-        }
-      - {
-          id: b,
-          text: "The product is possible because both matrices have two rows.",
-          correct: false,
-          feedback: "Multiplication matches left columns with right rows, not both row counts.",
-        }
-      - {
-          id: c,
-          text: "The product is possible because it would have shape 3 by 4.",
-          correct: false,
-          feedback: "An output shape is valid only after the inner counts match.",
-        }
-  - id: matp-entry
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "For $A=\\begin{bmatrix}2&0&1\\\\1&3&-1\\end{bmatrix}$ and $B=\\begin{bmatrix}1&2\\\\0&1\\\\4&0\\end{bmatrix}$, what is entry (row 2, column 1) of $AB$?"
-    solution: "Use row two $(1,3,-1)$ and column one $(1,0,4)$. Their dot product is $1\\cdot1+3\\cdot0+(-1)\\cdot4=1+0-4=-3$."
-    tolerance: { abs: 0.000001 }
-    answer: -3
-
-  - id: matp-batch-shape
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "Five houses each have three measurements. Their $5\\times3$ table multiplies a $3\\times2$ weight table whose columns predict sale price and monthly rent. What does the result hold?"
-    solution: "The inner measurement count three matches, giving shape $5\\times2$. Each of the five house rows contains a sale-price and a monthly-rent prediction."
-    options:
-      - {
-          id: a,
-          text: "The result has five house rows with a sale-price and monthly-rent prediction.",
-          correct: true,
-          feedback: "Each house row meets both weight columns.",
-        }
-      - {
-          id: b,
-          text: "The result has three feature rows with three scores each.",
-          correct: false,
-          feedback: "Features are summed over, not retained as output rows.",
-        }
-      - {
-          id: c,
-          text: "The result has two house rows with five scores each.",
-          correct: false,
-          feedback: "The left rows remain rows, not output columns.",
-        }
-  - id: matp-code
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A model stores five houses with three measurements each in NumPy array X, shape (5, 3). W holds weights for sale price and monthly rent, shape (3, 2), and b holds one fixed adjustment for each output, shape (2,). Which line gives both adjusted predictions for every house?"
-    solution: "X rows dot W columns, giving shape (5, 2). Adding b broadcasts one bias per score across all five houses."
-    options:
-      - {
-          id: a,
-          text: "`Y = X @ W + b`",
-          correct: true,
-          feedback: "The product has shape (5, 2), and the two biases repeat across rows.",
-        }
-      - {
-          id: b,
-          text: "`Y = W @ X + b`",
-          correct: false,
-          feedback: "The inner counts two and five do not match in that order.",
-        }
-      - {
-          id: c,
-          text: "`Y = X @ W.T + b`",
-          correct: false,
-          feedback: "W.T has shape (2, 3), so its row count does not match X columns.",
-        }
-  - id: matp-bias-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A house has area ${{=a}}$ tens of square metres and ${{=b}}$ bedrooms. A simplified sale-price model uses weights $(2,-1)$ thousand pounds per feature unit and adds a bias of {{=c}} thousand pounds. What is its predicted sale price, in thousands of pounds?"
-    solution: "First take the dot product: $2\\cdot{{=a}}-{{=b}}={{=2*a-b}}$. Add the bias to get ${{=2*a-b}}+({{=c}})={{=2*a-b+c}}$."
-    tolerance: { abs: 0.000001 }
-    params:
-      a: { min: 1, max: 8 }
-      b: { min: 1, max: 5 }
-      c: { min: -2, max: 4 }
-    answer_expr: "2*a-b+c"
-
-  - id: matp-transpose
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "W stores the sale-price and monthly-rent weights as rows, with three measurements per output, shape (2, 3). X stores five houses with the same measurements, shape (5, 3). Which product gives both predictions for every house?"
-    solution: "Transpose swaps the two weight rows into columns without changing their values. Then (5, 3) times (3, 2) gives (5, 2)."
-    options:
-      - {
-          id: a,
-          text: "`X @ W.T`, with shape (5, 2)",
-          correct: true,
-          feedback: "Transposing makes W shape (3, 2), matching the three house measurements.",
-        }
-      - {
-          id: b,
-          text: "`X @ W`, which is undefined",
-          correct: false,
-          feedback: "Without transposing, the inner counts three and two differ.",
-        }
-      - {
-          id: c,
-          text: "`X.T @ W`, which is undefined",
-          correct: false,
-          feedback: "The inner counts five and two differ in that product.",
-        }
-  - id: matp-broadcast
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "A NumPy product holds sale-price and monthly-rent predictions for five houses, shape (5, 2). You add b, an array of two fixed adjustments, shape (2,). What does broadcasting do?"
-    solution: "NumPy reuses the two bias entries across the five rows. The output shape stays (5, 2)."
-    options:
-      - {
-          id: a,
-          text: "It adds the two adjustments to every house row.",
-          correct: true,
-          feedback: "Each score column receives its matching bias for every house.",
-        }
-      - {
-          id: b,
-          text: "It adds two new columns to every row.",
-          correct: false,
-          feedback: "Bias addition changes values, not the number of score columns.",
-        }
-      - {
-          id: c,
-          text: "It adds the adjustments only to the first row.",
-          correct: false,
-          feedback: "The shorter array is reused for all five rows.",
-        }
-  - id: matp-why-batch
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "Why use `X @ W` instead of a Python loop of separate house-score dot products, and why isn't `X * W` a substitute?"
-    solution: "A loop can compute the same predictions, but `@` groups the row-column dot products for efficient numerical-library execution. For house row $(12,3,20)$ and price weights $(25,10,-1)$, the prediction is $12\\cdot25+3\\cdot10+20\\cdot(-1)=310$. Elementwise multiplication does not sum those contributions."
-    options:
-      - {
-          id: a,
-          text: "`@` groups the same dot products efficiently, while `*` does not add the feature contributions.",
-          correct: true,
-          feedback: "The loop is mathematically valid, but `@` handles the repeated house-score calculation in the library.",
-        }
-      - {
-          id: b,
-          text: "A loop cannot compute these scores correctly, regardless of how it is written.",
-          correct: false,
-          feedback: "Correctly written loops give the same scores. The benefit is organised, efficient execution, not different mathematics.",
-        }
-      - {
-          id: c,
-          text: "`*` gives the same scores as `@` whenever both arrays have equal row and column counts.",
-          correct: false,
-          feedback: "Square shapes do not change the operations: `*` multiplies corresponding entries without summing across features.",
-        }
-  - id: matp-transpose-product
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "A has shape $2\\times3$ and B has shape $3\\times4$. Which is $(AB)^\\top$?"
-    solution: "The product AB has shape two by four, so its transpose is four by two. Reversing the transposed factors gives (4 by 3)(3 by 2), the correct order and shape."
-    options:
-      - {
-          id: a,
-          text: "$B^\\top A^\\top$, shape $4\\times2$",
-          correct: true,
-          feedback: "Transpose reverses the order as well as swapping each shape.",
-        }
-      - {
-          id: b,
-          text: "$A^\\top B^\\top$, shape $4\\times2$",
-          correct: false,
-          feedback: "These factors have shapes three by two and four by three, so their inner counts differ.",
-        }
-      - {
-          id: c,
-          text: "$AB$, still with shape $2\\times4$",
-          correct: false,
-          feedback: "Transpose swaps the output rows and columns.",
-        }
-  - id: mat-explain-batch
-    dimension: conceptual
-    type: explain
-    role: core
-    difficulty: 2
-    est_minutes: 4
-    prompt: "For houses with area in tens of square metres, bedroom count and age in years, explain how NumPy can predict both sale price and monthly rent for five houses. State the shapes of $X$, $W$ and $XW$, and explain adding one fixed amount per output."
-    rubric:
-      - {
-          id: rows,
-          criterion: "Each output entry is one house row dotted with one output-weight column",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: shapes,
-          criterion: "For X shape (5, 3), W has shape (3, 2) and X @ W has shape (5, 2), with matching inner measurement counts",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: bias,
-          criterion: "A bias of shape (2,) is broadcast across the five house rows in X @ W + b",
-          weight: 1,
-        }
-    exemplar: "Each output entry is one house row dotted with one output-weight column. Five houses with three measurements give X shape (5, 3). Sale-price and monthly-rent weights give W shape (3, 2), so X @ W has shape (5, 2). Adding b with shape (2,) reuses one fixed adjustment for each output across all five rows."
-    solution: "Each house row meets both output-weight columns. The matching inner measurement counts produce two predictions per house, and broadcasting adds one fixed adjustment per output without changing the shape."
-  - id: mat-check-shape
-    dimension: math
-    type: mc
-    role: check
-    difficulty: 1
-    est_minutes: 1
-    prompt: "$A$ has shape $128 \\times 512$ and $B$ has shape $512 \\times 64$. What is the shape of $AB$?"
-    options:
-      - { id: a, text: "$128 \\times 64$", correct: true }
-      - {
-          id: b,
-          text: "$512 \\times 512$",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The inner dimension (512) disappears. The outer dimensions remain.",
-        }
-      - {
-          id: c,
-          text: "$64 \\times 128$",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Matrix multiplication's output keeps the first matrix's row count and the second matrix's column count. These come from the outer dimensions, not from swapping them.",
-        }
-      - {
-          id: d,
-          text: "Undefined",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The inner dimensions (512 and 512) match, so the product is defined.",
-        }
-    solution: "$(128\\times512)(512\\times64) = 128\\times64$."
-  - id: dx-math-2
-    dimension: math
-    type: mc
-    role: diagnostic
-    difficulty: 1
-    est_minutes: 1
-    prompt: "Each of 32 images is stored as a row of 784 pixel brightness numbers in $X\\in\\mathbb{R}^{32\\times784}$. A model has weights for ten scores in $W\\in\\mathbb{R}^{784\\times10}$. What is the shape of $XW$?"
-    options:
-      - { id: a, text: "$32 \\times 10$", correct: true }
-      - { id: b, text: "$784 \\times 784$", correct: false, category: misunderstood_definition }
-      - { id: c, text: "$10 \\times 32$", correct: false, category: misunderstood_definition }
-      - { id: d, text: "Undefined", correct: false, category: misunderstood_definition }
-    solution: "Inner dimensions 784 match and the outer ones remain: $32 \\times 10$, i.e. 10 scores for each of the 32 images."
-  - id: mat-product-entry
-    dimension: math
-    type: numeric
-    role: core
-    difficulty: 2
-    est_minutes: 3
-    prompt: |
-      $$A = \begin{pmatrix}2 & 0 & 1\\ 1 & 3 & -1\end{pmatrix}, \qquad B = \begin{pmatrix}1 & 2\\ 0 & 1\\ 4 & 0\end{pmatrix}$$
-      What is the entry in row 2, column 1 of $AB$?
-    answer: -3
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - {
-          answer: 5,
-          category: math_error,
-          feedback: "Check the sign: the last term is $(-1)\\cdot 4$.",
-        }
-      - {
-          answer: 6,
-          category: misunderstood_definition,
-          feedback: "That is row 1 · column 1. Row 2 of $A$ is $(1, 3, -1)$.",
-        }
-    hints:
-      [
-        "Row 2 of $A$ dotted with column 1 of $B$.",
-        "Row 2 of $A$ is $(1, 3, -1)$; column 1 of $B$ is $(1, 0, 4)$.",
-      ]
-    solution: "$1\\cdot1 + 3\\cdot0 + (-1)\\cdot4 = -3$."
-  - id: mat-code-read
-    dimension: implementation
-    type: code_read
-    role: core
-    difficulty: 2
-    est_minutes: 3
-    prompt: "This NumPy code fills X with ones. It fills W with the numbers 0 through 5, arranged into three rows and two columns. Array positions count from zero, so `out[0, 1]` selects the first row's second entry. What does it print? Write the output exactly as Python would."
-    code: |
-      import numpy as np
-      X = np.ones((5, 3))
-      W = np.arange(6).reshape(3, 2)
-      out = X @ W
-      print(out.shape, out[0, 1])
-    accept: ["(5, 2) 9.0", "(5,2) 9.0", "(5, 2) 9", "(5,2) 9"]
-    hints:
-      [
-        "`np.arange(6).reshape(3, 2)` is [[0, 1], [2, 3], [4, 5]].",
-        "Each row of `X` is all ones, so `out[0, 1]` is the sum of column 1 of `W`.",
-      ]
-    solution: "Shape $(5,3)(3,2) \\to (5,2)$. Row 0 of `X` is all ones, so `out[0,1]` = 1 + 3 + 5 = 9.0 (a float because `np.ones` is float). Output: `(5, 2) 9.0`."
-  - id: mat-complete-batch
-    dimension: implementation
-    type: code_complete
-    role: review
-    difficulty: 2
-    est_minutes: 2
-    prompt: "Complete the line so Y holds the scores for several houses together. X holds n house rows with d measurements each, shape `(n, d)`. W holds weights for k scores, shape `(d, k)`. b holds one fixed adjustment per score, shape `(k,)`."
-    code: |
-      import numpy as np
-      Y = ____
-    accept: ["X @ W + b", "np.dot(X, W) + b", "np.matmul(X, W) + b", "X.dot(W) + b", "b + X @ W"]
-    hints: ["Which order of `X` and `W` makes the inner dimensions match?"]
-    solution: "`Y = X @ W + b`: $(n\\times d)(d \\times k) = n \\times k$, and `b` broadcasts across the `n` rows."
+      u:
+        min: 1
+        max: 10
+      v:
+        min: 1
+        max: 5
+      a:
+        min: 1
+        max: 4
+      b:
+        min: 1
+        max: 3
+    answer_expr: u*a+v*b
   - id: matp-recover-weight-template
     dimension: math
     type: numeric
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt:
-      A two-row matrix of house measurements is $X=\begin{bmatrix}1&0\\{{=a}}&1\end{bmatrix}$. A weight
-      vector $w$ gives $Xw=({{=p}},{{=q}})$. What is the second entry of $w$?
+    prompt: A two-row matrix of house measurements is $X=\begin{bmatrix}1&0\\{{=a}}&1\end{bmatrix}$. A weight vector $w$ gives $Xw=({{=p}},{{=q}})$. What is the second entry of $w$?
     params:
       a:
         min: 2
@@ -640,15 +196,164 @@ exercises:
       $$w_2={{=q}}-{{=a}}\times{{=p}}$$
 
       $$w_2={{=q-a*p}}$$
+  - id: mat-matrix-products-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does multiplying two matrices produce?
+    options:
+      - id: a
+        text: A matrix whose entries come from rows of the left matrix paired with rows of the right.
+        correct: false
+        feedback: Matrix multiplication pairs each left row with a right column to form one output entry.
+      - id: b
+        text: A matrix whose entries are dot products of rows and columns from the two input matrices.
+        correct: true
+        feedback: Each output entry comes from a dot product of one left row with one right column.
+      - id: c
+        text: A single number from multiplying matching entries of two vectors and adding them.
+        correct: false
+        feedback: That describes the dot product of vectors.
+      - id: d
+        text: A list of the entries that appear in both of the two matrices.
+        correct: false
+        feedback: A product doesn't look for shared entries; each output entry is one left row dotted with one right column.
+    solution: A matrix product combines two number grids, with each output entry formed from a left row and right column.
+  - id: matp-products-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does 1250 go in row 1, column 2 of $XW$?
+    options:
+      - id: a
+        text: It is house 1's row of $X$ dotted with the rent weights in column 2 of $W$.
+        correct: true
+        feedback: The entry in row $i$, column $j$ always comes from row $i$ on the left and column $j$ on the right.
+      - id: b
+        text: It is row 1 of $X$ dotted with row 2 of $W$, the second weight row.
+        correct: false
+        category: misunderstood_definition
+        feedback: Left rows are paired with right columns; row 2 of $W$ holds the bedroom weights for both outputs.
+      - id: c
+        text: It is the largest of the four answers, and larger answers go in the last column.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Position comes from which row and column were used, not from the size of the answer.
+      - id: d
+        text: It was computed from column 2 of $X$, the bedroom counts of both houses.
+        correct: false
+        category: misunderstood_definition
+        feedback: The entry uses all of house 1's row, $(12,3,20)$, not one column of $X$.
+    solution: Row 1 of $X$ is house 1 and column 2 of $W$ holds the rent weights. Their dot product, $12\cdot100+3\cdot50+20\cdot(-5)=1250$, goes in row 1, column 2.
+  - id: matp-shape
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: A matrix has shape $2\times3$ and another has shape $3\times4$. What is the shape of their product in that order?
+    solution: Each of two left rows meets each of four right columns. This gives two rows and four columns of outputs.
+    options:
+      - id: a
+        text: $2\times4$
+        correct: true
+        feedback: The inner threes match; the outer counts remain.
+      - id: b
+        text: $3\times3$
+        correct: false
+        feedback: The matching inner counts do not become the output shape.
+      - id: c
+        text: $4\times2$
+        correct: false
+        feedback: Keep the left row count first and the right column count second.
+  - id: matp-invalid
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why can't a $2\times3$ matrix multiply a $2\times4$ matrix in that order, even though both have two rows?
+    solution: Each left row has three entries but each right column has two. Their dot product is undefined, so this matrix product is undefined.
+    options:
+      - id: a
+        text: Each left row has three entries, but each right column has only two.
+        correct: true
+        feedback: A dot product needs a matching partner for every entry. These lists have different lengths.
+      - id: b
+        text: The product is possible because both matrices have two rows.
+        correct: false
+        feedback: Multiplication matches left columns with right rows, not both row counts.
+      - id: c
+        text: The product is possible because it would have shape 3 by 4.
+        correct: false
+        feedback: An output shape is valid only after the inner counts match.
+  - id: matp-entry-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The second row of $A$ is $({{=a}},{{=b}})$ and the first column of $B$ is $({{=c}},{{=d}})$. What is the entry in row 2, column 1 of $AB$?
+    solution: 'Dot the selected row with the selected column: ${{=a}}\cdot{{=c}}+({{=b}})\cdot{{=d}}={{=a*c+b*d}}$. One row-column pair produces one output entry.'
+    tolerance:
+      abs: 1.0e-06
+    params:
+      a:
+        min: 1
+        max: 5
+      b:
+        min: -3
+        max: 3
+      c:
+        min: 1
+        max: 4
+      d:
+        min: 1
+        max: 4
+    answer_expr: a*c+b*d
+  - id: matp-entry
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For $A=\begin{bmatrix}2&0&1\\1&3&-1\end{bmatrix}$ and $B=\begin{bmatrix}1&2\\0&1\\4&0\end{bmatrix}$, what is entry (row 2, column 1) of $AB$?
+    solution: Use row two $(1,3,-1)$ and column one $(1,0,4)$. Their dot product is $1\cdot1+3\cdot0+(-1)\cdot4=1+0-4=-3$.
+    tolerance:
+      abs: 1.0e-06
+    answer: -3
+  - id: matp-batch-shape
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Five houses each have three measurements. Their $5\times3$ table multiplies a $3\times2$ weight table whose columns predict sale price and monthly rent. What does the result hold?
+    solution: The inner measurement count three matches, giving shape $5\times2$. Each of the five house rows contains a sale-price and a monthly-rent prediction.
+    options:
+      - id: a
+        text: The result has five house rows with a sale-price and monthly-rent prediction.
+        correct: true
+        feedback: Each house row meets both weight columns.
+      - id: b
+        text: The result has three measurement rows with three scores each.
+        correct: false
+        feedback: Measurements are summed over, not retained as output rows.
+      - id: c
+        text: The result has two house rows with five scores each.
+        correct: false
+        feedback: The left rows remain rows, not output columns.
   - id: matp-recover-factor-entry
     dimension: math
     type: numeric
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt:
-      The first row of $A$ is $(2,1)$ and the second column of $B$ is $(3,t)$. Entry (row 1, column 2) of
-      $AB$ is 11. What is $t$?
+    prompt: The first row of $A$ is $(2,1)$ and the second column of $B$ is $(3,t)$. Entry (row 1, column 2) of $AB$ is 11. What is $t$?
     answer: 5
     tolerance:
       abs: 0
@@ -662,3 +367,311 @@ exercises:
       $$t=11-6$$
 
       $$t=5$$
+  - id: mat-batches-transpose-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: In NumPy, each row of `X` is a house and `w` holds one weight per measurement. What does `X @ w` compute?
+    options:
+      - id: a
+        text: One weighted prediction for each house row in $X$, returned as a vector.
+        correct: true
+        feedback: Each row's dot product with `w` combines that house's measurements into one prediction.
+      - id: b
+        text: The products of each house row with the weights in matching positions, with no sum.
+        correct: false
+        feedback: That multiplies matching positions only; `@` also adds the products into one prediction per house.
+      - id: c
+        text: One shared prediction formed by adding every measurement across all house rows.
+        correct: false
+        feedback: That collapses rows together; matrix multiplication returns a separate result for each row.
+      - id: d
+        text: A column sum of the input matrix, scaled by the matching model weights.
+        correct: false
+        feedback: A column sum combines houses; `X @ w` instead takes a weighted sum within each house row.
+    solution: "`X @ w` takes each house row's dot product with the measurement weights, producing one prediction per row."
+  - id: matp-batch-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does adding `b` raise both prices by 20 and both rents by 100?
+    options:
+      - id: a
+        text: "`b` has one entry per output column, and broadcasting adds those same two entries to every house's row."
+        correct: true
+        feedback: Each of the 2 entries of `b` lines up with one column of `X @ W` and is reused for every row.
+      - id: b
+        text: "`b` gives one entry per house: 20 is added to house 1's row and 100 to house 2's row."
+        correct: false
+        category: misunderstood_definition
+        feedback: Then house 1's price and rent would both rise by 20. The entries of `b` belong to columns, not rows.
+      - id: c
+        text: "`b` is added to the weights before multiplying, so every weight in $W$ grows."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "`X @ W` is computed first; `b` is then added to the product, so the weights are unchanged."
+      - id: d
+        text: NumPy adds the total of `b`, 120, to every entry of the product.
+        correct: false
+        category: misunderstood_definition
+        feedback: Broadcasting reuses each entry in its own column; it never adds the entries of `b` together.
+    solution: "`b` has shape (2,), one entry per output column. NumPy reuses it for both rows, so every price gains 20 and every rent gains 100."
+  - id: matp-broadcast
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: A NumPy product holds sale-price and monthly-rent predictions for five houses, shape (5, 2). You add b, an array of two fixed adjustments, shape (2,). What does broadcasting do?
+    solution: NumPy reuses the two bias entries across the five rows. The output shape stays (5, 2).
+    options:
+      - id: a
+        text: It adds the two adjustments to every house row.
+        correct: true
+        feedback: Each output column receives its matching bias for every house.
+      - id: b
+        text: It adds two new columns to every row.
+        correct: false
+        feedback: Bias addition changes values, not the number of output columns.
+      - id: c
+        text: It adds the adjustments only to the first row.
+        correct: false
+        feedback: The shorter array is reused for all five rows.
+  - id: matp-code
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A model stores five houses with three measurements each in NumPy array X, shape (5, 3). W holds weights for sale price and monthly rent, shape (3, 2), and b holds one fixed adjustment for each output, shape (2,). Which line gives both adjusted predictions for every house?
+    solution: X rows dot W columns, giving shape (5, 2). Adding b broadcasts one bias per output across all five houses.
+    options:
+      - id: a
+        text: "`Y = X @ W + b`"
+        correct: true
+        feedback: The product has shape (5, 2), and the two biases repeat across rows.
+      - id: b
+        text: "`Y = W @ X + b`"
+        correct: false
+        feedback: The inner counts two and five do not match in that order.
+      - id: c
+        text: "`Y = X @ W.T + b`"
+        correct: false
+        feedback: W.T has shape (2, 3), so its row count does not match X columns.
+  - id: matp-bias-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A house has area ${{=a}}$ tens of square metres and a bedroom count of ${{=b}}$. A simplified sale-price model uses weights $(2,-1)$ thousand pounds per measurement unit and adds a bias of ${{=c}}$ thousand pounds. What is its predicted sale price, in thousands of pounds?
+    solution: 'First take the dot product: $2\cdot{{=a}}-{{=b}}={{=2*a-b}}$. Add the bias to get ${{=2*a-b}}+({{=c}})={{=2*a-b+c}}$.'
+    tolerance:
+      abs: 1.0e-06
+    params:
+      a:
+        min: 1
+        max: 8
+      b:
+        min: 1
+        max: 5
+      c:
+        min: -2
+        max: 4
+    answer_expr: 2*a-b+c
+  - id: matp-transpose
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: W stores the sale-price and monthly-rent weights as rows, with three measurements per output, shape (2, 3). X stores five houses with the same measurements, shape (5, 3). Which product gives both predictions for every house?
+    solution: Transpose swaps the two weight rows into columns without changing their values. Then (5, 3) times (3, 2) gives (5, 2).
+    options:
+      - id: a
+        text: "`X @ W.T`, with shape (5, 2)"
+        correct: true
+        feedback: Transposing makes W shape (3, 2), matching the three house measurements.
+      - id: b
+        text: "`X @ W`, which is undefined"
+        correct: false
+        feedback: Without transposing, the inner counts three and two differ.
+      - id: c
+        text: "`X.T @ W`, which is undefined"
+        correct: false
+        feedback: The inner counts five and two differ in that product.
+  - id: matp-why-batch
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: You could price houses one at a time, dotting each house row with each weight column. How does `X @ W` relate to doing that, and why isn't `X * W` a substitute?
+    solution: Each entry of `X @ W` is one house row dotted with one weight column, exactly what pricing house by house computes; `@` does them all in one line. For house row $(12,3,20)$ and price weights $(25,10,-1)$ that entry is $12\cdot25+3\cdot10+20\cdot(-1)=310$. `*` multiplies matching positions and never adds them up.
+    options:
+      - id: a
+        text: "`X @ W` does the same row-column dot products in one line, while `*` never adds the products."
+        correct: true
+        feedback: Same dot products, one line. `*` only multiplies numbers in matching positions.
+      - id: b
+        text: Pricing one house at a time gives different predictions, because `@` pairs the weights differently.
+        correct: false
+        feedback: Each entry of `X @ W` is the same row-column dot product, so the predictions are identical.
+      - id: c
+        text: "`*` gives the same predictions as `@` whenever both arrays have equal row and column counts."
+        correct: false
+        feedback: "Even for equal shapes, `*` multiplies matching positions and adds nothing, so no dot product is formed."
+  - id: matp-robot-dot-count
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot logs 50 moments, each with 4 sensor readings, in `X` of shape (50, 4). Its weights for 2 wheel speeds are stored one row per wheel, in `W_rows` of shape (2, 4). How many dot products does `X @ W_rows.T` compute?
+    answer: 100
+    tolerance:
+      abs: 0
+    solution: |-
+      `W_rows.T` has shape (4, 2), so the product has shape (50, 2). Each entry is one dot product of a reading row with a weight column.
+
+      $$50\times2=100$$
+  - id: mat-explain-batch
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: For houses with area in tens of square metres, bedroom count and age in years, explain how NumPy can predict both sale price and monthly rent for five houses. State the shapes of $X$, $W$ and $XW$, and explain adding one fixed amount per output.
+    rubric:
+      - id: rows
+        criterion: Each output entry is one house row dotted with one output-weight column
+        weight: 2
+        required: true
+      - id: shapes
+        criterion: For X shape (5, 3), W has shape (3, 2) and X @ W has shape (5, 2), with matching inner measurement counts
+        weight: 2
+        required: true
+      - id: bias
+        criterion: A bias of shape (2,) is broadcast across the five house rows in X @ W + b
+        weight: 1
+    exemplar: Each output entry is one house row dotted with one output-weight column. Five houses with three measurements give X shape (5, 3). Sale-price and monthly-rent weights give W shape (3, 2), so X @ W has shape (5, 2). Adding b with shape (2,) reuses one fixed adjustment for each output across all five rows.
+    solution: Each house row meets both output-weight columns. The matching inner measurement counts produce two predictions per house, and broadcasting adds one fixed adjustment per output without changing the shape.
+  - id: mat-check-shape
+    dimension: math
+    type: mc
+    role: check
+    difficulty: 1
+    est_minutes: 1
+    prompt: $A$ has shape $128 \times 512$ and $B$ has shape $512 \times 64$. What is the shape of $AB$?
+    options:
+      - id: a
+        text: $128 \times 64$
+        correct: true
+      - id: b
+        text: $512 \times 512$
+        correct: false
+        category: misunderstood_definition
+        feedback: The inner dimension (512) disappears. The outer dimensions remain.
+      - id: c
+        text: $64 \times 128$
+        correct: false
+        category: misunderstood_definition
+        feedback: Matrix multiplication's output keeps the first matrix's row count and the second matrix's column count. These come from the outer dimensions, not from swapping them.
+      - id: d
+        text: Undefined
+        correct: false
+        category: misunderstood_definition
+        feedback: The inner dimensions (512 and 512) match, so the product is defined.
+    solution: $(128\times512)(512\times64) = 128\times64$.
+  - id: dx-math-2
+    dimension: math
+    type: mc
+    role: diagnostic
+    difficulty: 1
+    est_minutes: 1
+    prompt: Each of 32 images is stored as a row of 784 pixel brightness numbers in $X\in\mathbb{R}^{32\times784}$. A model has weights for ten scores in $W\in\mathbb{R}^{784\times10}$. What is the shape of $XW$?
+    options:
+      - id: a
+        text: $32 \times 10$
+        correct: true
+      - id: b
+        text: $784 \times 784$
+        correct: false
+        category: misunderstood_definition
+      - id: c
+        text: $10 \times 32$
+        correct: false
+        category: misunderstood_definition
+      - id: d
+        text: Undefined
+        correct: false
+        category: misunderstood_definition
+    solution: 'Inner dimensions 784 match and the outer ones remain: $32 \times 10$, i.e. 10 scores for each of the 32 images.'
+  - id: mat-product-entry
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt: |
+      $$A = \begin{pmatrix}2 & 0 & 1\\ 1 & 3 & -1\end{pmatrix}, \qquad B = \begin{pmatrix}1 & 2\\ 0 & 1\\ 4 & 0\end{pmatrix}$$
+      What is the entry in row 2, column 1 of $AB$?
+    answer: -3
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 5
+        category: math_error
+        feedback: 'Check the sign: the last term is $(-1)\cdot 4$.'
+      - answer: 6
+        category: misunderstood_definition
+        feedback: That is row 1 · column 1. Row 2 of $A$ is $(1, 3, -1)$.
+    hints:
+      - Row 2 of $A$ dotted with column 1 of $B$.
+      - Row 2 of $A$ is $(1, 3, -1)$; column 1 of $B$ is $(1, 0, 4)$.
+    solution: $1\cdot1 + 3\cdot0 + (-1)\cdot4 = -3$.
+  - id: mat-code-read
+    dimension: implementation
+    type: code_read
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt: This NumPy code fills X with ones. It fills W with the numbers 0 through 5, arranged into three rows and two columns. Array positions count from zero, so `out[0, 1]` selects the first row's second entry. What does it print? Write the output exactly as Python would.
+    code: |
+      import numpy as np
+      X = np.ones((5, 3))
+      W = np.arange(6).reshape(3, 2)
+      out = X @ W
+      print(out.shape, out[0, 1])
+    accept:
+      - (5, 2) 9.0
+      - (5,2) 9.0
+      - (5, 2) 9
+      - (5,2) 9
+    hints:
+      - "`np.arange(6).reshape(3, 2)` is [[0, 1], [2, 3], [4, 5]]."
+      - Each row of `X` is all ones, so `out[0, 1]` is the sum of column 1 of `W`.
+    solution: 'Shape $(5,3)(3,2) \to (5,2)$. Row 0 of `X` is all ones, so `out[0,1]` = 1 + 3 + 5 = 9.0 (a float because `np.ones` is float). Output: `(5, 2) 9.0`.'
+  - id: mat-complete-batch
+    dimension: implementation
+    type: code_complete
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: Complete the line so Y holds the scores for several houses together. X holds n house rows with d measurements each, shape `(n, d)`. W holds weights for k scores, shape `(d, k)`. b holds one fixed adjustment per score, shape `(k,)`.
+    code: |
+      import numpy as np
+      Y = ____
+    accept:
+      - X @ W + b
+      - np.dot(X, W) + b
+      - np.matmul(X, W) + b
+      - X.dot(W) + b
+      - b + X @ W
+    hints:
+      - Which order of `X` and `W` makes the inner dimensions match?
+    solution: '`Y = X @ W + b`: $(n\times d)(d \times k) = n \times k$, and `b` broadcasts across the `n` rows.'

@@ -1,84 +1,87 @@
 concept: matrices
-version: 4
+version: 5
 objective: |
-  **Goal:** use matrix products to turn house measurements into predictions for one or many houses, reason about shapes, and implement batch scoring in NumPy.
+  **Goal:** compute matrix–vector and matrix–matrix products as many dot products at once, predict the shape of any product, and write the NumPy line that predicts for many houses at once.
 where_this_fits: |
-  In the last lesson, the dot product turned one house's measurements into one predicted price. A real dataset has hundreds of houses, and writing out one dot product per house is slow and easy to get wrong. A matrix holds all the houses in one grid, so a single multiplication prices every house at once.
+  A house-price model predicts with a dot product: multiply each measurement by its weight and add the results. But a model is never used on just one house. Training compares predictions with the real prices of every house in the data, and some models make two predictions per house: sale price and monthly rent. That means thousands of dot products. A **matrix** stores the numbers as one grid, so a single multiplication does them all at once. This lesson builds that up in three steps:
+
+  1. Multiply a matrix by a vector: one dot product per row.
+  2. Multiply two matrices, and see which shapes fit together.
+  3. Price many houses at once with one line of NumPy code.
+
+  Linear regression, the next lesson, writes every prediction this way.
 knowledge_points:
   - id: mat-rows-shapes
-    title: What a matrix is, and multiplying by a vector
+    title: One dot product per row
     explain: |
-      **What a matrix is.** A **matrix** is a rectangular grid of numbers. A **row** runs across and a **column** runs down. Its **shape** is the number of rows, then the number of columns, so this matrix is $2\times3$:
+      **The question.** The dot-product lesson priced one house. With measurements $x=(12,3,20)$ and weights $w=(25,10,-1)$, it predicted $w\cdot x=310$ thousand pounds. Now there are two houses, or two thousand. How do you write all their measurements down together and price every house in one calculation?
 
-      $$\begin{bmatrix}1&2&3\\4&5&6\end{bmatrix}$$
-
-      A vector can be written as a matrix with one column.
-
-      **Multiplying a matrix by a vector.** Take each row of the matrix, find its dot product with the vector, and stack the answers in order:
-
-      $$\begin{bmatrix}1&2\\0&1\end{bmatrix}\begin{bmatrix}3\\1\end{bmatrix}=\begin{bmatrix}1\cdot3+2\cdot1\\0\cdot3+1\cdot1\end{bmatrix}=\begin{bmatrix}5\\1\end{bmatrix}.$$
-
-      Row 1 gives 5 and row 2 gives 1. Each row produces one number, so a matrix with $m$ rows turns a vector into $m$ numbers. Each row must have as many entries as the vector, otherwise some entries have nothing to pair with.
+      **Picture it.** Write each house as one row of a table, always with the same three measurements in the same order: area in tens of square metres (so 12 means 120 m²), number of bedrooms, and age in years. House 1 is $(12,3,20)$ and house 2 is $(8,2,5)$. The three weights stand beside it as a column, so each row can be laid against them entry by entry.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 180" aria-label="Two panels show row one and row two dotted with the same vector to produce outputs 5 and 1">
-        <defs>
-          <marker id="row-one" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
-          <marker id="row-two" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
-        </defs>
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#171717">
-          <text x="20" y="25" font-weight="700">Row 1</text>
-          <text x="20" y="43">A</text><text x="142" y="43">x</text><text x="366" y="43">Ax</text>
-          <rect x="20" y="50" width="38" height="34" fill="#d1fae5" stroke="#10b981"/>
-          <rect x="58" y="50" width="38" height="34" fill="#d1fae5" stroke="#10b981"/>
-          <rect x="20" y="84" width="38" height="34" fill="#ffffff" stroke="#d4d4d4"/>
-          <rect x="58" y="84" width="38" height="34" fill="#ffffff" stroke="#d4d4d4"/>
-          <text x="38" y="72">1</text><text x="76" y="72">2</text>
-          <text x="38" y="106">0</text><text x="76" y="106">1</text>
-          <rect x="130" y="50" width="38" height="34" fill="#ffffff" stroke="#d4d4d4"/>
-          <rect x="130" y="84" width="38" height="34" fill="#ffffff" stroke="#d4d4d4"/>
-          <rect x="128" y="48" width="42" height="72" rx="4" fill="#00000000" stroke="#10b981" stroke-width="2"/>
-          <text x="145" y="72">3</text><text x="145" y="106">1</text>
-          <text x="188" y="88" fill="#10b981">1·3 + 2·1 = 5</text>
-          <path d="M292 82 H348" stroke="#10b981" stroke-width="2" marker-end="url(#row-one)"/>
-          <rect x="354" y="50" width="38" height="34" fill="#d1fae5" stroke="#10b981"/>
-          <rect x="354" y="84" width="38" height="34" fill="#ffffff" stroke="#d4d4d4"/>
-          <text x="371" y="72">5</text><text x="371" y="106">1</text>
-
-          <text x="430" y="25" font-weight="700">Row 2</text>
-          <text x="430" y="43">A</text><text x="552" y="43">x</text><text x="776" y="43">Ax</text>
-          <rect x="430" y="50" width="38" height="34" fill="#ffffff" stroke="#d4d4d4"/>
-          <rect x="468" y="50" width="38" height="34" fill="#ffffff" stroke="#d4d4d4"/>
-          <rect x="430" y="84" width="38" height="34" fill="#dbeafe" stroke="#3b82f6"/>
-          <rect x="468" y="84" width="38" height="34" fill="#dbeafe" stroke="#3b82f6"/>
-          <text x="448" y="72">1</text><text x="486" y="72">2</text>
-          <text x="448" y="106">0</text><text x="486" y="106">1</text>
-          <rect x="540" y="50" width="38" height="34" fill="#ffffff" stroke="#d4d4d4"/>
-          <rect x="540" y="84" width="38" height="34" fill="#ffffff" stroke="#d4d4d4"/>
-          <rect x="538" y="48" width="42" height="72" rx="4" fill="#00000000" stroke="#3b82f6" stroke-width="2"/>
-          <text x="555" y="72">3</text><text x="555" y="106">1</text>
-          <text x="598" y="88" fill="#3b82f6">0·3 + 1·1 = 1</text>
-          <path d="M702 99 H758" stroke="#3b82f6" stroke-width="2" marker-end="url(#row-two)"/>
-          <rect x="764" y="50" width="38" height="34" fill="#ffffff" stroke="#d4d4d4"/>
-          <rect x="764" y="84" width="38" height="34" fill="#dbeafe" stroke="#3b82f6"/>
-          <text x="781" y="72">5</text><text x="781" y="106">1</text>
-        </g>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 245" aria-label="House rows (12, 3, 20) and (8, 2, 5) are each dotted with weights (25, 10, minus 1) to give prices 310 and 215" font-family="ui-sans-serif, system-ui, sans-serif">
+      <text x="112" y="50" text-anchor="middle" font-size="13" fill="#737373">area</text>
+      <text x="156" y="50" text-anchor="middle" font-size="13" fill="#737373">beds</text>
+      <text x="200" y="50" text-anchor="middle" font-size="13" fill="#737373">age</text>
+      <text x="78" y="82" text-anchor="end" font-size="13" fill="#737373">house 1</text>
+      <rect x="90" y="60" width="44" height="34" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/><text x="112" y="82" text-anchor="middle" font-size="14" fill="#171717">12</text>
+      <rect x="134" y="60" width="44" height="34" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/><text x="156" y="82" text-anchor="middle" font-size="14" fill="#171717">3</text>
+      <rect x="178" y="60" width="44" height="34" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/><text x="200" y="82" text-anchor="middle" font-size="14" fill="#171717">20</text>
+      <text x="78" y="116" text-anchor="end" font-size="13" fill="#737373">house 2</text>
+      <rect x="90" y="94" width="44" height="34" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/><text x="112" y="116" text-anchor="middle" font-size="14" fill="#171717">8</text>
+      <rect x="134" y="94" width="44" height="34" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/><text x="156" y="116" text-anchor="middle" font-size="14" fill="#171717">2</text>
+      <rect x="178" y="94" width="44" height="34" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/><text x="200" y="116" text-anchor="middle" font-size="14" fill="#171717">5</text>
+      <text x="272" y="50" text-anchor="middle" font-size="13" fill="#737373">w</text>
+      <rect x="250" y="60" width="44" height="34" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/><text x="272" y="82" text-anchor="middle" font-size="14" fill="#171717">25</text>
+      <rect x="250" y="94" width="44" height="34" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/><text x="272" y="116" text-anchor="middle" font-size="14" fill="#171717">10</text>
+      <rect x="250" y="128" width="44" height="34" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/><text x="272" y="150" text-anchor="middle" font-size="14" fill="#171717">−1</text>
+      <text x="312" y="99" text-anchor="middle" font-size="18" fill="#171717">=</text>
+      <text x="352" y="50" text-anchor="middle" font-size="13" fill="#737373">Xw</text>
+      <rect x="330" y="60" width="44" height="34" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/><text x="352" y="82" text-anchor="middle" font-size="14" fill="#171717">310</text>
+      <text x="388" y="82" text-anchor="start" font-size="13" fill="#171717">12·25 + 3·10 + 20·(−1) = 310</text>
+      <rect x="330" y="94" width="44" height="34" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/><text x="352" y="116" text-anchor="middle" font-size="14" fill="#171717">215</text>
+      <text x="388" y="116" text-anchor="start" font-size="13" fill="#171717">8·25 + 2·10 + 5·(−1) = 215</text>
+      <text x="156" y="195" text-anchor="middle" font-size="13" fill="#737373">X: 2 × 3</text>
+      <text x="272" y="195" text-anchor="middle" font-size="13" fill="#737373">3 entries</text>
+      <text x="352" y="195" text-anchor="middle" font-size="13" fill="#737373">2 entries</text>
+      <text x="320" y="228" text-anchor="middle" font-size="14" fill="#171717">Each blue row is dotted with the amber weights and gives one green price.</text>
       </svg>
       ```
 
-      **Why this is useful.** Put each house's measurements in one row and the model's weights in the vector. One multiplication then gives every house's predicted price: row 1 gives house 1's price, row 2 gives house 2's, and so on. The next lesson, linear regression, makes predictions for a whole dataset this way, and a layer of a neural network does the same calculation.
+      **The idea.** A matrix times a vector is one dot product per row. A **matrix** is a rectangular grid of numbers, arranged in **rows**, which run across, and **columns**, which run down. Its **shape** is written rows $\times$ columns, so the table above is a $2\times3$ matrix, called $X$. To multiply a matrix $A$ by a vector $x$, take the dot product of each row of $A$ with $x$ and stack the answers in row order. An $m\times n$ matrix needs a vector with $n$ entries, one partner for every entry in a row, and $Ax$ then has $m$ entries: one per row.
+
+      **Common confusion.** “A $2\times3$ matrix times a 3-entry vector gives 3 numbers.” No: it gives 2. Inside each row, the 3 entries are multiplied by the 3 weights and the 3 products are added into one number, so the 3 never appears in the size of the answer. The number of rows decides how many answers you get.
     worked: |
-      This example shows three houses priced with one multiplication.
+      Price both houses with one matrix–vector product.
 
-      Rows (12,3,20), (8,2,5), (15,4,30); weights $w=(25,10,−1)$.
+      $$X=\begin{bmatrix}12&3&20\\8&2&5\end{bmatrix},\qquad w=\begin{bmatrix}25\\10\\-1\end{bmatrix}$$
 
-      1. Row 1: $25\cdot12 + 10\cdot3 − 1\cdot20 = 300 + 30 − 20 = 310$.
-      2. Row 2: $25\cdot8 + 10\cdot2 − 1\cdot5 = 200 + 20 − 5 = 215$.
-      3. Row 3: $25\cdot15 + 10\cdot4 − 1\cdot30 = 375 + 40 − 30 = 385$.
+      1. **Check that the shapes fit.** $X$ is $2\times3$ and $w$ has 3 entries, so every measurement in a row has a weight. The answer will have 2 entries, one per house.
 
-      So $Xw=(310, 215, 385)$: a $3\times3$ matrix times a 3-entry vector gives 3 prices, one per house.
+      2. **Dot row 1 with the weights.**
+         $$12\cdot25+3\cdot10+20\cdot(-1)=300+30-20=310$$
+
+      3. **Dot row 2 with the weights.**
+         $$8\cdot25+2\cdot10+5\cdot(-1)=200+20-5=215$$
+
+      4. **Stack the answers in row order.**
+         $$Xw=\begin{bmatrix}310\\215\end{bmatrix}$$
+
+      House 1 is predicted at 310 thousand pounds and house 2 at 215 thousand pounds.
+
+      **Compare cases.**
+
+      | Matrix shape | Vector entries | Result |
+      | --- | --- | --- |
+      | $1\times3$ (one house) | 3 | 1 price |
+      | $2\times3$ (two houses) | 3 | 2 prices |
+      | $5\times3$ (five houses) | 3 | 5 prices |
+      | $2\times3$ | 2 | Undefined: 3 entries per row but 2 weights |
+
+      **Where it shows up.** Linear regression, the next lesson, stacks every training house as a row of one matrix $X$ and gets all the predictions as $Xw$. The rows need not be houses: a robot's sensor readings, one row per moment, work the same way.
     problems:
       - mat-rows-shapes-basics
+      - matp-rows-self-explain
       - matp-vector
       - matp-vector-shape
       - matp-why-rows
@@ -86,34 +89,88 @@ knowledge_points:
       - matp-vector-template
       - matp-recover-weight-template
   - id: mat-matrix-products
-    title: Multiplying matrices and matching shapes
+    title: Multiplying two matrices
     explain: |
-      **What a matrix product is.** A **matrix product** combines two number grids into a new grid. Each output entry is the dot product of one row from the left matrix and one column from the right matrix.
+      **The question.** Suppose the model needs a second **output**, or predicted quantity, for each house: monthly rent in pounds, from a second set of weights. That is two weight lists and two houses: four dot products. Can one multiplication do them all, and how do you tell whether two matrices can be multiplied?
 
-      **How it works.**
-      1. A matrix's **shape** is its row count followed by its column count. If the left shape is $m\times n$ and the right is $n\times p$, the two inner dimensions—the left column count and right row count—match.
-      2. Dot each left row with each right column. Their matching entries multiply and add to one output entry. The product shape is $m\times p$: the outer counts remain and the inner count is summed over.
-      3. Thus $(2\times3)(3\times2)$ gives a $2\times2$ result. But $(2\times3)(2\times4)$ is undefined because the inner counts 3 and 2 do not match.
+      **Picture it.** Put each weight list in its own column of a second matrix $W$: price weights $(25,10,-1)$ in column 1 and rent weights $(100,50,-5)$ in column 2: pounds a month per 10 m², per bedroom and per year of age. House 1 (blue) with the rent weights (amber) gives the green entry 1250: house 1's predicted rent.
 
-      The rule works because each feature in a house row meets one weight for each output. The three feature products are added, leaving one predicted value for each house and output column. A loop can calculate those dot products one at a time, but the matrix product states the repeated row-column calculation together.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 270" aria-label="Row 1 of X, (12, 3, 20), is dotted with column 2 of W, (100, 50, minus 5), to give entry 1250 in row 1, column 2 of the 2 by 2 product" font-family="ui-sans-serif, system-ui, sans-serif">
+      <text x="112" y="70" text-anchor="middle" font-size="13" fill="#737373">area</text>
+      <text x="156" y="70" text-anchor="middle" font-size="13" fill="#737373">beds</text>
+      <text x="200" y="70" text-anchor="middle" font-size="13" fill="#737373">age</text>
+      <text x="78" y="102" text-anchor="end" font-size="13" fill="#737373">house 1</text>
+      <rect x="90" y="80" width="44" height="34" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="2.5"/><text x="112" y="102" text-anchor="middle" font-size="14" fill="#171717">12</text>
+      <rect x="134" y="80" width="44" height="34" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="2.5"/><text x="156" y="102" text-anchor="middle" font-size="14" fill="#171717">3</text>
+      <rect x="178" y="80" width="44" height="34" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="2.5"/><text x="200" y="102" text-anchor="middle" font-size="14" fill="#171717">20</text>
+      <text x="78" y="136" text-anchor="end" font-size="13" fill="#737373">house 2</text>
+      <rect x="90" y="114" width="44" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="112" y="136" text-anchor="middle" font-size="14" fill="#171717">8</text>
+      <rect x="134" y="114" width="44" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="156" y="136" text-anchor="middle" font-size="14" fill="#171717">2</text>
+      <rect x="178" y="114" width="44" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="200" y="136" text-anchor="middle" font-size="14" fill="#171717">5</text>
+      <text x="262" y="50" text-anchor="middle" font-size="13" fill="#737373">price</text>
+      <text x="306" y="50" text-anchor="middle" font-size="13" fill="#737373">rent</text>
+      <rect x="240" y="60" width="44" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="262" y="82" text-anchor="middle" font-size="14" fill="#171717">25</text>
+      <rect x="284" y="60" width="44" height="34" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="2.5"/><text x="306" y="82" text-anchor="middle" font-size="14" fill="#171717">100</text>
+      <rect x="240" y="94" width="44" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="262" y="116" text-anchor="middle" font-size="14" fill="#171717">10</text>
+      <rect x="284" y="94" width="44" height="34" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="2.5"/><text x="306" y="116" text-anchor="middle" font-size="14" fill="#171717">50</text>
+      <rect x="240" y="128" width="44" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="262" y="150" text-anchor="middle" font-size="14" fill="#171717">−1</text>
+      <rect x="284" y="128" width="44" height="34" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="2.5"/><text x="306" y="150" text-anchor="middle" font-size="14" fill="#171717">−5</text>
+      <text x="352" y="119" text-anchor="middle" font-size="18" fill="#171717">=</text>
+      <text x="394" y="70" text-anchor="middle" font-size="13" fill="#737373">price</text>
+      <text x="438" y="70" text-anchor="middle" font-size="13" fill="#737373">rent</text>
+      <rect x="372" y="80" width="44" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="394" y="102" text-anchor="middle" font-size="13" fill="#171717">310</text>
+      <rect x="416" y="80" width="44" height="34" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="2.5"/><text x="438" y="102" text-anchor="middle" font-size="13" fill="#171717">1250</text>
+      <rect x="372" y="114" width="44" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="394" y="136" text-anchor="middle" font-size="13" fill="#171717">215</text>
+      <rect x="416" y="114" width="44" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="438" y="136" text-anchor="middle" font-size="13" fill="#171717">875</text>
+      <text x="156" y="195" text-anchor="middle" font-size="13" fill="#737373">X: 2 × 3</text>
+      <text x="284" y="195" text-anchor="middle" font-size="13" fill="#737373">W: 3 × 2</text>
+      <text x="416" y="195" text-anchor="middle" font-size="13" fill="#737373">XW: 2 × 2</text>
+      <text x="320" y="228" text-anchor="middle" font-size="14" fill="#171717">Row 1 of X · column 2 of W = 12·100 + 3·50 + 20·(−5) = 1250</text>
+      <text x="320" y="252" text-anchor="middle" font-size="14" fill="#737373">Inner sizes match (3 and 3); outer sizes give the shape (2 × 2).</text>
+      </svg>
+      ```
 
-      **Why this is useful.** Use the same houses for two predictions: sale price and monthly rent. With $n$ house rows and three measurements, $X$ has shape $n\times3$. Put the price weights and rent weights in the two columns of $W$, shape $3\times2$. Then $XW$ has shape $n\times2$, one price and one rent prediction per house.
+      **The idea.** Each entry of a matrix product is one row of the left matrix dotted with one column of the right matrix. Say $A$ has $m$ rows and $n$ columns. Then $B$ needs $n$ rows; call its column count $p$. Written side by side, $(m\times n)(n\times p)$, the two middle numbers are the **inner sizes** and must be equal, so that every row has a partner for each of its entries. The two end numbers, the **outer sizes**, give the shape of the answer, $m\times p$: one row per row of $A$ and one column per column of $B$. The entry in row $i$, column $j$ of $AB$ is row $i$ of $A$ dotted with column $j$ of $B$.
+
+      **Common confusion.** “Two matrices can be multiplied when they have the same shape.” No: two $2\times3$ matrices cannot be multiplied. Each left row has 3 entries, but each right column has only 2, one per row, and a dot product needs equal lengths. What must match is the columns on the left and the rows on the right.
     worked: |
-      This example shows how the same two houses get a sale-price prediction and a monthly-rent prediction.
+      Predict price and rent for both houses with one product.
 
-      Each row of $X$ lists area in tens of square metres, bedrooms, and age in years. Column 1 of $W$ gives sale-price weights in thousands of pounds per feature unit. Column 2 gives monthly-rent weights in pounds per feature unit:
+      $$X=\begin{bmatrix}12&3&20\\8&2&5\end{bmatrix},\qquad W=\begin{bmatrix}25&100\\10&50\\-1&-5\end{bmatrix}$$
 
-      $$X=\begin{bmatrix}12&3&20\\8&2&5\end{bmatrix},\qquad W=\begin{bmatrix}25&100\\10&50\\-1&-5\end{bmatrix}.$$
+      Column 1 of $W$ predicts sale price in thousands of pounds; column 2 predicts monthly rent in pounds.
 
-      1. $X$ has shape $2\times3$ and $W$ has shape $3\times2$. The inner dimensions match, so $XW$ has shape $2\times2$.
-      2. House 1: $12\cdot25+3\cdot10+20\cdot(-1)=310$ thousand pounds; $12\cdot100+3\cdot50+20\cdot(-5)=1250$ pounds per month.
-      3. House 2: $8\cdot25+2\cdot10+5\cdot(-1)=215$ thousand pounds; $8\cdot100+2\cdot50+5\cdot(-5)=875$ pounds per month.
+      1. **Check the shapes.** The inner sizes are both 3, so the product exists; the outer sizes give its shape.
+         $$(2\times3)(3\times2)\to2\times2$$
 
-      $$XW=\begin{bmatrix}310&1250\\215&875\end{bmatrix}.$$
+      2. **Reuse the price column.** Column 1 holds the same weights as in *One dot product per row*, so it gives the same prices: 310 for house 1 and 215 for house 2.
 
-      Each row is one house. The first output column is predicted sale price; the second is predicted monthly rent.
+      3. **House 1 with the rent column.**
+         $$12\cdot100+3\cdot50+20\cdot(-5)=1200+150-100=1250$$
+
+      4. **House 2 with the rent column.**
+         $$8\cdot100+2\cdot50+5\cdot(-5)=800+100-25=875$$
+
+      5. **Put each answer at its row and column.**
+         $$XW=\begin{bmatrix}310&1250\\215&875\end{bmatrix}$$
+
+      Each row is a house; column 1 holds its price and column 2 its rent.
+
+      **Compare cases.**
+
+      | Left shape | Right shape | Product |
+      | --- | --- | --- |
+      | $2\times3$ | $3\times2$ | $2\times2$ |
+      | $2\times3$ | $3\times4$ | $2\times4$ |
+      | $3\times2$ | $2\times3$ | $3\times3$: the first case with the shapes swapped |
+      | $2\times3$ | $2\times3$ | Undefined: inner sizes 3 and 2 differ |
+      | $2\times3$ | $3\times1$ | $2\times1$: the matrix–vector product from *One dot product per row* |
+
+      **Where it shows up.** A model with several outputs keeps one weight column per output. A robot that turns 3 sensor readings into speeds for its 2 wheels does the same thing with a $3\times2$ weight matrix.
     problems:
       - mat-matrix-products-basics
+      - matp-products-self-explain
       - matp-shape
       - matp-invalid
       - matp-entry-template
@@ -121,23 +178,75 @@ knowledge_points:
       - matp-batch-shape
       - matp-recover-factor-entry
   - id: mat-batches-transpose
-    title: Scoring many houses with NumPy
+    title: Many houses at once in NumPy
     explain: |
-      **What a NumPy array is.** **NumPy** is a Python library for calculations on arrays, which are collections of numbers with a shape. A table $X$ with $n$ house rows and $d$ measurements per house has shape $(n,d)$.
+      **The question.** On paper you can now price any number of houses with one product. How do you get a computer to do it for a thousand houses and add the model's bias?
 
-      **How it works.**
-      1. Store every house as a row of $X$. Store price and rent weights as columns of $W$, shape $(3,2)$; `X @ W` gives shape $(n,2)$.
-      2. The `@` operator performs matrix multiplication, so each output is a dot product. The `*` operator multiplies matching entries without adding them, so it does not produce weighted sums.
-      3. A **bias** $b$ is a fixed amount added to each output. In `X @ W + b`, if $b$ has shape $(2,)$, **broadcasting** reuses its two amounts for every house row.
-      4. `.shape` reports dimensions. The **transpose**, written `.T`, swaps rows and columns.
+      **Picture it.** The blue $X$ holds 5 houses as 5 rows of 3 measurements, and the amber $W$ holds the price and rent weights as 2 columns. Their product is the green $Y$: a price and a rent for every house. The amber $b$ holds one bias per output, 20 for price and 100 for rent; the dashed rows show it copied down to every house.
 
-      These steps work because all house rows share the same feature order and weight columns. NumPy performs the repeated dot products together, then adds the same price and rent biases to each row.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 255" aria-label="Shape blocks: X with 5 rows and 3 columns, matrix-multiplied by W with 3 rows and 2 columns, plus b copied to all 5 rows, gives Y with 5 rows and 2 columns" font-family="ui-sans-serif, system-ui, sans-serif">
+      <rect x="30" y="50" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="56" y="50" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="82" y="50" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="30" y="76" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="56" y="76" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="82" y="76" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="30" y="102" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="56" y="102" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="82" y="102" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="30" y="128" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="56" y="128" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="82" y="128" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="30" y="154" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="56" y="154" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <rect x="82" y="154" width="26" height="26" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="69" y="205" text-anchor="middle" font-size="13" fill="#737373">X (5, 3)</text>
+      <text x="130" y="115" text-anchor="middle" font-size="18" fill="#171717">@</text>
+      <rect x="152" y="50" width="26" height="26" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/>
+      <rect x="178" y="50" width="26" height="26" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/>
+      <rect x="152" y="76" width="26" height="26" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/>
+      <rect x="178" y="76" width="26" height="26" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/>
+      <rect x="152" y="102" width="26" height="26" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/>
+      <rect x="178" y="102" width="26" height="26" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="178" y="205" text-anchor="middle" font-size="13" fill="#737373">W (3, 2)</text>
+      <text x="226" y="115" text-anchor="middle" font-size="18" fill="#171717">+</text>
+      <rect x="248" y="50" width="36" height="26" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/><text x="266" y="68" text-anchor="middle" font-size="13" fill="#171717">20</text>
+      <rect x="284" y="50" width="36" height="26" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/><text x="302" y="68" text-anchor="middle" font-size="13" fill="#171717">100</text>
+      <rect x="248" y="76" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="266" y="94" text-anchor="middle" font-size="13" fill="#737373">20</text>
+      <rect x="284" y="76" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="302" y="94" text-anchor="middle" font-size="13" fill="#737373">100</text>
+      <rect x="248" y="102" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="266" y="120" text-anchor="middle" font-size="13" fill="#737373">20</text>
+      <rect x="284" y="102" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="302" y="120" text-anchor="middle" font-size="13" fill="#737373">100</text>
+      <rect x="248" y="128" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="266" y="146" text-anchor="middle" font-size="13" fill="#737373">20</text>
+      <rect x="284" y="128" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="302" y="146" text-anchor="middle" font-size="13" fill="#737373">100</text>
+      <rect x="248" y="154" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="266" y="172" text-anchor="middle" font-size="13" fill="#737373">20</text>
+      <rect x="284" y="154" width="36" height="26" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/><text x="302" y="172" text-anchor="middle" font-size="13" fill="#737373">100</text>
+      <text x="284" y="205" text-anchor="middle" font-size="13" fill="#737373">b (2,)</text>
+      <text x="342" y="115" text-anchor="middle" font-size="18" fill="#171717">=</text>
+      <rect x="364" y="50" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="390" y="50" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="364" y="76" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="390" y="76" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="364" y="102" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="390" y="102" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="364" y="128" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="390" y="128" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="364" y="154" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <rect x="390" y="154" width="26" height="26" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <text x="390" y="205" text-anchor="middle" font-size="13" fill="#737373">Y (5, 2)</text>
+      <text x="436" y="90" text-anchor="start" font-size="13" fill="#171717">one row per house:</text>
+      <text x="436" y="110" text-anchor="start" font-size="13" fill="#171717">price and rent</text>
+      <text x="436" y="150" text-anchor="start" font-size="13" fill="#737373">dashed rows: b copied</text>
+      <text x="436" y="170" text-anchor="start" font-size="13" fill="#737373">to every house</text>
+      <text x="320" y="238" text-anchor="middle" font-size="14" fill="#171717">Inner sizes 3 and 3 match, so X @ W has shape (5, 2); b is broadcast to all 5 rows.</text>
+      </svg>
+      ```
 
-      **Why this is useful.** One expression, `X @ W + b`, predicts sale prices and monthly rents for many houses without writing a separate loop for every house. The output still has one row per house and one column per prediction.
+      **The idea.** **NumPy** is a Python library for grids of numbers, which it calls arrays; `import numpy as np` loads it under the short name `np`, and `np.array([[12, 3, 20], [8, 2, 5]])` builds one from a list of rows. An array's `.shape` gives its size as (rows, columns), and `@` multiplies matrices. Many models also add a fixed amount to every prediction, whatever the inputs: a **bias**, the base amount every prediction starts from. In `X @ W + b`, NumPy **broadcasts** `b`: because `b` has one entry per column, it is reused for every row. The **transpose**, written $W^\top$ in maths and `W.T` in NumPy, swaps rows and columns, so a (3, 2) array becomes (2, 3). Code sometimes stores weights with one row per output; `.T` turns those rows into the columns `@` expects.
+
+      **Common confusion.** “`X * W` does the same as `X @ W`.” No: `*` multiplies the numbers in matching positions and adds nothing up. For two (1, 3) arrays, `[[1, 2, 3]] * [[4, 5, 6]]` gives `[[4, 10, 18]]`, not the dot product 32. For shapes (2, 3) and (3, 2) it stops with an error, because there are no matching positions.
     worked: |
-      This example shows how NumPy predicts two outputs for the same houses, then adds a fixed amount to each output.
-
-      Each row of `X` contains area in tens of square metres, bedroom count, and age in years. The first column of `W` gives sale-price weights in thousands of pounds per feature unit; the second gives monthly-rent weights in pounds per feature unit. The bias $b=(20,100)$ adds 20 thousand pounds to each price and 100 pounds to each monthly rent. NumPy is imported as `np`, and `np.array` builds an array from rows of numbers.
+      Predict price and rent for both houses in NumPy, including the bias.
 
       ```python
       import numpy as np
@@ -146,31 +255,52 @@ knowledge_points:
       W = np.array([[25, 100], [10, 50], [-1, -5]])
       b = np.array([20, 100])
       Y = X @ W + b
-      print(Y)
-      # [[330, 1350],
-      #  [235,  975]]
-      print(Y.shape)                     # (2, 2)
-      print(W.T.shape)                   # (2, 3)
+      print(Y)           # [[ 330 1350]
+                         #  [ 235  975]]
+      print(Y.shape)     # (2, 2)
+
+      W_rows = W.T       # the same weights, one row per output
+      print(W_rows.shape)          # (2, 3)
+      print(X @ W_rows.T + b)      # the same Y again
       ```
 
-      1. House 1's price is $12\cdot25+3\cdot10+20\cdot(-1)+20=330$ thousand pounds.
-      2. House 1's monthly rent is $12\cdot100+3\cdot50+20\cdot(-5)+100=1350$ pounds.
-      3. House 2's price is $8\cdot25+2\cdot10+5\cdot(-1)+20=235$ thousand pounds.
-      4. House 2's monthly rent is $8\cdot100+2\cdot50+5\cdot(-5)+100=975$ pounds.
+      1. **Multiply.** `X @ W` is the product $XW$ from *Multiplying two matrices*.
+         $$XW=\begin{bmatrix}310&1250\\215&875\end{bmatrix}$$
 
-      The two biases are reused for each house. `W.T` has shape $(2,3)$, with each output's three weights in one row.
+      2. **Broadcast the bias.** `b` is copied down to both rows.
+         $$\begin{bmatrix}20&100\\20&100\end{bmatrix}$$
+
+      3. **Add entry by entry.**
+         $$\begin{bmatrix}310+20&1250+100\\215+20&875+100\end{bmatrix}=\begin{bmatrix}330&1350\\235&975\end{bmatrix}$$
+
+      4. **Check the shapes.** `Y.shape` is (2, 2): one row per house, one column per output.
+
+      5. **Use the transpose.** `W_rows` stores the price weights in row 1 and the rent weights in row 2. `X @ W_rows` would fail, because the inner sizes 3 and 2 differ; `W_rows.T` turns the rows back into columns, so `X @ W_rows.T + b` gives the same `Y`.
+
+      **Compare cases.**
+
+      | Expression | Result |
+      | --- | --- |
+      | `X @ W` | Shape (2, 2): price and rent for each house |
+      | `X @ W + b` | Shape (2, 2): every price +20, every rent +100 |
+      | `X * W` | Error: shapes (2, 3) and (3, 2) do not line up |
+      | `X @ W_rows` | Error: inner sizes 3 and 2 differ |
+      | `X @ W_rows.T + b` | Shape (2, 2): the same `Y` |
+
+      **Where it shows up.** Training code works on a batch, a group of examples handled together, so one line such as `X @ W + b` predicts for every example in it. When a shape error appears, printing each array's `.shape` is the first check.
     problems:
       - mat-batches-transpose-basics
+      - matp-batch-self-explain
       - matp-broadcast
       - matp-code
       - matp-bias-template
       - matp-transpose
       - matp-why-batch
-      - matp-transpose-product
+      - matp-robot-dot-count
 final: mat-explain-batch
 summary: |
-  - A matrix stores values in rows and columns. Multiplying by a vector takes one dot product per row.
-  - A matrix product pairs every house row with each output column; the inner dimensions must match.
-  - NumPy uses `@` to predict sale prices and monthly rents for many houses at once. In `X @ W + b`, the biases are broadcast across house rows.
+  - A matrix times a vector takes one dot product per row: an $m\times n$ matrix and an $n$-entry vector give $m$ answers.
+  - Each entry of a matrix product is one left row dotted with one right column. The inner sizes must match, and the outer sizes give the result's shape.
+  - In NumPy, `X @ W + b` gives every output for every house at once, with the bias broadcast to each row; `.T` swaps rows and columns.
 
-  **Next:** Linear regression uses these matrix operations to predict prices for all houses and compare them with their sale prices.
+  **Next:** Linear regression uses `X @ w + b` to predict every training house's price at once and compares those predictions with the real sale prices.
