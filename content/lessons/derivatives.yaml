@@ -60,11 +60,12 @@ knowledge_points:
       [
         der-speed-at-instant-basics,
         derp-meaning,
-        derp-average-speed,
         derp-tangent,
+        derp-robot-battery,
+        derp-average-speed,
         derp-estimate,
         derp-why-not-zero,
-        derp-robot-battery,
+        derp-nudge-backwards,
       ]
   - id: der-power-rule
     title: Rules for powers, constants and sums
@@ -91,11 +92,12 @@ knowledge_points:
       [
         der-power-rule-basics,
         derp-power-poly,
-        derp-power-value,
         derp-power-cube,
         derp-constant-term,
         derp-drone-climb,
+        derp-power-value,
         derp-power-fraction,
+        derp-flat-slope,
       ]
   - id: der-exp-log
     title: Exponentials and the natural logarithm
@@ -131,12 +133,13 @@ knowledge_points:
     problems:
       [
         der-exp-log-basics,
-        derp-exp-log-mix,
         derp-ln-slope,
         derp-exp-slope,
         derp-ln-meaning,
-        derp-sin-cos,
         derp-tank-level,
+        derp-exp-log-mix,
+        derp-sin-cos,
+        derp-log-flat,
       ]
   - id: der-product-quotient
     title: Products and quotients
@@ -177,11 +180,11 @@ knowledge_points:
     problems:
       [
         der-product-quotient-basics,
-        derp-product-expr,
         derp-product-value,
+        derp-which-rule,
+        derp-product-expr,
         derp-why-not-multiply,
         derp-quotient-expr,
-        derp-which-rule,
         derp-rectangle-rate,
       ]
 final: der-explain

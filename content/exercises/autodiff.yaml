@@ -127,7 +127,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Complete this tensor creation so PyTorch tracks operations that depend on `w`."
     code: |
@@ -242,7 +242,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Complete the code so PyTorch computes the derivative of `loss` and stores it in `w.grad`."
     code: |
@@ -258,7 +258,7 @@ exercises:
     dimension: implementation
     type: code_complete
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "After a backward call, complete the line to clear the stored gradient before an independent calculation."
     code: |
@@ -350,7 +350,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 3
     prompt: "A calculation has {{= outputs }} output values. In the rough comparison from this lesson, how many reverse-mode passes are needed to obtain derivatives for all inputs?"
     params:
@@ -379,3 +379,93 @@ exercises:
         weight: 1
         required: false
     exemplar: "During the forward pass, PyTorch records operations that depend on tensors marked with `requires_grad=True`. Calling `loss.backward()` applies the chain rule backwards through those operations and accumulates each parameter derivative in `.grad`; I clear that field with `zero_()` before an independent calculation. Reverse mode suits a network with many weights and one scalar loss because one output pass gives gradients for all the weights."
+  - id: ad-record-untracked
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A student writes `w = torch.tensor(2.0)`, then `loss = (3 * w - 1) ** 2`, then calls `loss.backward()`. PyTorch stops with an error saying the tensor does not require grad. Why?"
+    options:
+      - id: a
+        text: "No tensor was marked with `requires_grad=True`, so PyTorch recorded no operations to follow."
+        correct: true
+      - id: b
+        text: "The loss is a single number, and `backward()` needs a list of several losses."
+        correct: false
+        category: misunderstood_definition
+        feedback: "A single scalar loss is exactly what `backward()` usually starts from."
+      - id: c
+        text: "The derivative of this loss is zero at $w = 2$, so there is nothing to store."
+        correct: false
+        category: math_error
+        feedback: "The derivative is $2(3w - 1) \\times 3 = 30$ at $w = 2$, so it is not zero."
+      - id: d
+        text: "The squaring operation has no local derivative rule, so the graph cannot be built."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Squaring has the local derivative $2u$; the problem is that nothing was being tracked."
+    solution: "PyTorch only records operations that depend on a tensor marked with `requires_grad=True`. Here `w` is untracked, so the loss has no recorded operations and `backward()` has nothing to follow. Writing `w = torch.tensor(2.0, requires_grad=True)` fixes it."
+  - id: ad-backward-shared
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot arm's cost uses its joint angle twice. What number does this PyTorch code print after `cost.backward()`?"
+    code: |
+      import torch
+      w = torch.tensor(2.0, requires_grad=True)
+      angle = 3 * w
+      cost = angle * angle + 4 * angle
+      cost.backward()
+      print(round(w.grad.item(), 2))
+    answer: 48
+    tolerance: { abs: 0.001 }
+    hints:
+      - "The angle feeds two later calculations, so add their derivative contributions."
+      - "$\\frac{d\\,\\text{cost}}{d\\,\\text{angle}} = 2 \\cdot \\text{angle} + 4$, then multiply by $\\frac{d\\,\\text{angle}}{dw} = 3$."
+    solution: |
+      Forward pass:
+
+      $$\text{angle} = 3 \times 2 = 6$$
+
+      The angle reaches the cost through two uses, so add both contributions:
+
+      $$\frac{d\,\text{cost}}{d\,\text{angle}} = 2 \times 6 + 4 = 16$$
+
+      Multiply by the first local derivative:
+
+      $$\frac{d\,\text{cost}}{dw} = 16 \times 3 = 48$$
+
+      The code prints `48.0`.
+  - id: ad-mode-robot-arm
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot arm's model turns 2 joint angles into 6 output values describing where the gripper is. You need the derivative of every output with respect to every joint angle. Using the rough pass-count comparison, how many passes does the cheaper mode need?"
+    answer: 2
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 6,
+          category: misapplied_technique,
+          feedback: "That is the reverse-mode count, one pass per output. Here there are fewer inputs than outputs.",
+        }
+      - {
+          answer: 12,
+          category: misunderstood_definition,
+          feedback: "Each pass gives a whole set of derivatives, so you do not need one pass per input-output pair.",
+        }
+    hints:
+      - "Forward mode needs about one pass per input direction; reverse mode needs about one pass per output."
+    solution: |
+      Count the passes for each mode:
+
+      $$\text{forward mode: 2 inputs} \Rightarrow 2 \text{ passes}$$
+
+      $$\text{reverse mode: 6 outputs} \Rightarrow 6 \text{ passes}$$
+
+      With few inputs and many outputs, forward mode is cheaper: 2 passes.

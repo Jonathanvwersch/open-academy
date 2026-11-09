@@ -37,11 +37,12 @@ knowledge_points:
       [
         cg-drawing-graphs-basics,
         cgp-steps-for-expression,
-        cgp-forward-value,
         cgp-arrow-meaning,
         cgp-why-order,
         cgp-node-count,
+        cgp-forward-value,
         cgp-shared-input,
+        cgp-backwards-weight,
       ]
   - id: cg-local-derivatives
     title: Each graph operation has a local derivative
@@ -80,6 +81,7 @@ knowledge_points:
         cgp-square-local,
         cgp-why-store-values,
         cgp-subtract-local,
+        cgp-square-nudge,
         cgp-max-node,
       ]
   - id: cg-chaining-paths
@@ -112,11 +114,12 @@ knowledge_points:
       [
         cg-chaining-paths-basics,
         cgp-path-product,
+        cgp-why-multiply-path,
         cgp-chain-template,
         cgp-one-path-only,
         cgp-used-twice,
-        cgp-why-multiply-path,
         cgp-robot-error,
+        cgp-dead-path,
       ]
 final: cg-explain
 summary: |

@@ -203,7 +203,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "A house-price model uses size $x = {{=x}}$, multiplier $w = {{=w}}$ and added amount $b = {{=b}}$. The true sale price is $y = {{=y}}$ in the same price units. It calculates $m = w \\cdot x$, $\\hat y = m + b$, $r = \\hat y - y$, then $L = r^2$. What squared error $L$ does it report?"
     hints: ["Work left to right: find $m$, then $\\hat y$, then $r$, then square it."]
@@ -434,7 +434,7 @@ exercises:
     dimension: math
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 1
     prompt: "A robot's model must not request a negative forward distance, so it calculates $q = \\max(0, a)$, the larger of 0 and its estimate $a$. At $a = -3$ cm, what is the local derivative $dq/da$?"
     options:
@@ -601,3 +601,110 @@ exercises:
         category: incomplete_explanation
         feedback: "2 is $r$. The square node's local derivative is $2r$."
     solution: "$r = 5 - 3 = 2$. Along the path: $\\frac{dC}{dr}\\cdot\\frac{\\partial r}{\\partial p} = 2r \\cdot 1 = 4$. Moving the gripper further from the goal raises the cost."
+  - id: cgp-backwards-weight
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A house-price graph calculates $m = w \\cdot x$, $\\hat y = m + b$, $r = \\hat y - y$ and $L = r^2$. It uses size $x = 2$, added amount $b = 1$ and true price $y = 9$. The graph reports $L = 4$, and its error $r$ is negative. What weight $w$ did it use?"
+    answer: 3
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 5,
+          category: incorrect_reasoning,
+          feedback: "That gives $r = +2$. The error is negative, so start from $r = -2$.",
+        }
+      - {
+          answer: 3.5,
+          category: math_error,
+          feedback: "That skips the added amount. Subtract $b = 1$ from $\\hat y$ before dividing by $x$.",
+        }
+    hints:
+      - "Undo the nodes from the end: $L = r^2 = 4$ with $r < 0$ gives $r$."
+      - "Then $\\hat y = r + y$, $m = \\hat y - b$ and $w = m / x$."
+    solution: |
+      Undo each node, starting from the loss:
+
+      $$r^2 = 4,\ r < 0 \Rightarrow r = -2$$
+
+      $$\hat y = r + y = -2 + 9 = 7$$
+
+      $$m = \hat y - b = 7 - 1 = 6$$
+
+      $$w = m / x = 6 / 2 = 3$$
+  - id: cgp-square-nudge
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A house-price model's squared-loss node calculates $L = r^2$ from its prediction error $r = 3$. Use the node's local derivative to estimate how much $L$ increases when $r$ increases by 0.1."
+    answer: 0.6
+    tolerance: { abs: 0.011 }
+    common_wrong:
+      - {
+          answer: 0.2,
+          category: misunderstood_definition,
+          feedback: "The local derivative of $r^2$ is $2r = 6$ at $r = 3$, not 2.",
+        }
+      - {
+          answer: 9.6,
+          category: incomplete_explanation,
+          feedback: "That is the new loss. The question asks for the increase, $9.6 - 9$.",
+        }
+    hints:
+      - "The local derivative of a square node is $dL/dr = 2r$."
+      - "Multiply the local derivative by the nudge, 0.1."
+    solution: |
+      Find the local derivative at $r = 3$:
+
+      $$\frac{dL}{dr} = 2r = 6$$
+
+      Multiply by the nudge:
+
+      $$\Delta L \approx 6 \times 0.1 = 0.6$$
+
+      The exact increase is $3.1^2 - 9 = 0.61$, close to the estimate.
+  - id: cgp-dead-path
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot's model must not request a negative forward distance. From a weight $w$ and a sensor reading $s = 2$, its graph calculates $a = w \\cdot s$, then $q = \\max(0, a)$, then the cost $C = (q - g)^2$ for goal $g = 5$. At $w = -1$, what is $\\partial C/\\partial w$?"
+    answer: 0
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: -20,
+          category: misapplied_technique,
+          feedback: "That uses slope 1 for the maximum node. Here $a = -2$, so $q$ is stuck at 0 and $dq/da = 0$.",
+        }
+      - {
+          answer: -10,
+          category: incomplete_explanation,
+          feedback: "That is only $dC/dq$. Multiply by every local derivative back to $w$, including $dq/da$.",
+        }
+    hints:
+      - "Run the forward pass first: find $a$ and $q$."
+      - "At $a = -2$, the maximum node outputs 0 whatever small change $a$ gets, so its local derivative is 0."
+    solution: |
+      Forward pass:
+
+      $$a = -1 \cdot 2 = -2$$
+
+      $$q = \max(0, -2) = 0$$
+
+      $$C = (0 - 5)^2 = 25$$
+
+      Local derivatives along the path:
+
+      $$\frac{dC}{dq} = 2(q - g) = -10, \quad \frac{dq}{da} = 0, \quad \frac{\partial a}{\partial w} = s = 2$$
+
+      Multiply them:
+
+      $$\frac{\partial C}{\partial w} = -10 \cdot 0 \cdot 2 = 0$$
+
+      The maximum node blocks the path, so a small change to $w$ does not change the cost at all.

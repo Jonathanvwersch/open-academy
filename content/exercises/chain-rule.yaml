@@ -622,3 +622,113 @@ exercises:
         category: incomplete_explanation
         feedback: "Speed also drains the battery directly. That route counts too."
     solution: "Speed reaches the battery drain by two routes: directly, and through temperature. Work out each route and add them."
+  - id: crp-backwards-rate
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A model's loss $L$ depends on its prediction $p$, and the prediction depends on a weight $w$ with $dp/dw = 3$. Nudging $w$ up by 0.01 lowers $L$ by about 0.06. What is $dL/dp$?"
+    answer: -2
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: -6,
+          category: incomplete_explanation,
+          feedback: "That is $dL/dw$. Divide it by $dp/dw = 3$ to find $dL/dp$.",
+        }
+      - {
+          answer: -18,
+          category: misapplied_technique,
+          feedback: "The chain rule says $dL/dw = dL/dp \\cdot dp/dw$, so divide by 3 rather than multiply.",
+        }
+      - {
+          answer: 2,
+          category: math_error,
+          feedback: "Check the sign: the loss fell when the weight rose, so the rates are negative.",
+        }
+    hints:
+      - "First estimate $dL/dw$ from the nudge: change in $L$ divided by change in $w$."
+      - "Then use $dL/dw = \\frac{dL}{dp} \\cdot \\frac{dp}{dw}$ and solve for $\\frac{dL}{dp}$."
+    solution: |
+      Estimate the total rate from the nudge:
+
+      $$\frac{dL}{dw} \approx \frac{-0.06}{0.01} = -6$$
+
+      The chain rule links the rates:
+
+      $$\frac{dL}{dw} = \frac{dL}{dp} \cdot \frac{dp}{dw}$$
+
+      $$-6 = \frac{dL}{dp} \cdot 3$$
+
+      $$\frac{dL}{dp} = -2$$
+  - id: crp-product-chain
+    dimension: math
+    type: expression
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "Differentiate $y = x(2x + 1)^3$ with respect to $x$."
+    answer: "(2*x+1)^3 + 6*x*(2*x+1)^2"
+    variables: { x: [-2, 2] }
+    common_wrong:
+      - answer: "6*(2*x+1)^2"
+        category: misapplied_technique
+        feedback: "That multiplies the derivatives of the two factors. A product needs the product rule, $u'v + uv'$."
+      - answer: "(2*x+1)^3 + 3*x*(2*x+1)^2"
+        category: misunderstood_definition
+        feedback: "The derivative of $(2x + 1)^3$ needs the inner factor 2: it is $6(2x + 1)^2$."
+    hints:
+      - "This is a product $u \\cdot v$ with $u = x$ and $v = (2x + 1)^3$."
+      - "Find $v'$ with the chain rule: $v' = 3(2x + 1)^2 \\cdot 2$."
+    solution: |
+      Write the function as a product, $u = x$ and $v = (2x + 1)^3$.
+
+      The first factor gives:
+
+      $$u' = 1$$
+
+      The second factor needs the chain rule, with inner value $2x + 1$:
+
+      $$v' = 3(2x + 1)^2 \cdot 2 = 6(2x + 1)^2$$
+
+      Combine with the product rule:
+
+      $$y' = u'v + uv' = (2x + 1)^3 + 6x(2x + 1)^2$$
+  - id: crp-robot-heat
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot's battery power is $B = 2v^2 + 0.5T$ watts, where $v$ is its speed in m/s and $T$ is its motor temperature in °C. The motor warms with speed: $T = 20 + 3v$. At $v = 1.5$ m/s, what is $dB/dv$, counting both ways speed affects power?"
+    answer: 7.5
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 6,
+          category: incomplete_explanation,
+          feedback: "That is only the direct route. Speed also raises the temperature, which adds $0.5 \\times 3$.",
+        }
+      - {
+          answer: 1.5,
+          category: incomplete_explanation,
+          feedback: "That is only the route through temperature. Add the direct route $\\partial B/\\partial v = 4v$.",
+        }
+    hints:
+      - "Direct route: $\\frac{\\partial B}{\\partial v} = 4v$, with $T$ held fixed."
+      - "Temperature route: $\\frac{\\partial B}{\\partial T} \\cdot \\frac{dT}{dv} = 0.5 \\times 3$."
+    solution: |
+      Direct route, holding $T$ fixed:
+
+      $$\frac{\partial B}{\partial v} = 4v = 4 \times 1.5 = 6$$
+
+      Route through the motor temperature:
+
+      $$\frac{\partial B}{\partial T} \cdot \frac{dT}{dv} = 0.5 \times 3 = 1.5$$
+
+      Add the two routes:
+
+      $$\frac{dB}{dv} = 6 + 1.5 = 7.5$$
+
+      Each extra m/s adds about 7.5 watts at this speed.
