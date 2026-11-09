@@ -759,7 +759,7 @@ function SessionPage() {
 
 function sessionActivityLabel(kind: string) {
   const labels: Record<string, string> = {
-    learn: 'Learn',
+    learn: 'New lesson',
     practice: 'Practice',
     remediate: 'Remediation',
     transfer: 'Transfer',
