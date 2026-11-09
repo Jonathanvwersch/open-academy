@@ -1,5 +1,89 @@
 concept: perceptron
 exercises:
+  - id: percp-score-reason
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, why is the output 1 rather than 4?"
+    options:
+      - { id: a, text: "The positive score becomes 1 through the step.", correct: true }
+      - {
+          id: b,
+          text: "The bias is ignored after weighting the inputs.",
+          correct: false,
+          feedback: "The bias was included to get score 4; the step changes that score into a decision.",
+        }
+      - {
+          id: c,
+          text: "The step divides each score by itself.",
+          correct: false,
+          feedback: "The step tests the sign; dividing a negative score by itself would incorrectly give 1 too.",
+        }
+      - {
+          id: d,
+          text: "The output copies the first input's weight.",
+          correct: false,
+          feedback: "The output depends on the score's sign, not one chosen weight.",
+        }
+    solution: "The weighted sum plus bias is 4. Since 4 is positive, the step gives decision 1 rather than returning the score."
+  - id: percp-boundary-reason
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why does the boundary example test the origin after finding the line?"
+    options:
+      - { id: a, text: "Its negative score identifies the output-0 side.", correct: true }
+      - {
+          id: b,
+          text: "Its zero inputs place it on every boundary.",
+          correct: false,
+          feedback: "The origin scores -4 here, so it is not on the boundary.",
+        }
+      - {
+          id: c,
+          text: "Its negative score makes the line output 1.",
+          correct: false,
+          feedback: "Every point on the line scores zero and outputs 0; the origin identifies a side.",
+        }
+      - {
+          id: d,
+          text: "Its inputs determine a new pair of weights.",
+          correct: false,
+          feedback: "The weights remain (1,2); testing an input does not change them.",
+        }
+    solution: "The line locates the zero scores but does not by itself label the sides. The origin scores -4, so the side containing it gives output 0."
+  - id: percp-xor-reason
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked XOR argument, why does forcing a positive score at (1,1) prove failure?"
+    options:
+      - { id: a, text: "XOR needs 0 there, but a positive score gives 1.", correct: true }
+      - {
+          id: b,
+          text: "XOR needs all four scores to have the same sign.",
+          correct: false,
+          feedback: "XOR needs two positive scores and two non-positive scores.",
+        }
+      - {
+          id: c,
+          text: "A positive score requires two negative weights.",
+          correct: false,
+          feedback: "The contradiction concerns the output at (1,1), not individual weight signs.",
+        }
+      - {
+          id: d,
+          text: "A positive score means the line has become curved.",
+          correct: false,
+          feedback: "The boundary is still straight; it cannot fit all four labels.",
+        }
+    solution: "The first three XOR requirements force a positive score for (1,1). The step gives 1 where XOR requires 0, ruling out every choice of weights and bias."
   - id: perc-score-and-step-basics
     dimension: conceptual
     type: mc
@@ -16,23 +100,23 @@ exercises:
         }
       - {
           id: b,
-          text: "It thresholds a weighted score plus bias to choose a class.",
+          text: "It applies a step to weighted inputs plus bias to answer yes or no.",
           correct: true,
-          feedback: "The weighted score plus bias becomes a class decision through the step activation.",
+          feedback: "The weighted sum plus bias becomes a yes-or-no decision through the step activation.",
         }
       - {
           id: c,
-          text: "It chooses the closest training example and copies its target.",
+          text: "It chooses the closest recorded input and copies its known answer.",
           correct: false,
-          feedback: "That describes a nearest-neighbour method.",
+          feedback: "A perceptron uses its weights and bias, not an answer copied from a nearby input.",
         }
       - {
           id: d,
-          text: "It repeatedly changes a target to match a fixed score.",
+          text: "It adds the two inputs without using weights or a bias.",
           correct: false,
-          feedback: "Training changes model parameters, not the target.",
+          feedback: "A perceptron multiplies inputs by weights and adds a bias before applying the step.",
         }
-    solution: "A perceptron scores its inputs using weights and a bias, then applies a step to predict a class."
+    solution: "A perceptron scores its inputs using weights and a bias, then applies a step to answer yes or no."
   - id: perc-straight-boundary-basics
     dimension: conceptual
     type: mc
@@ -43,54 +127,54 @@ exercises:
     options:
       - {
           id: a,
-          text: "The inputs where the perceptron's score is exactly zero, separating its two predicted classes",
+          text: "The inputs where the score is exactly zero, between the yes and no sides",
           correct: true,
           feedback: "At score zero the perceptron's step output changes across the boundary.",
         }
       - {
           id: b,
-          text: "The line connecting the two nearest examples from different classes in the training data.",
+          text: "The line connecting the nearest recorded yes input and recorded no input.",
           correct: false,
-          feedback: "A classifier's boundary comes from its score rule, not just the two closest examples.",
+          feedback: "The boundary comes from the score rule, not a line joining two nearby inputs.",
         }
       - {
           id: c,
-          text: "The average loss score calculated across all examples in the training set.",
+          text: "The average squared prediction error across a set of recorded inputs and answers.",
           correct: false,
-          feedback: "That is a training objective, not a class boundary.",
+          feedback: "An average error measures how wrong predictions are, not where the score is zero.",
         }
       - {
           id: d,
-          text: "The range of feature values observed across training examples, not a class-separating surface.",
+          text: "The range of input values recorded, rather than the place where the answer changes.",
           correct: false,
           feedback: "That is the data range, not where model predictions switch.",
         }
-    solution: "A decision boundary is the line or surface where a classifier changes its predicted class."
+    solution: "A perceptron's decision boundary contains the inputs scoring zero. It separates positive-score yes answers from non-positive-score no answers."
   - id: perc-and-or-xor-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "Why can't one straight boundary classify XOR correctly?"
+    prompt: "Why can't one straight boundary give every XOR input its required answer?"
     options:
       - {
           id: a,
-          text: "Because XOR has more output classes than a perceptron can predict.",
+          text: "Because XOR needs more different output values than a perceptron can give.",
           correct: false,
-          feedback: "XOR is a two-class problem.",
+          feedback: "XOR only needs outputs 0 and 1, exactly the two outputs a perceptron can give.",
         }
       - {
           id: b,
-          text: "Because XOR's alternating positive and negative corners cannot be split by one straight boundary.",
+          text: "Because XOR's diagonally opposite yes corners cannot be split from both no corners by one line.",
           correct: true,
-          feedback: "The alternating positive and negative corners cannot be divided by one linear decision boundary.",
+          feedback: "No straight line puts both yes corners on one side and both no corners on the other.",
         }
       - {
           id: c,
-          text: "Because a straight boundary gives every input the same predicted class.",
+          text: "Because a straight boundary gives every input the same yes-or-no answer.",
           correct: false,
-          feedback: "A boundary separates input regions that predict different classes.",
+          feedback: "The boundary separates a yes side from a no side; it does not make all answers identical.",
         }
       - {
           id: d,
@@ -98,7 +182,7 @@ exercises:
           correct: false,
           feedback: "A perceptron can use multiple input features.",
         }
-    solution: "XOR is not separable by one straight boundary, so a single perceptron cannot classify it correctly."
+    solution: "XOR is not separable by one straight boundary, so a single perceptron cannot give all four inputs their required answers."
   - id: perc-check-1
     dimension: math
     type: numeric
@@ -132,7 +216,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "Why can no single neuron $\\phi(w\\cdot x + b)$ with a monotonic activation compute XOR of two binary inputs?"
+    prompt: "Why can no single perceptron $\\phi(w\\cdot x + b)$ with the step activation compute XOR of two binary inputs?"
     options:
       - {
           id: a,
@@ -144,7 +228,7 @@ exercises:
           text: "XOR needs more than two inputs",
           correct: false,
           category: misunderstood_definition,
-          feedback: "XOR is defined on exactly two inputs, so the number of inputs is not the limit. Plot the four input points and try to separate the two classes with one straight line.",
+          feedback: "XOR is defined on exactly two inputs, so the number of inputs is not the limit. Plot the four input points and try to separate yes from no with one straight line.",
         }
       - {
           id: c,
@@ -153,7 +237,7 @@ exercises:
           category: incorrect_reasoning,
           feedback: "Negative weights are allowed; the limitation is geometric.",
         }
-    solution: "XOR is not linearly separable. A hidden layer creates new features (e.g. OR and AND) in which it becomes separable."
+    solution: "XOR is not linearly separable: its two yes corners are diagonally opposite, and no single straight boundary separates them from both no corners. Changing the weights or bias cannot remove this limit."
   - id: perc-boundary
     dimension: math
     type: numeric
@@ -185,7 +269,7 @@ exercises:
           text: "$w = (1, -1)$, $b = 0$",
           correct: false,
           category: math_error,
-          feedback: "Changing the sign of one weight makes the two inputs push the score in opposite directions, so the rule is not a symmetric OR. Check all four input pairs against the threshold.",
+          feedback: "Changing the sign of one weight makes the two inputs push the score in opposite directions, so the rule is not OR. Compute all four scores and check which are above zero.",
         }
     solution: "Scores for (0,0),(0,1),(1,0),(1,1): $-0.5, 0.5, 0.5, 1.5$, giving outputs $0, 1, 1, 1$."
   - id: perc-explain
@@ -240,7 +324,7 @@ exercises:
           answer: 1.5,
           tolerance: { abs: 0.001 },
           category: math_error,
-          feedback: "That score leaves out the bias. Add $b = -0.5$ before applying the step rule.",
+          feedback: "That score adds the bias as $+0.5$. The bias is $-0.5$, so the score is $2 - 1 - 0.5 = 0.5$.",
         }
     solution: "The score is $z = 1 \\cdot 2 + (-2) \\cdot 0.5 - 0.5 = 2 - 1 - 0.5 = 0.5$. It's above 0, so the step rule outputs 1: shortlist it."
   - id: percp-score-template
@@ -258,7 +342,7 @@ exercises:
     solution: |
       $z = {{=w1}} \cdot {{=x1}} + ({{=w2}}) \cdot {{=x2}} + ({{=b}}) = {{=w1*x1 + w2*x2 + b}}$.
 
-      The step rule then outputs 1 if this score is above 0 and 0 otherwise. The score itself says how far the house is from the bar.
+      The step rule then outputs 1 if this score is above 0 and 0 otherwise. The score is not itself a probability or a yes-or-no output.
     answer_expr: "w1 * x1 + w2 * x2 + b"
     params:
       w1: { min: 1, max: 4 }
@@ -266,6 +350,7 @@ exercises:
       b: { min: -3, max: -1 }
       x1: { min: 0.5, max: 2, step: 0.5 }
       x2: { min: 0.5, max: 3, step: 0.5 }
+    constraints: ["2 * w2 * x2 != b"]
     tolerance: { abs: 0.001 }
     common_wrong:
       - {
@@ -308,7 +393,7 @@ exercises:
           category: misunderstood_definition,
           feedback: "A score of 0 is fine. The rule says what to do with it: not above 0, so output 0.",
         }
-    solution: "The step rule outputs 1 only when $z > 0$. A score of exactly 0 isn't above 0, so the output is 0. Such a house sits right on the boundary."
+    solution: "The step rule outputs 1 only when $z > 0$. A score of exactly 0 isn't above 0, so the output is 0; zero is included in the non-positive case."
   - id: percp-weight-sign
     dimension: conceptual
     type: mc
@@ -446,7 +531,7 @@ exercises:
     prompt: |
       A shortlisting neuron has weights $w = ({{=w1}}, {{=w2}})$ and bias $b = {{=b}}$, where $x_1$ is size (hundreds of m²) and $x_2$ is distance to the station (km).
 
-      Its decision boundary crosses the size axis, where $x_2 = 0$, at what value of $x_1$? Give at least two decimal places if it isn't whole.
+      Its decision boundary crosses the size axis, where $x_2 = 0$, at what value of $x_1$?
     hints:
       - "On the boundary the score is 0."
       - "Set $x_2 = 0$, so the score is $w_1 x_1 + b = 0$, and solve for $x_1$."
@@ -456,7 +541,7 @@ exercises:
       A house of that size right at the station scores exactly 0.
     answer_expr: "-b / w1"
     params:
-      w1: { min: 1, max: 4 }
+      w1: { min: 1, max: 2 }
       w2: { min: -3, max: -1 }
       b: { min: -6, max: -1 }
     tolerance: { abs: 0.01 }
