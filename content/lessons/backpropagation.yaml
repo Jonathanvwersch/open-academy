@@ -174,7 +174,7 @@ knowledge_points:
 
       $$\frac{\partial L}{\partial b}=1(2)+1(4)=6$$
 
-      4. Apply ReLU slopes separately if passing through a ReLU layer. For saved scores $(2,-2)$ the local slopes are $(1,0)$, so arriving loss slopes $(6,6)$ become:
+      4. Apply ReLU slopes separately if passing through a ReLU layer. For saved scores $(2,-2)$ the local slopes $\mathbf{1}[z>0]$ are $(1,0)$, so arriving loss slopes $(6,6)$ become:
 
       $$(6,6)\odot(1,0)=(6\cdot1,6\cdot0)$$
 
