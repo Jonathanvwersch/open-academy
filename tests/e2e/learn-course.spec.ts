@@ -477,7 +477,9 @@ test('authored course-structure lessons render their diagrams', async ({ page })
       .locator('article')
       .filter({ has: page.getByRole('heading', { name: new RegExp(knowledgePointTitle) }) });
     await expect(knowledgePoint).toHaveCount(1);
-    await expect(knowledgePoint).toContainText('How it works.');
+    await expect(knowledgePoint).toContainText(
+      conceptId === 'backpropagation' ? 'The idea.' : 'How it works.',
+    );
     await expect(knowledgePoint).toContainText('This example shows');
     await expect(knowledgePoint.locator('.katex-error')).toHaveCount(0);
     await knowledgePoint.screenshot({

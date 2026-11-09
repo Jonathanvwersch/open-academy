@@ -1,983 +1,516 @@
 concept: backpropagation
 exercises:
-  - id: bp-why-backprop-basics
-    dimension: conceptual
-    type: mc
-    role: basics
+  - id: "bp-why-backprop-basics"
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
     difficulty: 1
-    est_minutes: 1
-    prompt: "What is backpropagation?"
-    options:
-      - {
-          id: a,
-          text: "A forward calculation that uses house features and learned weights to produce a sale-price prediction.",
-          correct: false,
-          feedback: "That is the forward pass, which computes predictions before derivatives flow backward.",
-        }
-      - {
-          id: b,
-          text: "A numerical check that compares an analytic derivative with a nearby finite-difference estimate.",
-          correct: false,
-          feedback: "That is a gradient check, which tests a derivative calculation rather than computing all gradients.",
-        }
-      - {
-          id: c,
-          text: "A batch calculation that combines several houses' contributions to the model's loss gradient.",
-          correct: false,
-          feedback: "That describes a batch gradient, which aggregates examples rather than backpropagating a network.",
-        }
-      - {
-          id: d,
-          text: "A backward chain-rule calculation that finds the loss derivative for every weight and bias",
-          correct: true,
-          feedback: "The chain rule carries the loss derivative backward through the network to every weight and bias.",
-        }
-    solution: "Backpropagation applies the chain rule backward through a network to find the loss derivative for each weight and bias."
-  - id: bp-by-hand-basics
-    dimension: conceptual
-    type: mc
-    role: basics
-    difficulty: 1
-    est_minutes: 1
-    prompt: "What does a backward pass do?"
-    options:
-      - {
-          id: a,
-          text: "It changes each weight by a learning-rate-scaled amount to reduce the loss.",
-          correct: false,
-          feedback: "That is a gradient-descent update; a backward pass calculates derivatives used by updates.",
-        }
-      - {
-          id: b,
-          text: "It places examples in a matrix so their predictions can be calculated together.",
-          correct: false,
-          feedback: "That arranges a batch for the forward calculation; it does not propagate loss derivatives.",
-        }
-      - {
-          id: c,
-          text: "It transforms a weighted score into the value passed to the next layer.",
-          correct: false,
-          feedback: "That is an activation's forward operation, not the backward propagation of derivatives.",
-        }
-      - {
-          id: d,
-          text: "It carries derivatives backward, multiplying local rates at each operation.",
-          correct: true,
-          feedback: "Each local derivative transfers the loss sensitivity to the preceding operation.",
-        }
-    solution: "A backward pass propagates derivatives from the loss toward earlier operations by multiplying local derivatives."
-  - id: bp-arrays-basics
-    dimension: conceptual
-    type: mc
-    role: basics
-    difficulty: 1
-    est_minutes: 1
-    prompt: "What is a batch gradient?"
-    options:
-      - {
-          id: a,
-          text: "The loss gradient contributed by one weight for a single training house.",
-          correct: false,
-          feedback: "That is a single-example gradient; a batch gradient combines several houses' contributions.",
-        }
-      - {
-          id: b,
-          text: "A list of predicted prices for every house in a training batch.",
-          correct: false,
-          feedback: "Those are batch predictions; a gradient records loss derivatives for parameters.",
-        }
-      - {
-          id: c,
-          text: "The combined gradient for the model's parameters from several training houses.",
-          correct: true,
-          feedback: "Processing the batch combines per-house slopes into one set of parameter derivatives.",
-        }
-      - {
-          id: d,
-          text: "The derivative of an activation output with respect to one score.",
-          correct: false,
-          feedback: "That is an activation slope for one score, not a batch of parameter gradients.",
-        }
-    solution: "A batch gradient combines the gradient information from several training houses processed together."
-  - id: bp-checking-basics
-    dimension: conceptual
-    type: mc
-    role: basics
-    difficulty: 1
-    est_minutes: 1
-    prompt: "What does a gradient check compare?"
-    options:
-      - {
-          id: a,
-          text: "The model's training loss compared with its held-out test loss.",
-          correct: false,
-          feedback: "That compares performance across data splits, not a derivative with a numerical estimate.",
-        }
-      - {
-          id: b,
-          text: "Two activation outputs calculated from the same weighted score.",
-          correct: false,
-          feedback: "That compares outputs; a gradient check compares derivative values from two methods.",
-        }
-      - {
-          id: c,
-          text: "A calculated derivative compared with a nearby numerical estimate.",
-          correct: true,
-          feedback: "Agreement between the analytic slope and nearby-value estimate supports the derivative calculation.",
-        }
-      - {
-          id: d,
-          text: "A model's weight vector compared with its vector of predicted prices.",
-          correct: false,
-          feedback: "Those vectors describe parameters and outputs, not two estimates of the same derivative.",
-        }
-    solution: "A gradient check compares a calculated derivative with a finite-difference estimate near the same parameter setting."
-  - id: bp-check-1
-    dimension: math
-    type: numeric
-    role: check
-    difficulty: 2
     est_minutes: 2
-    prompt: "A house-price network uses size $x = 2$ in hundreds of m² to predict a price in hundreds of thousands of pounds. It calculates $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$ and $L = (\\hat y - y)^2$, with $w_1 = 2$, $w_2 = 3$ and actual price $y = 4$. What is $\\partial L/\\partial w_2$?"
-    answer: 64
-    tolerance: { abs: 0.001 }
-    hints:
+    prompt: "What does backpropagation calculate?"
+    options:
       [
-        "Forward pass: $z = 4$, $h = 4$, $\\hat y = 12$.",
-        "$\\partial L/\\partial \\hat y = 2(12 - 4) = 16$; then multiply by $h$.",
+        {
+          "id": "a",
+          "text": "The loss slope for each parameter, by working backwards through operations.",
+          "correct": true,
+          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+        },
+        {
+          "id": "b",
+          "text": "The original inputs for each example, by undoing the forward operations.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Backward steps pass derivatives, not reconstructed inputs.",
+        },
+        {
+          "id": "c",
+          "text": "The next parameter values, by replacing the forward operations.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Computing slopes and updating parameters are separate tasks.",
+        },
       ]
-    solution: "The forward pass gives $z = 4$, $h = 4$ and $\\hat y = 12$. The loss's derivative for the prediction is $\\partial L/\\partial \\hat y = 16$. Multiplying by the local derivative $h = 4$ gives $\\partial L/\\partial w_2 = 16 \\cdot 4 = 64$."
-  - id: bp-faded-1
-    dimension: math
-    type: numeric
-    role: check
+    solution: "It applies the chain rule backwards to calculate parameter derivatives; it does not undo the prediction or update the parameters."
+  - id: "bp-reuse-reason"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, why is the loss slope 6 calculated only once at the total?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "Both dial routes share the same square operation after the total.",
+          "correct": true,
+          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+        },
+        {
+          "id": "b",
+          "text": "Both dials have the same local derivative before the total.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Their local derivatives are 2 and 1, not equal.",
+        },
+        {
+          "id": "c",
+          "text": "Both dials must receive the same final loss derivative.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Their final derivatives are 12 and 6.",
+        },
+      ]
+    solution: "The square depends on the shared total, so its derivative is reused before multiplying by each dial’s own local slope."
+  - id: "bp-reuse-local"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 3
+    prompt: "For the dial machine $z=2w+b$, the saved total is 3. The shared loss slope is $2z=6$. Complete the backward step: what is the loss slope for $w$?"
+    answer: 12
+    tolerance: { "abs": 0.001 }
+    solution: "Multiply the shared loss slope 6 by the local slope 2, giving 12."
+  - id: "bp-reuse-template"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
     difficulty: 2
     est_minutes: 3
-    prompt: "A house-price network uses size $x = 1$ in hundreds of m² and actual price $y = 10$ in hundreds of thousands of pounds. It calculates $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$ and $L = (\\hat y - y)^2$, with $w_1 = 2$ and $w_2 = 3$. The forward pass gives $\\hat y = 6$, so $\\partial L/\\partial \\hat y = 2(6 - 10) = -8$. What is $\\partial L/\\partial w_1$?"
-    answer: -24
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - {
-          answer: 24,
-          category: math_error,
-          feedback: "The prediction $\\hat y = 6$ is below the target 10, so $\\partial L/\\partial \\hat y$ is negative. The remaining factors here are positive, so the weight gradient must also be negative.",
-        }
-      - {
-          answer: -8,
-          category: incomplete_explanation,
-          feedback: "That is $\\partial L/\\partial \\hat y$. Continue through $w_2$, the ReLU gate and $x$.",
-        }
-    hints:
+    prompt: "A dial machine has $z={{a}}w+b$ and $L=z^2$. At $w={{w}}$ and $b=1$, what is $\\partial L/\\partial w$?"
+    answer_expr: "2 * (a * w + 1) * a"
+    tolerance: { "abs": 0.001 }
+    params: { "a": { "min": 1, "max": 3, "step": 1 }, "w": { "min": 1, "max": 3, "step": 1 } }
+    solution: "The square gives $2z$ and the total gives local slope {{a}}. Their product is {{= 2 * (a * w + 1) * a }}."
+  - id: "bp-reuse-branch"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Two parameters enter a shared total, which then feeds one square. Which plan avoids repeating the shared derivative?"
+    options:
       [
-        "$\\partial L/\\partial h = -8 \\cdot 3 = -24$.",
-        "ReLU is active ($z = 2 > 0$) and $x = 1$.",
+        {
+          "id": "a",
+          "text": "Differentiate the square once, then continue separately to each parameter.",
+          "correct": true,
+          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+        },
+        {
+          "id": "b",
+          "text": "Differentiate the square separately for every earlier parameter.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "That works mathematically but repeats the shared work.",
+        },
+        {
+          "id": "c",
+          "text": "Differentiate the square once, then copy it unchanged to every parameter.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "You still need each parameter’s local multiplier.",
+        },
       ]
-    solution: "Multiplying by $w_2 = 3$ gives $\\partial L/\\partial h = -24$. Since $z = 2$ is positive, ReLU's derivative is 1. The final multiplication by $x = 1$ leaves $\\partial L/\\partial w_1 = -24$."
+    solution: "Reuse the derivative at the total, then multiply by each incoming route’s local derivative."
+  - id: "bp-reuse-robot"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot’s score is $L=z^2$, where $z=3u+v$ and $u,v$ are adjustable settings. At $u=1,v=2$, what is the loss slope for $v$?"
+    answer: 10
+    tolerance: { "abs": 0.001 }
+    solution: "The saved total is 5, so the shared loss slope is 10. The local slope of $z$ with respect to $v$ is 1, leaving 10."
+  - id: "bp-by-hand-basics"
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "At one backward step, how do you pass an arriving loss slope through an operation?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "Multiply it by the operation’s local derivative.",
+          "correct": true,
+          "feedback": "The chain rule multiplies the arriving slope by the local derivative.",
+        },
+        {
+          "id": "b",
+          "text": "Multiply it by the operation’s saved output.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Saved values help evaluate the derivative but are not generally the derivative.",
+        },
+        {
+          "id": "c",
+          "text": "Add it to the operation’s local derivative.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The chain rule multiplies slopes along a route.",
+        },
+      ]
+    solution: "The chain rule multiplies the arriving loss slope by the local derivative of the operation."
+  - id: "bp-hand-reason"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Why does step 3 of the worked example multiply by 1 rather than by the saved ReLU output 2?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "ReLU has local slope 1 where its saved input is positive.",
+          "correct": true,
+          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+        },
+        {
+          "id": "b",
+          "text": "ReLU always has local slope 1, regardless of its saved input.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Its slope is 0 at negative inputs.",
+        },
+        {
+          "id": "c",
+          "text": "ReLU divides the arriving slope by the saved input 2.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "It passes the slope unchanged here; it does not divide by its input.",
+        },
+      ]
+    solution: "The saved score is positive, placing the operation on ReLU’s slope-1 branch."
+  - id: "bp-hand-partial"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 3
+    prompt: "An arriving loss slope is 6 at $h=\\operatorname{ReLU}(z)$. The saved score is $z=-2$. What loss slope reaches $z$?"
+    answer: 0
+    tolerance: { "abs": 0.001 }
+    solution: "The negative score selects local slope 0, so the passed-back slope is $6(0)=0$."
+  - id: "bp-hand-template"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A machine uses $z=wx$, $h=\\operatorname{ReLU}(z)$, $p=3h$ and $L=(p-t)^2$. At $w=1$, $x={{x}}$ and $t={{t}}$, what is $\\partial L/\\partial w$?"
+    answer_expr: "2 * (3 * x - t) * 3 * x"
+    tolerance: { "abs": 0.001 }
+    params: { "x": { "min": 1, "max": 3, "step": 1 }, "t": { "min": 1, "max": 5, "step": 1 } }
+    solution: "The score is positive, so the ReLU factor is 1. Multiply the error slope, output multiplier and input: $2(3x-t)\\cdot3\\cdot x={{=2*(3*x-t)*3*x}}$."
+  - id: "bp-hand-split"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A saved value feeds two later routes. Those routes send loss-slope contributions 6 and -2 back to it. What loss slope should you use before continuing to earlier operations?"
+    answer: 4
+    tolerance: { "abs": 0.001 }
+    solution: "Add contributions from every use of the value: $6+(-2)=4$. Multiplying would incorrectly treat the routes as consecutive operations."
+  - id: "bp-hand-robot"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot predicts a distance $p=2\\operatorname{ReLU}(wx)$ and uses loss $L=(p-3)^2$. With fixed sensor input $x=2$ and weight $w=1$, what is $\\partial L/\\partial w$?"
+    answer: 8
+    tolerance: { "abs": 0.001 }
+    solution: "The score is 2 and prediction is 4. The backward factors are $2(4-3)$, output multiplier 2, ReLU slope 1 and input 2, giving 8."
+  - id: "bp-arrays-basics"
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Several examples use the same weight. How do their loss-slope contributions combine?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "Add the contributions, with loss scaling already included.",
+          "correct": true,
+          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+        },
+        {
+          "id": "b",
+          "text": "Keep only the contribution from the last example.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Every use of a shared weight contributes to its derivative.",
+        },
+        {
+          "id": "c",
+          "text": "Multiply the contributions, with one factor per example.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Examples are separate uses, not consecutive chain-rule steps.",
+        },
+      ]
+    solution: "Shared parameters receive the sum of contributions from all examples; averaging, if required by the loss, is included once."
+  - id: "bp-array-reason"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Why does the worked example use $X^\\top G$ rather than average the entries of $G$ to find the weight slope?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "It multiplies each output slope by its input and adds the contributions.",
+          "correct": true,
+          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+        },
+        {
+          "id": "b",
+          "text": "It ignores the inputs and gives every output slope equal weight.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The input is each weight’s local multiplier.",
+        },
+        {
+          "id": "c",
+          "text": "It divides all output slopes by the number of input rows.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "A transpose swaps axes; it does not divide by the batch size.",
+        },
+      ]
+    solution: "Each row contributes its input times its output loss slope. Matrix multiplication adds exactly those products."
+  - id: "bp-array-bias"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 3
+    prompt: "For $p=wx+b$, two output loss slopes are 2 and 4, already scaled for the chosen loss. Complete the bias step: what is $\\partial L/\\partial b$?"
+    answer: 6
+    tolerance: { "abs": 0.001 }
+    solution: "The bias has local multiplier 1 in each row, so its derivative is $2+4=6$."
+  - id: "bp-array-template"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A batch uses $p=wx+b$ with inputs 1 and 2. Output loss slopes are {{g}} and {{q}}, already scaled for the loss. What is the weight derivative?"
+    answer_expr: "g + 2 * q"
+    tolerance: { "abs": 0.001 }
+    params: { "g": { "min": -2, "max": 2, "step": 1 }, "q": { "min": 1, "max": 3, "step": 1 } }
+    solution: "Sum input times output slope across rows: $1({{g}})+2({{q}})={{=g+2*q}}$."
+  - id: "bp-array-shape"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "With examples in rows, $X$ has shape $4\\times3$ and $G$ has shape $4\\times2$. What shape does $dW=X^\\top G$ have?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "$3\\times2$, one row per input and one column per output.",
+          "correct": true,
+          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+        },
+        {
+          "id": "b",
+          "text": "$4\\times2$, one row per example and one column per output.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The multiplication sums over examples, removing that dimension.",
+        },
+        {
+          "id": "c",
+          "text": "$2\\times3$, one row per output and one column per input.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "That is the transpose of the required weight-gradient shape.",
+        },
+      ]
+    solution: "The product has shapes $(3\\times4)(4\\times2)$, so the result is $3\\times2$."
+  - id: "bp-array-robot"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot uses one shared sensor weight on inputs 2 and 3. Backpropagation returns output loss slopes -1 and 2, already including the mean loss’s scaling. What is the weight slope?"
+    answer: 4
+    tolerance: { "abs": 0.001 }
+    solution: "Sum the two contributions: $2(-1)+3(2)=4$. Dividing again would count the mean-loss scaling twice."
+  - id: "bp-checking-basics"
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What does a gradient check compare?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "A backward derivative with a slope estimated from nearby losses.",
+          "correct": true,
+          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+        },
+        {
+          "id": "b",
+          "text": "A backward derivative with the current parameter value.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "A parameter setting is not a loss slope.",
+        },
+        {
+          "id": "c",
+          "text": "A backward derivative with the current prediction error.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The error omits the local multipliers along the path.",
+        },
+      ]
+    solution: "Finite differences estimate the same loss derivative independently by evaluating nearby parameter values."
+  - id: "bp-check-reason"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Why does the worked example divide the loss difference by 0.2 rather than 0.1?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The two tested weights, 0.9 and 1.1, are 0.2 apart.",
+          "correct": true,
+          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+        },
+        {
+          "id": "b",
+          "text": "The squared loss always doubles the chosen nudge size.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The denominator is the distance between weights, not a derivative rule for squaring.",
+        },
+        {
+          "id": "c",
+          "text": "The two losses must be averaged before comparing slopes.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "The numerator subtracts losses; it does not average them.",
+        },
+      ]
+    solution: "A central difference spans two nudges, from $w-\\varepsilon$ to $w+\\varepsilon$, a distance of $2\\varepsilon$."
+  - id: "bp-check-gap"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 3
+    prompt: "A check measures $L(w+0.1)=10.24$ and $L(w-0.1)=7.84$. The loss difference is 2.4 and the weight distance is 0.2. What is the estimated derivative?"
+    answer: 12
+    tolerance: { "abs": 0.001 }
+    solution: "Divide change in loss by change in weight: $2.4/0.2=12$."
+  - id: "bp-check-template"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 3
+    prompt: "For $L(w)=(2w+1)^2$, use a central difference at $w={{w}}$ with nudge 0.1. What derivative does the check estimate?"
+    answer_expr: "4 * (2 * w + 1)"
+    tolerance: { "abs": 0.001 }
+    params: { "w": { "min": 0, "max": 3, "step": 1 } }
+    solution: "The central difference of this quadratic equals its derivative $4(2w+1)={{=4*(2*w+1)}}$ in exact arithmetic."
+  - id: "bp-check-scaling"
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "On a smooth test case with four examples, finite differences give bias slope 8 but backward code gives 2. Other gradients agree. Which mistake explains this factor?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The bias code averages contributions that already include mean-loss scaling.",
+          "correct": true,
+          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+        },
+        {
+          "id": "b",
+          "text": "The bias code adds contributions that already include mean-loss scaling.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "Adding is correct once the loss scaling is included; it would give 8.",
+        },
+        {
+          "id": "c",
+          "text": "The bias code reverses the sign of each contribution before adding.",
+          "correct": false,
+          "category": "incorrect_reasoning",
+          "feedback": "A sign reversal would give -8, not 2.",
+        },
+      ]
+    solution: "An extra division by the four-example batch size turns 8 into 2; check for an extra mean in the bias code."
+  - id: "bp-check-robot"
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot’s calibration loss is $L(w)=(3w-1)^2$. At $w=1$, use nudge 0.1: $L(1.1)=5.29$ and $L(0.9)=2.89$. What central estimate should the backward derivative match?"
+    answer: 12
+    tolerance: { "abs": 0.001 }
+    solution: "The estimate is $(5.29-2.89)/0.2=12$, agreeing with $2(3w-1)\\cdot3$ at $w=1$."
+  - id: "bp-explain"
+    dimension: "conceptual"
+    type: "explain"
+    role: "core"
+    difficulty: 3
+    est_minutes: 5
+    prompt: "Explain how you would calculate and check all parameter slopes for a small network trained on several examples. Connect the saved forward values, backward steps, shared parameters and a two-sided nudge check."
+    rubric:
+      [
+        {
+          "id": "reuse",
+          "criterion": "Explain saving forward values and reusing loss slopes while multiplying local derivatives backwards.",
+          "weight": 0.4,
+          "required": true,
+        },
+        {
+          "id": "batch",
+          "criterion": "Explain adding contributions to shared parameters, with mean-loss scaling included only once.",
+          "weight": 0.3,
+          "required": true,
+        },
+        {
+          "id": "check",
+          "criterion": "Explain comparing a derivative to two-sided loss changes while keeping other parameters and data fixed.",
+          "weight": 0.3,
+          "required": true,
+        },
+      ]
+    exemplar: "Save intermediate values during the forward pass so local derivatives can be evaluated at those values. Work backwards from the loss, multiplying by local derivatives and adding contributions where routes or examples share a parameter; array products perform these sums and loss averaging is included once. For selected parameters, hold everything else fixed and compare the backward slope with the loss difference between equal positive and negative nudges divided by twice the nudge size."
   - id: dx-dl-4
     dimension: math
     type: numeric
     role: diagnostic
     difficulty: 3
     est_minutes: 4
-    prompt: "A robot's network predicts a signed movement $y$ in centimetres, where negative means backwards. The required movement is $t = 1$ cm. The network calculates $y = w_2\\,\\mathrm{ReLU}(w_1 x)$ and squared error $L = (y - t)^2$, with sensor input $x = 2$, $w_1 = 1.5$ and $w_2 = -1$. Compute $\\partial L/\\partial w_1$."
+    prompt: "A robot predicts signed movement $y=w_2\\operatorname{ReLU}(w_1x)$ in centimetres, where negative means backwards. Its target is $t=1$ and loss is $L=(y-t)^2$. At $x=2$, $w_1=1.5$ and $w_2=-1$, what is $\\partial L/\\partial w_1$?"
     answer: 16
     tolerance: { abs: 0.001 }
-    common_wrong:
-      - {
-          answer: -16,
-          category: math_error,
-          feedback: "Check the signs: $\\partial L/\\partial y = -8$ and $w_2 = -1$.",
-        }
-      - {
-          answer: 8,
-          category: incomplete_explanation,
-          feedback: "You stopped one step early: multiply by $\\partial z/\\partial w_1 = x = 2$.",
-        }
-    solution: "The forward pass gives $z = 3$, $h = 3$ and $y = -3$. Start the backward pass with $\\partial L/\\partial y = 2(-3 - 1) = -8$. Multiplying by $w_2 = -1$ gives $\\partial L/\\partial h = 8$. ReLU's derivative is 1 because $z > 0$. Finally, multiplying by $x = 2$ gives $\\partial L/\\partial w_1 = 16$."
-  - id: bp-shapes
-    dimension: implementation
-    type: mc
-    role: core
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A house-price network processes 64 houses, with one row per house and 100 inputs per row in `X`. Its 32-unit layer computes `Z = X @ W`, with `X.shape == (64, 100)` and `W.shape == (100, 32)`. The loss gradient `G = dL/dZ` has shape `(64, 32)`. Which expression gives `dL/dW`?"
-    options:
-      - { id: a, text: "`X.T @ G`", correct: true }
-      - {
-          id: b,
-          text: "`G @ X.T`",
-          correct: false,
-          category: implementation_error,
-          feedback: "Matrix multiplication requires the inner sizes to match. Here they are 32 and 100, so this product is not defined.",
-        }
-      - {
-          id: c,
-          text: "`G.T @ X`",
-          correct: false,
-          category: implementation_error,
-          feedback: "That gives shape (32, 100), the transpose of what you need.",
-        }
-      - {
-          id: d,
-          text: "`G @ W.T`",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "That is `dL/dX`, the gradient passed to the previous layer.",
-        }
-    hints: ["The gradient must have the same shape as `W`: (100, 32)."]
-    solution: "`X.T @ G` has shape (100,64)@(64,32) = (100,32), matching `W`."
-  - id: bp-complete-relu
-    dimension: implementation
-    type: code_complete
-    role: core
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A house-price network applies ReLU to each entry of `z1`, its saved input to that operation. For example, an input of -2 gives output 0, while 3 gives output 3. The array `g_h1` contains the loss derivatives for those outputs and has the same shape as `z1`. Complete the backward step that gives the loss derivatives for `z1`."
-    code: |
-      g_z1 = ____
-    accept:
-      [
-        "g_h1 * (z1 > 0)",
-        "(z1 > 0) * g_h1",
-        "g_h1 * (z1 > 0).astype(float)",
-        "np.where(z1 > 0, g_h1, 0)",
-        "np.where(z1 > 0, g_h1, 0.0)",
-        "g_h1 * (z1 >= 0)",
-      ]
-    solution: "`g_z1 = g_h1 * (z1 > 0)`: the gradient passes where the unit was active and is blocked elsewhere."
-  - id: bp-debug-bias
-    dimension: transfer
-    type: debug
-    role: transfer
-    difficulty: 3
-    est_minutes: 4
-    prompt: "A house-price network processes a batch of 64 houses. A gradient check estimates the bias gradient for `b1` as about 64 times the value returned by this backward code. The other gradients agree with the check. Which line is wrong, and what is the fix?"
-    code: |
-      g_y = 2 * (y_hat - y) / len(y)
-      dW2 = h1.T @ g_y
-      db2 = g_y.sum(axis=0)
-      g_h1 = g_y @ W2.T
-      g_z1 = g_h1 * (z1 > 0)
-      dW1 = X.T @ g_z1
-      db1 = g_z1.mean(axis=0)
-    buggy_line: 7
-    fix_options:
-      - {
-          id: a,
-          text: "`db1 = g_z1.sum(axis=0)`. The bias is shared by every row, so its gradient sums the per-example contributions",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "`db1 = g_z1.sum(axis=1)`",
-          correct: false,
-          feedback: "That adds across the units instead of across the houses. It gives one answer per house, shape `(B,)`, rather than one per bias, shape `(H,)`.",
-        }
-      - {
-          id: c,
-          text: "`db1 = g_z1`",
-          correct: false,
-          feedback: "Shape `(B, H)` does not match `b1`'s shape `(H,)`.",
-        }
-      - {
-          id: d,
-          text: "Divide `g_y` by `len(y)` a second time",
-          correct: false,
-          feedback: "That would make every gradient smaller, not fix `b1`.",
-        }
-    hints:
-      [
-        "A gradient off by exactly the batch size points to a mean that should be a sum (or the reverse).",
-        "Compare how `db2` is computed.",
-      ]
-    solution: "Here $B = 64$ is the number of houses. The division by $B$ in the mean loss is already included in `g_y`. Using `.mean` for `db1` divides by 64 a second time. Because the same bias affects every house, add all their contributions with `.sum(axis=0)`, just as the code does for `db2`."
-  - id: bp-review-why-cache
-    dimension: conceptual
-    type: mc
-    role: review
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A robot uses the same network to learn from 64 recorded images and, later, to predict a movement without changing its settings. Why does training need to keep more calculated values in memory than prediction alone, also called inference?"
-    options:
-      - {
-          id: a,
-          text: "The backward pass needs the forward pass's intermediate answers, so they are saved until the gradients are calculated",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "Gradients are larger than parameters",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Each gradient has the same shape as its parameter.",
-        }
-      - {
-          id: c,
-          text: "Training always stores every number with twice as many digits as prediction does",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "Saving twice as many digits is not a general rule for training; the extra memory comes from keeping intermediate values for the backward pass. Think about which values the chain rule needs.",
-        }
-    solution: "Local derivative rules use values from the forward pass. For example, a multiplication needs its inputs and ReLU needs to know which inputs were positive. Training saves those values for the batch until the backward pass has used them. Prediction alone does not need that later derivative calculation."
-  - id: bp-explain
-    dimension: conceptual
-    type: explain
-    role: core
-    difficulty: 3
-    est_minutes: 5
-    prompt: "A robot network has a million adjustable weights, and each prediction takes 10 milliseconds. Explain to an engineer who knows the chain rule how backpropagation finds the loss derivative for every weight without trying a separate prediction for each one. Include how it works and why it saves work."
-    rubric:
-      - {
-          id: r1,
-          criterion: "Problem: need the gradient of the loss with respect to every parameter to do gradient descent",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: r2,
-          criterion: "Mechanism: forward pass caches intermediates; backward pass goes in reverse order multiplying upstream gradient by local derivatives (chain rule), summing over branches",
-          weight: 3,
-          required: true,
-        }
-      - {
-          id: r3,
-          criterion: "Efficiency: all gradients in about the cost of one forward pass, versus one pass per parameter for finite differences",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r4,
-          criterion: "Mentions verifying with a numerical gradient check, or the memory cost of caching",
-          weight: 1,
-        }
-    exemplar: "Training needs to know how the loss changes with each weight so it can choose changes that reduce the error. The forward pass calculates the prediction and loss, saving the intermediate answers. The backward pass starts at the loss. At each node it multiplies the loss derivative received from later operations by that node's local derivative. When a value affects the loss along several paths, their contributions add. Each calculated derivative can serve all the earlier operations that need it, so one backward pass finds all the weight gradients. Trying a small change in each weight separately would require a million extra predictions. Saving the forward answers uses more memory, and comparing a few gradients with estimates from small weight changes can help check the code."
-  - id: bpp-why-every
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 1
-    prompt: "A robot's network reports a loss $L = 4$ after predicting where to put its gripper. Why does training also need $\\partial L/\\partial \\theta$ for every adjustable parameter $\\theta$, rather than just that loss value?"
-    options:
-      - {
-          id: a,
-          text: "Each parameter is moved using its own derivative of the loss",
-          correct: true,
-        }
-      - id: b
-        text: "The derivatives are needed to compute the loss itself"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The forward pass computes the loss. The derivatives say which way to move each parameter."
-      - id: c
-        text: "Only the last layer's parameters are trained"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Every parameter is trained, so every parameter needs its derivative."
-      - id: d
-        text: "The derivatives are only used to test the code"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "Training itself uses them: each step moves every parameter against its derivative."
-    solution: "Training moves each parameter a little in the direction that lowers the loss. That direction comes from $\\partial L/\\partial \\theta$, so every parameter needs its own derivative on every step."
-  - id: bpp-nudge-time
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "A robot's network has {{=N}} adjustable parameters, and one prediction takes {{=t}} milliseconds. Estimating every loss derivative by changing parameters one at a time needs one prediction for the starting loss plus one per parameter. How many **seconds** does that take?"
-    hints:
-      [
-        "Count the forward passes, multiply by the time per pass, then divide by 1,000 to turn ms into seconds.",
-      ]
-    solution: "Nudging needs {{=N}} + 1 = {{=N+1}} forward passes. At {{=t}} ms each that is {{=(N+1)*t}} ms, or {{=(N+1)*t/1000}} seconds, for one training step. Backprop needs one forward and one backward pass instead."
-    answer_expr: "(N + 1) * t / 1000"
-    params:
-      N: { min: 10000, max: 100000, step: 10000 }
-      t: { min: 2, max: 10 }
-    tolerance: { rel: 0.001 }
-    common_wrong:
-      - answer_expr: "(N + 1) * t"
-        category: math_error
-        feedback: "That is the time in milliseconds. Divide by 1,000 for seconds."
-  - id: bpp-keep-values
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 1
-    prompt: "A robot network calculates $q = w x$ with $w = 3$ and sensor reading $x = 2$. Why save the forward values for the backward pass rather than keep only the final loss?"
-    options:
-      - { id: a, text: "Local derivatives, like a multiply node's, depend on them", correct: true }
-      - id: b
-        text: "The backward pass recomputes the loss from them"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The loss is already known. The kept values are needed to work out local derivatives."
-      - id: c
-        text: "The kept values are the gradients themselves"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Kept values are outputs like $z$ and $h$. Gradients are computed from them during the backward pass."
-      - id: d
-        text: "The backward pass runs before the forward pass"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The forward pass comes first; the backward pass then uses its values."
-    solution: "A multiply node's local derivative is its other input, a square node's is twice its input and ReLU's depends on the sign of its input. All of these are forward values, so they're kept until the backward pass has used them."
-  - id: bpp-cost
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 1
-    prompt: "A robot's network has a million adjustable parameters. Before updating them, training needs every parameter's loss derivative. Roughly how many passes does backpropagation use to find them all?"
-    options:
-      - { id: a, text: "About one forward pass plus one backward pass", correct: true }
-      - id: b
-        text: "About one forward pass per parameter"
-        correct: false
-        category: misunderstood_definition
-        feedback: "That is the cost of changing one parameter at a time. Backpropagation reuses derivatives and saved values in one forward and one backward pass."
-      - id: c
-        text: "About one backward pass per parameter"
-        correct: false
-        category: misunderstood_definition
-        feedback: "One backward pass produces every parameter's gradient at once."
-      - id: d
-        text: "About one forward pass per layer per parameter"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The cost doesn't grow with the number of parameters this way: one forward and one backward pass give everything."
-    solution: "One forward pass keeps every value, and one backward pass, which costs about the same, gives every gradient. The number of parameters doesn't change the number of passes."
-  - id: bpp-exact
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "A house-price model's backward code reports a weight gradient of 8. You also estimate it by changing the weight by 0.01 and measuring the loss change. How does the kind of answer produced by backpropagation differ from the small-change estimate?"
-    options:
-      - { id: a, text: "Backprop gives exact derivatives; nudging estimates them", correct: true }
-      - id: b
-        text: "Backprop is a faster estimate of what nudging gives exactly"
-        correct: false
-        category: misunderstood_definition
-        feedback: "It's the other way round. Backprop applies the chain rule exactly; nudging measures a small but finite change."
-      - id: c
-        text: "They are the same method run in a different order"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Nudging reruns the network once per parameter. Backprop applies the chain rule backwards through one graph."
-      - id: d
-        text: "Both are estimates that improve with more passes"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Backprop isn't an estimate: it gives the chain rule's exact answer in one backward pass."
-    solution: "Backpropagation applies the chain rule to calculate derivatives, subject to computer rounding and the chosen rules at corners such as ReLU's zero input. Changing a weight by a finite amount estimates the derivative from nearby losses instead. The estimate is useful as an independent check, but repeating the extra predictions for every weight would be slow."
-  - id: bpp-upstream-rule
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "In the house-price model, the multiplication $\\hat y = w_2 h$ receives an upstream gradient of 4 from the loss calculation. What rule does this node use to calculate the loss derivative for each of its inputs?"
-    options:
-      - {
-          id: a,
-          text: "The upstream gradient times its local derivative for that input",
-          correct: true,
-        }
-      - id: b
-        text: "Its local derivative for that input, on its own"
-        correct: false
-        category: incomplete_explanation
-        feedback: "The local derivative only covers this node. Multiply it by the upstream gradient to connect it to the loss."
-      - id: c
-        text: "The upstream gradient plus its local derivative for that input"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Steps along a path multiply, as in the chain rule. Adding is only for separate paths."
-      - id: d
-        text: "The value it computed during the forward pass"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Forward values flow forwards. Going backwards, the node sends gradients."
-    solution: "The upstream gradient tells us how the loss changes when the node's output changes. The local derivative tells us how that output changes when an input changes. The chain rule multiplies the two to give the loss's derivative for that input."
-  - id: bpp-w2-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 3
-    prompt: "A house-price network takes size $x = {{=x}}$ in hundreds of m² and actual price $y = {{=y}}$ in hundreds of thousands of pounds. It calculates $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$ and $L = (\\hat y - y)^2$, with $w_1 = {{=w1}}$ and $w_2 = {{=w2}}$. What is $\\partial L/\\partial w_2$?"
-    hints:
-      - "Forward first: find $z$, $h$ and $\\hat y$."
-      - "$\\partial L/\\partial \\hat y = 2(\\hat y - y)$. At the node $\\hat y = w_2 h$, the local derivative for $w_2$ is $h$."
-    solution: "Forward: $z = {{=w1*x}}$, $h = {{=w1*x}}$, $\\hat y = {{=w2*w1*x}}$. Backward: $\\partial L/\\partial \\hat y = 2({{=w2*w1*x}} - {{=y}}) = {{=2*(w2*w1*x-y)}}$, then $\\partial L/\\partial w_2 = {{=2*(w2*w1*x-y)}} \\times h = {{=2*(w2*w1*x-y)}} \\times {{=w1*x}} = {{=2*(w2*w1*x-y)*w1*x}}$."
-    answer_expr: "2 * (w2 * w1 * x - y) * w1 * x"
-    params:
-      x: { min: 1, max: 3 }
-      w1: { min: 1, max: 3 }
-      w2: { min: 1, max: 4 }
-      y: { min: 1, max: 12 }
-    constraints: ["w2 * w1 * x != y", "w1 * x > 1", "w2 != w1 * x"]
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - answer_expr: "2 * (w2 * w1 * x - y)"
-        category: incomplete_explanation
-        feedback: "That is $\\partial L/\\partial \\hat y$. One more step: multiply by the local derivative for $w_2$, which is $h$."
-      - answer_expr: "2 * (w2 * w1 * x - y) * w2"
-        category: misapplied_technique
-        feedback: "That is $\\partial L/\\partial h$. At a multiply node the derivative for $w_2$ is the *other* input, $h$."
-  - id: bpp-gate-closed
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "A house-price network uses size $x = 2$ in hundreds of m² and actual price $y = 4$ in hundreds of thousands of pounds. Its calculations are $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$ and $L = (\\hat y - y)^2$, with $w_1 = -1$ and $w_2 = 3$. What is $\\partial L/\\partial w_1$?"
-    answer: 0
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - answer: -48
-        tolerance: { abs: 0.001 }
-        category: misapplied_technique
-        feedback: "That lets the gradient through ReLU. Here $z = -2 < 0$, so the gate $\\mathbf{1}[z > 0]$ is 0."
-    hints: ["Forward first: is $z$ positive?"]
-    solution: "Forward: $z = -2$, $h = 0$, $\\hat y = 0$. Backward: $\\partial L/\\partial \\hat y = -8$, $\\partial L/\\partial h = -24$, but $\\partial L/\\partial z = -24 \\cdot \\mathbf{1}[-2 > 0] = 0$. So $\\partial L/\\partial w_1 = 0 \\cdot x = 0$: the switched-off unit blocks the gradient."
-  - id: bpp-reverse-order
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "In the house-price network, the forward pass calculates $z = 2$, then $h = 2$, then prediction $\\hat y = 6$ and loss $L = 4$. Why must the backward pass start at the loss rather than calculate the gradients in that same forward order?"
-    options:
-      - {
-          id: a,
-          text: "Each node needs the upstream gradient from the nodes after it",
-          correct: true,
-        }
-      - id: b
-        text: "The inputs were the last values computed going forwards"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Inputs come first going forwards. Backwards, a node can only start once its upstream gradient is known."
-      - id: c
-        text: "Going backwards saves memory compared with going forwards"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "The order is forced by the chain rule: a node's gradient needs the upstream gradient first."
-      - id: d
-        text: "The order doesn't matter, as long as every node is visited"
-        correct: false
-        category: misunderstood_definition
-        feedback: "A node can't send gradients back until it has received its own upstream gradient."
-    solution: "A node multiplies its upstream gradient by its local derivatives. The upstream gradient comes from the nodes closer to the loss, so those must be done first."
-  - id: bpp-w1-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 3
-    prompt: "A house-price network takes size $x = {{=x}}$ in hundreds of m² and actual price $y = {{=y}}$ in hundreds of thousands of pounds. It calculates $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$ and $L = (\\hat y - y)^2$, with $w_1 = {{=w1}}$ and $w_2 = {{=w2}}$. What is $\\partial L/\\partial w_1$?"
-    hints:
-      - "Forward first. Then $\\partial L/\\partial h = 2(\\hat y - y) \\cdot w_2$."
-      - "$z > 0$ here, so ReLU passes the gradient. The last step multiplies by $x$."
-    solution: "Forward: $z = h = {{=w1*x}}$, $\\hat y = {{=w2*w1*x}}$. Backward: $\\partial L/\\partial \\hat y = {{=2*(w2*w1*x-y)}}$, $\\partial L/\\partial h = {{=2*(w2*w1*x-y)}} \\times {{=w2}} = {{=2*(w2*w1*x-y)*w2}}$, the ReLU gate is 1, and $\\partial L/\\partial w_1 = {{=2*(w2*w1*x-y)*w2}} \\times {{=x}} = {{=2*(w2*w1*x-y)*w2*x}}$."
-    answer_expr: "2 * (w2 * w1 * x - y) * w2 * x"
-    params:
-      x: { min: 2, max: 3 }
-      w1: { min: 1, max: 3 }
-      w2: { min: 2, max: 4 }
-      y: { min: 1, max: 12 }
-    constraints: ["w2 * w1 * x != y"]
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - answer_expr: "2 * (w2 * w1 * x - y) * w2"
-        category: incomplete_explanation
-        feedback: "That is $\\partial L/\\partial z$. The last node, $z = w_1 x$, scales by $x = {{=x}}$."
-      - answer_expr: "2 * (w2 * w1 * x - y) * x"
-        category: incomplete_explanation
-        feedback: "You skipped the node $\\hat y = w_2 h$, which scales the gradient by $w_2 = {{=w2}}$."
-  - id: bpp-branch-sum
-    dimension: math
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 1
-    prompt: "A robot's network uses a calculated value $h$ in two later movement calculations. In the backward pass, those two paths contribute gradients of 3 and -5 to $h$. What is the total loss derivative $\\partial L/\\partial h$?"
-    options:
-      - { id: a, text: "$-2$", correct: true }
-      - id: b
-        text: "$-15$"
-        correct: false
-        category: misapplied_technique
-        feedback: "Gradients from separate branches add; they don't multiply."
-      - id: c
-        text: "$3$"
-        correct: false
-        category: incomplete_explanation
-        feedback: "Both branches carry part of $h$'s effect on the loss, so both count."
-      - id: d
-        text: "$8$"
-        correct: false
-        category: math_error
-        feedback: "Add the gradients with their signs: $3 + (-5)$."
-    solution: "$h$ affects the loss along two paths, so you add what comes back along each: $3 + (-5) = -2$."
-  - id: bpp-grad-shape
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "A house-price network processes 32 houses with 10 inputs each, using four units in a layer. It calculates `Z = X @ W` with `X.shape == (32, 10)` and `W.shape == (10, 4)`. What shape must `dW`, the loss gradient for `W`, have?"
-    options:
-      - { id: a, text: "`(10, 4)`", correct: true }
-      - id: b
-        text: "`(32, 4)`"
-        correct: false
-        category: misunderstood_definition
-        feedback: "That is the shape of `Z` and of its gradient. `dW` matches `W`."
-      - id: c
-        text: "`(32, 10)`"
-        correct: false
-        category: misunderstood_definition
-        feedback: "That is the shape of `X`. A gradient has the shape of the thing it's the gradient of."
-      - id: d
-        text: "`(4, 10)`"
-        correct: false
-        category: implementation_error
-        feedback: "That is `W` transposed. `dW` must have exactly `W`'s shape so you can update `W` with it."
-    solution: "A gradient always has the same shape as its parameter, so `dW` is `(10, 4)`, one entry per entry of `W`."
-  - id: bpp-hadamard-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A house-price network has three ReLU units with inputs $Z = ({{=z1}}, {{=z2}}, {{=z3}})$. The loss derivatives for their outputs are $G_H = ({{=g1}}, {{=g2}}, {{=g3}})$. Calculate the loss derivatives for the inputs using $G_Z = G_H \\odot \\mathbf{1}[Z > 0]$, then give the **sum** of its three entries."
-    hints:
-      [
-        "$\\mathbf{1}[Z > 0]$ is 1 where an entry of $Z$ is positive and 0 elsewhere. Multiply it with $G_H$ entry by entry.",
-      ]
-    solution: "The gate is 1 for positive entries of $Z$ and 0 for negative ones, so each entry of $G_H$ is kept or zeroed. The kept entries add up to {{=g1*(z1 > 0 ? 1 : 0) + g2*(z2 > 0 ? 1 : 0) + g3*(z3 > 0 ? 1 : 0)}}."
-    answer_expr: "g1 * (z1 > 0 ? 1 : 0) + g2 * (z2 > 0 ? 1 : 0) + g3 * (z3 > 0 ? 1 : 0)"
-    params:
-      z1: { min: -3, max: 3 }
-      z2: { min: -3, max: 3 }
-      z3: { min: -3, max: 3 }
-      g1: { min: 1, max: 6 }
-      g2: { min: 1, max: 6 }
-      g3: { min: 1, max: 6 }
-    constraints: ["z1 != 0 and z2 != 0 and z3 != 0", "z1 < 0 or z2 < 0 or z3 < 0"]
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - answer_expr: "g1 + g2 + g3"
-        category: incomplete_explanation
-        feedback: "That ignores the gate. Units whose input was negative pass back 0."
-  - id: bpp-bias-code
-    dimension: implementation
-    type: code_complete
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A house-price network processes $B = 64$ houses through $H = 32$ units. The array `g_z1` contains the loss derivatives for their calculations, with shape `(B, H)`. The bias `b1`, shape `(H,)`, was added to every row of `X @ W1`. Complete its gradient calculation."
-    code: |
-      db1 = ____
-    accept: ["g_z1.sum(axis=0)", "g_z1.sum(0)", "np.sum(g_z1, axis=0)", "np.sum(g_z1, 0)"]
-    solution: "`db1 = g_z1.sum(axis=0)`. The bias is shared by every row, so its gradient adds up the rows, giving shape `(H,)`."
-  - id: bpp-weight-code
-    dimension: implementation
-    type: code_complete
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A house-price network processes $B = 64$ houses, with $d = 100$ inputs per house and $H = 32$ units. Its inputs `X` have shape `(B, d)`, its weights `W1` have shape `(d, H)`, and the loss derivatives `g_z1` have shape `(B, H)`. Complete the weight gradient."
-    code: |
-      dW1 = ____
-    accept:
-      [
-        "X.T @ g_z1",
-        "X.T.dot(g_z1)",
-        "np.dot(X.T, g_z1)",
-        "np.matmul(X.T, g_z1)",
-        "X.transpose() @ g_z1",
-      ]
-    solution: "`dW1 = X.T @ g_z1`: shapes `(d, B) @ (B, H)` give `(d, H)`, the shape of `W1`."
-  - id: bpp-pass-back
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A house-price network uses $H = 32$ calculated values per house to make a price prediction for each of $B = 64$ houses. Its output layer is `y_hat = h1 @ W2 + b2`, with `h1` of shape `(B, H)` and `W2` of shape `(H, 1)`. Given the loss derivatives `g_y` of shape `(B, 1)`, which line calculates the loss derivatives for `h1`?"
-    options:
-      - { id: a, text: "`g_h1 = g_y @ W2.T`", correct: true }
-      - id: b
-        text: "`g_h1 = h1.T @ g_y`"
-        correct: false
-        category: misunderstood_definition
-        feedback: "That is `dW2`, the gradient for the weights, with shape `(H, 1)`."
-      - id: c
-        text: "`g_h1 = g_y @ W2`"
-        correct: false
-        category: implementation_error
-        feedback: "Shapes don't fit: `(B, 1) @ (H, 1)` is undefined. Transpose `W2`."
-      - id: d
-        text: "`g_h1 = W2 @ g_y`"
-        correct: false
-        category: implementation_error
-        feedback: "Shapes don't fit: `(H, 1) @ (B, 1)` is undefined. `g_h1` must be `(B, H)`."
-    solution: "`g_h1` must have the shape of `h1`, `(B, H)`. Only `g_y @ W2.T`, `(B, 1) @ (1, H)`, gives that."
-  - id: bpp-why-bias-sum
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 1
-    prompt: "A house-price layer adds the same bias to every house's calculation. Two houses contribute 2 and 3 to its loss gradient, and these contributions already include the mean loss's division by the batch size. Why add them to give 5 rather than average them again to give 2.5?"
-    options:
-      - {
-          id: a,
-          text: "The same bias affects every example, and the loss's averaging factor is already in the upstream gradients",
-          correct: true,
-        }
-      - id: b
-        text: "Averaging again is necessary whenever the loss is a mean"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The upstream gradients already include division by the batch size. Averaging again divides twice."
-      - id: c
-        text: "Only the example with the largest error affects the shared bias"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The bias affects every row, so every row's contribution must be included."
-      - id: d
-        text: "Contributions from separate examples should multiply, like steps along a path"
-        correct: false
-        category: math_error
-        feedback: "These are separate routes from the shared bias to the loss. Separate routes add; successive steps multiply."
-    solution: "Changing the shared bias changes both houses' predictions, so both effects contribute to the loss. Adding the contributions gives $2 + 3 = 5$. Taking their average would divide by the batch size a second time, even though the division from the mean loss is already included."
-  - id: bpp-why-check-nudges
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 1
-    prompt: "A robot network has a million weights. To check one gradient, we change its weight by 0.01 in each direction and compare the two losses. Why is this finite-difference check useful for a few weights but unsuitable for calculating every gradient at every training step?"
-    options:
-      - {
-          id: a,
-          text: "Nudges independently estimate derivatives, but each checked parameter needs extra forward passes",
-          correct: true,
-        }
-      - id: b
-        text: "A decreasing loss proves every gradient is correct, so nudges are unnecessary"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The loss can drop even with a buggy gradient. A gradient check compares derivatives directly."
-      - id: c
-        text: "A numerical nudge computes exact derivatives, while backprop only approximates them"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The two losses estimate a slope over a small interval. Backpropagation instead applies derivative rules. Computer rounding can affect both methods, and a function with a corner needs a chosen rule at that point."
-      - id: d
-        text: "Agreement for one parameter proves the whole backward pass is correct"
-        correct: false
-        category: misunderstood_definition
-        feedback: "A check only supplies evidence for the parameter and input values tested. Other paths can still contain bugs."
-    solution: "Two nearby forward calculations estimate one parameter's derivative without using the backward code. Comparing the answers can reveal a mistake in that code. Checking a few parameters is affordable, but checking a million would require two million extra predictions at every step. Backpropagation finds all the gradients together in one backward pass."
-  - id: bpp-check-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "You are checking a weight gradient in a house-price network. Increasing weight $\\theta$ by 0.01 gives loss $L(\\theta + 0.01) = {{=Lp}}$, while decreasing it by 0.01 gives $L(\\theta - 0.01) = {{=Lm}}$. What is the finite-difference estimate of $\\partial L/\\partial \\theta$?"
-    hints: ["Subtract the two losses, then divide by $2\\epsilon = 0.02$."]
-    solution: "$\\frac{L(\\theta + \\epsilon) - L(\\theta - \\epsilon)}{2\\epsilon} = \\frac{ {{=Lp}} - {{=Lm}} }{0.02} = {{=(Lp-Lm)/0.02}}$."
-    answer_expr: "(Lp - Lm) / 0.02"
-    params:
-      Lp: { min: 3.1, max: 3.5, step: 0.01 }
-      Lm: { min: 3, max: 3.4, step: 0.01 }
-    constraints: ["Lp > Lm + 0.005"]
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - answer_expr: "(Lp - Lm) / 0.01"
-        category: math_error
-        feedback: "The two nudges are $2\\epsilon = 0.02$ apart, so divide by 0.02."
-      - answer_expr: "Lp - Lm"
-        category: incomplete_explanation
-        feedback: "That is the change in loss. Divide it by the size of the nudge, $2\\epsilon = 0.02$."
-  - id: bpp-sign-bug
-    dimension: transfer
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "In a house-price network, a gradient check estimates one weight's derivative as 8, but the backward code gives -8. Every other checked gradient also has the correct size and opposite sign. What is the likely bug?"
-    options:
-      - {
-          id: a,
-          text: "The loss derivative uses `y - y_hat` instead of `y_hat - y`",
-          correct: true,
-        }
-      - id: b
-        text: "A bias gradient uses a mean over rows instead of a sum"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "That makes only the bias gradients wrong, by a factor of the batch size, not every sign."
-      - id: c
-        text: "The ReLU gate `(z1 > 0)` is missing"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "That gives non-zero gradients for switched-off units; it doesn't flip every sign."
-      - id: d
-        text: "The nudge $\\epsilon$ in the check is too small"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "A tiny $\\epsilon$ can make the estimate noisy, but it won't flip every sign while keeping the size."
-    solution: "Every gradient flows from $\\partial L/\\partial \\hat y$ at the start of the backward pass. If it's $2(y - \\hat y)$ instead of $2(\\hat y - y)$, every gradient after it has its sign flipped."
-  - id: bpp-gate-bug
-    dimension: transfer
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "In a house-price network, some ReLU units received negative inputs `z1`, such as -2 and -3, for every house. The backward code gives the weights entering those units non-zero gradients, but a gradient check gives 0. Which line is most likely wrong?"
-    options:
-      - { id: a, text: "`g_z1 = g_h1`, missing the `* (z1 > 0)` gate", correct: true }
-      - id: b
-        text: "`db1 = g_z1.sum(axis=0)`, which should use a mean"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "The bias sum is correct, and it wouldn't affect the weight gradients."
-      - id: c
-        text: "`dW1 = X.T @ g_z1`, which should be `g_z1 @ X.T`"
-        correct: false
-        category: implementation_error
-        feedback: "Those shapes don't even fit. The problem is that switched-off units are passing gradient back."
-      - id: d
-        text: "`g_y = 2 * (y_hat - y) / len(y)`, which has the wrong sign"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "A sign bug would affect every gradient, not just units that were switched off."
-    solution: "For a negative input $z$, ReLU's output stays at 0 after a small input change, so its derivative is 0. Multiplication by `(z1 > 0)` sets the corresponding loss derivative to 0. If that multiplication is missing, the code incorrectly keeps the output's gradient for those inputs."
-  - id: bpp-batch-bug
-    dimension: transfer
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "A house-price network processes a batch of 32 houses. Its gradient check disagrees only for bias `b2`: the check's value is 32 times larger than the backward code's value. Which line is likely wrong?"
-    options:
-      - { id: a, text: "`db2 = g_y.mean(axis=0)`, which should be a sum", correct: true }
-      - id: b
-        text: "`dW2 = h1.T @ g_y`, which needs a transpose"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "`dW2` passes the check. The bug only affects the bias."
-      - id: c
-        text: "`g_z1 = g_h1 * (z1 > 0)`, which needs another gate"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "That line is in the first layer and wouldn't change `b2`."
-      - id: d
-        text: "`g_y = 2 * (y_hat - y) / len(y)`, which should not divide"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "Then every gradient would be wrong, not just `b2`. The division is right for a mean loss."
-    solution: "`g_y` already includes the $1/B$ from the mean loss. A mean over rows divides by $B = 32$ again. The bias is shared by every row, so add up the rows with `.sum(axis=0)`."
-  - id: bpp-check-w1
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 3
-    prompt: "The house-price network takes size $x = 1$ in hundreds of m² and true price $y = 4$ in hundreds of thousands of pounds. With $w_2 = 3$, its loss for positive $w_1$ is $L = (3w_1 - 4)^2$. At $w_1 = 2$, use a gradient check with $\\epsilon = 0.01$. What is the estimate of $\\partial L/\\partial w_1$?"
-    answer: 12
-    tolerance: { abs: 0.01 }
-    common_wrong:
-      - answer: 24
-        tolerance: { abs: 0.01 }
-        category: math_error
-        feedback: "Divide by $2\\epsilon = 0.02$, not by $\\epsilon = 0.01$."
-    hints: ["$L(2.01) = (6.03 - 4)^2$ and $L(1.99) = (5.97 - 4)^2$."]
-    solution: "$L(2.01) = 2.03^2 = 4.1209$ and $L(1.99) = 1.97^2 = 3.8809$. The estimate is $(4.1209 - 3.8809) \\div 0.02 = 12$, which matches backprop's $\\partial L/\\partial w_1 = 12$."
-  - id: bpp-forward-purpose
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "Which pass computes the prediction and loss before backpropagation begins?"
-    options:
-      - id: a
-        text: "The forward pass."
-        correct: true
-      - id: b
-        text: "The backward pass."
-        correct: false
-        feedback: "The backward pass uses the already computed loss to propagate derivatives."
-      - id: c
-        text: "The parameter update."
-        correct: false
-        feedback: "The parameter update uses gradients after the backward pass."
-    solution: |
-      The forward pass computes predictions, intermediate values and the loss. Backpropagation then uses those stored values.
-  - id: bpp-reuse-plan
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "Two weights in a house-price network affect the loss through the same later
-      activation. You need both weight gradients. Which plan both supplies the values
-      needed by local derivatives and avoids repeating the shared backward calculation?"
-    options:
-      - id: a
-        text: "Store forward values, then reuse the shared loss derivative while propagating backward to both weights."
-        correct: true
-      - id: b
-        text: "Store forward values, then rebuild the entire backward calculation separately for each weight."
-        correct: false
-        feedback: "This preserves the needed values but repeats the shared derivative calculation instead of reusing it."
-      - id: c
-        text: "Store only the final loss, then reuse the shared loss derivative while propagating backward to both weights."
-        correct: false
-        feedback: "The final loss alone does not supply the intermediate forward values needed by local derivatives."
-      - id: d
-        text: "Store forward values, then compute only the activation's loss derivative and use it for both weight gradients."
-        correct: false
-        feedback: "Each weight needs its own loss derivative. Continue backward through the intervening local derivatives."
-    solution: |
-      First store intermediate values during the forward pass so local derivatives have their inputs.
-      Then compute the shared activation's loss derivative once and reuse it while propagating
-      backward to each weight. This supplies a separate gradient for each weight without
-      rebuilding the shared part of the calculation.
-  - id: bpp-check-purpose
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "What does a finite-difference gradient check compare?"
-    options:
-      - id: a
-        text: "A backward-pass derivative with a nearby-loss estimate."
-        correct: true
-      - id: b
-        text: "A training prediction with its observed target."
-        correct: false
-        feedback: "That comparison measures prediction error, not agreement between derivative
-          calculations."
-      - id: c
-        text: "A current weight with its updated value."
-        correct: false
-        feedback: "That comparison measures an update, not whether a derivative calculation is
-          correct."
-    solution: |
-      A gradient check compares the derivative from backpropagation with an estimate from losses at nearby parameter values.
+    solution: "The score is 3 and output is -3. Multiply the error slope $2(-3-1)=-8$, output weight -1, ReLU slope 1 and input 2 to get 16."
