@@ -1,156 +1,268 @@
 concept: backpropagation
-version: 3
+version: 4
 objective: |
-  **Goal:** explain and compute how backpropagation finds loss gradients for all parameters in a house-price network.
+  **Goal:** reuse saved calculations to find every parameter's loss slope, combine slopes across examples, and check them with small nudges.
 where_this_fits: |
-  Computational graphs represented the house network as operations with local derivatives. Applying the chain rule separately to every weight repeats much of the same work. Backpropagation reuses each forward value and passes derivatives backward through the graph to compute all parameter gradients efficiently.
+  Training a model means changing its weights and biases to reduce its loss. You can already follow a chain of operations to find one weight's loss slope. But a network has many parameters, and tracing each one separately repeats the same calculations near the loss. This lesson organises that work so you can get all the slopes without starting again for each weight:
+
+  1. Save the forward values and reuse slopes on the way back.
+  2. Calculate the backward steps through a small network.
+  3. Combine contributions from several examples using arrays.
+  4. Check the calculated slopes against small parameter nudges.
 knowledge_points:
   - id: bp-why-backprop
-    title: Training needs one gradient for every parameter
+    title: Save once, reuse on the way back
     explain: |
-      **What backpropagation is.** It is a backward calculation that applies the chain rule through a network to find the loss derivative for each weight and bias.
+      **The question.** You can multiply local derivatives along a graph to find one parameter's loss slope. Must you start from the loss again for every other parameter?
 
-      **How it works.** A forward pass computes the house price and stores intermediate scores and activations. Starting from the loss, the backward pass propagates its derivative through each operation. Shared values are computed once, rather than rebuilding a separate derivative expression for every weight. Stored forward values supply the inputs to local derivatives, including the ReLU slope.
+      **Picture it.** Imagine a machine with two adjustable dials, $w$ and $b$. It doubles the first dial, adds the second, then squares the total. Call the total $z$ and the final score $L$. At $w=1$ and $b=1$, the total is 3 and the score is 9. Grey lines show forward dependencies; the blue arrow carries the shared loss slope back.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 150" aria-label="Two dials feed a shared total z equals 3 and loss L equals 9; shared slope 6 supplies both dial derivatives">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+      <text x="15" y="35">w = 1</text><text x="15" y="125">b = 1</text><text x="240" y="80">z = 3</text><text x="485" y="80">L = 9</text>
+      <path d="M80 30 L230 72 M80 120 L230 80 M310 75 H475" stroke="#737373" fill="#171717" fill-opacity="0"/>
+      <text x="115" y="30">× 2</text><text x="365" y="55">square</text>
+      <path d="M470 95 H320 l10 -5 m-10 5 l10 5" stroke="#3b82f6" fill="#171717" fill-opacity="0"/>
+      <text x="345" y="125" fill="#3b82f6">shared loss slope 6</text>
+      </g>
+      </svg>
+      ```
 
-      **Why this is useful.** Backpropagation supplies all slopes needed to train the same house-price network without repeating the full calculation for each parameter.
+      **The idea.** Both dials affect the same total $z$, so calculate its loss slope once and reuse it for both dials. **Backpropagation** is the reverse application of the chain rule through a computational graph to find the loss derivative for every parameter. The forward pass saves intermediate values; the backward pass uses them to evaluate local derivatives. In $\partial L/\partial z$, the symbol $\partial$ denotes a partial derivative: the loss slope when only $z$ changes.
+
+      **Common confusion.** “Going backwards means undoing the prediction.” No: you pass rates of change backwards, not original inputs. You keep the forward values until their local derivatives have been calculated; the backward pass itself does not change the dials.
     worked: |
-      This example shows the calculation.
-      The forward pass stores:
+      **Worked example.** This example shows one shared slope supplying both dial derivatives.
 
-      $$
-      \begin{aligned}
-      z &= 1.2,\\
-      h &= 1.2,\\
-      \hat y &= 324.5,\\
-      L &= 30.25.
-      \end{aligned}
-      $$
+      1. Save the total and score.
 
-      The backward pass starts with:
+      $$z=2(1)+1=3$$
 
-      $$dL/d\hat y=2(324.5-330)=-11.$$
+      $$L=z^2=9$$
 
-      It uses the stored values to continue toward earlier weights.
+      2. Find how loss changes with the total: the slope of $L=z^2$ is $2z$.
+
+      $$\frac{\partial L}{\partial z}=2z=6$$
+
+      3. Find each dial's loss slope. Multiply by the local slope of $z=2w+b$: 2 for $w$ and 1 for $b$.
+
+      $$\frac{\partial L}{\partial w}=6\cdot2=12$$
+
+      $$\frac{\partial L}{\partial b}=6\cdot1=6$$
+
+      **Compare cases.** Keep the other dial fixed in each row so the slope measures only the named dial's effect.
+
+      | Dial you change | Local slope of total | Loss slope |
+      | --- | --- | --- |
+      | $w$ | 2 | 12 |
+      | $b$ | 1 | 6 |
+
+      **Where it shows up.** A network's weights share many later operations. Reusing their loss slopes avoids recalculating the same part of the chain for each weight.
     problems:
       [
         bp-why-backprop-basics,
-        bpp-exact,
-        bpp-forward-purpose,
-        bpp-reuse-plan,
-        bpp-why-every,
-        bpp-nudge-time,
-        bpp-keep-values,
-        bpp-cost,
+        bp-reuse-reason,
+        bp-reuse-local,
+        bp-reuse-template,
+        bp-reuse-branch,
+        bp-reuse-robot,
       ]
   - id: bp-by-hand
     title: Compute one weight gradient backward
     explain: |
-      **What a backward pass is.** It propagates a derivative from the loss toward earlier operations, multiplying by each local derivative.
+      **The question.** How do you continue the backward calculation when the machine includes an activation that can block a change?
 
-      **How it works.** Use the following equations for area $a=12$:
+      **Picture it.** ReLU acts like a gate: it passes positive scores unchanged and replaces negative scores with zero. First multiply fixed input $x=2$ by adjustable weight $w=1$, giving score $z=wx=2$. Then apply ReLU, giving its output $h=2$. Multiply that by 3 to get prediction $p=6$, and compare it with target $t=5$ using squared loss $L=(p-t)^2$. The diagram shows saved values, not slopes.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 150" aria-label="Forward values through multiply, ReLU, multiply and squared error">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+      <text x="10" y="65">x = 2</text><text x="140" y="65">z = 2</text><text x="270" y="65">h = 2</text><text x="400" y="65">p = 6</text><text x="525" y="65">L = 1</text>
+      <path d="M70 60 H130 l-8 -4 m8 4 l-8 4 M200 60 H260 l-8 -4 m8 4 l-8 4 M330 60 H390 l-8 -4 m8 4 l-8 4 M460 60 H515 l-8 -4 m8 4 l-8 4" stroke="#737373" fill="#171717" fill-opacity="0"/>
+      <text x="75" y="35">× w</text><text x="205" y="35">ReLU</text><text x="335" y="35">× 3</text><text x="465" y="35">(p − 5)²</text>
+      <text x="130" y="115" fill="#3b82f6">Backward: pass loss slopes towards earlier values</text>
+      </g>
+      </svg>
+      ```
 
-      $$
-      \begin{aligned}
-      z &= wa,\\
-      h &= \operatorname{ReLU}(z),\\
-      \hat y &= 15h+306.5,\\
-      L &= (\hat y-330)^2.
-      \end{aligned}
-      $$
+      **The idea.** At each operation, multiply the arriving loss slope by that operation's local slope. A **backward step** converts the loss derivative with respect to an operation's output into the derivative with respect to an input. If a value feeds two later operations, changing it affects the loss through both routes: add their loss-slope contributions before continuing. For ReLU the local slope is 1 at positive scores and 0 at negative scores. At zero those slopes meet without a single slope; our calculation uses 0 there by convention.
 
-      At $w=0.1$, the forward values are:
-
-      $$
-      z=h=1.2,\qquad \hat y=324.5.
-      $$
-
-      Then the backward pass gives:
-
-      $$
-      \begin{aligned}
-      dL/d\hat y &= -11,\\
-      dL/dh &= -11(15)=-165,\\
-      dL/dw &= -165(1)(12)=-1980.
-      \end{aligned}
-      $$
-
-      Multiplying local derivatives in reverse order passes the loss sensitivity to each operation's immediate input.
-
-      **Why this is useful.** The resulting weight slope tells gradient descent how this house's error changes when the network weight changes.
+      **Common confusion.** “The ReLU slope is its saved output.” No: at score 2 the output is 2, but the slope is 1. The saved score tells you which side of the gate you are on, not what number to multiply by directly.
     worked: |
-      This example shows the calculation.
-      $$\frac{\partial L}{\partial w}=\frac{\partial L}{\partial\hat y}\frac{\partial\hat y}{\partial h}\frac{\partial h}{\partial z}\frac{\partial z}{\partial w}=(-11)(15)(1)(12)=-1980.$$
+      **Worked example.** This example shows how the saved positive score leads back to the weight.
+
+      1. Start at the squared error.
+
+      $$\frac{\partial L}{\partial p}=2(p-t)=2(6-5)=2$$
+
+      2. Find the loss slope for $h$: multiply by the local slope of $p=3h$, which is 3.
+
+      $$\frac{\partial L}{\partial h}=2\cdot3=6$$
+
+      3. Pass through ReLU: the positive score selects local slope 1.
+
+      $$\frac{\partial L}{\partial z}=6\cdot1=6$$
+
+      4. Find the weight's loss slope: multiply by the local slope of $z=wx$ with respect to $w$, which is the fixed input $x=2$.
+
+      $$\frac{\partial L}{\partial w}=6\cdot2=12$$
+
+      **Compare cases.** For an arriving loss slope of 6:
+
+      | Saved score | ReLU local slope | Loss slope passed back |
+      | --- | --- | --- |
+      | 2 | 1 | 6 |
+      | -2 | 0 | 0 |
+      | 0 | 0 by our convention | 0 |
+
+      **Where it shows up.** A neural network repeats these same local steps through its layers. Each weight receives a loss slope, rather than a new prediction.
     problems:
       [
         bp-by-hand-basics,
-        bpp-upstream-rule,
-        bpp-reverse-order,
-        bpp-w2-template,
-        bpp-w1-template,
-        bpp-gate-closed,
-        bpp-branch-sum,
+        bp-hand-reason,
+        bp-hand-partial,
+        bp-hand-template,
+        bp-hand-split,
+        bp-hand-robot,
       ]
   - id: bp-arrays
-    title: Backpropagate a batch with matrix operations
+    title: Combine example contributions with arrays
     explain: |
-      **What a batch gradient is.** It is the loss gradient for several training examples at once: the per-example gradients added together, computed with a few matrix operations instead of one example at a time. Here each example is one training house.
+      **The question.** If several examples use the same weight and bias, how do their backward contributions become one slope per parameter?
 
-      **How it works.** A batch contains $B$ houses. Let $d_{\rm in}$ be the number of input features and $d_{\rm out}$ the number of outputs. Define matrix $X$ with one input row per house, and matrix $G$ with one output-error row per house. Their shapes are $B\times d_{\rm in}$ and $B\times d_{\rm out}$.
+      **Picture it.** Use $p=wx+b$ on two inputs. Stack them in column $X$, one example per row:
 
-      The weight-gradient matrix $dW$ is $X^\top G$, where $X^\top$ means $X$ with its rows and columns swapped. Its shape changes from $B\times d_{\rm in}$ to $d_{\rm in}\times B$. The inner dimensions then match in $(d_{\rm in}\times B)(B\times d_{\rm out})$, so $dW$ has shape $d_{\rm in}\times d_{\rm out}$, matching the weights. Summing each column of $G$ gives the bias gradients because the same bias is used for every house.
+      $$X=\begin{pmatrix}1\\2\end{pmatrix}$$
 
-      Let $z$ be a unit's score before ReLU. ReLU has slope 1 where $z>0$ and 0 elsewhere. The indicator $\mathbf{1}[z>0]$ records those slopes for all units, and $\odot$ multiplies matching entries to apply the mask entry by entry.
+      The backward calculation has found loss slopes 2 and 4 for the predictions; stack these in column $G$. For a mean loss, these slopes already include division by the example count.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 150" aria-label="Two example contributions to a shared weight add: 1 times 2 plus 2 times 4 equals 10">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+      <text x="20" y="30">input</text><text x="160" y="30">output slope</text><text x="350" y="30">weight contribution</text>
+      <text x="35" y="65">1</text><text x="200" y="65" fill="#3b82f6">2</text><text x="380" y="65" fill="#3b82f6">1 × 2 = 2</text>
+      <text x="35" y="100">2</text><text x="200" y="100" fill="#3b82f6">4</text><text x="380" y="100" fill="#3b82f6">2 × 4 = 8</text>
+      <path d="M80 60 H145 M260 60 H340 M80 95 H145 M260 95 H340" stroke="#737373"/>
+      <text x="350" y="140" fill="#3b82f6">add: weight slope 10</text>
+      </g>
+      </svg>
+      ```
 
-      **Why this is useful.** Matrix backpropagation computes house-network gradients for many sales without a separate manual calculation for each row.
+      **The idea.** Add contributions wherever a parameter is shared. A **batch gradient** gives one loss slope per parameter for a group of examples. Here the weight contributions are input times output slope: $1(2)$ and $2(4)$. Transposing $X$, written $X^\top$, turns its column into a row. Multiplying that row by column $G$ adds those matching products. For several inputs and outputs, the same operation gives the weight-gradient array $dW=X^\top G$: slopes, not parameter changes.
+
+      A bias adds equally to every prediction: its local slope is 1. Add down its output's column of $G$, here $2+4$, to get the bias slope.
+
+      ReLU uses one local slope per saved score. The **indicator** $\mathbf{1}[z>0]$ reads “1 if score $z$ is greater than zero, otherwise 0”. For arrays, $\odot$ multiplies matching entries without summing.
+
+      **Common confusion.** “Always average gradients at the end.” No: if $G$ already includes mean-loss scaling, dividing again makes slopes too small by the example count.
     worked: |
-      This example shows the calculation.
-      With $B=2$, $d_{\rm in}=3$ house features and $d_{\rm out}=2$ hidden units:
+      **Worked example.** This example combines two rows without dividing their already-scaled slopes again.
 
-      $$X^\top\text{ has shape }3\times2.$$
+      1. Arrange inputs and output slopes by row.
 
-      $$G\text{ has shape }2\times2.$$
+      $$X=\begin{pmatrix}1\\2\end{pmatrix}$$
 
-      Thus:
+      $$G=\begin{pmatrix}2\\4\end{pmatrix}$$
 
-      $$dW=X^\top G\text{ has shape }3\times2,$$
+      2. Turn the input column into a row so multiplication pairs each input with its own output slope.
 
-      matching $W$.
+      $$X^\top=\begin{pmatrix}1&2\end{pmatrix}$$
+
+      $$dW=X^\top G=1(2)+2(4)$$
+
+      $$dW=2+8=10$$
+
+      3. Add bias contributions: changing the bias changes each prediction by the same amount.
+
+      $$\frac{\partial L}{\partial b}=1(2)+1(4)=6$$
+
+      4. Apply ReLU slopes separately if passing through a ReLU layer. For saved scores $(2,-2)$ the local slopes $\mathbf{1}[z>0]$ are $(1,0)$, so arriving loss slopes $(6,6)$ become:
+
+      $$(6,6)\odot(1,0)=(6\cdot1,6\cdot0)$$
+
+      $$=(6,0)$$
+
+      **Compare cases.** These shapes use one example per row.
+
+      | Inputs $X$ | Output slopes $G$ | Weight slopes $X^\top G$ |
+      | --- | --- | --- |
+      | $2\times1$ | $2\times1$ | $1\times1$ |
+      | $2\times3$ | $2\times1$ | $3\times1$ |
+      | $2\times3$ | $2\times2$ | $3\times2$ |
+
+      **Where it shows up.** Array operations calculate a network's batch gradients without a separate loop for every weight. The result has the same shape as the weights it describes.
     problems:
       [
         bp-arrays-basics,
-        bpp-grad-shape,
-        bpp-hadamard-template,
-        bpp-bias-code,
-        bpp-weight-code,
-        bpp-pass-back,
-        bpp-why-bias-sum,
+        bp-array-reason,
+        bp-array-bias,
+        bp-array-template,
+        bp-array-shape,
+        bp-array-robot,
       ]
   - id: bp-checking
-    title: Check gradients against small parameter nudges
+    title: Check slopes with small parameter nudges
     explain: |
-      **What a gradient check is.** It compares a calculated derivative with a finite-difference estimate from nearby parameter values.
+      **The question.** A backward calculation returns a number, but how can you tell whether a sign, multiplier or batch scaling is wrong?
 
-      **How it works.** For one house-model weight $w$, estimate $\partial L/\partial w$ with $[L(w+h)-L(w-h)]/(2h)$ for a small $h$. Compare that value with backpropagation's result. Use the same inputs, loss and parameters in both calculations. A central difference samples both sides of the parameter and is usually more accurate than a one-sided nudge.
+      **Picture it.** Return to the two-dial machine with $L=(2w+b)^2$ and fix $b=1$. Near $w=1$, compare the loss just to the left and just to the right. The graph uses horizontal position for the weight and vertical position for loss; the blue line joins the two nearby measurements. Its slope estimates the loss slope at the middle.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 245" aria-label="Loss (2w plus 1) squared near w equals 1 with two-sided measurements 7.84 and 10.24">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M50 200 H420 M50 200 V20" stroke="#737373" fill="#171717" fill-opacity="0"/>
+      <path d="M50 160 Q230 112 410 40" stroke="#737373" stroke-width="2" fill="#171717" fill-opacity="0"/>
+      <path d="M170 125.333333 L290 85.333333" stroke="#3b82f6" stroke-width="2"/>
+      <circle cx="170" cy="125.333333" r="4" fill="#3b82f6"/><circle cx="290" cy="85.333333" r="4" fill="#3b82f6"/><circle cx="230" cy="106" r="4" fill="#171717"/>
+      <text x="162" y="113.333333" text-anchor="end">7.84</text><text x="300" y="109.333333">10.24</text><text x="238" y="130">L = 9</text>
+      <text x="155" y="220">0.9</text><text x="225" y="220">1</text><text x="280" y="220">1.1</text><text x="400" y="235">w</text><text x="15" y="25">loss</text>
+      </g>
+      </svg>
+      ```
 
-      **Why this is useful.** A gradient check catches implementation mistakes before they affect training on house sales.
+      **The idea.** Compare the calculated slope with a slope measured from nearby losses. Dividing a change in loss by a small change in a parameter gives a **finite-difference estimate** of its derivative. A **gradient check** compares this estimate with backpropagation's derivative, keeping inputs, targets and other parameters fixed. A **central difference** measures the loss at equal distances below and above the current parameter, then divides their loss difference by the full distance between them. For weight $w$ and positive nudge size $\varepsilon$ (epsilon), it is:
+
+      $$\frac{L(w+\varepsilon)-L(w-\varepsilon)}{2\varepsilon}$$
+
+      **Common confusion.** “A smaller nudge always gives a better check.” No: extremely small differences can lose accuracy in computer arithmetic. Try several modestly small sizes. Avoid nudges across ReLU's zero score: its slope jumps there, so the estimate mixes two slopes. Agreement supports the implementation at the tested points, not a proof that every case is correct.
     worked: |
-      This example shows the calculation.
-      For a smooth loss, reduce $h$ and compare the finite-difference estimate with the backward derivative. Agreement to a small tolerance supports the implementation; a sign or shape mismatch points to a bug.
+      **Worked example.** This example checks the backward weight slope 12 with both dials initially at 1.
+
+      1. Choose a nudge and recompute the two losses with $b=1$ fixed.
+
+      $$\varepsilon=0.1$$
+
+      $$L(1.1)=(2(1.1)+1)^2=10.24$$
+
+      $$L(0.9)=(2(0.9)+1)^2=7.84$$
+
+      2. Divide the loss difference by the distance between the two tested weights: they are two nudges apart, so the distance is $2\varepsilon=0.2$.
+
+      $$\frac{10.24-7.84}{0.2}=12$$
+
+      3. Compare with the backward result.
+
+      $$\frac{\partial L}{\partial w}=2(2w+b)\cdot2=12$$
+
+      **Compare cases.** Both nudge sizes give the expected slope here.
+
+      | Nudge size | Central estimate | Backward result |
+      | --- | --- | --- |
+      | 0.1 | 12 | 12 |
+      | 0.01 | 12 | 12 |
+
+      **Where it shows up.** Check a few network parameters before trusting a new backward implementation. If the backward slope and the estimate differ by a factor equal to the number of examples, the mean was probably divided twice or not at all.
     problems:
       [
         bp-checking-basics,
-        bpp-check-purpose,
-        bpp-check-template,
-        bpp-check-w1,
-        bpp-why-check-nudges,
-        bpp-sign-bug,
-        bpp-gate-bug,
-        bpp-batch-bug,
+        bp-check-reason,
+        bp-check-gap,
+        bp-check-template,
+        bp-check-scaling,
+        bp-check-robot,
       ]
 final: bp-explain
 summary: |
-  - Backpropagation reuses forward values and applies the chain rule from loss to every parameter.
-  - Matrix operations compute gradients for whole batches of houses.
-  - Finite differences can check that a backward implementation gives the right slopes.
+  - Backpropagation saves forward values and reuses shared loss slopes to reach every parameter.
+  - Each backward step multiplies by a local slope, and shared routes contribute a sum.
+  - Batch gradients add example contributions with array operations, including loss averaging only once.
+  - Small two-sided parameter nudges check whether calculated loss slopes agree with measured ones.
 
-  **Next:** Automatic differentiation lets software compute these same derivatives for larger models.
+  **Next:** You will see how software records the operations and calculates their derivatives for you.

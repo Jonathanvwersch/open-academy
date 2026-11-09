@@ -467,7 +467,7 @@ test('authored course-structure lessons render their diagrams', async ({ page })
       'Backpropagation',
       'Compute one weight gradient backward',
       'bp-by-hand',
-      ['How it works.', 'This example shows'],
+      ['The idea.', 'Worked example.'],
     ],
     [
       'chain-rule',
