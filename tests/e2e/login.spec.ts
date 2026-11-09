@@ -1,10 +1,21 @@
+import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
+const brandScreenshotDir = '/home/ubuntu/screenshots/brand';
+mkdirSync(brandScreenshotDir, { recursive: true });
+
 test('password login remembers the session and logout requires login again', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/course');
   await expect(page).toHaveURL(/\/login\?redirect=%2Fcourse$/);
+  await expect(page).toHaveTitle('Open Academy');
+  await expect(page.getByRole('heading', { name: 'Open Academy', exact: true })).toBeVisible();
+  await page.screenshot({
+    path: `${brandScreenshotDir}/login-desktop.png`,
+    fullPage: true,
+  });
 
   const password = page.getByLabel('Password');
   await password.fill('wrong-password');

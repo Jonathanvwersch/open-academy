@@ -18,6 +18,7 @@ import { env } from '../../src/server/env.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const screenshotDir = '/home/ubuntu/screenshots/learn-course';
+const brandScreenshotDir = '/home/ubuntu/screenshots/brand';
 const courseStructureScreenshotDir = '/home/ubuntu/screenshots/course-structure';
 const courseStructureBatch1ScreenshotDir = `${courseStructureScreenshotDir}/batch1`;
 const courseStructureBatch2ScreenshotDir = `${courseStructureScreenshotDir}/batch2`;
@@ -26,6 +27,7 @@ const mathLinesScreenshotDir = '/home/ubuntu/screenshots/math-lines';
 const courseComingSoonScreenshotDir = '/home/ubuntu/screenshots/course-coming-soon';
 const navCleanupScreenshotDir = '/home/ubuntu/screenshots/nav-cleanup';
 mkdirSync(screenshotDir, { recursive: true });
+mkdirSync(brandScreenshotDir, { recursive: true });
 mkdirSync(courseStructureScreenshotDir, { recursive: true });
 mkdirSync(courseStructureBatch1ScreenshotDir, { recursive: true });
 mkdirSync(courseStructureBatch2ScreenshotDir, { recursive: true });
@@ -439,10 +441,22 @@ async function hideTutorLauncher(page: Page) {
 }
 
 test('a fresh learner sees Home onboarding without XP', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
+  await expect(page).toHaveTitle('Open Academy');
   await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Welcome to Academy' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Welcome to Open Academy' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Start diagnostic' })).toBeVisible();
+  await page.screenshot({
+    path: `${brandScreenshotDir}/home-desktop.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${brandScreenshotDir}/home-mobile.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.screenshot({ path: `${screenshotDir}/learn-fresh.png`, fullPage: true });
 });
 

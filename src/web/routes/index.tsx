@@ -52,7 +52,7 @@ function LearnPage() {
         <h1 className="sr-only">Home</h1>
         <Card>
           <CardHeader>
-            <CardTitle>Welcome to Academy</CardTitle>
+            <CardTitle>Welcome to Open Academy</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="max-w-[70ch] text-base leading-7 text-muted-foreground">

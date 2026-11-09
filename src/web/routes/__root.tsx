@@ -7,6 +7,7 @@ import {
   useRouterState,
 } from '@tanstack/react-router';
 import { Button } from '@/ui/button.js';
+import { Logo } from '@/ui/logo.js';
 import { Skeleton } from '@/ui/skeleton.js';
 import { TooltipProvider } from '@/ui/tooltip.js';
 import { authQueryOptions } from '../queries.js';
@@ -61,8 +62,12 @@ function RootLayout() {
         >
           <header className="border-b bg-background">
             <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between gap-4 px-4 sm:px-6">
-              <Link to="/" className="hidden text-sm font-semibold tracking-tight sm:block">
-                Academy
+              <Link
+                to="/"
+                className="hidden items-center gap-2 text-sm font-semibold tracking-tight sm:flex"
+              >
+                <Logo className="size-5" />
+                Open Academy
               </Link>
               <nav
                 aria-label="Main navigation"
