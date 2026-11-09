@@ -3,41 +3,56 @@ version: 4
 objective: |
   **Goal:** explain what the gradient tells you, find the slope in any chosen direction, and show why its negative gives the steepest local decrease.
 where_this_fits: |
-  Partial derivatives give the slope when one input changes and the others stay fixed; vectors and the dot product let us collect slopes and measure how much two directions agree. This lesson combines those ideas to find slopes in any direction and choose the steepest uphill or downhill direction.
+  A model learns by nudging its weights so that its loss gets smaller. With one weight, the derivative tells you which way to nudge. The partial-derivatives lesson gave you one slope per weight, but a real model moves all its weights at once, and the separate slopes don't directly tell you the best combined move. This lesson builds the tool that does, the **gradient**, in three steps:
+
+  1. Collect all the slopes at a point into one vector.
+  2. Use that vector to get the slope in any direction you choose.
+  3. Find the direction that goes downhill fastest.
+
+  That direction is what the next lesson, gradient descent, follows.
 knowledge_points:
   - id: grad-vector-of-partials
     title: The gradient collects the slopes
     explain: |
-      **The question.** For $f(x,y)=x^2+2y^2$ at $P=(1.5,1)$, the partial derivatives tell you how $f$ changes when only $x$ moves or only $y$ moves. How can you describe both slopes at $P$ in one object?
+      **The question.** Picture the loss of a model with just two weights, $x$ and $y$, as a landscape: above each point $(x,y)$ on a map, the height of the ground is the loss. Training means walking downhill. Standing at one spot, you can measure the slope going in the $x$ direction (only $x$ changes) and in the $y$ direction (only $y$ changes): those are the two partial derivatives. How do you describe the slope at that spot as one thing?
 
-      **Picture it.** The grey ellipses mark equal values of $f$ around its lowest point, $(0,0)$. At $P=(1.5,1)$, the $x$-slope is $3$ and the $y$-slope is $4$. The horizontal grey arrow is labelled $3$ for $x$; the vertical one is labelled $4$ for $y$. The blue arrow combines them as $(3,4)$.
+      **Picture it.** We'll use the simplest such landscape, $f(x,y)=x^2+2y^2$: a bowl whose lowest point is $(0,0)$. The left picture shows the bowl from the side. The right one shows it from above as a **contour map**, like a hiking map: each ring joins points at the same height, and rings further out are higher. We stand at $P=(1.5,1)$, where the height is $f(P)=4.25$. There the slope in the $x$ direction is $3$ and in the $y$ direction is $4$ (worked out below). The blue arrow combines them as $(3,4)$.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" aria-label="Contours of x squared plus 2y squared including the f equals 4.25 contour through P, with slope arrows 3 and 4 and combined gradient arrow (3,4)">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" aria-label="An oblique 3D side view of the bowl x squared plus 2y squared with lifted level ellipses and cross-section parabolas, beside a contour map from above with the point P and slope arrows">
         <defs>
           <marker id="g1-muted-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
           <marker id="g1-blue-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
         </defs>
         <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <ellipse cx="160" cy="350" rx="48" ry="33.941125" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
-          <ellipse cx="160" cy="350" rx="72" ry="50.911688" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
-          <ellipse cx="160" cy="350" rx="98.954535" ry="69.971423" fill="#171717" fill-opacity="0" stroke="#a3a3a3" stroke-width="2.25"/>
-          <ellipse cx="160" cy="350" rx="135.764502" ry="96" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
-          <path d="M160 350 H610 M160 350 V40" stroke="#737373" fill="#171717" fill-opacity="0"/>
-          <path d="M232 302 H292" stroke="#737373" stroke-width="2.5" marker-end="url(#g1-muted-arrow)"/>
-          <path d="M232 302 V222" stroke="#737373" stroke-width="2.5" marker-end="url(#g1-muted-arrow)"/>
-          <path d="M232 302 L292 222" stroke="#3b82f6" stroke-width="3.5" marker-end="url(#g1-blue-arrow)"/>
-          <path d="M18 239 H30" stroke="#a3a3a3" stroke-width="2.25"/>
-          <circle cx="232" cy="302" r="4" fill="#171717"/>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="36" y="244">f = 4.25</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="133" y="370">origin</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="615" y="345">x</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="166" y="34">y</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="237" y="335">P = (1.5,1)</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="298" y="293">3 along x</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="164" y="208">4 along y</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="302" y="216">(3,4) combined</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="482" y="458">Contours: equal f</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="16" y="35">from the side</text>
+          <ellipse cx="0" cy="0" rx="1" ry="1" transform="matrix(18 10 9.899495 -7.071068 145 324)" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+          <ellipse cx="0" cy="0" rx="1" ry="1" transform="matrix(27 15 14.849242 -10.606602 145 304)" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+          <ellipse cx="0" cy="0" rx="1" ry="1" transform="matrix(37.107951 20.615528 20.408332 -14.577380 145 272)" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2.25" vector-effect="non-scaling-stroke"/>
+          <ellipse cx="0" cy="0" rx="1" ry="1" transform="matrix(50.911688 28.284271 28 -20 145 212)" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+          <path d="M94.088 183.716 Q145 468 195.912 240.284 M117 232 Q145 468 173 192" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+          <circle cx="145" cy="340" r="4" fill="#171717"/>
+          <circle cx="186" cy="277" r="4.5" fill="#171717"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="200" y="280">P, height 4.25</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="12" y="373">lowest point (0,0)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="374" y="35">from above</text>
+          <ellipse cx="438" cy="315" rx="25" ry="17.677670" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <ellipse cx="438" cy="315" rx="37.5" ry="26.516504" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <ellipse cx="438" cy="315" rx="51.538820" ry="36.443449" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2.25"/>
+          <ellipse cx="438" cy="315" rx="70.710678" ry="50" fill="#171717" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+          <path d="M438 315 H616 M438 315 V90" stroke="#737373" fill="#171717" fill-opacity="0"/>
+          <path d="M475.5 290 H505.5" stroke="#737373" stroke-width="2.5" marker-end="url(#g1-muted-arrow)"/>
+          <path d="M475.5 290 V250" stroke="#737373" stroke-width="2.5" marker-end="url(#g1-muted-arrow)"/>
+          <path d="M475.5 290 L505.5 250" stroke="#3b82f6" stroke-width="3.5" marker-end="url(#g1-blue-arrow)"/>
+          <circle cx="475.5" cy="290" r="4" fill="#171717"/>
+          <path d="M540 112 H551" stroke="#737373" stroke-width="2.25"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="557" y="117">f = 4.25</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="518" y="344">P</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="512" y="285">3 along x</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="381" y="244">4 along y</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="516" y="234">(3,4)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="621" y="310">x</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="444" y="87">y</text>
         </g>
       </svg>
       ```
@@ -67,7 +82,7 @@ knowledge_points:
       | $(0,1)$ | $(0,4)$ |
       | $(1.5,1)$ | $(3,4)$ |
 
-      **Where it shows up.** The partial-derivatives lesson computed the house-price loss slopes as $(-480,-120,-800,-40)$. That model has three weights and a bias, so its gradient keeps one of those four partial derivatives for each parameter.
+      **Where it shows up.** The partial-derivatives lesson used a house-price model with three weights and a bias, an extra adjustable number. Its loss slopes were $(-480,-120,-800,-40)$, one for each parameter; collected together, they form that model's gradient.
     problems:
       - grad-vector-of-partials-basics
       - gradp-why-vector
@@ -100,10 +115,10 @@ knowledge_points:
           <path d="M210 320 H282" stroke="#3b82f6" stroke-width="2.5" stroke-dasharray="6 5" marker-end="url(#g2-blue-arrow)"/>
           <path d="M210 320 H266" stroke="#f59e0b" stroke-width="3.5" marker-end="url(#g2-amber-arrow)"/>
           <circle cx="210" cy="320" r="4" fill="#171717"/>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="155" y="347">P = (1.5,1)</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="246" y="347" fill="#f59e0b">u = (1,0)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="285" y="350">P = (1.5,1)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="305" y="315" fill="#f59e0b">u = (1,0)</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="294" y="218">∇f(P) = (3,4)</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="294" y="305" fill="#3b82f6">projection = 3</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="294" y="292" fill="#3b82f6">projection = 3</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="615" y="355">x</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="156" y="36">y</text>
         </g>
@@ -158,7 +173,7 @@ knowledge_points:
     explain: |
       **The question.** Of all unit directions from $P$, which one climbs fastest, and which one lowers $f$ fastest?
 
-      **Picture it.** Like a topographic map, a contour joins positions of equal height. The grey ellipse passes through $P$ where $f(P)=4.25$, its height there. The blue gradient arrow points uphill fastest; amber unit arrows show parallel, opposite and tangent walks, with slopes $5$, $-5$ and $0$.
+      **Picture it.** The grey ellipse is the $f=4.25$ contour through $P$. The blue gradient arrow points uphill fastest; amber unit arrows show parallel, opposite and tangent walks, with slopes $5$, $-5$ and $0$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 520" aria-label="At P on the f equals 4.25 contour, the gradient slope is 5, the opposite slope is minus 5, the tangent slope is zero, and a dashed red arrow points to the minimum">
@@ -178,14 +193,14 @@ knowledge_points:
           <path d="M250 320 L290 350" stroke="#f59e0b" stroke-width="3" marker-end="url(#g3-amber-arrow)"/>
           <circle cx="160" cy="380" r="3.5" fill="#171717"/>
           <circle cx="250" cy="320" r="4" fill="#171717"/>
-          <path d="M14 270 H27" stroke="#a3a3a3" stroke-width="2.25"/>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="34" y="275">f = 4.25</text>
+          <path d="M14 230 H27" stroke="#a3a3a3" stroke-width="2.25"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="34" y="235">f = 4.25</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="299" y="265" fill="#3b82f6">∇f(P) = (3,4)</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="299" y="294" fill="#3b82f6">slope 5</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="326">P = (1.5,1)</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="302" y="367" fill="#f59e0b">slope 0</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="190" y="444" fill="#f59e0b">slope −5 (−∇f)</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="10" y="404" fill="#ef4444">to the minimum</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="255" y="444" fill="#f59e0b">slope −5 (−∇f)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="10" y="285" fill="#ef4444">to the minimum</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="614" y="375">x</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="168" y="29">y</text>
         </g>

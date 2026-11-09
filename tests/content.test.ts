@@ -250,7 +250,7 @@ test('knowledge-point lesson opening counts words after removing math and fenced
     expect.arrayContaining([
       expect.objectContaining({
         id: 'derivatives',
-        message: 'lesson where_this_fits has 29 words; expected 30–90',
+        message: 'lesson where_this_fits has 29 words; expected 30–130',
       }),
     ]),
   );
@@ -1118,7 +1118,7 @@ test('knowledge-point style rules count prose, math spans, and fenced code corre
   if (!lesson || !invalid || !valid) throw new Error('Missing supervised-learning points');
 
   invalid.title = 'Rate $r$';
-  invalid.explain = Array.from({ length: 251 }, () => 'word').join(' ');
+  invalid.explain = Array.from({ length: 301 }, () => 'word').join(' ');
   invalid.worked = 'A worked example.';
   valid.title = 'A plain title';
   valid.explain = `${Array.from({ length: 249 }, () => 'word').join(' ')} $2x$ \`\`\`txt\nignored words\n\`\`\``;
@@ -1133,7 +1133,7 @@ test('knowledge-point style rules count prose, math spans, and fenced code corre
       }),
       expect.objectContaining({
         id: invalid.id,
-        message: 'knowledge-point explain has 251 words; maximum is 250',
+        message: 'knowledge-point explain has 301 words; maximum is 300',
       }),
     ]),
   );

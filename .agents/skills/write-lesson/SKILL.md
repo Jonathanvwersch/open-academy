@@ -37,12 +37,13 @@ In `problems` (order matters; the runner starts easy and steps up):
 
 Lesson level:
 - **objective:** one sentence, "**Goal:** …", in plain words.
-- **where_this_fits:** 2–3 sentences: what the previous lesson gave us, and what is still missing that this lesson provides.
+- **where_this_fits** (shown as "What you're learning", 60–130 words): set the scene before anything else. Say (1) the problem in the learner's world, in plain words (for ML lessons, what it does for training a model); (2) why the tools they already have aren't enough; (3) the lesson's 2–4 steps as a numbered list, one per KP. Not a recap of prerequisites, and no term the learner hasn't met.
 - **summary:** one line per KP, each a sentence the learner should now be able to say out loud. No new information.
 - **final:** one `explain` question that makes the learner connect the KPs in their own words (recall, not rereading: Roediger & Karpicke 2006; Dunlosky et al. 2013). Give it 2–3 rubric criteria and an exemplar.
 
 ## 2. Writing rules
 
+- **Explain the setting before using it.** Before any calculation, say what the function or object stands for ("the loss as the height of the ground over each pair of weights") and what each kind of picture shows ("a contour map is the landscape seen from above; each ring joins points at the same height"). Never open a KP with a bare formula.
 - **Cut everything that doesn't teach.** No boilerplate headings ("Why this is useful"), no filler, no repeated sentences, no summary of what you just said. _(Coherence principle: Mayer & Moreno 2003.)_
 - `explain` is 150–300 words per KP. If it's longer, the KP holds two ideas: split it.
 - Paragraphs of 1–3 sentences. Second person, plain British English.
@@ -73,7 +74,7 @@ Every KP whose idea is spatial (directions, slopes, surfaces, arrows, splits, pr
 2. **Self-check** each KP against §1–§3: all seven parts in order, general definition, clean numbers, diagram present and correct, no boilerplate, ≤300 words.
 3. **Cold-reader review.** Give a separate agent, which hasn't seen your plan, only the rendered lesson text (YAML `explain`, `worked`, `summary` and the first two problems of each KP), the titles of the prerequisite lessons, and this prompt verbatim:
 
-   > You are a motivated learner who knows only the prerequisite lessons listed. Read this lesson once, in order, as if seeing it for the first time. List every place where you (a) met a word, symbol or step you couldn't follow, (b) couldn't picture what was meant, (c) didn't see why a step was taken, or (d) got bored or lost the thread. Quote the exact sentence for each. Then say, in two sentences, what you think the lesson's main idea is. Do not suggest rewrites and do not praise.
+   > You are a motivated learner who knows only the prerequisite lessons listed. Read this lesson once, in order, as if seeing it for the first time. List every place where you (a) met a word, symbol or step you couldn't follow, (b) couldn't picture what was meant, (c) didn't see why a step was taken, (d) didn't know what you were learning or why it mattered, or (e) got bored or lost the thread. Quote the exact sentence for each. Then say, in two sentences, what you think the lesson's main idea is. Do not suggest rewrites and do not praise.
 
    Fix every item it raises, or note in the PR why it isn't a problem. If its two-sentence main idea doesn't match the objective, the lesson isn't clear yet: revise and review again.
 4. Open the lesson in the running app (`pnpm dev`, Course → the lesson) and check each KP rendered: diagrams visible and readable, maths rendered, no part overflowing.
