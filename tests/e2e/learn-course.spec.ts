@@ -442,7 +442,7 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   await page.goto('/lessons/derivatives');
   await hideTutorLauncher(page);
   const derivativeDiagram = page.getByRole('img', {
-    name: 'Parabola of squared house-price loss from weight 22 to 33, marked at weight 25 with slope minus 720 and minimum at 27.5',
+    name: 'The curve d equals t squared with the point at t equals 3, an amber line to t equals 4 with average slope 7, and a blue tangent line at t equals 3 with slope 6',
   });
   await expect(derivativeDiagram).toBeVisible();
   await derivativeDiagram.evaluate((image) => {
