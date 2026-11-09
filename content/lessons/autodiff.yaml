@@ -64,7 +64,7 @@ knowledge_points:
     explain: |
       **The question.** The forward record gives a final value, but training needs loss slopes. What happens when you ask PyTorch to follow the record backward?
 
-      **Picture it.** Use the same calculation. The blue arrows run from the loss back to $w$; their labels are derivatives of the final loss, not forward values. Start at $1$ because changing $L$ changes itself at rate $1$, then multiply by each local slope: $4$ for the square, $1$ for subtraction and $3$ for multiplication.
+      **Picture it.** Use the same calculation. The blue arrows run from the loss back to $w$; their labels are derivatives of the final loss, not forward values. Start at $1$, the loss's slope with respect to itself, $dL/dL=1$, then multiply by each local slope: $4$ for the square, $1$ for subtraction and $3$ for multiplication.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 165" aria-label="Reverse derivatives: start at L with 1, then e has slope 4, z has slope 4 and w has slope 12"><defs><marker id="ad2-reverse" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717"><path d="M190 85 H90" stroke="#3b82f6" stroke-width="2" marker-end="url(#ad2-reverse)"/><path d="M350 85 H250" stroke="#3b82f6" stroke-width="2" marker-end="url(#ad2-reverse)"/><path d="M510 85 H410" stroke="#3b82f6" stroke-width="2" marker-end="url(#ad2-reverse)"/><g stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke"><text x="25" y="90" fill="#171717">w = 2</text><text x="200" y="90" fill="#171717">z = 6</text><text x="360" y="90" fill="#171717">e = 2</text><text x="520" y="90" fill="#171717">L = 4</text><text x="105" y="52" fill="#3b82f6">× 3</text><text x="265" y="52" fill="#3b82f6">× 1</text><text x="425" y="52" fill="#3b82f6">× 4</text><text x="25" y="135" fill="#3b82f6">slope: 12</text><text x="200" y="135" fill="#3b82f6">slope: 4</text><text x="360" y="135" fill="#3b82f6">slope: 4</text><text x="520" y="135" fill="#3b82f6">start: 1</text></g></g></svg>
@@ -76,7 +76,7 @@ knowledge_points:
 
       Calling `loss.backward()` does this for a tensor holding a single number, named `loss`. For a **leaf**, a tensor you made yourself rather than one calculated from other tensors, its resulting derivative is stored in `.grad` if it requires gradients. Here `w.grad` holds $dL/dw$, the loss slope with respect to $w$.
 
-      **Common confusion.** “Calling `loss.backward()` changes my weights.” No: it calculates gradients, not weight updates. It also **adds** to any gradients already stored, so clear them before calculating a fresh gradient that shouldn't include earlier calls.
+      **Common confusion.** “Calling `loss.backward()` changes my weights.” No: it calculates gradients, not weight updates. It also **adds** to any gradients already stored so gradients from several calculations, such as several examples, can be combined; clear them before calculating a fresh gradient that shouldn't include earlier calls.
     worked: |
       Find the loss slope for $L=(wx-y)^2$, with $w=2$, $x=3$ and $y=4$.
 
@@ -162,7 +162,7 @@ knowledge_points:
       | $1{,}000{,}000$ | $1$ | $1{,}000{,}000$ | $1+1=2$ |
       | $1$ | $3$ | $1$ | $1+3=4$ |
 
-      **Where it shows up.** Neural-network training has many parameters but one loss, which favours reverse mode. A robot calculation with one joint angle and three output coordinates can favour forward mode when you need all three coordinate slopes.
+      **Where it shows up.** Neural-network training has many parameters but one loss, which favours reverse mode. A robot calculation from one joint angle to the hand's $x$, $y$ and $z$ position has one input and three outputs, so forward mode gets all three slopes in one pass.
     problems:
       [
         ad-modes-basics,
