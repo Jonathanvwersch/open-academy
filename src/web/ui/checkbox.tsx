@@ -5,8 +5,9 @@ import { CheckIcon } from "lucide-react"
 
 function Checkbox({
   className,
+  indicator,
   ...props
-}: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
+}: React.ComponentProps<typeof CheckboxPrimitive.Root> & { indicator?: React.ReactNode }) {
   return (
     <CheckboxPrimitive.Root
       data-slot="checkbox"
@@ -16,13 +17,21 @@ function Checkbox({
       )}
       {...props}
     >
-      <CheckboxPrimitive.Indicator
-        data-slot="checkbox-indicator"
-        className="grid place-content-center text-current transition-none [&>svg]:size-3.5"
-      >
-        <CheckIcon
-        />
-      </CheckboxPrimitive.Indicator>
+      {indicator ? (
+        <span
+          data-slot="checkbox-status"
+          className="pointer-events-none absolute inset-0 grid place-content-center"
+        >
+          {indicator}
+        </span>
+      ) : (
+        <CheckboxPrimitive.Indicator
+          data-slot="checkbox-indicator"
+          className="grid place-content-center text-current transition-none [&>svg]:size-3.5"
+        >
+          <CheckIcon />
+        </CheckboxPrimitive.Indicator>
+      )}
     </CheckboxPrimitive.Root>
   )
 }

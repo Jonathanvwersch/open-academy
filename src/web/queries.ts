@@ -1,6 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 import { apiFetch } from './authenticated-fetch.js';
-import type { ClientExercise, LessonBlockKind } from './components.js';
+import type { AnswerOptions, ClientExercise, LessonBlockKind } from './components.js';
 
 export interface TodayPayload {
   needsDiagnostic: boolean;
@@ -94,7 +94,16 @@ export interface SessionActivity {
   plannedMinutes: number;
   status: string;
   lessonAvailable?: boolean;
-  lastAttempt?: Record<string, unknown> | null;
+  lastAttempt?: {
+    exerciseId?: string;
+    status?: string;
+    correct?: number;
+    attemptNo?: number;
+    retryAllowed?: boolean;
+    feedback?: string;
+    yourAnswer?: string;
+    answerOptions?: AnswerOptions;
+  } | null;
   startedAt?: string;
   progress: {
     lessonViewed?: boolean;
@@ -188,6 +197,7 @@ export interface LessonRunPayload {
         solution: string;
         yourAnswer: string;
         correctAnswer: string;
+        answerOptions?: AnswerOptions;
       };
     };
     xpEarned: number;

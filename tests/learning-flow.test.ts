@@ -18,6 +18,7 @@ import {
   xpEvents,
 } from '../src/server/db/schema.js';
 import { env } from '../src/server/env.js';
+import { answerOptionsFor } from '../src/server/learning/answer-options.js';
 import { newReviewCard, scheduleInitialReview } from '../src/server/learning/fsrs.js';
 import { FakeProvider } from '../src/server/tutor/provider.js';
 
@@ -208,6 +209,79 @@ test('attempts update mastery and create a review card used by Today', async () 
   expect(payload.plan.activities.some((item: { kind: string }) => item.kind === 'review')).toBe(
     true,
   );
+});
+
+test('practice answers expose selected options and reveal correct ids only after retries end', async () => {
+  await resetLearner();
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 10,
+      startedAt: new Date(now),
+      status: 'active',
+    })
+    .returning();
+  if (!session) throw new Error('Could not create a practice session');
+  const exerciseId = 'linear-algebra-fixture-1-basics';
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'practice',
+      conceptId: 'linear-algebra',
+      exerciseIds: [exerciseId],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Could not create a practice activity');
+  const exercise = content.exercisesById.get(exerciseId);
+  if (exercise?.type !== 'mc') throw new Error('Expected an MC fixture');
+  const correctId = exercise.options.find((option) => option.correct)?.id;
+  const wrongIds = exercise.options.filter((option) => !option.correct).map((option) => option.id);
+  if (!correctId || wrongIds.length < 2) throw new Error('Expected multiple MC options');
+  const submit = (answer: string) =>
+    app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({ exerciseId, activityId: activity.id, answer, mode: 'practice' }),
+    });
+
+  const first = await submit(wrongIds[0] ?? '');
+  const firstResult = await first.json();
+  expect(firstResult).toMatchObject({
+    retryAllowed: true,
+    answerOptions: { selected: [wrongIds[0]] },
+  });
+  expect(firstResult.answerOptions).not.toHaveProperty('correct');
+
+  const final = await submit(wrongIds[1] ?? '');
+  const finalResult = await final.json();
+  expect(finalResult).toMatchObject({
+    retryAllowed: false,
+    answerOptions: { selected: [wrongIds[1]], correct: [correctId] },
+  });
+
+  const sessionResponse = await app.request(`/api/sessions/${session.id}`, {
+    headers: headersAt(now),
+  });
+  const payload = await sessionResponse.json();
+  expect(payload.activities[0].lastAttempt.answerOptions).toEqual(finalResult.answerOptions);
+});
+
+test('debug answer option ids identify the selected and correct line and fix', () => {
+  const exercise = content.exercisesById.get('linear-algebra-debug');
+  if (exercise?.type !== 'debug') throw new Error('Expected a debug fixture');
+  expect(answerOptionsFor(exercise, { line: 1, fixId: 'concatenate' }, false)).toEqual({
+    selected: ['line:1', 'fix:concatenate'],
+  });
+  expect(answerOptionsFor(exercise, { line: 3, fixId: 'dot-product' }, true)).toEqual({
+    selected: ['line:3', 'fix:dot-product'],
+    correct: ['line:3', 'fix:dot-product'],
+  });
 });
 
 test('unscoped hints lower credit and restart after the previous attempt', async () => {

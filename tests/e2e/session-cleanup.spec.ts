@@ -364,7 +364,8 @@ test('fallback explain flow reveals the model answer before the self-check step'
   await expect(
     page.getByRole('status').getByText('A model predicts an answer.', { exact: true }),
   ).toBeVisible();
-  await expect(page.getByLabel('Your answer')).toHaveCount(0);
+  await expect(page.getByLabel('Your answer')).toHaveCount(1);
+  await expect(page.getByLabel('Your answer')).toHaveAttribute('readonly', '');
   await expect(page.getByText('Which of these did your answer include?')).toBeVisible();
   await expect(page.getByText('key point', { exact: true })).toHaveCount(2);
   await expect(page.getByRole('checkbox')).toHaveCount(3);

@@ -11,6 +11,7 @@ import { gradeExercise } from '../grading/index.js';
 import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../grading/multiple-choice.js';
 import { updateActivityAndAdvance } from '../learning/activity-completion.js';
 import { answerDisplay, answerText } from '../learning/answer-display.js';
+import { answerOptionsFor } from '../learning/answer-options.js';
 import {
   deriveLessonState,
   selectNextProblem,
@@ -110,6 +111,10 @@ export function registerLessonRunRoutes(
       ? await deps.db.select().from(attempts).where(eq(attempts.id, lastRow.attemptId)).limit(1)
       : [];
     const attemptFeedback = (lastAttempt?.feedback as { message?: string } | null)?.message;
+    const lastAnswerOptions =
+      lastAttempt && lastInstance
+        ? answerOptionsFor(lastInstance, lastAttempt.answer, true)
+        : undefined;
     const feedback =
       lastInstance?.type === 'mc' && attemptFeedback === MULTIPLE_CHOICE_FALLBACK_FEEDBACK
         ? ''
@@ -149,6 +154,7 @@ export function registerLessonRunRoutes(
                 solution: lastInstance.solution,
                 yourAnswer: answerDisplay(lastInstance, lastAttempt?.answer),
                 correctAnswer: correctAnswerDisplay(lastInstance),
+                ...(lastAnswerOptions ? { answerOptions: lastAnswerOptions } : {}),
               },
             }
           : undefined,

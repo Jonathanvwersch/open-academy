@@ -141,7 +141,7 @@ async function nextProblemAndReload(
     await expect(
       page.getByRole('heading', { name: body.run.currentPoint.title, exact: true }),
     ).toBeVisible();
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+    await expect(page.getByTestId('lesson-problem')).toBeVisible();
   } else if (assertWithinStepScroll) {
     await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
       'data-problem-id',
@@ -210,9 +210,8 @@ test('passes every knowledge point and restores the exact problem and result aft
         });
       }
       if (pointIndex === 0 && run.points[0].status === 'passed') {
-        await expect(page.getByText('+10 XP')).toBeVisible();
+        await expect(page.getByText('Correct · +10 XP')).toBeVisible();
         await expect(page.getByText('Problem 2 · up to 5')).toBeVisible();
-        await expect(page.getByText('Correct', { exact: true })).toBeVisible();
         await expect(page.getByText('Your answer:')).toHaveCount(0);
         await expect(page.getByText('Correct answer:')).toHaveCount(0);
         await page.screenshot({
@@ -531,8 +530,8 @@ test('a failed knowledge point shows the retry screen and resumes at round two i
       expect(run.points[0]).toMatchObject({ status: 'active', answered: 0, streak: 0 });
     }
     if (answerIndex === 0) {
-      await expect(page.getByText('Your answer:')).toBeVisible();
-      await expect(page.getByText('Correct answer:')).toBeVisible();
+      await expect(page.getByText('Your answer:')).toHaveCount(0);
+      await expect(page.getByText('Correct answer:')).toHaveCount(0);
       await page.screenshot({ path: `${screenshotDir}/wrong-answer.png`, fullPage: true });
     }
     if (answerIndex < 4) run = await nextProblemAndReload(page);
