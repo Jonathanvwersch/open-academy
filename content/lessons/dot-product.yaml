@@ -1,174 +1,309 @@
 concept: dot-product
-version: 3
+version: 4
 objective: |
-  **Goal:** turn two vectors into one number, see how that number measures agreement between arrows, and compare directions without rewarding length.
+  **Goal:** combine two vectors into one number, read that number as how far one arrow goes along another, and divide out the lengths to compare directions alone.
 where_this_fits: |
-  The vectors lesson kept a house's area, bedrooms and age together as $x=(12,3,20)$. Now we need one prediction from those three measurements. This lesson pairs each feature with a weight, multiplies matching entries and adds the contributions to estimate the sale price.
+  A model often has to turn several numbers into one: a house's area, bedrooms and age into one predicted price, each measurement counting for its own amount. It also needs to tell whether two vectors point the same way. The vectors lesson let you add, scale and measure vectors, but none of those combines two vectors into one number. This lesson builds the tool that does, the **dot product**, in three steps:
+
+  1. Multiply matching entries and add them into one total.
+  2. Read that total for arrows: how far one arrow goes along the other.
+  3. Divide out the lengths to compare directions alone.
+
+  The last step, cosine similarity, is how search systems decide that two things are alike.
 knowledge_points:
   - id: dot-weighted-total
-    title: Combining two lists into one number
+    title: The dot product multiplies matching entries and adds
     explain: |
-      **What the dot product is.** The dot product multiplies matching entries of two vectors and adds the products to make one number.
+      **The question.** You often have a list of amounts and a matching list of rates, and you want one total: items bought and their prices, or a house's measurements and what each is worth. How do you combine two lists like that into a single number?
 
-      **How it works.** A **feature** is an input measurement. Its weight is the adjustable multiplier that sets its contribution to the prediction.
-
-      For this house, $x=(12,3,20)$ lists area in tens of square metres, bedrooms and age in years, in that order. Use weights $w=(25,10,-1)$ in thousand pounds per feature unit: 25 per ten square metres, 10 per bedroom and minus one per year.
-
-      Multiply matching entries, then add: $25\cdot12+10\cdot3+(-1)\cdot20=300+30-20=310$ thousand pounds. This **weighted sum** is the **dot product**, written $w\cdot x$. A dot between numbers means multiplication; between vectors it names the whole calculation.
-
-      For vectors with $n$ entries, $i$ selects an entry and $\sum$ adds from entry one to $n$:
-
-      $$a\cdot b=\sum_{i=1}^{n}a_i b_i.$$
-
-      Picture the contributions on a number line: 300 forward, 30 forward, then 20 back. This works because each weight first converts its measurement into the same output units. The negative age weight lowers the price. Why this way? Multiplying without adding leaves separate contributions, not one prediction. Keep both vectors in the same feature order.
-
-      A **linear model** predicts a value using these weighted contributions. With other features fixed, one extra bedroom adds 10 thousand pounds in this model. These example weights illustrate the calculation, not a reliable valuation.
-
-      **Why this is useful.** A house-price model needs one prediction from several measurements; the dot product combines their separately weighted contributions without mixing their units.
-    worked: |
-      This example shows how differently weighted house measurements become one price prediction.
-
-      A house has 120 square metres, 3 bedrooms and an age of 20 years. Record $x=(12,3,20)$ and use $w=(25,10,-1)$, in the same feature order. Each weight is in thousand pounds per unit of its feature.
-
-      1. Area contributes $25\cdot12=300$ thousand pounds.
-      2. Bedrooms contribute $10\cdot3=30$ thousand pounds.
-      3. Age contributes $(-1)\cdot20=-20$ thousand pounds.
-      4. Add the contributions: $w\cdot x=300+30-20=310$ thousand pounds.
-      5. With area and bedrooms unchanged, increasing age to 21 gives $300+30-21=309$ thousand pounds.
-
-      A negative weight makes a larger feature value lower the prediction. A zero weight would ignore that feature entirely.
-    problems:
-      - dot-weighted-total-basics
-      - dotp-model
-      - dotp-negative-weight
-      - dotp-why-total
-      - dotp-total
-      - dotp-total-template
-      - dotp-order
-  - id: dot-arrow-alignment
-    title: Measuring how much two arrows point the same way
-    explain: |
-      **How can one number say whether two arrows point the same way?** We want it positive when they point together, zero when they are perpendicular, and negative when they point opposite ways. Lengths do not show alignment.
-
-      Start with the easiest case: $b=(1,0)$, an arrow of length 1 pointing right. For any arrow $a=(a_1,a_2)$,
-
-      $$a\cdot b=a_1\cdot1+a_2\cdot0=a_1.$$
-
-      So the dot product is just how far $a$ goes to the right, which is how far it goes in $b$'s direction. The up part never counts, because $b$ has no up part to pair with it.
+      **Picture it.** Take a quiz score. A student answers 6 questions correctly, skips 2 and gets 2 wrong, so the counts are $c=(6,2,2)$. The quiz gives 3 points for a correct answer, 0 for a skip and takes 1 away for a wrong answer, so the points are $p=(3,0,-1)$, in the same order. Each count times its points is that kind of answer's contribution, and the contributions add up to the score.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 290" aria-label="b=(1,0) points right. (3,4) goes 3 right, so a·b=3. (0,4) goes straight up, so a·b=0. (-3,4) goes 3 left, so a·b=-3.">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 310" aria-label="Quiz counts c = (6, 2, 2) for correct, skipped and wrong answers paired with points p = (3, 0, −1). Each pair multiplies to a contribution, 18, 0 and −2, and the contributions add to the score 16.">
         <defs>
-          <marker id="hg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
-          <marker id="hk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
-          <marker id="hr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker>
-          <marker id="hb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="3.5" markerHeight="3.5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+          <marker id="q-muted-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
         </defs>
         <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <path d="M100 230 H470" stroke="#d4d4d4" stroke-width="2"/>
-          <path d="M400 70 V230 M160 70 V230" stroke="#a3a3a3" stroke-width="1.5" stroke-dasharray="5 5"/>
-          <path d="M280 230 L400 70" stroke="#10b981" stroke-width="3" marker-end="url(#hg)"/>
-          <path d="M280 230 V70" stroke="#737373" stroke-width="3" marker-end="url(#hk)"/>
-          <path d="M280 230 L160 70" stroke="#ef4444" stroke-width="3" marker-end="url(#hr)"/>
-          <path d="M280 230 H320" stroke="#3b82f6" stroke-width="5" marker-end="url(#hb)"/>
-          <path d="M280 250 H400" stroke="#10b981" stroke-width="4"/>
-          <path d="M160 250 H280" stroke="#ef4444" stroke-width="4"/>
-          <text x="408" y="66">(3,4): a·b = 3</text>
-          <text x="288" y="56">(0,4): a·b = 0</text>
-          <text x="152" y="66" text-anchor="end">(−3,4): a·b = −3</text>
-          <text x="326" y="222" fill="#3b82f6">b = (1,0)</text>
-          <text x="340" y="272" text-anchor="middle" fill="#10b981">3 right</text>
-          <text x="220" y="272" text-anchor="middle" fill="#ef4444">3 left</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="190" y="52" fill="#737373" text-anchor="middle">correct</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="52" fill="#737373" text-anchor="middle">skipped</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="450" y="52" fill="#737373" text-anchor="middle">wrong</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="16" y="105">count, c</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="16" y="175">points each, p</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="16" y="255">contribution</text>
+          <rect x="152" y="80" width="76" height="40" rx="6" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="190" y="106" text-anchor="middle" font-size="16">6</text>
+          <rect x="152" y="150" width="76" height="40" rx="6" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="190" y="176" text-anchor="middle" font-size="16">3</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="190" y="141" fill="#737373" text-anchor="middle" font-size="16">×</text>
+          <path d="M190 192 V226" stroke="#737373" stroke-width="2" marker-end="url(#q-muted-arrow)"/>
+          <rect x="152" y="230" width="76" height="40" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="190" y="256" fill="#10b981" text-anchor="middle" font-size="16" font-weight="600">18</text>
+          <rect x="282" y="80" width="76" height="40" rx="6" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="106" text-anchor="middle" font-size="16">2</text>
+          <rect x="282" y="150" width="76" height="40" rx="6" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="176" text-anchor="middle" font-size="16">0</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="141" fill="#737373" text-anchor="middle" font-size="16">×</text>
+          <path d="M320 192 V226" stroke="#737373" stroke-width="2" marker-end="url(#q-muted-arrow)"/>
+          <rect x="282" y="230" width="76" height="40" rx="6" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="256" fill="#737373" text-anchor="middle" font-size="16" font-weight="600">0</text>
+          <rect x="412" y="80" width="76" height="40" rx="6" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="450" y="106" text-anchor="middle" font-size="16">2</text>
+          <rect x="412" y="150" width="76" height="40" rx="6" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="450" y="176" text-anchor="middle" font-size="16">−1</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="450" y="141" fill="#737373" text-anchor="middle" font-size="16">×</text>
+          <path d="M450 192 V226" stroke="#737373" stroke-width="2" marker-end="url(#q-muted-arrow)"/>
+          <rect x="412" y="230" width="76" height="40" rx="6" fill="#ffffff" stroke="#ef4444" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="450" y="256" fill="#ef4444" text-anchor="middle" font-size="16" font-weight="600">−2</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="255" y="256" fill="#737373" text-anchor="middle" font-size="16">+</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="385" y="256" fill="#737373" text-anchor="middle" font-size="16">+</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="510" y="256" fill="#737373" text-anchor="middle" font-size="16">=</text>
+          <rect x="537" y="230" width="76" height="40" rx="6" fill="#ffffff" stroke="#171717" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="575" y="256" text-anchor="middle" font-size="16" font-weight="600">16</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="575" y="292" fill="#737373" text-anchor="middle">score</text>
         </g>
       </svg>
       ```
 
-      The scores are 3, 0 and $-3$: right, perpendicular and left relative to $b$.
+      **The idea.** Pair up the entries, multiply each pair, and add the results: two vectors become one number. This is the **dot product**, written $a\cdot b$. For two vectors with the same number of entries, $n$,
 
-      Now lengthen $b$ to $(2,0)$. Each score doubles, to 6, 0 and $-6$. So the dot product is the distance $a$ goes in $b$'s direction, times $b$'s length. That distance is called the **projection** of $a$ onto $b$. Its sign answers the direction question, and the lengths set the size.
+      $$a\cdot b=a_1b_1+a_2b_2+\dots+a_nb_n=\sum_{i=1}^{n}a_ib_i.$$
 
-      Nothing here needs $b$ to point right. Turning both arrows together changes their coordinates but not their dot product (the rotation matrices lesson shows why), so you can always picture $b$ pointing right. For example, $(3,4)\cdot(4,-3)=12-12=0$, so those two arrows are perpendicular.
+      Between two plain numbers a raised dot just means multiply; between two vectors it means this whole pair-multiply-add calculation. Both vectors must list the same things in the same order, or you multiply a count by the wrong rate. When one vector holds rates like the points, the dot product is called a **weighted sum** and the rates are the **weights**: a positive weight adds to the total, a zero weight ignores that entry, and a negative weight takes away.
 
-      **Why this is useful.** The sign of a dot product tells you whether two vectors agree, and its size says how strongly. The next step turns this into a score that compares directions alone.
-
+      **Common confusion.** "Can't I add up each list first and then multiply the two totals?" No. That gives $(6+2+2)\cdot(3+0-1)=10\cdot2=20$, not the real score of 16, because it charges every answer at every rate: correct answers would pick up the wrong-answer penalty too. The dot product only multiplies entries that belong together.
     worked: |
-      This example shows the dot product as "distance along $b$ times $b$'s length" for an arrow that doesn't point right.
+      This example shows the first idea: multiply matching entries, then add. Find the quiz score $c\cdot p$ for counts $c=(6,2,2)$ and points $p=(3,0,-1)$.
 
-      Take $a=(3,4)$ and $b=(6,8)$. Both go 3 right for every 4 up, so they point the same way.
+      1. **Multiply the correct answers by their points.**
+         $$6\cdot3=18$$
 
-      1. Multiply and add: $a\cdot b=3\cdot6+4\cdot8=18+32=50$.
-      2. Find the lengths: $\|a\|_2=\sqrt{9+16}=5$ and $\|b\|_2=\sqrt{36+64}=10$.
-      3. $a$ points exactly along $b$, so the distance it goes in $b$'s direction is its whole length, 5.
-      4. Multiply that distance by $b$'s length: $5\cdot10=50$, the same answer.
+      2. **Multiply the skips by their points.**
+         $$2\cdot0=0$$
 
-      Now reverse $b$ to $(-6,-8)$. $a$ goes 5 against $b$'s direction, so the distance is $-5$ and the dot product is $-5\cdot10=-50$. Check: $3\cdot(-6)+4\cdot(-8)=-18-32=-50$.
+      3. **Multiply the wrong answers by their points.**
+         $$2\cdot(-1)=-2$$
 
+      4. **Add the three contributions.**
+         $$c\cdot p=18+0+(-2)=16$$
+
+      **Compare cases.** Keep the counts and change only the points for a wrong answer:
+
+      | Points $p$ | Wrong answers' contribution | Score $c\cdot p$ |
+      | --- | --- | --- |
+      | $(3,0,0)$ | $0$ | $18$ |
+      | $(3,0,-1)$ | $-2$ | $16$ |
+      | $(3,0,-3)$ | $-6$ | $12$ |
+
+      **Where it shows up.** A house-price model gives each measurement a weight in thousand pounds per unit: for measurements $x=(12,3,20)$ (area in tens of square metres, bedrooms, age in years) and weights $w=(25,10,-1)$, the predicted price is $w\cdot x=300+30-20=310$ thousand pounds.
+    problems:
+      - dot-weighted-total-basics
+      - dotp-why-total
+      - dotp-negative-weight
+      - dotp-model
+      - dotp-total
+      - dotp-total-template
+      - dotp-quiz-backwards
+      - dotp-order
+  - id: dot-arrow-alignment
+    title: For arrows, the dot product measures how far one goes along the other
+    explain: |
+      **The question.** Vectors can also be drawn as arrows. For two arrows, what does their dot product tell you? Ideally one number would say whether they point roughly the same way, at right angles, or in opposite directions.
+
+      **Picture it.** Start with the easiest second arrow, $b=(1,0)$: length 1, pointing right. For any arrow $a=(a_1,a_2)$,
+
+      $$a\cdot b=a_1\cdot1+a_2\cdot0=a_1.$$
+
+      So here the dot product is how far $a$ goes to the right, which is how far it goes in $b$'s direction; the up part never counts. Below, $(3,4)$ goes 3 right, $(0,4)$ goes straight up and $(-3,4)$ goes 3 left, so their dot products with $b$ are $3$, $0$ and $-3$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 290" aria-label="Reference arrow b = (1,0) points right. Arrow (3,4) goes 3 right, so a·b = 3; arrow (0,4) goes straight up, so a·b = 0; arrow (−3,4) goes 3 left, so a·b = −3. The coloured bars under the axis show how far each goes along b.">
+        <defs>
+          <marker id="a-g" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
+          <marker id="a-k" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
+          <marker id="a-r" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker>
+          <marker id="a-b" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M120 220 H520" stroke="#d4d4d4" stroke-width="2"/>
+          <path d="M440 60 V220" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="5 5"/>
+          <path d="M200 60 V220" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="5 5"/>
+          <path d="M320 220 L440 60" stroke="#10b981" stroke-width="3" marker-end="url(#a-g)"/>
+          <path d="M320 220 L320 60" stroke="#737373" stroke-width="3" marker-end="url(#a-k)"/>
+          <path d="M320 220 L200 60" stroke="#ef4444" stroke-width="3" marker-end="url(#a-r)"/>
+          <path d="M320 220 H360" stroke="#3b82f6" stroke-width="4" marker-end="url(#a-b)"/>
+          <path d="M320 245 H440" stroke="#10b981" stroke-width="4"/>
+          <path d="M200 245 H320" stroke="#ef4444" stroke-width="4"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="448" y="64" fill="#10b981">(3,4): a·b = 3</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="46" fill="#737373" text-anchor="middle">(0,4): a·b = 0</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="192" y="64" fill="#ef4444" text-anchor="end">(−3,4): a·b = −3</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="368" y="210" fill="#3b82f6">b = (1,0)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="380" y="270" fill="#10b981" text-anchor="middle">3 right</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="260" y="270" fill="#ef4444" text-anchor="middle">3 left</text>
+        </g>
+      </svg>
+      ```
+
+      **The idea.** The distance $a$ goes in $b$'s direction is called the **projection** of $a$ onto $b$. Picture it as $a$'s shadow on the line through $b$, counted as negative when the shadow points backwards. For any two arrows,
+
+      $$a\cdot b=(\text{projection of }a\text{ onto }b)\times\|b\|,$$
+
+      where $\|b\|$ is $b$'s length, the L2 norm $\|b\|_2$ from the vectors lesson; from here on the 2 is dropped. Stretch $b$ to $(2,0)$ and the three scores double to $6$, $0$ and $-6$. The sign answers the question: positive when the arrows are less than a right angle apart, zero when they are **perpendicular** (exactly a right angle apart), negative when they are more than a right angle apart. This holds whichever way $b$ points; the worked example checks it for a tilted $b$.
+
+      **Common confusion.** "A bigger dot product means the arrows point more nearly the same way." Only if the lengths stay fixed. Two arrows pointing exactly the same way can score $(1,0)\cdot(1,0)=1$, while $(3,4)\cdot(1,0)=3$ scores more even though $(3,4)$ points well away from $(1,0)$. Length counts too; the next step removes it.
+    worked: |
+      This example checks the second idea for a tilted arrow: the dot product equals the projection times $b$'s length. Take $a=(7,1)$ and $b=(6,8)$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Arrow a = (7,1) and arrow b = (6,8) from the origin. A dashed step (4,−3) from the point (3,4) on b reaches the tip of a and meets b at a right angle, so the shadow of a along b runs from the origin to (3,4) and has length 5.">
+        <defs>
+          <marker id="w-b" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+          <marker id="w-g" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M150 310 H430 M150 310 V20" stroke="#d4d4d4" stroke-width="1.5"/>
+          <path d="M252 174 L388 276" stroke="#737373" stroke-width="2" stroke-dasharray="6 5"/>
+          <path d="M244.8 183.6 L254.4 190.8 L261.6 181.2" stroke="#737373" stroke-width="1.5" fill="#ffffff" fill-opacity="0"/>
+          <path d="M150 310 L354 38" stroke="#3b82f6" stroke-width="3.5" marker-end="url(#w-b)"/>
+          <path d="M150 310 L388 276" stroke="#10b981" stroke-width="3" marker-end="url(#w-g)"/>
+          <path d="M140.4 302.8 L242.4 166.8" stroke="#10b981" stroke-width="5"/>
+          <circle cx="252" cy="174" r="4" fill="#171717"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="362" y="44" fill="#3b82f6">b = (6,8), length 10</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="396" y="282" fill="#10b981">a = (7,1)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="276" y="178">(3,4)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="358" y="236" fill="#737373">step (4,−3)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="176" y="226" fill="#10b981" text-anchor="end">shadow: 5 along b</text>
+        </g>
+      </svg>
+      ```
+
+      1. **Multiply matching entries and add.**
+         $$a\cdot b=7\cdot6+1\cdot8=50$$
+
+      2. **Find $b$'s length.**
+         $$\|b\|=\sqrt{6^2+8^2}=\sqrt{100}=10$$
+
+      3. **Find where $a$'s shadow ends.** The point $(3,4)$ is halfway along $b$, so it lies on $b$'s line. The step from there to $a$'s tip is
+         $$(7,1)-(3,4)=(4,-3)$$
+
+      4. **Check that the step meets $b$'s line at a right angle.** The three side lengths fit Pythagoras' rule, which only happens when the corner at $(3,4)$ is a right angle:
+         $$\|(3,4)\|^2+\|(4,-3)\|^2=25+25=50=\|a\|^2$$
+         So the shadow runs from the origin to $(3,4)$, and the projection is $\|(3,4)\|=5$.
+
+      5. **Multiply the projection by $b$'s length.**
+         $$5\times10=50$$
+         This matches step 1.
+
+      **Compare cases.** Keep $b=(6,8)$ and change $a$:
+
+      | $a$ | How $a$ sits against $b$ | Projection | $a\cdot b$ |
+      | --- | --- | --- | --- |
+      | $(6,8)$ | same direction | $10$ | $100$ |
+      | $(7,1)$ | partly along | $5$ | $50$ |
+      | $(4,-3)$ | right angle | $0$ | $0$ |
+      | $(-7,-1)$ | partly against | $-5$ | $-50$ |
+      | $(-6,-8)$ | opposite | $-10$ | $-100$ |
+
+      **Where it shows up.** A robot's movement dotted with $(1,0)$ gives how far it went east, and dotted with $(0,1)$ how far it went north. Dotted with any length-1 direction, it gives how far the robot went that way.
     problems:
       - dot-arrow-alignment-basics
+      - dotp-why-shadow
       - dotp-sign
       - dotp-right-angle
       - dotp-projection
       - dotp-alignment-template
       - dotp-why-not-lengths
       - dotp-reverse
+      - dotp-corridor
   - id: dot-direction-only
-    title: Comparing directions without rewarding length
+    title: Cosine similarity compares directions alone
     explain: |
-      **What cosine similarity is.** Cosine similarity is a number that compares two non-zero vectors' directions without rewarding their lengths.
+      **The question.** The dot product mixes two things: how closely the arrows' directions agree and how long the arrows are. How can you score direction alone, so that an arrow doesn't win just for being long?
 
-      **How it works.** Divide the dot product by both lengths:
+      **Picture it.** On the left, $a=(3,4)$ and $b=(4,0)$. On the right are the same two directions with arrows twice as long, $a=(6,8)$ and $b=(8,0)$. The angle between the arrows, written $\theta$ ("theta"), is the same in both, but the dot product grows from 12 to 48. Divide each dot product by the two lengths multiplied together and both give $0.6$.
 
-      $$\cos\theta=\frac{a\cdot b}{\|a\|_2\|b\|_2}.$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Two panels with the same angle θ between the arrows. Left: a = (3,4) and b = (4,0), dot product 12, lengths 5 and 4, score 0.6. Right: a = (6,8) and b = (8,0), dot product 48, lengths 10 and 8, score 0.6.">
+        <defs>
+          <marker id="c-g" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
+          <marker id="c-b" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M70 250 H310" stroke="#d4d4d4" stroke-width="1.5"/>
+          <path d="M114 250 A34 34 0 0 0 100.4 222.8" stroke="#737373" stroke-width="1.5" fill="#ffffff" fill-opacity="0"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="120" y="238" fill="#737373">θ</text>
+          <path d="M80 250 L155 150" stroke="#10b981" stroke-width="3" marker-end="url(#c-g)"/>
+          <path d="M80 250 H180" stroke="#3b82f6" stroke-width="3.5" marker-end="url(#c-b)"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="163" y="154" fill="#10b981">a = (3,4)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="186" y="270" fill="#3b82f6">b = (4,0)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="298">a·b = 12, lengths 5 × 4</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="320" font-weight="600">score 12 / 20 = 0.6</text>
+          <path d="M350 250 H590" stroke="#d4d4d4" stroke-width="1.5"/>
+          <path d="M394 250 A34 34 0 0 0 380.4 222.8" stroke="#737373" stroke-width="1.5" fill="#ffffff" fill-opacity="0"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="400" y="238" fill="#737373">θ</text>
+          <path d="M360 250 L510 50" stroke="#10b981" stroke-width="3" marker-end="url(#c-g)"/>
+          <path d="M360 250 H560" stroke="#3b82f6" stroke-width="3.5" marker-end="url(#c-b)"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="518" y="54" fill="#10b981">a = (6,8)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="566" y="270" fill="#3b82f6">b = (8,0)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="360" y="298">a·b = 48, lengths 10 × 8</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="360" y="320" font-weight="600">score 48 / 80 = 0.6</text>
+        </g>
+      </svg>
+      ```
 
-      Here $\theta$ ("theta") is the angle between the arrows. The **cosine**, written $\cos$, is a trigonometry function that turns an angle into a number: 1 at $0^\circ$, 0 at $90^\circ$ and $-1$ at $180^\circ$. Rearranged, $a\cdot b=\|a\|_2\|b\|_2\cos\theta$.
+      **The idea.** To compare directions only, divide the dot product by both lengths. This is **cosine similarity**, defined for two non-zero vectors:
 
-      For $a=(1,1)$ and $b=(1,0)$, the lengths are $\sqrt2$ and 1, so the result is:
+      $$\frac{a\cdot b}{\|a\|\,\|b\|}$$
 
-      $$1/\sqrt2\approx0.707.$$
+      Dividing by both lengths has the same effect as first shrinking each arrow to length 1 (a **unit vector**) and then taking the dot product. What is left is the shadow of one length-1 arrow on the other, which depends only on the angle. In trigonometry that shadow is the **cosine** of the angle, $\cos\theta$, which gives the score its name and gives
 
-      Doubling $b$ gives:
+      $$a\cdot b=\|a\|\,\|b\|\cos\theta$$
 
-      $$2/(\sqrt2\cdot2),$$
+      The score is 1 for the same direction, 0 for perpendicular arrows and $-1$ for opposite directions. A zero vector has no direction, and dividing by its zero length is undefined.
 
-      the same number.
-
-      Picture shortening or lengthening both arrows until each has length one. Their directions stay fixed, and their dot product is now just the projection: the distance one goes along the other. This explains why dividing by the original lengths removes size. A vector of length one is a **unit vector**.
-
-      The score ranges from minus one to one: one means the same direction, zero means perpendicular, and minus one means opposite. A zero vector has no direction, and its zero length makes the division undefined.
-
-      **Why this is useful.** Search engines and recommendation systems use cosine similarity to find items that are alike regardless of size. In Week 4, transformers compare words the same way.
+      **Common confusion.** "A cosine similarity of 1 means the two vectors are equal." No, it means they point the same way. $(1,1)$ and $(10,10)$ score 1, but one is ten times as long as the other.
     worked: |
-      This example shows how dividing out lengths isolates direction.
+      This example shows the third idea: dividing by both lengths leaves a score that ignores length. Find the cosine similarity of $a=(3,4)$ and $b=(4,3)$, then double $a$.
 
-      Start with arrows $a=(1,1)$ and $b=(1,0)$.
+      1. **Multiply matching entries and add.**
+         $$a\cdot b=3\cdot4+4\cdot3=24$$
 
-      1. Dot product: $a\cdot b=1\cdot1+1\cdot0=1$.
-      2. Lengths: $\|a\|_2=\sqrt{1+1}=\sqrt2$ and $\|b\|_2=\sqrt{1+0}=1$.
-      3. Divide: $\cos\theta=1/(\sqrt2\cdot1)\approx0.707$. This is the cosine of $45^\circ$, where the degree sign marks an angle in degrees.
-      4. Double $b$ to $(2,0)$. The dot product becomes $1\cdot2+1\cdot0=2$, and its length becomes $\sqrt{4+0}=2$.
-      5. Divide again: $2/(\sqrt2\cdot2)=1/\sqrt2\approx0.707$.
+      2. **Find the length of $a$.**
+         $$\|a\|=\sqrt{3^2+4^2}=5$$
 
-      For $a=(3,4)$ and $b=(4,3)$, the dot product is:
+      3. **Find the length of $b$.**
+         $$\|b\|=\sqrt{4^2+3^2}=5$$
 
-      $$3\cdot4+4\cdot3=12+12=24.$$
+      4. **Divide by the two lengths multiplied together.**
+         $$\frac{24}{5\cdot5}=0.96$$
+         This is close to 1, so the arrows point nearly the same way.
 
-      Both lengths are $\sqrt{9+16}=5$, so cosine similarity is:
+      5. **Double $a$ to $(6,8)$ and repeat.**
+         $$\frac{6\cdot4+8\cdot3}{10\cdot5}=\frac{48}{50}=0.96$$
+         The dot product doubled, but so did $a$'s length, so the score did not change.
 
-      $$24/(5\cdot5)=24/25=0.96.$$
+      **Compare cases.** Keep $a=(3,4)$ and change $b$:
 
-      Multiplying either arrow by a positive number leaves its direction, and therefore its cosine similarity, unchanged. For a robot this compares headings rather than distances travelled.
+      | $b$ | $a\cdot b$ | Lengths multiplied | Cosine similarity |
+      | --- | --- | --- | --- |
+      | $(6,8)$ | $50$ | $50$ | $1$ |
+      | $(4,3)$ | $24$ | $25$ | $0.96$ |
+      | $(40,30)$ | $240$ | $250$ | $0.96$ |
+      | $(4,-3)$ | $0$ | $25$ | $0$ |
+      | $(-3,-4)$ | $-25$ | $25$ | $-1$ |
+
+      **Where it shows up.** Search and recommendation systems describe each item as a vector of numbers and use cosine similarity to find items that point the same way, whatever their size. A robot can use it to compare two headings without caring how far each move went.
     problems:
       - dot-direction-only-basics
-      - dotp-position
       - dotp-scaling
+      - dotp-position
       - dotp-cosine
       - dotp-cosine-template
+      - dotp-dot-from-cos
       - dotp-zero
       - dotp-attention
 final: dot-explain
 summary: |
-  - A dot product multiplies matching entries and adds the results. When one vector contains weights, it gives a weighted total of the other vector's measurements.
-  - For arrows, the dot product is a signed projection multiplied by the other arrow's length. It is positive below a right angle, zero at a right angle, and negative above a right angle.
-  - Cosine similarity divides by both non-zero lengths. It compares directions without rewarding longer arrows. For house vectors, first put the features on comparable scales so the units do not dominate the comparison.
-
-  **Next:** Matrices apply the same dot products to every house at once and can calculate both price and rent predictions.
+  - The dot product multiplies matching entries of two vectors and adds the products into one number.
+  - For arrows, it is the projection of one onto the other times the other's length: positive when they point roughly together, zero at a right angle, negative when they point apart.
+  - Cosine similarity divides the dot product by both lengths, leaving $\cos\theta$, which compares directions whatever the lengths.
+  **Next:** Matrices do many dot products at once, for example predicting prices for a whole list of houses.
