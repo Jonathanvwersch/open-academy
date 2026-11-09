@@ -7,6 +7,7 @@ import {
   lessonProblems,
   lessonRuns,
   paperProgress,
+  projectProgress,
   sessionActivities,
   studySessions,
   xpEvents,
@@ -62,14 +63,19 @@ export function registerLearnCourseRoutes(
       .filter((event) => event.localDate === todayLocal)
       .reduce((total, event) => total + event.amount, 0);
 
-    const [runRows, completedRows] = await Promise.all([
+    const [runRows, completedRows, projectRows] = await Promise.all([
       deps.db.select().from(lessonRuns).where(eq(lessonRuns.userId, userId)),
       deps.db
         .select({ activity: sessionActivities })
         .from(sessionActivities)
         .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
         .where(and(eq(studySessions.userId, userId), eq(sessionActivities.status, 'completed'))),
+      deps.db
+        .select({ projectId: projectProgress.projectId, status: projectProgress.status })
+        .from(projectProgress)
+        .where(eq(projectProgress.userId, userId)),
     ]);
+    const projectStatuses = new Map(projectRows.map((row) => [row.projectId, row.status]));
     const runsByConcept = new Map(runRows.map((run) => [run.conceptId, run]));
     const problemsByRun = await getProblemsByRun(
       deps.db,
@@ -162,7 +168,7 @@ export function registerLearnCourseRoutes(
       };
     });
 
-    const weeks = buildCourseWeeks(index, state.mastery, runRows);
+    const weeks = buildCourseWeeks(index, state.mastery, runRows, new Map(), projectStatuses);
     const topics = weeks.flatMap((week) => week.topics);
     const topicsDone = topics.filter((topic) => topic.status === 'complete').length;
     const estimatedFinish =
@@ -195,19 +201,26 @@ export function registerLearnCourseRoutes(
   api.get('/course', async (context) => {
     const index = await deps.content();
     const state = await deps.withRepo(context).schedulerState(deps.requestNow(context));
-    const runs = await deps.db
-      .select()
-      .from(lessonRuns)
-      .where(eq(lessonRuns.userId, context.get('userId')));
-    const paperRows = await deps.db
-      .select()
-      .from(paperProgress)
-      .where(eq(paperProgress.userId, context.get('userId')));
+    const [runs, paperRows, projectRows] = await Promise.all([
+      deps.db
+        .select()
+        .from(lessonRuns)
+        .where(eq(lessonRuns.userId, context.get('userId'))),
+      deps.db
+        .select()
+        .from(paperProgress)
+        .where(eq(paperProgress.userId, context.get('userId'))),
+      deps.db
+        .select({ projectId: projectProgress.projectId, status: projectProgress.status })
+        .from(projectProgress)
+        .where(eq(projectProgress.userId, context.get('userId'))),
+    ]);
     const paperStatuses = new Map<string, 'not_started' | 'reading' | 'completed'>(
       paperRows.map((row) => [row.paperId, row.completedAt ? 'completed' : 'reading'] as const),
     );
+    const projectStatuses = new Map(projectRows.map((row) => [row.projectId, row.status]));
     return context.json({
-      weeks: buildCourseWeeks(index, state.mastery, runs, paperStatuses),
+      weeks: buildCourseWeeks(index, state.mastery, runs, paperStatuses, projectStatuses),
     });
   });
 }
@@ -247,6 +260,7 @@ export function buildCourseWeeks(
   masteryRecords: Awaited<ReturnType<LearnerRepository['masteryRecords']>>,
   runs: Array<typeof lessonRuns.$inferSelect>,
   paperStatuses: Map<string, 'not_started' | 'reading' | 'completed'> = new Map(),
+  projectStatuses: Map<string, 'not_started' | 'in_progress' | 'completed'> = new Map(),
 ) {
   const masteryByConcept = new Map<string, typeof masteryRecords>();
   for (const record of masteryRecords) {
@@ -275,7 +289,14 @@ export function buildCourseWeeks(
         week: week.week,
         title: week.title,
         intro: week.intro ?? '',
-        project: project ? { id: project.id, title: project.title } : null,
+        project: project
+          ? {
+              id: project.id,
+              title: project.title,
+              available: project.status === 'authored',
+              status: projectStatuses.get(project.id) ?? 'not_started',
+            }
+          : null,
         papers: (index.papersByWeek.get(week.week) ?? []).map((paper) => ({
           id: paper.id,
           title: paper.title,

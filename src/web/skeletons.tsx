@@ -24,16 +24,71 @@ export function LearnSkeleton() {
   return (
     <SkeletonShell>
       <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
-        {[4, 5].map((count) => (
-          <Card key={count}>
+        <div className="space-y-5">
+          <Card>
             <CardHeader>
               <Skeleton className="h-5 w-28" />
             </CardHeader>
             <CardContent>
-              <SkeletonRows count={count} widths={['w-full', 'w-5/6', 'w-4/5', 'w-3/4', 'w-2/3']} />
+              <SkeletonRows count={4} widths={['w-full', 'w-5/6', 'w-4/5', 'w-3/4', 'w-2/3']} />
             </CardContent>
           </Card>
-        ))}
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-5 w-28" />
+            </CardHeader>
+            <CardContent>
+              <SkeletonRows count={3} widths={['w-full', 'w-5/6', 'w-4/5']} />
+            </CardContent>
+          </Card>
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <SkeletonRows count={3} widths={['w-full', 'w-5/6', 'w-4/5']} />
+            <SkeletonRows count={2} widths={['w-full', 'w-3/4']} />
+            <Skeleton className="h-32 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    </SkeletonShell>
+  );
+}
+
+export function ProgressSkeleton() {
+  return (
+    <SkeletonShell>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader className="gap-0">
+            <div className="grid grid-cols-3 divide-x">
+              {[0, 1, 2].map((stat) => (
+                <div key={stat} className="space-y-2 px-3 first:pl-0 last:pr-0">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-7 w-20" />
+                  {stat === 0 ? <Skeleton className="h-1.5 w-full" /> : null}
+                  {stat > 0 ? <Skeleton className="h-4 w-12" /> : null}
+                </div>
+              ))}
+            </div>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-40" />
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {[0, 1, 2].map((domain) => (
+              <div key={domain} className="space-y-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-2 w-full" />
+                <Skeleton className="h-3 w-2/3" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       </div>
     </SkeletonShell>
   );

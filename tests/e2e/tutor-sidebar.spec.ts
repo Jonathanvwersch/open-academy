@@ -551,7 +551,7 @@ test('tutor Context follows the session, lesson, and home pages', async ({ page 
     fullPage: true,
   });
 
-  await page.getByRole('link', { name: 'Learn' }).click();
+  await page.getByRole('link', { name: 'Home' }).click();
   await expect(page).toHaveURL('/');
   await expect(tutor.getByTestId('tutor-reading-context')).toHaveCount(0);
 });

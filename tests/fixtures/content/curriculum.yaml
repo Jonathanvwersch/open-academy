@@ -13,7 +13,7 @@ weeks:
   - week: 2
     title: Optimization
     concepts: [gradients, loss-functions, gradient-descent, matrix-products]
-    project: linreg-numpy
+    project: optimization-project
 goals:
   - id: g-model-training
     text: Explain how a simple model learns from data.

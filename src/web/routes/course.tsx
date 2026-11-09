@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { ChevronRight, FileText } from 'lucide-react';
+import { ChevronRight, FileText, Wrench } from 'lucide-react';
 import { useEffect } from 'react';
 import { Badge } from '@/ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
@@ -42,9 +42,6 @@ function CoursePage() {
                 Week {week.week} · {week.title}
               </CardTitle>
               {week.intro ? <p className="text-sm text-muted-foreground">{week.intro}</p> : null}
-              {week.project ? (
-                <p className="text-sm text-muted-foreground">Project: {week.project.title}</p>
-              ) : null}
             </CardHeader>
             <CardContent className="p-0 last:pb-0">
               <ol className="divide-y">
@@ -204,6 +201,63 @@ function CoursePage() {
                         </Link>
                       </li>
                     ))}
+                  </ul>
+                </section>
+              ) : null}
+              {week.project ? (
+                <section className="border-t" aria-label="Project">
+                  <h3 className="px-4 pt-4 pb-1 text-sm font-medium text-muted-foreground">
+                    Project
+                  </h3>
+                  <ul className="divide-y">
+                    <li>
+                      {week.project.available ? (
+                        <Link
+                          to="/projects/$projectId"
+                          params={{ projectId: week.project.id }}
+                          className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/60"
+                        >
+                          <span className="flex w-9 shrink-0 items-center">
+                            <Wrench aria-hidden="true" className="size-4 text-muted-foreground" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-medium">
+                              <Markdown inline>{week.project.title}</Markdown>
+                            </span>
+                          </span>
+                          {week.project.status !== 'not_started' ? (
+                            <Badge
+                              variant="secondary"
+                              className={
+                                week.project.status === 'completed'
+                                  ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                  : ''
+                              }
+                            >
+                              {week.project.status === 'completed' ? 'Complete' : 'In progress'}
+                            </Badge>
+                          ) : null}
+                          <ChevronRight
+                            aria-hidden="true"
+                            className="size-4 shrink-0 text-muted-foreground"
+                          />
+                        </Link>
+                      ) : (
+                        <div className="flex items-center justify-between gap-3 px-4 py-3">
+                          <span className="flex w-9 shrink-0 items-center">
+                            <Wrench aria-hidden="true" className="size-4 text-muted-foreground" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-medium text-muted-foreground">
+                              <Markdown inline>{week.project.title}</Markdown>
+                            </span>
+                            <span className="block text-xs text-muted-foreground">
+                              Project coming soon
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                    </li>
                   </ul>
                 </section>
               ) : null}

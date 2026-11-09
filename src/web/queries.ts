@@ -54,7 +54,12 @@ export interface CoursePayload {
     week: number;
     title: string;
     intro: string;
-    project: { id: string; title: string } | null;
+    project: {
+      id: string;
+      title: string;
+      available: boolean;
+      status: 'not_started' | 'in_progress' | 'completed';
+    } | null;
     papers: Array<{
       id: string;
       title: string;
@@ -192,41 +197,9 @@ export interface LessonRunPayload {
 export interface ProgressPayload {
   domains: Array<{ id: string; title: string; counts: Record<string, number> }>;
   goal: { mastered: number; total: number };
-  debt: Array<{
-    conceptId: string;
-    title: string;
-    dimension: string;
-    reason: string;
-    remediationAction: string;
-    studyUrl: string;
-  }>;
-  evidence: Array<{
-    id: string;
-    exerciseId: string;
-    conceptId: string;
-    conceptTitle: string;
-    correct: number;
-    createdAt: string;
-    event: string | null;
-  }>;
   hours: number;
   planHours: number;
   streakDays: number;
-}
-
-export interface MapPayload {
-  nodes: Array<{
-    id: string;
-    title: string;
-    domain: string;
-    status: string;
-    available: boolean;
-    hasLesson: boolean;
-    dimensions: Record<string, { state: string; inferred?: boolean }>;
-  }>;
-  edges: Array<{ conceptId: string; prerequisiteId: string }>;
-  domains: Array<{ id: string; title: string }>;
-  currentWeekDomain: string;
 }
 
 export interface ProjectPayload {
@@ -435,16 +408,6 @@ export const progressQueryOptions = () =>
     queryFn: () => getJson<ProgressPayload>('/api/progress', 'Progress unavailable'),
   });
 
-export const mapQueryOptions = (domain: string | null) =>
-  queryOptions({
-    queryKey: ['map', domain] as const,
-    queryFn: () =>
-      getJson<MapPayload>(
-        `/api/map${domain === null ? '' : `?domain=${encodeURIComponent(domain || 'all')}`}`,
-        'Map unavailable',
-      ),
-  });
-
 export const conceptQueryOptions = (conceptId: string) =>
   queryOptions({
     queryKey: ['concept', conceptId] as const,
@@ -458,7 +421,11 @@ export const conceptQueryOptions = (conceptId: string) =>
 export const projectQueryOptions = (projectId: string) =>
   queryOptions({
     queryKey: ['project', projectId] as const,
-    queryFn: () => getJson<ProjectPayload>(`/api/projects/${projectId}`, 'Project unavailable'),
+    queryFn: () =>
+      getJson<ProjectPayload>(
+        `/api/projects/${encodeURIComponent(projectId)}`,
+        'Project unavailable',
+      ),
   });
 
 export const settingsQueryOptions = () =>

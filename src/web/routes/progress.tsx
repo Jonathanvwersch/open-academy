@@ -1,15 +1,14 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { Button } from '@/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card.js';
 import { Progress } from '@/ui/progress.js';
 import { masteryStateLabels } from '../mastery-labels.js';
 import { progressQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
-import { PageSkeleton } from '../skeletons.js';
+import { ProgressSkeleton } from '../skeletons.js';
 
 export const Route = createFileRoute('/progress')({
-  pendingComponent: PageSkeleton,
+  pendingComponent: ProgressSkeleton,
   loader: ({ context }) => context.queryClient.ensureQueryData(progressQueryOptions()),
   errorComponent: () => <RouteLoadError message="Progress is unavailable." role="alert" />,
   component: ProgressPage,
@@ -29,7 +28,6 @@ function ProgressPage() {
   const domains = data.domains.filter((domain) =>
     Object.values(domain.counts).some((count) => count > 0),
   );
-  const recentAnswers = data.evidence.slice(0, 10);
   return (
     <section className="space-y-6">
       <h1 className="sr-only">Progress</h1>
@@ -102,68 +100,6 @@ function ProgressPage() {
           </CardContent>
         </Card>
       ) : null}
-      {data.debt.length ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Learning debt</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              {data.debt.map((item) => (
-                <li key={`${item.conceptId}-${item.dimension}-${item.reason}`}>
-                  <Button asChild variant="link" className="px-0">
-                    <a href={item.studyUrl}>Study {item.title} now</a>
-                  </Button>
-                  <p className="text-sm text-muted-foreground">
-                    {item.reason.replaceAll('_', ' ')} · {item.dimension}: {item.remediationAction}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      ) : null}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent answers</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {recentAnswers.length ? (
-            <ul className="divide-y">
-              {recentAnswers.map((item) => {
-                const correct = item.correct >= 1;
-                const result = correct
-                  ? 'Correct'
-                  : item.correct === 0
-                    ? 'Incorrect'
-                    : 'Partly correct';
-                return (
-                  <li
-                    key={item.id}
-                    className="flex items-center justify-between gap-4 py-2.5 first:pt-0 last:pb-0"
-                  >
-                    <p className="min-w-0 truncate font-medium">{item.conceptTitle}</p>
-                    <div className="flex shrink-0 items-center gap-1 whitespace-nowrap text-right text-sm text-muted-foreground">
-                      <span className={correct ? 'text-emerald-700 dark:text-emerald-300' : ''}>
-                        {result}
-                      </span>
-                      <span aria-hidden="true">·</span>
-                      <span>
-                        {new Date(item.createdAt).toLocaleDateString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">No answers yet.</p>
-          )}
-        </CardContent>
-      </Card>
     </section>
   );
 }

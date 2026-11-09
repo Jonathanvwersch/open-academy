@@ -18,10 +18,8 @@ interface RouterContext {
 }
 
 const navigation = [
-  { label: 'Learn', to: '/' },
+  { label: 'Home', to: '/' },
   { label: 'Course', to: '/course' },
-  { label: 'Map', to: '/map' },
-  { label: 'Lab', to: '/lab' },
   { label: 'Progress', to: '/progress' },
   { label: 'Settings', to: '/settings' },
 ] as const;
@@ -33,7 +31,7 @@ function AppShellSkeleton() {
         <div className="mx-auto flex h-full w-full max-w-3xl items-center justify-between gap-4 px-4 sm:px-6">
           <Skeleton className="hidden h-4 w-20 sm:block" />
           <nav className="-mx-4 flex w-[calc(100%+2rem)] items-center justify-between gap-0 sm:mx-0 sm:w-auto sm:flex-1 sm:justify-end sm:gap-0.5">
-            {['w-8', 'w-10', 'w-7', 'w-6', 'w-12', 'w-14'].map((width) => (
+            {['w-10', 'w-12', 'w-14', 'w-16'].map((width) => (
               <Skeleton key={width} className={`h-7 ${width}`} />
             ))}
           </nav>

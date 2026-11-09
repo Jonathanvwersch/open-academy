@@ -31,9 +31,7 @@ test.beforeEach(async () => {
   await db.$client.end();
 });
 
-test('diagnostic to KP runner starts point one and preserves map and progress', async ({
-  page,
-}) => {
+test('diagnostic to KP runner starts point one and preserves progress', async ({ page }) => {
   let now = '2026-01-01T12:00:00.000Z';
   await page.route('**/api/**', (route) =>
     route.continue({
@@ -100,7 +98,7 @@ test('diagnostic to KP runner starts point one and preserves map and progress', 
   await expect(page.getByText('First week: ML fundamentals')).toBeVisible();
 
   await page.getByRole('link', { name: 'View Learn' }).click();
-  await expect(page.getByRole('heading', { name: 'Learn', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Current week' })).toHaveCount(0);
   await page.screenshot({ path: `${screenshotDir}/today-plan.png`, fullPage: true });
@@ -117,11 +115,6 @@ test('diagnostic to KP runner starts point one and preserves map and progress', 
   expect(new Set(concepts).size).toBe(concepts.length);
   expect(today.plan.activities.length).toBeLessThanOrEqual(6);
 
-  await page.goto('/map');
-  await expect(page.getByText('Prerequisites not met')).toBeVisible();
-  await page.getByText('Vectors', { exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Mastery' })).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/map.png`, fullPage: true });
   await page.goto('/progress');
   await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/progress.png`, fullPage: true });
@@ -151,8 +144,10 @@ test('diagnostic uses radios, renders option math, and resets answers between qu
   await expect(page.getByLabel('Your answer')).toHaveValue('');
 });
 
-test('lab uploads fixture results, records evidence, and reveals reflection', async ({ page }) => {
-  await page.goto('/lab');
+test('project uploads fixture results, records evidence, and reveals reflection', async ({
+  page,
+}) => {
+  await page.goto('/projects/linreg-numpy');
   await expect(page.getByRole('heading', { name: 'Linear regression in NumPy' })).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles({
     name: 'results.json',
@@ -164,18 +159,15 @@ test('lab uploads fixture results, records evidence, and reveals reflection', as
   await expect(page.getByText('Complete a gradient update.')).toBeVisible();
 });
 
-test('progress displays mastery, goal progress, study time, and evidence sections', async ({
-  page,
-}) => {
+test('progress displays mastery and stats without debt or recent answers', async ({ page }) => {
   await page.goto('/progress');
   await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
   await expect(page.getByText('Concepts mastered', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Mastery by domain' })).toBeVisible();
   await expect(page.getByText('Mathematics', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Learning debt' })).toHaveCount(0);
   await expect(page.getByText('Study time', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Recent answers' })).toBeVisible();
-  await expect(page.getByText('No answers yet.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Learning debt' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Recent answers' })).toHaveCount(0);
 });
 
 test('progress loader failure restores the unavailable message', async ({ page }) => {
@@ -222,8 +214,6 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
   await expect(page.getByRole('heading', { name: 'Welcome to Academy' })).toBeVisible();
   await assertStable('/');
   for (const route of [
-    { name: 'Map', path: '/map', heading: 'Knowledge map' },
-    { name: 'Lab', path: '/lab', heading: 'Linear regression in NumPy' },
     { name: 'Progress', path: '/progress', heading: 'Progress' },
     { name: 'Settings', path: '/settings', heading: 'Settings' },
     { name: 'Course', path: '/course', heading: 'Course' },
@@ -237,7 +227,15 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
     });
   }
 
-  await page.getByRole('link', { name: 'Learn', exact: true }).click();
+  await page.goto('/projects/linreg-numpy');
+  await expect(page.getByRole('heading', { name: 'Linear regression in NumPy' })).toBeVisible();
+  await assertStable('/projects/linreg-numpy');
+  await page.screenshot({
+    path: `${screenshotDir}/linear-regression-project.png`,
+    fullPage: true,
+  });
+
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
   await page.getByRole('link', { name: 'Start diagnostic' }).click();
   await expect(page.getByRole('heading', { name: 'Starting-point diagnostic' })).toBeVisible();
   await page.getByRole('button', { name: 'I haven’t studied this domain' }).click();
