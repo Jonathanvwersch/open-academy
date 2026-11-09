@@ -1,90 +1,287 @@
 concept: perceptron
-version: 3
+version: 4
 objective: |
-  **Goal:** explain how a perceptron turns house features into a simple yes-or-no decision.
+  **Goal:** compute a perceptron's yes-or-no output, see how a straight line splits its yes and no inputs, and explain why one perceptron cannot compute XOR.
 where_this_fits: |
-  Probability basics described how likely a sale outcome is, such as selling above asking, from past house sales. Week 2 turns the same house measurements into a neural model, beginning with one perceptron. Its thresholded score can answer a yes-or-no question, such as whether a sale exceeds its asking price; later layers will predict the same sale price directly.
+  A gripper's rule says which answer we want: close only if an object is detected and the fingers are not already closed. A perceptron, the simplest model neuron, turns weighted measurements into yes or no. Can it match every required answer? Each input is 0 or 1, so there are four pairs: (0,0),(1,0),(0,1),(1,1) — the corners of a square.
+
+  1. Turn a weighted score into a yes-or-no answer.
+  2. Draw the straight line separating the inputs that get each answer.
+  3. Test AND, OR, NAND and XOR rules: which required answers can one line separate?
+
+  Next, you'll replace the on/off step with smoother functions.
 knowledge_points:
   - id: perc-score-and-step
-    title: A weighted score followed by a yes-or-no output
+    title: Score the inputs, then answer yes or no
     explain: |
-      **What a perceptron is.** A perceptron multiplies each input feature by a weight, adds a bias, then applies the step activation $\phi(z)$: it outputs 1 when the score is positive and 0 otherwise.
+      **The question.** How can you turn two input measurements into a yes-or-no answer, rather than just another number?
 
-      **How it works.** Let $x=(12,3,20)$ record area, bedrooms and age. The score is $z=w\cdot x+b$. For weights $(0.2,0.1,-0.02)$ and bias $-2.5$:
+      **Picture it.** Take two numbers, $x_1$ and $x_2$. Weights are numbers that set how much each input counts. Multiply the inputs by weights 1 and 2, add, then add a constant called the bias, here −4, to get the score $z$. These are just small example values, not numbers every perceptron uses.
 
-      $$z=2.4+0.3-0.4-2.5=-0.2.$$
+      The step $\phi$ ("phi") is a switch: positive scores give yes (1); all others give no (0). The bottom graph jumps like a stair step: score goes across, output goes up. A filled dot means the point is included; a hollow dot means it is left out.
 
-      The step output is 0. The output can represent a yes/no label such as “sale above asking.”
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 260" aria-label="Two weighted inputs plus bias make a score, then a step gives 0 or 1; zero belongs to output 0.">
+        <defs><marker id="p1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+          <path d="M75 45 L215 75 M75 105 L215 75 M315 75 H390 M475 75 H550" stroke="#737373" fill="#171717" fill-opacity="0" marker-end="url(#p1-arrow)"/>
+          <rect x="215" y="45" width="100" height="60" rx="6" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+          <rect x="390" y="45" width="85" height="60" rx="6" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+          <g stroke="#ffffff" stroke-width="4" paint-order="stroke" stroke-linejoin="round">
+            <text x="25" y="48">x₁</text><text x="25" y="108">x₂</text><text x="115" y="43">× 1</text><text x="115" y="113">× 2</text>
+            <text x="232" y="71">add, then</text><text x="232" y="92">bias −4</text><text x="345" y="64">z</text><text x="407" y="80">step φ</text><text x="555" y="80">0 / 1</text>
+          </g>
+          <path d="M130 220 H475 M300 238 V140" stroke="#737373"/>
+          <path d="M145 220 H300" stroke="#ef4444" stroke-width="3"/><path d="M300 170 H455" stroke="#10b981" stroke-width="3"/>
+          <circle cx="300" cy="220" r="5" fill="#ef4444"/><circle cx="300" cy="170" r="5" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+          <text x="280" y="215">0</text><text x="280" y="175">1</text><text x="310" y="242">0</text><text x="480" y="225">score z</text><text x="315" y="145">output φ(z)</text>
+        </g>
+      </svg>
+      ```
 
-      A threshold converts the continuous score into one of two decisions.
+      **The idea.** A **neuron** takes a weighted sum plus a bias, then applies an **activation**, a function transforming that score into an output.
 
-      **Why this is useful.** This is the smallest neural decision rule for classifying house sales before the course builds a price-predicting network.
+      A **perceptron** is a neuron whose activation is the step; “activation” is the general word because later lessons swap in other functions.
+
+      In practice, weights and bias are learned from examples (later lessons); here we pick them by hand.
+
+      Write the input vector as $x$, its matching weights as $w$, the bias as $b$, and the score as $z$:
+
+      $$z=w\cdot x+b.$$
+
+      The **step activation** gives $\phi(z)=1$ if $z>0$, and 0 otherwise:
+
+      $$\phi(z)=\begin{cases}1&z>0\\0&z\leq0.\end{cases}$$
+
+      **Common confusion.** “Output 1 means it is completely sure.” No: scores 0.1 and 100 both give 1. This is a yes-or-no decision, not a probability measuring how sure it is.
     worked: |
-      This example shows the calculation.
-      For $x=(12,3,20)$, weights $(0.2,0.1,-0.02)$ and bias $-2.5$:
+      Use weights $w=(1,2)$, bias $b=-4$ and input $x=(2,3)$.
 
-      1. Compute $z=0.2(12)+0.1(3)-0.02(20)-2.5=-0.2$.
-      2. Since $z$ is not positive, the perceptron outputs 0.
+      1. **Weight each input.**
+         $$w\cdot x=1\cdot2+2\cdot3=8.$$
+      2. **Add the bias.**
+         $$z=8-4=4.$$
+      3. **Apply the step.** The score is positive.
+         $$\phi(4)=1.$$
+
+      **Compare cases.** Keep the weights and bias fixed; only change the input.
+
+      | Input | Score $x_1+2x_2-4$ | Output |
+      |---|---:|---:|
+      | $(2,3)$ | 4 | 1 |
+      | $(1,1)$ | −1 | 0 |
+      | $(4,0)$ | 0 | 0 |
+      | $(0,3)$ | 2 | 1 |
+
+      The $(4,0)$ row scores exactly zero, so its output is 0.
+
+      **Where it shows up.** For a gripper, let $x_1$ mean object detected and $x_2$ mean fingers already closed (each 0 or 1). Weights $(1,-1)$ and bias $-0.5$ give “close” only when an object is detected and the fingers are not already closed.
+
+      At $(0,0),(1,0),(0,1),(1,1)$ the scores are $-0.5,0.5,-1.5,-0.5$: only $(1,0)$ gives yes. The negative weight on “already closed” pushes toward no.
     problems:
-      [
-        perc-score-and-step-basics,
-        percp-weight-sign,
-        percp-output,
-        percp-score-template,
-        percp-why-bias,
-        percp-score-zero,
-        percp-robot-gripper,
-      ]
+      - perc-score-and-step-basics
+      - percp-score-reason
+      - percp-weight-sign
+      - percp-output
+      - percp-score-template
+      - percp-score-zero
+      - percp-robot-gripper
   - id: perc-straight-boundary
-    title: The decision boundary is a plane
+    title: A straight line splits yes from no
     explain: |
-      **What a decision boundary is.** It is the set of inputs where the perceptron's score is exactly zero. In three feature dimensions, this plane is also called a hyperplane.
+      **The question.** Instead of checking inputs one at a time, can you see all the inputs that get a yes? Where does the answer change?
 
-      **How it works.** For three house features, the equation $w\cdot x+b=0$ describes a plane in three-dimensional input space. On one side the score is positive and the output is 1; on the other it is non-positive and the output is 0. Changing weights tilts the plane; changing the bias shifts it.
+      **Picture it.** Keep $z=x_1+2x_2-4$. Horizontal position is the first input measurement; vertical position is the second. The amber line joins points whose score is zero.
 
-      The boundary is flat because setting the weighted-sum score to zero gives a linear equation.
+      Even on the line, a point counts as no (red), since zero is not positive. Green means yes. The blue arrow points towards higher scores.
 
-      **Why this is useful.** The boundary shows which combinations of area, bedrooms and age change the model's yes/no house-sale decision.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 330" aria-label="The boundary x1 plus 2x2 equals 4 passes through (4,0) and (0,2); the weight arrow (1,2) is perpendicular towards output 1.">
+        <defs><marker id="p2-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M80 280 H520 M80 280 V30" stroke="#737373"/>
+          <path d="M80 160 L320 280" stroke="#f59e0b" stroke-width="3"/>
+          <path d="M200 220 L260 100" stroke="#3b82f6" stroke-width="3" marker-end="url(#p2-blue)"/>
+          <circle cx="200" cy="100" r="6" fill="#10b981"/><circle cx="140" cy="220" r="6" fill="#ef4444"/><circle cx="320" cy="280" r="6" fill="#ef4444"/><circle cx="80" cy="100" r="6" fill="#10b981"/>
+          <g stroke="#ffffff" stroke-width="4" paint-order="stroke" stroke-linejoin="round">
+            <text x="528" y="284">x₁</text><text x="72" y="23">x₂</text><text x="64" y="302">0</text>
+            <text x="12" y="155">(0,2)</text><text x="308" y="304">(4,0)</text><text x="15" y="90">(0,3)</text><text x="155" y="86">(2,3)</text><text x="92" y="244">(1,1)</text>
+            <text x="275" y="103" fill="#3b82f6">w = (1,2)</text><text x="345" y="180" fill="#10b981">output 1</text><text x="110" y="263" fill="#ef4444">output 0</text>
+            <text x="260" y="233" fill="#f59e0b">z = 0</text>
+          </g>
+        </g>
+      </svg>
+      ```
+
+      **The idea.** A **decision boundary** is the set of inputs scoring zero. With at least one weight not zero, two input measurements give a line; three give a plane (both weights zero means score $b$ everywhere, no separating line).
+
+      This flat (straight, without curves) boundary is a **hyperplane**. Changing the weights' ratio turns it; scaling all of $w$ and $b$ together by a positive factor leaves it unchanged. The Compare cases table after the worked example shows this.
+
+      Which side is yes? The arrow $w$ answers that. Compare it to directions along the line. Start at a boundary point $x$ and move by a non-zero vector $d$ along the line. Both scores are zero:
+
+      $$w\cdot x+b=0.$$
+      $$w\cdot(x+d)+b=0.$$
+      $$w\cdot x+w\cdot d+b=0.$$
+
+      Subtract the first equation from the third:
+
+      $$w\cdot d=0.$$
+
+      The dot-product lesson says zero dot product means perpendicular for non-zero arrows. So $w$ is perpendicular to the boundary. Stepping along $w$ instead gives:
+
+      $$w\cdot(x+w)+b=(w\cdot x+b)+w\cdot w.$$
+      $$w\cdot(x+w)+b=0+w\cdot w.$$
+
+      $$w\cdot w=w_1^2+w_2^2>0.$$
+
+      So the point $x+w$ scores $w\cdot w>0$: it is a yes. So $w$ points into the yes side.
+
+      **Common confusion.** “Better weights could curve the boundary.” No: setting a weighted sum plus bias to zero gives a linear equation. You can turn or slide the line, not bend it.
     worked: |
-      This example shows the calculation.
-      With score $z=0.2a+0.1r-0.02g-2.5$, the boundary is $0.2a+0.1r-0.02g-2.5=0$. If age $g$ stays fixed, this is a straight line in area $a$ and bedroom count $r$.
+      Find the boundary and identify the no side for the same perceptron.
+
+      1. **Set the score to zero.**
+         $$x_1+2x_2-4=0.$$
+      2. **Rearrange to see how the line tilts.**
+         $$x_2=2-\frac{x_1}{2}.$$
+         For each unit right, the line drops half a unit: slope $-1/2$.
+
+      3. **Find the axis crossings.** Set each input to zero in turn.
+         $$x_1=0\quad\Rightarrow\quad x_2=2.$$
+         $$x_2=0\quad\Rightarrow\quad x_1=4.$$
+
+      4. **Check with a point: the origin.** It lies on the opposite side from $w$'s arrow. Both inputs are zero, leaving just the bias:
+         $$z(0,0)=0+2\cdot0-4=-4.$$
+         $$\phi(-4)=0.$$
+         So the origin's side is the no side, confirming the arrow's result.
+
+      **Compare cases.** Rows 1–2 show bias shifting the hyperplane without turning it; row 3 doubles row 2's weights and bias; row 4 changes row 2's line's direction.
+
+      | Weights | Bias | Horizontal crossing | Vertical crossing |
+      |---|---:|---|---|
+      | $(1,2)$ | −2 | $(2,0)$ | $(0,1)$ |
+      | $(1,2)$ | −4 | $(4,0)$ | $(0,2)$ |
+      | $(2,4)$ | −8 | $(4,0)$ | $(0,2)$ |
+      | $(2,1)$ | −4 | $(2,0)$ | $(0,4)$ |
+
+      Doubling every weight and the bias doubles every score, so no sign changes: the same line and same yes side.
+
+      **Where it shows up.** For the gripper's object-detected and already-closed inputs, $z=x_1-x_2-0.5$. Its boundary $x_1-x_2=0.5$ puts only $(1,0)$ on the yes side: close only when needed.
     problems:
-      [
-        perc-straight-boundary-basics,
-        percp-boundary-meaning,
-        percp-which-side,
-        percp-bias-shift,
-        percp-why-straight,
-        percp-crossing-template,
-        percp-no-curve,
-      ]
+      - perc-straight-boundary-basics
+      - percp-boundary-reason
+      - percp-boundary-meaning
+      - percp-which-side
+      - percp-why-bias
+      - percp-bias-shift
+      - percp-why-straight
+      - percp-crossing-template
+      - percp-no-curve
   - id: perc-and-or-xor
-    title: One boundary cannot separate XOR
+    title: AND and OR work; XOR cannot
     explain: |
-      **What XOR is.** XOR outputs 1 when exactly one of two binary inputs is 1, and 0 when both inputs match.
+      **The question.** Which rules can one perceptron match on two yes-or-no inputs? A rule is the answers we want; the perceptron's output must match them.
 
-      **How it works.** The four inputs are $(0,0),(0,1),(1,0),(1,1)$. For AND, only $(1,1)$ is positive; for OR, only $(0,0)$ is negative. A line can separate each pair of output groups. For XOR, the positive corners $(0,1)$ and $(1,0)$ alternate with the negative corners, so no single straight boundary separates them.
+      **Picture it.** Each input is now either 0 or 1, so there are only four points: the corners of a square. AND says yes only when both inputs are 1; OR says yes when at least one is 1. XOR (exclusive OR) says yes when exactly one is 1.
 
-      A perceptron's single linear boundary cannot represent every possible pattern, which is why it cannot model XOR.
+      Green means output 1 and red means output 0 in every panel.
 
-      **Why this is useful.** XOR gives a precise reason the neural model needs multiple neurons and nonlinear activations.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 240" aria-label="AND and OR corners can be separated by the amber lines; XOR has diagonally opposite green corners that no line can separate from both red corners.">
+        <defs><marker id="p3-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M40 180 H160 V60 H40 Z M240 180 H360 V60 H240 Z M440 180 H560 V60 H440 Z" stroke="#d4d4d4" fill="#171717" fill-opacity="0"/>
+          <path d="M100 60 L160 120 M240 120 L300 180" stroke="#f59e0b" stroke-width="3"/>
+          <path d="M130 90 L148 72 M270 150 L288 132" stroke="#3b82f6" stroke-width="3" marker-end="url(#p3-blue)"/>
+          <circle cx="40" cy="180" r="6" fill="#ef4444"/><circle cx="40" cy="60" r="6" fill="#ef4444"/><circle cx="160" cy="180" r="6" fill="#ef4444"/><circle cx="160" cy="60" r="6" fill="#10b981"/>
+          <circle cx="240" cy="180" r="6" fill="#ef4444"/><circle cx="240" cy="60" r="6" fill="#10b981"/><circle cx="360" cy="180" r="6" fill="#10b981"/><circle cx="360" cy="60" r="6" fill="#10b981"/>
+          <circle cx="440" cy="180" r="6" fill="#ef4444"/><circle cx="440" cy="60" r="6" fill="#10b981"/><circle cx="560" cy="180" r="6" fill="#10b981"/><circle cx="560" cy="60" r="6" fill="#ef4444"/>
+          <g stroke="#ffffff" stroke-width="4" paint-order="stroke" stroke-linejoin="round">
+            <text x="75" y="25">AND</text><text x="280" y="25">OR</text><text x="480" y="25">XOR</text>
+            <text x="120" y="48" fill="#3b82f6">yes ↗</text><text x="300" y="119" fill="#3b82f6">yes ↗</text>
+            <text x="18" y="185">0</text><text x="18" y="65">1</text><text x="36" y="203">0</text><text x="156" y="203">1</text><text x="170" y="184">x₁</text><text x="25" y="45">x₂</text>
+            <text x="218" y="185">0</text><text x="218" y="65">1</text><text x="236" y="203">0</text><text x="356" y="203">1</text><text x="370" y="184">x₁</text><text x="225" y="45">x₂</text>
+            <text x="418" y="185">0</text><text x="418" y="65">1</text><text x="436" y="203">0</text><text x="556" y="203">1</text><text x="570" y="184">x₁</text><text x="425" y="45">x₂</text>
+            <text x="42" y="230">x₁ + x₂ = 1.5</text><text x="242" y="230">x₁ + x₂ = 0.5</text><text x="457" y="230">No single line</text>
+          </g>
+        </g>
+      </svg>
+      ```
+
+      The amber lines separate AND and OR; blue arrows point perpendicularly into their yes sides. XOR's green corners are diagonally opposite, with red corners between them as you walk round the square.
+
+      **The idea.** A perceptron can match exactly the rules one flat boundary can separate. A set of inputs with required answers is **linearly separable** if some choice of weights and bias makes the score positive for every required 1 and non-positive for every required 0.
+
+      AND treats both inputs equally. Any equal positive weights work with a suitable bias; we use weight 1 on each input. Input sums are 0, 1 or 2; choose $x_1+x_2=1.5$ between sums 1 and 2. Rewrite as $x_1+x_2-1.5=0$: bias $-1.5$.
+
+      For OR, use weights $(1,1)$ and put the line at sum 0.5, between 0 and 1: bias $-0.5$.
+
+      **Common confusion.** “XOR just needs better weights.” No: its diagonally opposite yes corners cannot be separated from both no corners. The worked example below proves this for every choice of weights, including negative ones.
     worked: |
-      This example shows the calculation.
-      Label $(0,1)$ and $(1,0)$ as 1, and $(0,0)$ and $(1,1)$ as 0. The labels alternate around the square, so no single line can put both positive corners on one side and both negative corners on the other.
+      First check AND; then see why trying to fit XOR must fail.
+
+      1. **Score AND's four inputs.** Use $w=(1,1)$ and $b=-1.5$.
+         $$z(0,0)=0+0-1.5=-1.5.$$
+         $$z(1,0)=1+0-1.5=-0.5.$$
+         $$z(0,1)=0+1-1.5=-0.5.$$
+         $$z(1,1)=1+1-1.5=0.5.$$
+         Only the last score is positive, so only $(1,1)$ gives 1.
+
+      2. **Require XOR's no at the origin.** Now allow any weights and bias.
+         $$z(0,0)=w_1\cdot0+w_2\cdot0+b=b.$$
+         $$b\leq0.$$
+
+      3. **Require XOR's two yes answers.** Each must score above zero.
+         $$z(1,0)=w_1\cdot1+w_2\cdot0+b=w_1+b.$$
+         $$w_1+b>0.$$
+         $$z(0,1)=w_1\cdot0+w_2\cdot1+b=w_2+b.$$
+         $$w_2+b>0.$$
+
+      4. **Add the requirements.**
+         $$w_1+w_2+2b>0.$$
+         We want the score at $(1,1)$, which includes just one $b$, so subtract $b$ from both sides:
+         $$w_1+w_2+b>-b.$$
+         Step 2 gave $b\leq0$. Multiplying both sides by $-1$ flips the inequality:
+         $$-b\geq0.$$
+         The left side is greater than a non-negative number, so:
+         $$w_1+w_2+b>0.$$
+         This is the score at the remaining corner:
+         $$z(1,1)=w_1\cdot1+w_2\cdot1+b=w_1+w_2+b.$$
+         It must output 1. XOR needs 0 there: a contradiction, whatever the weights.
+
+      **Compare cases.** NAND (“not AND”) shows that flipping AND's yes side still needs only one line.
+
+      | Input | AND | OR | NAND | XOR |
+      |---|---:|---:|---:|---:|
+      | $(0,0)$ | 0 | 0 | 1 | 0 |
+      | $(1,0)$ | 0 | 1 | 1 | 1 |
+      | $(0,1)$ | 0 | 1 | 1 | 1 |
+      | $(1,1)$ | 1 | 1 | 0 | 0 |
+      | One line? | Yes | Yes | Yes | No |
+
+      NAND uses $w=(-1,-1)$ and $b=1.5$: scores at $(0,0),(1,0),(0,1),(1,1)$ are $1.5,0.5,0.5,-0.5$, giving $1,1,1,0$.
+
+      **Where it shows up.** A robot reacting when exactly one bumper is pressed needs XOR. A **neural network** connects neurons whose outputs feed other neurons: one computes OR, another NAND, and a third ANDs their outputs.
+
+      | Inputs | OR | NAND | AND of those = XOR |
+      |---|---:|---:|---:|
+      | $(0,0)$ | 0 | 1 | 0 |
+      | $(1,0)$ | 1 | 1 | 1 |
+      | $(0,1)$ | 1 | 1 | 1 |
+      | $(1,1)$ | 1 | 0 | 0 |
     problems:
-      [
-        perc-and-or-xor-basics,
-        percp-xor-why,
-        percp-count-yes-template,
-        percp-nand-output,
-        percp-which-pattern,
-        percp-or-bias,
-        percp-robot-bumpers,
-      ]
+      - perc-and-or-xor-basics
+      - percp-xor-reason
+      - percp-xor-why
+      - percp-count-yes-template
+      - percp-nand-output
+      - percp-which-pattern
+      - percp-or-bias
+      - percp-robot-bumpers
 final: perc-explain
 summary: |
-  - A perceptron computes a weighted score and thresholds it into a yes-or-no result.
-  - Its linear decision boundary separates feature combinations with different outputs.
-  - A single boundary cannot represent XOR, motivating layers with nonlinear activations.
+  - A perceptron adds weighted inputs and a bias, then outputs 1 for a positive score and 0 otherwise.
+  - With two inputs, its zero-score boundary is a straight line; weights determine which way the line runs and bias shifts it.
+  - AND and OR can be separated by one line, but XOR cannot, so one perceptron cannot compute XOR.
 
-  **Next:** Activation functions add the nonlinear step needed to represent more than one straight boundary.
+  **Next:** Compare smoother functions and calculate how their output changes as the score changes, which training needs.
