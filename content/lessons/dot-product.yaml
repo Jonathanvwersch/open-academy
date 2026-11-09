@@ -3,7 +3,7 @@ version: 4
 objective: |
   **Goal:** combine two vectors into one number, read that number as how far one arrow goes along another, and divide out the lengths to compare directions alone.
 where_this_fits: |
-  A model often has to turn several numbers into one: a house's area, bedrooms and age into one predicted price, each measurement counting for its own amount. It also needs to compare two vectors, for example to check whether a robot is heading towards its goal or whether two films are alike. The vectors lesson let you add, scale and measure vectors, but none of those combines two vectors into one number. This lesson builds the tool that does, the **dot product**, in three steps:
+  A model often has to turn several numbers into one: a house's area, bedrooms and age into one predicted price, with each measurement worth a different amount per unit. It also needs to compare two vectors, for example to check whether a robot is heading towards its goal or whether two films are alike. The vectors lesson let you add, scale and measure vectors, but none of those combines two vectors into one number. This lesson builds the tool that does, the **dot product**, in three steps:
 
   1. Multiply matching entries and add them into one total.
   2. Read that total for arrows: how far one arrow goes along the other.
@@ -14,7 +14,7 @@ knowledge_points:
   - id: dot-weighted-total
     title: The dot product multiplies matching entries and adds
     explain: |
-      **The question.** You often have a list of amounts and a matching list of rates, and you want one total: items bought and their prices, or a house's measurements and what each is worth. How do you combine two lists like that into a single number?
+      **The question.** You often have a list of amounts and a matching list of rates, and you want one total, such as items bought and their prices. How do you combine two such lists into a single number?
 
       **Picture it.** Take a quiz score. A student answers 6 questions correctly, skips 2 and gets 2 wrong, so the counts are $c=(6,2,2)$. The quiz gives 3 points for a correct answer, 0 for a skip and takes 1 away for a wrong answer, so the points are $p=(3,0,-1)$, in the same order. Each count times its points is that kind of answer's contribution, and the contributions add up to the score.
 
@@ -68,9 +68,9 @@ knowledge_points:
 
       $$a\cdot b=a_1b_1+a_2b_2+\dots+a_nb_n=\sum_{i=1}^{n}a_ib_i.$$
 
-      Between two plain numbers a raised dot just means multiply; between two vectors it means this whole pair-multiply-add calculation. Both vectors must list the same things in the same order, or you multiply a count by the wrong rate. When one vector holds rates like the points, the dot product is called a **weighted sum** and the rates are the **weights**: a positive weight adds to the total, a zero weight ignores that entry, and a negative weight takes away.
+      Here $a_1b_1$ means $a_1$ times $b_1$. Between two plain numbers a raised dot just means multiply; between two vectors it means this whole pair-multiply-add calculation. Both vectors must list the same things in the same order, or you multiply a count by the wrong rate. When one vector holds rates like the points, the dot product is called a **weighted sum** and the rates are the **weights**: a positive weight adds to the total, a zero weight ignores that entry, and a negative weight takes away.
 
-      **Common confusion.** "Can't I add up each list first and then multiply the two totals?" No. That gives $(6+2+2)\cdot(3+0-1)=10\cdot2=20$, not the real score of 16, because it charges every answer at every rate: correct answers would pick up the wrong-answer penalty too. The dot product only multiplies entries that belong together.
+      **Common confusion.** "Can't I add up each list first and then multiply the two totals?" No. That gives $(6+2+2)\cdot(3+0-1)=10\cdot2=20$, not the real score of 16, because multiplying the totals pairs every count with every points value: the 6 correct answers would also be multiplied by the skip and wrong-answer points. The dot product only multiplies entries that belong together.
     worked: |
       This example shows the first idea: multiply matching entries, then add. Find the quiz score $c\cdot p$ for counts $c=(6,2,2)$ and points $p=(3,0,-1)$.
 
@@ -94,7 +94,7 @@ knowledge_points:
       | $(3,0,-1)$ | $-2$ | $16$ |
       | $(3,0,-3)$ | $-6$ | $12$ |
 
-      **Where it shows up.** A house-price model gives each measurement a weight in thousand pounds per unit: for measurements $x=(12,3,20)$ (area in tens of square metres, bedrooms, age in years) and weights $w=(25,10,-1)$, the predicted price is $w\cdot x=300+30-20=310$ thousand pounds.
+      **Where it shows up.** A house-price model describes a house by $x=(12,3,20)$: area in tens of square metres, bedrooms, and age in years. With weights $w=(25,10,-1)$, in thousand pounds per ten square metres, per bedroom and per year, the predicted price is $w\cdot x=300+30-20=310$ thousand pounds.
     problems:
       - dot-weighted-total-basics
       - dotp-why-total
@@ -107,13 +107,13 @@ knowledge_points:
   - id: dot-arrow-alignment
     title: For arrows, the dot product measures how far one goes along the other
     explain: |
-      **The question.** Vectors can also be drawn as arrows. For two arrows, can their dot product tell you whether they point roughly the same way, at right angles, or in opposite directions?
+      **The question.** Vectors can also be drawn as arrows, and a robot often needs to know whether two arrows, such as its heading and the way to its goal, agree. Can their dot product tell you whether they point roughly the same way, at right angles, or in opposite directions?
 
       **Picture it.** Start with the easiest second arrow, $b=(1,0)$: length 1, pointing right. For any arrow $a=(a_1,a_2)$,
 
       $$a\cdot b=a_1\cdot1+a_2\cdot0=a_1.$$
 
-      So here the dot product is how far $a$ goes right, in $b$'s direction; the up part never counts. Below, $(3,4)$ goes 3 right, $(0,4)$ goes straight up and $(-3,4)$ goes 3 left, so their dot products with $b$ are $3$, $0$ and $-3$.
+      So here the dot product is how far $a$ goes right, in $b$'s direction; the up part never counts. Below, that gives $3$, $0$ and $-3$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 290" aria-label="Reference arrow b = (1,0) points right. Arrow (3,4) goes 3 right, so a·b = 3; arrow (0,4) goes straight up, so a·b = 0; arrow (−3,4) goes 3 left, so a·b = −3. The coloured bars under the axis show how far each goes along b.">
@@ -143,13 +143,13 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** The **angle** between two arrows is the turn from one to the other at the origin. Drop a line from $a$'s tip to meet $b$'s line at a right angle: the stretch from the origin to where it lands is $a$'s shadow on $b$, the **projection** of $a$ onto $b$, negative if it points backwards. For any two arrows,
+      **The idea.** The **angle** between two arrows is the turn from one to the other at the origin. Drop a line from $a$'s tip to meet the line through $b$ at a right angle (the dashed lines above): the stretch from the origin to where it lands is $a$'s shadow on $b$, the **projection** of $a$ onto $b$, negative if it points backwards. For any two arrows,
 
       $$a\cdot b=(\text{projection of }a\text{ onto }b)\times\|b\|$$
 
-      where $\|b\|$ is $b$'s length (the L2 norm $\|b\|_2$, written without the 2 from here on). Why the length? Stretch $b$ to $(2,0)$ and the scores double to $6$, $0$ and $-6$, while the shadows stay the same. Turning both arrows together leaves the dot product unchanged, so a tilted $b$ works the same way, as the worked example checks. So the sign answers the question: positive when the angle is less than a right angle, zero when the arrows are **perpendicular** (at a right angle), negative when it is more.
+      where $\|b\|$ is $b$'s length (the L2 norm $\|b\|_2$, written without the 2 from here on). Why the length? Stretch $b$ to $(2,0)$ and the dot products double to $6$, $0$ and $-6$, while the shadows stay the same. It holds for a tilted $b$ too, as the worked example checks. So the sign answers the question: positive when the angle is less than a right angle, zero when the arrows are **perpendicular** (at a right angle), negative when it is more.
 
-      **Common confusion.** "A bigger dot product means the arrows point more nearly the same way." Only if the lengths stay fixed: $(1,0)\cdot(1,0)=1$ for arrows pointing the same way, but $(3,4)\cdot(1,0)=3$ for arrows well apart. The next step removes length.
+      **Common confusion.** "A bigger dot product means the arrows point more nearly the same way." Only if the lengths stay fixed: $(1,0)\cdot(1,0)=1$ for arrows pointing the same way, but $(3,4)\cdot(1,0)=3$ although $(3,4)$ points mostly up. The next step removes length.
     worked: |
       This example checks the second idea for a tilted arrow. Take $a=(7,1)$ and $b=(6,8)$, find the projection from the rule, then check it against the picture.
 
@@ -191,7 +191,7 @@ knowledge_points:
       5. **Find the step from there to $a$'s tip.**
          $$(7,1)-(3,4)=(4,-3)$$
 
-      6. **Check that the step meets $b$'s line at a right angle.** Pythagoras' rule also works backwards: if the squares of the two shorter sides add up to the square of the longest side, the corner between the shorter sides is a right angle.
+      6. **Check that the step meets $b$'s line at a right angle.** Pythagoras' rule also works backwards: if the squares of the two shorter sides add up to the square of the longest side, the corner between the shorter sides is a right angle. Use the triangle with corners at the origin, $(3,4)$ and $a$'s tip:
          $$\|(3,4)\|^2+\|(4,-3)\|^2=25+25=50=\|(7,1)\|^2$$
          So the right-angle drop from $a$'s tip lands at $(3,4)$, exactly where the rule said the shadow ends.
 
@@ -205,7 +205,7 @@ knowledge_points:
       | $(-7,-1)$ | partly against | $-5$ | $-50$ |
       | $(-6,-8)$ | opposite | $-10$ | $-100$ |
 
-      **Where it shows up.** A linear model's prediction $w\cdot x$ is large when the input $x$ points along the weights $w$ and negative when it points against them. A robot dots its movement with a length-1 direction to find how far it has travelled that way.
+      **Where it shows up.** A robot in a corridor takes the dot product of its movement with a length-1 arrow along the corridor to find how far it has travelled along it. A negative answer means it has gone backwards.
     problems:
       - dot-arrow-alignment-basics
       - dotp-why-shadow
@@ -256,7 +256,7 @@ knowledge_points:
 
       $$\frac{a\cdot b}{\|a\|\,\|b\|}$$
 
-      Dividing by both lengths is the same as first shrinking each arrow to length 1, a **unit vector**, by dividing its entries by its length: $(3,4)$ becomes $(0.6,0.8)$. Dividing $a$'s entries by $\|a\|$ divides every product, and so the dot product, by $\|a\|$; the same goes for $b$. For two length-1 arrows, the dot product is the shadow of one on the other, fixed by the angle alone. That shadow has a name: the **cosine** of $\theta$, written $\cos\theta$. It is 1 at $0^\circ$, 0 at $90^\circ$ and $-1$ at $180^\circ$; in the picture, $(0.6,0.8)$ casts a shadow of $0.6$ on the line through $b$. So cosine similarity equals $\cos\theta$, and multiplying back by both lengths gives
+      Dividing by both lengths is the same as first shrinking each arrow to length 1, a **unit vector**, by dividing its entries by its length: $(3,4)$ becomes $(0.6,0.8)$. Dividing each entry of $a$ by $\|a\|$ divides each product $a_ib_i$, so the whole sum, by $\|a\|$; the same goes for $b$. For two length-1 arrows, the dot product is the shadow of one on the other times 1, which depends only on the angle. That shadow is called the **cosine** of $\theta$, written $\cos\theta$: 1 when the arrows agree, 0 at a right angle ($90^\circ$), $-1$ when opposite. In the picture, $(0.6,0.8)\cdot(1,0)=0.6$, both panels' score. Multiplying back by the lengths splits any dot product into length times agreement:
 
       $$a\cdot b=\|a\|\,\|b\|\cos\theta$$
 
@@ -277,7 +277,7 @@ knowledge_points:
 
       4. **Divide by the two lengths multiplied together.**
          $$\frac{24}{5\cdot5}=0.96$$
-         This is close to 1, so the arrows point nearly the same way.
+         This is close to 1, so the arrows point nearly the same way; the arrows in the picture scored only 0.6.
 
       5. **Double $a$ to $(6,8)$ and repeat.**
          $$\frac{6\cdot4+8\cdot3}{10\cdot5}=\frac{48}{50}=0.96$$
