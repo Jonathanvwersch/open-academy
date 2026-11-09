@@ -1,710 +1,517 @@
 concept: computational-graphs
 exercises:
   - id: cg-drawing-graphs-basics
-    dimension: conceptual
-    type: mc
-    role: basics
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
     difficulty: 1
-    est_minutes: 1
-    prompt: "What is a computational graph?"
+    est_minutes: 2
+    prompt: "What does a computational graph show?"
     options:
-      - {
-          id: a,
-          text: "A table with one training house per row and one feature per column.",
-          correct: false,
-          feedback: "That is an input matrix; a computational graph connects operations and intermediate values.",
-        }
-      - {
-          id: b,
-          text: "A sequence of parameter updates intended to lower the model's loss.",
-          correct: false,
-          feedback: "That describes gradient descent; a graph represents the operations used in a calculation.",
-        }
-      - {
-          id: c,
-          text: "A plot that places predicted prices beside their recorded sale prices.",
-          correct: false,
-          feedback: "That visualizes predictions; a computational graph shows how their values are calculated.",
-        }
-      - {
-          id: d,
-          text: "A directed diagram showing values, operations, and dependencies between steps in a calculation.",
-          correct: true,
-          feedback: "Its arrows show how values feed operations, making the calculation's dependencies visible.",
-        }
-    solution: "A computational graph is a directed diagram of values and operations, connected by arrows showing which inputs each operation uses."
+      - id: a
+        text: "The values and operations used in a calculation."
+        correct: true
+        feedback: "Nodes and arrows make dependencies explicit."
+      - id: b
+        text: "The input values listed from smallest to largest."
+        correct: false
+        feedback: "A graph shows which operations use each input, not an ordering by size."
+      - id: c
+        text: "The output values plotted against each input."
+        correct: false
+        feedback: "A plot shows values but not the operations producing them."
+      - id: d
+        text: "The derivative values sorted by their sizes."
+        correct: false
+        feedback: "A graph records dependencies, not a ranking of slopes."
+    solution: "A computational graph connects inputs and simple operations with arrows showing which values each operation uses."
+  - id: cgp-why-order
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example $L=(w\\cdot x-t)^2$, why compute $p$ before $e$?"
+    options:
+      - id: a
+        text: "Because multiplication always precedes every subtraction."
+        correct: false
+        feedback: "Order follows dependencies, not a universal order of operation types."
+      - id: b
+        text: "Because the subtraction needs the value produced at $p$."
+        correct: true
+        feedback: "The arrow from p to e means e needs p's value."
+      - id: c
+        text: "Because the target changes whenever $p$ changes."
+        correct: false
+        feedback: "The target t is held fixed in this calculation."
+      - id: d
+        text: "Because computing $p$ first avoids needing the target."
+        correct: false
+        feedback: "Computing e still needs both p and t."
+    solution: "The subtraction is $e=p-t$, so its input $p$ must be available first."
+  - id: cgp-arrow-meaning
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What does an arrow from $q$ to a multiplication node mean?"
+    options:
+      - id: a
+        text: "The multiplication produces the earlier value $q$."
+        correct: false
+        feedback: "Arrows point from a value to an operation using it."
+      - id: b
+        text: "The multiplication uses $q$ as one of its inputs."
+        correct: true
+        feedback: "The arrow records that dependency."
+      - id: c
+        text: "The multiplication has the same numerical value as $q$."
+        correct: false
+        feedback: "A dependency does not mean equal values."
+      - id: d
+        text: "The multiplication can be computed before finding $q$."
+        correct: false
+        feedback: "The operation must wait for q's value."
+    solution: "An arrow points from a value to an operation that uses it, so the multiplication depends on $q$."
+  - id: cgp-node-count
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "How many operation nodes does $(x+y)^2$ need when squaring is one operation?"
+    options:
+      - id: a
+        text: "One: apply squaring to the inputs together."
+        correct: false
+        feedback: "Addition and squaring are distinct operations."
+      - id: b
+        text: "Two: add first, then apply squaring."
+        correct: true
+        feedback: "The addition produces the squaring operation's input."
+      - id: c
+        text: "Three: add, then apply squaring twice."
+        correct: false
+        feedback: "There is only one squaring operation in the expression."
+      - id: d
+        text: "Four: copy both inputs first."
+        correct: false
+        feedback: "Input nodes are not operation nodes, and no copies are needed."
+    solution: "There is one addition node followed by one squaring node, giving two operation nodes."
+  - id: cgp-forward-template
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A graph computes $q=x+y$, then $f=q\\cdot z$. With $x={{= x}}$, $y={{= y}}$, $z={{= z}}$, what is $f$?"
+    params:
+      { "x": { "min": 1, "max": 4 }, "y": { "min": 1, "max": 4 }, "z": { "min": 2, "max": 5 } }
+    answer_expr: "(x+y)*z"
+    tolerance: { abs: 0.001 }
+    solution: "Add the first two inputs before multiplying: $q={{= x+y}}$, so $f={{= (x+y)*z}}$."
+  - id: cgp-shared-input
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $(r+s)\\cdot(s+t)$, how should the graph represent $s$?"
+    options:
+      - id: a
+        text: "One input node feeding both addition nodes."
+        correct: true
+        feedback: "One value can feed more than one operation."
+      - id: b
+        text: "Two input nodes, each with an unrelated value."
+        correct: false
+        feedback: "Copies would hide that the same input is reused."
+      - id: c
+        text: "One input node feeding only the final multiply."
+        correct: false
+        feedback: "The additions, not the final multiply, directly use s."
+      - id: d
+        text: "Two input nodes connected in a circular path."
+        correct: false
+        feedback: "A computational graph has no loops."
+    solution: "The same input $s$ is used by both sums, so one node has two outgoing arrows."
+  - id: cgp-robot-forward
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot's movement calculation uses a setting $w={{= w}}$, a sensor input $x={{= x}}$ and target $t={{= t}}$. It computes $p=w\\cdot x$, $e=p-t$, then cost $C=e^2$. What is $C$?"
+    params:
+      { "w": { "min": 2, "max": 4 }, "x": { "min": 2, "max": 4 }, "t": { "min": 1, "max": 3 } }
+    answer_expr: "(w*x-t)^2"
+    tolerance: { abs: 0.001 }
+    solution: "Follow the dependencies: $p={{= w*x}}$, then $e={{= w*x-t}}$, and finally $C={{= (w*x-t)^2}}$."
   - id: cg-local-derivatives-basics
-    dimension: conceptual
-    type: mc
-    role: basics
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
     difficulty: 1
-    est_minutes: 1
-    prompt: "What is a local derivative?"
+    est_minutes: 2
+    prompt: "What does a local derivative measure?"
     options:
-      - {
-          id: a,
-          text: "The loss change measured after every model parameter has been updated.",
-          correct: false,
-          feedback: "That is an overall training result, not one operation's output rate for one input.",
-        }
-      - {
-          id: b,
-          text: "The rate at which the final prediction changes across all training examples.",
-          correct: false,
-          feedback: "That describes a model-wide change; a local derivative concerns one operation and input.",
-        }
-      - {
-          id: c,
-          text: "The rate at which one operation's output changes with one input, holding others fixed.",
-          correct: true,
-          feedback: "It isolates one operation and input so local rates can be combined along the graph.",
-        }
-      - {
-          id: d,
-          text: "The derivative of the final loss with respect to every model parameter.",
-          correct: false,
-          feedback: "That vector is the full loss gradient, assembled from many local derivatives.",
-        }
-    solution: "A local derivative measures one operation's output rate with respect to one input while its other inputs are fixed."
+      - id: a
+        text: "The final output's derivative for every graph input together."
+        correct: false
+        feedback: "That is not a derivative for one operation and input."
+      - id: b
+        text: "One operation's output derivative for one of its inputs."
+        correct: true
+        feedback: "Other inputs to that operation are held fixed."
+      - id: c
+        text: "One operation's output value at the current inputs."
+        correct: false
+        feedback: "A value is not a derivative."
+      - id: d
+        text: "The number of later operations using an input value."
+        correct: false
+        feedback: "Counting dependencies does not give a derivative."
+    solution: "A local derivative concerns one operation's output and one of its own inputs, holding its other inputs fixed."
+  - id: cgp-why-store-values
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Why does the worked example use the forward value $e=1$ when differentiating $L=e^2$?"
+    options:
+      - id: a
+        text: "Because squaring's local derivative is its output $L$."
+        correct: false
+        feedback: "The output is e squared, not the derivative."
+      - id: b
+        text: "Because squaring's local derivative is its input $e$."
+        correct: false
+        feedback: "The power rule gives 2e, not e."
+      - id: c
+        text: "Because squaring's local derivative is twice its input $e$."
+        correct: true
+        feedback: "The squaring rule needs the current input value."
+      - id: d
+        text: "Because squaring's local derivative is always the number 2."
+        correct: false
+        feedback: "The factor 2 still multiplies the current input."
+    solution: "The rule is $\\partial L/\\partial e=2e$, so the forward value $e=1$ gives local derivative 2."
+  - id: cgp-add-local
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "For $q=x+y$, what is $\\partial q/\\partial y$ with $x$ held fixed?"
+    options:
+      - id: a
+        text: "It is $0$, since $x$ stays fixed."
+        correct: false
+        feedback: "Holding x fixed does not prevent y changing q."
+      - id: b
+        text: "It is $1$, since $y$ enters once."
+        correct: true
+        feedback: "A unit increase in y increases q by one."
+      - id: c
+        text: "It is $x$, the other input value."
+        correct: false
+        feedback: "Using the other input is the multiplication rule."
+      - id: d
+        text: "It is $q$, the current output value."
+        correct: false
+        feedback: "The output value is not the addition's local derivative."
+    solution: "Increasing $y$ by a small amount increases $q$ by the same amount, so the local derivative is 1."
+  - id: cgp-multiply-template
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "At a multiply node $p=w\\cdot x$, $w={{= w}}$ and $x={{= x}}$. What is the local derivative $\\partial p/\\partial w$?"
+    params: { "w": { "min": 2, "max": 4 }, "x": { "min": 5, "max": 8 } }
+    answer_expr: "x"
+    tolerance: { abs: 0.001 }
+    solution: "Hold $x$ fixed: the derivative of $w\\cdot x$ with respect to $w$ is the other input, $x={{= x}}$."
+  - id: cgp-local-not-total
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $q=x+y$, $f=q\\cdot z$ at $x=1$, $y=2$, $z=4$, what does $\\partial q/\\partial x=1$ describe?"
+    options:
+      - id: a
+        text: "How $q$ responds when only $x$ changes."
+        correct: true
+        feedback: "Its numerator names q and its denominator names x."
+      - id: b
+        text: "How $f$ responds when only $x$ changes."
+        correct: false
+        feedback: "The derivative for f also depends on the later multiplication."
+      - id: c
+        text: "How $q$ responds when only $z$ changes."
+        correct: false
+        feedback: "q does not use z."
+      - id: d
+        text: "How $f$ responds when only $z$ changes."
+        correct: false
+        feedback: "The local derivative for f with respect to z is q."
+    solution: "The local derivative names $q$, not $f$, as its output; it measures how the addition responds to $x$."
+  - id: cgp-square-template
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A new graph computes $s=u^2$, then $v=s+5$. At $u={{= u}}$, what is the local derivative $\\partial s/\\partial u$ of the squaring node alone?"
+    params: { "u": { "min": -4, "max": -1 } }
+    answer_expr: "2*u"
+    tolerance: { abs: 0.001 }
+    solution: "The squaring rule gives $\\partial s/\\partial u=2u={{= 2*u}}$; the later addition is not part of this local derivative."
+  - id: cgp-robot-subtract
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot computes error $e=p-t$, where $p$ is position and $t$ is the target. What is the local derivative $\\partial e/\\partial t$?"
+    options:
+      - id: a
+        text: "It is $1$: raising the target raises the error."
+        correct: false
+        feedback: "The target is subtracted, so its effect is negative."
+      - id: b
+        text: "It is $-1$: raising the target lowers the error."
+        correct: true
+        feedback: "With position fixed, one extra target unit removes one error unit."
+      - id: c
+        text: "It is $p$: the derivative equals the other input."
+        correct: false
+        feedback: "Using the other input is the multiplication rule."
+      - id: d
+        text: "It is $e$: the derivative equals the present error."
+        correct: false
+        feedback: "The subtraction's local derivative does not depend on the error value."
+    solution: "With $p$ fixed, increasing the subtracted target decreases $e$ by the same amount, giving local derivative $-1$."
   - id: cg-chaining-paths-basics
-    dimension: conceptual
-    type: mc
-    role: basics
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
     difficulty: 1
-    est_minutes: 1
-    prompt: "What is a backward path in a computational graph?"
+    est_minutes: 2
+    prompt: "How do local derivatives give the output's derivative for an earlier input?"
     options:
-      - {
-          id: a,
-          text: "A route from the input toward the loss, multiplying local derivatives in forward order.",
-          correct: false,
-          feedback: "That follows the graph forward; a backward path starts at loss and traces toward an input.",
-        }
-      - {
-          id: b,
-          text: "A route that skips operations whenever their current output equals zero.",
-          correct: false,
-          feedback: "A zero derivative can remove a route's contribution, but the graph path still exists.",
-        }
-      - {
-          id: c,
-          text: "A route from the final loss toward an input, multiplying each local derivative.",
-          correct: true,
-          feedback: "Multiplying rates along this route gives its contribution to the input's loss derivative.",
-        }
-      - {
-          id: d,
-          text: "A list of the values supplied to one operation in the graph.",
-          correct: false,
-          feedback: "That lists one node's inputs; a path connects operations from loss toward an input.",
-        }
-    solution: "A backward path follows the graph from the final loss toward an earlier input and multiplies local derivatives."
+      - id: a
+        text: "Add along each path, then multiply the paths."
+        correct: false
+        feedback: "Local derivatives along a path multiply; separate path products add."
+      - id: b
+        text: "Multiply along each path, then add the paths."
+        correct: true
+        feedback: "This is the chain rule applied to every route."
+      - id: c
+        text: "Multiply along one path, then discard the others."
+        correct: false
+        feedback: "Every route from the input can contribute."
+      - id: d
+        text: "Add the forward values, then divide by the input."
+        correct: false
+        feedback: "Forward values are not derivatives."
+    solution: "Multiply local derivatives along every path from the input to the output, then add those path products."
+  - id: cgp-why-multiply-path
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, why is $\\partial L/\\partial w=2\\cdot1\\cdot3$?"
+    options:
+      - id: a
+        text: "Each factor gives one node's output change per unit input change."
+        correct: true
+        feedback: "The derivative for each node links its input change to its output change."
+      - id: b
+        text: "Each factor is a separate path contribution, so they should add."
+        correct: false
+        feedback: "These factors belong to one path through e and p, not separate paths."
+      - id: c
+        text: "Each factor is a forward value, so their product gives the loss."
+        correct: false
+        feedback: "The factors are local derivatives, not the forward values p, e and L."
+      - id: d
+        text: "Each factor can give the loss derivative alone, so only one is needed."
+        correct: false
+        feedback: "One local derivative describes only one node; the loss derivative needs every factor on the path."
+    solution: "The local derivatives are $\\partial L/\\partial e=2$, $\\partial e/\\partial p=1$ and $\\partial p/\\partial w=3$; multiplying them gives the loss derivative 6."
+  - id: cgp-path-product
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A single path has local derivatives 2, 4 and 3. What is its contribution to the output derivative?"
+    options:
+      - id: a
+        text: "$24$, from multiplying all three derivatives."
+        correct: true
+        feedback: "The three local derivatives multiply to 24."
+      - id: b
+        text: "$9$, from adding all three derivatives."
+        correct: false
+        feedback: "Add separate path products, not local derivatives along one path."
+      - id: c
+        text: "$3$, from keeping only the final derivative."
+        correct: false
+        feedback: "The other local derivatives on the path also contribute."
+      - id: d
+        text: "$2$, from keeping only the first derivative."
+        correct: false
+        feedback: "The other local derivatives on the path also contribute."
+    solution: "A path contribution is $2\\cdot4\\cdot3=24$: each local derivative gives a node's output change per unit change in its input, and the chain rule multiplies them."
+  - id: cgp-chain-template
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A graph computes $p=w\\cdot x$, $e=p-t$, then $L=e^2$. At $w={{= w}}$, $x={{= x}}$, $t={{= t}}$, what is $\\partial L/\\partial w$?"
+    params:
+      { "w": { "min": 2, "max": 4 }, "x": { "min": 2, "max": 4 }, "t": { "min": 1, "max": 3 } }
+    answer_expr: "2*(w*x-t)*x"
+    tolerance: { abs: 0.001 }
+    solution: "The path's local derivatives are $2e$, 1 and $x$, giving $2(w x-t)x={{= 2*(w*x-t)*x}}$."
+  - id: cgp-one-path-only
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $g=(x+y)\\cdot(y+z)$ at $(1,2,4)$, a learner follows only the route through $a=x+y$ and gets 6 for $\\partial g/\\partial y$. What is missing?"
+    options:
+      - id: a
+        text: "Add 3 from the route through $b=y+z$."
+        correct: true
+        feedback: "The second route contributes 3, so the total is 9."
+      - id: b
+        text: "Multiply by 3 from the route through $b=y+z$."
+        correct: false
+        feedback: "Multiply local derivatives along one route, not separate route contributions."
+      - id: c
+        text: "Subtract 3 from the route through $b=y+z$."
+        correct: false
+        feedback: "Both route contributions are positive here."
+      - id: d
+        text: "Replace 6 with 3 from the route through $b=y+z$."
+        correct: false
+        feedback: "Both routes matter; neither replaces the other."
+    solution: "The $b$ route contributes $3\\cdot1=3$ in addition to the $a$ route's 6, giving 9."
+  - id: cgp-shared-template
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A new graph computes $a=r+s$, $b=s+t$, then $h=a\\cdot b$. At $r={{= r}}$, $s={{= s}}$, $t={{= t}}$, what is $\\partial h/\\partial s$?"
+    params:
+      { "r": { "min": 1, "max": 3 }, "s": { "min": 1, "max": 3 }, "t": { "min": 4, "max": 6 } }
+    answer_expr: "(s+t)+(r+s)"
+    tolerance: { abs: 0.001 }
+    solution: "The route through $a$ contributes $b$, and the route through $b$ contributes $a$; add them to get ${{= (s+t)+(r+s)}}$."
+  - id: cgp-robot-error
+    dimension: "math"
+    type: "numeric"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot's position is $p=k\\cdot u$, with setting $k={{= k}}$ and command $u={{= u}}$. It computes error $e=p-t$ for target $t={{= t}}$, then cost $C=e^2$. What is $\\partial C/\\partial u$?"
+    params:
+      { "k": { "min": 2, "max": 4 }, "u": { "min": 2, "max": 4 }, "t": { "min": 1, "max": 3 } }
+    answer_expr: "2*(k*u-t)*k"
+    tolerance: { abs: 0.001 }
+    solution: "Trace the command's path: the local derivatives are $k$, 1 and $2e$, so $\\partial C/\\partial u=2(k u-t)k={{= 2*(k*u-t)*k}}$."
   - id: cg-check-1
-    dimension: math
-    type: numeric
-    role: check
+    dimension: "math"
+    type: "numeric"
+    role: "check"
     difficulty: 1
     est_minutes: 2
     prompt: "A robot calculates a movement command by adding a position error $x = -2$ to a correction $y = 5$, then multiplying by a setting $z = -4$. Its graph is $q = x + y$, then $f = q \\cdot z$. How much does the command change per unit change in $z$, that is, what is $\\partial f/\\partial z$?"
     answer: 3
-    tolerance: { abs: 0.001 }
+    tolerance: { "abs": 0.001 }
     common_wrong:
-      - {
-          answer: -4,
-          category: misunderstood_definition,
-          feedback: "For a multiply node, the derivative with respect to one input is the *other* input's value, here $q = 3$.",
-        }
-    solution: "$\\partial f/\\partial z = q = x + y = 3$."
+      [
+        {
+          "answer": -4,
+          "category": "misunderstood_definition",
+          "feedback": "For a multiply node, the derivative with respect to one input is the *other* input's value, here $q = 3$.",
+        },
+      ]
+    solution: "The multiply node's derivative with respect to $z$ is its other input, $q=x+y=-2+5=3$."
   - id: cg-mul-add
-    dimension: math
-    type: numeric
-    role: core
+    dimension: "math"
+    type: "numeric"
+    role: "core"
     difficulty: 2
     est_minutes: 3
     prompt: "A robot cart uses command $b = -3$ in two movement calculations. They give distances $a \\cdot b$ and $c \\cdot b$ centimetres, with $a = 2$ and $c = 4$. Its total movement is $f = a \\cdot b + c \\cdot b$. How much does the total change per unit change in $b$, that is, what is $\\partial f/\\partial b$?"
     answer: 6
-    tolerance: { abs: 0.001 }
+    tolerance: { "abs": 0.001 }
     common_wrong:
-      - {
-          answer: 2,
-          category: incomplete_explanation,
-          feedback: "$b$ feeds two nodes, so its gradient is the *sum* of both paths: $a + c$.",
-        }
+      [
+        {
+          "answer": 2,
+          "category": "incomplete_explanation",
+          "feedback": "$b$ feeds two nodes, so its derivative is the sum of both path contributions: $a+c$.",
+        },
+      ]
     hints: ["$b$ appears in two multiply nodes, so add both contributions."]
-    solution: "$\\partial f/\\partial b = a + c = 6$."
+    solution: "The two paths contribute $a=2$ and $c=4$, so their sum is $\\partial f/\\partial b=6$."
   - id: cg-relu-node
-    dimension: math
-    type: numeric
-    role: review
+    dimension: "math"
+    type: "numeric"
+    role: "review"
     difficulty: 2
     est_minutes: 2
-    prompt: "A robot's model estimates a forward movement $wx$, but replaces negative estimates with 0 because this command must not move backwards. Its output is $f = \\max(0, wx)$, which means the larger of 0 and $wx$. For $w = -1$ and $x = 3$, what is $\\partial f/\\partial w$?"
+    prompt: "A robot computes position $p=w\\cdot x$, error $e=p-t$, then cost $C=e^2$. At $w=-1$, $x=3$, $t=-3$, what is $\\partial C/\\partial w$?"
     answer: 0
-    tolerance: { abs: 0.001 }
+    tolerance: { "abs": 0.001 }
     common_wrong:
-      - {
-          answer: 3,
-          category: misunderstood_definition,
-          feedback: "The input is $-3 < 0$, so $\\max(0, wx)$ has local derivative 0 there.",
-        }
-    solution: "The inside value is $-3$, so $\\max(0, wx)$ is 0 there and $\\partial f/\\partial w = 0 \\cdot x = 0$."
+      [
+        {
+          "answer": 3,
+          "category": "incomplete_explanation",
+          "feedback": "That is only the multiply node's local derivative; squaring contributes 2e=0.",
+        },
+      ]
+    solution: "Here $p=-3$ and $e=0$, so the path product is $2e\\cdot1\\cdot x=0$."
   - id: cg-explain
-    dimension: conceptual
-    type: explain
-    role: core
-    difficulty: 2
+    dimension: "conceptual"
+    type: "explain"
+    role: "core"
+    difficulty: 3
     est_minutes: 4
-    prompt: "A house-price model predicts 7 for a house whose true price is 5, using units of hundreds of thousands of pounds. We want to know how changing a model setting changes its squared error. Why does breaking the calculation into addition, multiplication and squaring help us find that derivative?"
+    prompt: "How does a computational graph turn a big output derivative into small steps? Explain how you draw and evaluate the graph, find local derivatives, and combine all the paths from an input to the output."
     rubric:
       - {
-          id: r1,
-          criterion: "Each operation node uses only its own local derivative rule",
-          weight: 2,
-          required: true,
+          "id": "graph",
+          "criterion": "Describes one node per input and simple operation, arrows for dependencies, and a forward pass to compute values.",
+          "weight": 1,
+          "required": true,
         }
       - {
-          id: r2,
-          criterion: "The chain rule composes local derivatives along paths (summing over multiple paths) to get the gradient of the output with respect to any input/parameter",
-          weight: 2,
-          required: true,
+          "id": "local",
+          "criterion": "Defines local derivatives for one operation and one input with other inputs fixed, using forward values when needed.",
+          "weight": 1,
+          "required": true,
         }
       - {
-          id: r3,
-          criterion: "Explains that software can apply the same operation rules automatically to different models",
-          weight: 1,
+          "id": "paths",
+          "criterion": "Multiplies local derivatives along each path and adds all path contributions for an input's output derivative.",
+          "weight": 2,
+          "required": true,
         }
-    exemplar: "Each node performs one operation with a known derivative rule. For example, a multiplication's derivative with respect to one input is the other input. The chain rule multiplies these derivatives along each path from a setting to the loss. If several paths exist, we add their contributions. We can therefore find the complete derivative without expanding the whole error formula. Software can record the operations and apply these same rules automatically for different models."
-  - id: cgp-steps-for-expression
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "A house-price model adds two amounts $a = 2$ and $b = 1$, then multiplies by a size adjustment $c = 3$. Its formula is $f = (a + b) \\cdot c$. Which list of operation nodes preserves this calculation?"
-    options:
-      - { id: a, text: "$q = a + b$, then $f = q \\cdot c$", correct: true }
-      - id: b
-        text: "$q = b \\cdot c$, then $f = a + q$"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The brackets say $a + b$ is worked out first, and the result is multiplied by $c$."
-      - id: c
-        text: "$q = a \\cdot c$, then $f = q + b$"
-        correct: false
-        category: misunderstood_definition
-        feedback: "That graph computes $ac + b$, which is a different calculation. The brackets in the original formula require adding $a$ and $b$ before multiplying by $c$."
-      - id: d
-        text: "One node, $f = a + b + c$"
-        correct: false
-        category: misunderstood_definition
-        feedback: "That changes the calculation. Each node does one operation, and this formula has an add and a multiply."
-    solution: "Brackets are worked out first, so an add node makes $q = a + b$, and a multiply node then makes $f = q \\cdot c$."
-  - id: cgp-forward-value
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A house-price model uses size $x = {{=x}}$, multiplier $w = {{=w}}$ and added amount $b = {{=b}}$. The true sale price is $y = {{=y}}$ in the same price units. It calculates $m = w \\cdot x$, $\\hat y = m + b$, $r = \\hat y - y$, then $L = r^2$. What squared error $L$ does it report?"
-    hints: ["Work left to right: find $m$, then $\\hat y$, then $r$, then square it."]
-    solution: "$m = {{=w}} \\cdot {{=x}} = {{=w*x}}$, $\\hat y = {{=w*x}} + {{=b}} = {{=w*x+b}}$, $r = {{=w*x+b}} - {{=y}} = {{=w*x+b-y}}$, so $L = ({{=w*x+b-y}})^2 = {{=(w*x+b-y)^2}}$."
-    answer_expr: "(w * x + b - y)^2"
-    params:
-      w: { min: 1, max: 4 }
-      x: { min: 1, max: 4 }
-      b: { min: 0, max: 3 }
-      y: { min: 1, max: 10 }
-    constraints: ["abs(w * x + b - y) > 1"]
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - answer_expr: "w * x + b - y"
-        category: incomplete_explanation
-        feedback: "That is $r$. The last node squares it."
-  - id: cgp-arrow-meaning
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "In the house-price model, node A calculates $3 \\cdot 2 = 6$ and an arrow connects it to node B, which adds 1. What does that arrow mean?"
-    options:
-      - { id: a, text: "B uses A's output as one of its inputs", correct: true }
-      - id: b
-        text: "B is computed before A is computed"
-        correct: false
-        category: misunderstood_definition
-        feedback: "It's the other way round: B needs A's value, so A runs first."
-      - id: c
-        text: "B is the derivative of A's output"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Arrows carry values forward. Derivatives are worked out separately, node by node."
-      - id: d
-        text: "A and B always produce the same value"
-        correct: false
-        category: misunderstood_definition
-        feedback: "B applies its own operation to A's value, so the outputs usually differ."
-    solution: "An arrow carries a value: A's output is fed into B. That's also why A must be evaluated before B."
-  - id: cgp-why-order
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "The house-price model calculates $m = w \\cdot x$, then $\\hat y = m + b$, with $w = 3$, $x = 2$ and $b = 1$. Why must the addition wait until after the multiplication?"
-    options:
-      - { id: a, text: "It needs $m$, which the multiply node produces", correct: true }
-      - id: b
-        text: "Adding is always done after multiplying"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "In $(a + b) \\cdot c$ the add comes first. The order comes from which node needs which value."
-      - id: c
-        text: "The add node has fewer inputs than the multiply node"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "Both have two inputs. What matters is that one of the add node's inputs is $m$."
-      - id: d
-        text: "Order doesn't matter in a computational graph"
-        correct: false
-        category: misunderstood_definition
-        feedback: "A node can only run once every value flowing into it is known."
-    solution: "A node can run only when all its inputs have values. The add node's input $m$ comes from the multiply node, so the multiply runs first."
-  - id: cgp-node-count
-    dimension: conceptual
-    type: numeric
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "A robot measures its position as $a = 5$ cm and its goal as $b = 3$ cm. To score the error, it calculates $f = (a - b)^2 \\cdot c$, where $c = 2$ sets how strongly position errors count. With one operation per node, how many operation nodes does the graph need?"
-    answer: 3
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - answer: 6
-        tolerance: { abs: 0.001 }
-        category: misunderstood_definition
-        feedback: "The inputs $a$, $b$ and $c$ are where arrows start, not operations. Count only the operations."
-      - answer: 2
-        tolerance: { abs: 0.001 }
-        category: incomplete_explanation
-        feedback: "Squaring is an operation too, so it gets its own node."
-    solution: "The graph needs three operation nodes. First it subtracts $b$ from $a$, then squares that answer, then multiplies the square by $c$."
-  - id: cgp-shared-input
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 1
-    prompt: "A robot cart uses command $b = -3$ in two movement calculations, $a \\cdot b$ and $c \\cdot b$, with $a = 2$ and $c = 4$. In the graph for their sum $f = a \\cdot b + c \\cdot b$, how should the command $b$ appear?"
-    options:
-      - { id: a, text: "Once, with arrows into both multiply nodes", correct: true }
-      - id: b
-        text: "Once, with one arrow into the add node"
-        correct: false
-        category: misunderstood_definition
-        feedback: "$b$ is multiplied by $a$ and by $c$, so it feeds both multiply nodes."
-      - id: c
-        text: "It doesn't appear, because it cancels out"
-        correct: false
-        category: incorrect_reasoning
-        feedback: "Nothing cancels here. Every input used in the formula appears in the graph."
-      - id: d
-        text: "Once, with one arrow into the first multiply node"
-        correct: false
-        category: misunderstood_definition
-        feedback: "$b$ is also used in $c \\cdot b$, so it needs an arrow into that node too."
-    solution: "Each input appears once. Because $b$ is used in two multiplications, it has two arrows out, one to each multiply node."
-  - id: cgp-multiply-local
-    dimension: math
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "A robot's model multiplies sensor reading $b = -3$ by an adjustable weight $a = 4$ to calculate $q = a \\cdot b$. Keeping the reading fixed, what is the local derivative $\\partial q/\\partial a$?"
-    options:
-      - { id: a, text: "$-3$", correct: true }
-      - id: b
-        text: "$4$"
-        correct: false
-        category: misunderstood_definition
-        feedback: "For a multiply node, the derivative for one input is the value of the *other* input."
-      - id: c
-        text: "$1$"
-        correct: false
-        category: misunderstood_definition
-        feedback: "1 is the local derivative of an add node. A multiply node scales by the other input."
-      - id: d
-        text: "$-12$"
-        correct: false
-        category: misunderstood_definition
-        feedback: "$-12$ is the node's output $a \\cdot b$, not its derivative."
-    solution: "Holding $b$ fixed, $q = a \\cdot b$ changes by $b$ for each unit of $a$, so $\\partial q/\\partial a = b = -3$."
-  - id: cgp-multiply-nudge
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "A robot's model multiplies a sensor reading $a = {{=a}}$ by a weight $b = {{=b}}$ to calculate $q = a \\cdot b$. If you increase the weight $b$ by 0.1 while keeping the reading fixed, by how much does $q$ increase?"
-    hints: ["The local derivative $\\partial q/\\partial b$ is the other input, $a$."]
-    solution: "$\\partial q/\\partial b = a = {{=a}}$, so a nudge of 0.1 raises $q$ by ${{=a}} \\times 0.1 = {{=a*0.1}}$."
-    answer_expr: "a * 0.1"
-    params:
-      a: { min: 2, max: 9 }
-      b: { min: 2, max: 9 }
-    constraints: ["a != b"]
-    tolerance: { abs: 0.0001 }
-    common_wrong:
-      - answer_expr: "b * 0.1"
-        category: misunderstood_definition
-        feedback: "A nudge in $b$ is scaled by the *other* input, $a = {{=a}}$."
-  - id: cgp-square-local
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "A house-price model's prediction error is $r = {{=r}}$ in its price units. It measures the mistake with squared loss $L = r^2$. What is the local derivative $dL/dr$?"
-    hints: ["The derivative of $r^2$ is $2r$."]
-    solution: "$dL/dr = 2r = 2 \\times ({{=r}}) = {{=2*r}}$."
-    answer_expr: "2 * r"
-    params:
-      r: { min: -6, max: 6 }
-    constraints: ["r != 0", "r != 2"]
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - answer_expr: "r^2"
-        category: misunderstood_definition
-        feedback: "$r^2$ is the node's output. Its local derivative is $2r$."
-  - id: cgp-why-store-values
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "The house-price model calculates prediction error $r = 2$ and squared loss $L = r^2 = 4$. Why save $r$ for the derivative calculation rather than repeat the earlier calculations to find it again?"
-    options:
-      - {
-          id: a,
-          text: "The local derivative needs $r$, and reusing it avoids repeating the operations that produced it",
-          correct: true,
-        }
-      - id: b
-        text: "The saved value is already the derivative, so no derivative rule is needed"
-        correct: false
-        category: misapplied_technique
-        feedback: "The saved input is 2, but the square node's derivative is $2r = 4$. We still need the node's rule."
-      - id: c
-        text: "Recomputing $r$ with unchanged inputs would give a different derivative"
-        correct: false
-        category: misunderstood_definition
-        feedback: "If the inputs have not changed, repeating the calculation gives the same value and derivative. Saving the value avoids that repeated work; it does not change the answer."
-      - id: d
-        text: "Stored values remain valid even after changing the model's settings"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Changing a model setting can change $r$. To find derivatives for the new settings, we must first calculate the forward values for those settings."
-    solution: "The square node needs its input to compute $2r$. Keeping $r = 2$ gives the derivative 4 without repeating the earlier multiply, add and subtract operations, but uses memory."
-  - id: cgp-subtract-local
-    dimension: math
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 1
-    prompt: "A house-price model predicts $\\hat y = 7$ when the true price is $y = 5$, in the same price units. It calculates the error $r = \\hat y - y$. What are the local derivatives $\\partial r/\\partial \\hat y$ and $\\partial r/\\partial y$?"
-    options:
-      - { id: a, text: "$1$ and $-1$", correct: true }
-      - id: b
-        text: "$1$ and $1$"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Raising $y$ makes $\\hat y - y$ smaller, so that derivative is negative."
-      - id: c
-        text: "$-1$ and $1$"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Raising $\\hat y$ makes $\\hat y - y$ bigger, so $\\partial r/\\partial \\hat y = +1$."
-      - id: d
-        text: "$y$ and $\\hat y$"
-        correct: false
-        category: misapplied_technique
-        feedback: "Using the other input's value is the multiply rule. Subtracting gives $1$ and $-1$."
-    solution: "Raising $\\hat y$ by 1 raises $r$ by 1. Raising $y$ by 1 lowers $r$ by 1. So the local derivatives are $1$ and $-1$."
-  - id: cgp-max-node
-    dimension: math
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 1
-    prompt: "A robot's model must not request a negative forward distance, so it calculates $q = \\max(0, a)$, the larger of 0 and its estimate $a$. At $a = -3$ cm, what is the local derivative $dq/da$?"
-    options:
-      - { id: a, text: "$0$, because the output is stuck at 0 here", correct: true }
-      - id: b
-        text: "$1$, because $\\max$ passes its input through"
-        correct: false
-        category: misunderstood_definition
-        feedback: "It passes the input through only when $a > 0$. At $a = -3$ the output is 0 for any small nudge."
-      - id: c
-        text: "$-3$, because that is the input value"
-        correct: false
-        category: misunderstood_definition
-        feedback: "The local derivative is a rate of change, not the input's value."
-      - id: d
-        text: "$3$, because the input is flipped to positive"
-        correct: false
-        category: misunderstood_definition
-        feedback: "$\\max(0, a)$ doesn't flip signs. For a negative input it outputs 0."
-    solution: "At $a = -3$, $\\max(0, a) = 0$. A small increase or decrease in $a$ still leaves it negative, so the output stays 0. The rate of change is therefore 0."
-  - id: cgp-path-product
-    dimension: math
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "For the house-price model, $m = w \\cdot x$, $\\hat y = m + b$, $r = \\hat y - y$ and $L = r^2$. The added amount $b$ changes the prediction directly. Which product includes every operation between $b$ and the squared error, giving $\\partial L/\\partial b$?"
-    options:
-      - id: a
-        text: "$\\frac{dL}{dr}\\cdot\\frac{\\partial r}{\\partial \\hat y}\\cdot\\frac{\\partial \\hat y}{\\partial b}$"
-        correct: true
-      - id: b
-        text: "$\\frac{dL}{dr}\\cdot\\frac{\\partial r}{\\partial \\hat y}\\cdot\\frac{\\partial \\hat y}{\\partial m}\\cdot\\frac{\\partial m}{\\partial w}$"
-        correct: false
-        category: misapplied_technique
-        feedback: "That is the path from $w$. The path from $b$ goes straight into the add node."
-      - id: c
-        text: "$\\frac{\\partial \\hat y}{\\partial b}$ on its own"
-        correct: false
-        category: incomplete_explanation
-        feedback: "That only covers the first step. Keep multiplying along the path all the way to $L$."
-      - id: d
-        text: "$\\frac{dL}{dr} + \\frac{\\partial r}{\\partial \\hat y} + \\frac{\\partial \\hat y}{\\partial b}$"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Local derivatives along one path multiply. Only separate paths add."
-    solution: "$b$ enters the add node, then flows through the subtract and square nodes. Multiply the local derivatives along that path: $2r \\cdot 1 \\cdot 1$."
-  - id: cgp-chain-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 3
-    prompt: "A house-price model uses size $x = {{=x}}$, weight $w = {{=w}}$ and added amount $b = {{=b}}$ to predict $\\hat y = wx + b$. The actual price is $y = {{=y}}$ in the same price units. Its graph calculates $m = w \\cdot x$, $r = \\hat y - y$ and $L = r^2$. To improve the weight, what is $\\partial L/\\partial w$?"
-    hints:
-      - "Evaluate the graph first to get $r$."
-      - "Multiply along the path: $dL/dr = 2r$, then $1$, then $1$, then $\\partial m/\\partial w = x$."
-    solution: "Forward: $r = {{=w}} \\cdot {{=x}} + {{=b}} - {{=y}} = {{=w*x+b-y}}$. Along the path: $\\partial L/\\partial w = 2r \\cdot 1 \\cdot 1 \\cdot x = 2 \\times ({{=w*x+b-y}}) \\times {{=x}} = {{=2*(w*x+b-y)*x}}$."
-    answer_expr: "2 * (w * x + b - y) * x"
-    params:
-      w: { min: 1, max: 4 }
-      x: { min: 2, max: 4 }
-      b: { min: 0, max: 3 }
-      y: { min: 1, max: 12 }
-    constraints: ["w * x + b != y", "w != x"]
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - answer_expr: "2 * (w * x + b - y)"
-        category: incomplete_explanation
-        feedback: "That stops at $\\hat y$. The last step, through the multiply node, scales by $\\partial m/\\partial w = x = {{=x}}$."
-      - answer_expr: "2 * (w * x + b - y) * w"
-        category: misapplied_technique
-        feedback: "At the multiply node the derivative for $w$ is the *other* input, $x = {{=x}}$."
-  - id: cgp-one-path-only
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A robot cart calculates its total movement as $f = a \\cdot b + c \\cdot b$, with $a = 2$, $b = -3$ and $c = 4$. A student follows only the first movement calculation, $a \\cdot b$, and reports $\\partial f/\\partial b = a$. What did they miss?"
-    options:
-      - { id: a, text: "The path through $c \\cdot b$; the answer is $a + c$", correct: true }
-      - id: b
-        text: "Nothing; one path from $b$ is enough"
-        correct: false
-        category: incomplete_explanation
-        feedback: "$b$ feeds two nodes, so a nudge in $b$ changes $f$ along both paths."
-      - id: c
-        text: "They should multiply the paths, giving $a \\cdot c$"
-        correct: false
-        category: misapplied_technique
-        feedback: "Separate paths add. Multiplying is for steps along one path."
-      - id: d
-        text: "The add node's derivative; the answer is $a + 1$"
-        correct: false
-        category: math_error
-        feedback: "The add node's local derivative is 1 and it multiplies the path, giving $1 \\cdot a$. The missing piece is the second path, $1 \\cdot c$."
-    solution: "$b$ has arrows into both multiply nodes. The two paths give $1 \\cdot a$ and $1 \\cdot c$, and they add to $a + c$."
-  - id: cgp-used-twice
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A house-price rule multiplies size $x = 3$ by a weight $y = 5$, then adds size once more: $p = x \\cdot y$ and $f = p + x$. Size is used in both operations. How much does the prediction change per unit change in size, that is, what is $\\partial f/\\partial x$?"
-    answer: 6
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - answer: 5
-        tolerance: { abs: 0.001 }
-        category: incomplete_explanation
-        feedback: "That is only the path through $p$. $x$ also goes straight into the add node, adding 1."
-      - answer: 1
-        tolerance: { abs: 0.001 }
-        category: incomplete_explanation
-        feedback: "That is only the direct path. Add the path through $p$: $1 \\cdot y = 5$."
-    hints: ["Path through $p$: $1 \\cdot y$. Direct path into the add node: $1$."]
-    solution: "Through $p$: $\\frac{\\partial f}{\\partial p}\\cdot\\frac{\\partial p}{\\partial x} = 1 \\cdot y = 5$. Directly: $\\partial f/\\partial x = 1$. Add the paths: $5 + 1 = 6$."
-  - id: cgp-why-multiply-path
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "In the house-price graph, increasing a weight by 0.01 first increases an intermediate answer by 0.02. The later operations multiply that change by about 4. Why multiply the local derivatives 2 and 4 rather than add them?"
-    options:
-      - {
-          id: a,
-          text: "The first node doubles a small nudge, and the next scales that doubled nudge by 4",
-          correct: true,
-        }
-      - id: b
-        text: "Each node receives the original nudge independently, so the contributions add"
-        correct: false
-        category: misunderstood_definition
-        feedback: "That describes separate paths. Along one path, the next node receives the already-scaled nudge."
-      - id: c
-        text: "Only the last derivative matters, because earlier changes disappear"
-        correct: false
-        category: incomplete_explanation
-        feedback: "The last node receives the change produced by the first node. If we ignore the first factor, we incorrectly treat its input change as 0.01 rather than 0.02."
-      - id: d
-        text: "We should multiply the node outputs instead of their derivatives"
-        correct: false
-        category: misunderstood_definition
-        feedback: "Node outputs tell us values. Derivatives tell us how changes in those values are scaled."
-    solution: "An input nudge of 0.01 becomes about 0.02 after the first node and 0.08 after the second. The overall scale is $2 \\cdot 4 = 8$, not $2 + 4 = 6$."
-  - id: cgp-robot-error
-    dimension: transfer
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A robot gripper is at position $p = 5$ cm and its goal is $g = 3$ cm. Its graph computes $r = p - g$, then the cost $C = r^2$. What is $\\partial C/\\partial p$?"
-    answer: 4
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - answer: -4
-        tolerance: { abs: 0.001 }
-        category: misapplied_technique
-        feedback: "$-4$ is $\\partial C/\\partial g$. For $p$, the subtract node's local derivative is $+1$."
-      - answer: 2
-        tolerance: { abs: 0.001 }
-        category: incomplete_explanation
-        feedback: "2 is $r$. The square node's local derivative is $2r$."
-    solution: "$r = 5 - 3 = 2$. Along the path: $\\frac{dC}{dr}\\cdot\\frac{\\partial r}{\\partial p} = 2r \\cdot 1 = 4$. Moving the gripper further from the goal raises the cost."
-  - id: cgp-backwards-weight
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 3
-    est_minutes: 3
-    prompt: "A house-price graph calculates $m = w \\cdot x$, $\\hat y = m + b$, $r = \\hat y - y$ and $L = r^2$. It uses size $x = 2$, added amount $b = 1$ and true price $y = 9$. The graph reports $L = 4$, and its error $r$ is negative. What weight $w$ did it use?"
-    answer: 3
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - {
-          answer: 5,
-          category: incorrect_reasoning,
-          feedback: "That gives $r = +2$. The error is negative, so start from $r = -2$.",
-        }
-      - {
-          answer: 3.5,
-          category: math_error,
-          feedback: "That skips the added amount. Subtract $b = 1$ from $\\hat y$ before dividing by $x$.",
-        }
-    hints:
-      - "Undo the nodes from the end: $L = r^2 = 4$ with $r < 0$ gives $r$."
-      - "Then $\\hat y = r + y$, $m = \\hat y - b$ and $w = m / x$."
-    solution: |
-      Undo each node, starting from the loss:
-
-      $$r^2 = 4,\ r < 0 \Rightarrow r = -2$$
-
-      $$\hat y = r + y = -2 + 9 = 7$$
-
-      $$m = \hat y - b = 7 - 1 = 6$$
-
-      $$w = m / x = 6 / 2 = 3$$
-  - id: cgp-square-nudge
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "A house-price model's squared-loss node calculates $L = r^2$ from its prediction error $r = 3$. Use the node's local derivative to estimate how much $L$ increases when $r$ increases by 0.1."
-    answer: 0.6
-    tolerance: { abs: 0.011 }
-    common_wrong:
-      - {
-          answer: 0.2,
-          category: misunderstood_definition,
-          feedback: "The local derivative of $r^2$ is $2r = 6$ at $r = 3$, not 2.",
-        }
-      - {
-          answer: 9.6,
-          category: incomplete_explanation,
-          feedback: "That is the new loss. The question asks for the increase, $9.6 - 9$.",
-        }
-    hints:
-      - "The local derivative of a square node is $dL/dr = 2r$."
-      - "Multiply the local derivative by the nudge, 0.1."
-    solution: |
-      Find the local derivative at $r = 3$:
-
-      $$\frac{dL}{dr} = 2r = 6$$
-
-      Multiply by the nudge:
-
-      $$\Delta L \approx 6 \times 0.1 = 0.6$$
-
-      The exact increase is $3.1^2 - 9 = 0.61$, close to the estimate.
-  - id: cgp-dead-path
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 3
-    est_minutes: 3
-    prompt: "A robot's model must not request a negative forward distance. From a weight $w$ and a sensor reading $s = 2$, its graph calculates $a = w \\cdot s$, then $q = \\max(0, a)$, then the cost $C = (q - g)^2$ for goal $g = 5$. At $w = -1$, what is $\\partial C/\\partial w$?"
-    answer: 0
-    tolerance: { abs: 0.001 }
-    common_wrong:
-      - {
-          answer: -20,
-          category: misapplied_technique,
-          feedback: "That uses slope 1 for the maximum node. Here $a = -2$, so $q$ is stuck at 0 and $dq/da = 0$.",
-        }
-      - {
-          answer: -10,
-          category: incomplete_explanation,
-          feedback: "That is only $dC/dq$. Multiply by every local derivative back to $w$, including $dq/da$.",
-        }
-    hints:
-      - "Run the forward pass first: find $a$ and $q$."
-      - "At $a = -2$, the maximum node outputs 0 whatever small change $a$ gets, so its local derivative is 0."
-    solution: |
-      Forward pass:
-
-      $$a = -1 \cdot 2 = -2$$
-
-      $$q = \max(0, -2) = 0$$
-
-      $$C = (0 - 5)^2 = 25$$
-
-      Local derivatives along the path:
-
-      $$\frac{dC}{dq} = 2(q - g) = -10, \quad \frac{dq}{da} = 0, \quad \frac{\partial a}{\partial w} = s = 2$$
-
-      Multiply them:
-
-      $$\frac{\partial C}{\partial w} = -10 \cdot 0 \cdot 2 = 0$$
-
-      The maximum node blocks the path, so a small change to $w$ does not change the cost at all.
+    exemplar: "I draw one node per input and simple operation, joining each value to every operation that uses it. I compute the nodes in arrow order to get their forward values. For each operation, I find the derivative of its output with respect to each of its inputs while holding the others fixed; these local rules may use the forward values. I then trace every path from the chosen input to the final output, multiply the local derivatives along each path, and add the path products. That gives the output's derivative without differentiating the whole formula at once."
+    solution: "The graph exposes the dependencies, local rules supply each local derivative, and the chain rule combines every path product into the full output derivative."
