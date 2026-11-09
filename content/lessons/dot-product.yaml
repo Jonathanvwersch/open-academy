@@ -3,13 +3,13 @@ version: 4
 objective: |
   **Goal:** combine two vectors into one number, read that number as how far one arrow goes along another, and divide out the lengths to compare directions alone.
 where_this_fits: |
-  A model often has to turn several numbers into one: a house's area, bedrooms and age into one predicted price, each measurement counting for its own amount. It also needs to tell whether two vectors point the same way. The vectors lesson let you add, scale and measure vectors, but none of those combines two vectors into one number. This lesson builds the tool that does, the **dot product**, in three steps:
+  A model often has to turn several numbers into one: a house's area, bedrooms and age into one predicted price, each measurement counting for its own amount. It also needs to compare two vectors, for example to check whether a robot is heading towards its goal or whether two films are alike. The vectors lesson let you add, scale and measure vectors, but none of those combines two vectors into one number. This lesson builds the tool that does, the **dot product**, in three steps:
 
   1. Multiply matching entries and add them into one total.
   2. Read that total for arrows: how far one arrow goes along the other.
   3. Divide out the lengths to compare directions alone.
 
-  The last step, cosine similarity, is how search systems decide that two things are alike.
+  The matrices lesson then does many dot products at once.
 knowledge_points:
   - id: dot-weighted-total
     title: The dot product multiplies matching entries and adds
@@ -107,13 +107,13 @@ knowledge_points:
   - id: dot-arrow-alignment
     title: For arrows, the dot product measures how far one goes along the other
     explain: |
-      **The question.** Vectors can also be drawn as arrows. For two arrows, what does their dot product tell you? Ideally one number would say whether they point roughly the same way, at right angles, or in opposite directions.
+      **The question.** Vectors can also be drawn as arrows. For two arrows, can their dot product tell you whether they point roughly the same way, at right angles, or in opposite directions?
 
       **Picture it.** Start with the easiest second arrow, $b=(1,0)$: length 1, pointing right. For any arrow $a=(a_1,a_2)$,
 
       $$a\cdot b=a_1\cdot1+a_2\cdot0=a_1.$$
 
-      So here the dot product is how far $a$ goes to the right, which is how far it goes in $b$'s direction; the up part never counts. Below, $(3,4)$ goes 3 right, $(0,4)$ goes straight up and $(-3,4)$ goes 3 left, so their dot products with $b$ are $3$, $0$ and $-3$.
+      So here the dot product is how far $a$ goes right, in $b$'s direction; the up part never counts. Below, $(3,4)$ goes 3 right, $(0,4)$ goes straight up and $(-3,4)$ goes 3 left, so their dot products with $b$ are $3$, $0$ and $-3$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 290" aria-label="Reference arrow b = (1,0) points right. Arrow (3,4) goes 3 right, so a·b = 3; arrow (0,4) goes straight up, so a·b = 0; arrow (−3,4) goes 3 left, so a·b = −3. The coloured bars under the axis show how far each goes along b.">
@@ -143,15 +143,15 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** The distance $a$ goes in $b$'s direction is called the **projection** of $a$ onto $b$. Picture it as $a$'s shadow on the line through $b$, counted as negative when the shadow points backwards. For any two arrows,
+      **The idea.** The **angle** between two arrows is the turn from one to the other at the origin. Drop a line from $a$'s tip to meet $b$'s line at a right angle: the stretch from the origin to where it lands is $a$'s shadow on $b$, the **projection** of $a$ onto $b$, negative if it points backwards. For any two arrows,
 
-      $$a\cdot b=(\text{projection of }a\text{ onto }b)\times\|b\|,$$
+      $$a\cdot b=(\text{projection of }a\text{ onto }b)\times\|b\|$$
 
-      where $\|b\|$ is $b$'s length, the L2 norm $\|b\|_2$ from the vectors lesson; from here on the 2 is dropped. Stretch $b$ to $(2,0)$ and the three scores double to $6$, $0$ and $-6$. The sign answers the question: positive when the arrows are less than a right angle apart, zero when they are **perpendicular** (exactly a right angle apart), negative when they are more than a right angle apart. This holds whichever way $b$ points; the worked example checks it for a tilted $b$.
+      where $\|b\|$ is $b$'s length (the L2 norm $\|b\|_2$, written without the 2 from here on). Why the length? Stretch $b$ to $(2,0)$ and the scores double to $6$, $0$ and $-6$, while the shadows stay the same. Turning both arrows together leaves the dot product unchanged, so a tilted $b$ works the same way, as the worked example checks. So the sign answers the question: positive when the angle is less than a right angle, zero when the arrows are **perpendicular** (at a right angle), negative when it is more.
 
-      **Common confusion.** "A bigger dot product means the arrows point more nearly the same way." Only if the lengths stay fixed. Two arrows pointing exactly the same way can score $(1,0)\cdot(1,0)=1$, while $(3,4)\cdot(1,0)=3$ scores more even though $(3,4)$ points well away from $(1,0)$. Length counts too; the next step removes it.
+      **Common confusion.** "A bigger dot product means the arrows point more nearly the same way." Only if the lengths stay fixed: $(1,0)\cdot(1,0)=1$ for arrows pointing the same way, but $(3,4)\cdot(1,0)=3$ for arrows well apart. The next step removes length.
     worked: |
-      This example checks the second idea for a tilted arrow: the dot product equals the projection times $b$'s length. Take $a=(7,1)$ and $b=(6,8)$.
+      This example checks the second idea for a tilted arrow. Take $a=(7,1)$ and $b=(6,8)$, find the projection from the rule, then check it against the picture.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Arrow a = (7,1) and arrow b = (6,8) from the origin. A dashed step (4,−3) from the point (3,4) on b reaches the tip of a and meets b at a right angle, so the shadow of a along b runs from the origin to (3,4) and has length 5.">
@@ -182,16 +182,18 @@ knowledge_points:
       2. **Find $b$'s length.**
          $$\|b\|=\sqrt{6^2+8^2}=\sqrt{100}=10$$
 
-      3. **Find where $a$'s shadow ends.** The point $(3,4)$ is halfway along $b$, so it lies on $b$'s line. The step from there to $a$'s tip is
+      3. **Use the rule to get the projection.**
+         $$\text{projection}=\frac{a\cdot b}{\|b\|}=\frac{50}{10}=5$$
+
+      4. **Find where the shadow should end.** The projection 5 is half of $b$'s length 10, so the shadow should end halfway along $b$:
+         $$\tfrac{1}{2}(6,8)=(3,4)$$
+
+      5. **Find the step from there to $a$'s tip.**
          $$(7,1)-(3,4)=(4,-3)$$
 
-      4. **Check that the step meets $b$'s line at a right angle.** The three side lengths fit Pythagoras' rule, which only happens when the corner at $(3,4)$ is a right angle:
-         $$\|(3,4)\|^2+\|(4,-3)\|^2=25+25=50=\|a\|^2$$
-         So the shadow runs from the origin to $(3,4)$, and the projection is $\|(3,4)\|=5$.
-
-      5. **Multiply the projection by $b$'s length.**
-         $$5\times10=50$$
-         This matches step 1.
+      6. **Check that the step meets $b$'s line at a right angle.** Pythagoras' rule also works backwards: if the squares of the two shorter sides add up to the square of the longest side, the corner between the shorter sides is a right angle.
+         $$\|(3,4)\|^2+\|(4,-3)\|^2=25+25=50=\|(7,1)\|^2$$
+         So the right-angle drop from $a$'s tip lands at $(3,4)$, exactly where the rule said the shadow ends.
 
       **Compare cases.** Keep $b=(6,8)$ and change $a$:
 
@@ -203,7 +205,7 @@ knowledge_points:
       | $(-7,-1)$ | partly against | $-5$ | $-50$ |
       | $(-6,-8)$ | opposite | $-10$ | $-100$ |
 
-      **Where it shows up.** A robot's movement dotted with $(1,0)$ gives how far it went east, and dotted with $(0,1)$ how far it went north. Dotted with any length-1 direction, it gives how far the robot went that way.
+      **Where it shows up.** A linear model's prediction $w\cdot x$ is large when the input $x$ points along the weights $w$ and negative when it points against them. A robot dots its movement with a length-1 direction to find how far it has travelled that way.
     problems:
       - dot-arrow-alignment-basics
       - dotp-why-shadow
@@ -254,11 +256,11 @@ knowledge_points:
 
       $$\frac{a\cdot b}{\|a\|\,\|b\|}$$
 
-      Dividing by both lengths has the same effect as first shrinking each arrow to length 1 (a **unit vector**) and then taking the dot product. What is left is the shadow of one length-1 arrow on the other, which depends only on the angle. In trigonometry that shadow is the **cosine** of the angle, $\cos\theta$, which gives the score its name and gives
+      Dividing by both lengths is the same as first shrinking each arrow to length 1, a **unit vector**, by dividing its entries by its length: $(3,4)$ becomes $(0.6,0.8)$. Dividing $a$'s entries by $\|a\|$ divides every product, and so the dot product, by $\|a\|$; the same goes for $b$. For two length-1 arrows, the dot product is the shadow of one on the other, fixed by the angle alone. That shadow has a name: the **cosine** of $\theta$, written $\cos\theta$. It is 1 at $0^\circ$, 0 at $90^\circ$ and $-1$ at $180^\circ$; in the picture, $(0.6,0.8)$ casts a shadow of $0.6$ on the line through $b$. So cosine similarity equals $\cos\theta$, and multiplying back by both lengths gives
 
       $$a\cdot b=\|a\|\,\|b\|\cos\theta$$
 
-      The score is 1 for the same direction, 0 for perpendicular arrows and $-1$ for opposite directions. A zero vector has no direction, and dividing by its zero length is undefined.
+      A zero vector has no direction, and dividing by its zero length is undefined.
 
       **Common confusion.** "A cosine similarity of 1 means the two vectors are equal." No, it means they point the same way. $(1,1)$ and $(10,10)$ score 1, but one is ten times as long as the other.
     worked: |
@@ -291,7 +293,7 @@ knowledge_points:
       | $(4,-3)$ | $0$ | $25$ | $0$ |
       | $(-3,-4)$ | $-25$ | $25$ | $-1$ |
 
-      **Where it shows up.** Search and recommendation systems describe each item as a vector of numbers and use cosine similarity to find items that point the same way, whatever their size. A robot can use it to compare two headings without caring how far each move went.
+      **Where it shows up.** A recommendation system can describe each film by a vector of scores, such as (action, comedy, romance). Two films with the same mix of scores point the same way, so cosine similarity calls them alike even if one film's scores are all larger.
     problems:
       - dot-direction-only-basics
       - dotp-scaling
