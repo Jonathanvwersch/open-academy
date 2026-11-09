@@ -33,7 +33,7 @@ In `worked`:
 7. **Where it shows up.** At most 2 sentences tying the idea to ML or robotics, built only from ideas already taught. This always comes last, never first. _(Applying it in a new setting supports transfer.)_
 
 In `problems` (order matters; the runner starts easy and steps up):
-8. The `basics` MC question first. Then one **self-explanation** question about the worked example ("Why does step 2 use the dot product?"). Then problems from partly worked to full, easy to hard (difficulty 1, 2, 3 all present). The last ones are in a new setting (a different function, or a robot). _(Self-explanation: Chi et al. 1989; Bisra et al. 2018. Fading: Renkl & Atkinson 2003.)_
+8. The `basics` MC question first. Then one **self-explanation** question about the worked example ("Why does step 2 use the dot product?"), written as an `mc` whose options are plausible reasons, each wrong one with its own `feedback` (choosing among explanations works too: Aleven & Koedinger 2002). Knowledge-point problems can't be `explain` type; only the lesson `final` is. Then problems from partly worked to full, easy to hard (difficulty 1, 2, 3 all present). The last ones are in a new setting (a different function, or a robot). _(Self-explanation: Chi et al. 1989; Bisra et al. 2018. Fading: Renkl & Atkinson 2003.)_
 
 Lesson level:
 - **objective:** one sentence, "**Goal:** …", in plain words.

@@ -806,6 +806,14 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
             `problem "${problemId}" belongs to "${problem.concept}"`,
           );
         }
+        if (problem.value.type === 'explain') {
+          addIssue(
+            issues,
+            file,
+            point.id,
+            `knowledge-point problem ${problemId} is type explain; only the lesson final may be explain`,
+          );
+        }
         if (
           problem.value.role !== 'practice' &&
           problem.value.role !== 'check' &&

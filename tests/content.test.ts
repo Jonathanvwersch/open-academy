@@ -691,6 +691,37 @@ test('a valid knowledge-point lesson with a parameterised practice problem passe
   expect(validateContent(data).filter((issue) => issue.id.startsWith('kp-'))).toEqual([]);
 });
 
+test('knowledge-point problem references reject explain exercises', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'vectors');
+  if (!lesson?.value.knowledge_points) throw new Error('Missing vectors knowledge-point lesson');
+  const point = lesson.value.knowledge_points[0];
+  if (!point) throw new Error('Missing first vectors knowledge point');
+  const explainSource = data.exercises.find(({ value }) => value.id === 'derivatives-explain');
+  if (!explainSource) throw new Error('Missing explain exercise fixture');
+  const explain = ExerciseSchema.parse({
+    ...explainSource.value,
+    id: 'vectors-kp-explain',
+    prompt: 'Explain why this step works.',
+  });
+  data.exercises.push({
+    value: explain,
+    concept: 'vectors',
+    file: 'exercises/vectors.yaml',
+  });
+  point.problems[1] = explain.id;
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: point.id,
+        message:
+          'knowledge-point problem vectors-kp-explain is type explain; only the lesson final may be explain',
+      }),
+    ]),
+  );
+});
+
 test('knowledge-point lessons require a basics exercise first', async () => {
   const data = await notationFixture();
   const lesson = data.lessons.find(({ value }) => value.concept === 'vectors');

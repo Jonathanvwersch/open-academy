@@ -217,26 +217,32 @@ exercises:
     exemplar: "The gradient at a point collects the partial derivatives, here (3, 4). As an arrow it points in the direction where f rises fastest, and its length, 5, is that fastest slope. To get the slope in any other direction, take a unit vector u for that direction and compute ∇f·u: for u=(0.6, 0.8) it is 5, for (0.8, −0.6) it is 0, and for (−0.6, −0.8) it is −5. Because ∇f·u = ‖∇f‖cosθ, the slope is most negative when u points opposite the gradient, so stepping along −∇f lowers f fastest for a small step, which is what gradient descent does."
   - id: gradp-why-vector
     dimension: conceptual
-    type: explain
+    type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "In the worked example, why keep the slopes as $(3,4)$ instead of adding them to get $7$? Say what each entry describes."
-    rubric:
-      - {
-          id: input-slopes,
-          criterion: "Says 3 is the slope along x and 4 is the slope along y.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: keep-order,
-          criterion: "Explains that adding the numbers would lose which input each slope belongs to.",
-          weight: 1,
-          required: true,
-        }
-    exemplar: "The 3 is the slope when x changes and the 4 is the slope when y changes. Keeping them in a vector preserves which direction each slope belongs to; their sum 7 does not."
-    solution: "The vector keeps the x- and y-slopes paired with their inputs; the sum 7 loses that information."
+    prompt: "In the worked example, why keep the slopes as $(3,4)$ instead of adding them to get $7$?"
+    options:
+      - id: a
+        text: "The 3 is the x-slope and 4 is the y-slope; the order keeps each slope tied to its input."
+        correct: true
+        feedback: "The first entry is the x-partial and the second is the y-partial; their sum loses that assignment."
+      - id: b
+        text: "The 3 and 4 are the coordinates of $P$; adding them gives the bowl's height there."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Coordinates locate $P$; the gradient contains the slopes, which are 3 along x and 4 along y."
+      - id: c
+        text: "The entries measure the x-slope at different steps; adding them combines both changes."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The entries are slopes for separate inputs at the same point, not repeated x-slopes."
+      - id: d
+        text: "A gradient is one total slope, so adding 3 and 4 gives its rate regardless of direction."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The slope depends on direction; the ordered vector preserves enough information to find it."
+    solution: "The 3 is the slope along x and the 4 is the slope along y. Keeping their order preserves which input each slope belongs to; the sum 7 loses that information."
   - id: gradp-order
     dimension: conceptual
     type: mc
@@ -344,26 +350,32 @@ exercises:
     solution: "The partial derivatives are $(2x,6y)$, which equal $(2,12)$ at $(1,2)$."
   - id: gradp-approx
     dimension: conceptual
-    type: explain
+    type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "In the worked example, why does the dot product give one number for a chosen direction, and why must $\\mathbf u$ have length 1 for that number to be a slope per unit distance?"
-    rubric:
-      - {
-          id: one-number,
-          criterion: "Explains that the dot product combines the gradient components along the chosen direction into one number.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: unit-distance,
-          criterion: "Explains that a unit vector represents one unit of distance, so its dot product gives slope per unit distance.",
-          weight: 1,
-          required: true,
-        }
-    exemplar: "The dot product adds the x- and y-slope contributions for this one direction, so it returns one number. A unit vector moves one unit of distance, making that number the slope per unit distance rather than a distance-scaled change."
-    solution: "The dot product combines the component slopes for one direction. A unit vector has length 1, so the result is a rate per unit distance."
+    prompt: "In the worked example, why does the dot product give one number for a chosen direction, and why must $\\mathbf u$ have length 1?"
+    options:
+      - id: a
+        text: "It adds each gradient component's contribution along $\\mathbf u$; unit length makes the result change per unit distance."
+        correct: true
+        feedback: "The dot product projects the gradient onto one direction, and a unit vector represents one unit of travel."
+      - id: b
+        text: "It selects the largest gradient component; unit length makes that selected component a per-unit slope."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Both components can contribute; the dot product weights them by the chosen direction."
+      - id: c
+        text: "It returns the gradient's length in every direction; unit length removes any scaling from the angle."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Only the gradient direction gives its full length; other directions give different projections."
+      - id: d
+        text: "It measures distance walked; unit length turns that distance into the function's slope."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The dot product gives a rate of change, not distance; unit length sets the distance scale."
+    solution: "The dot product combines the gradient components along one chosen direction, so it gives one slope. A unit vector represents one unit of travel, making that slope a rate per unit distance."
   - id: gradp-direction-rate
     dimension: math
     type: numeric
@@ -483,26 +495,32 @@ exercises:
     solution: "The gradient is $(2,6)$, so the slope is $(2,6)\\cdot(0.6,0.8)=1.2+4.8=6$."
   - id: gradp-steepest-self-explain
     dimension: conceptual
-    type: explain
+    type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
     prompt: "In the worked example, why does the gradient direction give slope 5, the opposite direction slope -5, and a perpendicular direction slope 0?"
-    rubric:
-      - {
-          id: cosine,
-          criterion: "Uses the dot-product formula with cosine of the angle between the gradient and unit direction.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: angles,
-          criterion: "Relates angles 0°, 180° and 90° to slopes 5, -5 and 0.",
-          weight: 1,
-          required: true,
-        }
-    exemplar: "For a unit direction the slope is $\\|\\nabla f\\|\\cos\\theta$. The gradient has length 5: the cosine is 1 along it, -1 opposite it, and 0 at a right angle, giving slopes 5, -5 and 0."
-    solution: "The unit-direction slope is the gradient length times the cosine of its angle to the gradient. Those three directions have cosines 1, -1 and 0."
+    options:
+      - id: a
+        text: "For unit $\\mathbf u$, the slope is $5\\cos\\theta$: the cosines are 1 along, -1 opposite, and 0 perpendicular."
+        correct: true
+        feedback: "The dot-product formula is $D_{\\mathbf u}f=\\|\\nabla f\\|\\cos\\theta$, and here the gradient length is 5."
+      - id: b
+        text: "The gradient has length 5 in every direction, so all three slopes should have magnitude 5."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The length is the steepest slope; other directions scale it by the cosine of their angle."
+      - id: c
+        text: "The opposite vector has length -1 and the perpendicular vector length 0, scaling the gradient."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "All three directions are unit length; the sign and zero come from their angles, not their lengths."
+      - id: d
+        text: "The signs of the direction's coordinates alone determine the three slopes, regardless of the angle."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The dot product depends on the angle between the vectors, not just the coordinate signs."
+    solution: "For a unit direction, the slope is $\\|\\nabla f\\|\\cos\\theta=5\\cos\\theta$. The directions along, opposite, and perpendicular to the gradient have cosines 1, -1, and 0, giving slopes 5, -5, and 0."
   - id: gradp-why-180
     dimension: conceptual
     type: mc
