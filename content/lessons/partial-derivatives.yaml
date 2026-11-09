@@ -51,11 +51,12 @@ knowledge_points:
       [
         pd-hold-fixed-basics,
         pdp-meaning,
-        pdp-house-rate,
         pdp-why-freeze,
         pdp-sign,
-        pdp-nudge-check,
         pdp-how-many,
+        pdp-house-rate,
+        pdp-nudge-check,
+        pdp-flat-weight,
       ]
   - id: pd-compute
     title: Compute each partial with derivative rules
@@ -82,11 +83,11 @@ knowledge_points:
       [
         pd-compute-basics,
         pdp-compute-x,
-        pdp-value-template,
         pdp-why-zero,
+        pdp-compute-y,
+        pdp-value-template,
         pdp-exp-log,
         pdp-product,
-        pdp-compute-y,
       ]
   - id: pd-many-inputs
     title: Include the bias as another input
@@ -121,12 +122,13 @@ knowledge_points:
     problems:
       [
         pd-many-inputs-basics,
+        pdp-why-data-fixed,
+        pdp-three-inputs,
         pdp-gap-w,
         pdp-gap-template,
         pdp-gap-b,
-        pdp-why-data-fixed,
         pdp-turn-dial,
-        pdp-three-inputs,
+        pdp-sensor-gain,
       ]
 final: pd-explain
 summary: |

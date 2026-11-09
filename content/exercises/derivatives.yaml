@@ -289,7 +289,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "A car has travelled $d(t) = t^2$ metres after $t$ seconds. What is its average speed, in m/s, between $t = {{=a}}$ and $t = {{=a+0.1}}$ seconds?"
     hints:
@@ -398,7 +398,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 1
     prompt: "A delivery robot's battery charge after $t$ minutes is $b(t)$ percent, and $b'(10) = -0.5$. What does this mean?"
     options:
@@ -530,7 +530,7 @@ exercises:
     dimension: math
     type: expression
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "A drone's height after $t$ seconds is $h(t) = 2t^3 - 3t^2 + 6t$ metres. Give its climbing speed $h'(t)$, in metres per second."
     answer: "6*t^2 - 6*t + 6"
@@ -575,7 +575,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Let $f(x) = {{=a}}\\ln x$. What is the slope $f'({{=x0}})$? Round to 2 decimal places if needed."
     hints: ["The derivative of $\\ln x$ is $\\frac1x$, and the constant stays in front."]
@@ -663,7 +663,7 @@ exercises:
     dimension: math
     type: expression
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "A water tank's level after $t$ hours is $L(t) = 10 - 2\\ln t$ metres, for $t \\geq 1$. Give the rate of change $L'(t)$ in metres per hour."
     answer: "-2/t"
@@ -696,7 +696,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "At $x = 2$, a function $u$ has $u(2) = {{=a}}$ and $u'(2) = {{=b}}$, and a function $v$ has $v(2) = {{=c}}$ and $v'(2) = {{=d}}$. Let $f(x) = u(x)\\,v(x)$. What is $f'(2)$?"
     hints: ["Product rule: $f' = u'v + uv'$."]
@@ -751,7 +751,7 @@ exercises:
     dimension: math
     type: expression
     role: practice
-    difficulty: 3
+    difficulty: 2
     est_minutes: 3
     prompt: "Differentiate $f(x) = \\frac{x^2}{x + 1}$."
     answer: "(x^2 + 2*x)/(x + 1)^2"
@@ -798,7 +798,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "A rectangle is 4 m wide and 3 m tall. Its width is growing at 0.5 m per second and its height at 0.2 m per second. How fast is its area growing, in square metres per second?"
     answer: 2.3
@@ -816,3 +816,112 @@ exercises:
         }
     hints: ["Area is width × height, so use the product rule $u'v + uv'$."]
     solution: "$u'v + uv' = 0.5 \\times 3 + 4 \\times 0.2 = 1.5 + 0.8 = 2.3$ square metres per second."
+  - id: derp-nudge-backwards
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A model's loss for one weight is $L(w)$. At $w = 2$ the loss is $L(2) = 5$ and its slope is $L'(2) = -4$. Use the derivative to estimate the small change $h$ in the weight that brings the loss down to $4.8$. Give $h$ with its sign."
+    answer: 0.05
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: -0.05,
+          category: math_error,
+          feedback: "Check the sign: the slope is negative, so the loss falls when the weight rises.",
+        }
+      - {
+          answer: 0.8,
+          category: misapplied_technique,
+          feedback: "That multiplies the loss change by the slope. Divide the loss change by the slope instead.",
+        }
+    hints:
+      - "For a small nudge $h$, $L(2 + h) \\approx L(2) + L'(2)\\,h$."
+      - "Set the estimate equal to $4.8$ and solve for $h$."
+    solution: |
+      Start from the derivative estimate and set it equal to the target loss:
+
+      $$L(2 + h) \approx L(2) + L'(2)\,h$$
+
+      $$4.8 = 5 + (-4)h$$
+
+      $$-0.2 = -4h$$
+
+      $$h = 0.05$$
+
+      Raising the weight by about 0.05 lowers the loss to about 4.8.
+  - id: derp-flat-slope
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A model's loss for one weight is $L(w) = w^3 - 12w + 20$, for $w > 0$. At which positive weight is the slope $L'(w)$ zero?"
+    answer: 2
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 4,
+          category: math_error,
+          feedback: "That is $w^2$. Take the positive square root to find $w$.",
+        }
+      - {
+          answer: 12,
+          category: misunderstood_definition,
+          feedback: "Differentiate first: $L'(w) = 3w^2 - 12$, then set that to zero.",
+        }
+    hints:
+      - "Use the power rule on each term to find $L'(w)$."
+      - "Set $3w^2 - 12 = 0$ and solve for positive $w$."
+    solution: |
+      Differentiate term by term with the power rule:
+
+      $$L'(w) = 3w^2 - 12$$
+
+      Set the slope to zero and solve:
+
+      $$3w^2 - 12 = 0$$
+
+      $$w^2 = 4$$
+
+      $$w = 2 \quad (w > 0)$$
+
+      At $w = 2$ the loss is $8 - 24 + 20 = 4$, and nudging the weight either way barely changes it.
+  - id: derp-log-flat
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A model's loss for one positive weight is $L(w) = w - 4\\ln w$. At which weight is the slope $L'(w)$ zero?"
+    answer: 4
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 0.25,
+          category: math_error,
+          feedback: "Check the algebra: $1 - 4/w = 0$ gives $4/w = 1$, so $w = 4$.",
+        }
+      - {
+          answer: 1,
+          category: misunderstood_definition,
+          feedback: "That is where $\\ln w = 0$. Set the derivative $L'(w) = 1 - 4/w$ to zero instead.",
+        }
+    hints:
+      - "The derivative of $w$ is 1 and the derivative of $\\ln w$ is $1/w$."
+      - "Set $1 - 4/w = 0$ and solve for $w$."
+    solution: |
+      Differentiate each term:
+
+      $$L'(w) = 1 - \frac{4}{w}$$
+
+      Set the slope to zero and solve:
+
+      $$1 - \frac{4}{w} = 0$$
+
+      $$\frac{4}{w} = 1$$
+
+      $$w = 4$$
+
+      Below $w = 4$ the slope is negative and above it the slope is positive, so the loss is lowest there.

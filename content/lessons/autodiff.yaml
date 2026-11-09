@@ -78,10 +78,11 @@ knowledge_points:
       [
         ad-record-basics,
         ad-record-loss-fixed,
+        ad-record-complete,
         ad-record-why,
         ad-record-branching,
         ad-record-read,
-        ad-record-complete,
+        ad-record-untracked,
       ]
   - id: ad-reverse
     title: Reverse mode applies the chain rule automatically
@@ -136,11 +137,12 @@ knowledge_points:
     problems:
       [
         ad-reverse-basics,
+        ad-backward-complete,
+        ad-zero-complete,
         ad-reverse-why,
         ad-grad-accumulation,
         ad-backward-read,
-        ad-backward-complete,
-        ad-zero-complete,
+        ad-backward-shared,
       ]
   - id: ad-modes
     title: Forward and reverse mode suit different shapes
@@ -165,10 +167,11 @@ knowledge_points:
     problems:
       [
         ad-modes-basics,
-        ad-modes-why,
         ad-forward-mode-fixed,
         ad-reverse-mode-fixed,
         ad-mode-template,
+        ad-modes-why,
+        ad-mode-robot-arm,
       ]
 final: ad-explain
 summary: |

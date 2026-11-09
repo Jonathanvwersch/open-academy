@@ -46,12 +46,13 @@ knowledge_points:
     problems:
       [
         grad-vector-of-partials-basics,
-        gradp-compute,
-        gradp-component,
         gradp-why-vector,
-        gradp-three-inputs,
         gradp-order,
         gradp-exp-component,
+        gradp-compute,
+        gradp-component,
+        gradp-three-inputs,
+        gradp-flat-point,
       ]
   - id: grad-points-uphill
     title: The gradient predicts a small loss change
@@ -89,6 +90,7 @@ knowledge_points:
         gradp-length,
         gradp-predict-height,
         gradp-small-step,
+        gradp-target-drop,
       ]
   - id: grad-steepest-descent
     title: The negative gradient is steepest descent
@@ -111,12 +113,12 @@ knowledge_points:
     problems:
       [
         grad-steepest-descent-basics,
+        gradp-direction-rate,
         gradp-descent-unit,
         gradp-steepest-rate,
-        gradp-direction-rate,
         gradp-why-180,
-        gradp-not-at-minimum,
         gradp-descent-step,
+        gradp-not-at-minimum,
       ]
 final: grad-explain
 summary: |

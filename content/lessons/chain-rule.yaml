@@ -52,6 +52,7 @@ knowledge_points:
         crp-local-meaning,
         crp-robot-wheel,
         crp-three-steps,
+        crp-backwards-rate,
       ]
   - id: cr-nested-formulas
     title: Differentiate a formula inside a formula
@@ -97,11 +98,12 @@ knowledge_points:
       [
         cr-nested-formulas-basics,
         crp-diff-cube,
-        crp-nested-slope,
         crp-why-inner-factor,
         crp-inner-outer,
         crp-compose-notation,
+        crp-nested-slope,
         crp-diff-log,
+        crp-product-chain,
       ]
   - id: cr-two-routes
     title: Add derivatives when an input has two routes
@@ -141,11 +143,12 @@ knowledge_points:
       [
         cr-two-routes-basics,
         crp-sum-routes,
+        crp-partial-meaning,
         crp-trip-cost,
         crp-why-both-routes,
         crp-routes-expression,
-        crp-partial-meaning,
         crp-robot-routes,
+        crp-robot-heat,
       ]
 final: cr-explain
 summary: |
