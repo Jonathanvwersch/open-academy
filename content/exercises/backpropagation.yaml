@@ -44,7 +44,7 @@ exercises:
           "id": "a",
           "text": "Both dial routes share the same square operation after the total.",
           "correct": true,
-          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+          "feedback": "Correct: everything after the total is shared, so its loss slope is found once and reused.",
         },
         {
           "id": "b",
@@ -78,11 +78,11 @@ exercises:
     role: "practice"
     difficulty: 2
     est_minutes: 3
-    prompt: "A dial machine has $z={{a}}w+b$ and $L=z^2$. At $w={{w}}$ and $b=1$, what is $\\partial L/\\partial w$?"
+    prompt: "A dial machine has $z={{= a }}w+b$ and $L=z^2$. At $w={{= w }}$ and $b=1$, what is $\\partial L/\\partial w$?"
     answer_expr: "2 * (a * w + 1) * a"
     tolerance: { "abs": 0.001 }
     params: { "a": { "min": 1, "max": 3, "step": 1 }, "w": { "min": 1, "max": 3, "step": 1 } }
-    solution: "The square gives $2z$ and the total gives local slope {{a}}. Their product is {{= 2 * (a * w + 1) * a }}."
+    solution: "The square gives $2z$ and the total gives local slope {{= a }}. Their product is {{= 2 * (a * w + 1) * a }}."
   - id: "bp-reuse-branch"
     dimension: "conceptual"
     type: "mc"
@@ -96,7 +96,7 @@ exercises:
           "id": "a",
           "text": "Differentiate the square once, then continue separately to each parameter.",
           "correct": true,
-          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+          "feedback": "Correct: the shared slope is found once, then each parameter multiplies it by its own local slope.",
         },
         {
           "id": "b",
@@ -168,7 +168,7 @@ exercises:
           "id": "a",
           "text": "ReLU has local slope 1 where its saved input is positive.",
           "correct": true,
-          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+          "feedback": "Correct: the saved score 2 is positive, so ReLU passes the arriving slope unchanged.",
         },
         {
           "id": "b",
@@ -202,7 +202,7 @@ exercises:
     role: "practice"
     difficulty: 2
     est_minutes: 3
-    prompt: "A machine uses $z=wx$, $h=\\operatorname{ReLU}(z)$, $p=3h$ and $L=(p-t)^2$. At $w=1$, $x={{x}}$ and $t={{t}}$, what is $\\partial L/\\partial w$?"
+    prompt: "A machine uses $z=wx$, $h=\\operatorname{ReLU}(z)$, $p=3h$ and $L=(p-t)^2$. At $w=1$, $x={{= x }}$ and $t={{= t }}$, what is $\\partial L/\\partial w$?"
     answer_expr: "2 * (3 * x - t) * 3 * x"
     tolerance: { "abs": 0.001 }
     params: { "x": { "min": 1, "max": 3, "step": 1 }, "t": { "min": 1, "max": 5, "step": 1 } }
@@ -240,7 +240,7 @@ exercises:
           "id": "a",
           "text": "Add the contributions, with loss scaling already included.",
           "correct": true,
-          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+          "feedback": "Correct: each example is a separate use of the weight, so its contributions add.",
         },
         {
           "id": "b",
@@ -271,7 +271,7 @@ exercises:
           "id": "a",
           "text": "It multiplies each output slope by its input and adds the contributions.",
           "correct": true,
-          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+          "feedback": "Correct: each row contributes input times output slope, and the product adds those rows.",
         },
         {
           "id": "b",
@@ -305,11 +305,11 @@ exercises:
     role: "practice"
     difficulty: 2
     est_minutes: 3
-    prompt: "A batch uses $p=wx+b$ with inputs 1 and 2. Output loss slopes are {{g}} and {{q}}, already scaled for the loss. What is the weight derivative?"
+    prompt: "A batch uses $p=wx+b$ with inputs 1 and 2. Output loss slopes are {{= g }} and {{= q }}, already scaled for the loss. What is the weight derivative?"
     answer_expr: "g + 2 * q"
     tolerance: { "abs": 0.001 }
     params: { "g": { "min": -2, "max": 2, "step": 1 }, "q": { "min": 1, "max": 3, "step": 1 } }
-    solution: "Sum input times output slope across rows: $1({{g}})+2({{q}})={{=g+2*q}}$."
+    solution: "Sum input times output slope across rows: $1({{= g }})+2({{= q }})={{=g+2*q}}$."
   - id: "bp-array-shape"
     dimension: "conceptual"
     type: "mc"
@@ -323,7 +323,7 @@ exercises:
           "id": "a",
           "text": "$3\\times2$, one row per input and one column per output.",
           "correct": true,
-          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+          "feedback": "Correct: the product has shapes (3×4)(4×2), so the example dimension is summed away.",
         },
         {
           "id": "b",
@@ -364,7 +364,7 @@ exercises:
           "id": "a",
           "text": "A backward derivative with a slope estimated from nearby losses.",
           "correct": true,
-          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+          "feedback": "Correct: the estimate comes only from losses at nearby parameter values.",
         },
         {
           "id": "b",
@@ -395,7 +395,7 @@ exercises:
           "id": "a",
           "text": "The two tested weights, 0.9 and 1.1, are 0.2 apart.",
           "correct": true,
-          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+          "feedback": "Correct: a central difference spans from w − ε to w + ε, a distance of 2ε.",
         },
         {
           "id": "b",
@@ -429,7 +429,7 @@ exercises:
     role: "practice"
     difficulty: 2
     est_minutes: 3
-    prompt: "For $L(w)=(2w+1)^2$, use a central difference at $w={{w}}$ with nudge 0.1. What derivative does the check estimate?"
+    prompt: "For $L(w)=(2w+1)^2$, use a central difference at $w={{= w }}$ with nudge 0.1. What derivative does the check estimate?"
     answer_expr: "4 * (2 * w + 1)"
     tolerance: { "abs": 0.001 }
     params: { "w": { "min": 0, "max": 3, "step": 1 } }
@@ -447,7 +447,7 @@ exercises:
           "id": "a",
           "text": "The bias code averages contributions that already include mean-loss scaling.",
           "correct": true,
-          "feedback": "Correct: apply the chain rule to loss slopes and add contributions from shared uses.",
+          "feedback": "Correct: an extra mean divides by the four examples, turning 8 into 2.",
         },
         {
           "id": "b",
@@ -475,6 +475,193 @@ exercises:
     answer: 12
     tolerance: { "abs": 0.001 }
     solution: "The estimate is $(5.29-2.89)/0.2=12$, agreeing with $2(3w-1)\\cdot3$ at $w=1$."
+  - id: bp-check-1
+    dimension: math
+    type: numeric
+    role: check
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A house-price network uses size $x = 2$ in hundreds of m² to predict a price in hundreds of thousands of pounds. It calculates $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$ and $L = (\\hat y - y)^2$, with $w_1 = 2$, $w_2 = 3$ and actual price $y = 4$. What is $\\partial L/\\partial w_2$?"
+    answer: 64
+    tolerance: { abs: 0.001 }
+    hints:
+      [
+        "Forward pass: $z = 4$, $h = 4$, $\\hat y = 12$.",
+        "$\\partial L/\\partial \\hat y = 2(12 - 4) = 16$; then multiply by $h$.",
+      ]
+    solution: "The forward pass gives $z = 4$, $h = 4$ and $\\hat y = 12$. The loss's derivative for the prediction is $\\partial L/\\partial \\hat y = 16$. Multiplying by the local derivative $h = 4$ gives $\\partial L/\\partial w_2 = 16 \\cdot 4 = 64$."
+  - id: bp-faded-1
+    dimension: math
+    type: numeric
+    role: check
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A house-price network uses size $x = 1$ in hundreds of m² and actual price $y = 10$ in hundreds of thousands of pounds. It calculates $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$ and $L = (\\hat y - y)^2$, with $w_1 = 2$ and $w_2 = 3$. The forward pass gives $\\hat y = 6$, so $\\partial L/\\partial \\hat y = 2(6 - 10) = -8$. What is $\\partial L/\\partial w_1$?"
+    answer: -24
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 24,
+          category: math_error,
+          feedback: "The prediction $\\hat y = 6$ is below the target 10, so $\\partial L/\\partial \\hat y$ is negative. The remaining factors here are positive, so the weight gradient must also be negative.",
+        }
+      - {
+          answer: -8,
+          category: incomplete_explanation,
+          feedback: "That is $\\partial L/\\partial \\hat y$. Continue through $w_2$, the ReLU gate and $x$.",
+        }
+    hints:
+      [
+        "$\\partial L/\\partial h = -8 \\cdot 3 = -24$.",
+        "ReLU is active ($z = 2 > 0$) and $x = 1$.",
+      ]
+    solution: "Multiplying by $w_2 = 3$ gives $\\partial L/\\partial h = -24$. Since $z = 2$ is positive, ReLU's derivative is 1. The final multiplication by $x = 1$ leaves $\\partial L/\\partial w_1 = -24$."
+  - id: dx-dl-4
+    dimension: math
+    type: numeric
+    role: diagnostic
+    difficulty: 3
+    est_minutes: 4
+    prompt: "A robot's network predicts a signed movement $y$ in centimetres, where negative means backwards. The required movement is $t = 1$ cm. The network calculates $y = w_2\\,\\mathrm{ReLU}(w_1 x)$ and squared error $L = (y - t)^2$, with sensor input $x = 2$, $w_1 = 1.5$ and $w_2 = -1$. Compute $\\partial L/\\partial w_1$."
+    answer: 16
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: -16,
+          category: math_error,
+          feedback: "Check the signs: $\\partial L/\\partial y = -8$ and $w_2 = -1$.",
+        }
+      - {
+          answer: 8,
+          category: incomplete_explanation,
+          feedback: "You stopped one step early: multiply by $\\partial z/\\partial w_1 = x = 2$.",
+        }
+    solution: "The forward pass gives $z = 3$, $h = 3$ and $y = -3$. Start the backward pass with $\\partial L/\\partial y = 2(-3 - 1) = -8$. Multiplying by $w_2 = -1$ gives $\\partial L/\\partial h = 8$. ReLU's derivative is 1 because $z > 0$. Finally, multiplying by $x = 2$ gives $\\partial L/\\partial w_1 = 16$."
+  - id: bp-shapes
+    dimension: implementation
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A house-price network processes 64 houses, with one row per house and 100 inputs per row in `X`. Its 32-unit layer computes `Z = X @ W`, with `X.shape == (64, 100)` and `W.shape == (100, 32)`. The loss gradient `G = dL/dZ` has shape `(64, 32)`. Which expression gives `dL/dW`?"
+    options:
+      - { id: a, text: "`X.T @ G`", correct: true }
+      - {
+          id: b,
+          text: "`G @ X.T`",
+          correct: false,
+          category: implementation_error,
+          feedback: "Matrix multiplication requires the inner sizes to match. Here they are 32 and 100, so this product is not defined.",
+        }
+      - {
+          id: c,
+          text: "`G.T @ X`",
+          correct: false,
+          category: implementation_error,
+          feedback: "That gives shape (32, 100), the transpose of what you need.",
+        }
+      - {
+          id: d,
+          text: "`G @ W.T`",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That is `dL/dX`, the gradient passed to the previous layer.",
+        }
+    hints: ["The gradient must have the same shape as `W`: (100, 32)."]
+    solution: "`X.T @ G` has shape (100,64)@(64,32) = (100,32), matching `W`."
+  - id: bp-complete-relu
+    dimension: implementation
+    type: code_complete
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A house-price network applies ReLU to each entry of `z1`, its saved input to that operation. For example, an input of -2 gives output 0, while 3 gives output 3. The array `g_h1` contains the loss derivatives for those outputs and has the same shape as `z1`. Complete the backward step that gives the loss derivatives for `z1`."
+    code: |
+      g_z1 = ____
+    accept:
+      [
+        "g_h1 * (z1 > 0)",
+        "(z1 > 0) * g_h1",
+        "g_h1 * (z1 > 0).astype(float)",
+        "np.where(z1 > 0, g_h1, 0)",
+        "np.where(z1 > 0, g_h1, 0.0)",
+        "g_h1 * (z1 >= 0)",
+      ]
+    solution: "`g_z1 = g_h1 * (z1 > 0)`: the gradient passes where the unit was active and is blocked elsewhere."
+  - id: bp-debug-bias
+    dimension: transfer
+    type: debug
+    role: transfer
+    difficulty: 3
+    est_minutes: 4
+    prompt: "A house-price network processes a batch of 64 houses. A gradient check estimates the bias gradient for `b1` as about 64 times the value returned by this backward code. The other gradients agree with the check. Which line is wrong, and what is the fix?"
+    code: |
+      g_y = 2 * (y_hat - y) / len(y)
+      dW2 = h1.T @ g_y
+      db2 = g_y.sum(axis=0)
+      g_h1 = g_y @ W2.T
+      g_z1 = g_h1 * (z1 > 0)
+      dW1 = X.T @ g_z1
+      db1 = g_z1.mean(axis=0)
+    buggy_line: 7
+    fix_options:
+      - {
+          id: a,
+          text: "`db1 = g_z1.sum(axis=0)`. The bias is shared by every row, so its gradient sums the per-example contributions",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "`db1 = g_z1.sum(axis=1)`",
+          correct: false,
+          feedback: "That adds across the units instead of across the houses. It gives one answer per house, shape `(B,)`, rather than one per bias, shape `(H,)`.",
+        }
+      - {
+          id: c,
+          text: "`db1 = g_z1`",
+          correct: false,
+          feedback: "Shape `(B, H)` does not match `b1`'s shape `(H,)`.",
+        }
+      - {
+          id: d,
+          text: "Divide `g_y` by `len(y)` a second time",
+          correct: false,
+          feedback: "That would make every gradient smaller, not fix `b1`.",
+        }
+    hints:
+      [
+        "A gradient off by exactly the batch size points to a mean that should be a sum (or the reverse).",
+        "Compare how `db2` is computed.",
+      ]
+    solution: "Here $B = 64$ is the number of houses. The division by $B$ in the mean loss is already included in `g_y`. Using `.mean` for `db1` divides by 64 a second time. Because the same bias affects every house, add all their contributions with `.sum(axis=0)`, just as the code does for `db2`."
+  - id: bp-review-why-cache
+    dimension: conceptual
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A robot uses the same network to learn from 64 recorded images and, later, to predict a movement without changing its settings. Why does training need to keep more calculated values in memory than prediction alone, also called inference?"
+    options:
+      - {
+          id: a,
+          text: "The backward pass needs the forward pass's intermediate answers, so they are saved until the gradients are calculated",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Gradients are larger than parameters",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Each gradient has the same shape as its parameter.",
+        }
+      - {
+          id: c,
+          text: "Training always stores every number with twice as many digits as prediction does",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Saving twice as many digits is not a general rule for training; the extra memory comes from keeping intermediate values for the backward pass. Think about which values the chain rule needs.",
+        }
+    solution: "Local derivative rules use values from the forward pass. For example, a multiplication needs its inputs and ReLU needs to know which inputs were positive. Training saves those values for the batch until the backward pass has used them. Prediction alone does not need that later derivative calculation."
   - id: "bp-explain"
     dimension: "conceptual"
     type: "explain"
@@ -504,13 +691,3 @@ exercises:
         },
       ]
     exemplar: "Save intermediate values during the forward pass so local derivatives can be evaluated at those values. Work backwards from the loss, multiplying by local derivatives and adding contributions where routes or examples share a parameter; array products perform these sums and loss averaging is included once. For selected parameters, hold everything else fixed and compare the backward slope with the loss difference between equal positive and negative nudges divided by twice the nudge size."
-  - id: dx-dl-4
-    dimension: math
-    type: numeric
-    role: diagnostic
-    difficulty: 3
-    est_minutes: 4
-    prompt: "A robot predicts signed movement $y=w_2\\operatorname{ReLU}(w_1x)$ in centimetres, where negative means backwards. Its target is $t=1$ and loss is $L=(y-t)^2$. At $x=2$, $w_1=1.5$ and $w_2=-1$, what is $\\partial L/\\partial w_1$?"
-    answer: 16
-    tolerance: { abs: 0.001 }
-    solution: "The score is 3 and output is -3. Multiply the error slope $2(-3-1)=-8$, output weight -1, ReLU slope 1 and input 2 to get 16."
