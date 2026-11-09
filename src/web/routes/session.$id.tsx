@@ -30,11 +30,11 @@ import { RouteLoadError } from '../route-error.js';
 import { QuestionProgress, type QuestionState } from '../session/QuestionProgress.js';
 import { SessionActivityHeader } from '../session/SessionActivityHeader.js';
 import { XpGoalBar } from '../session/XpGoalBar.js';
-import { LessonSkeleton } from '../skeletons.js';
+import { SessionSkeleton } from '../skeletons.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
 
 export const Route = createFileRoute('/session/$id')({
-  pendingComponent: LessonSkeleton,
+  pendingComponent: SessionSkeleton,
   validateSearch: z.object({ activity: z.string().optional() }),
   loader: async ({ context, params }) => {
     const session = await context.queryClient.ensureQueryData(sessionQueryOptions(params.id));

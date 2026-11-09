@@ -300,6 +300,13 @@ export function LessonRunner({
   if (!state) {
     return (
       <section aria-busy="true" className="space-y-6">
+        <SessionActivityHeader
+          title={title}
+          label={activityLabel}
+          position={activityPosition}
+          total={activityCount}
+          lessonHref={lessonHref}
+        />
         <LessonSkeletonBody />
       </section>
     );
