@@ -314,14 +314,14 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 2
-    prompt: Which ordinary derivative-pass count finds every input-output derivative?
+    prompt: Which pass count finds every input-output derivative, including reverse mode’s recording pass?
     options:
       - id: a
-        text: "Forward: one per input; reverse: one per output, after forward recording."
+        text: "Forward: one per input; reverse: one recording pass plus one per output."
         correct: true
-        feedback: Each forward pass chooses an input; each reverse pass chooses an output.
+        feedback: Each forward pass chooses an input; reverse mode records once, then goes backward per output.
       - id: b
-        text: "Forward: one per output; reverse: one per input, after forward recording."
+        text: "Forward: one per output; reverse: one recording pass plus one per input."
         correct: false
         feedback: "Those roles are swapped: forward shares work from an input, reverse from an output."
       - id: c
@@ -420,8 +420,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A calculation has {{inputs}} inputs and {{outputs}} outputs. After recording its forward
-      calculation, how many ordinary reverse-mode passes find every input-output derivative?
+    prompt: A calculation has {{inputs}} inputs and {{outputs}} outputs. Including one forward recording pass, how many total passes does reverse mode need to find every input-output derivative?
     params:
       inputs:
         min: 2
@@ -429,13 +428,11 @@ exercises:
       outputs:
         min: 1
         max: 4
-    answer_expr: outputs
+    answer_expr: 1 + outputs
     tolerance: { abs: 0 }
     hints:
       - Write the intermediate values first, then apply the rule taught in this knowledge point.
-    solution:
-      One reverse pass gives one chosen output's derivatives with respect to every input. Repeat
-      for each output, so the count is the number of outputs.
+    solution: One backward pass gives one chosen output's derivatives with respect to every input. Add one forward recording pass to the number of outputs to get the total.
   - id: ad-modes-robot
     dimension: conceptual
     type: mc
@@ -450,7 +447,7 @@ exercises:
       - id: a
         text: One forward derivative pass, carrying the angle's effect to all coordinates.
         correct: true
-        feedback: One input means one forward pass; three outputs would need three ordinary reverse passes.
+        feedback: One input means one forward pass; reverse mode needs one recording pass plus three backward passes.
       - id: b
         text: Three forward derivative passes, choosing one coordinate in each pass.
         correct: false
@@ -462,11 +459,11 @@ exercises:
           Combining coordinates gives a combined sensitivity, not all three separate coordinate
           slopes.
       - id: d
-        text: Three reverse derivative passes, which is fewer passes than forward mode.
+        text: One recording pass plus three backward passes, fewer than forward mode.
         correct: false
-        feedback: Three reverse passes are valid but exceed the one forward pass needed here.
+        feedback: That reverse plan takes four passes in total, exceeding the one forward pass needed here.
     solution: With one input and three outputs, forward mode finds all three requested slopes in one
-      derivative pass. Ordinary reverse mode would select each output separately.
+      derivative pass. Reverse mode needs one recording pass plus three backward passes, one per output.
   - id: ad-explain
     dimension: conceptual
     type: explain
@@ -491,14 +488,11 @@ exercises:
         weight: 1
         required: true
       - id: cost
-        criterion: Contrasts one forward derivative pass per input with one reverse pass per output,
-          favouring reverse for many weights and one loss.
+        criterion: Contrasts one forward derivative pass per input with one recording pass plus one backward pass per output, favouring reverse for many weights and one loss.
         weight: 1
         required: true
     exemplar:
       The forward run records the operations that actually execute, their connections and values
       needed by derivative rules. Starting at the scalar loss with derivative one, backward
       multiplies local derivatives in reverse order and adds contributions from different paths,
-      accumulating requested leaf gradients in .grad without updating the weights. One reverse pass
-      gives that loss's slopes for all weights, whereas ordinary forward mode needs one derivative
-      pass per weight.
+      accumulating requested leaf gradients in .grad without updating the weights. After one recording pass, one backward pass gives that loss's slopes for all weights, whereas ordinary forward mode needs one derivative pass per weight.

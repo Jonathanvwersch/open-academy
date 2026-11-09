@@ -22,9 +22,9 @@ knowledge_points:
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 165" aria-label="Forward record: w equals 2, multiply by 3 to get z equals 6, subtract 4 to get e equals 2, square to get L equals 4"><defs><marker id="ad1-forward" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717"><path d="M90 85 H190" stroke="#737373" stroke-width="2" marker-end="url(#ad1-forward)"/><path d="M250 85 H350" stroke="#737373" stroke-width="2" marker-end="url(#ad1-forward)"/><path d="M410 85 H510" stroke="#737373" stroke-width="2" marker-end="url(#ad1-forward)"/><g stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke"><text x="25" y="90" fill="#171717">w = 2</text><text x="200" y="90" fill="#171717">z = 6</text><text x="360" y="90" fill="#171717">e = 2</text><text x="520" y="90" fill="#171717">L = 4</text><text x="105" y="52" fill="#737373">× x (= 3)</text><text x="265" y="52" fill="#737373">− y (= 4)</text><text x="425" y="52" fill="#737373">square</text><text x="25" y="135" fill="#737373">forward values: left to right</text></g></g></svg>
       ```
 
-      **The idea.** Keep a record of small operations, rather than derive one big formula. A recorded **computation graph**, also called a **tape**, links operations to their inputs and outputs, with saved values and local derivative rules needed for a later backward calculation.
+      **The idea.** Keep a record of small operations, rather than derive one big formula. A recorded **computation graph** links operations to their inputs and outputs. A **tape** lists those operations in the order they ran; each **local derivative rule** gives one operation's slope with respect to its own input, as in the computational-graphs lesson.
 
-      PyTorch is software for these calculations. It stores numbers in objects called **tensors**; a tensor can hold one number or an array. Marking an input tensor with `requires_grad=True` asks PyTorch to track operations that depend on it, so derivatives with respect to it can be found later.
+      PyTorch is software for these calculations. It stores numbers in objects called **tensors**; a tensor can hold one number or an array. Marking an input tensor with `requires_grad=True` asks PyTorch to track every value calculated from it, directly or through other values, so its derivatives can be found later.
 
       **Common confusion.** “It rewrites my code into a textbook derivative formula.” No: PyTorch records the operations actually executed on this run. If your code takes one branch of an `if`, the record follows that branch, not the unused alternative.
     worked: |
@@ -39,7 +39,7 @@ knowledge_points:
       3. **Square the difference.** Save the square and its input $e$; its derivative rule will need that value.
          $$L=e^2=2^2=4.$$
 
-      **Compare cases.** Assume normal recording is enabled and only $w$ is marked `requires_grad=True`.
+      **Compare cases.** Only $w$ is marked `requires_grad=True`.
 
       | Value | Tracked for derivatives? | Why? |
       | --- | --- | --- |
@@ -47,7 +47,7 @@ knowledge_points:
       | $x,y$ | No | They are fixed inputs here |
       | $z,e,L$ | Yes | Their calculations depend on $w$ |
 
-      Fixed values can still be saved when a derivative rule needs them: the multiply needs $x=3$ to find the slope with respect to $w$.
+      PyTorch saves whatever an operation's derivative rule needs, whether or not that value is tracked. Here the multiply needs the fixed value $x=3$ to find the slope with respect to $w$.
 
       **Where it shows up.** A model's prediction and squared loss use the same multiply, subtract and square operations. Recording them means changing the forward model doesn't require you to write its backward calculation again.
     problems:
@@ -72,7 +72,9 @@ knowledge_points:
 
       **The idea.** Send the final result's sensitivity back through the recorded operations. **Reverse-mode automatic differentiation** computes derivatives of a chosen output with respect to its inputs by visiting operations in reverse order, multiplying local derivatives along paths and adding contributions where paths meet.
 
-      Calling `loss.backward()` does this for a one-number tensor named `loss`. For an input tensor you created directly, called a **leaf**, its resulting derivative is stored in `.grad` if it requires gradients. Here `w.grad` holds $dL/dw$, the loss slope with respect to $w$.
+      If $w$ is used twice, as in $L=w\cdot w$, each use sends back its own contribution: $w+w=2w$.
+
+      Calling `loss.backward()` does this for a tensor holding a single number, named `loss`. For a **leaf**, a tensor you made yourself rather than one calculated from other tensors, its resulting derivative is stored in `.grad` if it requires gradients. Here `w.grad` holds $dL/dw$, the loss slope with respect to $w$.
 
       **Common confusion.** “Calling `loss.backward()` changes my weights.” No: it calculates gradients, not weight updates. It also **adds** to any gradients already stored, so clear them before calculating a fresh gradient that shouldn't include earlier calls.
     worked: |
@@ -90,7 +92,7 @@ knowledge_points:
       4. **Reverse the multiply.** Use the fixed input $x=3$.
          $$\frac{dL}{dw}=4\cdot3=12.$$
 
-      **Compare cases.** These PyTorch lines use the same leaf `w`. Recomputing `loss` builds a fresh record for the second backward call; by default a used record is freed.
+      **Compare cases.** These PyTorch lines use the same leaf `w`. After backward, PyTorch throws the record away to save memory. A second backward therefore needs a new forward calculation, as shown here by recomputing `loss`.
 
       ```python
       import torch
@@ -129,14 +131,16 @@ knowledge_points:
       **Picture it.** A small calculation multiplies two adjustable inputs, $u=2$ and $v=3$, to give one output $s=6$. A forward derivative pass follows one chosen input towards the output; two passes give both input slopes. A reverse derivative pass starts at the one output and reaches both inputs together.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 210" aria-label="Two inputs u equals 2 and v equals 3 multiply to s equals 6. Two forward derivative passes or one reverse derivative pass give slopes 3 and 2"><defs><marker id="ad3-forward" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="ad3-reverse" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717"><path d="M95 60 L220 100" stroke="#737373" stroke-width="2" marker-end="url(#ad3-forward)"/><path d="M95 150 L220 110" stroke="#737373" stroke-width="2" marker-end="url(#ad3-forward)"/><path d="M535 100 L410 60" stroke="#3b82f6" stroke-width="2" marker-end="url(#ad3-reverse)"/><path d="M535 110 L410 150" stroke="#3b82f6" stroke-width="2" marker-end="url(#ad3-reverse)"/><g stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke"><text x="20" y="25" fill="#171717">Forward: 2 passes</text><text x="350" y="25" fill="#171717">Reverse: 1 pass</text><text x="25" y="60" fill="#171717">u = 2</text><text x="25" y="155" fill="#171717">v = 3</text><text x="225" y="110" fill="#171717">s = uv = 6</text><text x="350" y="60" fill="#171717">u = 2</text><text x="350" y="155" fill="#171717">v = 3</text><text x="540" y="110" fill="#171717">s = 6</text><text x="110" y="65" fill="#171717">choose u</text><text x="110" y="155" fill="#171717">choose v</text><text x="440" y="65" fill="#3b82f6">slope 3</text><text x="440" y="155" fill="#3b82f6">slope 2</text><text x="20" y="195" fill="#171717">Same derivatives; different sharing of work.</text></g></g></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 210" aria-label="Two inputs u equals 2 and v equals 3 multiply to s equals 6. Two forward derivative passes or one reverse derivative pass give slopes 3 and 2"><defs><marker id="ad3-forward" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="ad3-reverse" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717"><path d="M95 60 L220 100" stroke="#737373" stroke-width="2" marker-end="url(#ad3-forward)"/><path d="M95 150 L220 110" stroke="#737373" stroke-width="2" marker-end="url(#ad3-forward)"/><path d="M535 100 L410 60" stroke="#3b82f6" stroke-width="2" marker-end="url(#ad3-reverse)"/><path d="M535 110 L410 150" stroke="#3b82f6" stroke-width="2" marker-end="url(#ad3-reverse)"/><g stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke"><text x="20" y="25" fill="#171717">Forward: 2 passes</text><text x="350" y="25" fill="#171717">Reverse: 1 backward pass</text><text x="25" y="60" fill="#171717">u = 2</text><text x="25" y="155" fill="#171717">v = 3</text><text x="225" y="110" fill="#171717">s = uv = 6</text><text x="350" y="60" fill="#171717">u = 2</text><text x="350" y="155" fill="#171717">v = 3</text><text x="540" y="110" fill="#171717">s = 6</text><text x="110" y="65" fill="#171717">choose u</text><text x="110" y="155" fill="#171717">choose v</text><text x="440" y="65" fill="#3b82f6">slope 3</text><text x="440" y="155" fill="#3b82f6">slope 2</text><text x="20" y="195" fill="#171717">Same derivatives; different sharing of work.</text></g></g></svg>
       ```
 
       **The idea.** Choose the direction that reuses work for the derivatives you need. **Forward-mode automatic differentiation** carries each value's derivative with respect to one chosen input alongside its forward value. Reverse mode instead carries a chosen output's derivatives back to all inputs.
 
-      To obtain every input-output derivative using ordinary one-direction passes, forward mode needs one pass per input; reverse mode needs one backward pass per output, after recording the forward calculation. With many weights and one loss, one reverse pass gives all weight slopes.
+      Choosing $u$ for $s=uv$, $u$ carries (value $2$, derivative $1$), $v$ carries ($3$, $0$), and the multiply outputs ($6$, $1\cdot3+2\cdot0=3$).
 
-      **Common confusion.** “Forward and reverse give different gradients.” No: both apply the same chain rule at the same values. They organise the work differently; these pass counts are a guide to cost, not a promise that every pass takes identical time or memory.
+      To obtain every input-output derivative using ordinary one-direction passes, forward mode needs one pass per input. Reverse mode needs one forward recording pass plus one backward pass per output. With many weights and one loss, one reverse pass gives all weight slopes.
+
+      **Common confusion.** “Forward and reverse give different gradients.” No: both apply the same chain rule at the same values. They organise the work differently.
     worked: |
       Compare both methods for $s=uv$ at $u=2$, $v=3$. Each forward pass chooses one input to vary and holds the other fixed.
 
@@ -150,13 +154,13 @@ knowledge_points:
          $$\frac{\partial s}{\partial u}=1\cdot v=3.$$
          $$\frac{\partial s}{\partial v}=1\cdot u=2.$$
 
-      **Compare cases.** Count ordinary derivative passes to find every input-output derivative; reverse mode also needs the forward recording pass.
+      **Compare cases.** To find every input-output derivative, forward mode chooses one input per pass. The reverse column counts one forward recording pass plus one backward pass per output.
 
-      | Inputs | Outputs | Forward passes | Reverse passes |
+      | Inputs | Outputs | Forward passes | Reverse: record + backward |
       | --- | --- | --- | --- |
-      | $2$ | $1$ | $2$ | $1$ |
-      | $1{,}000{,}000$ | $1$ | $1{,}000{,}000$ | $1$ |
-      | $1$ | $3$ | $1$ | $3$ |
+      | $2$ | $1$ | $2$ | $1+1=2$ |
+      | $1{,}000{,}000$ | $1$ | $1{,}000{,}000$ | $1+1=2$ |
+      | $1$ | $3$ | $1$ | $1+3=4$ |
 
       **Where it shows up.** Neural-network training has many parameters but one loss, which favours reverse mode. A robot calculation with one joint angle and three output coordinates can favour forward mode when you need all three coordinate slopes.
     problems:
