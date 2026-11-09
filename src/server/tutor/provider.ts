@@ -165,10 +165,14 @@ export class E2ETutorProvider implements TutorProvider {
     };
   }
 
-  async gradeExplanation(): Promise<TutorResult<RubricJudgement>> {
+  async gradeExplanation(ctx: ExplanationContext): Promise<TutorResult<RubricJudgement>> {
     return {
       value: RubricJudgementSchema.parse({
-        criteria: [{ id: 'summary', judgement: 'met', evidence: 'E2E summary feedback.' }],
+        criteria: ctx.rubric.map(({ id }) => ({
+          id,
+          judgement: 'partial',
+          evidence: 'E2E partial rubric judgement.',
+        })),
         feedback_md: 'E2E summary feedback.',
       }),
       usage: null,

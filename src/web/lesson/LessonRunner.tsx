@@ -510,7 +510,7 @@ export function LessonRunner({
                     <FeedbackPanel
                       result={state.lastAnsweredProblem.result}
                       xp={pointStatus?.status === 'passed' ? pointStatus.xpEarned : undefined}
-                      hideAnswerLines={['mc', 'debug'].includes(
+                      hideAnswerLines={['mc', 'debug', 'explain'].includes(
                         state.lastAnsweredProblem.exercise.type,
                       )}
                     />
