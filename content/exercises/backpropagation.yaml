@@ -355,7 +355,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "A robot's network reports a loss $L = 4$ after predicting where to put its gripper. Why does training also need $\\partial L/\\partial \\theta$ for every adjustable parameter $\\theta$, rather than just that loss value?"
     options:
@@ -384,7 +384,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 2
     prompt: "A robot's network has {{=N}} adjustable parameters, and one prediction takes {{=t}} milliseconds. Estimating every loss derivative by changing parameters one at a time needs one prediction for the starting loss plus one per parameter. How many **seconds** does that take?"
     hints:
@@ -405,7 +405,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "A robot network calculates $q = w x$ with $w = 3$ and sensor reading $x = 2$. Why save the forward values for the backward pass rather than keep only the final loss?"
     options:
@@ -430,7 +430,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "A robot's network has a million adjustable parameters. Before updating them, training needs every parameter's loss derivative. Roughly how many passes does backpropagation use to find them all?"
     options:
@@ -455,7 +455,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 1
     prompt: "A house-price model's backward code reports a weight gradient of 8. You also estimate it by changing the weight by 0.01 and measuring the loss change. How does the kind of answer produced by backpropagation differ from the small-change estimate?"
     options:
@@ -535,7 +535,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "A house-price network uses size $x = 2$ in hundreds of m² and actual price $y = 4$ in hundreds of thousands of pounds. Its calculations are $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$ and $L = (\\hat y - y)^2$, with $w_1 = -1$ and $w_2 = 3$. What is $\\partial L/\\partial w_1$?"
     answer: 0
@@ -580,7 +580,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 3
+    difficulty: 2
     est_minutes: 3
     prompt: "A house-price network takes size $x = {{=x}}$ in hundreds of m² and actual price $y = {{=y}}$ in hundreds of thousands of pounds. It calculates $z = w_1 x$, $h = \\mathrm{ReLU}(z)$, $\\hat y = w_2 h$ and $L = (\\hat y - y)^2$, with $w_1 = {{=w1}}$ and $w_2 = {{=w2}}$. What is $\\partial L/\\partial w_1$?"
     hints:
@@ -606,7 +606,7 @@ exercises:
     dimension: math
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 1
     prompt: "A robot's network uses a calculated value $h$ in two later movement calculations. In the backward pass, those two paths contribute gradients of 3 and -5 to $h$. What is the total loss derivative $\\partial L/\\partial h$?"
     options:
@@ -736,7 +736,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "A house-price layer adds the same bias to every house's calculation. Two houses contribute 2 and 3 to its loss gradient, and these contributions already include the mean loss's division by the batch size. Why add them to give 5 rather than average them again to give 2.5?"
     options:
@@ -765,7 +765,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "A robot network has a million weights. To check one gradient, we change its weight by 0.01 in each direction and compare the two losses. Why is this finite-difference check useful for a few weights but unsuitable for calculating every gradient at every training step?"
     options:
@@ -794,7 +794,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "You are checking a weight gradient in a house-price network. Increasing weight $\\theta$ by 0.01 gives loss $L(\\theta + 0.01) = {{=Lp}}$, while decreasing it by 0.01 gives $L(\\theta - 0.01) = {{=Lm}}$. What is the finite-difference estimate of $\\partial L/\\partial \\theta$?"
     hints: ["Subtract the two losses, then divide by $2\\epsilon = 0.02$."]
@@ -816,7 +816,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "In a house-price network, a gradient check estimates one weight's derivative as 8, but the backward code gives -8. Every other checked gradient also has the correct size and opposite sign. What is the likely bug?"
     options:
@@ -845,7 +845,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "In a house-price network, some ReLU units received negative inputs `z1`, such as -2 and -3, for every house. The backward code gives the weights entering those units non-zero gradients, but a gradient check gives 0. Which line is most likely wrong?"
     options:
@@ -870,7 +870,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: "A house-price network processes a batch of 32 houses. Its gradient check disagrees only for bias `b2`: the check's value is 32 times larger than the backward code's value. Which line is likely wrong?"
     options:
@@ -907,3 +907,66 @@ exercises:
         feedback: "Divide by $2\\epsilon = 0.02$, not by $\\epsilon = 0.01$."
     hints: ["$L(2.01) = (6.03 - 4)^2$ and $L(1.99) = (5.97 - 4)^2$."]
     solution: "$L(2.01) = 2.03^2 = 4.1209$ and $L(1.99) = 1.97^2 = 3.8809$. The estimate is $(4.1209 - 3.8809) \\div 0.02 = 12$, which matches backprop's $\\partial L/\\partial w_1 = 12$."
+  - id: bpp-forward-purpose
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Which pass computes the prediction and loss before backpropagation begins?"
+    options:
+      - id: a
+        text: "The forward pass."
+        correct: true
+      - id: b
+        text: "The backward pass."
+        correct: false
+        feedback: "The backward pass uses the already computed loss to propagate derivatives."
+      - id: c
+        text: "The parameter update."
+        correct: false
+        feedback: "The parameter update uses gradients after the backward pass."
+    solution: |
+      The forward pass computes predictions, intermediate values and the loss. Backpropagation then uses those stored values.
+  - id: bpp-pass-time
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A forward pass takes 4 milliseconds and a backward pass takes twice as long.
+      Ignoring the parameter update, how many milliseconds does one
+      forward-and-backward calculation take?"
+    answer: 12
+    tolerance: { abs: 0.000001 }
+    solution: |
+      First find the backward-pass time.
+
+      $$2\cdot4=8\text{ ms}.$$
+
+      Add both pass times.
+
+      $$4+8=12\text{ ms}.$$
+  - id: bpp-check-purpose
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What does a finite-difference gradient check compare?"
+    options:
+      - id: a
+        text: "A backward-pass derivative with a nearby-loss estimate."
+        correct: true
+      - id: b
+        text: "A training prediction with its observed target."
+        correct: false
+        feedback: "That comparison measures prediction error, not agreement between derivative
+          calculations."
+      - id: c
+        text: "A current weight with its updated value."
+        correct: false
+        feedback: "That comparison measures an update, not whether a derivative calculation is
+          correct."
+    solution: |
+      A gradient check compares the derivative from backpropagation with an estimate from losses at nearby parameter values.

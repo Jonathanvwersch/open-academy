@@ -26,7 +26,14 @@ knowledge_points:
 
       The classifier must turn either score into a value between 0 and 1; a later threshold can turn that probability into a class.
     problems:
-      [lr-classification-basics, lr-score-numeric, lr-score-why, lr-score-read, lr-score-complete]
+      [
+        lr-classification-basics,
+        lr-score-why,
+        lr-score-complete,
+        lr-score-numeric,
+        lr-score-read,
+        lr-score-recover-bias,
+      ]
   - id: lr-sigmoid
     title: The sigmoid turns a score into a probability
     explain: |
@@ -65,8 +72,9 @@ knowledge_points:
         lr-sigmoid-why,
         lr-sigmoid-fixed,
         lr-sigmoid-template,
-        lr-sigmoid-read,
         lr-sigmoid-complete,
+        lr-sigmoid-read,
+        lr-sigmoid-recover-score,
       ]
   - id: lr-binary-cross-entropy
     title: Binary cross-entropy scores probability errors
@@ -111,7 +119,7 @@ knowledge_points:
 
       Cross-entropy penalises the confident mistake much more heavily than squared error.
     problems:
-      [lr-bce-basics, lr-bce-why, lr-bce-positive, lr-bce-negative, lr-bce-read, lr-bce-complete]
+      [lr-bce-basics, lr-bce-positive, lr-bce-complete, lr-bce-negative, lr-bce-why, lr-bce-read]
   - id: lr-gradient
     title: The score gradient is probability minus label
     explain: |
@@ -171,11 +179,11 @@ knowledge_points:
     problems:
       [
         lr-gradient-basics,
-        lr-convex-why,
         lr-gradient-formula,
+        lr-gradient-complete,
         lr-gradient-weight,
         lr-gradient-read,
-        lr-gradient-complete,
+        lr-convex-why,
       ]
 final: lr-explain-logistic-regression
 summary: |

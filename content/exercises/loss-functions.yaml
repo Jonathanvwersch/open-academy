@@ -233,7 +233,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: Why not just count wrong house-price predictions instead of using MSE or MAE to guide small improvements?
     options:
@@ -310,7 +310,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt:
       A price model misses one house by +20 and another by −20. What does their signed average of
@@ -336,7 +336,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt:
       You duplicate every row of a house-sales dataset without changing predictions. What happens
@@ -362,7 +362,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: Prices are recorded in thousands of pounds. Which units describe the two losses?
     options:
@@ -412,7 +412,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt:
       For one house, the prediction is {{=y+r}} and the actual price is {{=y}}, in thousands of
@@ -462,7 +462,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: A house is underpriced by 9 thousand pounds. What is the derivative of its individual
       absolute error with respect to the prediction?
@@ -487,7 +487,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: At an exactly correct prediction, what happens to the absolute-error curve?
     options:
@@ -511,7 +511,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt:
       A robot distance sensor has a few incorrectly recorded targets far from all other values.
@@ -583,7 +583,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt:
       Three house prices, in tens of thousands of pounds, are {{=a}}, {{=a+3}} and {{=a+18}}. What
@@ -607,7 +607,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: The prices are 290, 300 and 560. Only the last changes, to 900. What happens to the best
       constant under each loss?
@@ -632,7 +632,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt: Four sale prices are 280, 300, 320 and 600. Which constants minimise MAE?
     options:
@@ -658,7 +658,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 3
     est_minutes: 2
     prompt:
       A robot takes 10, 10 and 60 minutes on three recorded trips. Which constant is less pulled

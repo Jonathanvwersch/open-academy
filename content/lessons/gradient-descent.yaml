@@ -43,12 +43,12 @@ knowledge_points:
     problems:
       [
         gd-downhill-update-basics,
-        gdp-why-negative-slope,
-        gdp-step-template,
         gdp-positive-slope,
-        gdp-zero,
         gdp-vector,
         gdp-repeat,
+        gdp-why-negative-slope,
+        gdp-step-template,
+        gdp-zero,
       ]
   - id: gd-step-size
     title: Keep the learning rate small enough
@@ -78,12 +78,12 @@ knowledge_points:
     problems:
       [
         gd-step-size-basics,
+        gdp-why-learning-rate,
         gdp-rate-choice,
         gdp-factor-template,
+        gdp-slow,
         gdp-threshold-template,
         gdp-loss-curve,
-        gdp-slow,
-        gdp-why-learning-rate,
       ]
   - id: gd-price-gradients
     title: Each feature sets its own weight slope
@@ -121,12 +121,13 @@ knowledge_points:
     problems:
       [
         gd-price-gradients-basics,
+        gdp-residual-definition,
         gdp-why-input-factor,
         gdp-gradient-template,
         gdp-data-step-template,
         gdp-feature-factor,
-        gdp-average,
         gdp-bias-slope,
+        gdp-average,
       ]
   - id: gd-training-loop
     title: Repeat prediction, loss, gradient and update
@@ -143,11 +144,11 @@ knowledge_points:
       [
         gd-training-loop-basics,
         gdp-loop-order,
+        gdp-code-update,
+        gdp-shape,
         gdp-bias-step-template,
         gdp-code-gradient,
-        gdp-code-update,
         gdp-why-fresh-errors,
-        gdp-shape,
       ]
 final: gd-explain-training
 summary: |
