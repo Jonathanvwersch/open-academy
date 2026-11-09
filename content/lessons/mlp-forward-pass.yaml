@@ -1,107 +1,288 @@
 concept: mlp-forward-pass
-version: 3
+version: 4
 objective: |
-  **Goal:** compute a neural network's forward pass and track parameter and activation shapes.
+  **Goal:** compute a small neural network's prediction by hand, layer by layer, and track the shape of every array when a batch of examples goes through it.
 where_this_fits: |
-  Activation functions showed how nonlinear operations let a network represent more than one straight rule. A multilayer perceptron (MLP) stacks neuron layers; each hidden unit transforms the same house measurements, and a final linear output predicts the sale price. We now calculate that prediction from input to output.
+  One weighted sum, as in linear regression, can only give a straight-line rule, but real patterns, such as how a house's price depends on its measurements, bend. A network gets bends by computing many weighted scores, putting each through an activation such as ReLU, and combining the results. You already know each piece: matrix products and activations. This lesson puts those pieces together into a **multilayer perceptron**, the basic neural network, in three steps:
+
+  1. Compute a whole layer of neurons at once.
+  2. Run the layers in order to turn an input into a prediction: the forward pass.
+  3. Track the array shapes when a batch of examples goes through, and count the parameters.
+
+  Every prediction a network makes is this calculation.
 knowledge_points:
   - id: mlp-layer-of-neurons
-    title: A layer computes several neurons together
+    title: A layer is several neurons side by side
     explain: |
-      **What a layer is.** A neural-network layer applies one weighted sum per neuron, then applies an activation to each score.
+      **The question.** A perceptron computes one weighted score from its inputs. If you want several different scores from the same inputs, each combining them in its own way, how do you compute them all together?
 
-      **How it works.** For house input:
+      **Picture it.** Take two inputs, $x_1=2$ and $x_2=1$: any two measured numbers. Two neurons both read them. Neuron 1 (blue) has weights $1$ and $1$ and bias $-1$. Neuron 2 (amber) has weights $-1$ and $1$ and bias $0$. Each neuron forms its own score and then applies ReLU, which keeps a positive score and turns a negative one into $0$. Neuron 1 scores $2$ and outputs $2$; neuron 2 scores $-1$ and outputs $0$. Each circle shows that neuron's output.
 
-      $$x=(12,3,20).$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 310" aria-label="Two inputs, 2 and 1, feed two neurons, each circle showing its output. Neuron 1 has weights 1 and 1 and bias minus 1, scores 2 and outputs 2 after ReLU. Neuron 2 has weights minus 1 and 1 and bias 0, scores minus 1 and outputs 0 after ReLU.">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="50" fill="#737373" font-size="14" text-anchor="middle">inputs</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="50" fill="#737373" font-size="14" text-anchor="middle">layer of 2 neurons</text>
+          <path d="M106.0 110.0 L294.0 110.0" stroke="#3b82f6" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="253" y="100" fill="#3b82f6" font-size="15" text-anchor="middle" font-weight="600">1</text>
+          <path d="M102.9 227.6 L297.1 122.4" stroke="#3b82f6" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="256" y="142" fill="#3b82f6" font-size="15" text-anchor="middle" font-weight="600">1</text>
+          <path d="M102.9 122.4 L297.1 227.6" stroke="#f59e0b" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="254" y="214" fill="#f59e0b" font-size="15" text-anchor="middle" font-weight="600">−1</text>
+          <path d="M106.0 240.0 L294.0 240.0" stroke="#f59e0b" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="253" y="262" fill="#f59e0b" font-size="15" text-anchor="middle" font-weight="600">1</text>
+          <circle cx="80" cy="110" r="26" fill="#ffffff" stroke="#171717" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="116" fill="#171717" font-size="17" text-anchor="middle" font-weight="600">2</text>
+          <circle cx="80" cy="240" r="26" fill="#ffffff" stroke="#171717" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="246" fill="#171717" font-size="17" text-anchor="middle" font-weight="600">1</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="156" fill="#737373" font-size="14" text-anchor="middle">x₁</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="286" fill="#737373" font-size="14" text-anchor="middle">x₂</text>
+          <circle cx="320" cy="110" r="26" fill="#ffffff" stroke="#3b82f6" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="116" fill="#171717" font-size="17" text-anchor="middle" font-weight="600">2</text>
+          <circle cx="320" cy="240" r="26" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="246" fill="#171717" font-size="17" text-anchor="middle" font-weight="600">0</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="362" y="150" fill="#3b82f6" font-size="14" text-anchor="start">neuron 1, bias −1</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="362" y="280" fill="#f59e0b" font-size="14" text-anchor="start">neuron 2, bias 0</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="362" y="104" fill="#3b82f6" font-size="14" text-anchor="start">score 1·2 + 1·1 − 1 = 2</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="362" y="126" fill="#3b82f6" font-size="14" text-anchor="start" font-weight="600">ReLU(2) = 2</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="362" y="234" fill="#f59e0b" font-size="14" text-anchor="start">score −1·2 + 1·1 + 0 = −1</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="362" y="256" fill="#f59e0b" font-size="14" text-anchor="start" font-weight="600">ReLU(−1) = 0</text>
+        </g>
+      </svg>
+      ```
 
-      Take:
+      **The idea.** A layer is a group of neurons that all read the same inputs, each with its own weights and bias. In general, a **layer** of $m$ neurons reading $n$ inputs stores its weights in an $m\times n$ matrix $W$, one row per neuron, and its biases in a vector $b$ with $m$ entries. Row $i$ of $W$ dotted with the input $x$, plus the bias $b_i$, is neuron $i$'s score, so all the scores together are $Wx+b$. The activation $\phi$, such as ReLU, is then applied to each score separately, giving the layer's output:
 
-      $$
-      \begin{aligned}
-      W_1 &= \begin{pmatrix}0.1&0&0\\0&0.1&0.05\end{pmatrix},\\
-      b_1 &= (0,0).
-      \end{aligned}
-      $$
+      $$h=\phi(Wx+b)$$
 
-      Then:
-
-      $$z_1=W_1x+b_1=(1.2,1.3).$$
-
-      ReLU gives hidden values:
-
-      $$h=(1.2,1.3).$$
-
-      Each row is one unit's weights.
-
-      Matrix multiplication applies the same layer rule to every neuron without changing the input order, so computing the rows together keeps the layer consistent.
-
-      **Why this is useful.** The hidden layer gives the house-price model several learned intermediate features instead of one direct weighted sum.
+      **Common confusion.** “The neurons all read the same inputs, so they all give the same answer.” No: each neuron has its own row of weights and its own bias, so each combines the inputs differently. Here the same input $(2,1)$ gives $2$ from neuron 1 and $0$ from neuron 2.
     worked: |
-      This example shows the calculation.
-      $$W_1x=\begin{pmatrix}0.1&0&0\\0&0.1&0.05\end{pmatrix}\begin{pmatrix}12\\3\\20\end{pmatrix}=\begin{pmatrix}1.2\\1.3\end{pmatrix},\quad h=\operatorname{ReLU}(W_1x)=(1.2,1.3).$$
+      Compute the layer's output for $x=(2,1)$, with
+
+      $$W=\begin{pmatrix}1&1\\-1&1\end{pmatrix},\qquad b=(-1,0).$$
+
+      1. **Dot each row with the input.**
+         $$Wx=\begin{pmatrix}1\cdot2+1\cdot1\\-1\cdot2+1\cdot1\end{pmatrix}=\begin{pmatrix}3\\-1\end{pmatrix}$$
+
+      2. **Add each neuron's bias.**
+         $$z=Wx+b=\begin{pmatrix}3-1\\-1+0\end{pmatrix}=\begin{pmatrix}2\\-1\end{pmatrix}$$
+
+      3. **Apply ReLU to each score.**
+         $$h=\operatorname{ReLU}(z)=\begin{pmatrix}\max(0,2)\\\max(0,-1)\end{pmatrix}=\begin{pmatrix}2\\0\end{pmatrix}$$
+
+      **Compare cases.** The same layer, given different inputs:
+
+      | Input $x$ | Scores $z=Wx+b$ | Output $h$ |
+      | --- | --- | --- |
+      | $(1,0)$ | $(0,-1)$ | $(0,0)$ |
+      | $(0,1)$ | $(0,1)$ | $(0,1)$ |
+      | $(2,1)$ | $(2,-1)$ | $(2,0)$ |
+      | $(1,2)$ | $(2,1)$ | $(2,1)$ |
+      | $(3,1)$ | $(3,-2)$ | $(3,0)$ |
+
+      **Where it shows up.** In a house-price model the inputs are measurements such as area and bedrooms, and each neuron in the first layer builds its own combination of them, for example one that grows with area.
     problems:
-      [
-        mlp-layer-of-neurons-basics,
-        mlpp-why-matrix,
-        mlpp-weight-entry,
-        mlpp-layer-values,
-        mlpp-unit-score-template,
-        mlpp-why-activation,
-        mlpp-robot-layer,
-      ]
+      - mlp-layer-of-neurons-basics
+      - mlpp-layer-why-zero
+      - mlpp-weight-entry
+      - mlpp-why-matrix
+      - mlpp-layer-values
+      - mlpp-unit-score-template
+      - mlpp-robot-layer
   - id: mlp-two-layers
-    title: The forward pass predicts a price
+    title: The forward pass runs the layers in order
     explain: |
-      **What a forward pass is.** It is the ordered computation from input features through every layer to the model's output.
+      **The question.** A layer turns the inputs into a few new numbers, but you want one prediction. How do you get from the inputs to that prediction?
 
-      **How it works.** Continue with hidden values $h=(1.2,1.3)$. Let output weights be $(15,5)$ and output bias 300, all in units that make the result thousands of pounds. Then $\hat y=15(1.2)+5(1.3)+300=324.5$. The final layer is linear because a house price is not restricted to a fixed interval.
+      **Picture it.** Add a second layer after the first. The first layer, from the last part, turns $x=(2,1)$ into $h=(2,0)$. These are **hidden values**: the network computes them on the way, and they are neither inputs nor the final answer. The second layer is a single output neuron (green) with weights $3$ and $2$ and bias $1$. It reads the hidden values and gives the prediction $7$. Values flow from left to right.
 
-      The output layer needs the hidden values produced by the previous layer, so the layers must run in order.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" aria-label="A forward pass from left to right: inputs 2 and 1 go through layer 1 and ReLU to hidden values 2 and 0, then the output neuron with weights 3 and 2 and bias 1 gives the prediction 7.">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="60" y="50" fill="#737373" font-size="14" text-anchor="middle">input x</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="290" y="50" fill="#737373" font-size="14" text-anchor="middle">hidden values h</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="520" y="50" fill="#737373" font-size="14" text-anchor="middle">output ŷ</text>
+          <path d="M86.0 110.0 L264.0 110.0" stroke="#3b82f6" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="226" y="100" fill="#3b82f6" font-size="15" text-anchor="middle" font-weight="600">1</text>
+          <path d="M82.6 227.2 L267.4 122.8" stroke="#3b82f6" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="228" y="142" fill="#3b82f6" font-size="15" text-anchor="middle" font-weight="600">1</text>
+          <path d="M82.6 122.8 L267.4 227.2" stroke="#f59e0b" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="226" y="214" fill="#f59e0b" font-size="15" text-anchor="middle" font-weight="600">−1</text>
+          <path d="M86.0 240.0 L264.0 240.0" stroke="#f59e0b" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="226" y="262" fill="#f59e0b" font-size="15" text-anchor="middle" font-weight="600">1</text>
+          <path d="M315.0 117.1 L495.0 167.9" stroke="#10b981" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="416" y="134" fill="#10b981" font-size="15" text-anchor="middle" font-weight="600">3</text>
+          <path d="M315.0 232.9 L495.0 182.1" stroke="#10b981" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="416" y="230" fill="#10b981" font-size="15" text-anchor="middle" font-weight="600">2</text>
+          <circle cx="60" cy="110" r="26" fill="#ffffff" stroke="#171717" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="60" y="116" fill="#171717" font-size="17" text-anchor="middle" font-weight="600">2</text>
+          <circle cx="60" cy="240" r="26" fill="#ffffff" stroke="#171717" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="60" y="246" fill="#171717" font-size="17" text-anchor="middle" font-weight="600">1</text>
+          <circle cx="290" cy="110" r="26" fill="#ffffff" stroke="#3b82f6" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="290" y="116" fill="#171717" font-size="17" text-anchor="middle" font-weight="600">2</text>
+          <circle cx="290" cy="240" r="26" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="290" y="246" fill="#171717" font-size="17" text-anchor="middle" font-weight="600">0</text>
+          <circle cx="520" cy="175" r="26" fill="#ffffff" stroke="#10b981" stroke-width="2.5"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="520" y="181" fill="#171717" font-size="17" text-anchor="middle" font-weight="600">7</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="290" y="156" fill="#3b82f6" font-size="14" text-anchor="middle">bias −1</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="290" y="286" fill="#f59e0b" font-size="14" text-anchor="middle">bias 0</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="520" y="221" fill="#10b981" font-size="14" text-anchor="middle">bias 1</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="175" y="300" fill="#737373" font-size="14" text-anchor="middle">layer 1, then ReLU</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="405" y="300" fill="#737373" font-size="14" text-anchor="middle">layer 2 (output)</text>
+        </g>
+      </svg>
+      ```
 
-      **Why this is useful.** A forward pass combines the house's area, bedrooms and age into one price prediction that can be compared with its sale.
+      **The idea.** Each layer's output becomes the next layer's input. A **multilayer perceptron (MLP)** is a chain of layers like this; the layers between the input and the output are **hidden layers**. Its **forward pass** is the calculation from input to prediction, one layer at a time, in order. For two layers, with $\hat y$ the prediction and subscripts 1 and 2 saying which layer a weight matrix or bias belongs to:
+
+      $$h=\phi(W_1x+b_1)$$
+
+      $$\hat y=W_2h+b_2$$
+
+      The output layer here is the exception: it has no activation, so nothing limits the prediction's range. Sigmoid, for example, would keep it between $0$ and $1$, which can't express a price of $250$ thousand pounds.
+
+      **Common confusion.** “I could multiply $W_2$ by $W_1$ first and skip a step.” No: the activation sits between the two layers and changes the numbers. Without ReLU, the hidden values would be the raw scores $(2,-1)$ and the output would be $5$, not $7$. As the activation-functions lesson showed, two layers with nothing in between multiply out into one weighted sum; the activation is what prevents that.
     worked: |
-      This example shows the calculation.
-      With $h=(1.2,1.3)$, $W_2=(15,5)$ and $b_2=300$:
+      Compute the prediction $\hat y$ for $x=(2,1)$. Layer 1 is the one from the last part, followed by ReLU. Layer 2 has one neuron, so $W_2$ is a single row:
 
-      1. $W_2h=15(1.2)+5(1.3)=24.5$.
-      2. Add the output bias: $\hat y=24.5+300=324.5$ thousand pounds.
+      $$W_1=\begin{pmatrix}1&1\\-1&1\end{pmatrix},\quad b_1=(-1,0),\quad W_2=\begin{pmatrix}3&2\end{pmatrix},\quad b_2=1.$$
+
+      1. **Compute layer 1's scores.**
+         $$W_1x+b_1=\begin{pmatrix}3\\-1\end{pmatrix}+\begin{pmatrix}-1\\0\end{pmatrix}=\begin{pmatrix}2\\-1\end{pmatrix}$$
+
+      2. **Apply the activation to get the hidden values.**
+         $$h=\operatorname{ReLU}\begin{pmatrix}2\\-1\end{pmatrix}=\begin{pmatrix}2\\0\end{pmatrix}$$
+
+      3. **Take the output neuron's weighted sum.**
+         $$W_2h=3\cdot2+2\cdot0=6$$
+
+      4. **Add the output bias.**
+         $$\hat y=6+1=7$$
+
+      **Compare cases.** The whole network, given different inputs:
+
+      | Input $x$ | Hidden $h$ | Prediction $\hat y$ |
+      | --- | --- | --- |
+      | $(1,0)$ | $(0,0)$ | $1$ |
+      | $(0,1)$ | $(0,1)$ | $3$ |
+      | $(2,1)$ | $(2,0)$ | $7$ |
+      | $(1,2)$ | $(2,1)$ | $9$ |
+      | $(3,1)$ | $(3,0)$ | $10$ |
+
+      **Where it shows up.** For a house, the inputs are its measurements, the hidden values are the first layer's combinations of them, and $\hat y$ is the predicted price. Every prediction a trained network makes is one forward pass.
     problems:
-      [
-        mlp-two-layers-basics,
-        mlpp-forward-order,
-        mlpp-hidden-meaning,
-        mlpp-forward-template,
-        mlpp-forward-fixed,
-        mlpp-why-no-sigmoid-output,
-        mlpp-robot-forward,
-      ]
+      - mlp-two-layers-basics
+      - mlpp-forward-why-h
+      - mlpp-forward-order
+      - mlpp-hidden-meaning
+      - mlpp-forward-fixed
+      - mlpp-forward-template
+      - mlpp-why-activation
+      - mlpp-why-no-sigmoid-output
+      - mlpp-robot-forward
   - id: mlp-shapes
-    title: Shapes show which layer operations fit
+    title: Shapes for a batch of examples
     explain: |
-      **What a shape is.** A shape records the number of rows and columns in a matrix or vector.
+      **The question.** Networks usually handle many examples at once, called a **batch**. How do you lay them out so that one matrix product handles every example, and what size is each array?
 
-      **How it works.** For $B$ houses with three input features, $X$ has shape $B\times3$. The first layer uses a $3\times2$ weight matrix and produces $B\times2$ hidden values. The output weights have shape $2\times1$, producing $B\times1$ prices. This multiplication works because each inner dimension matches.
+      **Picture it.** Stack three inputs, $(2,1)$, $(1,2)$ and $(0,1)$, as the rows of a matrix $X$, and pass it through the same two layers. Each row stays one example the whole way: the first layer turns each row of 2 inputs into a row of 2 hidden values (blue for neuron 1, amber for neuron 2), and the output layer turns each of those rows into 1 prediction (green).
 
-      Every row is a different house evaluated by the same model, so the same weights are applied to each row.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 270" aria-label="A batch of three examples as rows: inputs X of shape 3 by 2 become hidden values H of shape 3 by 2 after the first layer and ReLU, then outputs of shape 3 by 1 with values 7, 9 and 3.">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <defs><marker id="m3-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="116" y="74" fill="#737373" font-size="14" text-anchor="middle">inputs X</text>
+          <rect x="70" y="90" width="46" height="36" fill="#ffffff" stroke="#171717" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="93" y="114" fill="#171717" font-size="16" text-anchor="middle" font-weight="600">2</text>
+          <rect x="116" y="90" width="46" height="36" fill="#ffffff" stroke="#171717" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="139" y="114" fill="#171717" font-size="16" text-anchor="middle" font-weight="600">1</text>
+          <rect x="70" y="126" width="46" height="36" fill="#ffffff" stroke="#171717" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="93" y="150" fill="#171717" font-size="16" text-anchor="middle" font-weight="600">1</text>
+          <rect x="116" y="126" width="46" height="36" fill="#ffffff" stroke="#171717" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="139" y="150" fill="#171717" font-size="16" text-anchor="middle" font-weight="600">2</text>
+          <rect x="70" y="162" width="46" height="36" fill="#ffffff" stroke="#171717" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="93" y="186" fill="#171717" font-size="16" text-anchor="middle" font-weight="600">0</text>
+          <rect x="116" y="162" width="46" height="36" fill="#ffffff" stroke="#171717" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="139" y="186" fill="#171717" font-size="16" text-anchor="middle" font-weight="600">1</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="116" y="228" fill="#171717" font-size="15" text-anchor="middle" font-weight="600">X: 3×2</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="346" y="74" fill="#737373" font-size="14" text-anchor="middle">hidden H</text>
+          <rect x="300" y="90" width="46" height="36" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="323" y="114" fill="#3b82f6" font-size="16" text-anchor="middle" font-weight="600">2</text>
+          <rect x="346" y="90" width="46" height="36" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="369" y="114" fill="#f59e0b" font-size="16" text-anchor="middle" font-weight="600">0</text>
+          <rect x="300" y="126" width="46" height="36" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="323" y="150" fill="#3b82f6" font-size="16" text-anchor="middle" font-weight="600">2</text>
+          <rect x="346" y="126" width="46" height="36" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="369" y="150" fill="#f59e0b" font-size="16" text-anchor="middle" font-weight="600">1</text>
+          <rect x="300" y="162" width="46" height="36" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="323" y="186" fill="#3b82f6" font-size="16" text-anchor="middle" font-weight="600">0</text>
+          <rect x="346" y="162" width="46" height="36" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="369" y="186" fill="#f59e0b" font-size="16" text-anchor="middle" font-weight="600">1</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="346" y="228" fill="#171717" font-size="15" text-anchor="middle" font-weight="600">H: 3×2</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="563" y="74" fill="#737373" font-size="14" text-anchor="middle">outputs Ŷ</text>
+          <rect x="540" y="90" width="46" height="36" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="563" y="114" fill="#10b981" font-size="16" text-anchor="middle" font-weight="600">7</text>
+          <rect x="540" y="126" width="46" height="36" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="563" y="150" fill="#10b981" font-size="16" text-anchor="middle" font-weight="600">9</text>
+          <rect x="540" y="162" width="46" height="36" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="563" y="186" fill="#10b981" font-size="16" text-anchor="middle" font-weight="600">3</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="563" y="228" fill="#171717" font-size="15" text-anchor="middle" font-weight="600">Ŷ: 3×1</text>
+          <path d="M172 144.0 H286" stroke="#737373" stroke-width="2.5" marker-end="url(#m3-arrow)"/>
+          <path d="M402 144.0 H526" stroke="#737373" stroke-width="2.5" marker-end="url(#m3-arrow)"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="229" y="114" fill="#737373" font-size="14" text-anchor="middle">× W₁ᵀ (2×2)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="229" y="132" fill="#737373" font-size="14" text-anchor="middle">+ b₁, ReLU</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="464" y="114" fill="#737373" font-size="14" text-anchor="middle">× W₂ᵀ (2×1)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="464" y="132" fill="#737373" font-size="14" text-anchor="middle">+ b₂</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="260" fill="#737373" font-size="14" text-anchor="middle">each row is one example, from start to finish</text>
+        </g>
+      </svg>
+      ```
 
-      **Why this is useful.** Shape checks prevent errors when applying the house-price network to many sales at once.
+      **The idea.** In a matrix product, each output entry is one row of the left matrix dotted with one column of the right. Each example is a row of $X$, so each neuron's weights must sit in a column. That is the transpose $W^\top$, which swaps the rows and columns of $W$. Write $B$ for the number of examples, $d_\text{in}$ for the number of inputs and $d_\text{out}$ for the number of neurons. A layer turns a batch of shape $B\times d_\text{in}$ into $B\times d_\text{out}$, because the inner sizes match:
+
+      $$(B\times d_\text{in})(d_\text{in}\times d_\text{out})=B\times d_\text{out}$$
+
+      For the two-layer network, with $H$ the hidden values and $\hat Y$ one prediction per row:
+
+      $$H=\phi(XW_1^\top+b_1)$$
+
+      $$\hat Y=HW_2^\top+b_2$$
+
+      The same bias row is added to every row of the product, which NumPy calls broadcasting. A layer's **parameters**, the numbers training adjusts, are its $d_\text{out}\cdot d_\text{in}$ weights plus its $d_\text{out}$ biases; a model's parameter count, summed over its layers, is how many numbers training learns.
+
+      **Common confusion.** “A bigger batch needs more weights.” No: every example uses the same weights and biases. The batch size $B$ changes only the number of rows of $X$, $H$ and $\hat Y$, so the parameter count stays the same.
     worked: |
-      This example shows the calculation.
-      The first layer has $3\cdot2+2=8$ parameters including its bias. The output layer has $2\cdot1+1=3$, for 11 total trainable parameters.
+      Push the batch through the network and check every shape.
+
+      $$X=\begin{pmatrix}2&1\\1&2\\0&1\end{pmatrix}$$
+
+      1. **Turn each neuron's weights into a column.**
+         $$W_1^\top=\begin{pmatrix}1&-1\\1&1\end{pmatrix}$$
+
+      2. **Check layer 1's shapes.**
+         $$(3\times2)(2\times2)=3\times2$$
+
+      3. **Compute layer 1's scores, adding $b_1=(-1,0)$ to every row.**
+         $$XW_1^\top+b_1=\begin{pmatrix}3&-1\\3&1\\1&1\end{pmatrix}+\begin{pmatrix}-1&0\\-1&0\\-1&0\end{pmatrix}=\begin{pmatrix}2&-1\\2&1\\0&1\end{pmatrix}$$
+
+      4. **Apply ReLU.**
+         $$H=\begin{pmatrix}2&0\\2&1\\0&1\end{pmatrix}$$
+
+      5. **Check the output layer's shapes.**
+         $$(3\times2)(2\times1)=3\times1$$
+
+      6. **Compute the predictions.**
+         $$\hat Y=HW_2^\top+b_2=\begin{pmatrix}2&0\\2&1\\0&1\end{pmatrix}\begin{pmatrix}3\\2\end{pmatrix}+1=\begin{pmatrix}7\\9\\3\end{pmatrix}$$
+
+      7. **Count the parameters.**
+         $$\text{layer 1: }2\cdot2+2=6$$
+         $$\text{layer 2: }1\cdot2+1=3$$
+         $$\text{total: }6+3=9$$
+
+      **Compare cases.**
+
+      | Network, batch size | $X$ | $H$ | $\hat Y$ | Parameters |
+      | --- | --- | --- | --- | --- |
+      | 2 → 2 → 1, $B=1$ | $1\times2$ | $1\times2$ | $1\times1$ | $9$ |
+      | 2 → 2 → 1, $B=3$ | $3\times2$ | $3\times2$ | $3\times1$ | $9$ |
+      | 2 → 2 → 1, $B=32$ | $32\times2$ | $32\times2$ | $32\times1$ | $9$ |
+      | 10 → 16 → 1, $B=32$ | $32\times10$ | $32\times16$ | $32\times1$ | $193$ |
+
+      **Where it shows up.** To price 32 houses with 10 measurements each, $X$ is $32\times10$, and one forward pass gives a $32\times1$ column of prices. In NumPy the first layer is `np.maximum(0, X @ W1.T + b1)`, where `np.maximum(0, …)` applies ReLU to every entry.
     problems:
-      [
-        mlp-shapes-basics,
-        mlpp-batch-shape,
-        mlpp-params-template,
-        mlpp-why-shared-weights,
-        mlpp-why-transpose,
-        mlpp-hidden-array-size,
-        mlpp-robot-shapes,
-      ]
+      - mlp-shapes-basics
+      - mlpp-shapes-why-column
+      - mlpp-batch-shape
+      - mlpp-why-shared-weights
+      - mlpp-why-transpose
+      - mlpp-params-template
+      - mlpp-hidden-array-size
+      - mlpp-robot-shapes
 final: mlp-explain
 summary: |
-  - A layer computes weighted sums and applies an activation to each neuron.
-  - A forward pass computes hidden values, then a final price prediction.
-  - Matrix shapes track how each layer maps a batch of houses to the next representation.
+  - A layer is several neurons reading the same inputs: $h=\phi(Wx+b)$, with one row of $W$ and one bias per neuron.
+  - A forward pass runs the layers in order, each layer's output feeding the next, until the output layer gives the prediction $\hat y$.
+  - In a batch each example is a row: a layer turns $B\times d_\text{in}$ into $B\times d_\text{out}$, and its $d_\text{out}\cdot d_\text{in}+d_\text{out}$ parameters don't depend on $B$.
 
-  **Next:** The chain rule calculates how a change in any network weight affects its final loss.
+  **Next:** Computational graphs break this forward pass into small steps, the starting point for working out how each weight affects the loss.

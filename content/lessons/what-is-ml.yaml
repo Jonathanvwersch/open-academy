@@ -1,139 +1,277 @@
 concept: what-is-ml
-version: 1
+version: 2
 objective: |
-  **Goal:** explain what machine learning is, name the steps a model learns by, and see how each week of the course builds on the last, from house prices to robot policies.
+  **Goal:** explain what machine learning is, name the pieces a computer needs to learn a rule from examples by itself, and see why the same pieces teach a robot.
 where_this_fits: |
-  This is the first lesson. Before any maths, it explains what machine learning is, introduces the one problem Weeks 1 and 2 are built around (predicting a house's price), and shows how every topic in the course connects to teaching robots. Each later lesson starts with a short section like this one, saying what the previous lesson gave you and what the new one adds.
+  You want a computer to do tasks that nobody can write exact instructions for: price a house from its details, or move a robot arm to pick up a cup. Ordinary programming needs a person to spell out the rule, and for these tasks no one knows it. Machine learning lets the computer find the rule from examples instead. This lesson shows how, in three steps:
+
+  1. What it means to learn a rule from examples.
+  2. The pieces a computer needs to learn a house-price rule by itself, which Week 1 builds one lesson at a time.
+  3. Why the same pieces teach a robot, and where each week of the course fits.
 knowledge_points:
   - id: ml-what-it-is
-    title: What machine learning is
+    title: Learning a rule from examples
     explain: |
-      **What machine learning is.** Machine learning is a way of getting a computer to do a task by showing it examples, instead of writing the instructions yourself. The rule the computer ends up with is called a **model**.
+      **The question.** Converting metres to centimetres has an exact rule, multiply by 100, and you can type it straight into a computer. What a house will sell for has no rule anyone can write down. How can a computer still predict it?
 
-      **Why not write the rule by hand?** Suppose you want to predict a house's sale price. You could write "price = £3,000 per square metre". But real prices also depend on bedrooms, age, location and more, in amounts nobody knows exactly. Recognising a cup in a camera image is harder still: nobody can write down which pixels make a cup.
-
-      **How learning works instead.** Collect examples where you know the answer, such as past house sales with their measurements and prices. Start with a rule that contains adjustable numbers, called **weights**. Measure how far the rule's predictions are from the real prices, then adjust the weights to make that gap smaller. Repeat until the predictions are good.
-
-      **Three ways to learn.** This course covers three:
-      - **Supervised learning:** learn from examples with known answers (Weeks 1–4).
-      - **Imitation learning:** a robot learns by copying recorded human demonstrations (Week 7).
-      - **Reinforcement learning:** a robot learns by trial and error, guided by a score called a **reward** (Week 8).
-
-      **Why this is useful.** Most things we want a robot to do, such as seeing objects and picking them up, are far too complicated to write as rules by hand. Learning them from examples is what makes them possible.
-    worked: |
-      This example shows learning one weight from three past sales.
-
-      The rule is price = $w$ × area, with price in thousands of pounds and area in square metres. The sales were: 50 m² for 150, 80 m² for 240, and 100 m² for 300.
-
-      1. Try $w=2$: the predictions are 100, 160 and 200. All are too low.
-      2. Try $w=4$: the predictions are 200, 320 and 400. All are too high.
-      3. Try $w=3$: the predictions are 150, 240 and 300. All three match.
-
-      Learning means finding the weights whose predictions match the examples. Here we tried values by hand. A real model has thousands or millions of weights, so trying values is hopeless. Week 1 shows how the computer works out which way to change each weight instead.
-    problems:
-      - ml-what-it-is-basics
-      - ml-fit-task
-      - ml-learns-from
-      - ml-why-not-hand
-      - ml-fit-weight
-  - id: ml-house-model
-    title: The house-price model, step by step
-    explain: |
-      **The problem for Weeks 1 and 2.** Predict a house's sale price from its measurements, using past sales. It's a good first problem because every number is small enough to check by hand, and it needs every step a robot model needs.
-
-      **The steps, in the order Week 1 teaches them:**
-      1. **Describe a house with numbers.** Area (in tens of square metres), bedrooms and age become one list, such as (12, 3, 20). A list like this is a **vector**.
-      2. **Turn the list into one price.** Multiply each measurement by a weight and add the results. This is the **dot product**.
-      3. **Price many houses at once.** Put every house in one grid of numbers, a **matrix**, and do all the dot products in one calculation. The finished rule is called **linear regression**.
-      4. **Measure how wrong it is.** A **loss** is one number that grows as predictions move further from the real prices.
-      5. **Find which way to change each weight.** **Derivatives** and **gradients** say whether nudging a weight up makes the loss rise or fall.
-      6. **Improve the weights.** **Gradient descent** repeats step 5, a small change at a time, until the loss is small.
-      7. **Check it on new houses.** Keep some sales back and test on those (**training and test splits**).
+      **Picture it.** Each dot below is a past sale: 50 m² sold for £150k, 80 m² for £240k and 100 m² for £300k. Each line is a candidate rule, price $=w\times$ area, where $w$ is the price per square metre in £ thousands ($w=3$ means £3,000 per m²). The line for $w=2$ runs below every sale and $w=4$ runs above, but $w=3$ passes through all three. Picking the line that fits the examples is learning, in its simplest form.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 500" aria-label="The seven steps of the house-price model, each taught by a Week 1 lesson">
-        <defs>
-          <marker id="step-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
-        </defs>
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#171717">
-          <rect x="20" y="15" width="550" height="48" rx="8" fill="#ffffff" stroke="#d4d4d4"/>
-          <text x="36" y="44" font-weight="700">Vectors</text><text x="250" y="44" font-size="11">a house as numbers: (12, 3, 20)</text>
-          <path d="M225 63 V80" stroke="#10b981" stroke-width="2" marker-end="url(#step-arrow)"/>
-          <rect x="20" y="85" width="550" height="48" rx="8" fill="#ffffff" stroke="#d4d4d4"/>
-          <text x="36" y="114" font-weight="700">Dot product</text><text x="250" y="114" font-size="11">one house → one price</text>
-          <path d="M225 133 V150" stroke="#10b981" stroke-width="2" marker-end="url(#step-arrow)"/>
-          <rect x="20" y="155" width="550" height="48" rx="8" fill="#ffffff" stroke="#d4d4d4"/>
-          <text x="36" y="184" font-weight="700">Matrices</text><text x="250" y="184" font-size="11">every house at once</text>
-          <path d="M225 203 V220" stroke="#10b981" stroke-width="2" marker-end="url(#step-arrow)"/>
-          <rect x="20" y="225" width="550" height="48" rx="8" fill="#ffffff" stroke="#d4d4d4"/>
-          <text x="36" y="254" font-weight="700">Loss</text><text x="250" y="254" font-size="11">how wrong the prices are</text>
-          <path d="M225 273 V290" stroke="#10b981" stroke-width="2" marker-end="url(#step-arrow)"/>
-          <rect x="20" y="295" width="550" height="48" rx="8" fill="#ffffff" stroke="#d4d4d4"/>
-          <text x="36" y="324" font-weight="700">Derivatives and gradients</text><text x="250" y="324" font-size="11">which way to change each weight</text>
-          <path d="M225 343 V360" stroke="#10b981" stroke-width="2" marker-end="url(#step-arrow)"/>
-          <rect x="20" y="365" width="550" height="48" rx="8" fill="#ffffff" stroke="#d4d4d4"/>
-          <text x="36" y="394" font-weight="700">Gradient descent</text><text x="250" y="394" font-size="11">improve the weights step by step</text>
-          <path d="M225 413 V430" stroke="#10b981" stroke-width="2" marker-end="url(#step-arrow)"/>
-          <rect x="20" y="435" width="550" height="48" rx="8" fill="#ffffff" stroke="#d4d4d4"/>
-          <text x="36" y="464" font-weight="700">Train and test splits</text><text x="250" y="464" font-size="11">check it on new houses</text>
-          <path d="M580 16 H589 V202 H580" fill="#00000000" stroke="#10b981" stroke-width="2"/>
-          <rect x="598" y="95" width="98" height="28" rx="6" fill="#ecfdf5" stroke="#10b981"/>
-          <text x="603" y="112" font-size="9">Linear regression</text>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" aria-label="Three past house sales plotted as area against price, with three candidate lines price equals w times area: w equals 2 lies below every sale, w equals 4 above, and w equals 3 passes through all three">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M80.0 380.0 H620.0 M80.0 380.0 V47.0" stroke="#737373" fill="#171717" fill-opacity="0"/>
+          <path d="M305 380.0 V385.0" stroke="#737373"/>
+          <text x="295" y="402.0" fill="#737373">50</text>
+          <path d="M440 380.0 V385.0" stroke="#737373"/>
+          <text x="430" y="402.0" fill="#737373">80</text>
+          <path d="M530 380.0 V385.0" stroke="#737373"/>
+          <text x="520" y="402.0" fill="#737373">100</text>
+          <path d="M75.0 290 H80.0" stroke="#737373"/>
+          <text x="44.0" y="295" fill="#737373">100</text>
+          <path d="M75.0 200 H80.0" stroke="#737373"/>
+          <text x="44.0" y="205" fill="#737373">200</text>
+          <path d="M75.0 110 H80.0" stroke="#737373"/>
+          <text x="44.0" y="115" fill="#737373">300</text>
+          <text x="470" y="426.0" fill="#737373">area (m²)</text>
+          <text x="16" y="35" fill="#737373">price (£ thousands)</text>
+          <path d="M80.0 380.0 L620 164" stroke="#d4d4d4" stroke-width="2"/>
+          <path d="M80.0 380.0 L620 56" stroke="#10b981" stroke-width="3"/>
+          <path d="M80.0 380.0 L485 56" stroke="#d4d4d4" stroke-width="2"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560" y="215" fill="#737373">w = 2</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="415" y="62" fill="#737373">w = 4</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="548" y="52" fill="#10b981">w = 3</text>
+          <circle cx="305" cy="245" r="5" fill="#171717"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="318" y="248">sold for 150</text>
+          <circle cx="440" cy="164" r="5" fill="#171717"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="450" y="184">sold for 240</text>
+          <circle cx="530" cy="110" r="5" fill="#171717"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="540" y="130">sold for 300</text>
         </g>
       </svg>
       ```
 
-      **Why this is useful.** Every maths topic in Week 1 appears because one of these steps needs it. If a lesson ever seems to come from nowhere, find its step in this list.
-    worked: |
-      This example shows one house going through the steps.
+      **The idea.** The computer chooses the rule to fit examples, instead of a person writing it. **Machine learning** means getting a computer to do a task by fitting a rule to examples, rather than having a person write the rule. The learned rule is called a **model**. A model contains adjustable numbers called **weights** (here, $w$), and learning means choosing their values. When every example comes with its correct answer, the answer is called the **target**, and learning from such examples is **supervised learning**. Here each house's sale price is its target.
 
-      1. The house has 120 m², 3 bedrooms and is 20 years old, so we record it as (12, 3, 20).
-      2. The weights are (25, 10, −1), in thousands of pounds per unit. Multiplying gives 25 × 12 = 300, 10 × 3 = 30 and −1 × 20 = −20.
-      3. Adding gives the prediction: 300 + 30 − 20 = 310, so £310k.
-      4. The house actually sold for £330k, so the prediction is £20k too low.
-      5. Training changes the weights so that predictions like this one move closer to the real prices. Which weights to change, and by how much, is what derivatives and gradient descent answer.
+      **Common confusion.** “So the computer just memorises the examples.” No. A list of past sales could only answer for those three houses. The rule price $=3\times$ area also prices a 70 m² house it has never seen, at £210k. The examples are there to choose the rule; the rule is what gets used.
+    worked: |
+      Learn the weight $w$ in price $=w\times$ area from the three sales (area in m², price in £ thousands). Learning repeats one cycle: predict, compare with the target, adjust.
+
+      1. **Guess a weight and predict.** With $w=2$, the 50 m² house is predicted at
+         $$2\times50=100.$$
+
+      2. **Compare with the target.** It sold for 150, so the prediction is too low by
+         $$150-100=50.$$
+
+      3. **Adjust the weight.** A larger $w$ gives a larger prediction, so raise it to $w=3$:
+         $$3\times50=150.$$
+
+      4. **Check the other examples.**
+         $$3\times80=240$$
+         $$3\times100=300$$
+         Both match their sale prices, so $w=3$ is the learned weight.
+
+      Here you chose the new value by eye. Week 1 shows how the computer works out both the direction and the size of each change.
+
+      **Compare cases.** Real sales never fit one line exactly. Add a fourth sale, 60 m² for 190, and list each prediction's miss (prediction minus price):
+
+      | Weight $w$ | Misses on 50, 80, 100, 60 m² |
+      | --- | --- |
+      | $2$ | −50, −80, −100, −70 |
+      | $3$ | 0, 0, 0, −10 |
+      | $4$ | +50, +80, +100, +50 |
+
+      No weight makes every miss 0, but $w=3$ makes them smallest, so it is still the one learning picks.
+
+      **Where it shows up.** Real models have thousands or millions of weights, so guessing by hand is hopeless; Week 1 teaches how the computer works out which way to move each weight. A robot's model learns its weights from examples in the same way.
+    problems:
+      - ml-what-it-is-basics
+      - ml-fit-self-explain
+      - ml-fit-task
+      - ml-learns-from
+      - ml-why-not-hand
+      - ml-adjust-direction
+      - ml-fit-weight
+  - id: ml-house-model
+    title: The pieces a model needs to learn
+    explain: |
+      **The question.** One weight and three sales can be fitted by trying values. A real house-price model uses several measurements, each with its own weight, and thousands of sales. What does a computer need to find all those weights by itself?
+
+      **Picture it.** The diagram shows seven pieces, in the order the model uses them. In blue, a house becomes a list of numbers (a **vector**), each number is multiplied by its weight and the results added to give a price, and a **matrix** (a table of numbers) does that for a whole table of houses in one calculation. In amber, the computer scores how wrong the prices are, works out which way to move each weight, and moves them a little, over and over. In green, it checks the result on houses it never trained on. Each box gets its own lesson.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 470" aria-label="The seven steps of the house-price model, each taught by a Week 1 lesson">
+        <defs>
+          <marker id="ml2-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <rect x="12" y="12" width="456" height="46" rx="8" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2"/>
+          <text x="28" y="40" font-weight="700">1. Numbers</text>
+          <text x="196" y="40" fill="#737373">a house as a list: (12, 3, 20)</text>
+          <path d="M240 58 V75" stroke="#737373" stroke-width="2" marker-end="url(#ml2-arrow)"/>
+          <rect x="12" y="76" width="456" height="46" rx="8" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2"/>
+          <text x="28" y="104" font-weight="700">2. Weighted sum</text>
+          <text x="196" y="104" fill="#737373">one house → one price</text>
+          <path d="M240 122 V139" stroke="#737373" stroke-width="2" marker-end="url(#ml2-arrow)"/>
+          <rect x="12" y="140" width="456" height="46" rx="8" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2"/>
+          <text x="28" y="168" font-weight="700">3. Matrices</text>
+          <text x="196" y="168" fill="#737373">every house at once</text>
+          <path d="M240 186 V203" stroke="#737373" stroke-width="2" marker-end="url(#ml2-arrow)"/>
+          <rect x="12" y="204" width="456" height="46" rx="8" fill="#171717" fill-opacity="0" stroke="#f59e0b" stroke-width="2"/>
+          <text x="28" y="232" font-weight="700">4. Loss</text>
+          <text x="196" y="232" fill="#737373">one number for how wrong prices are</text>
+          <path d="M240 250 V267" stroke="#737373" stroke-width="2" marker-end="url(#ml2-arrow)"/>
+          <rect x="12" y="268" width="456" height="46" rx="8" fill="#171717" fill-opacity="0" stroke="#f59e0b" stroke-width="2"/>
+          <text x="28" y="296" font-weight="700">5. Derivatives</text>
+          <text x="196" y="296" fill="#737373">which way to move each weight</text>
+          <path d="M240 314 V331" stroke="#737373" stroke-width="2" marker-end="url(#ml2-arrow)"/>
+          <rect x="12" y="332" width="456" height="46" rx="8" fill="#171717" fill-opacity="0" stroke="#f59e0b" stroke-width="2"/>
+          <text x="28" y="360" font-weight="700">6. Gradient descent</text>
+          <text x="196" y="360" fill="#737373">move the weights, repeat</text>
+          <path d="M240 378 V395" stroke="#737373" stroke-width="2" marker-end="url(#ml2-arrow)"/>
+          <rect x="12" y="396" width="456" height="46" rx="8" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2"/>
+          <text x="28" y="424" font-weight="700">7. Test houses</text>
+          <text x="196" y="424" fill="#737373">check on houses it never saw</text>
+          <path d="M478 16 H490 V182 H478" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2"/>
+          <text x="500" y="95.0" fill="#3b82f6" font-weight="700">the model:</text>
+          <text x="500" y="113.0" fill="#3b82f6" font-weight="700">linear regression</text>
+          <path d="M478 208 H490 V374 H478" fill="#171717" fill-opacity="0" stroke="#f59e0b" stroke-width="2"/>
+          <text x="500" y="287.0" fill="#f59e0b" font-weight="700">training:</text>
+          <text x="500" y="305.0" fill="#f59e0b" font-weight="700">lower the loss</text>
+          <path d="M478 400 H490 V438 H478" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2"/>
+          <text x="500" y="424.0" fill="#10b981" font-weight="700">checking</text>
+        </g>
+      </svg>
+      ```
+
+      **The idea.** Learning needs three things: a model that predicts, a score for its mistakes, and a method that changes the weights to improve that score. A **loss** is one number that grows as the predictions move further from the targets, whether too high or too low; 0 means every prediction is exact. **Training** means changing the weights again and again so that the loss on a set of examples gets smaller. Together, the blue pieces make **linear regression**, the course's first model.
+
+      **Common confusion.** “The maths lessons are a detour before the real machine learning starts.” No: they are the machine learning. Without a weighted sum there is no prediction. A **derivative** measures how much one number changes when you nudge another; it is how the computer tells which way to move each of many weights. If a Week 1 lesson ever seems to come from nowhere, find its box in the diagram.
+    worked: |
+      Follow one house through pieces 1 and 2 and score the result. It has 120 m², 3 bedrooms and is 20 years old, and it sold for £330k. The weights are given for now (training would find them): £25k per 10 m² of area, £10k per bedroom and −£1k per year of age.
+
+      1. **Record the house as numbers.** Area is counted in tens of square metres to keep the numbers small, so the list is
+         $$(12,\ 3,\ 20).$$
+
+      2. **Multiply each measurement by its weight.** The age weight is negative, so each year of age takes £1k off.
+         $$25\times12=300$$
+         $$10\times3=30$$
+         $$-1\times20=-20$$
+
+      3. **Add to get the prediction.**
+         $$300+30-20=310$$
+
+      4. **Compare with the target.**
+         $$310-330=-20$$
+         The miss is −20: the prediction is £20k too low. A loss grows with the size of misses like this, ignoring the sign, and training pushes it towards 0.
+
+      **Compare cases.** Changing one weight at a time moves the prediction by different amounts:
+
+      | Weights (area, bedrooms, age) | Prediction | Prediction − price |
+      | --- | --- | --- |
+      | $(25,\ 10,\ -1)$ | 310 | −20 |
+      | $(26,\ 10,\ -1)$ | 322 | −8 |
+      | $(27,\ 10,\ -1)$ | 334 | +4 |
+      | $(25,\ 12,\ -1)$ | 316 | −14 |
+
+      **Where it shows up.** Choosing the best change for every weight across thousands of houses at once is the job of derivatives and gradient descent. A robot's model goes through the same pieces, with a camera image in place of the house's measurements.
     problems:
       - ml-house-model-basics
+      - ml-weight-self-explain
       - ml-step-vector
       - ml-step-next
+      - ml-predict-house
       - ml-why-derivatives
       - ml-why-new-houses
   - id: ml-to-robots
-    title: From house prices to robots
+    title: The same loop teaches a robot
     explain: |
-      **Where the course goes after Week 1.** Each week takes the same learning loop (a model with weights, a loss, and training to reduce the loss) and applies it to something harder:
-      - **Week 2, neural networks:** a more flexible model built from many small weighted totals, and **backpropagation**, the method that trains it.
-      - **Week 3, deep learning practice:** training networks well, and recognising images.
-      - **Week 4, transformers:** the model design behind ChatGPT, also used in modern robot models.
-      - **Weeks 5–6, robotics foundations:** describing where things are in space, sensing, and controlling a robot arm.
-      - **Week 7, imitation learning:** a robot learns a task from human demonstrations.
-      - **Week 8, reinforcement learning:** a robot learns from trial and error and rewards.
-      - **Weeks 9–10, modern robot learning:** models that turn camera images and instructions into robot actions.
-      - **Weeks 11–12:** running a full robot-learning project, from data to evaluation, and a final capstone.
+      **The question.** This course ends with robots that learn tasks such as picking up a cup. A robot sees camera images and moves its joints; it never prices a house. So why spend Week 1 on house prices?
 
-      **Why this is useful.** A robot's controller, called a **policy**, is a model like the house-price one. Its inputs are camera images and joint angles instead of house measurements, and its output is a movement instead of a price. It is trained with the same loop: measure how far its movements are from good ones, and change the weights to shrink that gap. Learning the loop on house prices first means you meet it with small numbers you can check.
+      **Picture it.** A camera image is numbers too: one brightness value per tiny dot (pixel). The diagram lines up each part of the house problem with the matching part of a robot learning to pick up a cup from recordings of a person steering the arm (say, with a joystick). Every row has a match. The inputs and outputs change, but there is still a model with weights, a target to aim for, and a loss that measures the gap.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="The house-price problem and a robot learning to pick up a cup, side by side: each has an input, a model with weights, an output, a target and a loss">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <text x="140" y="28" font-weight="700">House prices</text>
+          <text x="392" y="28" font-weight="700">Robot picking up a cup</text>
+          <rect x="12" y="44" width="616" height="40" rx="8" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+          <text x="24" y="69" font-weight="700">Input</text>
+          <text x="140" y="69">(area, bedrooms, age)</text>
+          <path d="M352 64 H380" stroke="#737373" stroke-width="2"/>
+          <text x="392" y="69">camera image, joint angles</text>
+          <rect x="12" y="94" width="616" height="40" rx="8" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+          <text x="24" y="119" font-weight="700">Model</text>
+          <text x="140" y="119">weighted sum (Week 1)</text>
+          <path d="M352 114 H380" stroke="#737373" stroke-width="2"/>
+          <text x="392" y="119">neural network (Week 2)</text>
+          <rect x="12" y="144" width="616" height="40" rx="8" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+          <text x="24" y="169" font-weight="700">Output</text>
+          <text x="140" y="169">a predicted price</text>
+          <path d="M352 164 H380" stroke="#737373" stroke-width="2"/>
+          <text x="392" y="169">a predicted movement</text>
+          <rect x="12" y="194" width="616" height="40" rx="8" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+          <text x="24" y="219" font-weight="700">Target</text>
+          <text x="140" y="219">the real sale price</text>
+          <path d="M352 214 H380" stroke="#737373" stroke-width="2"/>
+          <text x="392" y="219">the person's movement</text>
+          <rect x="12" y="244" width="616" height="40" rx="8" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+          <text x="24" y="269" font-weight="700">Loss</text>
+          <text x="140" y="269">how far off the prices are</text>
+          <path d="M352 264 H380" stroke="#737373" stroke-width="2"/>
+          <text x="392" y="269">how far off the movements are</text>
+        </g>
+      </svg>
+      ```
+
+      **The idea.** A robot is trained with the same loop: predict, measure the loss, change the weights. A model that controls a robot is called a **policy**: its input is what the robot senses and its output is what the robot does next. The course uses three ways to tell a model how well it did:
+      - **Supervised learning:** examples with known answers (Weeks 1–4).
+      - **Imitation learning:** the supervised loop applied to a person's recorded demonstrations, which serve as the answers (Week 7).
+      - **Reinforcement learning:** no answers, only a score called a **reward** for how well an attempt went, so the robot learns by trial and error (Week 8).
+
+      **Common confusion.** “Robots need a completely different kind of learning from house prices.” Only half right. The inputs are richer and the model is bigger, but the loop is the same. That is why you learn the loop first, on numbers small enough to check by hand.
     worked: |
-      This example shows a robot task described with the same parts as the house-price problem.
+      A person uses a joystick to steer a robot arm to pick up a cup 200 times, and every moment is recorded. Take one moment and look only at the elbow joint.
 
-      A robot arm should learn to pick up a cup. A person controls the arm 200 times, and every movement is recorded.
+      1. **Name the inputs.** The camera image and the arm's joint angles at that moment.
 
-      - **Inputs:** the camera image and the arm's joint angles at each moment. (Houses: the measurements.)
-      - **Target:** the movement the person made at that moment. (Houses: the sale price.)
-      - **Model:** a neural network with weights (Week 2).
-      - **Loss:** how far the network's movement is from the person's movement.
-      - **Training:** gradient descent, changing the weights to shrink the loss (Week 1).
+      2. **Name the target.** What the person did then: turned the elbow by 10°.
 
-      This approach is called **behavioral cloning**, and Week 7 teaches it. Everything it needs, apart from the robot, is built in Weeks 1 to 4.
+      3. **Predict.** The policy, a neural network with weights (Week 2), outputs an elbow turn of 6°.
+
+      4. **Measure the miss.**
+         $$6-10=-4$$
+         The policy turns the elbow 4° too little. Training aims to bring misses like this to 0.
+
+      5. **Train.** Gradient descent (Week 1) changes the network's weights to shrink misses like this one across all the recorded moments; how it picks each change is what Weeks 1 and 2 teach.
+
+      Copying demonstrations with this supervised loop is called **behavioral cloning**, and Week 7 teaches it.
+
+      **Compare cases.** Each week changes what goes in or what the model learns from:
+
+      | Weeks | What's new | Learns from |
+      | --- | --- | --- |
+      | 1 | the loop, on house prices | known sale prices |
+      | 2 | neural networks: many weighted sums | known answers |
+      | 3 | better training; images as inputs | known answers |
+      | 4 | transformers, the design behind ChatGPT | next word in text |
+      | 5–6 | robot basics: space, sensing, control | no learning |
+      | 7 | imitation learning | demonstrations |
+      | 8 | reinforcement learning | rewards |
+      | 9–10 | images + instructions → actions | demonstrations |
+      | 11–12 | robot-learning and final projects | everything above |
+
+      **Where it shows up.** Week 7 trains robot policies this way from recorded demonstrations, using the learning loop from Weeks 1–4 and the robot basics from Weeks 5–6.
     problems:
       - ml-to-robots-basics
+      - ml-robot-self-explain
       - ml-robot-target
       - ml-which-week
       - ml-why-houses
       - ml-robot-sorter
 final: ml-explain
 summary: |
-  - Machine learning means a computer learns a rule, called a model, from examples instead of being given the rule.
-  - Learning works by adjusting weights to shrink a loss, a number that measures how wrong the predictions are.
-  - Weeks 1 and 2 build this loop for house prices; later weeks apply it to images, language and robots.
+  - Machine learning means a computer fits a rule, called a model, to examples instead of a person writing the rule; learning means choosing the model's weights.
+  - To learn its weights by itself, a model needs a prediction rule, a loss that scores its mistakes, and training that changes the weights to lower the loss.
+  - A robot's policy is trained with the same loop; only the inputs, the outputs and what it learns from change.
 
   **Next:** Supervised learning names the parts of a learning problem precisely (inputs, target, model, loss and data), so the maths lessons have something to attach to.

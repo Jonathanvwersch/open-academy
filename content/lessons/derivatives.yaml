@@ -1,196 +1,310 @@
 concept: derivatives
-version: 3
+version: 4
 objective: |
-  **Goal:** find derivatives of common functions and use them to tell how a small input nudge changes an output, including a model's loss when its weight changes.
+  **Goal:** find how fast a function's output changes at one input, using the derivative and its rules for powers, $e^x$, $\ln x$, products and quotients.
 where_this_fits: |
-  Linear regression gave us a house-price model whose weights and bias we must choose. We can calculate its prediction, but still need to know which way a small change to one weight moves the loss, and how fast. A derivative gives that local rate of change. The next lesson uses these slopes to compare squared and absolute loss for house-price mistakes.
+  A model learns by nudging its adjustable numbers, its **weights**, so that its error score, the **loss**, gets smaller. For that it needs to know, for one weight: if I nudge it a little, does the loss go up or down, and by how much? A car's speedometer answers the same kind of question about distance: how fast it is changing right now. Comparing two values of a function only gives an average over a stretch, not the rate at one point. This lesson builds that rate, the **derivative**, in four steps:
+
+  1. Define the derivative as the slope at one point.
+  2. Get the slope of any power or polynomial with a rule.
+  3. Do the same for $e^x$ and $\ln x$.
+  4. Handle products and quotients of functions.
+final: der-explain
 knowledge_points:
   - id: der-speed-at-instant
-    title: The derivative is a local rate of change
+    title: The derivative is the slope at one point
     explain: |
-      **What a derivative is.** A derivative is the rate at which a function's output changes per unit of its input at one point. It is the slope of the tangent line, the line that touches the curve there with the same local slope. A car's speed is another rate of change: distance per unit time.
+      **The question.** A car has driven $d(t)=t^2$ metres after $t$ seconds. You can measure how far it goes during any stretch of time, which gives its average speed. How fast is it going at exactly $t=3$, the number a speedometer would show?
 
-      **How it works.** Use the one-weight house model with area 12 and sale price 330 thousand pounds. Its squared loss is $L(w)=(12w-330)^2$. At $w=25$, prediction is 300 and loss is 900. Increasing $w$ by $h$ changes the loss; divide that change by $h$. A prime, as in $L'(w)$, denotes the derivative with respect to $w$. As $h$ shrinks toward zero, the average rate approaches the derivative:
-
-      $$L'(w)=\lim_{h\to0}\frac{L(w+h)-L(w)}{h}.$$
+      **Picture it.** The curve is the distance at each time. Average speed over a stretch is the slope of the straight line joining its two ends: from $t=3$ to $t=4$ the car goes $16-9=7$ m in 1 s, so the amber line has slope $7$. Shrink the stretch and that line turns until it just touches the curve at $t=3$. The blue line, with slope $6$ (worked out below), is that touching line, the **tangent**.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 270" role="img" aria-label="Parabola of squared house-price loss from weight 22 to 33, marked at weight 25 with slope minus 720 and minimum at 27.5">
-        <path d="M55 45 Q237.5 355 420 45" fill="#ffffff" stroke="#2563eb" stroke-width="4"/>
-        <line x1="55" y1="200" x2="420" y2="200" stroke="#64748b" stroke-width="2"/>
-        <line x1="55" y1="45" x2="55" y2="200" stroke="#64748b" stroke-width="2"/>
-        <line x1="55" y1="91.116" x2="196.023" y2="200" stroke="#dc2626" stroke-width="3"/>
-        <circle cx="154.545" cy="167.975" r="6" fill="#dc2626"/>
-        <circle cx="237.5" cy="200" r="4" fill="#16a34a"/>
-        <line x1="55" y1="200" x2="55" y2="205" stroke="#64748b" stroke-width="2"/>
-        <line x1="420" y1="200" x2="420" y2="205" stroke="#64748b" stroke-width="2"/>
-        <text x="165" y="145" font-size="12" fill="#334155">w = 25, slope −720</text>
-        <text x="200" y="222" font-size="12" fill="#334155">w = 27.5, loss 0</text>
-        <text x="49" y="220" font-size="12" fill="#334155">22</text>
-        <text x="412" y="220" font-size="12" fill="#334155">33</text>
-        <text x="198" y="250" font-size="13" fill="#334155">weight w</text>
-        <text transform="rotate(-90 18 125)" x="18" y="125" font-size="13" fill="#334155">loss</text>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" aria-label="The curve d equals t squared with the point at t equals 3, an amber line to t equals 4 with average slope 7, and a blue tangent line at t equals 3 with slope 6">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M70 390 H600 M70 390 V40" stroke="#737373" fill="#ffffff" fill-opacity="0"/>
+          <path d="M70 390 L81 389.8 L92 389.4 L103 388.6 L114 387.4 L125 386 L136 384.2 L147 382.2 L158 379.8 L169 377 L180 374 L191 370.6 L202 367 L213 363 L224 358.6 L235 354 L246 349 L257 343.8 L268 338.2 L279 332.2 L290 326 L301 319.4 L312 312.6 L323 305.4 L334 297.8 L345 290 L356 281.8 L367 273.4 L378 264.6 L389 255.4 L400 246 L411 236.2 L422 226.2 L433 215.8 L444 205 L455 194 L466 182.6 L477 171 L488 159 L499 146.6 L510 134 L521 121 L532 107.8 L543 94.2 L554 80.2 L565 66" stroke="#171717" stroke-width="2.5" fill="#ffffff" fill-opacity="0"/>
+          <path d="M334 313.2 L554 89.2" stroke="#f59e0b" stroke-width="2.5"/>
+          <path d="M290 342 L554 111.6" stroke="#3b82f6" stroke-width="3"/>
+          <path d="M400 390 V246 M510 390 V134" stroke="#d4d4d4" stroke-dasharray="4 4"/>
+          <circle cx="400" cy="246" r="5" fill="#171717"/>
+          <circle cx="510" cy="134" r="4.5" fill="#f59e0b"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="412" y="262">t = 3, d = 9</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="110" y="90" fill="#f59e0b">amber: average slope 7 (t = 3 to 4)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="520" y="160" fill="#3b82f6">tangent slope 6</text>
+          <text x="66" y="410">0</text>
+          <text x="176" y="410">1</text>
+          <text x="286" y="410">2</text>
+          <text x="396" y="410">3</text>
+          <text x="506" y="410">4</text>
+          <text x="530" y="430">time t (s)</text>
+          <text x="80" y="40">distance d (m)</text>
+        </g>
       </svg>
       ```
 
-      With $h=0.01$:
+      **The idea.** The derivative is the slope of a function at one point. In general, the **derivative** of a function $f$ at an input $a$, written $f'(a)$ ("f prime of a"), is the value the average slope over a small step $h$ gets closer to as the step shrinks to $0$:
 
-      $$L(25.01)=(300.12-330)^2=29.88^2=892.8144.$$
+      $$f'(a)=\lim_{h\to0}\frac{f(a+h)-f(a)}{h}$$
 
-      The average rate is:
+      Here $\lim_{h\to0}$, the **limit**, reads "the value this approaches as $h$ shrinks to $0$". The top is the change in output, the bottom the change in input. So for a small step $h$, the output changes by about $f'(a)\,h$.
 
-      $$(892.8144-900)/0.01=-718.56.$$
-
-      A smaller $h$ brings that rate closer to $-720$. A negative slope means a small increase in the weight lowers this house's loss.
-
-      **Why this is useful.** The derivative tells us whether to raise or lower a house model's weight to reduce its loss.
+      **Common confusion.** "Why not just put $h=0$?" Then the top is $f(a)-f(a)=0$ and the bottom is $0$, and $0/0$ has no value. The limit instead watches what the slope approaches as $h$ gets small but never $0$.
     worked: |
-      This example shows average loss changes approaching the derivative at $w=25$.
+      Find the car's speed at $t=3$, where $d(t)=t^2$.
 
-      The loss is $L(w)=(12w-330)^2$, and $L(25)=900$.
+      1. **Average speed over shrinking steps.**
+         $$h=1:\quad\frac{d(4)-d(3)}{1}=\frac{16-9}{1}=7$$
+         $$h=0.1:\quad\frac{d(3.1)-d(3)}{0.1}=\frac{9.61-9}{0.1}=6.1$$
+         $$h=0.01:\quad\frac{d(3.01)-d(3)}{0.01}=\frac{9.0601-9}{0.01}=6.01$$
 
-      | nudge $h$ | average rate |
-      |---|---|
-      | 1 | $(L(26)-900)/1=(324-900)=-576$ |
-      | 0.1 | $(L(25.1)-900)/0.1=(829.44-900)/0.1=-705.6$ |
-      | 0.01 | $(L(25.01)-900)/0.01=(892.8144-900)/0.01=-718.56$ |
+      2. **Do it for any step $h$.**
+         $$\frac{(3+h)^2-9}{h}=\frac{6h+h^2}{h}=6+h$$
 
-      These rates approach $L'(25)=-720$.
+      3. **Let the step shrink to 0.**
+         $$d'(3)=\lim_{h\to0}(6+h)=6$$
+
+      The speed at $t=3$ is $6$ m/s.
+
+      **Compare cases.** At any time $a$ the same steps give $\frac{(a+h)^2-a^2}{h}=\frac{2ah+h^2}{h}=2a+h$, so $d'(a)=2a$:
+
+      | Time $t$ | Distance $d(t)$ | Speed $d'(t)$ |
+      | --- | --- | --- |
+      | $0$ | $0$ | $0$ |
+      | $1$ | $1$ | $2$ |
+      | $3$ | $9$ | $6$ |
+      | $5$ | $25$ | $10$ |
+
+      **Where it shows up.** If a model's loss for one weight is $L(w)$, then $L'(w)$ says how much the loss changes per unit nudge of the weight. A negative $L'(w)$ means raising the weight a little lowers the loss.
     problems:
-      [
-        der-speed-at-instant-basics,
-        derp-meaning,
-        derp-tangent,
-        derp-robot-battery,
-        derp-average-speed,
-        derp-estimate,
-        derp-why-not-zero,
-        derp-nudge-backwards,
-      ]
+      - der-speed-at-instant-basics
+      - derp-why-shrink
+      - derp-meaning
+      - derp-tangent
+      - derp-robot-battery
+      - derp-average-speed
+      - derp-estimate
+      - derp-why-not-zero
+      - derp-nudge-backwards
   - id: der-power-rule
     title: Rules for powers, constants and sums
     explain: |
-      **What the power rule is.** For a fixed power $n$, the derivative of $x^n$ is $nx^{n-1}$. A polynomial is a sum of powers multiplied by constants.
+      **The question.** Working out a limit for every function is slow. The car example gave $d'(t)=2t$ for $d(t)=t^2$. Is there a shortcut that gives the slope of $x^3$, or of $3x^2-4x+5$, straight away?
 
-      **How it works.** Expand the house loss: $L(w)=(12w-330)^2=144w^2-7920w+108900$. Differentiate each term: bring the power down, lower it by one, keep a constant multiplier, and add the results:
+      **Picture it.** The curve is $f(x)=x^2$. At four points the blue tangent lines have slopes $-2$, $0$, $2$ and $4$: each slope is exactly $2x$, double the input, as the car example found.
 
-      $$L'(w)=288w-7920.$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="The parabola y equals x squared with blue tangent lines at x equals minus 1, 0, 1 and 2 whose slopes are minus 2, 0, 2 and 4">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M80 340 H580 M320 380 V30" stroke="#737373" fill="#ffffff" fill-opacity="0"/>
+          <path d="M100 73.8 L110 97.4 L120 120 L130 141.4 L140 161.8 L150 181 L160 199.2 L170 216.2 L180 232.2 L190 247 L200 260.8 L210 273.4 L220 285 L230 295.4 L240 304.8 L250 313.1 L260 320.2 L270 326.2 L280 331.2 L290 335.1 L300 337.8 L310 339.4 L320 340 L330 339.4 L340 337.8 L350 335.1 L360 331.2 L370 326.2 L380 320.2 L390 313.1 L400 304.8 L410 295.4 L420 285 L430 273.4 L440 260.8 L450 247.1 L460 232.2 L470 216.2 L480 199.2 L490 181 L500 161.8 L510 141.4 L520 120 L530 97.4 L540 73.8" stroke="#171717" stroke-width="2.5" fill="#ffffff" fill-opacity="0"/>
+          <path d="M175 235.5 L265 334.5 M275 340 L365 340 M375 334.5 L465 235.5 M485 197 L555 43" stroke="#3b82f6" stroke-width="3"/>
+          <circle cx="220" cy="285" r="4.5" fill="#171717"/>
+          <circle cx="320" cy="340" r="4.5" fill="#171717"/>
+          <circle cx="420" cy="285" r="4.5" fill="#171717"/>
+          <circle cx="520" cy="120" r="4.5" fill="#171717"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="92" y="300" fill="#3b82f6">x = −1: slope −2</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="282" y="364" fill="#3b82f6">x = 0: slope 0</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="432" y="300" fill="#3b82f6">x = 1: slope 2</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="532" y="128" fill="#3b82f6">x = 2: slope 4</text>
+          <text x="588" y="345">x</text>
+          <text x="328" y="36">y = x²</text>
+        </g>
+      </svg>
+      ```
 
-      At $w=25$, this is $7200-7920=-720$, matching the local-rate calculation. The rule follows by expanding $(w+h)^n$: after division by $h$, every term with a higher power of $h$ vanishes as $h$ approaches zero. A constant contributes zero because its value does not change when $w$ changes.
+      **The idea.** Powers follow one pattern: bring the power down in front and lower it by one. In general, for a fixed number $n$ (negatives and fractions included) the **power rule** says
 
-      **Why this is useful.** The rule gives a quick exact slope for the house model's squared loss instead of testing many nearby weights.
+      $$(x^n)'=nx^{n-1}$$
+
+      so $(x^2)'=2x$ and $(x^3)'=3x^2$. Three more rules let you handle any polynomial, a sum of powers times numbers. Writing $f'$ alone means the derivative at every input, like $d'(t)=2t$. The **constant-multiple rule**: a fixed number $c$ multiplying a function multiplies its slope, $(cf)'=cf'$. To **differentiate** means to find the derivative, and the **sum rule** differentiates a sum term by term: $(f+g)'=f'+g'$. A constant on its own has slope $0$, because it never changes.
+
+      **Common confusion.** "Constants disappear, so the 3 in $3x^2$ goes too." Only an added constant disappears. Adding 5 lifts the whole curve without making it steeper. Multiplying by 3 makes every rise three times as big, so the slope triples: $(3x^2)'=6x$.
     worked: |
-      This example shows the power, constant-multiple and sum rules on the house loss.
+      Find the slope of $f(x)=3x^2-4x+5$ at $x=2$.
 
-      1. Write $L(w)=144w^2-7920w+108900$.
-      2. Differentiate $144w^2$ to get $288w$.
-      3. Differentiate $-7920w$ to get $-7920$; the constant contributes 0.
-      4. Thus $L'(w)=288w-7920$, and $L'(25)=-720$.
+      1. **Differentiate each term.**
+         $$(3x^2)'=3\cdot2x=6x$$
+         $$(-4x)'=-4\cdot1=-4$$
+         $$(5)'=0$$
 
-      The negative slope says increasing $w$ slightly reduces the loss at this point.
+      2. **Add the terms.**
+         $$f'(x)=6x-4$$
+
+      3. **Put in the input.**
+         $$f'(2)=6(2)-4=8$$
+
+      **Compare cases.**
+
+      | Function | Derivative | Rule used |
+      | --- | --- | --- |
+      | $x^3$ | $3x^2$ | power |
+      | $3x^2$ | $6x$ | power, times a number |
+      | $x^2+10$ | $2x$ | added constant gives $0$ |
+      | $4x$ | $4$ | $x=x^1$, so $1\cdot x^0=1$ |
+      | $7$ | $0$ | constant |
+
+      **Where it shows up.** If the best weight is $3$, the squared error $L(w)=(w-3)^2=w^2-6w+9$ has $L'(w)=2w-6$. At $w=1$ the slope is $-4$, so raising the weight lowers the loss.
     problems:
-      [
-        der-power-rule-basics,
-        derp-power-poly,
-        derp-power-cube,
-        derp-constant-term,
-        derp-drone-climb,
-        derp-power-value,
-        derp-power-fraction,
-        derp-flat-slope,
-      ]
+      - der-power-rule-basics
+      - derp-why-keep-constant
+      - derp-power-cube
+      - derp-constant-term
+      - derp-power-poly
+      - derp-drone-climb
+      - derp-power-value
+      - derp-power-fraction
+      - derp-flat-slope
   - id: der-exp-log
     title: Exponentials and the natural logarithm
     explain: |
-      **What exponential and logarithm functions are.** The exponential $e^x$ has base $e\approx2.718$. The natural logarithm $\ln x$ asks which power of $e$ equals $x$; it is defined for positive $x$.
+      **The question.** The power rule needs a fixed power, as in $x^3$. In $2^x$ the input is the power itself. A **logarithm** goes the other way: it asks which power gives a number, so $\log_2 8=3$ because $2^3=8$. What are the slopes of these two kinds of function?
 
-      **How it works.** Their derivatives are:
+      **Picture it.** Left: $e^x$, where $e\approx2.718$ (a calculator gives $e^x$ for any $x$). At $x=0$ the height is $1$ and the tangent slope is $1$; at $x=1$ both are about $2.72$. Right: $\ln x$, the power you raise $e$ to to get $x$. Its slope is $1$ at $x=1$, $\tfrac12$ at $x=2$ and $\tfrac14$ at $x=4$, always $1/x$.
 
-      $$
-      \begin{aligned}
-      (e^x)' &= e^x,\\
-      (\ln x)' &= 1/x.
-      \end{aligned}
-      $$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" aria-label="Left, the curve e to the x with blue tangents at x equals 0 (height 1, slope 1) and x equals 1 (height and slope 2.72). Right, the curve ln x with blue tangents at x equals 1, 2 and 4 with slopes 1, one half and one quarter">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <text x="40" y="40">y = eˣ</text>
+          <path d="M40 390 H320 M194 405 V60" stroke="#737373" fill="#ffffff" fill-opacity="0"/>
+          <path d="M50 381.6 L57.2 380.7 L64.4 379.8 L71.6 378.7 L78.8 377.5 L86 376.2 L93.2 374.7 L100.4 373.1 L107.6 371.3 L114.8 369.4 L122 367.2 L129.2 364.8 L136.4 362.1 L143.6 359.2 L150.8 356 L158 352.4 L165.2 348.4 L172.4 344.1 L179.6 339.2 L186.8 333.9 L194 328 L201.2 321.5 L208.4 314.3 L215.6 306.3 L222.8 297.5 L230 287.8 L237.2 277 L244.4 265.1 L251.6 252 L258.8 237.5 L266 221.5 L273.2 203.7 L280.4 184.2 L287.6 162.5 L294.8 138.6 L302 112.1 L309.2 82.9" stroke="#171717" stroke-width="2.5" fill="#ffffff" fill-opacity="0"/>
+          <path d="M158 359 L230 297 M230 305.7 L302 137.2" stroke="#3b82f6" stroke-width="3"/>
+          <circle cx="194" cy="328" r="4.5" fill="#171717"/>
+          <circle cx="266" cy="221.5" r="4.5" fill="#171717"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="60" y="315" fill="#3b82f6">x = 0: slope 1</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="215" fill="#3b82f6">x = 1: slope 2.72</text>
+          <text x="355" y="40">y = ln x</text>
+          <path d="M345 270 H625 M355 405 V60" stroke="#737373" fill="#ffffff" fill-opacity="0"/>
+          <path d="M365.4 385.9 L370.6 356.7 L375.8 336 L381 319.9 L386.2 306.8 L391.4 295.7 L396.6 286.1 L401.8 277.6 L407 270 L412.2 263.1 L417.4 256.9 L422.6 251.1 L427.8 245.8 L433 240.8 L438.2 236.2 L443.4 231.8 L448.6 227.7 L453.8 223.8 L459 220.1 L464.2 216.6 L469.4 213.2 L474.6 210 L479.8 207 L485 204 L490.2 201.2 L495.4 198.5 L500.6 195.9 L505.8 193.3 L511 190.9 L516.2 188.5 L521.4 186.3 L526.6 184 L531.8 181.9 L537 179.8 L542.2 177.8 L547.4 175.8 L552.6 173.9 L557.8 172 L563 170.2 L568.2 168.4 L573.4 166.7 L578.6 165 L583.8 163.3 L589 161.7 L594.2 160.1 L599.4 158.6 L604.6 157.1 L609.8 155.6 L615 154.1" stroke="#171717" stroke-width="2.5" fill="#ffffff" fill-opacity="0"/>
+          <path d="M375.8 313.2 L438.2 226.8 M427.8 241.7 L490.2 198.5 M531.8 181 L594.2 159.4" stroke="#3b82f6" stroke-width="3"/>
+          <circle cx="407" cy="270" r="4.5" fill="#171717"/>
+          <circle cx="459" cy="220.1" r="4.5" fill="#171717"/>
+          <circle cx="563" cy="170.2" r="4.5" fill="#171717"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="415" y="296" fill="#3b82f6">x = 1: slope 1</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="470" y="248" fill="#3b82f6">x = 2: slope ½</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="520" y="140" fill="#3b82f6">x = 4: slope ¼</text>
+        </g>
+      </svg>
+      ```
 
-      The first function's rate equals its value. The logarithm undoes the exponential, so its rate gets smaller as $x$ grows. For example, $\ln 1=0$ because:
+      **The idea.** $e^x$ is its own slope, and $\ln x$ has slope $1/x$. The number $e\approx2.718$ is the base chosen so that the slope of $e^x$ at $x=0$ is exactly $1$. Because $e^{x+h}=e^x\cdot e^h$, the rise from $x$ to $x+h$ is $e^x$ times the rise from $0$ to $h$, so the slope at $x$ is $e^x\cdot1$:
 
-      $$e^0=1.$$
+      $$(e^x)'=e^x$$
 
-      For positive $w$, $1/w$ decreases as $w$ grows, so the derivative of $\ln w$ gets smaller too.
+      The **natural logarithm** $\ln x$, defined for $x>0$, is the power you raise $e$ to to get $x$: $\ln1=0$ because $e^0=1$. It undoes $e^x$, so swapping the axes turns the $e^x$ curve into the $\ln x$ curve. Where $e^x$ has height $c$, its slope is also $c$; swapping axes swaps rise and run, so $\ln x$ at input $c$ has slope $1/c$:
 
-      Sine and cosine are functions of an angle. Their derivatives are $(\sin x)'=\cos x$ and $(\cos x)'=-\sin x$. These rules can be used term by term in sums.
+      $$(\ln x)'=\frac1x$$
 
-      **Why this is useful.** A later network can use an exponential formula to turn a score into a probability; its derivative is needed to train that output.
+      The constant-multiple, sum and constant rules still apply, so $(5e^x)'=5e^x$.
+
+      **Common confusion.** "Use the power rule: $(e^x)'=xe^{x-1}$." The power rule only works when the power is a fixed number. In $e^x$ the power is the input, so it needs its own rule.
     worked: |
-      This example shows the exponential and logarithm rules on functions of a model weight.
+      Find the slope of $f(x)=x^2+6\ln x$ at $x=2$.
 
-      1. For $f(w)=e^w$, $f'(w)=e^w$, so at $w=0$ the slope is 1.
-      2. For $g(w)=\ln w$, $g'(w)=1/w$, so at $w=2$ the slope is $1/2$.
-      3. For $q(w)=e^w+\ln w$, add the two derivatives: $q'(w)=e^w+1/w$. At $w=1$, the slope is $e+1$.
+      1. **Differentiate each term.**
+         $$(x^2)'=2x$$
+         $$(6\ln x)'=6\cdot\frac1x=\frac6x$$
 
-      Each term uses its own rule; the sum rule combines them.
+      2. **Add the terms.**
+         $$f'(x)=2x+\frac6x$$
+
+      3. **Put in the input.**
+         $$f'(2)=2(2)+\frac62=4+3=7$$
+
+      **Compare cases.**
+
+      | $x$ | Slope of $e^x$ (equals its height) | Slope of $\ln x$, $1/x$ |
+      | --- | --- | --- |
+      | $\tfrac12$ | $1.65$ | $2$ |
+      | $1$ | $2.72$ | $1$ |
+      | $2$ | $7.39$ | $\tfrac12$ |
+      | $4$ | $54.6$ | $\tfrac14$ |
+
+      **Where it shows up.** Later in the course, models that output probabilities use $e^x$ and $\ln x$ in their loss, and training them needs exactly these two slopes.
     problems:
-      [
-        der-exp-log-basics,
-        derp-ln-slope,
-        derp-exp-slope,
-        derp-ln-meaning,
-        derp-tank-level,
-        derp-exp-log-mix,
-        derp-sin-cos,
-        derp-log-flat,
-      ]
+      - der-exp-log-basics
+      - derp-why-six-over-x
+      - derp-ln-slope
+      - derp-exp-slope
+      - derp-ln-meaning
+      - derp-tank-level
+      - derp-exp-value
+      - derp-exp-log-mix
+      - derp-log-flat
   - id: der-product-quotient
     title: Products and quotients
     explain: |
-      **What the product and quotient rules are.** The product rule differentiates two changing factors: $(uv)'=u'v+uv'$. The quotient rule differentiates a ratio: $(u/v)'=(u'v-uv')/v^2$.
+      **The question.** How do you differentiate two changing functions multiplied together, like $x^2e^x$, or one divided by the other?
 
-      **How it works.** The house loss is the product of two equal errors:
+      **Picture it.** Think of a product $u\cdot v$ as the area of a rectangle, $u$ wide and $v$ tall. If the width grows by a little ($\Delta u$, "change in $u$") and the height by $\Delta v$, the area gains three pieces: an amber strip $\Delta u\cdot v$, a blue strip $u\cdot\Delta v$, and a red corner $\Delta u\cdot\Delta v$.
 
-      $$L(w)=r(w)r(w),\qquad r(w)=12w-330.$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="A rectangle u wide and v tall grows by an amber strip delta u times v on the right, a blue strip u times delta v on top and a small red corner delta u times delta v">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <rect x="80" y="130" width="240" height="180" fill="#d4d4d4" fill-opacity="0.35" stroke="#737373" stroke-width="2"/>
+          <rect x="320" y="130" width="36" height="180" fill="#f59e0b" fill-opacity="0.35" stroke="#f59e0b" stroke-width="2"/>
+          <rect x="80" y="94" width="240" height="36" fill="#3b82f6" fill-opacity="0.3" stroke="#3b82f6" stroke-width="2"/>
+          <rect x="320" y="94" width="36" height="36" fill="#ef4444" fill-opacity="0.35" stroke="#ef4444" stroke-width="2"/>
+          <text x="160" y="225">area u · v</text>
+          <text x="190" y="335">width u</text>
+          <text x="20" y="225">height v</text>
+          <text x="328" y="335">Δu</text>
+          <text x="52" y="117">Δv</text>
+          <text x="372" y="225" fill="#171717">Δu · v</text>
+          <text x="160" y="80" fill="#171717">u · Δv</text>
+          <text x="372" y="100" fill="#171717">Δu · Δv (tiny)</text>
+        </g>
+      </svg>
+      ```
 
-      Its derivative is:
+      **The idea.** A product changes because of each factor in turn. Let $x$ move by a small step $h$, so $\Delta u\approx u'h$ and $\Delta v\approx v'h$. Divide the gained area by $h$: the strips give $u'v$ and $uv'$, while the corner gives about $u'v'h$, which shrinks to $0$ with $h$. In general, for two functions $u$ and $v$ of $x$, the **product rule** and **quotient rule** are
 
-      $$r'r+rr'=12r+12r=24r.$$
+      $$(uv)'=u'v+uv'$$
 
-      At $w=25$, this gives:
+      $$\left(\frac uv\right)'=\frac{u'v-uv'}{v^2}\quad(v\neq0)$$
 
-      $$24(-30)=-720.$$
+      In the quotient rule, mind the minus sign and the order: $u'v$ comes first. For example:
 
-      Both factors change, so both contributions count.
+      $$\left(\frac{x}{x+1}\right)'=\frac{1\cdot(x+1)-x\cdot1}{(x+1)^2}=\frac{1}{(x+1)^2}$$
 
-      The quotient rule matters when a prediction error is divided by a changing quantity. It keeps the change in both numerator and denominator; multiplying their derivatives would be wrong.
-
-      **Why this is useful.** The product rule gives the slope of squared house-price error by accounting for both copies of the price miss.
+      **Common confusion.** "The slope of a product is the product of the slopes." Test it on $x\cdot x=x^2$: multiplying slopes gives $1\cdot1=1$, but the true slope is $2x$. The product rule gives $1\cdot x+x\cdot1=2x$.
     worked: |
-      This example shows the product rule on squared house-price error.
+      Find the slope of $f(x)=(x^2+1)(3x-2)$ at $x=1$, then check by expanding.
 
-      For $L(w)=(12w-330)(12w-330)$, name both factors:
+      1. **Name the factors and their slopes.**
+         $$u=x^2+1,\quad u'=2x$$
+         $$v=3x-2,\quad v'=3$$
 
-      $$u=v=12w-330.$$
+      2. **Apply the product rule.**
+         $$f'(x)=2x(3x-2)+3(x^2+1)=9x^2-4x+3$$
 
-      Then:
+      3. **Put in the input.**
+         $$f'(1)=u'v+uv'=2(1)+2(3)=8$$
 
-      $$u'=v'=12.$$
+      4. **Check by expanding first.**
+         $$f(x)=3x^3-2x^2+3x-2,\quad f'(x)=9x^2-4x+3$$
 
-      $$L'(w)=u'v+uv'=12(12w-330)+(12w-330)12=24(12w-330).$$
+      **Compare cases.** Multiplying the slopes, $u'v'$, would give $6x$, which is wrong at every point here:
 
-      At $w=25$, this is $24(-30)=-720$. The product rule agrees with differentiating the expanded polynomial.
+      | $x$ | $u'v$ | $uv'$ | $f'(x)$ | $u'v'$ (wrong) |
+      | --- | --- | --- | --- | --- |
+      | $0$ | $0$ | $3$ | $3$ | $0$ |
+      | $1$ | $2$ | $6$ | $8$ | $6$ |
+      | $2$ | $16$ | $15$ | $31$ | $12$ |
+
+      **Where it shows up.** A squared error is the error times itself: $L(w)=(w-3)(w-3)$. The product rule gives $L'(w)=(w-3)+(w-3)=2w-6$, the same slope as expanding.
     problems:
-      [
-        der-product-quotient-basics,
-        derp-product-value,
-        derp-which-rule,
-        derp-product-expr,
-        derp-why-not-multiply,
-        derp-quotient-expr,
-        derp-rectangle-rate,
-      ]
-final: der-explain
+      - der-product-quotient-basics
+      - derp-why-two-parts
+      - derp-product-value
+      - derp-which-rule
+      - derp-product-expr
+      - derp-why-not-multiply
+      - derp-quotient-expr
+      - derp-rectangle-rate
 summary: |
-  - A derivative is a local rate of change, found as the limit of average rates over smaller input nudges.
-  - Power, exponential, logarithm, product and quotient rules give exact derivatives for common functions.
-  - For the house loss $L(w)=(12w-330)^2$, the slope at $w=25$ is $-720$.
+  - The derivative $f'(a)$ is the slope of $f$ at one point: the limit of average slopes over smaller and smaller steps.
+  - Powers follow $(x^n)'=nx^{n-1}$; numbers multiply slopes, sums go term by term, and constants have slope $0$.
+  - $e^x$ is its own derivative, and $\ln x$ has derivative $1/x$.
+  - Products use $u'v+uv'$ and quotients use $(u'v-uv')/v^2$, never the product of the slopes.
 
-  **Next:** Loss functions compare how squared and absolute price errors respond to different house-price mistakes.
+  **Next:** Loss functions turn a model's mistakes into one score, and these slopes show how that score responds as a weight changes.

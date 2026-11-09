@@ -43,6 +43,7 @@ Lesson level:
 
 ## 2. Writing rules
 
+- **Each lesson stands on its own.** Introduce every example, object and set of numbers inside the lesson that uses it before using it. Never write "this house", "the model" or "the same data" for something set up only in another lesson. To build on an earlier lesson, name it and recap what it was in one sentence ("In the linear-regression lesson you predicted a house's price as $w\cdot x + b$; …").
 - **Explain the setting before using it.** Before any calculation, say what the function or object stands for ("the loss as the height of the ground over each pair of weights") and what each kind of picture shows ("a contour map is the landscape seen from above; each ring joins points at the same height"). Never open a KP with a bare formula.
 - **Cut everything that doesn't teach.** No boilerplate headings ("Why this is useful"), no filler, no repeated sentences, no summary of what you just said. _(Coherence principle: Mayer & Moreno 2003.)_
 - `explain` is 150–300 words per KP. If it's longer, the KP holds two ideas: split it.
@@ -74,7 +75,7 @@ Every KP whose idea is spatial (directions, slopes, surfaces, arrows, splits, pr
 2. **Self-check** each KP against §1–§3: all seven parts in order, general definition, clean numbers, diagram present and correct, no boilerplate, ≤300 words.
 3. **Cold-reader review.** Give a separate agent, which hasn't seen your plan, only the rendered lesson text (YAML `explain`, `worked`, `summary` and the first two problems of each KP), the titles of the prerequisite lessons, and this prompt verbatim:
 
-   > You are a motivated learner who knows only the prerequisite lessons listed. Read this lesson once, in order, as if seeing it for the first time. List every place where you (a) met a word, symbol or step you couldn't follow, (b) couldn't picture what was meant, (c) didn't see why a step was taken, (d) didn't know what you were learning or why it mattered, or (e) got bored or lost the thread. Quote the exact sentence for each. Then say, in two sentences, what you think the lesson's main idea is. Do not suggest rewrites and do not praise.
+   > You are a motivated learner who knows only the prerequisite lessons listed. Read this lesson once, in order, as if seeing it for the first time. List every place where you (a) met a word, symbol or step you couldn't follow, (b) couldn't picture what was meant, (c) didn't see why a step was taken, (d) didn't know what you were learning or why it mattered, (e) met an example or object the lesson never introduced, or (f) got bored or lost the thread. Quote the exact sentence for each. Then say, in two sentences, what you think the lesson's main idea is. Do not suggest rewrites and do not praise.
 
    Fix every item it raises, or note in the PR why it isn't a problem. If its two-sentence main idea doesn't match the objective, the lesson isn't clear yet: revise and review again.
 4. Open the lesson in the running app (`pnpm dev`, Course → the lesson) and check each KP rendered: diagrams visible and readable, maths rendered, no part overflowing.
