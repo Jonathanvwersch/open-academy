@@ -1,182 +1,181 @@
 concept: autodiff
-version: 1
+version: 2
 objective: |
-  **Goal:** explain what `loss.backward()` does.
+  **Goal:** explain what `loss.backward()` does: how software records a calculation and runs the chain rule backward for you, and why it goes backward.
 where_this_fits: |
-  Backpropagation showed how the chain rule sends a loss derivative through the house-price network. Doing every local calculation by hand becomes tedious as a graph grows. Automatic differentiation fills that gap: a framework records the forward operations and applies their derivative rules in reverse, so you can obtain parameter gradients without writing a separate backward calculation.
+  Training a model needs the loss slope for every weight. You can now calculate those slopes with backpropagation, but writing a new backward calculation whenever you change the model is slow and easy to get wrong. Software can do that work for you while you write only the forward calculation. This lesson explains how, in three steps:
+
+  1. Record the operations as the forward calculation runs.
+  2. Follow that record backward to find and store the loss slopes.
+  3. See why going backward suits a model with many weights and one loss.
+
+  You'll connect the chain rule you know to the single call that requests those slopes.
 knowledge_points:
   - id: ad-recording
-    title: Operations are recorded during the forward pass
+    title: Record the calculation as it runs
     explain: |
-      **What an operation graph is.** An operation graph is a record of calculations: each operation is linked to the values it used and has a local derivative rule.
+      **The question.** You already know how to calculate derivatives through a graph. How can software build that graph when you have only written the forward calculation?
 
-      **How it works.** PyTorch builds this record as a forward pass runs. Mark a parameter tensor with `requires_grad=True`, and PyTorch tracks operations that depend on it. In the house network, the weight affects the loss through multiplication, ReLU and the output calculation:
-
-      ```python
-      import torch
-
-      w = torch.tensor(0.1, requires_grad=True)
-      area = torch.tensor(12.0)
-      z = w * area
-      h = torch.relu(z)
-      price = 15.0 * h + 306.5
-      loss = (price - 330.0) ** 2
-      print(round(z.item(), 1), round(price.item(), 1), round(loss.item(), 2))
-      ```
-
-      The graph links each result to its inputs, so a later calculation can follow the actual path from loss back to the weight. Constant inputs such as `area` can take part without asking PyTorch to compute their gradients.
-
-      The graph stores the route taken in this forward pass, including which side of a piecewise operation was used.
-
-      **Why this is useful.** The house model's recorded operations let PyTorch reuse the current forward values instead of making you write a separate graph or derivative formula for every parameter.
-    worked: |
-      This example shows the operations recorded for one house prediction.
-
-      The weight is $w=0.1$ and the house area is $a=12$:
-
-      $$z = wa = 0.1 \times 12 = 1.2$$
-
-      ReLU leaves this positive value unchanged:
-
-      $$h = \operatorname{ReLU}(z) = 1.2$$
-
-      The output calculation gives:
-
-      $$\hat y = 15h + 306.5 = 324.5$$
-
-      The squared loss against the sale price of 330 is:
-
-      $$L = (\hat y - 330)^2 = (324.5 - 330)^2 = 30.25$$
-
-      The graph connects the weight through each operation to the loss:
+      **Picture it.** Start with a number $w=2$, multiply by a fixed input $x=3$, subtract a fixed target $y=4$, then square the difference. The arrows below mean “used by”: each operation extends the record as it runs, keeping the intermediate values $z$ and $e$ and the final result $L$.
 
       ```svg
-      <svg viewBox="0 0 640 120" aria-label="Forward operation graph from house weight and area to loss" xmlns="http://www.w3.org/2000/svg">
-        <rect x="8" y="32" width="112" height="52" rx="6" fill="#d4d4d4" stroke="#737373"/>
-        <text x="64" y="63" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">w, area</text>
-        <line x1="120" y1="58" x2="132" y2="58" stroke="#737373" stroke-width="2"/>
-        <polygon points="132,53 140,58 132,63" fill="#737373"/>
-        <rect x="140" y="32" width="112" height="52" rx="6" fill="#d4d4d4" stroke="#737373"/>
-        <text x="196" y="63" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">z = w × area</text>
-        <line x1="252" y1="58" x2="264" y2="58" stroke="#737373" stroke-width="2"/>
-        <polygon points="264,53 272,58 264,63" fill="#737373"/>
-        <rect x="272" y="32" width="112" height="52" rx="6" fill="#d4d4d4" stroke="#737373"/>
-        <text x="328" y="63" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">h = ReLU(z)</text>
-        <line x1="384" y1="58" x2="396" y2="58" stroke="#737373" stroke-width="2"/>
-        <polygon points="396,53 404,58 396,63" fill="#737373"/>
-        <rect x="404" y="32" width="112" height="52" rx="6" fill="#d4d4d4" stroke="#737373"/>
-        <text x="460" y="63" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">ŷ = 15h + 306.5</text>
-        <line x1="516" y1="58" x2="528" y2="58" stroke="#737373" stroke-width="2"/>
-        <polygon points="528,53 536,58 528,63" fill="#737373"/>
-        <rect x="536" y="32" width="96" height="52" rx="6" fill="#d4d4d4" stroke="#737373"/>
-        <text x="584" y="63" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">loss</text>
-      </svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 165" aria-label="Forward record: w equals 2, multiply by 3 to get z equals 6, subtract 4 to get e equals 2, square to get L equals 4"><defs><marker id="ad1-forward" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717"><path d="M90 85 H190" stroke="#737373" stroke-width="2" marker-end="url(#ad1-forward)"/><path d="M250 85 H350" stroke="#737373" stroke-width="2" marker-end="url(#ad1-forward)"/><path d="M410 85 H510" stroke="#737373" stroke-width="2" marker-end="url(#ad1-forward)"/><g stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke"><text x="25" y="90" fill="#171717">w = 2</text><text x="200" y="90" fill="#171717">z = 6</text><text x="360" y="90" fill="#171717">e = 2</text><text x="520" y="90" fill="#171717">L = 4</text><text x="105" y="52" fill="#737373">× x (= 3)</text><text x="265" y="52" fill="#737373">− y (= 4)</text><text x="425" y="52" fill="#737373">square</text><text x="25" y="135" fill="#737373">forward values: left to right</text></g></g></svg>
       ```
 
-      The recorded path starts at $w$ and ends at $L$, ready for a reverse derivative calculation.
+      **The idea.** Keep a record of small operations, rather than derive one big formula. A recorded **computation graph** links operations to their inputs and outputs. A **tape** lists those operations in the order they ran; each **local derivative rule** gives one operation's slope with respect to its own input, as in the computational-graphs lesson.
+
+      PyTorch is software for these calculations. It stores numbers in objects called **tensors**; a tensor can hold one number or an array. Marking an input tensor with `requires_grad=True` asks PyTorch to track every value calculated from it, directly or through other values, so its derivatives can be found later.
+
+      **Common confusion.** “It rewrites my code into a textbook derivative formula.” No: PyTorch records the operations actually executed on this run. If your code takes one branch of an `if`, the record follows that branch, not the unused alternative.
+    worked: |
+      Record the forward calculation for $w=2$, with fixed $x=3$ and $y=4$.
+
+      1. **Multiply the input.** Save the product and its connection to $w$.
+         $$z=wx=2\cdot3=6.$$
+
+      2. **Find the difference.** Save the subtraction and its connection to $z$.
+         $$e=z-y=6-4=2.$$
+
+      3. **Square the difference.** Save the square and its input $e$; its derivative rule will need that value.
+         $$L=e^2=2^2=4.$$
+
+      **Compare cases.** Only $w$ is marked `requires_grad=True`.
+
+      | Value | Tracked for derivatives? | Why? |
+      | --- | --- | --- |
+      | $w$ | Yes | You requested its derivative |
+      | $x,y$ | No | They are fixed inputs here |
+      | $z,e,L$ | Yes | Their calculations depend on $w$ |
+
+      PyTorch saves whatever an operation's derivative rule needs, whether or not that value is tracked. Here the multiply needs the fixed value $x=3$ to find the slope with respect to $w$.
+
+      **Where it shows up.** A model's prediction and squared loss use the same multiply, subtract and square operations. Recording them means changing the forward model doesn't require you to write its backward calculation again.
     problems:
       [
-        ad-record-basics,
-        ad-record-loss-fixed,
-        ad-record-complete,
-        ad-record-why,
-        ad-record-branching,
-        ad-record-read,
-        ad-record-untracked,
+        ad-recording-basics,
+        ad-record-why-save,
+        ad-record-value,
+        ad-record-constants,
+        ad-record-branch,
+        ad-record-robot,
       ]
   - id: ad-reverse
-    title: Reverse mode applies the chain rule automatically
+    title: Run the chain rule backward
     explain: |
-      **What reverse-mode automatic differentiation is.** It evaluates a function, then propagates derivatives from its output back through recorded operations. It automates the chain-rule calculation called backpropagation.
+      **The question.** The forward record gives a final value, but training needs loss slopes. What happens when you ask PyTorch to follow the record backward?
 
-      **How it works.** In PyTorch, `loss.backward()` starts at the scalar loss and applies local derivative rules in reverse order. The resulting parameter derivatives are stored in each tracked leaf tensor's `.grad`. For the house network, the forward values are $z=1.2$ and $\hat y=324.5$. The backward trace is:
+      **Picture it.** Use the same calculation. The blue arrows run from the loss back to $w$; their labels are derivatives of the final loss, not forward values. Start at $1$, the loss's slope with respect to itself, $dL/dL=1$, then multiply by each local slope: $4$ for the square, $1$ for subtraction and $3$ for multiplication.
 
-      $$dL/d\hat y = 2(324.5 - 330) = -11$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 165" aria-label="Reverse derivatives: start at L with 1, then e has slope 4, z has slope 4 and w has slope 12"><defs><marker id="ad2-reverse" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717"><path d="M190 85 H90" stroke="#3b82f6" stroke-width="2" marker-end="url(#ad2-reverse)"/><path d="M350 85 H250" stroke="#3b82f6" stroke-width="2" marker-end="url(#ad2-reverse)"/><path d="M510 85 H410" stroke="#3b82f6" stroke-width="2" marker-end="url(#ad2-reverse)"/><g stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke"><text x="25" y="90" fill="#171717">w = 2</text><text x="200" y="90" fill="#171717">z = 6</text><text x="360" y="90" fill="#171717">e = 2</text><text x="520" y="90" fill="#171717">L = 4</text><text x="105" y="52" fill="#3b82f6">× 3</text><text x="265" y="52" fill="#3b82f6">× 1</text><text x="425" y="52" fill="#3b82f6">× 4</text><text x="25" y="135" fill="#3b82f6">slope: 12</text><text x="200" y="135" fill="#3b82f6">slope: 4</text><text x="360" y="135" fill="#3b82f6">slope: 4</text><text x="520" y="135" fill="#3b82f6">start: 1</text></g></g></svg>
+      ```
 
-      $$dL/dh = (-11) \times 15 = -165$$
+      **The idea.** Send the final result's sensitivity back through the recorded operations. **Reverse-mode automatic differentiation** computes derivatives of a chosen output with respect to its inputs by visiting operations in reverse order, multiplying local derivatives along paths and adding contributions where paths meet.
 
-      $$dL/dw = (-165) \times 1 \times 12 = -1980$$
+      If $w$ is used twice, as in $L=w\cdot w$, each use sends back its own contribution: $w+w=2w$.
 
-      The ReLU derivative is 1 here because $z$ is positive. At a point used by two later operations, reverse mode adds the derivative contributions from both paths. A `.grad` value is added to rather than replaced by each backward call, so clear it with `w.grad.zero_()` before a separate calculation.
+      Calling `loss.backward()` does this for a tensor holding a single number, named `loss`. For a **leaf**, a tensor you made yourself rather than one calculated from other tensors, its resulting derivative is stored in `.grad` if it requires gradients. Here `w.grad` holds $dL/dw$, the loss slope with respect to $w$.
+
+      **Common confusion.** “Calling `loss.backward()` changes my weights.” No: it calculates gradients, not weight updates. It also **adds** to any gradients already stored so gradients from several calculations, such as several examples, can be combined; clear them before calculating a fresh gradient that shouldn't include earlier calls.
+    worked: |
+      Find the loss slope for $L=(wx-y)^2$, with $w=2$, $x=3$ and $y=4$.
+
+      1. **Start at the loss.** The loss has slope one with respect to itself.
+         $$\frac{dL}{dL}=1.$$
+
+      2. **Reverse the square.** Use the saved difference $e=2$.
+         $$\frac{dL}{de}=1\cdot2e=4.$$
+
+      3. **Reverse the subtraction.** Subtracting a fixed target has local slope one.
+         $$\frac{dL}{dz}=4\cdot1=4.$$
+
+      4. **Reverse the multiply.** Use the fixed input $x=3$.
+         $$\frac{dL}{dw}=4\cdot3=12.$$
+
+      **Compare cases.** These PyTorch lines use the same leaf `w`. After backward, PyTorch throws the record away to save memory. A second backward therefore needs a new forward calculation, as shown here by recomputing `loss`.
 
       ```python
       import torch
-
       w = torch.tensor(2.0, requires_grad=True)
-      loss = (3 * w - 1) ** 2
+      loss = (w * 3 - 4) ** 2
       loss.backward()
-      print(w.grad.item())
-      loss = (3 * w - 1) ** 2
+      # w.grad now holds 12
+      loss = (w * 3 - 4) ** 2
       loss.backward()
-      print(w.grad.item())
+      # w.grad now holds 24
       w.grad.zero_()
-      print(w.grad.item())
+      # w.grad now holds 0
       ```
 
-      **Why this is useful.** One reverse pass gives the house model's slope for every tracked weight, while `.grad.zero_()` keeps one training calculation from leaking into the next.
-    worked: |
-      This example shows one gradient, its accumulation, and how to clear it.
+      | State | Stored gradient | Weight |
+      | --- | --- | --- |
+      | After first backward call | $12$ | $2$ |
+      | After second, without clearing | $24$ | $2$ |
+      | After `w.grad.zero_()` | $0$ | $2$ |
 
-      Set $w=2$ in $L=(3w-1)^2$:
-
-      $$L = (3 \times 2 - 1)^2 = 25$$
-
-      The derivative for this calculation is:
-
-      $$dL/dw = 2(3w-1)\times3 = 30$$
-
-      After one backward call, `.grad` contains 30. Recompute the loss and call backward again without clearing it:
-
-      $$\texttt{w.grad} = 30 + 30 = 60$$
-
-      Clear the accumulated value before the next independent calculation:
-
-      $$\texttt{w.grad} = 0$$
-
-      Recomputing the loss creates a fresh forward graph; each backward call then adds that graph's derivative to `.grad`.
+      **Where it shows up.** Backpropagation in a neural network is this reverse calculation through many operations. A separate gradient-descent step uses the stored slopes to change the weights.
     problems:
       [
         ad-reverse-basics,
-        ad-backward-complete,
-        ad-zero-complete,
-        ad-reverse-why,
-        ad-grad-accumulation,
-        ad-backward-read,
-        ad-backward-shared,
+        ad-reverse-why-multiply,
+        ad-reverse-gradient,
+        ad-reverse-update,
+        ad-reverse-accumulate,
+        ad-reverse-robot,
       ]
   - id: ad-modes
-    title: Forward and reverse mode suit different shapes
+    title: Choose the direction that shares the work
     explain: |
-      **What forward-mode automatic differentiation is.** It carries a derivative alongside each intermediate value as calculations run from input to output. One pass follows one chosen input direction; reverse mode instead sends derivatives from an output back to its inputs.
+      **The question.** The chain rule can be applied in either direction. Why does software usually go backward when training a model?
 
-      **How to choose a mode.** Roughly, forward mode needs one pass for each input direction to build all derivatives, while reverse mode needs one pass for each output. The house network has many trainable parameters but one scalar loss. Forward mode would repeat work for each parameter direction; reverse mode can return all parameter gradients from one traversal of that loss. The exact cost also depends on the operations and hardware, but the input-versus-output count explains the main choice.
+      **Picture it.** A small calculation multiplies two adjustable inputs, $u=2$ and $v=3$, to give one output $s=6$. A forward derivative pass follows one chosen input towards the output; two passes give both input slopes. A reverse derivative pass starts at the one output and reaches both inputs together.
 
-      Forward mode can be preferable when there are few inputs and many outputs, because its pass count then stays small.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 210" aria-label="Two inputs u equals 2 and v equals 3 multiply to s equals 6. Two forward derivative passes or one reverse derivative pass give slopes 3 and 2"><defs><marker id="ad3-forward" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="ad3-reverse" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717"><path d="M95 60 L220 100" stroke="#737373" stroke-width="2" marker-end="url(#ad3-forward)"/><path d="M95 150 L220 110" stroke="#737373" stroke-width="2" marker-end="url(#ad3-forward)"/><path d="M535 100 L410 60" stroke="#3b82f6" stroke-width="2" marker-end="url(#ad3-reverse)"/><path d="M535 110 L410 150" stroke="#3b82f6" stroke-width="2" marker-end="url(#ad3-reverse)"/><g stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke"><text x="20" y="25" fill="#171717">Forward: 2 passes</text><text x="350" y="25" fill="#171717">Reverse: 1 backward pass</text><text x="25" y="60" fill="#171717">u = 2</text><text x="25" y="155" fill="#171717">v = 3</text><text x="225" y="110" fill="#171717">s = uv = 6</text><text x="350" y="60" fill="#171717">u = 2</text><text x="350" y="155" fill="#171717">v = 3</text><text x="540" y="110" fill="#171717">s = 6</text><text x="120" y="55" fill="#171717">choose u</text><text x="120" y="166" fill="#171717">choose v</text><text x="440" y="65" fill="#3b82f6">slope 3</text><text x="440" y="155" fill="#3b82f6">slope 2</text><text x="20" y="195" fill="#171717">Same derivatives; different sharing of work.</text></g></g></svg>
+      ```
 
-      **Why this is useful.** Training adjusts many house-model weights to reduce one loss, so reverse mode computes the needed collection of slopes with fewer passes.
+      **The idea.** Choose the direction that reuses work for the derivatives you need. **Forward-mode automatic differentiation** carries each value's derivative with respect to one chosen input alongside its forward value. Reverse mode instead carries a chosen output's derivatives back to all inputs.
+
+      Choosing $u$ for $s=uv$, $u$ carries (value $2$, derivative $1$), $v$ carries ($3$, $0$), and the multiply outputs ($6$, $1\cdot3+2\cdot0=3$).
+
+      To obtain every input-output derivative using ordinary one-direction passes, forward mode needs one pass per input. Reverse mode needs one forward recording pass plus one backward pass per output. With many weights and one loss, one reverse pass gives all weight slopes.
+
+      **Common confusion.** “Forward and reverse give different gradients.” No: both apply the same chain rule at the same values. They organise the work differently.
     worked: |
-      This example shows how the number of inputs and outputs guides the choice.
+      Compare both methods for $s=uv$ at $u=2$, $v=3$. Each forward pass chooses one input to vary and holds the other fixed.
 
-      Suppose one model has 64 parameters and produces one scalar loss:
+      1. **Follow $u$ forward.** Start its derivative at one and the fixed input's at zero; the product rule gives:
+         $$\frac{\partial s}{\partial u}=1\cdot v+u\cdot0=3.$$
 
-      $$\text{forward-mode passes} \approx 64$$
+      2. **Follow $v$ forward.** Exchange which input varies.
+         $$\frac{\partial s}{\partial v}=0\cdot v+u\cdot1=2.$$
 
-      $$\text{reverse-mode passes} \approx 1$$
+      3. **Follow $s$ backward.** Start at one at $s$ and send a contribution to each input in the same pass.
+         $$\frac{\partial s}{\partial u}=1\cdot v=3.$$
+         $$\frac{\partial s}{\partial v}=1\cdot u=2.$$
 
-      Forward mode follows each parameter direction separately. Reverse mode starts from the one loss and sends its derivative back to all 64 parameters.
+      **Compare cases.** To find every input-output derivative, forward mode chooses one input per pass. The reverse column counts one forward recording pass plus one backward pass per output.
+
+      | Inputs | Outputs | Forward passes | Reverse: record + backward |
+      | --- | --- | --- | --- |
+      | $2$ | $1$ | $2$ | $1+1=2$ |
+      | $1{,}000{,}000$ | $1$ | $1{,}000{,}000$ | $1+1=2$ |
+      | $1$ | $3$ | $1$ | $1+3=4$ |
+
+      **Where it shows up.** Neural-network training has many parameters but one loss, which favours reverse mode. A robot calculation from one joint angle to the hand's $x$, $y$ and $z$ position has one input and three outputs, so forward mode gets all three slopes in one pass.
     problems:
       [
         ad-modes-basics,
-        ad-forward-mode-fixed,
-        ad-reverse-mode-fixed,
-        ad-mode-template,
-        ad-modes-why,
-        ad-mode-robot-arm,
+        ad-modes-why-two,
+        ad-modes-forward-count,
+        ad-modes-same-slopes,
+        ad-modes-reverse-count,
+        ad-modes-robot,
       ]
 final: ad-explain
 summary: |
-  - PyTorch records operations that depend on tensors marked with `requires_grad=True`.
-  - `loss.backward()` applies the chain rule in reverse and accumulates derivatives in `.grad`.
-  - Reverse mode is efficient when a model has many parameters and one scalar loss.
+  - I can write the forward calculation and let software record its operations, dependencies and needed values.
+  - `loss.backward()` applies the chain rule in reverse and adds the resulting slopes to stored leaf gradients; it doesn't update the weights.
+  - Forward mode shares work from one input; reverse mode shares work from one output, making it a good fit for many weights and one loss.
 
-  **Next:** PyTorch fundamentals uses these gradients in a complete training loop.
+  **Next:** PyTorch fundamentals puts tensors and gradients into a training loop.
