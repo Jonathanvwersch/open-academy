@@ -113,6 +113,7 @@ function SessionPage() {
   const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [submitError, setSubmitError] = useState('');
   const [hint, setHint] = useState<{
     level: number;
     text: string;
@@ -201,6 +202,7 @@ function SessionPage() {
           : null,
       );
       setHint(null);
+      setSubmitError('');
     }
   }, [activity?.id, activity?.lastAttempt, exerciseId]);
   useEffect(() => {
@@ -331,6 +333,7 @@ function SessionPage() {
   const submitAnswer = async (answer: unknown) => {
     if (!exerciseId || !activity) return;
     setSubmittingAnswer(true);
+    setSubmitError('');
     const mode =
       activity.kind === 'quick_check' || activity.kind === 'diagnostic'
         ? 'assessment'
@@ -343,8 +346,16 @@ function SessionPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ exerciseId, activityId: activity.id, answer, mode }),
       });
-      const data = await response.json();
-      setResult({ ...data, exerciseId });
+      const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+      if (response.status === 409) {
+        await queryClient.invalidateQueries({ queryKey: ['session', id] });
+        return;
+      }
+      if (response.ok || (response.status === 422 && data.status === 'invalid')) {
+        setResult({ ...data, exerciseId });
+      } else {
+        setSubmitError(typeof data.error === 'string' ? data.error : 'Your answer was not saved.');
+      }
       if (response.ok && data.status !== 'invalid') {
         setHint(null);
       }
@@ -599,6 +610,7 @@ function SessionPage() {
                       new Set(current).add(block.exercise ?? ''),
                     )
                   }
+                  onConflict={() => queryClient.invalidateQueries({ queryKey: ['session', id] })}
                 />
               ) : null}
             </LessonBlock>
@@ -662,6 +674,11 @@ function SessionPage() {
               loading={submittingAnswer}
               actions={helpActions}
             />
+            {submitError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {submitError}
+              </p>
+            ) : null}
             {result && result.status !== 'invalid' ? (
               <FeedbackPanel
                 result={result}
@@ -804,24 +821,36 @@ function InlineLessonCheck({
   exerciseId,
   activityId,
   onDone,
+  onConflict,
 }: {
   exerciseId: string;
   activityId: string;
   onDone: () => void;
+  onConflict: () => Promise<void>;
 }) {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const { data: exercise } = useSuspenseQuery(exerciseQueryOptions(exerciseId));
   const submit = async (answer: unknown) => {
     setSubmitting(true);
+    setSubmitError('');
     try {
       const response = await apiFetch('/api/attempts', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ exerciseId, activityId, answer, mode: 'practice' }),
       });
-      const data = await response.json();
-      setResult(data);
+      const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+      if (response.status === 409) {
+        await onConflict();
+        return;
+      }
+      if (response.ok || (response.status === 422 && data.status === 'invalid')) {
+        setResult(data);
+      } else {
+        setSubmitError(typeof data.error === 'string' ? data.error : 'Your answer was not saved.');
+      }
       if (response.ok && data.status !== 'invalid') onDone();
     } finally {
       setSubmitting(false);
@@ -834,13 +863,21 @@ function InlineLessonCheck({
           <>
             <Markdown>{exercise.prompt}</Markdown>
             {result ? (
-              <FeedbackPanel
-                result={result}
-                hideAnswerLines={
-                  ['mc', 'debug', 'explain'].includes(exercise.type) &&
-                  (result.status === 'invalid' || result.retryAllowed === true)
-                }
-              />
+              result.status === 'invalid' ? (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    <Markdown inline>{String(result.feedback ?? 'Invalid answer')}</Markdown>
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <FeedbackPanel
+                  result={result}
+                  hideAnswerLines={
+                    ['mc', 'debug', 'explain'].includes(exercise.type) &&
+                    result.retryAllowed === true
+                  }
+                />
+              )
             ) : null}
             {!result || result.status === 'invalid' || result.retryAllowed ? (
               <ExerciseForm
@@ -849,6 +886,11 @@ function InlineLessonCheck({
                 onSubmit={submit}
                 loading={submitting}
               />
+            ) : null}
+            {submitError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {submitError}
+              </p>
             ) : null}
           </>
         ) : null}

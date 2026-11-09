@@ -416,6 +416,7 @@ export function ExerciseForm({
     optionState(id, id === `fix:${value}` && answerOptions?.selected.includes(id) === true);
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (inputsLocked) return;
     if (exercise.type === 'debug') {
       onSubmit({ line: Number(line), fixId: value });
     } else if (exercise.type === 'mc') {
@@ -442,10 +443,16 @@ export function ExerciseForm({
       (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
     ) {
       event.preventDefault();
-      event.currentTarget.requestSubmit();
+      if (primaryAction) {
+        if (!primaryAction.loading && !primaryAction.disabled) primaryAction.onClick();
+      } else if (inputsLocked) {
+        return;
+      } else {
+        event.currentTarget.requestSubmit();
+      }
       return;
     }
-    if (exercise.type === 'mc' && /^[1-9]$/.test(event.key)) {
+    if (exercise.type === 'mc' && !inputsLocked && /^[1-9]$/.test(event.key)) {
       const option = orderedOptions[Number(event.key) - 1];
       if (option) {
         event.preventDefault();
