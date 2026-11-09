@@ -1,5 +1,5 @@
 concept: computational-graphs
-version: 6
+version: 7
 objective: |
   **Goal:** draw a calculation as a graph of simple operations, find each operation's local derivative, and multiply along paths back from the output to find its derivative with respect to any input.
 where_this_fits: |
@@ -14,7 +14,7 @@ knowledge_points:
   - id: cg-drawing-graphs
     title: Break a calculation into simple operations
     explain: |
-      **The question.** A formula can hide the order of its steps and the values in between. How do you lay out a calculation so each step is visible?
+      **The question.** To find a derivative, we'll need each step's effect on the output, but a formula can hide its steps and in-between values. How do you make each step visible?
 
       **Picture it.** Add two numbers, then multiply their sum by a third: $f=(x+y)\cdot z$, with inputs $x=1$, $y=2$, $z=4$. Rounded squares are inputs; circles are operations. Blue numbers are the values at the input nodes and the values each operation node computes.
 
@@ -41,7 +41,7 @@ knowledge_points:
 
       **The idea.** Make each small operation visible. A **computational graph** is a diagram with one node per input and per simple operation, such as addition, multiplication or squaring. An arrow connects each value to every operation that uses it; arrows point forward, with no loops. Computing each node in arrow order is the **forward pass**; the computed values are called **forward values**. Each operation node stands for both the operation and the value it produces: $q$ is the value of the $+$ node.
 
-      **Common confusion.** “If a value is used twice, I draw it twice.” No: draw one node with two outgoing arrows. For $(x+y)\cdot(y+z)$, one $y$ feeds both additions, as shown below. You will add up both ways $y$ affects the output; the third point shows how.
+      **Common confusion.** “If a value is used twice, I draw it twice.” No: draw one node with two outgoing arrows. For $(x+y)\cdot(y+z)$, one $y$ feeds both additions, as shown below. Later in this lesson you'll add up both ways $y$ affects the output.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" aria-label="One y input feeds two additions a and b, whose outputs feed multiplication g">
@@ -63,7 +63,7 @@ knowledge_points:
       </svg>
       ```
     worked: |
-      **Worked example.** A model multiplies an input $x$ by a weight $w$ and compares the result with a target value $t$. Its squared error is $L=(w\cdot x-t)^2$, with $w=2$, $x=3$, $t=5$.
+      **Worked example.** A simple model, a rule for predicting from inputs, predicts $p=w\cdot x$: $w$ is an adjustable multiplier (a weight), and $t$ is the desired output (the target). Its squared error $L=(p-t)^2$ scores the prediction's mistake: squaring makes either sign of error positive and gives larger mistakes more importance. Use $w=2$, $x=3$, $t=5$.
 
       1. **List the operations.**
          $$p=w\cdot x.$$
@@ -105,7 +105,7 @@ knowledge_points:
       | $(x+y)^2$ | 2 | None |
       | $(x+y)\cdot(y+z)$ | 3 | $y$ |
 
-      In $(x+y)^2$, compute $x+y$ once and feed that value to one squaring node.
+      In $(x+y)^2$, compute $x+y$ once and feed that single value once to the squaring node. Neither $x$ nor $y$ is a reused input: each has only one outgoing arrow.
 
       **Where it shows up.** A model's prediction and loss form such a graph of multiplication, addition and squaring. Once drawn, its derivatives can be found one node at a time, as the next two points show.
     problems:
@@ -138,17 +138,17 @@ knowledge_points:
       <circle cx="520" cy="195" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="520" y="200" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">×</text><text x="520" y="241" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">f = 12</text>
       <text x="150" y="55" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂q/∂x = 1</text>
       <text x="150" y="120" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂q/∂y = 1</text>
-      <text x="390" y="100" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂f/∂q = z = 4</text>
-      <text x="320" y="300" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂f/∂z = q = 3</text>
+      <text x="385" y="137.5" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂f/∂q = z = 4</text>
+      <text x="285" y="261" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂f/∂z = q = 3</text>
       </g>
       </svg>
       ```
 
-      Addition passes a change in either input straight through to $q$, giving derivative 1. Multiplication changes by $q=3$ per unit change in $z$. Each amber label concerns only the operation at that arrow's end.
+      Addition passes a change in either input straight through to $q$, giving derivative 1. The multiplication's output $f$ changes by $q=3$ per unit change in $z$. Each amber label concerns only the operation at that arrow's end.
 
       **The idea.** Differentiate one small operation at a time. A **local derivative** is the derivative of one node's output with respect to one of its own inputs, holding that node's other inputs fixed. In $\partial q/\partial x$, the top names the output and the bottom names the input being changed.
 
-      For addition $a+b$, both local derivatives are 1. For multiplication $a\cdot b$, the derivative with respect to $a$ is $b$, and with respect to $b$ is $a$. For subtraction $a-b$, they are 1 and $-1$, respectively. For squaring $u^2$, the derivative is $2u$. Some rules need the forward values: here $\partial f/\partial q=z=4$.
+      For addition $a+b$, both local derivatives are 1. For multiplication $a\cdot b$, the derivative with respect to $a$ is $b$, and with respect to $b$ is $a$. For subtraction $a-b$, they are 1 and $-1$, respectively. For squaring $u^2$, the derivative is $2u$. These rules can need forward values, such as $z=4$, so store those values during the forward pass before tracing backward.
 
       **Common confusion.** “The local derivative at $x$ tells me how $f$ changes with $x$.” No: $\partial q/\partial x=1$ only describes $q$. How $f$ changes with $x$ is a different number, which the next point finds by combining local derivatives.
     worked: |
@@ -182,7 +182,7 @@ knowledge_points:
 
       Squaring's local derivative depends on the current forward value $e$; the multiplication's derivative with respect to $w$ depends only on $x$.
 
-      **Where it shows up.** A loss built from these operations needs only this short list of local rules, even when its graph is large.
+      **Where it shows up.** A loss is a score of prediction mistakes, such as our squared error. Even a large loss calculation built from these operations needs only this short list of local rules, reused at each node rather than a new rule for the whole formula.
     problems:
       - cg-local-derivatives-basics
       - cgp-why-store-values
@@ -197,8 +197,6 @@ knowledge_points:
       **The question.** How do you combine local derivatives to find the output's derivative for an early input, especially one used twice?
 
       **Picture it.** For $g=(x+y)\cdot(y+z)$ at $(x,y,z)=(1,2,4)$, the sums are $a=3$, $b=6$, giving $g=18$. Blue marks forward values, amber local derivatives, and green the paths from $y$ and their products. By the multiplication rule, $\partial g/\partial a=b=6$ and $\partial g/\partial b=a=3$.
-
-      Why start backward? Products built near the output are shared by inputs further back: for example, $\partial L/\partial e\cdot\partial e/\partial p$ serves both $w$ and $x$ in the worked calculation. A backward walk reuses those products to find every input's derivative, which is why we write factors output-side first.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" aria-label="One y input feeds two additions a and b, whose outputs feed multiplication g">
@@ -233,7 +231,7 @@ knowledge_points:
 
       **The idea.** Multiply along each path, then add the results. On a **computational graph**, the output's derivative with respect to any value is the sum of the products of local derivatives along every path from that value to the output. The Chain rule lesson taught both parts: derivatives multiply along a chain and add when an input has two routes.
 
-      To trace backward, start at the output and walk the arrows in reverse, multiplying the local derivative on each arrow you cross; the arrows in the drawing still point forward.
+      To trace backward, start at the output and walk against the arrows' direction, multiplying the local derivative on each arrow you cross. The arrows stay as drawn; only your walk reverses direction.
 
       **Common confusion.** “If a value feeds two operations, I just follow one path.” No: one path gives 6 or 3, missing the other contribution. Expand to check:
       $$g=xy+xz+y^2+yz.$$
@@ -241,7 +239,7 @@ knowledge_points:
     worked: |
       **Worked example.** Return to the squared error $L=(w\cdot x-t)^2$ at $w=2$, $x=3$, $t=5$. With $p=w\cdot x=6$ and $e=p-t=1$, find the loss derivative for each input.
 
-      Training changes $w$; we also differentiate with respect to $x$ and $t$ to show reuse: $w$ and $x$ share $\partial L/\partial e\cdot\partial e/\partial p=2$, while $t$ shares only $\partial L/\partial e=2$.
+      We adjust $w$ to reduce prediction mistakes; we also differentiate with respect to $x$ and $t$ to see which factors their derivatives share.
 
       1. **Trace back to the weight.**
          $$\frac{\partial L}{\partial w}=\frac{\partial L}{\partial e}\cdot\frac{\partial e}{\partial p}\cdot\frac{\partial p}{\partial w}.$$
@@ -255,13 +253,17 @@ knowledge_points:
          $$\frac{\partial L}{\partial t}=\frac{\partial L}{\partial e}\cdot\frac{\partial e}{\partial t}.$$
          $$\frac{\partial L}{\partial t}=2\cdot(-1)=-2.$$
 
+      Why start backward? The products above start at the output because factors near it can be reused further back: $w$ and $x$ share $\partial L/\partial e\cdot\partial e/\partial p=2$, while $t$ shares only $\partial L/\partial e=2$. Starting at the loss lets us build each shared product once, then use it for every earlier input that needs it.
+
       4. **Check the weight derivative with a nudge.**
          $$L_{\text{new}}=(2.01\cdot3-5)^2=1.0609.$$
          $$L_{\text{new}}-L=0.0609\approx0.01\cdot6=0.06.$$
 
-      The derivative predicts the change for a small nudge, not an exact finite change. The exact change is:
-      $$L(2.01)-L(2)=6(0.01)+9(0.01)^2=0.0609.$$
-      The extra $0.0009$ comes from squaring's curve; this term shrinks much faster than the nudge.
+      To see the gap from the derivative's prediction, write the nudged weight as $w=2+h$, where $h$ is the change in $w$:
+      $$L_{\text{new}}=(3(2+h)-5)^2.$$
+      $$L_{\text{new}}=(1+3h)^2=1+6h+9h^2.$$
+      $$L_{\text{new}}-L=6h+9h^2.$$
+      At $h=0.01$, the derivative predicts $6h=0.06$; the extra $9h^2=0.0009$ gives the actual change $0.0609$. At $h=0.001$, $6h=0.006$ and $9h^2=0.000009$: the correction shrinks 100-fold while the predicted change shrinks only tenfold.
 
       **Compare cases.** For the two-sum graph $g=(x+y)\cdot(y+z)$ pictured above:
 
@@ -271,7 +273,7 @@ knowledge_points:
       | $y$ | 2 | $6\cdot1$ and $3\cdot1$ | $\partial g/\partial y=9$ |
       | $z$ | 1 | $3\cdot1$ | $\partial g/\partial z=3$ |
 
-      **Where it shows up.** Training needs $\partial L/\partial w$ for every weight. Backpropagation, the next lesson, starts at the loss: one backward sweep reuses shared products for every weight.
+      **Where it shows up.** Adjusting every weight to reduce loss needs a derivative for each one; tracing inputs separately would repeat shared products such as $\partial L/\partial e\cdot\partial e/\partial p$. Backpropagation, the next lesson, computes each shared product once in a backward sweep and reuses it for every input that needs it.
     problems:
       - cg-chaining-paths-basics
       - cgp-why-multiply-path
