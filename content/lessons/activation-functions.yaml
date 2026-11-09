@@ -1,98 +1,255 @@
 concept: activation-functions
-version: 3
+version: 4
 objective: |
-  **Goal:** explain why neural networks need nonlinear activations and compute common activation outputs and slopes.
+  **Goal:** explain why a network needs a bending function between its layers, compute ReLU, sigmoid and tanh, and use their slopes to say how a small change in a score changes the output.
 where_this_fits: |
-  A perceptron uses one threshold to divide house-feature inputs with a flat boundary. Stacking weighted sums alone still gives a flat rule, which cannot capture curved price patterns. The house-price network therefore needs nonlinear activation functions between its layers so that several simple computations can represent a more flexible relationship.
+  A perceptron computes one weighted score and passes it through a step, so it can only draw a straight boundary. To follow curved patterns, a network arranges neurons in layers, and each layer's outputs become the next layer's inputs. But stacking weighted sums on their own doesn't help, and the step is flat almost everywhere, so its derivative is 0 and can't tell training which way to nudge a weight. This lesson finds the missing piece, the **activation function**, in three steps:
+
+  1. See why stacked weighted sums stay a straight line.
+  2. Meet three activations that bend a score: ReLU, sigmoid and tanh.
+  3. Find their slopes, which tell training how a nudge to a score changes the output.
 knowledge_points:
   - id: act-stacking-stays-straight
-    title: Linear layers alone collapse to one linear rule
+    title: Stacking straight-line rules gives a straight line
     explain: |
-      **What a linear layer is.** It maps an input vector to weighted sums plus a bias, such as $z=Wx+b$.
+      **The question.** A neuron's score, a weighted sum plus a bias, is a straight-line rule: draw the score against one input and you get a line. If you feed one neuron's score into a second neuron's weighted sum, can the result curve?
 
-      **How it works.** If two layers contain only weighted sums, then $W_2(W_1x+b_1)+b_2=(W_2W_1)x+(W_2b_1+b_2)$, which is still one affine rule. Matrix multiplication and addition preserve affine structure, so adding more such layers cannot make the house-price relationship curved.
+      **Picture it.** Take one input $x$. The first rule is $u=2x+1$ and the second is $y=3u-4$. The grey line is $y$ when nothing sits between the two rules: it is the straight line $y=6x-1$. The green dashed line puts $\max(0,u)$, the larger of $0$ and $u$, between them: it keeps a positive $u$ and turns a negative $u$ into $0$. Up to $x=-0.5$, $u$ is negative, so the green line stays flat at $-4$; after that it follows the grey line. That corner is a bend that no straight line can make.
 
-      **Why this is useful.** This tells us why a deeper house-price model must place a nonlinear operation between its weighted-sum layers.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Output y against input x for two stacked rules. Without anything between them the stack is the straight line y = 6x − 1, rising 6 per step at x = −1, 0, 1 (values −7, −1, 5). With max(0, u) between them the line is flat at −4 until x = −0.5, then rises: values −4, −1, 5.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M80 200 H576 M320 380 V38" stroke="#d4d4d4" fill="#171717" fill-opacity="0"/>
+      <path d="M80.0 380.0 L560.0 56.0" stroke="#737373" stroke-width="3" fill="#171717" fill-opacity="0"/>
+      <path d="M80.0 272.0 L240.0 272.0 L560.0 56.0" stroke="#10b981" stroke-width="3" stroke-dasharray="10 7" fill="#171717" fill-opacity="0"/>
+      <circle cx="160.0" cy="326.0" r="4" fill="#737373"/>
+      <circle cx="320.0" cy="218.0" r="4" fill="#737373"/>
+      <circle cx="480.0" cy="110.0" r="4" fill="#737373"/>
+      <circle cx="160.0" cy="272.0" r="4" fill="#10b981"/>
+      <circle cx="320.0" cy="218.0" r="4" fill="#10b981"/>
+      <circle cx="480.0" cy="110.0" r="4" fill="#10b981"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="168" y="344" fill="#737373">−7</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="156" y="262" fill="#10b981" text-anchor="middle">−4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="330" y="236">−1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="466" y="102" text-anchor="end">5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="410" y="46" fill="#737373">nothing between: y = 6x − 1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="88" y="242" fill="#10b981">max(0, u) between: bends</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="88" y="260" fill="#10b981">at x = −0.5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="582" y="205">x</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="328" y="52">y</text>
+      <path d="M160 196 V204" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="160" y="220" fill="#737373" text-anchor="middle">−1</text>
+      <path d="M480 196 V204" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="480" y="220" fill="#737373" text-anchor="middle">1</text>
+      </g>
+      </svg>
+      ```
+
+      **The idea.** Feeding a straight-line rule into another always gives a straight-line rule. A **linear layer** is a set of neurons that each compute a weighted sum of their inputs plus a bias. For one input, two of them stacked give
+
+      $$a(cx+d)+e=(ac)x+(ad+e),$$
+
+      one slope $ac$ and one intercept $ad+e$. More inputs multiply out the same way: $3(2x_1+x_2+1)-4=6x_1+3x_2-1$. So any stack of linear layers equals a single one. To make extra layers count, a network applies a function whose graph is not a straight line to each score before passing it on: a nonlinear **activation function**. The perceptron's step is one, but its zero slope makes it a poor choice for training.
+
+      **Common confusion.** “More layers always make a more powerful model.” Not on their own. Without an activation between them, ten linear layers can only ever give each output one weighted sum of the inputs plus a bias.
     worked: |
-      This example shows the calculation.
-      For scalar layers:
+      Combine $u=2x+1$ and $y=3u-4$ into one rule, then compare it with the version that has $\max(0,u)$ between the layers.
 
-      $$
-      \begin{aligned}
-      z_1 &= 2x+1,\\
-      z_2 &= 3z_1-4.
-      \end{aligned}
-      $$
+      1. **Substitute the first rule into the second.**
+         $$y=3(2x+1)-4.$$
 
-      Substitution gives:
+      2. **Multiply out the bracket.**
+         $$y=6x+3-4.$$
 
-      $$z_2=3(2x+1)-4=6x-1,$$
+      3. **Collect the constants.**
+         $$y=6x-1.$$
 
-      still a straight-line rule.
+      4. **Check at one input, $x=1$.**
+         $$u=2(1)+1=3,\qquad y=3(3)-4=5=6(1)-1.$$
+
+      **Compare cases.** A straight line rises by the same amount for each equal step in $x$; a bent one doesn't.
+
+      | $x$ | $u=2x+1$ | $y$, nothing between | $y$, $\max(0,u)$ between |
+      | --- | --- | --- | --- |
+      | $-1$ | $-1$ | $-7$ | $-4$ |
+      | $0$ | $1$ | $-1$ | $-1$ |
+      | $1$ | $3$ | $5$ | $5$ |
+      | Rise per step | | $6$, then $6$ | $3$, then $6$ |
+
+      **Where it shows up.** A house-price network built from many linear layers with nothing between them is the same kind of rule as linear regression's single weighted sum. The activations between layers are what let it follow a price that, say, rises faster for bigger houses.
     problems:
-      [
-        act-stacking-stays-straight-basics,
-        actp-why-not-more-layers,
-        actp-what-bends,
-        actp-linear-candidate,
-        actp-stack-collapse,
-        actp-collapse-template,
-        actp-robot-linear,
-      ]
+      - act-stacking-stays-straight-basics
+      - actp-stack-self-explain
+      - actp-why-not-more-layers
+      - actp-what-bends
+      - actp-linear-candidate
+      - actp-stack-collapse
+      - actp-collapse-template
+      - actp-equal-steps
+      - actp-robot-linear
   - id: act-relu-sigmoid-tanh
-    title: ReLU, sigmoid and tanh change each score
+    title: ReLU, sigmoid and tanh
     explain: |
-      **What an activation function is.** It is a function applied to a neuron's weighted score before that value is passed onward.
+      **The question.** Which bending functions do networks actually use between layers, and what does each one do to a score?
 
-      **How it works.** ReLU returns $\max(0,z)$; sigmoid returns $1/(1+e^{-z})$ between 0 and 1; tanh returns a value between $-1$ and 1. At house-model score $z=0.5$, ReLU gives 0.5, sigmoid gives about 0.62 and tanh about 0.46. Each changes the score differently.
+      **Picture it.** The three curves show the output for each score $z$ from $-3$ to $3$. Green **ReLU** is flat at $0$ for negative scores and passes positive scores through unchanged, with one corner at $0$. Blue **sigmoid** rises smoothly from near $0$ to near $1$ and crosses $0.5$ at $z=0$. Amber **tanh** has the same S shape but runs from near $-1$ to near $1$ and crosses $0$ at $z=0$.
 
-      **Why this is useful.** ReLU lets hidden house-price units represent bends, while sigmoid can express a bounded yes-or-no probability when the task calls for one.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" aria-label="ReLU, sigmoid and tanh plotted against the score z from −3 to 3. ReLU is 0 for negative z and equals z for positive z. Sigmoid rises smoothly from near 0 to near 1 and is 0.5 at z = 0. Tanh rises smoothly from near −1 to near 1 and is 0 at z = 0.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M50 300 H604 M320 396 V60" stroke="#d4d4d4" fill="#171717" fill-opacity="0"/>
+      <path d="M50 220 H590" stroke="#d4d4d4" stroke-dasharray="4 4"/>
+      <path d="M50 380 H590" stroke="#d4d4d4" stroke-dasharray="4 4"/>
+      <path d="M50.0 300.0 L320.0 300.0 L590.0 60.0" stroke="#10b981" stroke-width="3" fill="#171717" fill-opacity="0"/>
+      <path d="M50.0 296.2 L54.5 296.0 L59.0 295.8 L63.5 295.6 L68.0 295.4 L72.5 295.2 L77.0 295.0 L81.5 294.7 L86.0 294.5 L90.5 294.2 L95.0 293.9 L99.5 293.6 L104.0 293.3 L108.5 293.0 L113.0 292.7 L117.5 292.4 L122.0 292.0 L126.5 291.7 L131.0 291.3 L135.5 290.9 L140.0 290.5 L144.5 290.0 L149.0 289.6 L153.5 289.1 L158.0 288.7 L162.5 288.2 L167.0 287.6 L171.5 287.1 L176.0 286.6 L180.5 286.0 L185.0 285.4 L189.5 284.8 L194.0 284.2 L198.5 283.5 L203.0 282.9 L207.5 282.2 L212.0 281.5 L216.5 280.8 L221.0 280.0 L225.5 279.3 L230.0 278.5 L234.5 277.7 L239.0 276.9 L243.5 276.0 L248.0 275.2 L252.5 274.3 L257.0 273.5 L261.5 272.6 L266.0 271.7 L270.5 270.7 L275.0 269.8 L279.5 268.9 L284.0 267.9 L288.5 266.9 L293.0 266.0 L297.5 265.0 L302.0 264.0 L306.5 263.0 L311.0 262.0 L315.5 261.0 L320.0 260.0 L324.5 259.0 L329.0 258.0 L333.5 257.0 L338.0 256.0 L342.5 255.0 L347.0 254.0 L351.5 253.1 L356.0 252.1 L360.5 251.1 L365.0 250.2 L369.5 249.3 L374.0 248.3 L378.5 247.4 L383.0 246.5 L387.5 245.7 L392.0 244.8 L396.5 244.0 L401.0 243.1 L405.5 242.3 L410.0 241.5 L414.5 240.7 L419.0 240.0 L423.5 239.2 L428.0 238.5 L432.5 237.8 L437.0 237.1 L441.5 236.5 L446.0 235.8 L450.5 235.2 L455.0 234.6 L459.5 234.0 L464.0 233.4 L468.5 232.9 L473.0 232.4 L477.5 231.8 L482.0 231.3 L486.5 230.9 L491.0 230.4 L495.5 230.0 L500.0 229.5 L504.5 229.1 L509.0 228.7 L513.5 228.3 L518.0 228.0 L522.5 227.6 L527.0 227.3 L531.5 227.0 L536.0 226.7 L540.5 226.4 L545.0 226.1 L549.5 225.8 L554.0 225.5 L558.5 225.3 L563.0 225.0 L567.5 224.8 L572.0 224.6 L576.5 224.4 L581.0 224.2 L585.5 224.0 L590.0 223.8" stroke="#3b82f6" stroke-width="3" fill="#171717" fill-opacity="0"/>
+      <path d="M50.0 379.6 L54.5 379.6 L59.0 379.5 L63.5 379.5 L68.0 379.4 L72.5 379.3 L77.0 379.3 L81.5 379.2 L86.0 379.1 L90.5 379.0 L95.0 378.9 L99.5 378.8 L104.0 378.7 L108.5 378.6 L113.0 378.4 L117.5 378.2 L122.0 378.1 L126.5 377.9 L131.0 377.6 L135.5 377.4 L140.0 377.1 L144.5 376.8 L149.0 376.5 L153.5 376.1 L158.0 375.7 L162.5 375.3 L167.0 374.8 L171.5 374.3 L176.0 373.7 L180.5 373.1 L185.0 372.4 L189.5 371.7 L194.0 370.8 L198.5 369.9 L203.0 368.9 L207.5 367.9 L212.0 366.7 L216.5 365.4 L221.0 364.0 L225.5 362.5 L230.0 360.9 L234.5 359.2 L239.0 357.3 L243.5 355.3 L248.0 353.1 L252.5 350.8 L257.0 348.3 L261.5 345.7 L266.0 343.0 L270.5 340.0 L275.0 337.0 L279.5 333.8 L284.0 330.4 L288.5 326.9 L293.0 323.3 L297.5 319.6 L302.0 315.8 L306.5 311.9 L311.0 308.0 L315.5 304.0 L320.0 300.0 L324.5 296.0 L329.0 292.0 L333.5 288.1 L338.0 284.2 L342.5 280.4 L347.0 276.7 L351.5 273.1 L356.0 269.6 L360.5 266.2 L365.0 263.0 L369.5 260.0 L374.0 257.0 L378.5 254.3 L383.0 251.7 L387.5 249.2 L392.0 246.9 L396.5 244.7 L401.0 242.7 L405.5 240.8 L410.0 239.1 L414.5 237.5 L419.0 236.0 L423.5 234.6 L428.0 233.3 L432.5 232.1 L437.0 231.1 L441.5 230.1 L446.0 229.2 L450.5 228.3 L455.0 227.6 L459.5 226.9 L464.0 226.3 L468.5 225.7 L473.0 225.2 L477.5 224.7 L482.0 224.3 L486.5 223.9 L491.0 223.5 L495.5 223.2 L500.0 222.9 L504.5 222.6 L509.0 222.4 L513.5 222.1 L518.0 221.9 L522.5 221.8 L527.0 221.6 L531.5 221.4 L536.0 221.3 L540.5 221.2 L545.0 221.1 L549.5 221.0 L554.0 220.9 L558.5 220.8 L563.0 220.7 L567.5 220.7 L572.0 220.6 L576.5 220.5 L581.0 220.5 L585.5 220.4 L590.0 220.4" stroke="#f59e0b" stroke-width="3" fill="#171717" fill-opacity="0"/>
+      <circle cx="320.0" cy="260.0" r="4" fill="#3b82f6"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="514" y="122" fill="#10b981" text-anchor="end">ReLU</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="59" y="280" fill="#3b82f6">sigmoid</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="59" y="360" fill="#f59e0b">tanh</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="310" y="252" fill="#3b82f6" text-anchor="end">0.5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="44" y="225" fill="#737373" text-anchor="end">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="44" y="385" fill="#737373" text-anchor="end">−1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="610" y="305">z</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="328" y="74">output</text>
+      <path d="M140 296 V304" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="140" y="320" fill="#737373" text-anchor="middle">−2</text>
+      <path d="M500 296 V304" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="500" y="320" fill="#737373" text-anchor="middle">2</text>
+      </g>
+      </svg>
+      ```
+
+      **The idea.** Each activation takes a neuron's score $z$ and returns the value the neuron passes on. The three common ones are:
+
+      $$\operatorname{ReLU}(z)=\max(0,z),$$
+
+      $$\sigma(z)=\frac{1}{1+e^{-z}},$$
+
+      $$\tanh(z)=\frac{e^{z}-e^{-z}}{e^{z}+e^{-z}}.$$
+
+      ReLU, short for rectified linear unit, keeps positive scores and replaces negative ones with $0$. The sigmoid, written $\sigma$ (the Greek letter sigma), squashes any score into the range between $0$ and $1$. The hyperbolic tangent, tanh (a name borrowed from trigonometry; you only need the formula), squashes any score into the range between $-1$ and $1$. Here $e\approx2.718$ is the base of the exponential from the derivatives lesson. ReLU has no upper limit; sigmoid and tanh level off at both ends.
+
+      **Common confusion.** “Sigmoid is just the step with a different name: it outputs 0 or 1.” No. The step jumps from $0$ to $1$ at $z=0$, while the sigmoid changes smoothly, so a score of $0$ gives $0.5$ and a score of $1$ gives about $0.73$. It only gets close to $0$ or $1$ for scores far from $0$.
     worked: |
-      This example shows the calculation.
-      For $z=0.5$:
+      Pass the score $z=2$ through each of the three activations.
 
-      $$
-      \begin{aligned}
-      \operatorname{ReLU}(z) &= 0.5,\\
-      \sigma(z) &= 1/(1+e^{-0.5})\approx0.62,\\
-      \tanh(z) &\approx0.46.
-      \end{aligned}
-      $$
+      1. **ReLU keeps a positive score.**
+         $$\operatorname{ReLU}(2)=\max(0,2)=2.$$
+
+      2. **Find the two exponentials.**
+         $$e^{2}\approx7.389,\qquad e^{-2}=\frac{1}{e^{2}}\approx0.135.$$
+
+      3. **Finish the sigmoid.**
+         $$\sigma(2)=\frac{1}{1+0.135}\approx0.881.$$
+
+      4. **Finish tanh.**
+         $$\tanh(2)=\frac{7.389-0.135}{7.389+0.135}=\frac{7.254}{7.524}\approx0.964.$$
+
+      **Compare cases.**
+
+      | Score $z$ | $\operatorname{ReLU}(z)$ | $\sigma(z)$ | $\tanh(z)$ |
+      | --- | --- | --- | --- |
+      | $-2$ | $0$ | $0.119$ | $-0.964$ |
+      | $0$ | $0$ | $0.5$ | $0$ |
+      | $2$ | $2$ | $0.881$ | $0.964$ |
+
+      **Where it shows up.** The layers before a house-price network's final output usually use ReLU: it bends the stack, is cheap to compute and, as the next part shows, its slope doesn't fade for large scores. A sigmoid suits a final yes-or-no output, such as whether a house sells above its asking price, because its 0-to-1 output can be read as a probability, and answering yes above $0.5$ turns it into a decision.
     problems:
-      [
-        act-relu-sigmoid-tanh-basics,
-        actp-relu-values,
-        actp-tanh-range,
-        actp-relu-sum-template,
-        actp-sigmoid-template,
-        actp-relu-bend,
-        actp-why-sigmoid-output,
-      ]
+      - act-relu-sigmoid-tanh-basics
+      - actp-squash-self-explain
+      - actp-relu-values
+      - actp-tanh-range
+      - actp-relu-sum-template
+      - actp-sigmoid-template
+      - actp-relu-bend
+      - actp-why-sigmoid-output
   - id: act-slopes
-    title: Activation slopes guide training
+    title: Activation slopes say how a nudge passes through
     explain: |
-      **What an activation slope is.** It is the derivative of the activation output with respect to its input score.
+      **The question.** Training nudges a network's weights, and each nudge changes a neuron's score a little. When that score passes through an activation, how much does the output change?
 
-      **How it works.** ReLU has slope 1 when $z>0$ and 0 when $z<0$. Sigmoid has slope $\sigma(z)(1-\sigma(z))$, which is at most 0.25 and gets close to zero for large positive or negative scores. Tanh has slope $1-\tanh^2(z)$. These slopes tell gradient calculations how a score change affects the next layer. The small slope of a nearly flat sigmoid passes only a small gradient backward, which can slow learning.
+      **Picture it.** The blue curve is the sigmoid. Each red line touches it at one score and has the curve's slope there. At $z=0$ the curve is steepest, with slope $0.25$. At $z=3$ the output is about $0.95$ and the curve has nearly levelled off, so its slope is only about $0.045$: a nudge to the score there barely moves the output.
 
-      **Why this is useful.** Activation derivatives let the training process calculate how hidden house-price units contribute to prediction error.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="The sigmoid curve with two tangent lines. At z = 0 the curve is steepest and the tangent has slope 0.25. At z = 3 the curve has flattened and the tangent has slope about 0.045.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M45 330 H606 M320 330 V49" stroke="#d4d4d4" fill="#171717" fill-opacity="0"/>
+      <path d="M45 70 H595" stroke="#d4d4d4" stroke-dasharray="4 4"/>
+      <path d="M45.0 328.3 L47.8 328.2 L50.5 328.1 L53.2 328.0 L56.0 327.9 L58.8 327.8 L61.5 327.7 L64.2 327.5 L67.0 327.4 L69.8 327.3 L72.5 327.1 L75.2 327.0 L78.0 326.8 L80.8 326.7 L83.5 326.5 L86.2 326.3 L89.0 326.2 L91.7 326.0 L94.5 325.8 L97.2 325.5 L100.0 325.3 L102.8 325.1 L105.5 324.8 L108.3 324.6 L111.0 324.3 L113.8 324.0 L116.5 323.7 L119.2 323.4 L122.0 323.1 L124.8 322.7 L127.5 322.4 L130.2 322.0 L133.0 321.6 L135.8 321.2 L138.5 320.8 L141.2 320.3 L144.0 319.8 L146.8 319.3 L149.5 318.8 L152.2 318.2 L155.0 317.7 L157.8 317.1 L160.5 316.4 L163.2 315.8 L166.0 315.1 L168.8 314.4 L171.5 313.6 L174.2 312.8 L177.0 312.0 L179.8 311.2 L182.5 310.3 L185.3 309.3 L188.0 308.4 L190.8 307.4 L193.5 306.3 L196.2 305.2 L199.0 304.1 L201.8 302.9 L204.5 301.6 L207.2 300.3 L210.0 299.0 L212.8 297.6 L215.5 296.2 L218.2 294.7 L221.0 293.1 L223.8 291.5 L226.5 289.8 L229.2 288.1 L232.0 286.3 L234.8 284.5 L237.5 282.6 L240.2 280.6 L243.0 278.6 L245.8 276.5 L248.5 274.3 L251.2 272.1 L254.0 269.8 L256.8 267.5 L259.5 265.1 L262.2 262.6 L265.0 260.1 L267.8 257.5 L270.5 254.8 L273.2 252.1 L276.0 249.4 L278.8 246.6 L281.5 243.7 L284.2 240.8 L287.0 237.9 L289.8 234.9 L292.5 231.8 L295.2 228.8 L298.0 225.7 L300.8 222.5 L303.5 219.4 L306.2 216.2 L309.0 213.0 L311.8 209.7 L314.5 206.5 L317.2 203.2 L320.0 200.0 L322.8 196.8 L325.5 193.5 L328.2 190.3 L331.0 187.0 L333.8 183.8 L336.5 180.6 L339.2 177.5 L342.0 174.3 L344.8 171.2 L347.5 168.2 L350.3 165.1 L353.0 162.1 L355.8 159.2 L358.5 156.3 L361.2 153.4 L364.0 150.6 L366.8 147.9 L369.5 145.2 L372.2 142.5 L375.0 139.9 L377.8 137.4 L380.5 134.9 L383.2 132.5 L386.0 130.2 L388.8 127.9 L391.5 125.7 L394.2 123.5 L397.0 121.4 L399.8 119.4 L402.5 117.4 L405.3 115.5 L408.0 113.7 L410.8 111.9 L413.5 110.2 L416.2 108.5 L419.0 106.9 L421.8 105.3 L424.5 103.8 L427.2 102.4 L430.0 101.0 L432.8 99.7 L435.5 98.4 L438.2 97.1 L441.0 95.9 L443.8 94.8 L446.5 93.7 L449.2 92.6 L452.0 91.6 L454.8 90.7 L457.5 89.7 L460.2 88.8 L463.0 88.0 L465.8 87.2 L468.5 86.4 L471.2 85.6 L474.0 84.9 L476.8 84.2 L479.5 83.6 L482.2 82.9 L485.0 82.3 L487.8 81.8 L490.5 81.2 L493.2 80.7 L496.0 80.2 L498.8 79.7 L501.5 79.2 L504.2 78.8 L507.0 78.4 L509.8 78.0 L512.5 77.6 L515.2 77.3 L518.0 76.9 L520.8 76.6 L523.5 76.3 L526.2 76.0 L529.0 75.7 L531.8 75.4 L534.5 75.2 L537.2 74.9 L540.0 74.7 L542.8 74.5 L545.5 74.2 L548.2 74.0 L551.0 73.8 L553.8 73.7 L556.5 73.5 L559.2 73.3 L562.0 73.2 L564.8 73.0 L567.5 72.9 L570.2 72.7 L573.0 72.6 L575.8 72.5 L578.5 72.3 L581.2 72.2 L584.0 72.1 L586.8 72.0 L589.5 71.9 L592.2 71.8 L595.0 71.7" stroke="#3b82f6" stroke-width="3" fill="#171717" fill-opacity="0"/>
+      <path d="M248.5 284.5 L391.5 115.5" stroke="#ef4444" stroke-width="2.5" fill="#171717" fill-opacity="0"/>
+      <circle cx="320.0" cy="200.0" r="4" fill="#171717"/>
+      <path d="M397.0 101.1 L573.0 63.5" stroke="#ef4444" stroke-width="2.5" fill="#171717" fill-opacity="0"/>
+      <circle cx="485.0" cy="82.3" r="4" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="334" y="222" fill="#ef4444">z = 0: slope 0.25</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="463" y="56" fill="#ef4444" text-anchor="middle">z = 3: slope ≈ 0.045</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="50" y="62" fill="#737373">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="122" y="309" fill="#3b82f6">sigmoid</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="612" y="335">z</text>
+      <path d="M100 326 V334" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="100" y="350" fill="#737373" text-anchor="middle">−4</text>
+      <path d="M210 326 V334" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="210" y="350" fill="#737373" text-anchor="middle">−2</text>
+      <path d="M430 326 V334" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="430" y="350" fill="#737373" text-anchor="middle">2</text>
+      <path d="M540 326 V334" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="540" y="350" fill="#737373" text-anchor="middle">4</text>
+      </g>
+      </svg>
+      ```
+
+      **The idea.** An **activation slope** is the derivative of an activation's output with respect to its score. As with any derivative, for a small change in score, change in output ≈ slope × change in score. The three slopes are:
+
+      $$\operatorname{ReLU}'(z)=1\text{ for }z>0,\qquad \operatorname{ReLU}'(z)=0\text{ for }z<0,$$
+
+      $$\sigma'(z)=\sigma(z)\,(1-\sigma(z)),$$
+
+      $$\tanh'(z)=1-\tanh^2(z),$$
+
+      where $\tanh^2(z)$ means the tanh output squared.
+
+      ReLU has no single slope at its corner, $z=0$; by convention it is taken as $0$ there. You will derive the sigmoid and tanh slopes in the chain-rule lesson; for now take them as given, and the worked example checks the sigmoid one with a nudge. A flat stretch where the slope is close to $0$ is called **saturation**.
+
+      **Common confusion.** “A neuron with a big output must have a big slope.” No: height and slope are different things. At $z=4$ the sigmoid outputs $0.982$, but its slope is only $0.018$, because the curve is almost flat there.
     worked: |
-      This example shows the calculation.
-      At $z=0$, sigmoid is 0.5 and its slope is $0.5(1-0.5)=0.25$. At a score far from zero the output saturates and the slope is smaller.
+      Find the sigmoid's slope at $z=0$, then check it by nudging the score from $0$ to $0.1$.
+
+      1. **Find the output.**
+         $$\sigma(0)=\frac{1}{1+e^{0}}=\frac{1}{2}=0.5.$$
+
+      2. **Find the slope.**
+         $$\sigma'(0)=0.5\,(1-0.5)=0.25.$$
+
+      3. **Predict the change for a nudge of $0.1$.**
+         $$\text{change}\approx0.25\times0.1=0.025.$$
+
+      4. **Compare with the actual change.**
+         $$\sigma(0.1)-\sigma(0)\approx0.52498-0.5=0.02498.$$
+
+      **Compare cases.**
+
+      | Score $z$ | $\sigma(z)$ | $\sigma'(z)$ | $\tanh'(z)$ | $\operatorname{ReLU}'(z)$ |
+      | --- | --- | --- | --- | --- |
+      | $-4$ | $0.018$ | $0.018$ | $0.001$ | $0$ |
+      | $-2$ | $0.119$ | $0.105$ | $0.071$ | $0$ |
+      | $0$ | $0.5$ | $0.25$ | $1$ | $0$ (corner) |
+      | $2$ | $0.881$ | $0.105$ | $0.071$ | $1$ |
+      | $4$ | $0.982$ | $0.018$ | $0.001$ | $1$ |
+
+      **Where it shows up.** A weight nudge changes a neuron's score, and the loss only feels it through the output change, slope × score change. If the slope is near 0, as in a saturated sigmoid (output near 1 but hardly moving) or a ReLU whose score is always negative, the loss barely changes, so training gets almost no signal for that weight.
     problems:
-      [
-        act-slopes-basics,
-        actp-relu-slope,
-        actp-sigmoid-slope-template,
-        actp-nudge-estimate,
-        actp-tanh-slope,
-        actp-why-saturation,
-        actp-dead-unit,
-      ]
+      - act-slopes-basics
+      - actp-nudge-self-explain
+      - actp-relu-slope
+      - actp-sigmoid-slope-template
+      - actp-nudge-estimate
+      - actp-tanh-slope
+      - actp-why-saturation
+      - actp-dead-unit
 final: act-explain-layers
 summary: |
-  - Weighted sums alone collapse into one affine rule, so hidden layers need nonlinear activations.
-  - ReLU, sigmoid and tanh produce different output ranges and shapes.
-  - Their derivatives determine how gradients pass through a network.
+  - Stacked linear layers multiply out into one straight-line rule, so a network needs a nonlinear activation between its layers.
+  - ReLU keeps positive scores and zeroes negative ones; sigmoid squashes a score into 0 to 1 and tanh into −1 to 1.
+  - An activation's slope says how much a small change in its score changes its output; on flat, saturated stretches a change in score barely changes the output.
 
-  **Next:** The multilayer perceptron lesson stacks these activated layers to predict a house price.
+  **Next:** The forward-pass lesson stacks layers with activations between them to turn house features into a predicted price.

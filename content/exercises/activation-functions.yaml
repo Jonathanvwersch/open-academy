@@ -28,11 +28,11 @@ exercises:
         }
       - {
           id: d,
-          text: "One affine rule, since composing weighted sums and biases still gives one.",
+          text: "One straight-line rule, since a weighted sum fed into another multiplies out into one.",
           correct: true,
-          feedback: "Composing affine rules changes their coefficients but keeps one weighted sum plus bias.",
+          feedback: "Multiplying out changes the slope and intercept but leaves one weighted sum plus bias.",
         }
-    solution: "Stacked linear layers still form one affine rule, so depth alone cannot add a bend."
+    solution: "Stacked linear layers multiply out into one weighted sum plus bias, a single straight-line rule, so depth alone cannot add a bend."
   - id: act-relu-sigmoid-tanh-basics
     dimension: conceptual
     type: mc
@@ -55,7 +55,7 @@ exercises:
         }
       - {
           id: c,
-          text: "A function applied to a neuron's weighted score before the value is passed to the next layer",
+          text: "A function applied to a neuron's weighted score before the value is passed to the next layer.",
           correct: true,
           feedback: "It transforms the weighted score before the next layer uses that value.",
         }
@@ -757,3 +757,115 @@ exercises:
           feedback: "ReLU doesn't level off at 1. For negative scores it's flat at 0.",
         }
     solution: "With every score negative, ReLU outputs 0 with slope 0, so nudging the neuron's weights or bias doesn't move its output. It's a dead unit."
+  - id: actp-stack-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, $u=2x+1$ then $y=3u-4$ gives $y=6x-1$. Why is the combined slope $6$ rather than $2+3=5$?"
+    options:
+      - id: a
+        text: "Each unit of $x$ raises $u$ by 2, and each unit of $u$ raises $y$ by 3, so $y$ rises $2\\times3$."
+        correct: true
+        feedback: "The second rule scales every change in $u$, so the two slopes multiply."
+      - id: b
+        text: "The second rule's intercept $-4$ adds one more unit to the slope, so $5$ becomes $6$."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "An intercept shifts the line up or down; it never changes the slope. The 6 comes from $3\\times2$."
+      - id: c
+        text: "Stacking two layers always doubles the larger of the two slopes, and $3$ doubled is $6$."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "That only matches here by chance. With $u=4x$ and $y=3u$ the combined slope is $4\\times3=12$, not $8$."
+      - id: d
+        text: "The slopes add to $5$, and the first rule's bias of $1$ adds one more to the slope."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The first bias ends up in the intercept: $3(1)-4=-1$. The slope is $3\\times2=6$."
+    solution: "Substituting gives $3(2x+1)-4$, and multiplying out the bracket multiplies the slopes: $3\\times2=6$. Intercepts only shift the line."
+  - id: actp-equal-steps
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A two-layer model gives outputs $y=-2,\\ 1,\\ 4,\\ 10$ at inputs $x=0,\\ 1,\\ 2,\\ 3$. Could it be two linear layers with nothing between them?"
+    options:
+      - id: a
+        text: "No: the rise per step is 3, 3, then 6, and a straight-line rule rises equally each step."
+        correct: true
+        feedback: "Unequal rises for equal steps in $x$ mean the graph bends, which needs an activation."
+      - id: b
+        text: "Yes: the outputs keep increasing, and increasing outputs are what a straight-line rule gives."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Increasing isn't enough. A straight line must rise by the same amount each step, but here the last rise is 6, not 3."
+      - id: c
+        text: "Yes: two linear layers can bend once, at the input where the second layer takes over."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Two linear layers multiply out into one straight-line rule, so there is no point where a bend can happen."
+      - id: d
+        text: "No: the first output is negative, and a straight-line rule can't give a negative output."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Straight lines can be negative: $y=6x-1$ gives $-1$ at $x=0$. The real sign is the unequal rises."
+    solution: "The rises are $1-(-2)=3$, $4-1=3$ and $10-4=6$. Stacked linear layers equal one straight line, which rises equally per step, so this model must have an activation between its layers."
+  - id: actp-squash-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, why is $\\sigma(2)$ about $0.881$ rather than $1$, even though $2$ is a fairly large score?"
+    options:
+      - id: a
+        text: "$e^{-2}$ is about $0.135$, not $0$, so the fraction is $1/1.135$, which is below 1."
+        correct: true
+        feedback: "The sigmoid only gets close to 1 once $e^{-z}$ is close to 0, which needs a larger score."
+      - id: b
+        text: "The sigmoid rounds each score down to the nearest tenth before it divides."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The sigmoid does no rounding; $1/(1+e^{-z})$ changes smoothly with the score."
+      - id: c
+        text: "The sigmoid subtracts $e^{-2}$ from 1, and $1-0.135$ comes to about $0.881$."
+        correct: false
+        category: math_error
+        feedback: "$1-0.135=0.865$, not $0.881$. The sigmoid divides: $1/(1+0.135)\\approx0.881$."
+      - id: d
+        text: "Sigmoid outputs are capped at $0.881$, the largest value the curve can reach."
+        correct: false
+        category: recall_failure
+        feedback: "There is no cap below 1: larger scores get closer to 1, for example $\\sigma(4)\\approx0.982$."
+    solution: "$\\sigma(2)=1/(1+e^{-2})$ and $e^{-2}\\approx0.135$ is still clearly above 0, so the result is $1/1.135\\approx0.881$. The output approaches 1 only as the score grows further."
+  - id: actp-nudge-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, the slope predicted a change of $0.025$ and the actual change was $0.02498$. Why do they almost match?"
+    options:
+      - id: a
+        text: "Over a small nudge the curve is nearly straight, so slope times nudge is a close estimate."
+        correct: true
+        feedback: "A derivative describes the curve near one point, so the estimate is good for small nudges."
+      - id: b
+        text: "The sigmoid is exactly straight near $z=0$, so the two numbers are really the same."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "They differ slightly, $0.02498$ against $0.025$, because the curve bends a little even over $0.1$."
+      - id: c
+        text: "The slope $0.25$ is the sigmoid's output at the new score $0.1$, so it predicts that output."
+        correct: false
+        category: misunderstood_definition
+        feedback: "$\\sigma(0.1)\\approx0.525$, not $0.25$. The slope is $\\sigma(z)(1-\\sigma(z))$ at the starting score."
+      - id: d
+        text: "Any nudge size would match this well, because the sigmoid's slope is $0.25$ at every score."
+        correct: false
+        category: recall_failure
+        feedback: "The slope changes along the curve: at $z=3$ it is only about $0.045$, so large nudges drift from the estimate."
+    solution: "Change in output is about slope times change in score only for small changes, where the curve is nearly straight. Over $0.1$ the sigmoid bends very little, so $0.25\\times0.1=0.025$ is within $0.00002$ of the real change."
