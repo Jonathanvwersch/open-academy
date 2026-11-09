@@ -332,7 +332,7 @@ exercises:
     prompt:
       The model's area weight times a house's area gives 300 thousand pounds. Its bedroom weight
       times the bedroom count gives 20 thousand pounds. The bias adds 50 thousand pounds. What is
-      its predicted price, in thousands of pounds?
+      the house's predicted price, in thousands of pounds?
     options:
       - id: a
         text: 370, from adding both contributions and one bias
@@ -500,7 +500,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 3
+    difficulty: 1
     est_minutes: 2
     prompt: In the house-price model $3\cdot\text{area}+10\cdot\text{bedrooms}+50$, prices are in thousands of pounds. What does the bias of 50 mean?
     options:
@@ -524,7 +524,7 @@ exercises:
     dimension: implementation
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
     prompt: "Why does `X @ w + b` give one price per house, while `X * w + b` alone does not? Here `X` stores 200 houses with area and bedrooms in two columns, `w` contains the two weights, and `b` is one bias number."
     options:

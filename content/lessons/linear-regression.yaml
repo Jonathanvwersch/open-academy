@@ -158,8 +158,8 @@ knowledge_points:
       - lrp-why-hold-fixed
       - lrp-change-template
       - lrp-negative
-      - lrp-both-template
       - lrp-zero-input
+      - lrp-both-template
       - lrp-units
       - lrp-robot-change
   - id: lr-batch-predictions
