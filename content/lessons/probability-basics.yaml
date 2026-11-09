@@ -1,189 +1,295 @@
 concept: probability-basics
-version: 1
+version: 2
 objective: |
-  **Goal:** compute expectations and conditional probabilities from house-sale data.
+  **Goal:** describe an uncertain outcome with probabilities: find the chance of an event and its complement, list a distribution, compute an expected value, and update a chance with a conditional probability.
 where_this_fits: |
-  Training and evaluation splits separated house sales used to fit a model from sales used to check it. That check gave us a way to measure performance on unseen examples, but it did not describe how likely different sale outcomes are or how an observed feature changes those chances. Probability basics gives us language for uncertainty in the same house-sale data: events, distributions, expected values and conditional probabilities. It prepares us to make yes-or-no decisions with a perceptron next.
+  A house-price model gives one best guess, but the real sale can still go several ways: above the asking price or not, with zero, one or more offers. The train-test-split lesson measured how wrong a model was on unseen sales; it gave you no way to say how likely each outcome is, or how that changes when you learn something new. This lesson builds that language, **probability**, in four steps:
+
+  1. Give an outcome a chance between 0 and 1.
+  2. List the chance of every possible number, such as how many offers a house gets.
+  3. Average those values, weighted by their chances.
+  4. Update a chance once you know something extra.
+
+  Next comes the perceptron, a model that answers yes-or-no questions such as "above asking or not?"
 knowledge_points:
   - id: pb-events
     title: Events and probabilities
     explain: |
-      **What an event is.** An outcome is one possible result of an observation. An event is a set of outcomes. A probability is a number from 0 to 1 describing how likely an event is. Probabilities for all possible outcomes add to 1.
+      **The question.** Before a house sells, you don't know whether it will sell above its asking price. How do you put a number on how likely that is?
 
-      **How to estimate it.** For a house sale, we record whether it sells above asking or not. Let $A$ be the event that it sells above asking. In eight past sales, three were above asking, so a frequency estimate divides the matching count by the total:
+      **Picture it.** Start with something simpler: one roll of a fair six-sided die. There are six possible results, called **outcomes**, and each is equally likely. Ask about "rolling at least 5". Two of the six faces, 5 and 6, count; the other four don't.
 
-      $$P(A) \approx \frac{3}{8}$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 220" aria-label="A row of six die faces numbered 1 to 6. Faces 5 and 6 are highlighted as event A, at least 5, with probability 2 of 6 equals 1/3; faces 1 to 4 are the complement, not A, with probability 4 of 6 equals 2/3">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+          <text x="40" y="36">One roll of a fair die: six equally likely outcomes</text>
+          <rect x="40" y="60" width="70" height="70" rx="10" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+          <text x="75" y="104" text-anchor="middle" font-size="26" fill="#171717">1</text>
+          <rect x="126" y="60" width="70" height="70" rx="10" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+          <text x="161" y="104" text-anchor="middle" font-size="26" fill="#171717">2</text>
+          <rect x="212" y="60" width="70" height="70" rx="10" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+          <text x="247" y="104" text-anchor="middle" font-size="26" fill="#171717">3</text>
+          <rect x="298" y="60" width="70" height="70" rx="10" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+          <text x="333" y="104" text-anchor="middle" font-size="26" fill="#171717">4</text>
+          <rect x="384" y="60" width="70" height="70" rx="10" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="2.5"/>
+          <text x="419" y="104" text-anchor="middle" font-size="26" fill="#3b82f6">5</text>
+          <rect x="470" y="60" width="70" height="70" rx="10" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="2.5"/>
+          <text x="505" y="104" text-anchor="middle" font-size="26" fill="#3b82f6">6</text>
+          <path d="M40 150 V160 H368 V150" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0"/>
+          <text x="204.0" y="184" text-anchor="middle" fill="#737373">not A: 4 of 6 outcomes, 4/6 = 2/3</text>
+          <path d="M384 150 V160 H540 V150" stroke="#3b82f6" stroke-width="2" fill="#ffffff" fill-opacity="0"/>
+          <text x="462.0" y="184" text-anchor="middle" fill="#3b82f6">A: 2 of 6, 2/6 = 1/3</text>
+        </g>
+      </svg>
+      ```
 
-      $$P(A) \approx 0.375$$
+      **The idea.** An **event** is a set of outcomes picked out by a condition, such as "at least 5". Its **probability** is a number from 0 (impossible) to 1 (certain). Write it $P(A)$, read "probability of $A$", where $A$ names the event. When all outcomes are equally likely,
 
-      The **complement** of $A$ is the event that $A$ does not happen. Five sales were not above asking:
+      $$P(A)=\frac{\text{outcomes in }A}{\text{all outcomes}},$$
 
-      $$\frac{5}{8} = 0.625$$
+      so $P(\text{at least 5})=2/6=1/3$. The **complement**, "not $A$", is every other outcome. Each outcome is in exactly one of the two, so their probabilities add to 1: $P(\text{not }A)=1-P(A)=2/3$.
 
-      The two estimates are between 0 and 1 and sum to 1 because above asking and not above asking cover every sale.
+      A house sale isn't a die: nobody can list its equally likely outcomes. So count past cases instead of possible outcomes. The fraction of past cases that fell in the event is its **frequency**. Treat each past sale as one draw of the same uncertain process. For a die, counting outcomes gives the probability exactly; for sales, the fraction is the best available estimate, and it gets closer to the true chance as more sales are counted.
 
-      **Why this is useful.** The probability of an above-asking sale summarises past outcomes without claiming what one particular house will do.
+      **Common confusion.** "A probability of $1/3$ means exactly 2 of every 6 rolls will be at least 5." No: it describes the long run. Six rolls might give none or four; only over many rolls does the fraction settle near $1/3$.
     worked: |
-      This example shows how sale frequencies estimate an event's probability.
+      Of 20 past house sales, 9 sold above asking. Estimate the probability that a sale is above asking, and that it is not.
 
-      Of eight past sales, three were above asking and five were not.
+      1. **Name the event.**
+         $$A=\text{the sale is above asking}.$$
 
-      $$\frac{3}{8} = 0.375$$
+      2. **Divide the sales in the event by all sales.**
+         $$P(A)\approx\frac{9}{20}=0.45.$$
 
-      $$\frac{5}{8} = 0.625$$
+      3. **Get the complement by subtracting from 1.**
+         $$P(\text{not }A)\approx1-0.45=0.55.$$
 
-      $$0.375 + 0.625 = 1$$
+      4. **Check by counting the complement directly: 11 of the 20 sales were not above asking.**
+         $$\frac{11}{20}=0.55.$$
 
-      These frequencies estimate the chances of the two outcomes; they do not guarantee the next sale.
+      **Compare cases.**
+
+      | Sales above asking (of 20) | Estimate of $P(A)$ | Estimate of $P(\text{not }A)$ |
+      | --- | --- | --- |
+      | $0$ | $0$ | $1$ |
+      | $5$ | $0.25$ | $0.75$ |
+      | $9$ | $0.45$ | $0.55$ |
+      | $20$ | $1$ | $0$ |
+
+      **Where it shows up.** A model that answers "above asking or not?" for a sale usually outputs one number, its estimate of $P(A)$. The chance of the other label is then $1-P(A)$, so the model never needs to output it.
     problems:
-      [
-        pb-events-basics,
-        pb-frequency-fixed,
-        pb-complement-why,
-        pb-frequency-template,
-        pb-complement-counts,
-        pb-event-recover-total,
-      ]
+      - pb-events-basics
+      - pb-complement-why
+      - pb-frequency-fixed
+      - pb-complement-counts
+      - pb-complement-template
+      - pb-robot-grasp-failures
   - id: pb-distributions
     title: Random variables and distributions
     explain: |
-      **What a discrete random variable is.** It is a rule that assigns a number to each possible outcome, with a list of values that can be counted. Its **distribution** lists those possible values and the probability of each one.
+      **The question.** An event either happens or it doesn't. But many uncertain things are numbers: a house might get 0, 1, 2 or 3 offers. How do you describe the chances of a whole set of possible numbers at once?
 
-      **How to build one.** For a house sale, use the number of offers as the value. In ten past sales, two houses received zero offers, three received one, four received two and one received three. Divide each count by all ten sales:
+      **Picture it.** A game spinner has four equal sectors but only three labels: 0 points is printed on two sectors, 1 point and 2 points on one each. Each spin lands in one sector, and each sector is equally likely. Two of the four sectors show 0, so 0 points has chance $2/4=1/2$; 1 point and 2 points each have chance $1/4$. The bar chart draws those three chances.
 
-      $$\frac{2}{10} = 0.2$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="A spinner with four equal sectors labelled 0, 0, 1 and 2, beside a bar chart of its distribution: value 0 has probability 1/2, value 1 has probability 1/4 and value 2 has probability 1/4">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+          <text x="20" y="36">The spinner: four equal sectors</text>
+          <circle cx="140" cy="170" r="100" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+          <path d="M40 170 H240 M140 70 V270" stroke="#737373" stroke-width="2"/>
+          <text x="178.9" y="140.1" text-anchor="middle" font-size="26">0</text>
+          <text x="178.9" y="217.9" text-anchor="middle" font-size="26">0</text>
+          <text x="101.1" y="217.9" text-anchor="middle" font-size="26">1</text>
+          <text x="101.1" y="140.1" text-anchor="middle" font-size="26">2</text>
+          <text x="330" y="36">Its distribution</text>
+          <path d="M330 270 H610" stroke="#737373" stroke-width="1.5"/>
+          <rect x="355" y="110" width="50" height="160" fill="#3b82f6" fill-opacity="0.8"/>
+          <text x="380" y="100" text-anchor="middle" fill="#3b82f6">1/2</text>
+          <text x="380" y="294" text-anchor="middle">0</text>
+          <rect x="445" y="190" width="50" height="80" fill="#3b82f6" fill-opacity="0.8"/>
+          <text x="470" y="180" text-anchor="middle" fill="#3b82f6">1/4</text>
+          <text x="470" y="294" text-anchor="middle">1</text>
+          <rect x="535" y="190" width="50" height="80" fill="#3b82f6" fill-opacity="0.8"/>
+          <text x="560" y="180" text-anchor="middle" fill="#3b82f6">1/4</text>
+          <text x="560" y="294" text-anchor="middle">2</text>
+          <text x="470" y="320" text-anchor="middle" fill="#737373">value of X (points)</text>
+        </g>
+      </svg>
+      ```
 
-      $$\frac{3}{10} = 0.3$$
+      **The idea.** A **random variable** is a number decided by an uncertain outcome. Write it with a capital letter, such as $X$ for the points from one spin. Its **distribution** lists every value $X$ can take with the probability of each. $P(X=1)$, read "probability that $X$ equals 1", is one entry: here $1/4$. Every spin gives exactly one value, so the probabilities in a distribution are each between 0 and 1 and add to 1:
 
-      $$\frac{4}{10} = 0.4$$
+      $$\frac12+\frac14+\frac14=1.$$
 
-      $$\frac{1}{10} = 0.1$$
-
-      The distribution pairs offer counts $0$, $1$, $2$ and $3$ with these probabilities. The probabilities sum to 1 because every sale has one of those counts. This record keeps frequency differences: two offers happened more often than zero offers.
-
-      **Why this is useful.** A distribution preserves how often each offer count occurred, so you can describe typical activity without treating every possible count as equally common.
+      **Common confusion.** "$X$ can be 0, 1 or 2, so each value has chance $1/3$." No: values are not outcomes. The outcomes are the four equally likely sectors; a value is the number a sector shows. Count the sectors behind each value. The value 0 is printed on two sectors, so it gets twice the chance of each of the others.
     worked: |
-      This example shows the distribution of offers in ten house sales.
+      Take the same 20 past house sales: 4 got 0 offers, 6 got 1 offer, 8 got 2 offers and 2 got 3 offers. Let $X$ be the number of offers a sale gets. Estimate the distribution of $X$, then the chance of at least two offers.
 
-      The counts for zero, one, two and three offers were two, three, four and one:
+      1. **Estimate the chance of 0 offers by dividing its count by all 20 sales.**
+         $$P(X=0)\approx\frac{4}{20}=0.2.$$
 
-      $$\frac{2}{10} = 0.2$$
+      2. **Do the same for 1, 2 and 3 offers.**
+         $$P(X=1)\approx0.3,\quad P(X=2)\approx0.4,\quad P(X=3)\approx0.1.$$
 
-      $$\frac{3}{10} = 0.3$$
+      3. **Check that the distribution adds to 1.**
+         $$0.2+0.3+0.4+0.1=1.$$
 
-      $$\frac{4}{10} = 0.4$$
+      4. **"At least two offers", written $X\ge2$, is an event: add the chances of the values it covers, 2 and 3.**
+         $$P(X\ge2)\approx0.4+0.1=0.5.$$
 
-      $$\frac{1}{10} = 0.1$$
+      **Compare cases.**
 
-      $$0.2 + 0.3 + 0.4 + 0.1 = 1$$
+      | Event | Values of $X$ it covers | Probability |
+      | --- | --- | --- |
+      | exactly 2 offers | $2$ | $0.4$ |
+      | at least 2 offers | $2,3$ | $0.5$ |
+      | at most 1 offer | $0,1$ | $0.5$ |
+      | any number of offers | $0,1,2,3$ | $1$ |
 
-      The probability of two offers is $0.4$, the largest share in this sample.
+      **Where it shows up.** A model that predicts how many offers a house will get can output this whole distribution instead of one guess. A robot's distance sensor is noisy, so the same distance can read 1.9, 2.0 or 2.1 metres; it is described by a probability for each reading.
     problems:
-      [
-        pb-distribution-basics,
-        pb-distribution-why,
-        pb-distribution-fixed,
-        pb-distribution-template,
-        pb-distribution-missing,
-      ]
+      - pb-distribution-basics
+      - pb-distribution-why
+      - pb-distribution-fixed
+      - pb-at-least-two-fixed
+      - pb-distribution-template
+      - pb-valid-distribution
   - id: pb-expectation
-    title: Expected number of offers
+    title: Expected value
     explain: |
-      **What an expectation is.** The expectation, or expected value, is the probability-weighted average of a discrete random variable. Multiply each possible value by its probability, then add the products. It describes an average over many comparable observations, not a promise about one house.
+      **The question.** The spinner pays 0, 1 or 2 points. If you spun it many times, how many points would you average per spin? One number that sums up a distribution lets you compare spinners, or houses.
 
-      **How to compute it.** Use the offer distribution from ten sales. The value zero contributes nothing; the other counts contribute:
+      **Picture it.** Draw the distribution as bars on a number line, each bar's height its probability. Think of the line as a plank and each bar as a weight. Slide a pivot along until the plank balances: the weights on the two sides must cancel, and, as on a seesaw, a weight further from the pivot pulls harder. Because the weights add to 1, the balance point works out to the sum of value times probability. It is pulled toward 0, because half the weight sits there.
 
-      $$0 \times 0.2 = 0$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 340" aria-label="The spinner distribution as a bar chart over values 0, 1 and 2 with heights 1/2, 1/4 and 1/4. A green pivot under the axis at 0.75 balances the chart; a red dashed mark at 1 shows the plain average of the three values">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+          <text x="20" y="36">Bar heights are the probabilities; the chart balances at the expected value</text>
+          <path d="M60 240 H560" stroke="#737373" stroke-width="2"/>
+          <rect x="70" y="80" width="60" height="160" fill="#3b82f6" fill-opacity="0.8"/>
+          <text x="100" y="70" text-anchor="middle" fill="#3b82f6">1/2</text>
+          <rect x="270" y="160" width="60" height="80" fill="#3b82f6" fill-opacity="0.8"/>
+          <text x="300" y="150" text-anchor="middle" fill="#3b82f6">1/4</text>
+          <rect x="470" y="160" width="60" height="80" fill="#3b82f6" fill-opacity="0.8"/>
+          <text x="500" y="150" text-anchor="middle" fill="#3b82f6">1/4</text>
+          <path d="M250.0 242 L234.0 270 H266.0 Z" fill="#10b981"/>
+          <text x="236" y="292" text-anchor="end" fill="#10b981">balance point 0.75</text>
+          <text x="100" y="264" text-anchor="middle">0</text>
+          <text x="500" y="264" text-anchor="middle">2</text>
+          <text x="300" y="264" text-anchor="middle">1</text>
+          <path d="M300 274 V300" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="5 4"/>
+          <text x="306" y="320" fill="#ef4444">plain average of 0, 1, 2 is 1</text>
+        </g>
+      </svg>
+      ```
 
-      $$1 \times 0.3 = 0.3$$
+      **The idea.** The **expected value** of $X$, written $E[X]$ and read "the expected value of $X$", is the probability-weighted average of its values, the balance point: multiply each value by its probability, then add. For the spinner,
 
-      $$2 \times 0.4 = 0.8$$
+      $$E[X]=0\cdot\frac12+1\cdot\frac14+2\cdot\frac14=0.75.$$
 
-      $$3 \times 0.1 = 0.3$$
+      It is the long-run average per spin. Because it is an average per spin, $n$ spins give about $n\times E[X]$ points in total: over 400 spins, about $400\times0.75=300$.
 
-      $$0 + 0.3 + 0.8 + 0.3 = 1.4$$
-
-      The expected number is $1.4$ offers. Why not take the plain average of the possible values? That would give each count equal weight even though the observed probabilities differ:
-
-      $$\frac{0 + 1 + 2 + 3}{4} = 1.5$$
-
-      **Why this is useful.** Expected offers summarise many house sales in one probability-weighted average, while keeping the more frequent counts more influential.
+      **Common confusion.** "The expected value is the plain average of the possible values, $(0+1+2)/3=1$." That ignores the chances; it is right only when every value is equally likely. Here 0 is twice as likely as each other value, so the average drops to 0.75. Note too that $E[X]$ need not be a value $X$ can take: no single spin gives 0.75 points.
     worked: |
-      This example shows the expected number of offers using the distribution from ten sales.
+      Use the offer distribution estimated in the previous part, treating the estimates as the probabilities: $P(X=0)=0.2$, $P(X=1)=0.3$, $P(X=2)=0.4$ and $P(X=3)=0.1$. Find the expected number of offers.
 
-      Multiply each count by its probability:
+      1. **Multiply each value by its probability.**
+         $$0(0.2)=0,\quad 1(0.3)=0.3,\quad 2(0.4)=0.8,\quad 3(0.1)=0.3.$$
 
-      $$0 \times 0.2 = 0$$
+      2. **Add the products.**
+         $$E[X]=0+0.3+0.8+0.3=1.4.$$
 
-      $$1 \times 0.3 = 0.3$$
+      3. **Read it as a long-run average per sale, so 100 such sales get about 100 times as many offers in total.**
+         $$100\times1.4=140.$$
 
-      $$2 \times 0.4 = 0.8$$
+      **Compare cases.**
 
-      $$3 \times 0.1 = 0.3$$
+      | $P(X=0)$ | $P(X=1)$ | $P(X=2)$ | $P(X=3)$ | $E[X]$ |
+      | --- | --- | --- | --- | --- |
+      | $0.25$ | $0.25$ | $0.25$ | $0.25$ | $1.5$ |
+      | $0.2$ | $0.3$ | $0.4$ | $0.1$ | $1.4$ |
+      | $0.1$ | $0.1$ | $0.2$ | $0.6$ | $2.3$ |
+      | $0$ | $0$ | $0$ | $1$ | $3$ |
 
-      Add the contributions:
-
-      $$0 + 0.3 + 0.8 + 0.3 = 1.4$$
-
-      The average across many comparable houses is $1.4$ offers.
+      **Where it shows up.** The house-price model's one best guess is an expected value: the long-run average price of houses like this one. A robot's reward is a score for how well a move turns out; when that score is uncertain, the robot can pick the move with the larger expected reward.
     problems:
-      [
-        pb-expectation-basics,
-        pb-expectation-why,
-        pb-expectation-fixed,
-        pb-expectation-template,
-        pb-expectation-recover-count,
-      ]
+      - pb-expectation-basics
+      - pb-expectation-why
+      - pb-expectation-fixed
+      - pb-expected-total
+      - pb-expectation-template
+      - pb-robot-expected-reward
   - id: pb-conditional
     title: Conditional probability
     explain: |
-      **What conditional probability is.** It is the chance of an event after you know that another event happened. You restrict attention to outcomes where the known event occurred, so that event must have a non-zero probability.
+      **The question.** You have an estimate of the chance that a sale goes above asking. Then the agent tells you the house already has at least two offers. That should change the chance, but how do you work out the new one?
 
-      **How to compute it.** Let $A$ mean a house sold above asking and $B$ mean it received at least two offers. In twenty sales, six had both properties and eight received at least two offers. The conditional probability is the share of the $B$ houses that also belong to $A$:
+      **Picture it.** Back to one roll of a fair die, and the event "even" (2, 4 or 6), with chance $3/6=1/2$. Now someone peeks and tells you the roll is at least 4. Faces 1, 2 and 3 are ruled out. Of the three faces left, two are even.
 
-      $$P(A \mid B) = \frac{P(A \text{ and } B)}{P(B)}$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 250" aria-label="Six die faces. Faces 1, 2 and 3 are greyed out as ruled out; faces 4, 5 and 6 sit inside an amber dashed box for the known event, at least 4. Even faces 4 and 6 are highlighted in blue: 2 of the 3 remaining faces, so the chance of even rises from 1/2 to 2/3">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+          <text x="40" y="30">You learn the roll is at least 4 (amber box). Faces 1 to 3 are ruled out.</text>
+          <rect x="40" y="70" width="70" height="70" rx="10" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+          <text x="75" y="114" text-anchor="middle" font-size="26" fill="#d4d4d4">1</text>
+          <rect x="126" y="70" width="70" height="70" rx="10" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+          <text x="161" y="114" text-anchor="middle" font-size="26" fill="#d4d4d4">2</text>
+          <rect x="212" y="70" width="70" height="70" rx="10" fill="#ffffff" stroke="#d4d4d4" stroke-width="2"/>
+          <text x="247" y="114" text-anchor="middle" font-size="26" fill="#d4d4d4">3</text>
+          <rect x="298" y="70" width="70" height="70" rx="10" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="2.5"/>
+          <text x="333" y="114" text-anchor="middle" font-size="26" fill="#3b82f6">4</text>
+          <rect x="384" y="70" width="70" height="70" rx="10" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+          <text x="419" y="114" text-anchor="middle" font-size="26" fill="#171717">5</text>
+          <rect x="470" y="70" width="70" height="70" rx="10" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="2.5"/>
+          <text x="505" y="114" text-anchor="middle" font-size="26" fill="#3b82f6">6</text>
+          <rect x="288" y="58" width="262" height="94" rx="14" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="3" stroke-dasharray="8 6"/>
+          <text x="40" y="200" fill="#737373">Before: even is 3 of 6 faces, 1/2.</text>
+          <text x="40" y="226" fill="#3b82f6">After: even is 2 of the 3 faces left (4 and 6), 2/3.</text>
+        </g>
+      </svg>
+      ```
 
-      $$P(A \mid B) = \frac{6/20}{8/20}$$
+      **The idea.** The **conditional probability** of $A$ given $B$, written $P(A\mid B)$ and read "probability of $A$ given $B$", is the chance of $A$ once you know $B$ happened. Keep only the outcomes in $B$, then ask what fraction of them are also in $A$. With equally likely outcomes, or with counts from data,
 
-      $$P(A \mid B) = \frac{6}{8} = 0.75$$
+      $$P(A\mid B)=\frac{\text{outcomes in both }A\text{ and }B}{\text{outcomes in }B}.$$
 
-      Rearranging gives the **product rule**:
+      For the die, $P(\text{even}\mid\text{at least 4})=2/3$. When learning $B$ leaves the chance unchanged, so $P(A\mid B)=P(A)$, the events are **independent**: $B$ tells you nothing about $A$. With estimates from data, a small gap can come from chance alone; deciding how large a gap must be needs statistics beyond this lesson, so here we only read off clear differences.
 
-      $$P(A \text{ and } B) = P(A \mid B) \times P(B)$$
-
-      Events are **independent** when knowing $B$ does not change the chance of $A$, so $P(A \mid B) = P(A)$. Here the conditional estimate is $0.75$ but the overall estimate is $9/20 = 0.45$; these sample rates differ.
-
-      **Why this is useful.** The conditional rate quantifies how often a house sells above asking among houses with at least two offers, rather than mixing them with all sales.
+      **Common confusion.** "$P(A\mid B)$ and $P(B\mid A)$ are the same thing." No: the condition decides which outcomes you keep. $P(\text{even}\mid\text{rolled 6})=1$, because 6 is even, but $P(\text{rolled 6}\mid\text{even})=1/3$, because 6 is one of three even faces.
     worked: |
-      This example shows conditional probability and an independence check from the same sales table.
+      Take the same 20 past sales: 9 sold above asking, and 10 got at least two offers. Of those 10, 7 sold above asking. Let $A$ be "above asking" and $B$ be "at least two offers". Does knowing $B$ change the chance of $A$?
 
-      | Offers | Above asking | Not above asking | Total |
-      |---|---:|---:|---:|
-      | At least two | 6 | 2 | 8 |
-      | Fewer than two | 3 | 9 | 12 |
-      | **Total** | **9** | **11** | **20** |
+      1. **Estimate the chance of $A$ with no extra information.**
+         $$P(A)\approx\frac{9}{20}=0.45.$$
 
-      Among the eight houses with at least two offers, six sold above asking:
+      2. **Keep only the sales in $B$, then find the fraction that are also in $A$.**
+         $$P(A\mid B)\approx\frac{7}{10}=0.7.$$
 
-      $$P(A \mid B) = \frac{6}{8} = 0.75$$
+      3. **Compare the two to check independence.**
+         $$0.7\ne0.45.$$
 
-      The overall above-asking probability is:
+      Knowing about the offers raised the estimate a lot, so in this data the two events are not independent. For the last row of the table: the other 10 sales had fewer than two offers, and $9-7=2$ of them sold above asking.
 
-      $$P(A) = \frac{9}{20} = 0.45$$
+      **Compare cases.**
 
-      Since the estimates differ, the table does not show independence.
+      | What you know | Sales kept | Above asking | Estimate of $P(A)$ |
+      | --- | --- | --- | --- |
+      | nothing | $20$ | $9$ | $0.45$ |
+      | at least two offers | $10$ | $7$ | $0.7$ |
+      | fewer than two offers | $10$ | $2$ | $0.2$ |
+
+      **Where it shows up.** A spam filter estimates $P(\text{spam}\mid\text{the email contains "prize"})$, the chance of spam given a word it has seen. A robot does the same when it updates the chance that a door is open given what its camera just saw.
     problems:
-      [
-        pb-conditional-basics,
-        pb-conditional-fixed,
-        pb-conditional-template,
-        pb-independence-why,
-        pb-conditional-empty,
-      ]
+      - pb-conditional-basics
+      - pb-conditional-why
+      - pb-conditional-fixed
+      - pb-reverse-conditional
+      - pb-conditional-template
+      - pb-independence-check
 final: probability-basics-explain
 summary: |
-  - Events describe sets of outcomes; sample frequencies estimate their probabilities and complements.
-  - A distribution records the chances of offer counts, and expectation weights each count by its probability.
-  - Conditional probability restricts attention to a known event; independence means that condition does not change the chance.
-
-  **Next:** Perceptron turns a house's measurements into a yes-or-no decision, such as whether it sells above asking.
+  - An event is a set of outcomes; its probability is between 0 and 1, and its complement has probability $1-P(A)$.
+  - A distribution lists each value of a random variable with its probability, and those probabilities add to 1.
+  - The expected value multiplies each value by its probability and adds the results, giving the long-run average.
+  - A conditional probability keeps only the outcomes where the condition holds; independence means the condition leaves the probability unchanged.
+  **Next:** The perceptron, a model that answers yes-or-no questions.
