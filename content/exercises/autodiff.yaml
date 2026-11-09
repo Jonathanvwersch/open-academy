@@ -374,8 +374,8 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt:
-      A calculation has {{=inputs}} adjustable inputs and {{=outputs}} outputs. How many ordinary
-      forward-mode derivative passes find every input-output derivative?
+      "A calculation has adjustable inputs and outputs. Inputs: {{=inputs}}. Outputs: {{=outputs}}.
+      How many ordinary forward-mode derivative passes find every input-output derivative?"
     params:
       inputs:
         min: 2
@@ -425,7 +425,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A calculation has {{=inputs}} inputs and {{=outputs}} outputs. Including one forward recording pass, how many total passes does reverse mode need to find every input-output derivative?
+    prompt: "A calculation has inputs and outputs. Inputs: {{=inputs}}. Outputs: {{=outputs}}. Including one forward recording pass, how many total passes does reverse mode need to find every input-output derivative?"
     params:
       inputs:
         min: 2
