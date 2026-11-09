@@ -121,7 +121,7 @@ knowledge_points:
     problems:
       [
         gd-price-gradients-basics,
-        gdp-residual-definition,
+        gdp-error-definition,
         gdp-why-input-factor,
         gdp-gradient-template,
         gdp-data-step-template,

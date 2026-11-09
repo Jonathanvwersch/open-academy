@@ -1019,19 +1019,19 @@ exercises:
       predictions for the next step. A small rate can be slow; if a cautious increase helps without
       instability I can keep it, whereas growing losses suggest reducing the rate; crossing the
       minimum is not itself failure if distance and loss shrink.
-  - id: gdp-residual-definition
+  - id: gdp-error-definition
     dimension: math
     type: numeric
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "A residual is the prediction minus the target. A house-price prediction is 5
-      and its target is 3, both in the same units. What is the residual?"
+    prompt: 'The prediction error is $e=\hat y-y$. A house-price prediction is $\hat y=5$
+      and its target is $y=3$, both in the same units. What is the error $e$?'
     answer: 2
     tolerance: { abs: 0.000001 }
     solution: |
       Subtract the target from the prediction.
 
-      $$r=5-3.$$
+      $$e=5-3.$$
 
-      $$r=2.$$
+      $$e=2.$$

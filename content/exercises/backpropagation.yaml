@@ -928,25 +928,36 @@ exercises:
         feedback: "The parameter update uses gradients after the backward pass."
     solution: |
       The forward pass computes predictions, intermediate values and the loss. Backpropagation then uses those stored values.
-  - id: bpp-pass-time
-    dimension: math
-    type: numeric
+  - id: bpp-reuse-plan
+    dimension: conceptual
+    type: mc
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A forward pass takes 4 milliseconds and a backward pass takes twice as long.
-      Ignoring the parameter update, how many milliseconds does one
-      forward-and-backward calculation take?"
-    answer: 12
-    tolerance: { abs: 0.000001 }
+    prompt: "Two weights in a house-price network affect the loss through the same later
+      activation. You need both weight gradients. Which plan both supplies the values
+      needed by local derivatives and avoids repeating the shared backward calculation?"
+    options:
+      - id: a
+        text: "Store forward values, then reuse the shared loss derivative while propagating backward to both weights."
+        correct: true
+      - id: b
+        text: "Store forward values, then rebuild the entire backward calculation separately for each weight."
+        correct: false
+        feedback: "This preserves the needed values but repeats the shared derivative calculation instead of reusing it."
+      - id: c
+        text: "Store only the final loss, then reuse the shared loss derivative while propagating backward to both weights."
+        correct: false
+        feedback: "The final loss alone does not supply the intermediate forward values needed by local derivatives."
+      - id: d
+        text: "Store forward values, then compute only the activation's loss derivative and use it for both weight gradients."
+        correct: false
+        feedback: "Each weight needs its own loss derivative. Continue backward through the intervening local derivatives."
     solution: |
-      First find the backward-pass time.
-
-      $$2\cdot4=8\text{ ms}.$$
-
-      Add both pass times.
-
-      $$4+8=12\text{ ms}.$$
+      First store intermediate values during the forward pass so local derivatives have their inputs.
+      Then compute the shared activation's loss derivative once and reuse it while propagating
+      backward to each weight. This supplies a separate gradient for each weight without
+      rebuilding the shared part of the calculation.
   - id: bpp-check-purpose
     dimension: conceptual
     type: mc

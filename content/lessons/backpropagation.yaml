@@ -36,7 +36,7 @@ knowledge_points:
         bp-why-backprop-basics,
         bpp-exact,
         bpp-forward-purpose,
-        bpp-pass-time,
+        bpp-reuse-plan,
         bpp-why-every,
         bpp-nudge-time,
         bpp-keep-values,
