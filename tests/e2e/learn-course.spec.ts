@@ -454,20 +454,42 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   });
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  for (const [conceptId, title, knowledgePointTitle, screenshotName] of [
+  const oldStyleLabels = ['How it works.', 'This example shows'];
+  const writeLessonLabels = [
+    'The question.',
+    'Picture it.',
+    'The idea.',
+    'Common confusion.',
+    'Worked example',
+  ];
+  for (const [conceptId, title, knowledgePointTitle, screenshotName, labels] of [
     [
       'partial-derivatives',
       'Partial derivatives',
       'Change one weight, hold the rest fixed',
       'pd-hold-fixed',
+      oldStyleLabels,
     ],
-    ['backpropagation', 'Backpropagation', 'Compute one weight gradient backward', 'bp-by-hand'],
-    ['chain-rule', 'Chain rule', 'Rates along a chain multiply', 'cr-rates-multiply'],
+    [
+      'backpropagation',
+      'Backpropagation',
+      'Compute one weight gradient backward',
+      'bp-by-hand',
+      oldStyleLabels,
+    ],
+    [
+      'chain-rule',
+      'Chain rule',
+      'Rates along a chain multiply',
+      'cr-rates-multiply',
+      oldStyleLabels,
+    ],
     [
       'gradient-descent',
       'Gradient descent',
-      'Update the house model opposite its gradient',
+      'Step against the gradient',
       'gd-downhill-update',
+      writeLessonLabels,
     ],
   ] as const) {
     await mockLessonReview(page, conceptId, title);
@@ -477,8 +499,7 @@ test('authored course-structure lessons render their diagrams', async ({ page })
       .locator('article')
       .filter({ has: page.getByRole('heading', { name: new RegExp(knowledgePointTitle) }) });
     await expect(knowledgePoint).toHaveCount(1);
-    await expect(knowledgePoint).toContainText('How it works.');
-    await expect(knowledgePoint).toContainText('This example shows');
+    for (const label of labels) await expect(knowledgePoint).toContainText(label);
     await expect(knowledgePoint.locator('.katex-error')).toHaveCount(0);
     await knowledgePoint.screenshot({
       path: `${mathLinesScreenshotDir}/${screenshotName}.png`,

@@ -1,159 +1,383 @@
 concept: gradient-descent
-version: 3
+version: 4
 objective: |
-  **Goal:** use the gradient to update every house-model parameter in a direction that lowers loss.
+  **Goal:** train a model with gradient descent: step every parameter against its loss slope, choose a learning rate that neither crawls nor blows up, and repeat the loop while the loss falls.
 where_this_fits: |
-  Gradients collected one loss slope for each weight and the bias. A gradient tells us which way loss rises fastest at the current parameters, but it does not itself change the model. Gradient descent takes a small step in the opposite direction, then recomputes the slopes at the new parameters.
+  A model starts with poor weights and has to improve them from data. The gradients lesson showed that $-\nabla f$ points the way a function falls fastest, but a direction alone doesn't change any weights. You still need to decide how far to move, how to get the gradient of a model's loss, and what to do after the first move. This lesson turns that direction into **gradient descent**, the method that trains most machine-learning models, in four steps:
+
+  1. Step every input of a function, such as a model's weight, against its slope.
+  2. Choose how big each step is.
+  3. Get the slopes from a model's error.
+  4. Repeat the step in a loop while the loss falls.
 knowledge_points:
   - id: gd-downhill-update
-    title: Update the house model opposite its gradient
+    title: Step against the gradient
     explain: |
-      **What gradient descent is.** Gradient descent repeatedly subtracts a scaled loss gradient from the model parameters.
+      **The question.** The gradients lesson ended with a direction: $-\nabla f$ is the steepest way down. Knowing a direction doesn't move you, though. Standing at a point, how do you turn it into an actual move to a lower point?
 
-      **How it works.** For this house, use:
+      **Picture it.** Go back to the bowl $f(x,y)=x^2+2y^2$, seen from above as a contour map: each ring joins points of equal height, and outer rings are higher. At $P=(1.5,1)$ the height is $4.25$ and the gradient is $(3,4)$, the blue arrow pointing uphill. The amber arrow is the move: the gradient reversed and shrunk to a tenth, $-0.1\times(3,4)=(-0.3,-0.4)$. It lands at $(1.2,0.6)$, on a lower ring, where the height is $2.16$.
 
-      $$
-      \begin{aligned}
-      x &= (12,3,20),\\
-      y &= 330,\\
-      w &= (25,10,-1),\\
-      b &= 0.
-      \end{aligned}
-      $$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Contour map of the bowl x squared plus 2y squared seen from above. From P at (1.5, 1) on the height-4.25 ring, the blue gradient arrow (3, 4) points uphill and the amber step, minus 0.1 times the gradient, goes the opposite way to (1.2, 0.6) on the lower height-2.16 ring">
+      <defs><marker id="gd1-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="gd1-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <ellipse cx="230" cy="220" rx="110" ry="77.782" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5"/>
+      <ellipse cx="230" cy="220" rx="161.666" ry="114.315" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="2.25"/>
+      <ellipse cx="230" cy="220" rx="226.771" ry="160.351" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="2.25"/>
+      <path d="M-20 220 H490 M230 395 V45" stroke="#d4d4d4" fill="#ffffff" fill-opacity="0"/>
+      <path d="M395 110 l48 -64" stroke="#3b82f6" stroke-width="3.5" marker-end="url(#gd1-blue)"/>
+      <path d="M395 110 L362 154" stroke="#f59e0b" stroke-width="3.5" marker-end="url(#gd1-amber)"/>
+      <circle cx="395" cy="110" r="4.5" fill="#171717"/>
+      <circle cx="362" cy="154" r="4.5" fill="#171717"/>
+      <circle cx="230" cy="220" r="3.5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="409" y="106">P = (1.5, 1), height 4.25</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="348" y="180" text-anchor="end">new point (1.2, 0.6), height 2.16</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="451" y="50" fill="#3b82f6">∇f(P) = (3, 4), uphill</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="378" y="168" fill="#f59e0b">step −0.1∇f = (−0.3, −0.4)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="222" y="242" text-anchor="end">lowest point</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="496" y="225">x</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="236" y="42">y</text>
+      </g>
+      </svg>
+      ```
 
-      The prediction is 310 and the gradient is:
+      **The idea.** Take a small step in the direction opposite the gradient, then repeat from where you land. For a model, the inputs of the loss are its weights and bias. Each input moves against its own slope: an input with a positive slope goes down, one with a negative slope goes up. This method is **gradient descent**. Write $\mathbf p$ for the current point, the list of all the inputs. One step of gradient descent is
 
-      $$\nabla L=(-480,-120,-800,-40).$$
+      $$\mathbf p_{\text{new}}=\mathbf p-\eta\,\nabla f(\mathbf p).$$
 
-      With learning rate $\eta=0.0001$, update weights and bias together:
+      Here $\eta$ (the Greek letter eta) is a small positive number called the **learning rate**. It sets how big each step is; the next part is about choosing it.
 
-      $$w'=w-\eta\nabla_w L=(25.048,10.012,-0.92),\qquad b'=b-\eta\frac{\partial L}{\partial b}=0.004.$$
-
-      The new prediction is 312.216 and the loss falls from $400$ to $(312.216-330)^2=316.270656$. Why subtract the gradient? Its direction is steepest local increase, so the opposite points toward a local decrease.
-
-      **Why this is useful.** This update gives a precise way to improve the same house-price model from its current prediction error.
+      **Common confusion.** “The gradient tells me where to go, so shouldn't I add it?” No. The gradient points uphill, so adding it climbs: $(1.5,1)+0.1\times(3,4)=(1.8,1.4)$ has height $7.16$, higher than $4.25$. Descent subtracts.
     worked: |
-      This example shows the calculation.
-      Start with $L=(w\cdot x+b-y)^2$ and error $310-330=-20$, so the gradient is $(-480,-120,-800,-40)$.
+      This example takes one gradient-descent step on the bowl $f(x,y)=x^2+2y^2$ from $P=(1.5,1)$ with learning rate $\eta=0.1$.
 
-      1. Multiply the weight slopes by $\eta$: $-0.0001(-480,-120,-800)=(0.048,0.012,0.08)$.
-      2. Add that change to the weights: $w'=(25.048,10.012,-0.92)$.
-      3. Update bias: $b'=0-0.0001(-40)=0.004$.
-      4. Predict: $12(25.048)+3(10.012)+20(-0.92)+0.004=312.216$.
+      1. **Find the gradient at $P$.**
+         $$\nabla f(P)=(2x,4y)=(2(1.5),4(1))=(3,4).$$
+
+      2. **Scale it by the learning rate.**
+         $$\eta\,\nabla f(P)=0.1\times(3,4)=(0.3,0.4).$$
+
+      3. **Subtract it from $P$.**
+         $$P_{\text{new}}=(1.5,1)-(0.3,0.4)=(1.2,0.6).$$
+
+      4. **Check that the height fell.**
+         $$f(1.2,0.6)=1.2^2+2(0.6)^2=1.44+0.72=2.16.$$
+
+      The height fell from $4.25$ to $2.16$.
+
+      **Compare cases.** Three moves of the same length, $0.5$, from $P$:
+
+      | Move from $P$ | New point | Height | Change |
+      | --- | --- | --- | --- |
+      | subtract $0.1\nabla f(P)$ | $(1.2,0.6)$ | $2.16$ | $-2.09$ |
+      | add $0.1\nabla f(P)$ | $(1.8,1.4)$ | $7.16$ | $+2.91$ |
+      | at right angles to $\nabla f$, $(0.4,-0.3)$ | $(1.9,0.7)$ | $4.59$ | $+0.34$ |
+
+      **Where it shows up.** For a model, the inputs are its weights and bias, and the height is its training loss $L$. One update subtracts $\eta$ times each parameter's loss slope from that parameter, all at the same time.
     problems:
-      [
-        gd-downhill-update-basics,
-        gdp-positive-slope,
-        gdp-vector,
-        gdp-repeat,
-        gdp-why-negative-slope,
-        gdp-step-template,
-        gdp-zero,
-      ]
+      - gd-downhill-update-basics
+      - gdp-downhill-self-explain
+      - gdp-positive-slope
+      - gdp-one-weight-step
+      - gdp-bowl-step-template
+      - gdp-height-after-step
+      - gdp-zero
+      - gdp-robot-step
   - id: gd-step-size
-    title: Keep the learning rate small enough
+    title: Choose the step size
     explain: |
-      **What the learning rate is.** The learning rate $\eta$ is the positive scale that sets how far each gradient-descent update moves.
+      **The question.** The update is $\mathbf p-\eta\nabla f(\mathbf p)$, but what value should $\eta$ take? A tiny step is safe but slow. Does a big step simply get there sooner?
 
-      **How it works.** Each parameter changes by the learning rate times its own slope, so area and age weights move more than the bedroom weight. With $\eta=0.01$, the same update gives:
+      **Picture it.** Use the simplest bowl, $f(w)=w^2$, with one input $w$. Its slope is $2w$, so one step gives
 
-      $$
-      w=(29.8,11.2,7),\qquad b=0.4.
-      $$
+      $$w_{\text{new}}=w-\eta(2w)=(1-2\eta)\,w.$$
 
-      The prediction is 531.6 and the error is 201.6, so the loss is:
+      Each step multiplies $w$ by the same number, $1-2\eta$. Each panel starts at $w=5$ and takes two steps with a different learning rate. With $\eta=0.1$, $w$ creeps down one side. With $\eta=0.75$, it jumps across the bottom but lands closer each time. With $\eta=1.25$, it jumps across and lands higher each time.
 
-      $$201.6^2=40{,}642.56.$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Three copies of the curve f of w equals w squared, each starting at w equals 5. With learning rate 0.1 the steps creep down one side from 5 to 4 to 3.2; with 0.75 they jump across the bottom to minus 2.5 then 1.25 and settle; with 1.25 they jump across to minus 7.5 then 11.25 and climb higher each time">
+      <defs><marker id="gd2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M20 55 23.167 68.111 26.333 80.778 29.5 93 32.667 104.778 35.833 116.111 39 127 42.167 137.444 45.333 147.444 48.5 157 51.667 166.111 54.833 174.778 58 183 61.167 190.778 64.333 198.111 67.5 205 70.667 211.444 73.833 217.444 77 223 80.167 228.111 83.333 232.778 86.5 237 89.667 240.778 92.833 244.111 96 247 99.167 249.444 102.333 251.444 105.5 253 108.667 254.111 111.833 254.778 115 255 118.167 254.778 121.333 254.111 124.5 253 127.667 251.444 130.833 249.444 134 247 137.167 244.111 140.333 240.778 143.5 237 146.667 232.778 149.833 228.111 153 223 156.167 217.444 159.333 211.444 162.5 205 165.667 198.111 168.833 190.778 172 183 175.167 174.778 178.333 166.111 181.5 157 184.667 147.444 187.833 137.444 191 127 194.167 116.111 197.333 104.778 200.5 93 203.667 80.778 206.833 68.111 210 55" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+      <path d="M20 255 H210" stroke="#d4d4d4"/>
+      <path d="M35.833 255 v5" stroke="#737373"/>
+      <text x="35.833" y="275" text-anchor="middle" fill="#737373">−5</text>
+      <path d="M115 255 v5" stroke="#737373"/>
+      <text x="115" y="275" text-anchor="middle" fill="#737373">0</text>
+      <path d="M194.167 255 v5" stroke="#737373"/>
+      <text x="194.167" y="275" text-anchor="middle" fill="#737373">5</text>
+      <path d="M194.167 116.111 L178.333 166.111" stroke="#f59e0b" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#gd2-amber)"/>
+      <path d="M178.333 166.111 L165.667 198.111" stroke="#f59e0b" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#gd2-amber)"/>
+      <circle cx="194.167" cy="116.111" r="4" fill="#171717"/>
+      <circle cx="178.333" cy="166.111" r="4" fill="#171717"/>
+      <circle cx="165.667" cy="198.111" r="4" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="115" y="30" text-anchor="middle">η = 0.1: slow</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="115" y="300" fill="#737373" text-anchor="middle">w: 5 → 4 → 3.2</text>
+      <path d="M225 55 228.167 68.111 231.333 80.778 234.5 93 237.667 104.778 240.833 116.111 244 127 247.167 137.444 250.333 147.444 253.5 157 256.667 166.111 259.833 174.778 263 183 266.167 190.778 269.333 198.111 272.5 205 275.667 211.444 278.833 217.444 282 223 285.167 228.111 288.333 232.778 291.5 237 294.667 240.778 297.833 244.111 301 247 304.167 249.444 307.333 251.444 310.5 253 313.667 254.111 316.833 254.778 320 255 323.167 254.778 326.333 254.111 329.5 253 332.667 251.444 335.833 249.444 339 247 342.167 244.111 345.333 240.778 348.5 237 351.667 232.778 354.833 228.111 358 223 361.167 217.444 364.333 211.444 367.5 205 370.667 198.111 373.833 190.778 377 183 380.167 174.778 383.333 166.111 386.5 157 389.667 147.444 392.833 137.444 396 127 399.167 116.111 402.333 104.778 405.5 93 408.667 80.778 411.833 68.111 415 55" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+      <path d="M225 255 H415" stroke="#d4d4d4"/>
+      <path d="M240.833 255 v5" stroke="#737373"/>
+      <text x="240.833" y="275" text-anchor="middle" fill="#737373">−5</text>
+      <path d="M320 255 v5" stroke="#737373"/>
+      <text x="320" y="275" text-anchor="middle" fill="#737373">0</text>
+      <path d="M399.167 255 v5" stroke="#737373"/>
+      <text x="399.167" y="275" text-anchor="middle" fill="#737373">5</text>
+      <path d="M399.167 116.111 L280.417 220.278" stroke="#f59e0b" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#gd2-amber)"/>
+      <path d="M280.417 220.278 L339.792 246.319" stroke="#f59e0b" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#gd2-amber)"/>
+      <circle cx="399.167" cy="116.111" r="4" fill="#171717"/>
+      <circle cx="280.417" cy="220.278" r="4" fill="#171717"/>
+      <circle cx="339.792" cy="246.319" r="4" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="30" text-anchor="middle">η = 0.75: settles</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="300" fill="#737373" text-anchor="middle">w: 5 → −2.5 → 1.25</text>
+      <path d="M430 55 433.167 68.111 436.333 80.778 439.5 93 442.667 104.778 445.833 116.111 449 127 452.167 137.444 455.333 147.444 458.5 157 461.667 166.111 464.833 174.778 468 183 471.167 190.778 474.333 198.111 477.5 205 480.667 211.444 483.833 217.444 487 223 490.167 228.111 493.333 232.778 496.5 237 499.667 240.778 502.833 244.111 506 247 509.167 249.444 512.333 251.444 515.5 253 518.667 254.111 521.833 254.778 525 255 528.167 254.778 531.333 254.111 534.5 253 537.667 251.444 540.833 249.444 544 247 547.167 244.111 550.333 240.778 553.5 237 556.667 232.778 559.833 228.111 563 223 566.167 217.444 569.333 211.444 572.5 205 575.667 198.111 578.833 190.778 582 183 585.167 174.778 588.333 166.111 591.5 157 594.667 147.444 597.833 137.444 601 127 604.167 116.111 607.333 104.778 610.5 93 613.667 80.778 616.833 68.111 620 55" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+      <path d="M430 255 H620" stroke="#d4d4d4"/>
+      <path d="M445.833 255 v5" stroke="#737373"/>
+      <text x="445.833" y="275" text-anchor="middle" fill="#737373">−10</text>
+      <path d="M525 255 v5" stroke="#737373"/>
+      <text x="525" y="275" text-anchor="middle" fill="#737373">0</text>
+      <path d="M604.167 255 v5" stroke="#737373"/>
+      <text x="604.167" y="275" text-anchor="middle" fill="#737373">10</text>
+      <path d="M564.583 220.278 L465.625 176.875" stroke="#f59e0b" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#gd2-amber)"/>
+      <path d="M465.625 176.875 L614.062 79.219" stroke="#f59e0b" stroke-width="2.5" fill="#ffffff" fill-opacity="0" marker-end="url(#gd2-amber)"/>
+      <circle cx="564.583" cy="220.278" r="4" fill="#171717"/>
+      <circle cx="465.625" cy="176.875" r="4" fill="#171717"/>
+      <circle cx="614.062" cy="79.219" r="4" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="525" y="30" text-anchor="middle">η = 1.25: blows up</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="525" y="300" fill="#737373" text-anchor="middle">w: 5 → −7.5 → 11.25</text>
+      </g>
+      </svg>
+      ```
 
-      This is up from $400$. With $\eta=0.0001$, the KP1 update gives a loss of:
+      **The idea.** Choose a learning rate big enough to make quick progress but small enough that every step lowers the loss. In practice: try a rate, watch the loss for some passes, and restart smaller if it rises. Too small, and the loss falls smoothly but slowly. Too large, and each step **overshoots**: it jumps past the bottom. A large overshoot lands higher than it started, so the loss grows every step: training **diverges**. For $f(w)=w^2$, the distance $|w|$ from the bottom shrinks only if $|1-2\eta|<1$, which means $0<\eta<1$: from $-1<1-2\eta<1$, subtract $1$ and divide by $-2$. How large is too large depends on how fast the slope grows: for the steeper bowl $2w^2$, the slope is $4w$, one step multiplies $w$ by $1-4\eta$, and the limit drops to $\eta<0.5$.
 
-      $$316.270656\approx316.27.$$
-
-      The area-12 and age-20 features make their slopes large, so the larger rate overshoots and raises loss; a rate that is too small improves slowly.
-
-      **Why this is useful.** Choosing a cautious rate prevents the large area- and age-feature slopes from destabilising house-price training.
+      **Common confusion.** “If $w$ jumps from one side of the bottom to the other, the learning rate is too big.” Only half right. At $\eta=0.75$, $w$ swaps sides every step, yet the loss still falls: $25$, then $6.25$, then $1.5625$. The warning sign is a loss that rises.
     worked: |
-      This example shows the calculation.
-      The area and age contributions to the gradient are $-480$ and $-800$. Multiplying by the learning rate and subtracting gives changes $+0.048$ and $+0.08$. Their different sizes come from the different feature values.
+      This example runs two steps on $f(w)=w^2$ from $w=5$ with $\eta=0.75$, and reads the loss.
+
+      1. **Find the multiplier.**
+         $$1-2\eta=1-2(0.75)=-0.5.$$
+
+      2. **Take the first step.**
+         $$w=5-0.75\times(2\times5)=5-7.5=-2.5.$$
+
+      3. **Take the second step.**
+         $$w=-2.5-0.75\times(2\times(-2.5))=-2.5+3.75=1.25.$$
+
+      4. **Read the loss after each step.**
+         $$f(5)=25,\quad f(-2.5)=6.25,\quad f(1.25)=1.5625.$$
+
+      The loss falls, so this rate works even though $w$ changes sign.
+
+      **Compare cases.** Every run starts at $w=5$, where $f=25$.
+
+      | $\eta$ | Multiplier $1-2\eta$ | $w$ over two steps | Loss over two steps | What you see |
+      | --- | --- | --- | --- | --- |
+      | $0.1$ | $0.8$ | $4,\ 3.2$ | $16,\ 10.24$ | slow, steady fall |
+      | $0.5$ | $0$ | $0,\ 0$ | $0,\ 0$ | lands on the bottom |
+      | $0.75$ | $-0.5$ | $-2.5,\ 1.25$ | $6.25,\ 1.5625$ | overshoots, settles |
+      | $1$ | $-1$ | $-5,\ 5$ | $25,\ 25$ | bounces forever |
+      | $1.25$ | $-1.5$ | $-7.5,\ 11.25$ | $56.25,\ 126.5625$ | diverges |
+
+      **Where it shows up.** The house-price model from earlier lessons has a loss slope of $-800$ for its age weight, so $\eta=0.01$ moves that weight from $-1$ to $7$. All four parameters move at once, and the prediction jumps from $310$ to $531.6$, far past the price $330$. The error grows from $-20$ to $201.6$, so the loss rises from $400$ to $201.6^2\approx40{,}643$. With $\eta=0.0001$ the age weight moves only to $-0.92$, the prediction becomes about $312$, and the loss falls to about $316$.
     problems:
-      [
-        gd-step-size-basics,
-        gdp-why-learning-rate,
-        gdp-rate-choice,
-        gdp-factor-template,
-        gdp-slow,
-        gdp-threshold-template,
-        gdp-loss-curve,
-      ]
+      - gd-step-size-basics
+      - gdp-step-size-self-explain
+      - gdp-multiplier-template
+      - gdp-slow
+      - gdp-two-steps-template
+      - gdp-loss-curve
+      - gdp-threshold
+      - gdp-drone-rate
   - id: gd-price-gradients
-    title: Each feature sets its own weight slope
+    title: Get the slopes from the model's error
     explain: |
-      **What a parameter gradient is.** It is the loss's partial derivative with respect to one adjustable weight or bias.
+      **The question.** On the bowl, $f$ was a formula you could differentiate directly. A model's loss depends on its weights only through its predictions. What is the loss slope for each weight, and where does it come from?
 
-      **How it works.** For squared error $L=(w\cdot x+b-y)^2$, let $e=\hat y-y$. The partial-derivatives lesson found:
+      **Picture it.** Take the smallest model: one input $x$, a weight $w$ and a bias $b$, predicting $\hat y=wx+b$. Start at $w=1$, $b=1$, the grey line. Give it one training example: input $x=2$ with true output $y=7$, the black dot. The model predicts $\hat y=1\times2+1=3$, so its **error** $e=\hat y-y$ is $3-7=-4$: too low by $4$, the red gap. The loss is the squared error, $L=e^2=16$. One gradient-descent step gives the amber line.
 
-      $$
-      \begin{aligned}
-      \partial L/\partial w_j &= 2e x_j,\\
-      \partial L/\partial b &= 2e.
-      \end{aligned}
-      $$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 350" aria-label="Input x against output. The grey line is the starting model, prediction equals x plus 1, which predicts 3 at x equals 2. The training example is the black dot at (2, 7). A red segment from 3 up to 7 shows the error of minus 4. The amber line is the model after one gradient-descent step, prediction equals 1.8x plus 1.4, which predicts 5 at x equals 2">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M70 300 H470 M70 300 V15.0" stroke="#737373" fill="#ffffff" fill-opacity="0"/>
+      <text x="150" y="320" text-anchor="middle" fill="#737373">1</text>
+      <text x="230" y="320" text-anchor="middle" fill="#737373">2</text>
+      <text x="310" y="320" text-anchor="middle" fill="#737373">3</text>
+      <text x="390" y="320" text-anchor="middle" fill="#737373">4</text>
+      <path d="M65 210 h5" stroke="#737373"/><text x="60" y="215" text-anchor="end" fill="#737373">3</text>
+      <path d="M65 150 h5" stroke="#737373"/><text x="60" y="155" text-anchor="end" fill="#737373">5</text>
+      <path d="M65 90 h5" stroke="#737373"/><text x="60" y="95" text-anchor="end" fill="#737373">7</text>
+      <path d="M70 270 L430.0 135" stroke="#737373" stroke-width="2.5"/>
+      <path d="M70 258 L410.0 28.5" stroke="#f59e0b" stroke-width="2.5"/>
+      <path d="M230 210 V90" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="6 5"/>
+      <circle cx="230" cy="90" r="5" fill="#171717"/>
+      <circle cx="230" cy="210" r="4.5" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+      <circle cx="230" cy="150" r="4.5" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="218" y="82" text-anchor="end">example: x = 2, y = 7</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="242" y="230">prediction 3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="218" y="168" fill="#ef4444" text-anchor="end">error −4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="244" y="155" fill="#f59e0b">after one step: 5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="438" y="140" fill="#737373">start: ŷ = x + 1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="418" y="33.5" fill="#f59e0b">after: ŷ = 1.8x + 1.4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="478" y="305">x</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="78" y="20">output</text>
+      </g>
+      </svg>
+      ```
 
-      Thus the house with error $-20$ and features $(12,3,20)$ has weight slopes:
+      **The idea.** Each weight's loss slope is twice the error times that weight's input, and the bias's slope is twice the error. A **parameter gradient** is the partial derivative of the loss with respect to one weight or the bias. For a linear model $\hat y=w\cdot x+b$ with squared-error loss $L=(\hat y-y)^2$ and error $e=\hat y-y$, the partial-derivatives lesson found
 
-      $$(-480,-120,-800).$$
+      $$\frac{\partial L}{\partial w_j}=2e\,x_j,$$
 
-      The bias slope is:
+      $$\frac{\partial L}{\partial b}=2e.$$
 
-      $$-40.$$
+      Here $x_j$ is the $j$th input and $w_j$ its weight; the bias acts like a weight whose input is always $1$. With several examples and MSE as the loss, compute every example's error from the same current parameters, average each slope over the examples, then take one update.
 
-      The age slope has larger magnitude than the bedroom slope because its feature is 20, compared with 3 bedrooms.
-
-      **Why this is useful.** The feature-scaled slopes tell training how each house measurement should change its own weight.
+      **Common confusion.** “The weight with the biggest slope is the one that's most wrong.” No. Every slope shares the same error $e$; they differ only by their inputs. A weight paired with a large input gets a large slope, even though the error belongs to the whole prediction.
     worked: |
-      This example shows the calculation.
-      With $e=-20$ and $x=(12,3,20)$:
+      This example takes one gradient-descent step for $\hat y=wx+b$ from $w=1$, $b=1$, on the example $x=2$, $y=7$, with $\eta=0.05$.
 
-      - $\partial L/\partial w_1=2(-20)(12)=-480$.
-      - $\partial L/\partial w_2=2(-20)(3)=-120$.
-      - $\partial L/\partial w_3=2(-20)(20)=-800$.
-      - $\partial L/\partial b=2(-20)=-40$.
+      1. **Predict.**
+         $$\hat y=1\times2+1=3.$$
+
+      2. **Find the error.**
+         $$e=\hat y-y=3-7=-4.$$
+
+      3. **Find the weight's slope.**
+         $$\frac{\partial L}{\partial w}=2ex=2(-4)(2)=-16.$$
+
+      4. **Find the bias's slope.**
+         $$\frac{\partial L}{\partial b}=2e=2(-4)=-8.$$
+
+      5. **Update both.**
+         $$w_{\text{new}}=1-0.05\times(-16)=1.8,$$
+         $$b_{\text{new}}=1-0.05\times(-8)=1.4.$$
+
+      6. **Check the new loss.**
+         $$\hat y=1.8\times2+1.4=5,\qquad e=-2,\qquad L=4.$$
+
+      The loss fell from $16$ to $4$.
+
+      **Compare cases.** The same model, $w=1$ and $b=1$, on different examples:
+
+      | Example $(x,y)$ | $\hat y$ | $e$ | $\partial L/\partial w=2ex$ | $\partial L/\partial b=2e$ | The step moves $w$ |
+      | --- | --- | --- | --- | --- | --- |
+      | $(2,7)$ | $3$ | $-4$ | $-16$ | $-8$ | up |
+      | $(2,1)$ | $3$ | $2$ | $8$ | $4$ | down |
+      | $(2,3)$ | $3$ | $0$ | $0$ | $0$ | not at all |
+      | $(10,15)$ | $11$ | $-4$ | $-80$ | $-8$ | up, 5 times as far |
+
+      **Where it shows up.** The house model $x=(12,3,20)$, $w=(25,10,-1)$, $b=0$ predicts $310$ against a sale price of $330$, so $e=-20$ and its gradient is $(-480,-120,-800,-40)$. The age slope is the largest in size only because age, $20$, is the largest input.
     problems:
-      [
-        gd-price-gradients-basics,
-        gdp-error-definition,
-        gdp-why-input-factor,
-        gdp-gradient-template,
-        gdp-data-step-template,
-        gdp-feature-factor,
-        gdp-bias-slope,
-        gdp-average,
-      ]
+      - gd-price-gradients-basics
+      - gdp-gradient-self-explain
+      - gdp-error-sign
+      - gdp-slope-template
+      - gdp-full-step
+      - gdp-average-two
+      - gdp-feature-factor
+      - gdp-backwards-error
   - id: gd-training-loop
-    title: Repeat prediction, loss, gradient and update
+    title: Repeat the step in a training loop
     explain: |
-      **What a training loop is.** It is the repeated sequence of predicting, measuring loss, calculating gradients and updating parameters.
+      **The question.** One step lowered the loss from $16$ to $4$, but not to $0$. What do you do next, and how do you know when to stop?
 
-      **How it works.** For each pass over the training houses, compute current predictions and losses, find the average loss gradient, and apply one gradient-descent update. Then calculate new predictions from the changed parameters. Reusing the old gradient would move according to slopes at the wrong point because the updated weights define a different model with new errors and slopes.
+      **Picture it.** Training repeats the same four stages. Each pass through them starts from the weight and bias the previous pass produced. The chart shows the loss of the one-example model from the previous part, measured in each of four passes: it falls to a quarter each time.
 
-      **Why this is useful.** Repeating this loop lets the house-price model improve across many observed sales rather than making a single adjustment.
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Left: the training loop as four boxes in a cycle, predict, measure error and loss, compute slopes, update weight and bias, with an arrow back to predict. Right: bars of the loss after each of four steps, 16, 4, 1 and 0.25">
+      <defs><marker id="gd4-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="115.0" y="40" width="150" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="190" y="67" text-anchor="middle">1. Predict ŷ</text>
+      <rect x="215.0" y="140" width="150" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="290" y="167" text-anchor="middle">2. Error and loss</text>
+      <rect x="115.0" y="240" width="150" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="190" y="267" text-anchor="middle">3. Slopes</text>
+      <rect x="15.0" y="140" width="150" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="90" y="167" text-anchor="middle">4. Update w, b</text>
+      <path d="M230 84 L280 138" stroke="#737373" stroke-width="2" marker-end="url(#gd4-muted)"/>
+      <path d="M280 186 L230 238" stroke="#737373" stroke-width="2" marker-end="url(#gd4-muted)"/>
+      <path d="M150 238 L100 186" stroke="#737373" stroke-width="2" marker-end="url(#gd4-muted)"/>
+      <path d="M100 138 L150 84" stroke="#737373" stroke-width="2" marker-end="url(#gd4-muted)"/>
+      <path d="M395 70 V290 H635" stroke="#737373" fill="#ffffff" fill-opacity="0"/>
+      <rect x="415" y="80" width="36" height="210" fill="#10b981"/>
+      <text x="433" y="72" text-anchor="middle">16</text>
+      <text x="433" y="310" text-anchor="middle" fill="#737373">1</text>
+      <rect x="470" y="237.5" width="36" height="52.5" fill="#10b981"/>
+      <text x="488" y="229.5" text-anchor="middle">4</text>
+      <text x="488" y="310" text-anchor="middle" fill="#737373">2</text>
+      <rect x="525" y="276.875" width="36" height="13.125" fill="#10b981"/>
+      <text x="543" y="268.875" text-anchor="middle">1</text>
+      <text x="543" y="310" text-anchor="middle" fill="#737373">3</text>
+      <rect x="580" y="286.719" width="36" height="3.281" fill="#10b981"/>
+      <text x="598" y="278.719" text-anchor="middle">0.25</text>
+      <text x="598" y="310" text-anchor="middle" fill="#737373">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="515" y="332" fill="#737373" text-anchor="middle">pass</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="395" y="35">loss measured in each pass</text>
+      </g>
+      </svg>
+      ```
+
+      **The idea.** Keep stepping, and recompute everything from the current parameters each time. A **training loop** is the repeated cycle of prediction, loss, gradient and parameter update. The gradient must be recomputed every pass, because the slopes belong to the point where you stand. You stop after a fixed number of passes, or once a pass lowers the loss by only a tiny amount, say less than $0.1\%$ of its current value. A plot of the loss in each pass is a **loss curve**, the main way to check training: a steady fall is good, a fall that stays slow and steady from the start suggests a larger learning rate, and a rise suggests a smaller one.
+
+      **Common confusion.** “The gradient is the direction to the answer, so I can compute it once and keep subtracting it.” No. It is the slope where you are standing, and it changes as you move. After the first step the error halves from $-4$ to $-2$, so the gradient halves too, from $(-16,-8)$ to $(-8,-4)$. Reusing the first gradient keeps every step full size, so by the third step the prediction is $9$, past the true $7$.
     worked: |
-      This example shows the calculation.
-      After the first update, the prediction is 312.216 and the error is $-17.784$. The next gradient is $2(-17.784)(12,3,20,1)=(-426.816,-106.704,-711.36,-35.568)$, so the next pass must use fresh slopes.
+      This example runs the second pass of the loop for $\hat y=wx+b$ on the example $x=2$, $y=7$, with $\eta=0.05$. The first pass left $w=1.8$ and $b=1.4$.
+
+      1. **Predict.**
+         $$\hat y=1.8\times2+1.4=5.$$
+
+      2. **Measure the error and loss.**
+         $$e=5-7=-2,\qquad L=(-2)^2=4.$$
+
+      3. **Find the slopes.**
+         $$\frac{\partial L}{\partial w}=2(-2)(2)=-8,\qquad \frac{\partial L}{\partial b}=2(-2)=-4.$$
+
+      4. **Update.**
+         $$w=1.8-0.05\times(-8)=2.2,$$
+         $$b=1.4-0.05\times(-4)=1.6.$$
+
+      The same loop in Python, for four passes. `**` means "to the power", `range(1, 5)` counts passes $1$ to $4$, and `w, b = ..., ...` updates both from the old values at once. The indented lines repeat each pass, and `round(loss, 4)` rounds to $4$ decimal places.
+
+      ```python
+      x, y = 2.0, 7.0
+      w, b = 1.0, 1.0
+      lr = 0.05
+      for step in range(1, 5):
+          y_hat = w * x + b                # 1. predict
+          e = y_hat - y                    # 2. error
+          loss = e ** 2                    #    and loss
+          dw, db = 2 * e * x, 2 * e        # 3. slopes
+          w, b = w - lr * dw, b - lr * db  # 4. update
+          print(step, round(loss, 4))
+      # prints 1 16.0, 2 4.0, 3 1.0, 4 0.25
+      ```
+
+      **Compare cases.** Each pass, measured before its update, so the losses match what the code prints:
+
+      | Pass | $w$ | $b$ | $\hat y$ | $e$ | $L$ | Slopes $(\partial L/\partial w,\ \partial L/\partial b)$ |
+      | --- | --- | --- | --- | --- | --- | --- |
+      | $1$ | $1$ | $1$ | $3$ | $-4$ | $16$ | $(-16,-8)$ |
+      | $2$ | $1.8$ | $1.4$ | $5$ | $-2$ | $4$ | $(-8,-4)$ |
+      | $3$ | $2.2$ | $1.6$ | $6$ | $-1$ | $1$ | $(-4,-2)$ |
+      | $4$ | $2.4$ | $1.7$ | $6.5$ | $-0.5$ | $0.25$ | $(-2,-1)$ |
+
+      The slopes shrink as the error shrinks, so the steps get smaller near the bottom on their own. With many examples that don't lie on one line, the single errors can't all reach $0$, but their averaged slopes still shrink toward $0$ near the best parameters.
+
+      **Where it shows up.** Training a real model, such as the house-price model, runs this loop thousands of times, with each slope averaged over all the training examples. The loss curve is what you watch while it runs.
     problems:
-      [
-        gd-training-loop-basics,
-        gdp-loop-order,
-        gdp-code-update,
-        gdp-shape,
-        gdp-bias-step-template,
-        gdp-code-gradient,
-        gdp-why-fresh-errors,
-      ]
+      - gd-training-loop-basics
+      - gdp-loop-self-explain
+      - gdp-loop-order
+      - gdp-code-update
+      - gdp-next-pass
+      - gdp-code-slope
+      - gdp-why-fresh-errors
+      - gdp-robot-loop
 final: gd-explain-training
 summary: |
-  - Gradient descent subtracts a scaled gradient from every weight and the bias.
-  - Large feature values can create large slopes, so the learning rate must keep updates controlled.
-  - Training repeats prediction, loss, gradient and update with fresh values.
+  - Gradient descent steps every input against its own slope: $\mathbf p_{\text{new}}=\mathbf p-\eta\nabla f(\mathbf p)$.
+  - The learning rate sets the step size: too small is slow, too large overshoots and can make the loss grow.
+  - For a linear model with squared error, each weight's slope is twice the error times its input, and the bias's slope is twice the error.
+  - Training repeats predict, loss, gradient and update, recomputing the gradient every pass and watching the loss curve.
 
-  **Next:** Training and test splits show whether these updates generalise to houses the model has not seen.
+  **Next:** Training and evaluation splits show whether these updates help on examples the model has not seen.
