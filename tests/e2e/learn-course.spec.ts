@@ -463,12 +463,7 @@ test('authored course-structure lessons render their diagrams', async ({ page })
     ],
     ['backpropagation', 'Backpropagation', 'Compute one weight gradient backward', 'bp-by-hand'],
     ['chain-rule', 'Chain rule', 'Rates along a chain multiply', 'cr-rates-multiply'],
-    [
-      'gradient-descent',
-      'Gradient descent',
-      'Update the house model opposite its gradient',
-      'gd-downhill-update',
-    ],
+    ['gradient-descent', 'Gradient descent', 'Step against the gradient', 'gd-downhill-update'],
   ] as const) {
     await mockLessonReview(page, conceptId, title);
     await page.goto(`/lessons/${conceptId}`);
@@ -477,12 +472,13 @@ test('authored course-structure lessons render their diagrams', async ({ page })
       .locator('article')
       .filter({ has: page.getByRole('heading', { name: new RegExp(knowledgePointTitle) }) });
     await expect(knowledgePoint).toHaveCount(1);
-    for (const text of conceptId === 'chain-rule'
+    const usesWriteLessonLabels = conceptId === 'chain-rule' || conceptId === 'gradient-descent';
+    for (const text of usesWriteLessonLabels
       ? ['The question.', 'Picture it.', 'The idea.', 'Common confusion.']
       : ['How it works.', 'This example shows']) {
       await expect(knowledgePoint).toContainText(text);
     }
-    if (conceptId === 'chain-rule') {
+    if (usesWriteLessonLabels) {
       await expect(knowledgePoint.locator('figure img[alt]')).toHaveCount(1);
     }
     await expect(knowledgePoint.locator('.katex-error')).toHaveCount(0);
