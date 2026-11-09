@@ -109,9 +109,9 @@ exercises:
     options:
       - {
           id: a,
-          text: "When information from validation or test data influences training or model choices",
+          text: "When validation or test data shapes the weights, or test data shapes the model choice",
           correct: true,
-          feedback: "Leakage occurs when held-out validation or test information affects fitting or model selection.",
+          feedback: "Held-out data must not fit the weights, and test data must not help choose; choosing by validation error is allowed.",
         }
       - {
           id: b,
@@ -131,7 +131,7 @@ exercises:
           correct: false,
           feedback: "Different split sizes alone do not make held-out information affect training.",
         }
-    solution: "Data leakage occurs when information from outside the training split is used during fitting or model selection."
+    solution: "Data leakage is held-out information reaching the model beyond its set's job: validation or test data shaping the weights, or test data shaping the model choice. Choosing with validation errors is allowed."
   - id: tts-check-purpose
     dimension: conceptual
     type: mc
@@ -447,10 +447,10 @@ exercises:
         }
       - {
           id: c,
-          text: "Late frames from each object, after training on early frames",
+          text: "The last few seconds of every attempt, after training on the rest",
           correct: false,
           category: misapplied_technique,
-          feedback: "Frames of the same objects still share information between training and test.",
+          feedback: "Every object still appears in training, so this tests the end of familiar attempts, not new objects.",
         }
       - {
           id: d,
@@ -791,7 +791,7 @@ exercises:
     params:
       v: { min: 300, max: 800, step: 10 }
       t: { min: 310, max: 900, step: 10 }
-    constraints: ["t > v"]
+    constraints: ["t > v", "t <= v + 100"]
     tolerance: { abs: 0.000001 }
   - id: ttsp-duplicate-leak
     dimension: conceptual
@@ -860,9 +860,9 @@ exercises:
           text: "Test sizes shaped the average; compute it from test sales only",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "That still uses test information in preprocessing; compute the average from training sales only.",
+          feedback: "That still lets test sales set the fill value; compute the average from training sales only.",
         }
-    solution: "The test sales helped set a value used during preprocessing, even though their prices were not used. Split first, then compute the average size from training sales only."
+    solution: "The test sales helped set the fill value written into the training data, even though their prices were not used. Split first, then compute the average size from training sales only."
   - id: ttsp-same-house
     dimension: transfer
     type: mc
@@ -902,7 +902,7 @@ exercises:
     est_minutes: 2
     prompt: "A robot learns to pick up parcels from 60 recorded attempts, each containing 300 video frames, the individual camera pictures. Randomly assigning pictures puts neighbours from one attempt in both training and test. What is the risk when testing on new attempts, and how should you split?"
     options:
-      - { id: a, text: "Near-duplicate frames leak; hold out whole demonstrations", correct: true }
+      - { id: a, text: "Near-duplicate frames leak; hold out whole attempts", correct: true }
       - {
           id: b,
           text: "Frames are independent; hold out random frames as before",
@@ -922,7 +922,7 @@ exercises:
           text: "Training needs more examples; duplicate the test frames",
           correct: false,
           category: incorrect_reasoning,
-          feedback: "Adding test frames to training would make the leakage worse; keep each demonstration in one set.",
+          feedback: "Adding test frames to training would make the leakage worse; keep each attempt in one set.",
         }
     solution: "Neighbouring pictures look almost identical, so the model can effectively see test scenes during training. Keep each complete recorded attempt in one set to keep these related pictures together."
   - id: ttsp-why-training-average
@@ -1054,3 +1054,115 @@ exercises:
     solution: Choose size and bedrooms because its validation error is smaller. The
       input choice is a hyperparameter because it is chosen outside the fitted
       weights.
+  - id: ttsp-hold-out-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, why does training error rank the memoriser first while test error ranks the weights model first?"
+    options:
+      - id: a
+        text: "The memoriser stores the training prices, so only the test houses show how it handles houses it hasn't stored."
+        correct: true
+        feedback: "Its training error of 0 comes from storing those exact prices, which says nothing about other houses."
+      - id: b
+        text: "The test houses are more expensive, so every model's squared errors are bound to be larger on them."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The weights model's test errors stay at 20; the memoriser's grow because it can only copy stored prices."
+      - id: c
+        text: "Test error uses a different loss from training error, so the two rankings are not comparable at all."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Both are the same average squared error; only the houses they are computed on differ."
+      - id: d
+        text: "Two test houses are too few to average, so the test ranking is a rounding effect and can be ignored."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Two houses keep the picture small, but the memoriser's misses of 40 and 50 are real errors on unseen houses."
+    solution: "The memoriser is exact on training houses only because it stored their prices. The test houses were never stored, so they reveal that it prices new houses badly, while the weights model stays within 20."
+  - id: ttsp-splits-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, why is B's test error of 480 reported rather than its validation error of 460?"
+    options:
+      - id: a
+        text: "The 460 helped pick B, so it is likely a lucky low; 480 comes from sales that played no part in any choice."
+        correct: true
+        feedback: "Picking the lowest of several validation scores favours one that wobbled low, so the untouched test score is fairer."
+      - id: b
+        text: "The larger of the two numbers should always be reported, because a cautious estimate is safer to give."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The rule is about which sales were used to choose, not about picking the larger number."
+      - id: c
+        text: "The test set holds more sales than the validation set, so its average error is more precise."
+        correct: false
+        category: math_error
+        feedback: "Both sets hold 150 sales; the difference is that only the validation set was used to choose."
+      - id: d
+        text: "The validation sales were used to fit B's weights, so their error is really another training error."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Only the 700 training sales fit the weights; validation sales were used to choose between models."
+    solution: "B won because its validation error was lowest, and the lowest of several scores tends to be a little lucky. The 150 test sales played no part in fitting or choosing, so their error of 480 is the fair estimate."
+  - id: ttsp-hyper-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, why is size and bedrooms chosen even though the model with 14 inputs has the lowest training error, 280?"
+    options:
+      - id: a
+        text: "No validation sale was used to fit any weights, so the lowest validation error, 470, shows which does best on unseen houses."
+        correct: true
+        feedback: "Validation error compares the settings on houses none of them was fitted to."
+      - id: b
+        text: "Models with fewer inputs are always better, so the simpler model would be chosen whatever the errors were."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Size only has fewer inputs still but a higher validation error, 640; the choice follows the validation errors."
+      - id: c
+        text: "Size and bedrooms had the lowest test error of the three, and the test set decides between settings."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Only the chosen model is scored on the test set, and only after the choice is made."
+      - id: d
+        text: "A training error of 280 is too low to be correct, so the 14-input model must have a bug in it."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A low training error is expected when more inputs let the weights fit those particular houses closely."
+    solution: "The 14 inputs let the weights fit the training houses closely, which lowers training error without helping on new houses. Validation sales were not used for fitting, so their errors, 640, 470 and 530, pick size and bedrooms."
+  - id: ttsp-leakage-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, why are the missing sizes filled with 100 rather than 115?"
+    options:
+      - id: a
+        text: "The 115 includes the test house's size, 160, so test information would shape the training inputs."
+        correct: true
+        feedback: "The training-only average, 100, keeps every test value out of the processing."
+      - id: b
+        text: "The 100 is closer to the true missing sizes, because training houses are measured more accurately."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The missing sizes are unknown; the reason is that 115 uses a test house's size."
+      - id: c
+        text: "The 115 counts the missing sizes as zero, so it is an arithmetic mistake rather than a leak."
+        correct: false
+        category: math_error
+        feedback: "The 115 averages the four known sizes correctly; its problem is that one of them is a test size."
+      - id: d
+        text: "The test houses should instead be filled with their own average, 160, kept apart from training."
+        correct: false
+        category: misapplied_technique
+        feedback: "Every set uses the value computed from training, so test houses are filled with 100 too."
+    solution: "Averaging all known sizes gives 115 only because the test size 160 is included, which lets a test house change the training data. Computing the average from training sizes gives 100, used for every set."

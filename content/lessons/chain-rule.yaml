@@ -1,159 +1,249 @@
 concept: chain-rule
-version: 3
+version: 4
 objective: |
-  **Goal:** use the chain rule to find how a house-network parameter changes the final price loss.
+  **Goal:** find how an output changes when its input reaches it through a chain of steps, by multiplying the rates along each route and adding the routes together.
 where_this_fits: |
-  The MLP forward pass turned the house features into a price through hidden values and an output layer. To train it, we must find how changing an early weight affects the final loss through every later calculation. The chain rule multiplies the local rates along that sequence.
+  To train a model you need the slope of its loss with respect to each weight. But a weight rarely touches the loss directly: it changes a prediction, the prediction changes the error, and the error changes the loss. The derivative rules you know work on one formula at a time, and expanding a long chain into a single formula quickly gets messy. This lesson builds the tool that follows the chain instead, the **chain rule**, in three steps:
+
+  1. Multiply the rates of change along a chain of steps.
+  2. Use that to differentiate a formula inside another formula.
+  3. Add the contributions when an input reaches the output by more than one route.
 knowledge_points:
   - id: cr-rates-multiply
     title: Rates along a chain multiply
     explain: |
-      **What the chain rule is.** It finds the derivative of a nested calculation by multiplying the derivative at each step.
+      **The question.** Suppose $x$ feeds a first step that produces an in-between value $u$, and $u$ feeds a second step that produces the output $y$. You know how fast each step responds to its own input. How fast does $y$ respond to $x$?
 
-      **How it works.** For functions $f$ and $g$, $g\circ f$ means apply $f$ first, then $g$. In a small house network, area $a$ sets:
+      **Picture it.** Take the simplest chain: the first step triples its input, $u=3x$, and the second doubles its input, $y=2u$. The picture shows three number lines on the same scale, one tick per $0.1$. Nudge $x$ by $0.1$ (amber). The first step turns that into a nudge of $0.3$ in $u$, and the second turns $0.3$ into $0.6$ in $y$. The output moved $6$ times as far as the input, and $6=2\times3$.
 
-      $$
-      \begin{aligned}
-      z &= 0.1a,\\
-      h &= \max(0,z),\\
-      \hat y &= 15h+306.5.
-      \end{aligned}
-      $$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Three number lines on the same scale: a nudge of 0.1 in x becomes 0.3 in u after the times-3 step and 0.6 in y after the times-2 step">
+        <defs>
+          <marker id="cr1-blue-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M100 80 H600 M100 160 H600 M100 240 H600" stroke="#d4d4d4" stroke-width="1.5"/>
+          <path d="M130 74 V86 M160 74 V86 M190 74 V86 M220 74 V86 M250 74 V86 M280 74 V86 M310 74 V86 M340 74 V86 M370 74 V86 M130 154 V166 M160 154 V166 M190 154 V166 M220 154 V166 M250 154 V166 M280 154 V166 M310 154 V166 M340 154 V166 M370 154 V166 M130 234 V246 M160 234 V246 M190 234 V246 M220 234 V246 M250 234 V246 M280 234 V246 M310 234 V246 M340 234 V246 M370 234 V246" stroke="#d4d4d4" stroke-width="1.5"/>
+          <path d="M130 80 H160 M130 160 H220 M130 240 H310" stroke="#f59e0b" stroke-width="6" stroke-linecap="butt"/>
+          <path d="M160 88 L217 152" stroke="#3b82f6" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#cr1-blue-arrow)"/>
+          <path d="M220 168 L307 232" stroke="#3b82f6" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#cr1-blue-arrow)"/>
+          <text x="60" y="85" font-size="16">x</text>
+          <text x="60" y="165" font-size="16">u</text>
+          <text x="60" y="245" font-size="16">y</text>
+          <text x="170" y="66" fill="#f59e0b">nudge 0.1</text>
+          <text x="232" y="148" fill="#f59e0b">moves 0.3</text>
+          <text x="322" y="228" fill="#f59e0b">moves 0.6</text>
+          <text x="420" y="125" fill="#3b82f6">u = 3x: ×3</text>
+          <text x="420" y="205" fill="#3b82f6">y = 2u: ×2</text>
+          <text x="100" y="285" fill="#737373">each tick = 0.1, same scale on every line</text>
+        </g>
+      </svg>
+      ```
 
-      At $a=12$:
+      **The idea.** A nudge passes through each step in turn and gets scaled by that step's rate, so the rates multiply. When a step's rate changes from point to point, this holds for small nudges, which is exactly what a derivative describes. In general, the **chain rule** says: if $y$ depends on $u$ and $u$ depends on $x$, then
 
-      $$z=h=1.2.$$
+      $$\frac{dy}{dx}=\frac{dy}{du}\cdot\frac{du}{dx}.$$
 
-      The local rates are:
+      Here $\frac{du}{dx}$ is another way to write the derivative of $u$ with respect to $x$: how much $u$ moves per unit of $x$. It is one symbol, not a fraction to cancel. Likewise $\frac{dy}{du}$ is the second step's rate. A longer chain just multiplies more rates.
 
-      $$
-      \begin{aligned}
-      dh/dz &= 1,\\
-      d\hat y/dh &= 15,\\
-      dz/da &= 0.1,\\
-      d\hat y/da &= 15\cdot1\cdot0.1=1.5.
-      \end{aligned}
-      $$
-
-      The rate is 1.5 thousand pounds per feature unit. Multiplying the rates works because each converts a change into the units of the next quantity.
-
-      **Why this is useful.** The product tells how a house input affects the network's final price through its hidden computation.
+      **Common confusion.** “Each step adds its own change, so I should add the rates: $3+2=5$.” No. The second step doesn't see the original nudge of $0.1$; it sees the already-tripled nudge of $0.3$, and doubles that. Scaling a scaled nudge is multiplication. Units agree: km per hour times litres per km gives litres per hour.
     worked: |
-      This example shows the calculation.
-      For $a=12$, $z$ is positive, so the max operation has slope $dh/dz=1$:
+      A car drives at $50$ km per hour, uses $0.08$ litres of fuel per km, and fuel costs $1.5$ pounds per litre. Time $t$ sets distance $s$, distance sets fuel $F$, and fuel sets cost $C$. How fast does the cost grow, in pounds per hour?
 
-      $$\frac{d\hat y}{da}=\frac{d\hat y}{dh}\frac{dh}{dz}\frac{dz}{da}=15\cdot1\cdot0.1=1.5.$$
+      1. **Write down each step's rate.**
+         $$\frac{ds}{dt}=50,\qquad \frac{dF}{ds}=0.08,\qquad \frac{dC}{dF}=1.5.$$
+
+      2. **Multiply along the chain.**
+         $$\frac{dC}{dt}=\frac{dC}{dF}\cdot\frac{dF}{ds}\cdot\frac{ds}{dt}.$$
+
+      3. **Put in the numbers.**
+         $$\frac{dC}{dt}=1.5\times0.08\times50=6.$$
+
+      4. **Check the units.**
+         $$\frac{\text{pounds}}{\text{litre}}\times\frac{\text{litres}}{\text{km}}\times\frac{\text{km}}{\text{hour}}=\frac{\text{pounds}}{\text{hour}}.$$
+
+      So driving costs $6$ pounds per hour.
+
+      **Compare cases.** Two-step chains with different rates:
+
+      | $du/dx$ | $dy/du$ | $dy/dx$ |
+      | --- | --- | --- |
+      | $3$ | $2$ | $6$ |
+      | $3$ | $-2$ | $-6$ |
+      | $0.5$ | $4$ | $2$ |
+      | $3$ | $0$ | $0$ |
+
+      A negative rate anywhere flips the sign, and a zero rate anywhere makes the overall slope zero at that point.
+
+      **Where it shows up.** A model's loss $L$ depends on its prediction $p$, which depends on a weight $w$. The loss slope for the weight is the product $\frac{dL}{dw}=\frac{dL}{dp}\cdot\frac{dp}{dw}$.
     problems:
-      [
-        cr-rates-multiply-basics,
-        crp-total-rate,
-        crp-rate-product,
-        crp-why-multiply,
-        crp-local-meaning,
-        crp-robot-wheel,
-        crp-three-steps,
-        crp-backwards-rate,
-      ]
+      - cr-rates-multiply-basics
+      - crp-why-multiply
+      - crp-total-rate
+      - crp-rate-product
+      - crp-three-steps
   - id: cr-nested-formulas
     title: Differentiate a formula inside a formula
     explain: |
-      **What a composite function is.** It is a function whose input is first transformed by another function.
+      **The question.** How do you differentiate $y=(3x+1)^2$ without expanding the bracket? The rules you know handle $u^2$ and $3x+1$ separately, but here one sits inside the other.
 
-      **How it works.** For the house network, set:
+      **Picture it.** Read the formula as two steps. First an **inner** step turns $x$ into $u=3x+1$. Then an **outer** step squares it: $y=u^2$. At $x=1$, the inner step gives $u=4$ and the outer step gives $y=16$. Each step has its own rate there: the inner one is $3$, and the outer one is $2u=8$, worked out at the value it receives, $u=4$. A nudge of $0.01$ in $x$ becomes $0.03$ in $u$, then about $0.24$ in $y$.
 
-      $$
-      \begin{aligned}
-      z &= 0.1a,\\
-      h &= \max(0,z),\\
-      \hat y &= 15h+306.5,\\
-      L &= (\hat y-330)^2.
-      \end{aligned}
-      $$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="Pipeline at x equals 1: the inner step u equals 3x plus 1 gives u equals 4 with rate 3, the outer step y equals u squared gives y equals 16 with rate 8, so dy/dx equals 24 and a nudge of 0.01 becomes about 0.24">
+        <defs>
+          <marker id="cr2-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <rect x="110" y="55" width="140" height="60" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+          <rect x="390" y="55" width="120" height="60" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+          <path d="M70 85 H107" stroke="#737373" stroke-width="2" marker-end="url(#cr2-arrow)"/>
+          <path d="M250 85 H287" stroke="#737373" stroke-width="2" marker-end="url(#cr2-arrow)"/>
+          <path d="M350 85 H387" stroke="#737373" stroke-width="2" marker-end="url(#cr2-arrow)"/>
+          <path d="M510 85 H547" stroke="#737373" stroke-width="2" marker-end="url(#cr2-arrow)"/>
+          <text x="14" y="90">x = 1</text>
+          <text x="180" y="90" text-anchor="middle">u = 3x + 1</text>
+          <text x="294" y="90">u = 4</text>
+          <text x="450" y="90" text-anchor="middle">y = u²</text>
+          <text x="554" y="90">y = 16</text>
+          <text x="180" y="40" text-anchor="middle" fill="#737373">inner step</text>
+          <text x="450" y="40" text-anchor="middle" fill="#737373">outer step</text>
+          <text x="180" y="145" text-anchor="middle" fill="#3b82f6">du/dx = 3</text>
+          <text x="450" y="145" text-anchor="middle" fill="#3b82f6">dy/du = 2u = 8</text>
+          <text x="320" y="185" text-anchor="middle" font-size="15">dy/dx = 8 × 3 = 24</text>
+          <text x="320" y="230" text-anchor="middle" fill="#f59e0b">nudge x by 0.01: u moves 0.03, y moves about 0.24</text>
+        </g>
+      </svg>
+      ```
 
-      At $a=12$, $\hat y=324.5$. The loss slope with respect to area multiplies each local derivative:
+      **The idea.** Differentiate the outer step at the inner value, then multiply by the inner step's rate. A **composite function** applies one function to the output of another. Write $f\circ g$ (read “$f$ after $g$”) for the function that applies $g$ first, then $f$: $(f\circ g)(x)=f(g(x))$. The chain rule for it is
 
-      $$\frac{dL}{da}=2(\hat y-330)\cdot15\cdot1\cdot0.1=-16.5.$$
+      $$(f\circ g)'(x)=f'(g(x))\cdot g'(x).$$
 
-      Including the max-operation derivative accounts for how the hidden value responds to its score.
+      In words: $f'(g(x))$ is the outer rate, evaluated at the inner value, and $g'(x)$ is the inner rate. For $(3x+1)^2$, $g(x)=3x+1$ and $f(u)=u^2$, so $f'(g(x))=2(3x+1)$ is the $2u$ above and $g'(x)=3$.
 
-      **Why this is useful.** The chain rule connects the house's final price error to an early network weight or input.
+      **Common confusion.** “The derivative of $(3x+1)^2$ is just $2(3x+1)$, like the power rule.” Only half right. That is the outer rate. The bracket itself changes $3$ times as fast as $x$, so you must also multiply by $3$: the derivative is $6(3x+1)$.
     worked: |
-      This example shows the calculation.
-      At $a=12$, the loss error is:
+      Find the slope of $y=(2x-1)^3$ at $x=2$, then check it with a small nudge.
 
-      $$324.5-330=-5.5.$$
+      1. **Name the inner and outer steps.**
+         $$u=2x-1,\qquad y=u^3.$$
 
-      The max-operation slope is 1. Therefore:
+      2. **Find the inner value and the inner rate.**
+         $$u=2(2)-1=3,\qquad \frac{du}{dx}=2.$$
 
-      $$dL/da=2(-5.5)(15)(1)(0.1)=-16.5.$$
+      3. **Find the outer rate at that inner value.**
+         $$\frac{dy}{du}=3u^2=3(3)^2=27.$$
 
-      For the weight $0.1$, the final factor is:
+      4. **Multiply.**
+         $$\frac{dy}{dx}=27\times2=54.$$
 
-      $$dz/dw=a=12.$$
+      5. **Check with a nudge of $0.01$.**
+         $$(2(2.01)-1)^3-27=3.02^3-27=0.543608\approx 54\times0.01.$$
 
-      This gives:
+      **Compare cases.** Back to the pictured $y=(3x+1)^2$ at other points: the outer rate changes with the inner value, the inner rate stays $3$.
 
-      $$dL/dw=-1980.$$
+      | $x$ | $u=3x+1$ | $dy/du=2u$ | $dy/dx$ |
+      | --- | --- | --- | --- |
+      | $1$ | $4$ | $8$ | $24$ |
+      | $0$ | $1$ | $2$ | $6$ |
+      | $-1/3$ | $0$ | $0$ | $0$ |
+      | $-1$ | $-2$ | $-4$ | $-12$ |
+
+      **Where it shows up.** The derivatives lesson's house loss $L(w)=(12w-330)^2$ is an outer square of an inner error $e=12w-330$. The chain rule gives $dL/dw=2e\cdot12$, which is $-720$ at $w=25$, the same slope as before.
     problems:
-      [
-        cr-nested-formulas-basics,
-        crp-diff-cube,
-        crp-why-inner-factor,
-        crp-inner-outer,
-        crp-compose-notation,
-        crp-nested-slope,
-        crp-diff-log,
-        crp-product-chain,
-      ]
+      - cr-nested-formulas-basics
+      - crp-why-inner-factor
+      - crp-diff-cube
+      - crp-nested-slope
+      - crp-diff-log
+      - crp-root-slope
   - id: cr-two-routes
-    title: Add derivatives when an input has two routes
+    title: Add the routes when an input has two
     explain: |
-      **What a route is.** It is one sequence of operations through which an input affects an output.
+      **The question.** Sometimes one input feeds two in-between values, and both feed the output. A chain gives one product of rates, but now there are two chains. How do you combine them?
 
-      **How it works.** Suppose area contributes to two hidden values:
+      **Picture it.** Let $u=2x$ and $v=x+3$, and let the output be their product, $f=uv$. The picture draws each quantity as a circle and each dependence as an arrow, with each step's rate at $x=1$. There are two **routes** from $x$ to $f$: through $u$ (blue) and through $v$ (green). Along the blue route the rates are $2$ and $\partial f/\partial u=v=4$; along the green route they are $1$ and $\partial f/\partial v=u=2$. Each partial derivative asks “what if only this in-between value moved?”, holding the other one fixed, so it measures its own route only. The real nudge moves both.
 
-      $$
-      \begin{aligned}
-      h_1 &= 0.1a,\\
-      h_2 &= 0.05a,\\
-      \hat y &= 15h_1+10h_2+306.5.
-      \end{aligned}
-      $$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" aria-label="x feeds u equals 2x along a blue route and v equals x plus 3 along a green route, both feed f equals uv; at x equals 1 the blue route gives 4 times 2 equals 8, the green route gives 2 times 1 equals 2, and df/dx equals 10">
+        <defs>
+          <marker id="cr3-blue-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+          <marker id="cr3-green-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M106.2 150.2 L290 81.2" stroke="#3b82f6" stroke-width="3" marker-end="url(#cr3-blue-arrow)"/>
+          <path d="M346.2 79.8 L530 148.8" stroke="#3b82f6" stroke-width="3" marker-end="url(#cr3-blue-arrow)"/>
+          <path d="M106.2 169.8 L290 238.8" stroke="#10b981" stroke-width="3" marker-end="url(#cr3-green-arrow)"/>
+          <path d="M346.2 240.2 L530 171.2" stroke="#10b981" stroke-width="3" marker-end="url(#cr3-green-arrow)"/>
+          <circle cx="80" cy="160" r="26" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+          <circle cx="320" cy="70" r="26" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+          <circle cx="320" cy="250" r="26" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+          <circle cx="560" cy="160" r="26" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+          <text x="80" y="166" text-anchor="middle" font-size="16">x</text>
+          <text x="320" y="76" text-anchor="middle" font-size="16">u</text>
+          <text x="320" y="256" text-anchor="middle" font-size="16">v</text>
+          <text x="560" y="166" text-anchor="middle" font-size="16">f</text>
+          <text x="80" y="208" text-anchor="middle">x = 1</text>
+          <text x="320" y="30" text-anchor="middle">u = 2x = 2</text>
+          <text x="320" y="298" text-anchor="middle">v = x + 3 = 4</text>
+          <text x="560" y="208" text-anchor="middle">f = uv = 8</text>
+          <text x="125" y="100" fill="#3b82f6">du/dx = 2</text>
+          <text x="440" y="96" fill="#3b82f6">∂f/∂u = v = 4</text>
+          <text x="125" y="236" fill="#10b981">dv/dx = 1</text>
+          <text x="440" y="236" fill="#10b981">∂f/∂v = u = 2</text>
+          <text x="320" y="165" text-anchor="middle">df/dx = 8 + 2 = 10</text>
+          <text x="20" y="330" fill="#3b82f6">route through u: 4 × 2 = 8</text>
+          <text x="340" y="330" fill="#10b981">route through v: 2 × 1 = 2</text>
+        </g>
+      </svg>
+      ```
 
-      The two route rates are:
+      **The idea.** Multiply the rates along each route, then add the routes. In general, if $f$ depends on $u$ and $v$, and both depend on $x$, the **multivariable chain rule** is
 
-      $$
-      \begin{aligned}
-      15(0.1) &= 1.5,\\
-      10(0.05) &= 0.5.
-      \end{aligned}
-      $$
+      $$\frac{df}{dx}=\frac{\partial f}{\partial u}\cdot\frac{du}{dx}+\frac{\partial f}{\partial v}\cdot\frac{dv}{dx}.$$
 
-      Since both routes change the same output, add them:
+      Each term is one route's product; with more routes you add more terms. The routes add because, for a small nudge, each route's effect is small and they simply pile up; the cross effect of $u$ and $v$ moving together is a small nudge times a small nudge, too tiny to count.
 
-      $$d\hat y/da=1.5+0.5=2.$$
-
-      The route rates add because a small area change affects the output through both hidden values.
-
-      **Why this is useful.** Adding paths accounts for every way a house feature can influence the predicted price.
+      **Common confusion.** “$\frac{\partial f}{\partial u}\cdot\frac{du}{dx}$ is already the chain rule, so that's the derivative.” Only half right. That partial holds $v$ fixed, but nudging $x$ moves $v$ too. Leaving out the green route would give $8$ instead of $10$.
     worked: |
-      This example shows the calculation.
-      Route 1 contributes $(d\hat y/dh_1)(dh_1/da)=15(0.1)=1.5$. Route 2 contributes $10(0.05)=0.5$. Their sum is $2$ thousand pounds per area-feature unit.
+      Find $df/dx$ for $f=uv$ with $u=x^2$ and $v=3x+1$, at $x=2$.
+
+      1. **Find the in-between values and their rates.**
+         $$u=2^2=4,\qquad v=3(2)+1=7,\qquad \frac{du}{dx}=2x=4,\qquad \frac{dv}{dx}=3.$$
+
+      2. **Multiply along the route through $u$.**
+         $$\frac{\partial f}{\partial u}\cdot\frac{du}{dx}=v\cdot4=7\times4=28.$$
+
+      3. **Multiply along the route through $v$.**
+         $$\frac{\partial f}{\partial v}\cdot\frac{dv}{dx}=u\cdot3=4\times3=12.$$
+
+      4. **Add the routes.**
+         $$\frac{df}{dx}=28+12=40.$$
+
+      5. **Check by substituting first.**
+         $$f=x^2(3x+1)=3x^3+x^2,\qquad f'(x)=9x^2+2x=40\text{ at }x=2.$$
+
+      **Compare cases.** Back to the pictured $f=uv$ with $u=2x$ and $v=x+3$: at other values of $x$ the two routes can share the work, or pull against each other.
+
+      | $x$ | route through $u$: $2v$ | route through $v$: $u$ | $df/dx$ |
+      | --- | --- | --- | --- |
+      | $1$ | $8$ | $2$ | $10$ |
+      | $0$ | $6$ | $0$ | $6$ |
+      | $-1.5$ | $3$ | $-3$ | $0$ |
+      | $-2$ | $2$ | $-4$ | $-2$ |
+
+      **Where it shows up.** In a model, one weight can feed two in-between values that both reach the loss, so its loss slope is the sum of two route products. The next lesson, computational graphs, draws every route like this so none is missed.
     problems:
-      [
-        cr-two-routes-basics,
-        crp-sum-routes,
-        crp-partial-meaning,
-        crp-trip-cost,
-        crp-why-both-routes,
-        crp-routes-expression,
-        crp-robot-routes,
-        crp-robot-heat,
-      ]
+      - cr-two-routes-basics
+      - crp-why-both-routes
+      - crp-sum-routes
+      - crp-routes-expression
+      - crp-robot-heat
 final: cr-explain
 summary: |
-  - The chain rule multiplies local derivatives along a route through nested functions.
-  - If an input reaches an output by several routes, add the route products.
-  - These rules connect house-network parameters to the final price loss.
+  - Along a chain of steps, the rates of change multiply.
+  - To differentiate a formula inside a formula, take the outer rate at the inner value and multiply by the inner rate.
+  - When an input reaches the output by several routes, multiply along each route and add the routes.
 
-  **Next:** Computational graphs draw the operations and routes before calculating their derivatives.
+  **Next:** Computational graphs draw the steps and routes of a calculation before you differentiate it.

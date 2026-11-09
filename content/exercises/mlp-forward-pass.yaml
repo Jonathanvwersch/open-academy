@@ -72,40 +72,40 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What does a matrix shape tell you?"
+    prompt: "A batch of examples, one per row, goes through a layer. What does one row of the layer's output hold?"
     options:
       - {
           id: a,
-          text: "The number of training and test examples used to fit and evaluate a model.",
-          correct: false,
-          feedback: "Those are dataset split sizes; a matrix shape counts that matrix's rows and columns.",
+          text: "That example's outputs from the layer: one value for each neuron.",
+          correct: true,
+          feedback: "Each example keeps its own row, and each neuron adds one column.",
         }
       - {
           id: b,
-          text: "The number of rows followed by the number of columns.",
-          correct: true,
-          feedback: "The row and column counts tell whether the layer's matrix operations can fit.",
+          text: "One neuron's outputs: one value for each example in the batch.",
+          correct: false,
+          feedback: "That describes a column. A row belongs to one example.",
         }
       - {
           id: c,
-          text: "The number of parameter updates required before training reaches a minimum.",
+          text: "One neuron's weights: one value for each input the layer reads.",
           correct: false,
-          feedback: "Training duration is not encoded by shape; shape records the matrix's row and column counts.",
+          feedback: "Weights are parameters stored in $W$, not outputs computed for an example.",
         }
       - {
           id: d,
-          text: "The number of input features and output values handled by the network layer.",
+          text: "The average of every example's outputs, one value per neuron.",
           correct: false,
-          feedback: "Those counts describe layer dimensions; a matrix shape specifically gives its rows and columns.",
+          feedback: "A layer never averages examples together; each example gets its own row.",
         }
-    solution: "A matrix shape gives its number of rows followed by its number of columns."
+    solution: "In batch form each example is a row, so a row of the output holds that example's value from each neuron in the layer."
   - id: mlp-check-forward
     dimension: math
     type: numeric
     role: check
     difficulty: 2
     est_minutes: 3
-    prompt: "Using the example network ($W_1 = \\begin{pmatrix}1&0\\\\-1&1\\end{pmatrix}$, $b_1 = (0,-2)$, ReLU, $W_2 = (2, 3)$, $b_2 = 1$), compute $\\hat y$ for $x = (1, 4)$."
+    prompt: "A two-layer network has $W_1 = \\begin{pmatrix}1&0\\\\-1&1\\end{pmatrix}$, $b_1 = (0,-2)$, ReLU, $W_2 = (2, 3)$ and $b_2 = 1$. Compute $\\hat y$ for $x = (1, 4)$."
     answer: 6
     tolerance: { abs: 0.001 }
     hints: ["$W_1 x + b_1 = (1, 3) + (0, -2)$."]
@@ -147,7 +147,7 @@ exercises:
           text: "16",
           correct: false,
           category: misunderstood_definition,
-          feedback: "16 is the batch dimension, which is kept separate.",
+          feedback: "16 is not a count of the pixels. Multiply the channels by both image sizes: $3\\cdot32\\cdot32$.",
         }
       - {
           id: d,
@@ -192,7 +192,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Explain in 2–4 sentences what a two-layer multilayer perceptron computes from an input $x$, and how the array shapes change when you feed it a batch of $B$ examples."
+    prompt: "Using the lesson's 2 → 2 → 1 network or one of your own, explain in 2–4 sentences what a two-layer multilayer perceptron computes from an input $x$, and how the array shapes change when you feed it a batch of $B$ examples."
     rubric:
       - {
           id: r1,
@@ -269,7 +269,13 @@ exercises:
       p: { min: -3, max: 3 }
       x1: { min: 1, max: 3 }
       x2: { min: 1, max: 3 }
-    constraints: ["p != 0", "w1 != 0", "a * x1 + c * x2 + q != w1 * x1 + w2 * x2 + p"]
+    constraints:
+      [
+        "p != 0",
+        "w1 != 0",
+        "a * x1 + c * x2 + q != w1 * x1 + w2 * x2 + p",
+        "a * x1 + c * x2 + q != w1 * x1 + w2 * x2",
+      ]
     tolerance: { abs: 0.001 }
     common_wrong:
       - {
@@ -282,6 +288,42 @@ exercises:
           category: misunderstood_definition,
           feedback: "That's neuron 1's score. Neuron 2 uses row 2 of $W$.",
         }
+  - id: mlpp-layer-why-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, why is neuron 2's output $0$ rather than $-1$?"
+    options:
+      - {
+          id: a,
+          text: "Its score is $-1$, and ReLU turns every negative score into $0$.",
+          correct: true,
+          feedback: "ReLU returns $\\max(0,z)$, so $\\max(0,-1)=0$.",
+        }
+      - {
+          id: b,
+          text: "Its bias is $0$, so neuron 2 outputs $0$ whatever the input is.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A zero bias adds nothing, but the weighted sum still counts: for $x=(0,1)$ neuron 2 outputs $1$.",
+        }
+      - {
+          id: c,
+          text: "Its weight $-1$ on $x_1$ cancels the rest of its score to $0$.",
+          correct: false,
+          category: math_error,
+          feedback: "The score is $-1\\cdot2+1\\cdot1+0=-1$, not $0$. ReLU makes it $0$.",
+        }
+      - {
+          id: d,
+          text: "Only the first neuron in a layer passes a value on to the next.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Every neuron in a layer passes its output on; this one just happens to be $0$.",
+        }
+    solution: "Neuron 2's score is $-1\\cdot2+1\\cdot1+0=-1$. ReLU keeps positive scores and turns negative ones into $0$, so its output is $\\max(0,-1)=0$."
   - id: mlpp-why-matrix
     dimension: conceptual
     type: mc
@@ -292,7 +334,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "Each row calculates one neuron's weighted sum, so a computer can process many neuron calculations together without changing their results",
+          text: "Each row gives one neuron's weighted sum, so one product computes every score at once",
           correct: true,
         }
       - {
@@ -316,23 +358,19 @@ exercises:
           category: misunderstood_definition,
           feedback: "One row belongs to one neuron. Its dot product with the input gives that neuron's score, not an average across neurons.",
         }
-    solution: "For $W = \\begin{pmatrix}1 & 0\\\\ -1 & 1\\end{pmatrix}$ and $x = (1, 2)$, the row dot products are 1 and 1, just as two loops would compute. Adding $b = (0, -2)$ gives $(1, -1)$. Matrix form groups identical operations without changing their meaning."
+    solution: "For $W = \\begin{pmatrix}1 & 1\\\\ -1 & 1\\end{pmatrix}$ and $x = (2, 1)$, the row dot products are 3 and $-1$, just as two loops would compute. Adding $b = (-1, 0)$ gives $(2, -1)$. Matrix form groups identical operations without changing their meaning."
   - id: mlpp-weight-entry
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "In the house network, $W_1 = \\begin{pmatrix}1 & 0\\\\ -1 & 1\\end{pmatrix}$ and $x = (\\text{size}, \\text{distance})$. What does the $-1$ in row 2, column 1 mean?"
+    prompt: "A layer has $W = \\begin{pmatrix}1 & 1\\\\ -1 & 1\\end{pmatrix}$ and reads the input $x = (x_1, x_2)$. What does the $-1$ in row 2, column 1 mean?"
     options:
-      - {
-          id: a,
-          text: "Hidden neuron 2's weight on size: a bigger house lowers neuron 2's score",
-          correct: true,
-        }
+      - { id: a, text: "Neuron 2's weight on $x_1$", correct: true }
       - {
           id: b,
-          text: "Hidden neuron 1's weight on distance",
+          text: "Neuron 1's weight on $x_2$",
           correct: false,
           category: misunderstood_definition,
           feedback: "Rows are neurons and columns are inputs, so row 2, column 1 is neuron 2's weight on input 1.",
@@ -342,9 +380,9 @@ exercises:
           text: "Neuron 2's bias",
           correct: false,
           category: recall_failure,
-          feedback: "Biases are kept separately in $b_1 = (0, -2)$.",
+          feedback: "Biases are kept separately in the vector $b$, not inside $W$.",
         }
-    solution: "Row 2 belongs to hidden neuron 2 and column 1 to the first input, size. The weight $-1$ means each extra 100 m² lowers neuron 2's score by 1."
+    solution: "Row 2 belongs to neuron 2 and column 1 to the first input, $x_1$. The weight $-1$ means each extra unit of $x_1$ lowers neuron 2's score by 1."
   - id: mlpp-why-activation
     dimension: conceptual
     type: mc
@@ -355,19 +393,19 @@ exercises:
     options:
       - {
           id: a,
-          text: "Without it the next layer's weighted sum would collapse the two layers into one",
+          text: "Without it, the two layers would collapse into one weighted sum",
           correct: true,
         }
       - {
           id: b,
-          text: "To make the matrix product possible",
+          text: "So that the matrix product of the two layers is possible",
           correct: false,
           category: incorrect_reasoning,
           feedback: "The product works with or without an activation. The activation is about what the network can represent.",
         }
       - {
           id: c,
-          text: "To turn the scores into 0 or 1 answers",
+          text: "To turn every score into an answer of 0 or 1",
           correct: false,
           category: misunderstood_definition,
           feedback: "That's the step rule. ReLU keeps positive scores as they are.",
@@ -455,7 +493,8 @@ exercises:
       u: { min: 1, max: 3 }
       v: { min: 1, max: 3 }
       r: { min: 1, max: 3 }
-    constraints: ["a * x1 + b * x2 + p > 0", "c * x1 + d * x2 + q < 0"]
+    constraints:
+      ["a * x1 + b * x2 + p > 0", "c * x1 + d * x2 + q < 0", "v * (c * x1 + d * x2 + q) != -r"]
     tolerance: { abs: 0.001 }
     common_wrong:
       - {
@@ -474,24 +513,24 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Using the house network ($W_1 = \\begin{pmatrix}1 & 0\\\\ -1 & 1\\end{pmatrix}$, $b_1 = (0, -2)$, ReLU, $W_2 = (2, 3)$, $b_2 = 1$), compute $\\hat y$ for $x = (2, 1)$."
-    answer: 5
+    prompt: "Using the lesson's network ($W_1 = \\begin{pmatrix}1 & 1\\\\ -1 & 1\\end{pmatrix}$, $b_1 = (-1, 0)$, ReLU, $W_2 = \\begin{pmatrix}3 & 2\\end{pmatrix}$, $b_2 = 1$), compute $\\hat y$ for $x = (4, 1)$."
+    answer: 13
     tolerance: { abs: 0.001 }
     common_wrong:
       - {
-          answer: -4,
+          answer: 7,
           tolerance: { abs: 0.001 },
           category: incomplete_explanation,
           feedback: "You skipped ReLU. The second score is $-3$, so ReLU makes it 0.",
         }
       - {
-          answer: 4,
+          answer: 12,
           tolerance: { abs: 0.001 },
           category: incomplete_explanation,
           feedback: "Add the output bias $b_2 = 1$.",
         }
-    hints: ["$W_1 x + b_1 = (2, -1) + (0, -2)$."]
-    solution: "$W_1 x = (2, -1)$, plus $b_1$ gives $(2, -3)$. ReLU gives $h = (2, 0)$, so $\\hat y = 2 \\cdot 2 + 3 \\cdot 0 + 1 = 5$."
+    hints: ["$W_1 x + b_1 = (5, -3) + (-1, 0)$."]
+    solution: "$W_1 x = (5, -3)$, plus $b_1$ gives $(4, -3)$. ReLU gives $h = (4, 0)$, so $\\hat y = 3 \\cdot 4 + 2 \\cdot 0 + 1 = 13$."
   - id: mlpp-why-no-sigmoid-output
     dimension: conceptual
     type: mc
@@ -535,14 +574,10 @@ exercises:
     est_minutes: 1
     prompt: "What are a network's hidden values $h$?"
     options:
-      - {
-          id: a,
-          text: "Numbers the network computes between its input and output; they aren't in the data",
-          correct: true,
-        }
+      - { id: a, text: "Values the network computes between its input and output", correct: true }
       - {
           id: b,
-          text: "Inputs the learner can't see",
+          text: "Extra inputs that are kept out of view",
           correct: false,
           category: misunderstood_definition,
           feedback: "Every input is given. Hidden values are computed from them by the first layer.",
@@ -573,6 +608,42 @@ exercises:
         }
     hints: ["Score each hidden neuron, apply ReLU, then combine with the output weights."]
     solution: "Scores: $2 \\cdot 0.25 - 1 = -0.5$ and $-0.25 + 1 = 0.75$. ReLU gives $h = (0, 0.75)$. Output: $1 \\cdot 0 + 2 \\cdot 0.75 + 0 = 1.5$."
+  - id: mlpp-forward-why-h
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, why does the output layer use $h=(2,0)$ rather than the scores $(2,-1)$?"
+    options:
+      - {
+          id: a,
+          text: "The output layer reads layer 1's outputs, which are its scores after ReLU.",
+          correct: true,
+          feedback: "Layer 1's output is $\\phi(W_1x+b_1)$, so the next layer reads the activated values.",
+        }
+      - {
+          id: b,
+          text: "The negative score is an error in the input, so it is removed first.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Nothing is wrong with the input; a negative score is normal. ReLU is what turns it into $0$.",
+        }
+      - {
+          id: c,
+          text: "The output layer can only read numbers that are $0$ or larger.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "An output neuron can read any numbers. Here they are non-negative only because ReLU came first.",
+        }
+      - {
+          id: d,
+          text: "Using $(2,-1)$ would give the same prediction, $7$, in any case.",
+          correct: false,
+          category: math_error,
+          feedback: "With $(2,-1)$ the output is $3\\cdot2+2\\cdot(-1)+1=5$, not $7$.",
+        }
+    solution: "Each layer's output feeds the next layer, and layer 1's output is its scores after ReLU: $h=\\operatorname{ReLU}(2,-1)=(2,0)$. Using the raw scores would skip the activation and give $5$ instead of $7$."
   - id: mlpp-batch-shape
     dimension: implementation
     type: mc
@@ -624,7 +695,7 @@ exercises:
     params:
       din: { min: 2, max: 20 }
       dh: { min: 2, max: 16 }
-      dout: { min: 1, max: 5 }
+      dout: { min: 2, max: 5 }
     tolerance: { abs: 0.5 }
     common_wrong:
       - {
@@ -671,7 +742,7 @@ exercises:
           category: misunderstood_definition,
           feedback: "Hidden values are computed results, not adjustable weights or biases. More results require more storage, not more model parameters.",
         }
-    solution: "A layer with 2 inputs and 2 neurons has $2 \\times 2 + 2 = 6$ parameters whether it sees 8 or 32 houses. Its output grows from $8 \\times 2$ to $32 \\times 2$, but all rows reuse the same 6 parameters."
+    solution: "The weights and biases belong to the layers, not to the houses, so every row reuses them. For example, a layer with 2 inputs and 2 neurons has $2 \\times 2 + 2 = 6$ parameters whether it sees 8 or 32 houses; only its output grows, from $8 \\times 2$ to $32 \\times 2$."
   - id: mlpp-hidden-array-size
     dimension: implementation
     type: numeric
@@ -704,7 +775,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "$W^\\top$ is $d_\\text{in} \\times d_\\text{out}$, so the inner sizes match and each row of $X$ is dotted with each neuron's weights",
+          text: "$W^\\top$ is $d_\\text{in} \\times d_\\text{out}$, so the inner sizes match",
           correct: true,
         }
       - {
@@ -746,3 +817,39 @@ exercises:
           feedback: "That's the output layer's weight matrix, not its output.",
         }
     solution: "$(20 \\times 64) \\to (20 \\times 32) \\to (20 \\times 4)$: one row of 4 motor commands for each of the 20 frames."
+  - id: mlpp-shapes-why-column
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, why is $\\hat Y$ a $3\\times1$ array?"
+    options:
+      - {
+          id: a,
+          text: "Each of the 3 rows is one example, and the output layer gives each 1 prediction.",
+          correct: true,
+          feedback: "Rows count examples and columns count output neurons: 3 examples, 1 output neuron.",
+        }
+      - {
+          id: b,
+          text: "The output layer has 3 weights, one for each example in the batch.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The output neuron has 2 weights, one per hidden value; weights don't depend on the batch.",
+        }
+      - {
+          id: c,
+          text: "The hidden array has 3 columns, which the output layer adds into one.",
+          correct: false,
+          category: math_error,
+          feedback: "$H$ is $3\\times2$: 3 rows (examples) and 2 columns (hidden neurons).",
+        }
+      - {
+          id: d,
+          text: "Multiplying by $W_2^\\top$ always gives the same shape as the input $X$.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "$X$ is $3\\times2$. The product keeps the rows of $H$ and takes the columns of $W_2^\\top$.",
+        }
+    solution: "$(3\\times2)(2\\times1)=3\\times1$: the 3 rows are the 3 examples, carried through from $X$, and the 1 column is the single output neuron."

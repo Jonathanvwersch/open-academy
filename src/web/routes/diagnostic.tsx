@@ -3,10 +3,9 @@ import { createFileRoute, Outlet, useRouterState } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/ui/button.js';
 import { Card, CardContent } from '@/ui/card.js';
-import { Skeleton } from '@/ui/skeleton.js';
 import { apiFetch } from '../authenticated-fetch.js';
 import { ExerciseForm, Markdown, ModeBadge } from '../components';
-import { PageSkeleton } from '../skeletons.js';
+import { DiagnosticQuestionSkeleton, DiagnosticSkeleton } from '../skeletons.js';
 
 interface DiagnosticItem {
   id: string;
@@ -19,7 +18,7 @@ interface DiagnosticItem {
 }
 
 export const Route = createFileRoute('/diagnostic')({
-  pendingComponent: PageSkeleton,
+  pendingComponent: DiagnosticSkeleton,
   component: DiagnosticPage,
 });
 
@@ -161,14 +160,9 @@ function DiagnosticPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card aria-busy="true" aria-label="Preparing diagnostic">
-          <CardContent className="space-y-5">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-10 w-32" />
-          </CardContent>
-        </Card>
+        <div role="status" aria-busy="true" aria-label="Preparing diagnostic">
+          <DiagnosticQuestionSkeleton />
+        </div>
       )}
     </section>
   );

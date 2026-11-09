@@ -6,286 +6,862 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What does gradient descent do to model parameters?"
+    prompt: What does gradient descent do to model parameters?
     options:
-      - {
-          id: a,
-          text: "It repeatedly adds the loss gradient to the parameters.",
-          correct: false,
-          feedback: "Adding the gradient is gradient ascent, which moves toward a local increase in loss.",
-        }
-      - {
-          id: b,
-          text: "It replaces the learned weights and bias with the training examples.",
-          correct: false,
-          feedback: "Examples are fixed data; gradient descent changes the model's adjustable weights and bias.",
-        }
-      - {
-          id: c,
-          text: "It chooses the lowest-loss parameter setting in one search over all possibilities.",
-          correct: false,
-          feedback: "Gradient descent takes repeated local steps using derivatives instead of searching every setting at once.",
-        }
-      - {
-          id: d,
-          text: "It repeatedly subtracts a scaled loss gradient from the parameters.",
-          correct: true,
-          feedback: "Subtracting the loss gradient moves parameters opposite the local direction of increasing loss.",
-        }
-    solution: "Gradient descent repeatedly subtracts a scaled loss gradient from model parameters."
+      - id: a
+        text: It repeatedly adds the loss gradient to the parameters.
+        correct: false
+        feedback: Adding the gradient is gradient ascent, which moves toward a local increase in loss.
+      - id: b
+        text: It replaces the learned weights and bias with the training examples.
+        correct: false
+        feedback: Examples are fixed data; gradient descent changes the model's adjustable weights and bias.
+      - id: c
+        text: It chooses the lowest-loss parameter setting in one search over all possibilities.
+        correct: false
+        feedback: Gradient descent takes repeated local steps using derivatives instead of searching every setting at once.
+      - id: d
+        text: It repeatedly subtracts a scaled loss gradient from the parameters.
+        correct: true
+        feedback: Subtracting the loss gradient moves parameters opposite the local direction of increasing loss.
+    solution: Gradient descent repeatedly subtracts a scaled loss gradient from model parameters.
   - id: gd-step-size-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What does the learning rate set?"
+    prompt: What does the learning rate set?
     options:
-      - {
-          id: a,
-          text: "The number of training houses used to calculate each update's average loss.",
-          correct: false,
-          feedback: "That is the batch size.",
-        }
-      - {
-          id: b,
-          text: "The positive scale controlling how far each gradient-descent step moves.",
-          correct: true,
-          feedback: "The learning rate scales the gradient and sets how far each update moves.",
-        }
-      - {
-          id: c,
-          text: "The number of adjustable weights and biases included in the model.",
-          correct: false,
-          feedback: "The model architecture determines how many weights it has.",
-        }
-      - {
-          id: d,
-          text: "The smallest loss value the model can reach during training.",
-          correct: false,
-          feedback: "A learning rate sets step size, not a target loss.",
-        }
-    solution: "The learning rate is the positive scale that controls each gradient-descent step's distance."
+      - id: a
+        text: The number of training examples averaged together for each update's loss.
+        correct: false
+        feedback: That is a count of examples, which the learning rate doesn't set; it only scales the step.
+      - id: b
+        text: The positive scale controlling how far each gradient-descent step moves.
+        correct: true
+        feedback: The learning rate scales the gradient and sets how far each update moves.
+      - id: c
+        text: The number of adjustable weights and biases included in the model.
+        correct: false
+        feedback: The model architecture determines how many weights it has.
+      - id: d
+        text: The smallest loss value the model can reach during training.
+        correct: false
+        feedback: A learning rate sets step size, not a target loss.
+    solution: The learning rate is the positive scale that controls each gradient-descent step's distance.
   - id: gd-price-gradients-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What is a parameter gradient?"
+    prompt: What is a parameter gradient?
     options:
-      - {
-          id: a,
-          text: "The prediction change when every feature of a house increases together.",
-          correct: false,
-          feedback: "That combines several input changes, not one parameter derivative.",
-        }
-      - {
-          id: b,
-          text: "The average loss value across all houses in one training batch.",
-          correct: false,
-          feedback: "That is a dataset loss such as mean squared error.",
-        }
-      - {
-          id: c,
-          text: "The weighted contribution of one feature to a house-price prediction.",
-          correct: false,
-          feedback: "That is one contribution to a prediction.",
-        }
-      - {
-          id: d,
-          text: "The partial derivative of the loss with respect to one weight or bias",
-          correct: true,
-          feedback: "This parameter-specific partial gives the loss slope for that one weight or bias.",
-        }
-    solution: "A parameter gradient is the loss's partial derivative with respect to one adjustable weight or bias."
+      - id: a
+        text: The prediction change when every feature of a house increases together.
+        correct: false
+        feedback: That combines several input changes, not one parameter derivative.
+      - id: b
+        text: The average loss value across all the training examples.
+        correct: false
+        feedback: That is a dataset loss such as mean squared error.
+      - id: c
+        text: The weighted contribution of one feature to a house-price prediction.
+        correct: false
+        feedback: That is one contribution to a prediction.
+      - id: d
+        text: The partial derivative of the loss with respect to one weight or bias
+        correct: true
+        feedback: This parameter-specific partial gives the loss slope for that one weight or bias.
+    solution: A parameter gradient is the loss's partial derivative with respect to one adjustable weight or bias.
   - id: gd-training-loop-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What is a training loop?"
+    prompt: What is a training loop?
     options:
-      - {
-          id: a,
-          text: "A single prediction followed by a final test-set score.",
-          correct: false,
-          feedback: "Training repeats updates; a test score is evaluation.",
-        }
-      - {
-          id: b,
-          text: "A sequence that changes the target until prediction matches it.",
-          correct: false,
-          feedback: "Training changes model parameters, not known targets.",
-        }
-      - {
-          id: c,
-          text: "A repeated comparison of candidate predictions on test data without parameter updates.",
-          correct: false,
-          feedback: "That is evaluation without fitting; training calculates gradients and updates parameters.",
-        }
-      - {
-          id: d,
-          text: "The repeated cycle of prediction, loss, gradient, and parameter update.",
-          correct: true,
-          feedback: "Repeating these stages recalculates slopes after each parameter update.",
-        }
-    solution: "A training loop repeatedly predicts, measures loss, calculates gradients, and updates parameters."
+      - id: a
+        text: A single prediction followed by a final test-set score.
+        correct: false
+        feedback: Training repeats updates; a test score is evaluation.
+      - id: b
+        text: A sequence that changes the target until prediction matches it.
+        correct: false
+        feedback: Training changes model parameters, not known targets.
+      - id: c
+        text: A repeated comparison of candidate predictions on test data without parameter updates.
+        correct: false
+        feedback: That is evaluation without fitting; training calculates gradients and updates parameters.
+      - id: d
+        text: The repeated cycle of prediction, loss, gradient, and parameter update.
+        correct: true
+        feedback: Repeating these stages recalculates slopes after each parameter update.
+    solution: A training loop repeatedly predicts, measures loss, calculates gradients, and updates parameters.
+  - id: gdp-downhill-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does the step subtract $0.1\times(3,4)$ from $P$ instead of adding it?
+    options:
+      - id: a
+        text: "$(3,4)$ points uphill, so subtracting it moves to a lower ring: the height falls from $4.25$ to $2.16$."
+        correct: true
+        feedback: The gradient points the way height rises fastest; going against it lowers the height.
+      - id: b
+        text: Subtracting keeps the new point inside the grid; adding would leave the picture.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The sign is about height, not the picture: adding reaches $(1.8,1.4)$, where the height is $7.16$."
+      - id: c
+        text: The learning rate $0.1$ is negative, so the formula has to subtract.
+        correct: false
+        category: misunderstood_definition
+        feedback: The learning rate is a positive number; the minus sign is what reverses the gradient.
+      - id: d
+        text: Subtracting is only a convention; adding the gradient would lower the height just as well.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Adding climbs: the comparison table shows the height rising by $2.91$."
+    solution: The gradient $(3,4)$ points uphill. Subtracting $0.1\times(3,4)$ moves against it, to $(1.2,0.6)$, where the height is $2.16$ instead of $4.25$.
+  - id: gdp-positive-slope
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A weight's loss slope is positive. What does one gradient-descent step do to that weight?
+    options:
+      - id: a
+        text: It decreases the weight, because raising it would raise the loss.
+        correct: true
+        feedback: A positive slope means loss rises as the weight rises, so the step lowers the weight.
+      - id: b
+        text: It increases the weight, because the step follows the slope's sign.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Following the sign is gradient ascent; descent moves against it.
+      - id: c
+        text: It leaves the weight unchanged until the slope becomes negative.
+        correct: false
+        category: misunderstood_definition
+        feedback: Every nonzero slope produces a step; only a zero slope leaves the weight where it is.
+    solution: The update subtracts $\eta$ times a positive number, so the weight goes down, the direction in which the loss falls.
+  - id: gdp-one-weight-step
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A weight is $w=4$, its loss slope is $\partial L/\partial w=6$, and the learning rate is $\eta=0.5$. What is $w$ after one gradient-descent step?
+    answer: 1
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 7
+        category: math_error
+        feedback: That adds $0.5\times6$; gradient descent subtracts it.
+      - answer: -2
+        category: math_error
+        feedback: "Scale the slope by $\\eta=0.5$ before subtracting: $0.5\\times6=3$."
+    solution: $w_{\text{new}}=4-0.5\times6=4-3=1$.
+  - id: gdp-bowl-step-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: On the bowl $f(x,y)=x^2+2y^2$, take one gradient-descent step from $({{=a}},1)$ with $\eta=0.1$. What is the new x-coordinate?
+    params:
+      a:
+        min: 1
+        max: 3
+        step: 0.5
+    answer_expr: a - 0.1 * 2 * a
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: a + 0.1 * 2 * a
+        category: math_error
+        feedback: That adds the gradient and climbs; subtract $0.1$ times the x-slope.
+      - answer_expr: a - 0.1 * a
+        category: math_error
+        feedback: The x-slope of $x^2$ is $2x$, not $x$.
+    solution: The x-slope is $2x=2({{=a}})={{=2*a}}$. The new x-coordinate is ${{=a}}-0.1\times{{=2*a}}={{=a-0.2*a}}$.
+  - id: gdp-height-after-step
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: On the bowl $f(x,y)=x^2+2y^2$, take one gradient-descent step from $(1,1)$ with $\eta=0.1$. What is the height $f$ at the new point? (It was $3$.)
+    answer: 1.36
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 5.36
+        category: math_error
+        feedback: That is the height at $(1.2,1.4)$, which comes from adding the gradient; subtract it instead.
+      - answer: 1.4
+        category: math_error
+        feedback: That is the new point's coordinates added; evaluate $x^2+2y^2$ there.
+    solution: The gradient is $(2x,4y)=(2,4)$. The new point is $(1,1)-0.1\times(2,4)=(0.8,0.6)$. Its height is $0.8^2+2(0.6)^2=0.64+0.72=1.36$.
+  - id: gdp-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: At the current parameters every loss slope is $0$. What does the next gradient-descent step do?
+    options:
+      - id: a
+        text: "Nothing: subtracting $\\eta$ times zero leaves every parameter where it is."
+        correct: true
+        feedback: With a zero gradient there is no downhill direction at this point, so the update is zero.
+      - id: b
+        text: It takes the largest possible step, because the loss is flat.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The step size is $\eta$ times the slope, and the slope is zero.
+      - id: c
+        text: It moves the parameters to random values to escape the flat spot.
+        correct: false
+        category: misunderstood_definition
+        feedback: Plain gradient descent only subtracts $\eta\nabla L$; it adds no randomness.
+    solution: The update is $\eta\times\mathbf 0=\mathbf 0$, so the parameters stay put. This happens at the bottom of a bowl.
+  - id: gdp-robot-step
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot arm has two joint angles $(\theta_1,\theta_2)$. Its gripper misses the target by a distance error $E$, and at the current angles $\nabla E=(2,-1)$ (slopes per radian). With $\eta=0.1$, how should the angles change in one gradient-descent step?
+    options:
+      - id: a
+        text: $\theta_1$ by $-0.2$ and $\theta_2$ by $+0.1$ radians.
+        correct: true
+        feedback: "Each angle moves against its own slope: $-0.1\\times2=-0.2$ and $-0.1\\times(-1)=+0.1$."
+      - id: b
+        text: $\theta_1$ by $+0.2$ and $\theta_2$ by $-0.1$ radians.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That follows the gradient, which increases the error.
+      - id: c
+        text: Both angles by $-0.1$ radians, because the slopes add to $1$.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each angle gets its own slope; adding them loses which joint is which.
+      - id: d
+        text: Only $\theta_1$, by $-0.2$, because it has the larger slope.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Gradient descent moves every input at once, each by its own slope.
+    solution: "The update is $-0.1\\times(2,-1)=(-0.2,+0.1)$: turn joint 1 back by $0.2$ radians and joint 2 forward by $0.1$."
+  - id: gdp-step-size-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example with $\eta=0.75$, $w$ goes $5\to-2.5\to1.25$. Why is this rate still acceptable?
+    options:
+      - id: a
+        text: The loss falls every step, $25\to6.25\to1.5625$, even though $w$ crosses the bottom.
+        correct: true
+        feedback: Crossing the bottom is fine while each landing is lower than the last.
+      - id: b
+        text: Any rate below $1$ is always acceptable for every function.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The safe range depends on how steep the function is; $0<\eta<1$ holds for $w^2$ only.
+      - id: c
+        text: $w$ changes sign, which shows the step is at its best size.
+        correct: false
+        category: misunderstood_definition
+        feedback: A sign change means overshoot; the best rate here is $0.5$, which lands on $0$ with no crossing.
+      - id: d
+        text: "It is not acceptable: any step that crosses the bottom diverges."
+        correct: false
+        category: incorrect_reasoning
+        feedback: Divergence means the loss grows; here it shrinks by a factor of $4$ each step.
+    solution: The multiplier is $1-2(0.75)=-0.5$. Its size is below $1$, so $|w|$ halves and the loss falls to a quarter each step, even though $w$ swaps sides.
+  - id: gdp-multiplier-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: On $f(w)=w^2$, take one gradient-descent step from $w=5$ with learning rate $\eta={{=eta}}$. What is the new $w$?
+    params:
+      eta:
+        min: 0.05
+        max: 0.45
+        step: 0.05
+    answer_expr: 5 - eta * 2 * 5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 5 - eta * 5
+        category: math_error
+        feedback: The slope of $w^2$ is $2w=10$ at $w=5$, not $5$.
+      - answer_expr: 5 + eta * 2 * 5
+        category: math_error
+        feedback: That adds the slope; the update subtracts it.
+    solution: The slope at $w=5$ is $2\times5=10$. The new $w$ is $5-{{=eta}}\times10={{=5-10*eta}}$.
+  - id: gdp-slow
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: After 1,000 passes the training loss still falls smoothly, but only by about $0.1\%$ per pass, and it is far from the values other runs reach. What is the most likely fix?
+    options:
+      - id: a
+        text: Increase the learning rate, then check that the loss still falls every pass.
+        correct: true
+        feedback: A smooth but tiny fall is the sign of steps that are too small.
+      - id: b
+        text: Decrease the learning rate, because the loss is not yet low.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Smaller steps would make the slow fall even slower.
+      - id: c
+        text: Add the gradient instead of subtracting it.
+        correct: false
+        category: misunderstood_definition
+        feedback: The loss is falling, so the direction is right; only the step size is off.
+    solution: A loss that falls smoothly but very slowly is taking steps that are too small. Raise $\eta$ carefully and watch that the loss keeps falling.
+  - id: gdp-two-steps-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: On $f(w)=w^2$, start at $w={{=w0}}$ and take two gradient-descent steps with $\eta=0.75$. What is $w$ after the second step?
+    params:
+      w0:
+        min: 2
+        max: 6
+        step: 1
+    answer_expr: w0 * (1 - 2 * 0.75) * (1 - 2 * 0.75)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: -0.5 * w0
+        category: math_error
+        feedback: That is after one step; apply the multiplier $-0.5$ a second time.
+      - answer_expr: -0.25 * w0
+        category: math_error
+        feedback: "Two multiplications by $-0.5$ give $+0.25$: the sign flips back."
+    solution: Each step multiplies $w$ by $1-2(0.75)=-0.5$. After the first step $w={{=-0.5*w0}}$; after the second, $w={{=0.25*w0}}$.
+  - id: gdp-loss-curve
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Training losses go $10\to6\to12\to40\to180$. What is the first sensible adjustment to try?
+    options:
+      - id: a
+        text: Reduce the learning rate and check whether the growth stops.
+        correct: true
+        feedback: A loss that grows after each step is the sign of overshooting by more and more.
+      - id: b
+        text: Increase the learning rate because the first step improved.
+        correct: false
+        category: incorrect_reasoning
+        feedback: One improving step does not make a rate stable; the later growth shows overshoot.
+      - id: c
+        text: Keep the rate unchanged because crossing the bottom is harmless.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Crossing is harmless only while the loss shrinks; here it grows.
+    solution: The loss grows from the second step on, so the steps are overshooting by more each time. Try a smaller learning rate first.
+  - id: gdp-threshold
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: For the steeper bowl $f(w)=4w^2$, the slope is $8w$. Gradient descent shrinks $w$ toward $0$ only for learning rates below some limit. What is that limit?
+    answer: 0.25
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 1
+        category: incorrect_reasoning
+        feedback: $\eta<1$ is the limit for $w^2$. Here one step multiplies $w$ by $1-8\eta$.
+      - answer: 0.125
+        category: math_error
+        feedback: At $\eta=0.125$ the multiplier is $0$, the best rate. The limit is where the multiplier reaches $-1$.
+    solution: One step gives $w-\eta(8w)=(1-8\eta)w$. $w$ shrinks while $|1-8\eta|<1$, which means $0<\eta<0.25$. A steeper bowl needs a smaller learning rate.
+  - id: gdp-drone-rate
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A drone tunes its altitude controller by gradient descent on its hover error. With $\eta=0.1$ the error goes $9\to5.8\to3.7\to2.4$. With $\eta=0.6$ it goes $9\to20\to44\to96$. Which rate should it use next?
+    options:
+      - id: a
+        text: Something between $0.1$ and $0.6$, nearer $0.1$, and check that the error still falls.
+        correct: true
+        feedback: $0.1$ is stable but slow and $0.6$ diverges, so the best rate lies between them.
+      - id: b
+        text: $0.6$, because it changes the error the most per step.
+        correct: false
+        category: incorrect_reasoning
+        feedback: It changes the error by making it bigger; a growing error means divergence.
+      - id: c
+        text: $1.2$, to get through the bad region faster.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Raising a rate that already diverges makes each overshoot larger.
+      - id: d
+        text: $0.01$, because any rate that has ever diverged is unsafe.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $0.1$ already works; going ten times smaller only makes training slower.
+    solution: $\eta=0.1$ falls steadily but slowly, and $\eta=0.6$ grows every step. Try a rate in between, closer to the stable one, and keep it only if the error keeps falling.
+  - id: gdp-gradient-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is the weight's slope $-16$ but the bias's slope only $-8$?
+    options:
+      - id: a
+        text: Both are $2e=-8$ times their input, and the weight's input is $x=2$ while the bias's is always $1$.
+        correct: true
+        feedback: The error is shared; the input is what scales each slope.
+      - id: b
+        text: The weight is more wrong than the bias, so it gets twice the blame.
+        correct: false
+        category: misunderstood_definition
+        feedback: Both slopes use the same error $e=-4$; only the multiplying input differs.
+      - id: c
+        text: The bias slope is always half the weight slope.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That holds only when $x=2$; for $x=10$ the weight slope is ten times the bias slope.
+      - id: d
+        text: The learning rate $0.05$ is applied to the bias but not the weight.
+        correct: false
+        category: misunderstood_definition
+        feedback: The slopes are found before the learning rate is used, and it scales both updates.
+    solution: $\partial L/\partial w=2ex=2(-4)(2)=-16$ and $\partial L/\partial b=2e=2(-4)=-8$. They share the error; the weight's slope is doubled by its input $x=2$.
+  - id: gdp-error-sign
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: A model $\hat y=wx+b$ predicts $10$ for an example with $x=3$ and true output $6$. Which way does one gradient-descent step move $w$?
+    options:
+      - id: a
+        text: "Down: the error $e=4$ is positive and $x$ is positive, so $\\partial L/\\partial w=2ex>0$."
+        correct: true
+        feedback: The prediction is too high, so the weight is lowered.
+      - id: b
+        text: "Up: the error is $6-10=-4$, so the slope is negative."
+        correct: false
+        category: misunderstood_definition
+        feedback: The error is defined as $\hat y-y=10-6=4$.
+      - id: c
+        text: It stays the same, because only the bias controls the prediction.
+        correct: false
+        category: incorrect_reasoning
+        feedback: With $x=3$, the weight changes the prediction too, and its slope is $2(4)(3)=24$.
+    solution: $e=\hat y-y=10-6=4$, so $\partial L/\partial w=2(4)(3)=24$. Subtracting $\eta\times24$ lowers $w$, which lowers a prediction that was too high.
+  - id: gdp-slope-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A model $\hat y=wx+b$ has $w=1$ and $b=1$. For the example $x={{=x}}$, $y=10$ with squared-error loss, what is $\partial L/\partial w$?
+    params:
+      x:
+        min: 2
+        max: 4
+        step: 1
+    answer_expr: 2 * (x + 1 - 10) * x
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 2 * (x + 1 - 10)
+        category: math_error
+        feedback: That is the bias's slope; the weight's slope is also multiplied by its input $x$.
+      - answer_expr: 2 * (10 - x - 1) * x
+        category: misunderstood_definition
+        feedback: The error is $\hat y-y$, prediction minus truth, so it is negative here.
+    solution: The prediction is ${{=x}}+1={{=x+1}}$, so $e={{=x+1}}-10={{=x-9}}$. Then $\partial L/\partial w=2e x=2({{=x-9}})({{=x}})={{=2*(x-9)*x}}$.
+  - id: gdp-full-step
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: A model $\hat y=wx+b$ has $w=2$ and $b=0$. On the example $x=3$, $y=3$ with squared-error loss and $\eta=0.05$, what is $w$ after one gradient-descent step?
+    answer: 1.1
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 2.9
+        category: math_error
+        feedback: The error $6-3=3$ is positive, so the slope is positive and the step lowers $w$.
+      - answer: 1.7
+        category: math_error
+        feedback: That used the bias's slope $2e=6$; the weight's slope is $2ex=18$.
+    solution: $\hat y=2\times3+0=6$, so $e=6-3=3$. The weight's slope is $2(3)(3)=18$. Then $w_{\text{new}}=2-0.05\times18=2-0.9=1.1$.
+  - id: gdp-average-two
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: A model $\hat y=wx+b$ has $w=1$, $b=0$, and two examples, $(x,y)=(1,3)$ and $(2,2)$. With MSE as the loss, what is $\partial L/\partial w$, the average of $2ex$ over the two examples?
+    answer: -2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: -4
+        category: math_error
+        feedback: That is the sum; MSE averages, so divide by the $2$ examples.
+      - answer: -1
+        category: math_error
+        feedback: Remember the factor $2$ in $2ex$.
+    solution: Predictions are $1$ and $2$, so errors are $-2$ and $0$. The values of $2ex$ are $2(-2)(1)=-4$ and $2(0)(2)=0$. Their average is $-2$.
+  - id: gdp-feature-factor
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A house model uses floor area in square metres (about $100$) and number of bathrooms (about $2$). For one house, the area weight's loss slope is $50$ times the bathroom weight's. What explains this?
+    options:
+      - id: a
+        text: Both slopes are $2e$ times their input, and the area input is $50$ times larger.
+        correct: true
+        feedback: The shared error is multiplied by each input, so large inputs give large slopes.
+      - id: b
+        text: The area weight is $50$ times further from its best value.
+        correct: false
+        category: misunderstood_definition
+        feedback: The slope comes from the shared error times the input, not from how wrong that one weight is.
+      - id: c
+        text: Area matters $50$ times more for the price.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Changing units, say area in hundreds of square metres, would change the ratio without changing how much area matters.
+    solution: $\partial L/\partial w_j=2e\,x_j$. The error is the same for both weights, so the ratio of slopes is the ratio of inputs, $100/2=50$.
+  - id: gdp-backwards-error
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A coder computes the error as `e = y - y_hat` but keeps the update `w = w - lr * 2 * e * x`. What happens to the training loss?
+    options:
+      - id: a
+        text: It grows, because every slope has the wrong sign, so each step goes uphill.
+        correct: true
+        feedback: Flipping the error flips every slope; subtracting a flipped slope is gradient ascent.
+      - id: b
+        text: Nothing changes, because the loss squares the error.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The loss is unaffected, but the slope $2ex$ is not squared, so its sign flips.
+      - id: c
+        text: It falls more slowly, because the steps get smaller.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The step sizes are unchanged; only their direction flips.
+    solution: The loss slope is $2(\hat y-y)x$. Using $y-\hat y$ negates it, so the update adds the true gradient and the loss rises every step.
+  - id: gdp-loop-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does pass 2 recompute the prediction as $1.8\times2+1.4=5$ instead of reusing $3$ from pass 1?
+    options:
+      - id: a
+        text: Pass 1 changed $w$ and $b$, so the prediction, error and slopes must come from the new values.
+        correct: true
+        feedback: Every stage of the loop uses the parameters as they stand now.
+      - id: b
+        text: The true output $y$ changes between passes.
+        correct: false
+        category: misunderstood_definition
+        feedback: The data stay fixed; only the parameters change.
+      - id: c
+        text: Recomputing is only a check; reusing $3$ would give the same update.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Reusing $3$ keeps the old error $-4$ and old slopes, so the step would be twice as large.
+    solution: The update moved $w$ to $1.8$ and $b$ to $1.4$. The new prediction $5$ gives error $-2$ and slopes $(-8,-4)$, half the size of pass 1's.
+  - id: gdp-loop-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which order does one pass of the training loop follow?
+    options:
+      - id: a
+        text: Predict, measure error and loss, find the slopes, update the parameters.
+        correct: true
+        feedback: Each stage needs the result of the one before it.
+      - id: b
+        text: Update the parameters, find the slopes, predict, measure the loss.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The update needs the slopes, and the slopes need the error, so the update comes last.
+      - id: c
+        text: Find the slopes, predict, update, measure the loss.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The slopes $2ex$ use the error, which needs a prediction first.
+    solution: Predict, then compare with the truth to get error and loss, then find the slopes from the error, then update. The next pass starts from the updated parameters.
+  - id: gdp-code-update
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Complete the weight update. `dw` is the loss slope at the current weight and `lr` is the learning rate.
+    code: |
+      w = ____
+    accept:
+      - w - lr * dw
+      - w-lr*dw
+      - w - dw * lr
+    solution: Use `w - lr * dw` to move against the current slope; adding it would move uphill.
+  - id: gdp-next-pass
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In the comparison table, pass 4 starts at $w=2.4$, $b=1.7$ with slopes $(-2,-1)$ and uses $\eta=0.05$. What is $w$ after pass 4's update?
+    answer: 2.5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 2.3
+        category: math_error
+        feedback: "Subtracting a negative slope raises $w$: $2.4-0.05\\times(-2)$."
+      - answer: 2.45
+        category: math_error
+        feedback: That used the bias's slope $-1$; the weight's slope is $-2$.
+    solution: $w=2.4-0.05\times(-2)=2.4+0.1=2.5$.
+  - id: gdp-code-slope
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Complete the weight's loss slope for one example with squared-error loss. `e = y_hat - y` and `x` is the input.
+    code: |
+      dw = ____
+    accept:
+      - 2 * e * x
+      - 2*e*x
+      - 2 * x * e
+      - 2*x*e
+    solution: "Use `2 * e * x`: twice the error, times the weight's input. The bias's slope is `2 * e`."
+  - id: gdp-why-fresh-errors
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Why must the training loop recompute the gradient every pass instead of computing it once?
+    options:
+      - id: a
+        text: The gradient is the slope at the current parameters, and it changes as they move.
+        correct: true
+        feedback: In the lesson's example the slopes halve each pass, from $(-16,-8)$ to $(-8,-4)$.
+      - id: b
+        text: The training data are shuffled each pass, so the old gradient is lost.
+        correct: false
+        category: misunderstood_definition
+        feedback: Even with the same single example, the slopes change because the parameters change.
+      - id: c
+        text: It does not need to; the first gradient points straight at the best parameters.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Reusing the first gradient gives predictions $3,5,7,9,11$, running past the target.
+    solution: The slopes depend on the error at the current parameters. As the error shrinks the slopes shrink, so a fresh gradient each pass gives smaller steps near the bottom.
+  - id: gdp-robot-loop
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot calibrates its camera with a gradient-descent loop. The loss over passes is $50,\ 30,\ 18,\ 11,\ 10.9,\ 10.89,\ 10.889$. What should it do?
+    options:
+      - id: a
+        text: "Stop: the loss has almost stopped falling, so more passes will barely help."
+        correct: true
+        feedback: The last pass lowers the loss by $0.001$, far less than $0.1\%$ of $10.89$; training has settled.
+      - id: b
+        text: Raise the learning rate a lot, because the loss is stuck.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The loss fell quickly and then levelled off, the shape of a run that has reached the bottom, not one crawling.
+      - id: c
+        text: Lower the learning rate, because the loss is diverging.
+        correct: false
+        category: misunderstood_definition
+        feedback: Diverging means the loss grows; here it falls every pass.
+      - id: d
+        text: Run the loop until the loss reaches exactly $0$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The lowest reachable loss is often above $0$, because no setting fits real data perfectly.
+    solution: The loss fell fast and then levelled off at about $10.89$. The last pass changed it by $0.001$, under $0.1\%$ of its value, so the loop has settled and should stop.
   - id: gd-check-step
     dimension: math
     type: numeric
     role: check
     difficulty: 1
     est_minutes: 2
-    prompt: "$L(w) = (w - 3)^2$, $w_0 = 3.5$, $\\eta = 0.25$. What is $w_1$?"
+    prompt: $L(w) = (w - 3)^2$, $w_0 = 3.5$, $\eta = 0.25$. What is $w_1$?
     answer: 3.25
-    tolerance: { abs: 0.001 }
+    tolerance:
+      abs: 0.001
     common_wrong:
-      - {
-          answer: 3.75,
-          tolerance: { abs: 0.001 },
-          category: incorrect_reasoning,
-          feedback: "You stepped *up* the slope. The update subtracts $\\eta L'(w)$.",
-        }
-    hints: ["$L'(3.5) = 2(0.5) = 1$."]
-    solution: "$w_1 = 3.5 - 0.25\\cdot 1 = 3.25$."
+      - answer: 3.75
+        tolerance:
+          abs: 0.001
+        category: incorrect_reasoning
+        feedback: You stepped *up* the slope. The update subtracts $\eta L'(w)$.
+    hints:
+      - $L'(3.5) = 2(0.5) = 1$.
+    solution: $w_1 = 3.5 - 0.25\cdot 1 = 3.25$.
   - id: gd-faded-step
     dimension: math
     type: numeric
     role: check
     difficulty: 2
     est_minutes: 3
-    prompt: "Data $(1, 2), (2, 4)$; model $\\hat y = wx$; MSE; $\\eta = 0.1$; $w_0 = 1$. What is $w_1$?"
+    prompt: Data $(1, 2), (2, 4)$; model $\hat y = wx$; MSE; $\eta = 0.1$; $w_0 = 1$. What is $w_1$?
     answer: 1.5
-    tolerance: { abs: 0.001 }
+    tolerance:
+      abs: 0.001
     common_wrong:
-      - {
-          answer: 0.5,
-          tolerance: { abs: 0.001 },
-          category: incorrect_reasoning,
-          feedback: "Sign error: the gradient is negative, so $w$ should *increase*.",
-        }
-      - {
-          answer: 2,
-          tolerance: { abs: 0.001 },
-          category: math_error,
-          feedback: "Check the $\\frac{2}{n}$ factor: here it is $2/2 = 1$, which gives a gradient of $-5$.",
-        }
+      - answer: 0.5
+        tolerance:
+          abs: 0.001
+        category: incorrect_reasoning
+        feedback: "Sign error: the gradient is negative, so $w$ should *increase*."
+      - answer: 2
+        tolerance:
+          abs: 0.001
+        category: math_error
+        feedback: "Check the $\\frac{2}{n}$ factor: here it is $2/2 = 1$, which gives a gradient of $-5$."
     hints:
-      [
-        "Residuals are $(-1, -2)$.",
-        "$\\partial L/\\partial w = \\frac{2}{2}\\big((-1)(1) + (-2)(2)\\big) = -5$.",
-      ]
-    solution: "Gradient $-5$, so $w_1 = 1 + 0.5 = 1.5$."
+      - Residuals are $(-1, -2)$.
+      - $\partial L/\partial w = \frac{2}{2}\big((-1)(1) + (-2)(2)\big) = -5$.
+    solution: Gradient $-5$, so $w_1 = 1 + 0.5 = 1.5$.
   - id: dx-ml-4
     dimension: math
     type: numeric
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "One gradient-descent step on $L(w) = (w - 3)^2$ from $w_0 = 0$ with learning rate $\\eta = 0.1$. What is $w_1$?"
+    prompt: One gradient-descent step on $L(w) = (w - 3)^2$ from $w_0 = 0$ with learning rate $\eta = 0.1$. What is $w_1$?
     answer: 0.6
-    tolerance: { abs: 0.001 }
+    tolerance:
+      abs: 0.001
     common_wrong:
-      - {
-          answer: -0.6,
-          tolerance: { abs: 0.001 },
-          category: incorrect_reasoning,
-          feedback: "The update subtracts the gradient: $w - \\eta L'(w)$, and $L'(0) = -6$.",
-        }
-      - {
-          answer: 0.3,
-          tolerance: { abs: 0.001 },
-          category: math_error,
-          feedback: "$L'(w) = 2(w-3)$, so the factor 2 matters.",
-        }
-    solution: "$L'(0) = -6$, so $w_1 = 0 - 0.1\\cdot(-6) = 0.6$."
+      - answer: -0.6
+        tolerance:
+          abs: 0.001
+        category: incorrect_reasoning
+        feedback: "The update subtracts the gradient: $w - \\eta L'(w)$, and $L'(0) = -6$."
+      - answer: 0.3
+        tolerance:
+          abs: 0.001
+        category: math_error
+        feedback: $L'(w) = 2(w-3)$, so the factor 2 matters.
+    solution: $L'(0) = -6$, so $w_1 = 0 - 0.1\cdot(-6) = 0.6$.
   - id: gd-lr-regimes
     dimension: math
     type: numeric
     role: core
     difficulty: 3
     est_minutes: 3
-    prompt: "For $L(w) = 4(w - 1)^2$, gradient descent converges only for learning rates below some threshold $\\eta_{\\max}$. What is $\\eta_{\\max}$?"
+    prompt: For $L(w) = 4(w - 1)^2$, gradient descent converges only for learning rates below some threshold $\eta_{\max}$. What is $\eta_{\max}$?
     answer: 0.25
-    tolerance: { abs: 0.001 }
+    tolerance:
+      abs: 0.001
     common_wrong:
-      - {
-          answer: 0.125,
-          tolerance: { abs: 0.001 },
-          category: misunderstood_definition,
-          feedback: "$1/(2a) = 0.125$ is where the iterates start to *oscillate*; they still converge until $1/a$.",
-        }
+      - answer: 0.125
+        tolerance:
+          abs: 0.001
+        category: misunderstood_definition
+        feedback: $1/(2a) = 0.125$ is where the iterates start to *oscillate*; they still converge until $1/a$.
     hints:
-      [
-        "Write the step as $w_{t+1} - 1 = (1 - 2a\\eta)(w_t - 1)$ with $a = 4$.",
-        "Convergence needs $|1 - 8\\eta| < 1$.",
-      ]
-    solution: "$|1 - 8\\eta| < 1 \\iff 0 < \\eta < 0.25$."
+      - Write the step as $w_{t+1} - 1 = (1 - 2a\eta)(w_t - 1)$ with $a = 4$.
+      - Convergence needs $|1 - 8\eta| < 1$.
+    solution: $|1 - 8\eta| < 1 \iff 0 < \eta < 0.25$.
   - id: gd-curve-diagnosis
     dimension: transfer
     type: mc
     role: transfer
     difficulty: 3
     est_minutes: 3
-    prompt: "While training a small layered model, its error goes 2.30 → 1.90 → 3.10 → 8.70 → 41.2 → not a number over five steps. What is the most likely cause, and what is the first fix to try?"
+    prompt: While training a small layered model, its error goes 2.30 → 1.90 → 3.10 → 8.70 → 41.2 → not a number over five steps. What is the most likely cause, and what is the first fix to try?
     options:
-      - {
-          id: a,
-          text: "The learning rate is too high and updates overshoot and diverge; reduce it (e.g. ×0.1)",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "The model is underfitting; add more layers",
-          correct: false,
-          category: misapplied_technique,
-          feedback: "Adding layers does not explain a loss that starts rising rapidly to NaN. A sharp rise after an initial decrease points to update steps that are too aggressive.",
-        }
-      - {
-          id: c,
-          text: "The loss is improving slowly; increase the step size",
-          correct: false,
-          category: misapplied_technique,
-          feedback: "The loss first decreases, then grows rapidly, so the steps are too large rather than too small.",
-        }
-      - {
-          id: d,
-          text: "The learning rate is too low",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "A low learning rate gives a slow, smooth decrease, not growth.",
-        }
-    solution: "A loss that decreases once and then grows geometrically is the signature of $|1 - 2a\\eta| > 1$ in the steepest direction. Lower the learning rate, and check the input scaling."
+      - id: a
+        text: The learning rate is too high and updates overshoot and diverge; reduce it (e.g. ×0.1)
+        correct: true
+      - id: b
+        text: The model is underfitting; add more layers
+        correct: false
+        category: misapplied_technique
+        feedback: Adding layers does not explain a loss that starts rising rapidly to NaN. A sharp rise after an initial decrease points to update steps that are too aggressive.
+      - id: c
+        text: The loss is improving slowly; increase the step size
+        correct: false
+        category: misapplied_technique
+        feedback: The loss first decreases, then grows rapidly, so the steps are too large rather than too small.
+      - id: d
+        text: The learning rate is too low
+        correct: false
+        category: incorrect_reasoning
+        feedback: A low learning rate gives a slow, smooth decrease, not growth.
+    solution: A loss that decreases once and then grows geometrically is the signature of $|1 - 2a\eta| > 1$ in the steepest direction. Lower the learning rate, and check the input scaling.
   - id: gd-curve-slow
     dimension: transfer
     type: mc
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "A loss curve decreases smoothly but very slowly and almost linearly, still far from converged after 10,000 steps; doubling the learning rate makes it noticeably faster and still smooth. What is going on?"
+    prompt: A loss curve decreases smoothly but very slowly and almost linearly, still far from converged after 10,000 steps; doubling the learning rate makes it noticeably faster and still smooth. What is going on?
     options:
-      - {
-          id: a,
-          text: "The learning rate is too small; keep increasing it until just below where it becomes unstable",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "The learning rate is too large",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "A learning rate that is too large tends to produce oscillation or instability, not a smooth, very slow decrease. Compare the curve with what happens when a small step is doubled.",
-        }
-      - {
-          id: c,
-          text: "The gradient computation is wrong",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "A wrong gradient usually fails to decrease the loss at all, or behaves erratically.",
-        }
-    solution: "Smooth and slow means you are far inside the stable region. Raise the learning rate."
+      - id: a
+        text: The learning rate is too small; keep increasing it until just below where it becomes unstable
+        correct: true
+      - id: b
+        text: The learning rate is too large
+        correct: false
+        category: incorrect_reasoning
+        feedback: A learning rate that is too large tends to produce oscillation or instability, not a smooth, very slow decrease. Compare the curve with what happens when a small step is doubled.
+      - id: c
+        text: The gradient computation is wrong
+        correct: false
+        category: incorrect_reasoning
+        feedback: A wrong gradient usually fails to decrease the loss at all, or behaves erratically.
+    solution: Smooth and slow means you are far inside the stable region. Raise the learning rate.
   - id: gd-code-complete
     dimension: implementation
     type: code_complete
@@ -298,16 +874,15 @@ exercises:
       dw = ____
       w = w - lr * dw
     accept:
-      [
-        "2 * X.T @ r / len(y)",
-        "2*X.T@r/len(y)",
-        "2 * X.T @ r / n",
-        "2 / len(y) * X.T @ r",
-        "2 * X.T.dot(r) / len(y)",
-        "(2 / len(y)) * X.T @ r",
-        "2 * X.T @ r / X.shape[0]",
-      ]
-    hints: ["$\\nabla_w \\frac1n\\|Xw - y\\|^2 = \\frac2n X^\\top(Xw - y)$."]
+      - 2 * X.T @ r / len(y)
+      - 2*X.T@r/len(y)
+      - 2 * X.T @ r / n
+      - 2 / len(y) * X.T @ r
+      - 2 * X.T.dot(r) / len(y)
+      - (2 / len(y)) * X.T @ r
+      - 2 * X.T @ r / X.shape[0]
+    hints:
+      - $\nabla_w \frac1n\|Xw - y\|^2 = \frac2n X^\top(Xw - y)$.
     solution: "`dw = 2 * X.T @ r / len(y)`. The shape check: `X.T` is `(d, n)` and `r` is `(n,)`, so `dw` is `(d,)`."
   - id: gd-explain-lr
     dimension: conceptual
@@ -315,723 +890,107 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Explain to a colleague what the learning rate controls in gradient descent, what happens when it is too small or too large, and how you would tell from a loss curve."
+    prompt: Explain to a colleague what the learning rate controls in gradient descent, what happens when it is too small or too large, and how you would tell from a loss curve.
     rubric:
-      - {
-          id: r1,
-          criterion: "Learning rate scales the step taken along the negative gradient",
-          weight: 1,
-          required: true,
-        }
-      - { id: r2, criterion: "Too small: slow, smooth, steady decrease", weight: 2, required: true }
-      - {
-          id: r3,
-          criterion: "Too large: overshooting, oscillation or divergence (loss increases / NaN)",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r4,
-          criterion: "Mentions that the steepest-curvature direction limits stability (or that the safe range depends on the problem)",
-          weight: 1,
-        }
-    exemplar: "The learning rate is the multiplier on the gradient step. Too small and the loss falls smoothly but painfully slowly; too large and each step overshoots the minimum, so the loss oscillates or explodes, often to NaN. The steepest direction of the loss sets the stability limit, so the right value depends on the problem and the feature scaling."
+      - id: r1
+        criterion: Learning rate scales the step taken along the negative gradient
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Too small: slow, smooth, steady decrease"
+        weight: 2
+        required: true
+      - id: r3
+        criterion: "Too large: overshooting, oscillation or divergence (loss increases / NaN)"
+        weight: 2
+        required: true
+      - id: r4
+        criterion: Mentions that the steepest-curvature direction limits stability (or that the safe range depends on the problem)
+        weight: 1
+    exemplar: The learning rate is the multiplier on the gradient step. Too small and the loss falls smoothly but painfully slowly; too large and each step overshoots the minimum, so the loss oscillates or explodes, often to NaN. The steepest direction of the loss sets the stability limit, so the right value depends on the problem and the feature scaling.
   - id: lab-linreg-lr-predict
     dimension: transfer
     type: mc
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "In your lab, you trained with lr = 0.01 and it converged smoothly. **Before running it**, predict what happens with lr = 10× larger, then with lr = 100× larger (the lab data has feature variance ≈ 1)."
+    prompt: In your lab, you trained with lr = 0.01 and it converged smoothly. **Before running it**, predict what happens with lr = 10× larger, then with lr = 100× larger (the lab data has feature variance ≈ 1).
     options:
-      - {
-          id: a,
-          text: "10×: converges faster, maybe with slight oscillation; 100×: likely diverges (loss grows, may become NaN)",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "Both converge 10× and 100× faster",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "There is a stability limit: past it the error grows each step.",
-        }
-      - {
-          id: c,
-          text: "Both diverge",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "A 10× rate gives 0.1 here, which can still be stable with unit-variance features. Distinguish that from the much more aggressive 100× rate.",
-        }
-    solution: "With unit-variance features, MSE curvature is about 2, so the stability limit is around $\\eta \\approx 1$. Then 0.1 is fast and safe, while 1.0 sits right at the edge and typically oscillates or diverges once noise and correlated features are included. Check this against your experiment."
+      - id: a
+        text: "10×: converges faster, maybe with slight oscillation; 100×: likely diverges (loss grows, may become NaN)"
+        correct: true
+      - id: b
+        text: Both converge 10× and 100× faster
+        correct: false
+        category: incorrect_reasoning
+        feedback: "There is a stability limit: past it the error grows each step."
+      - id: c
+        text: Both diverge
+        correct: false
+        category: incorrect_reasoning
+        feedback: A 10× rate gives 0.1 here, which can still be stable with unit-variance features. Distinguish that from the much more aggressive 100× rate.
+    solution: With unit-variance features, MSE curvature is about 2, so the stability limit is around $\eta \approx 1$. Then 0.1 is fast and safe, while 1.0 sits right at the edge and typically oscillates or diverges once noise and correlated features are included. Check this against your experiment.
   - id: lab-linreg-explain-divergence
     dimension: transfer
     type: explain
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt: "Using your loss and parameter-trajectory plots, explain what you observed for the largest learning rate you tried, and *why* it happens in terms of the update rule."
+    prompt: Using your loss and parameter-trajectory plots, explain what you observed for the largest learning rate you tried, and *why* it happens in terms of the update rule.
     rubric:
-      - {
-          id: r1,
-          criterion: "Accurately describes the observed curve (e.g. oscillating or exploding loss, zig-zagging parameters)",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r2,
-          criterion: "Explains overshoot: the step $\\eta\\nabla L$ jumps past the minimum to a point with larger error, which compounds",
-          weight: 2,
-          required: true,
-        }
-      - {
-          id: r3,
-          criterion: "Connects to curvature/feature scale or the $|1-2a\\eta|>1$ condition",
-          weight: 1,
-        }
-    exemplar: "At lr=0.5 the loss dropped once and then grew every step until it hit inf, and the weight trajectory zig-zagged across the minimum with growing amplitude. Each step moves by η times the gradient; when η is too large relative to the curvature, the step jumps past the minimum to a point where the error (and so the gradient) is larger, so the next jump is bigger again — the factor |1−2aη| exceeds 1."
+      - id: r1
+        criterion: Accurately describes the observed curve (e.g. oscillating or exploding loss, zig-zagging parameters)
+        weight: 2
+        required: true
+      - id: r2
+        criterion: "Explains overshoot: the step $\\eta\\nabla L$ jumps past the minimum to a point with larger error, which compounds"
+        weight: 2
+        required: true
+      - id: r3
+        criterion: Connects to curvature/feature scale or the $|1-2a\eta|>1$ condition
+        weight: 1
+    exemplar: At lr=0.5 the loss dropped once and then grew every step until it hit inf, and the weight trajectory zig-zagged across the minimum with growing amplitude. Each step moves by η times the gradient; when η is too large relative to the curvature, the step jumps past the minimum to a point where the error (and so the gradient) is larger, so the next jump is bigger again — the factor |1−2aη| exceeds 1.
   - id: lab-linreg-val-vs-train
     dimension: conceptual
     type: mc
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "In the lab your train MSE is 0.24 and validation MSE is 0.27, with noise variance 0.25. What does this tell you?"
-    options:
-      - {
-          id: a,
-          text: "The model is close to the noise floor and generalises well; the small gap is normal sampling variation",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "The prediction error on new examples is far above the noise level",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "The validation error is 0.27, close to the noise level of 0.25 rather than far above it.",
-        }
-      - {
-          id: c,
-          text: "The model is underfitting and needs more features",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "The two errors are close to each other and to the stated noise variance. Check whether this suggests a large gap or a model already near the measurement limit.",
-        }
-    solution: "With noise variance 0.25, no model can do much better than MSE ≈ 0.25 on new data."
-  - id: gdp-why-negative-slope
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: Why does subtracting a negative loss slope increase the house-price weight and reduce loss for a small enough step?
+    prompt: In the lab your train MSE is 0.24 and validation MSE is 0.27, with noise variance 0.25. What does this tell you?
     options:
       - id: a
-        text: The curve tilts down as the weight increases, and subtracting a negative number moves that way
+        text: The model is close to the noise floor and generalises well; the small gap is normal sampling variation
         correct: true
       - id: b
-        text: A negative slope means the weight itself must be negative, so subtraction corrects its sign
+        text: The prediction error on new examples is far above the noise level
         correct: false
         category: incorrect_reasoning
-        feedback: The slope describes how loss changes, not the sign of the weight. A positive weight can have a negative loss slope too.
+        feedback: The validation error is 0.27, close to the noise level of 0.25 rather than far above it.
       - id: c
-        text: Any increase in the weight reduces loss, regardless of how large the step is
+        text: The model is underfitting and needs more features
         correct: false
         category: incorrect_reasoning
-        feedback: The slope describes a local tilt. A large increase can cross the minimum and leave a larger loss.
-    solution: A negative slope means a small increase in the weight lowers loss. Subtracting a positive learning rate times that slope increases the weight. For example, slope −6 and rate 0.25 move weight 0 to 1.5 on the house-price bowl, reducing loss from 9 to 2.25.
-  - id: gdp-step-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt:
-      For the house-price loss $L(w)=(w-3)^2$, the current weight is {{=w}} and the learning rate
-      is 0.25. What is the next weight?
-    params:
-      w:
-        min: -2
-        max: 2
-        step: 1
-    answer_expr: w-0.25*2*(w-3)
-    tolerance:
-      abs: 0.001
-    solution:
-      "The slope is 2({{=w}} − 3) = {{=2*(w-3)}}. Subtract 0.25 times that slope: {{=w}} − 0.25
-      × ({{=2*(w-3)}}) = {{=w-0.25*2*(w-3)}}."
-    common_wrong:
-      - answer_expr: w+0.25*2*(w-3)
-        category: math_error
-        feedback: That adds the gradient and moves uphill; the update subtracts it.
-  - id: gdp-positive-slope
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt:
-      A house-price weight is 4 and the slope of its loss is +2. With a positive learning rate,
-      what should a gradient-descent step do?
-    options:
-      - id: a
-        text: Decrease the weight by the rate times 2
-        correct: true
-      - id: b
-        text: Increase the weight by the rate times 2
-        correct: false
-        category: incorrect_reasoning
-        feedback: A positive slope points towards increasing loss, so move in the opposite direction.
-      - id: c
-        text: Leave the weight unchanged until the slope turns negative
-        correct: false
-        category: incorrect_reasoning
-        feedback: A positive slope is already enough to choose a downhill direction.
-    solution:
-      Subtracting a positive gradient decreases the weight; the sign rule works on either side
-      of the minimum.
-  - id: gdp-zero
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: At weight 3, the house-price loss $(w-3)^2$ has slope zero. What does the next
-      gradient-descent update do?
-    options:
-      - id: a
-        text: Leaves the weight at 3 because the step is zero
-        correct: true
-      - id: b
-        text: Moves the weight by the learning rate alone
-        correct: false
-        category: incorrect_reasoning
-        feedback: The step is the rate multiplied by the gradient, which is zero here.
-      - id: c
-        text: Returns the weight to its initial value of 0
-        correct: false
-        category: incorrect_reasoning
-        feedback: The update uses the current weight and gradient, not a reset to the starting value.
-    solution: The gradient multiplier is zero, so the weight stays at 3, the minimum of this particular bowl.
-  - id: gdp-vector
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: A house-price model has an area weight, a bedroom weight and a bias. What does its loss
-      gradient contain?
-    options:
-      - id: a
-        text: One loss slope for each of the three parameters
-        correct: true
-      - id: b
-        text: One predicted price for each of the training houses
-        correct: false
-        category: incorrect_reasoning
-        feedback: Predictions have one entry per example; the gradient has one entry per parameter.
-      - id: c
-        text: One learning rate for each of the training houses
-        correct: false
-        category: incorrect_reasoning
-        feedback: The gradient describes slopes, not step-size settings or individual training examples.
-    solution:
-      The gradient collects the partial derivatives with respect to the adjustable parameters;
-      subtracting its scaled vector updates all of them.
-  - id: gdp-repeat
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: After moving the price weight from 0 to 1.5, what should you use for the next step?
-    options:
-      - id: a
-        text: The slope calculated at the new weight of 1.5
-        correct: true
-      - id: b
-        text: The original slope calculated at the weight of 0
-        correct: false
-        category: incorrect_reasoning
-        feedback: The slope changes along the curve; reusing it no longer follows the current loss.
-      - id: c
-        text: The actual sale price instead of a loss slope
-        correct: false
-        category: incorrect_reasoning
-        feedback: The target helps calculate the error, but is not itself the gradient.
-    solution:
-      Gradient descent follows the current local slope, so every step requires a fresh slope at
-      the current weight.
-  - id: gdp-rate-choice
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: For the house-price loss $(w-3)^2$, weights go 0 → 4.5 → 2.25 while losses go 9 → 2.25 →
-      0.5625. What is happening?
-    options:
-      - id: a
-        text: The weight crosses the minimum but gets closer each time
-        correct: true
-      - id: b
-        text: The weight diverges because it crosses the minimum
-        correct: false
-        category: incorrect_reasoning
-        feedback: "Crossing is not enough to show divergence: the distance and the loss are shrinking."
-      - id: c
-        text: The loss oscillates upwards because the weight changes sides
-        correct: false
-        category: incorrect_reasoning
-        feedback: The given losses decrease; oscillating weights need not mean increasing loss.
-    solution: "This is damped oscillation: the signed distance changes sign but shrinks in magnitude."
-  - id: gdp-factor-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: For $L(w)={{=a}}(w-3)^2$, the learning rate is 0.1. What factor multiplies the signed
-      distance from 3 after one update?
-    params:
-      a:
-        min: 1
-        max: 8
-        step: 1
-    answer_expr: 1-0.2*a
-    tolerance:
-      abs: 0.001
-    solution:
-      The distance multiplier is 1 − 2 × {{=a}} × 0.1 = {{=1-0.2*a}}. Its sign tells you whether
-      the next weight crosses the minimum.
-    common_wrong:
-      - answer_expr: 1+0.2*a
-        category: math_error
-        feedback:
-          The update subtracts the gradient, so the factor is 1 minus twice the bowl scale times the
-          rate.
-  - id: gdp-threshold-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: For the bowl $L(w)={{=a}}(w-3)^2$, positive learning rates must be strictly below which
-      threshold to converge from a weight other than 3? Give the threshold, not the
-      monotonic-approach boundary.
-    params:
-      a:
-        min: 2
-        max: 8
-        step: 1
-    answer_expr: 1/a
-    tolerance:
-      abs: 0.001
-    solution:
-      Convergence requires the distance multiplier to have magnitude below 1, giving 0 < rate <
-      1/{{=a}}. The upper threshold is {{=1/a}}, with equality excluded.
-    common_wrong:
-      - answer_expr: 1/(2*a)
-        category: math_error
-        feedback:
-          That boundary separates same-side approach from convergent crossing, not convergence from
-          divergence.
-  - id: gdp-loss-curve
-    dimension: transfer
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt:
-      House-price training losses go 10 → 6 → 12 → 40 → 180. What is the first sensible adjustment
-      to try?
-    options:
-      - id: a
-        text: Reduce the learning rate and check whether the growth stops
-        correct: true
-      - id: b
-        text: Increase the learning rate because the first step improved
-        correct: false
-        category: incorrect_reasoning
-        feedback: One improving step does not guarantee stability; subsequent growth suggests overshoot.
-      - id: c
-        text: Keep the rate unchanged because crossing is always harmless
-        correct: false
-        category: incorrect_reasoning
-        feedback: Repeated growing loss is not the shrinking-distance crossing that can converge.
-    solution:
-      A sharp rise after an initial improvement suggests unstable steps, so try a smaller rate
-      before blaming the model.
-  - id: gdp-slow
-    dimension: transfer
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt:
-      The house-price loss decreases smoothly but slowly. Doubling the rate makes it fall faster
-      without instability. What does this evidence suggest?
-    options:
-      - id: a
-        text: The old rate was small; try cautious increases while monitoring
-        correct: true
-      - id: b
-        text: The old rate was large; halve it to speed the same progress
-        correct: false
-        category: incorrect_reasoning
-        feedback: The larger rate improved progress without instability, suggesting the original was
-          conservative.
-      - id: c
-        text: Any plateau proves the model has reached the best weights
-        correct: false
-        category: incorrect_reasoning
-        feedback:
-          A plateau can mean small steps as well as being near a minimum; the rate comparison gives
-          additional evidence.
-    solution:
-      The controlled rate comparison supports slow steps as the cause; a flat curve alone would
-      not establish it.
-  - id: gdp-why-learning-rate
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: Why does a downhill direction still need a learning rate to control the step on the house-price loss bowl?
-    options:
-      - id: a
-        text: The slope describes the nearby tilt, but a large step can cross the bottom and end farther away
-        correct: true
-      - id: b
-        text: The learning rate changes where the loss bowl's minimum is located
-        correct: false
-        category: incorrect_reasoning
-        feedback: Changing the rate changes the updates, not the loss function or the location of its minimum.
-      - id: c
-        text: A downhill direction guarantees lower loss, so the rate only controls how quickly you reach it
-        correct: false
-        category: incorrect_reasoning
-        feedback: A direction is downhill only locally. A large enough step can increase loss even when it starts in that direction.
-    solution: For the bowl with best weight 3, starting at 0 gives slope −6. Rate 0.25 reaches 1.5 and lowers loss from 9 to 2.25; rate 1.1 reaches 6.6 and raises it to 12.96. Both steps start in the downhill direction, but only the smaller step ends closer.
-  - id: gdp-why-input-factor
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: Why does each house's contribution to the weight's MSE slope include its input size as well as its residual?
-    options:
-      - id: a
-        text: The same weight nudge changes a larger house's prediction more, so its error has more influence on the slope
-        correct: true
-      - id: b
-        text: Larger houses must always have larger residuals, even when the model predicts them correctly
-        correct: false
-        category: incorrect_reasoning
-        feedback: A large house can have zero residual. Input size describes sensitivity to a weight nudge, not how wrong the current prediction must be.
-      - id: c
-        text: Multiplying by size removes each residual's sign so all houses push the weight upwards
-        correct: false
-        category: incorrect_reasoning
-        feedback: Multiplication by a positive size keeps the residual's sign. Overpriced and underpriced houses can pull the weight in opposite directions.
-    solution: With prediction wx, a weight increase of 0.1 raises predictions by 0.1 for input 1 and 0.2 for input 2. At equal residual −2, the individual squared-error slopes are −4 and −8. Multiplying twice the residual by the input accounts for this difference before averaging over houses.
-  - id: gdp-gradient-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt:
-      House inputs are 1 and 2, with targets 2 and 4. The no-bias model has weight {{=w}}. What is
-      the MSE slope with respect to the weight?
-    params:
-      w:
-        min: -2
-        max: 1
-        step: 1
-    answer_expr: 5*w-10
-    tolerance:
-      abs: 0.001
-    solution: Residuals are {{=w-2}} and {{=2*w-4}}. The slope is (2/2) × (1 × ({{=w-2}}) + 2 ×
-      ({{=2*w-4}})) = {{=5*w-10}}.
-    common_wrong:
-      - answer_expr: (5*w-10)/2
-        category: math_error
-        feedback:
-          You averaged the residual-times-input values but omitted the factor 2 from differentiating
-          the square.
-  - id: gdp-data-step-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: For the same sales (1, 2) and (2, 4), the no-bias model has weight {{=w}} and MSE slope
-      {{=5*w-10}}. At rate 0.1, what is the next weight?
-    params:
-      w:
-        min: -2
-        max: 1
-        step: 1
-    answer_expr: w-0.1*(5*w-10)
-    tolerance:
-      abs: 0.001
-    solution:
-      "Subtract rate times slope: {{=w}} − 0.1 × ({{=5*w-10}}) = {{=w-0.1*(5*w-10)}}. A negative
-      slope increases the underpricing weight."
-    common_wrong:
-      - answer_expr: w+0.1*(5*w-10)
-        category: math_error
-        feedback: That adds the slope and moves in the wrong direction.
-  - id: gdp-feature-factor
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: Two sales have the same residual of −2, but their scaled sizes are 1 and 2. How do their
-      individual weight-slope contributions compare?
-    options:
-      - id: a
-        text: The larger house contributes −8; the smaller contributes −4
-        correct: true
-      - id: b
-        text: Both houses contribute −4 because their errors are equal
-        correct: false
-        category: incorrect_reasoning
-        feedback: A weight changes the larger house prediction twice as much, so input size also matters.
-      - id: c
-        text: The larger house contributes −4; the smaller contributes −8
-        correct: false
-        category: incorrect_reasoning
-        feedback: The input multiplies the residual, so the larger input has the larger-magnitude
-          contribution.
-    solution: Twice residual times input gives 2 × (−2) × 1 = −4 and 2 × (−2) × 2 = −8 before averaging.
-  - id: gdp-average
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: You repeat every training sale twice. What happens to the MSE gradient at the same parameters?
-    options:
-      - id: a
-        text: It stays the same because contributions and count both double
-        correct: true
-      - id: b
-        text: It doubles because each contribution is now counted twice
-        correct: false
-        category: incorrect_reasoning
-        feedback: The denominator is also doubled, since the loss is a mean.
-      - id: c
-        text: It halves because the gradient is divided by more houses
-        correct: false
-        category: incorrect_reasoning
-        feedback: The numerator doubles too; the average contribution is unchanged.
-    solution:
-      Mean-loss gradients average across the examples, so repeating all the same evidence does
-      not change the slope.
-  - id: gdp-bias-slope
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: House residuals are −2 and −4. What is the MSE slope for a shared bias?
-    options:
-      - id: a
-        text: −6, twice the mean residual
-        correct: true
-      - id: b
-        text: −10, twice the input-weighted mean residual
-        correct: false
-        category: incorrect_reasoning
-        feedback: Input-weighting gives the weight slope for sizes 1 and 2, not the bias slope.
-      - id: c
-        text: +6, twice the mean absolute residual
-        correct: false
-        category: incorrect_reasoning
-        feedback: The derivative keeps the residual signs; absolute values would lose the downhill direction.
-    solution: A bias raises every prediction equally, giving slope 2 × (−2 − 4)/2 = −6.
-  - id: gdp-loop-order
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: Which order gives one correct house-price training update?
-    options:
-      - id: a
-        text: Predict, compute residuals, compute all slopes, update parameters
-        correct: true
-      - id: b
-        text: Predict, update parameters, compute residuals, compute all slopes
-        correct: false
-        category: incorrect_reasoning
-        feedback: You need the current residuals and slopes before you can choose the parameter update.
-      - id: c
-        text: Compute residuals once, then repeatedly apply their first slopes
-        correct: false
-        category: incorrect_reasoning
-        feedback: Residuals change when parameters change, so they must be recomputed in every iteration.
-    solution:
-      All slopes should describe the same current parameters; after updating, begin again with
-      fresh predictions.
-  - id: gdp-bias-step-template
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: The price-model bias is {{=b}} and the current mean residual is −{{=r}}. With MSE and
-      learning rate 0.1, what is the next bias?
-    params:
-      b:
-        min: 0
-        max: 4
-        step: 1
-      r:
-        min: 1
-        max: 6
-        step: 1
-    answer_expr: b+0.2*r
-    tolerance:
-      abs: 0.001
-    solution:
-      The bias slope is 2 × (−{{=r}}) = {{=-2*r}}. The new bias is {{=b}} − 0.1 × ({{=-2*r}}) =
-      {{=b+0.2*r}}.
-    common_wrong:
-      - answer_expr: b+0.1*r
-        category: math_error
-        feedback: The MSE derivative is twice the mean residual, so include the factor 2.
-  - id: gdp-code-gradient
-    dimension: implementation
-    type: code_complete
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt:
-      Complete the vectorised MSE weight gradient. `X` has one row per sale, `r` is the current
-      residual array, and `y` contains the targets.
-    code: |
-      dw = ____
-    accept:
-      - 2 * X.T @ r / len(y)
-      - 2*X.T@r/len(y)
-      - (2 / len(y)) * X.T @ r
-    solution: "Use `2 * X.T @ r / len(y)`: the transpose adds each feature times its residual across
-      sales, and division averages over sales."
-  - id: gdp-code-update
-    dimension: implementation
-    type: code_complete
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: Complete the weight update. `dw` is the gradient at the current weights and `lr` is the
-      learning rate.
-    code: |
-      w = ____
-    accept:
-      - w - lr * dw
-      - w-lr*dw
-      - w - dw * lr
-    solution: Use `w - lr * dw` to move against the current gradient; adding it would move uphill.
-  - id: gdp-why-fresh-errors
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: What goes wrong if the house-price training loop computes residuals `r` once and reuses them for every update?
-    options:
-      - id: a
-        text: The slopes stop reflecting predictions from the current parameters
-        correct: true
-      - id: b
-        text: Nothing goes wrong because the sale prices and house sizes have not changed
-        correct: false
-        category: incorrect_reasoning
-        feedback: The data stays fixed, but the predictions change with the parameters. Residuals compare those current predictions with the targets.
-      - id: c
-        text: Reusing errors makes the steps shrink automatically as the current predictions improve
-        correct: false
-        category: incorrect_reasoning
-        feedback: Fixed residuals give fixed slopes for this linear model. With a fixed rate, the loop keeps making the same changes instead of shrinking them.
-    solution: For the two-house model without bias, weight 0 gives residuals −2 and −4 and slope −10. After a rate-0.1 step to weight 1, the residuals become −1 and −2 and the slope becomes −5. Reusing the old residuals would take another step of 1 instead of 0.5, ignoring the change in the loss surface's tilt.
-  - id: gdp-shape
-    dimension: implementation
-    type: mc
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt:
-      For 200 sales and 5 features, `X` has shape `(200, 5)` and `r` has shape `(200,)`. What is
-      the shape of `X.T @ r`?
-    options:
-      - id: a
-        text: "`(5,)`, one entry per weight"
-        correct: true
-      - id: b
-        text: "`(200,)`, one entry per sale"
-        correct: false
-        category: incorrect_reasoning
-        feedback: The transpose has shape (5, 200); multiplication sums over sales and leaves features.
-      - id: c
-        text: "`(200, 5)`, one entry per input value"
-        correct: false
-        category: incorrect_reasoning
-        feedback: The product sums over the 200 residual contributions for each feature.
-    solution: The product has one accumulated residual-times-input contribution for each of the five weights.
+        feedback: The two errors are close to each other and to the stated noise variance. Check whether this suggests a large gap or a model already near the measurement limit.
+    solution: With noise variance 0.25, no model can do much better than MSE ≈ 0.25 on new data.
   - id: gd-explain-training
     dimension: conceptual
     type: explain
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt:
-      "Explain how you would fit the house-price model with gradient descent: where each update
-      comes from, what the loop recomputes, and how you would respond to slow or growing loss."
+    prompt: "Explain how you would fit the house-price model with gradient descent: where each update comes from, what the loop recomputes, and how you would respond to slow or growing loss."
     rubric:
       - id: r1
         criterion: Subtracts learning rate times current gradient and explains the sign and step-size roles
         weight: 1
         required: true
       - id: r2
-        criterion:
-          Describes prediction, residual, mean weight and bias gradients, and updates followed by
-          recomputation
+        criterion: Describes prediction, residual, mean weight and bias gradients, and updates followed by recomputation
         weight: 1
         required: true
       - id: r3
-        criterion: Distinguishes slow progress, shrinking oscillation and divergence using losses or
-          distances, and proposes cautious rate adjustment
+        criterion: Distinguishes slow progress, shrinking oscillation and divergence using losses or distances, and proposes cautious rate adjustment
         weight: 1
         required: true
-    exemplar: I predict the training prices and subtract actual prices to get residuals. For MSE I
-      average twice residual times each feature for its weight slope, and twice the residuals for
-      the bias slope, then subtract the learning rate times these gradients and recompute
-      predictions for the next step. A small rate can be slow; if a cautious increase helps without
-      instability I can keep it, whereas growing losses suggest reducing the rate; crossing the
-      minimum is not itself failure if distance and loss shrink.
-    solution: I predict the training prices and subtract actual prices to get residuals. For MSE I
-      average twice residual times each feature for its weight slope, and twice the residuals for
-      the bias slope, then subtract the learning rate times these gradients and recompute
-      predictions for the next step. A small rate can be slow; if a cautious increase helps without
-      instability I can keep it, whereas growing losses suggest reducing the rate; crossing the
-      minimum is not itself failure if distance and loss shrink.
-  - id: gdp-error-definition
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: 'The prediction error is $e=\hat y-y$. A house-price prediction is $\hat y=5$
-      and its target is $y=3$, both in the same units. What is the error $e$?'
-    answer: 2
-    tolerance: { abs: 0.000001 }
-    solution: |
-      Subtract the target from the prediction.
-
-      $$e=5-3.$$
-
-      $$e=2.$$
+    exemplar: I predict the training prices and subtract actual prices to get residuals. For MSE I average twice residual times each feature for its weight slope, and twice the residuals for the bias slope, then subtract the learning rate times these gradients and recompute predictions for the next step. A small rate can be slow; if a cautious increase helps without instability I can keep it, whereas growing losses suggest reducing the rate; crossing the minimum is not itself failure if distance and loss shrink.
+    solution: I predict the training prices and subtract actual prices to get residuals. For MSE I average twice residual times each feature for its weight slope, and twice the residuals for the bias slope, then subtract the learning rate times these gradients and recompute predictions for the next step. A small rate can be slow; if a cautious increase helps without instability I can keep it, whereas growing losses suggest reducing the rate; crossing the minimum is not itself failure if distance and loss shrink.
