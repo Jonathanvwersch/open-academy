@@ -94,7 +94,7 @@ knowledge_points:
       | $(3,0,-1)$ | $-2$ | $16$ |
       | $(3,0,-3)$ | $-6$ | $12$ |
 
-      **Where it shows up.** A house-price model describes a house by $x=(12,3,20)$: area in tens of square metres, bedrooms, and age in years. With weights $w=(25,10,-1)$, in thousand pounds per ten square metres, per bedroom and per year, the predicted price is $w\cdot x=300+30-20=310$ thousand pounds.
+      **Where it shows up.** A house-price model describes a house by $x=(12,3,20)$: area in tens of square metres, bedrooms, and age in years. Its weights $w=(25,10,-1)$ say each ten square metres adds 25 thousand pounds, each bedroom adds 10, and each year of age takes 1 away, so the predicted price is $w\cdot x=300+30-20=310$ thousand pounds.
     problems:
       - dot-weighted-total-basics
       - dotp-why-total
@@ -143,7 +143,7 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** The **angle** between two arrows is the turn from one to the other at the origin. Drop a line from $a$'s tip to meet the line through $b$ at a right angle (the dashed lines above): the stretch from the origin to where it lands is $a$'s shadow on $b$, the **projection** of $a$ onto $b$, negative if it points backwards. For any two arrows,
+      **The idea.** The **angle** between two arrows is how far you turn one to line it up with the other: from $0^\circ$ (same way) to $180^\circ$ (opposite), with a right angle at $90^\circ$. Drop a line from $a$'s tip to meet the line through $b$ at a right angle (the dashed lines above): the stretch from the origin to where it lands is $a$'s shadow on $b$, the **projection** of $a$ onto $b$, negative if it points backwards. For any two arrows,
 
       $$a\cdot b=(\text{projection of }a\text{ onto }b)\times\|b\|$$
 
@@ -219,7 +219,7 @@ knowledge_points:
   - id: dot-direction-only
     title: Cosine similarity compares directions alone
     explain: |
-      **The question.** The dot product mixes two things: how closely the arrows' directions agree and how long the arrows are. How can you score direction alone, so that an arrow doesn't win just for being long?
+      **The question.** The dot product mixes two things: how closely the arrows' directions agree and how long the arrows are. How can you score direction alone, so length can't win?
 
       **Picture it.** On the left, $a=(3,4)$ and $b=(4,0)$. On the right are the same two directions with arrows twice as long, $a=(6,8)$ and $b=(8,0)$. The angle between the arrows, written $\theta$ ("theta"), is the same in both, but the dot product grows from 12 to 48. Divide each dot product by the two lengths multiplied together and both give $0.6$.
 
@@ -256,7 +256,7 @@ knowledge_points:
 
       $$\frac{a\cdot b}{\|a\|\,\|b\|}$$
 
-      Dividing by both lengths is the same as first shrinking each arrow to length 1, a **unit vector**, by dividing its entries by its length: $(3,4)$ becomes $(0.6,0.8)$. Dividing each entry of $a$ by $\|a\|$ divides each product $a_ib_i$, so the whole sum, by $\|a\|$; the same goes for $b$. For two length-1 arrows, the dot product is the shadow of one on the other times 1, which depends only on the angle. That shadow is called the **cosine** of $\theta$, written $\cos\theta$: 1 when the arrows agree, 0 at a right angle ($90^\circ$), $-1$ when opposite. In the picture, $(0.6,0.8)\cdot(1,0)=0.6$, both panels' score. Multiplying back by the lengths splits any dot product into length times agreement:
+      Dividing by both lengths is the same as first shrinking each arrow to length 1, a **unit vector**, by dividing its entries by its length: $(3,4)$ becomes $(0.6,0.8)$. Dividing every entry of $a$ by $\|a\|$ divides every product $a_ib_i$ by $\|a\|$, and so divides the whole sum by $\|a\|$; the same goes for $b$. For two length-1 arrows, the dot product is the shadow of one on the other times 1, which depends only on the angle. That shadow is called the **cosine** of $\theta$, written $\cos\theta$: 1 when the arrows agree, 0 at a right angle, $-1$ when opposite. In the picture, $(3,4)$ shrinks to $(0.6,0.8)$ and $b$ to $(1,0)$, and $(0.6,0.8)\cdot(1,0)=0.6$, both panels' score. Multiplying back by the lengths splits any dot product into lengths times $\cos\theta$:
 
       $$a\cdot b=\|a\|\,\|b\|\cos\theta$$
 
