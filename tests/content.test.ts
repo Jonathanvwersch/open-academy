@@ -887,6 +887,7 @@ test('template validation reports unsatisfied constraints, unresolved text, cons
     template('template-role', { role: 'core' }),
     template('template-unsat', { constraints: ['x > 10'] }),
     template('template-leftover', { prompt: 'Unclosed placeholder {{=x' }),
+    template('template-bare', { prompt: 'Compute {{x}} with {{=x}}.' }),
     template('template-constant', { answer_expr: '2' }),
     template('template-collision', {
       common_wrong: [{ answer_expr: 'x', category: 'math_error', feedback: 'Try again.' }],
@@ -911,6 +912,7 @@ test('template validation reports unsatisfied constraints, unresolved text, cons
     ['template-role', 'templates must have practice role'],
     ['template-unsat', 'could not satisfy constraints'],
     ['template-leftover', 'unresolved {{= placeholder'],
+    ['template-bare', 'unresolved {{= placeholder'],
     ['template-constant', 'at least 3 distinct answers'],
     ['template-collision', 'common-wrong answer is within tolerance'],
     ['template-malformed', 'unknown identifier'],

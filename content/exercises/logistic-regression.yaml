@@ -70,7 +70,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A classifier has one feature $x={{x}}$, weight $w={{w}}$ and bias $b={{b}}$. Find its score $z$."
+    prompt: "A classifier has one feature $x={{=x}}$, weight $w={{=w}}$ and bias $b={{=b}}$. Find its score $z$."
     params:
       x: { min: 0, max: 4 }
       w: { min: 1, max: 3 }
@@ -185,12 +185,12 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: 'A score is $z=\ln({{k}})$, so $e^{-z}=1/{{k}}$. Find its sigmoid probability.'
+    prompt: 'A score is $z=\ln({{=k}})$, so $e^{-z}=1/{{=k}}$. Find its sigmoid probability as an exact fraction or to four decimal places.'
     params:
       k: { min: 1, max: 4 }
     answer_expr: k/(k+1)
     tolerance: { abs: 0.0001 }
-    solution: Substitute the exponential into $1/(1+e^{-z})$; the probability is ${{=k/(k+1)}}$.
+    solution: Substitute the exponential into $1/(1+e^{-z})$; the probability is ${{=k}}/{{=k+1}}$.
   - id: lr-sigmoid-confusion
     dimension: conceptual
     type: mc
@@ -298,7 +298,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "For $y={{y}}$ and predicted probability $p={{k}}/4$ of label 1, calculate binary cross-entropy using natural logarithms. Give four decimal places."
+    prompt: "For $y={{=y}}$ and predicted probability $p={{=k}}/4$ of label 1, calculate binary cross-entropy using natural logarithms. Give four decimal places."
     params:
       y: { min: 0, max: 1 }
       k: { min: 1, max: 3 }
@@ -412,7 +412,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "For one example, $p={{k}}/4$, $y={{y}}$ and $x={{x}}$. Find the weight gradient $(p-y)x$."
+    prompt: "For one example, $p={{=k}}/4$, $y={{=y}}$ and $x={{=x}}$. Find the weight gradient $(p-y)x$."
     params:
       k: { min: 1, max: 3 }
       y: { min: 0, max: 1 }

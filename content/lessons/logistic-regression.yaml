@@ -141,7 +141,7 @@ knowledge_points:
 
       **The idea.** Penalise the model for assigning little probability to what actually happened. Why use a negative logarithm? It gives zero penalty at probability 1, increases as the true-label probability falls, and has no upper limit as that probability approaches zero.
 
-      For examples treated as independent (one outcome does not change another's chance), their chances multiply, and the logarithm turns that product into a sum.
+      For examples treated as independent (one outcome does not change another's chance), the chance of all the observed outcomes is the product of their chances. Logarithms turn products into sums, $\ln(ab)=\ln a+\ln b$, so the total loss becomes a sum of one loss per example.
 
       **Binary cross-entropy** is this negative natural logarithm of the probability assigned to the observed binary label. With observed label $y$, predicted probability $p$ of label 1, and loss $L$, its formula is:
 
@@ -198,13 +198,13 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Every weight affects the loss through the score, so first find how the loss changes with that score.
+      **The idea.** Every weight affects the loss through the score, so first find how the loss changes with that score. The **chain rule** handles calculations that feed into each other: multiply the slope of each step by the slope of the step before it. Here the score gives the probability, and the probability gives the loss.
 
       First, differentiate the loss with respect to probability:
 
       $$\frac{\partial L}{\partial p}=-\frac{y}{p}+\frac{1-y}{1-p}.$$
 
-      Next, differentiate $\sigma(z)=(1+e^{-z})^{-1}$ using the derivatives lesson's power and exponential rules, multiplying the inner slopes:
+      Next, differentiate $\sigma(z)=(1+e^{-z})^{-1}$ with the chain rule. The power rule gives the outer slope $-(1+e^{-z})^{-2}$; the inner part $1+e^{-z}$ has slope $-e^{-z}$ (the exponential rule, times the slope $-1$ of $-z$). Multiply them:
 
       $$\sigma'(z)=\frac{e^{-z}}{(1+e^{-z})^2}.$$
       $$\sigma'(z)=\frac{1}{1+e^{-z}}\cdot\frac{e^{-z}}{1+e^{-z}}.$$
@@ -214,7 +214,7 @@ knowledge_points:
       $$\sigma'(z)=\frac{1}{1+e^{-z}}\left(1-\frac{1}{1+e^{-z}}\right).$$
       $$\frac{\partial p}{\partial z}=\sigma(z)(1-\sigma(z))=p(1-p).$$
 
-      The **chain rule** multiplies the slopes along a sequence of calculations: score to probability, then probability to loss.
+      Now multiply the two slopes, score to probability and probability to loss:
 
       $$\frac{\partial L}{\partial z}=\left(-\frac{y}{p}+\frac{1-y}{1-p}\right)p(1-p).$$
       $$\frac{\partial L}{\partial z}=-y(1-p)+(1-y)p.$$
