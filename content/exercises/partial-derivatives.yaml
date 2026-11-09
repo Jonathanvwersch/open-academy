@@ -716,19 +716,19 @@ exercises:
     prompt: "In step 2 of the worked example, why does the $2.25$ contribute $0$ to the slope in $y$?"
     options:
       - id: a
-        text: "With $x$ frozen at $1.5$, the $x^2$ term is the fixed number $2.25$, which does not change as $y$ moves."
-        correct: true
-        feedback: "A fixed number has derivative $0$, so only $2y^2$ contributes to the slope in $y$."
-      - id: b
         text: "Holding $x$ fixed means setting $x$ to $0$, so the $x^2$ term vanishes from the function entirely."
         correct: false
         category: misunderstood_definition
         feedback: "Fixed does not mean zero: $x$ stays at $1.5$, which is why the term is $2.25$ rather than $0$."
-      - id: c
+      - id: b
         text: "Any squared term has derivative $0$ at a point, so $x^2$ adds nothing to either partial derivative."
         correct: false
         category: misapplied_technique
         feedback: "Squared terms do have slopes: $x^2$ gives the $2x=3$ slope along $x$. It adds nothing only when $x$ is the frozen input."
+      - id: c
+        text: "With $x$ frozen at $1.5$, the $x^2$ term is the fixed number $2.25$, which does not change as $y$ moves."
+        correct: true
+        feedback: "A fixed number has derivative $0$, so only $2y^2$ contributes to the slope in $y$."
       - id: d
         text: "Only the larger term of $f$ at $P$ affects the slope, and $2y^2$ is the larger one when $y$ equals $1$."
         correct: false
@@ -744,14 +744,14 @@ exercises:
     prompt: "In step 1 of the worked example, why does $x^2y$ give $2xy$ rather than $2x$?"
     options:
       - id: a
-        text: "$y$ is held fixed, so it is a constant factor that stays in place, like the $5$ in $5x^2$."
-        correct: true
-        feedback: "A constant factor carries through the derivative, so $x^2y$ becomes $2x\\cdot y$."
-      - id: b
         text: "Both inputs are differentiated at once, and the two separate results are then multiplied together."
         correct: false
         category: misunderstood_definition
         feedback: "Only $x$ moves in $\\partial f/\\partial x$. Differentiating $y$ too would give $2x\\cdot1$, not $2xy$."
+      - id: b
+        text: "$y$ is held fixed, so it is a constant factor that stays in place, like the $5$ in $5x^2$."
+        correct: true
+        feedback: "A constant factor carries through the derivative, so $x^2y$ becomes $2x\\cdot y$."
       - id: c
         text: "$y$ is set to $1$ while it is held fixed, and its letter is written back in at the very end."
         correct: false
@@ -772,24 +772,24 @@ exercises:
     prompt: "In the worked example, why does the error $e$ change at rate $20$ per unit of $w_3$?"
     options:
       - id: a
-        text: "$w_3$ multiplies the house's age, $20$, and every other term in $e$ is frozen while $w_3$ moves."
-        correct: true
-        feedback: "Only the term $20w_3$ changes, and it changes by $20$ for each unit of $w_3$."
-      - id: b
         text: "The error itself is $-20$, so every parameter changes the error at that same rate of $20$."
         correct: false
         category: misunderstood_definition
         feedback: "The error's value is $-20$, but its rate depends on the parameter: $12$ for $w_1$, $3$ for $w_2$, $1$ for $b$."
-      - id: c
+      - id: b
         text: "The current weight is $w_3=-1$, so the rate is the age multiplied by that weight and flipped in sign."
         correct: false
         category: math_error
         feedback: "The current value of $w_3$ does not appear in the rate: $20w_3$ changes by $20$ per unit wherever $w_3$ starts."
-      - id: d
+      - id: c
         text: "Larger features always change the error faster, and age is the largest of the three features here."
         correct: false
         category: incorrect_reasoning
         feedback: "Age does give the largest rate here, but the reason is that the rate equals the feature $w_3$ multiplies, $20$."
+      - id: d
+        text: "$w_3$ multiplies the house's age, $20$, and every other term in $e$ is frozen while $w_3$ moves."
+        correct: true
+        feedback: "Only the term $20w_3$ changes, and it changes by $20$ for each unit of $w_3$."
     solution: "In $e=12w_1+3w_2+20w_3+b-330$, only $20w_3$ contains $w_3$. With the others frozen, $e$ changes by $20$ for each unit of $w_3$."
   - id: pdp-bias-zero
     dimension: math
