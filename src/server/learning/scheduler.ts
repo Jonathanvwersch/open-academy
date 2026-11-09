@@ -689,7 +689,7 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
       day: 'numeric',
       month: 'short',
       year: 'numeric',
-      timeZone: 'UTC',
+      timeZone: state.timezone ?? 'UTC',
     }).format(new Date(card.dueAt));
     candidate.activity.reason.summary = `Due since ${dueDate} · ~${Math.round((card.retrievability ?? 0.9) * 100)}% recall.`;
     candidates.push(candidate);

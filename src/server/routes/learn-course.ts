@@ -104,7 +104,7 @@ export function registerLearnCourseRoutes(
       ? activeSession.activities.filter(
           (activity) => activity.status === 'planned' || activity.status === 'in_progress',
         )
-      : plannedActivities(state, index, user?.prefs, user?.timezone ?? timeZone, now);
+      : plannedActivities(state, index, user?.prefs, timeZone, now);
 
     const tasks = activities.map((activity) => {
       const conceptId = activity.conceptId;

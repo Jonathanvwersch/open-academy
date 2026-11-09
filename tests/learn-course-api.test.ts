@@ -289,3 +289,47 @@ test('active-session tasks, done-today activity, and local-date KP XP are return
   ]);
   expect(await rowCounts()).toEqual(before);
 });
+
+test('request timezone updates the learner, rebuckets XP, and drives the local week', async () => {
+  const earnedAt = new Date('2026-11-09T00:17:00.000Z');
+  await db.insert(xpEvents).values({
+    userId,
+    kind: 'activity',
+    sourceKey: 'timezone-rebucket',
+    conceptId: 'vectors',
+    amount: 10,
+    earnedAt,
+    localDate: '2026-11-09',
+  });
+  const headers = {
+    'X-Now': earnedAt.toISOString(),
+    'X-Time-Zone': 'America/Los_Angeles',
+  };
+
+  const learnResponse = await app.request('/api/learn', { headers });
+  expect(learnResponse.status).toBe(200);
+  const learn = await learnResponse.json();
+  expect(learn.xp.today).toBe(10);
+  expect(learn.xp.week).toContainEqual({ date: '2026-11-08', xp: 10, goal: 60 });
+
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  const [event] = await db.select().from(xpEvents).where(eq(xpEvents.userId, userId));
+  expect(user?.timezone).toBe('America/Los_Angeles');
+  expect(event?.localDate).toBe('2026-11-08');
+  const todayResponse = await app.request('/api/today', { headers });
+  expect((await todayResponse.json()).sessionKind).toBe('sunday');
+});
+
+test('invalid timezone is ignored and a missing header uses the stored timezone', async () => {
+  const invalid = await app.request('/api/learn', {
+    headers: { 'X-Now': '2026-11-09T00:17:00.000Z', 'X-Time-Zone': 'Not/AZone' },
+  });
+  expect(invalid.status).toBe(200);
+  expect((await db.select().from(users).where(eq(users.id, userId)))[0]?.timezone).toBe('UTC');
+
+  await db.update(users).set({ timezone: 'America/Los_Angeles' }).where(eq(users.id, userId));
+  const missing = await app.request('/api/today', {
+    headers: { 'X-Now': '2026-11-09T00:17:00.000Z' },
+  });
+  expect((await missing.json()).sessionKind).toBe('sunday');
+});

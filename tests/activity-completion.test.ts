@@ -89,7 +89,7 @@ test('awards mean correctness XP once when an activity is completed repeatedly',
   const completion = {
     activityId: activity.id,
     completed: true,
-    now: new Date('2026-01-02T01:00:00.000Z'),
+    now: new Date('2026-11-09T00:17:00.000Z'),
     userId,
     timeZone: 'America/Los_Angeles',
   };
@@ -105,7 +105,7 @@ test('awards mean correctness XP once when an activity is completed repeatedly',
     kind: 'activity',
     conceptId: 'vectors',
     amount: 15,
-    localDate: '2026-01-01',
+    localDate: '2026-11-08',
   });
 });
 
