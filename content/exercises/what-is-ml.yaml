@@ -165,7 +165,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 1
     prompt: "Why not just write a house-price rule by hand?"
     options:
@@ -200,7 +200,7 @@ exercises:
     dimension: conceptual
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 2
     prompt: "Two houses sold: 40 m² for 120 thousand pounds and 60 m² for 180 thousand pounds. The rule is price = w × area (thousands of pounds per m²). Which value of w fits both sales?"
     solution: "40 × 3 = 120 and 60 × 3 = 180, so w = 3."
@@ -272,7 +272,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 1
     prompt: "Why does the course teach derivatives before gradient descent?"
     options:
@@ -307,7 +307,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 1
     prompt: "Why test the trained model on houses it never saw during training?"
     options:
@@ -404,7 +404,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 1
     prompt: "Why does a course aimed at robotics start with house prices?"
     options:
@@ -461,3 +461,33 @@ exercises:
           weight: 1,
         }
     exemplar: "Machine learning means a computer learns a rule from examples instead of a person writing the rule. For house prices, the inputs are a house's measurements, the target is its sale price, and the model multiplies the measurements by weights. The loss measures how far the predicted prices are from the real ones, and training changes the weights to make the loss smaller. For a robot arm, the inputs are the camera image and joint angles, and the target is the movement the person made. A neural network predicts a movement, the loss measures how far it is from the person's movement, and training changes the network's weights to shrink that gap."
+  - id: ml-robot-sorter
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot learns to sort red and blue blocks from human demonstrations.
+      Its camera image is the input. Which pairing correctly describes its
+      target and loss?
+    options:
+      - id: a
+        text: "Target: the demonstrated bin; loss: how wrong the chosen bin is"
+        correct: true
+      - id: b
+        text: "Target: the camera image; loss: how wrong the chosen bin is"
+        correct: false
+        feedback: The camera image is the input; the demonstrated bin is the answer to
+          copy.
+      - id: c
+        text: "Target: the demonstrated bin; loss: the number of recorded images"
+        correct: false
+        feedback: Counting images does not measure how wrong a prediction is.
+      - id: d
+        text: "Target: the adjustable weights; loss: the number of recorded images"
+        correct: false
+        feedback: Weights are adjusted during training, not copied as targets; loss
+          measures prediction mistakes.
+    solution: The target is the demonstrated choice of bin, just as the house target
+      is the known sale price. The loss must measure mistakes in the predicted
+      choice, not the amount of data.

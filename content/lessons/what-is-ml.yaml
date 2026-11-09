@@ -30,7 +30,12 @@ knowledge_points:
       3. Try $w=3$: the predictions are 150, 240 and 300. All three match.
 
       Learning means finding the weights whose predictions match the examples. Here we tried values by hand. A real model has thousands or millions of weights, so trying values is hopeless. Week 1 shows how the computer works out which way to change each weight instead.
-    problems: [ml-what-it-is-basics, ml-fit-task, ml-learns-from, ml-why-not-hand, ml-fit-weight]
+    problems:
+      - ml-what-it-is-basics
+      - ml-fit-task
+      - ml-learns-from
+      - ml-why-not-hand
+      - ml-fit-weight
   - id: ml-house-model
     title: The house-price model, step by step
     explain: |
@@ -88,7 +93,11 @@ knowledge_points:
       4. The house actually sold for £330k, so the prediction is £20k too low.
       5. Training changes the weights so that predictions like this one move closer to the real prices. Which weights to change, and by how much, is what derivatives and gradient descent answer.
     problems:
-      [ml-house-model-basics, ml-step-vector, ml-step-next, ml-why-derivatives, ml-why-new-houses]
+      - ml-house-model-basics
+      - ml-step-vector
+      - ml-step-next
+      - ml-why-derivatives
+      - ml-why-new-houses
   - id: ml-to-robots
     title: From house prices to robots
     explain: |
@@ -115,7 +124,12 @@ knowledge_points:
       - **Training:** gradient descent, changing the weights to shrink the loss (Week 1).
 
       This approach is called **behavioral cloning**, and Week 7 teaches it. Everything it needs, apart from the robot, is built in Weeks 1 to 4.
-    problems: [ml-to-robots-basics, ml-robot-target, ml-which-week, ml-why-houses]
+    problems:
+      - ml-to-robots-basics
+      - ml-robot-target
+      - ml-which-week
+      - ml-why-houses
+      - ml-robot-sorter
 final: ml-explain
 summary: |
   - Machine learning means a computer learns a rule, called a model, from examples instead of being given the rule.

@@ -19,15 +19,14 @@ knowledge_points:
       This example shows the calculation.
       Suppose a model fits 700 sales and predicts 150 different sales. If it predicts those held-out prices with small errors, that is evidence of generalisation; the fitting error alone cannot provide that evidence.
     problems:
-      [
-        tts-why-hold-out-basics,
-        ttsp-honest-estimate,
-        ttsp-memoriser,
-        ttsp-heldout-error,
-        ttsp-pick-model,
-        ttsp-why-hold-out,
-        ttsp-robot-heldout,
-      ]
+      - tts-why-hold-out-basics
+      - ttsp-honest-estimate
+      - ttsp-why-hold-out
+      - ttsp-heldout-procedure
+      - ttsp-memoriser
+      - ttsp-heldout-error
+      - ttsp-pick-model
+      - ttsp-robot-heldout
   - id: tts-three-splits
     title: Separate training, validation and test houses
     explain: |
@@ -40,15 +39,13 @@ knowledge_points:
       This example shows the calculation.
       From 1,000 house sales, one split might use 700 for training, 150 for validation and 150 for test. Only training sales update weights; validation selects a version; test evaluates the chosen version.
     problems:
-      [
-        tts-three-splits-basics,
-        ttsp-which-set-fit,
-        ttsp-split-counts,
-        ttsp-which-set-choose,
-        ttsp-why-separate-test,
-        ttsp-swap-after-test,
-        ttsp-pick-version,
-      ]
+      - tts-three-splits-basics
+      - ttsp-which-set-fit
+      - ttsp-which-set-choose
+      - ttsp-split-counts
+      - ttsp-pick-version
+      - ttsp-why-separate-test
+      - ttsp-swap-after-test
   - id: tts-hyperparameters
     title: Choose settings without tuning on the test set
     explain: |
@@ -63,14 +60,13 @@ knowledge_points:
       This example shows the calculation.
       If house-price models have different numbers of hidden units, fit each on the same training split, select using validation error, and reserve test houses for the final check.
     problems:
-      [
-        tts-hyperparameters-basics,
-        ttsp-param-or-hyper-w,
-        ttsp-param-or-hyper-inputs,
-        ttsp-why-not-train-choose,
-        ttsp-why-best-of-many,
-        ttsp-gap-calc,
-      ]
+      - tts-hyperparameters-basics
+      - ttsp-param-or-hyper-w
+      - ttsp-param-or-hyper-inputs
+      - ttsp-gap-calc
+      - ttsp-select-input-setting
+      - ttsp-why-not-train-choose
+      - ttsp-why-best-of-many
   - id: tts-leakage
     title: Prevent information leakage across house splits
     explain: |
@@ -85,15 +81,13 @@ knowledge_points:
       This example shows the calculation.
       If two rows describe the same house sale, assign both to training or both to test, never one to each. Compute a missing-area fill value from training sales only.
     problems:
-      [
-        tts-leakage-basics,
-        ttsp-duplicate-leak,
-        ttsp-fill-average,
-        ttsp-dup-error,
-        ttsp-same-house,
-        ttsp-robot-frames,
-        ttsp-why-training-average,
-      ]
+      - tts-leakage-basics
+      - ttsp-duplicate-leak
+      - ttsp-fill-average
+      - ttsp-why-training-average
+      - ttsp-dup-error
+      - ttsp-same-house
+      - ttsp-robot-frames
 final: tts-explain
 summary: |
   - Test predictions on sales the model did not use for fitting.

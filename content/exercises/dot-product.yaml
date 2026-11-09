@@ -103,7 +103,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "Two vectors are $a=(1,2,3)$ and $b=(4,-5,6)$. What is their dot product?"
     solution: "Multiply matching entries, then add: $1\\cdot4+2\\cdot(-5)+3\\cdot6=4-10+18=12$. The result is one number."
@@ -125,7 +125,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "A simplified house-price model uses weights $w=({{=u}},{{=v}})$ for area in tens of square metres and age in years. A house has $x=({{=a}},{{=b}})$ in that order. Each weight is in thousand pounds per feature unit. What is $w\\cdot x$, in thousand pounds?"
     solution: "The contributions are ${{=u}}\\cdot{{=a}}={{=u*a}}$ and ${{=v}}\\cdot{{=b}}={{=v*b}}$. Adding them gives ${{=u*a+v*b}}$, the weighted score."
@@ -168,7 +168,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 2
     prompt: "A house's features are $(4,1)$ in the order (area in tens of square metres, bedrooms). A model stores weights $(2,0.5)$ in the reverse order (bedrooms, area), in thousand pounds per feature unit. What should it do before calculating their dot product?"
     solution: "The dot product pairs entries by position. Reorder one list so each feature is matched to its own weight."
@@ -276,7 +276,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "Two arrows from the origin are $a=({{=h}},{{=v}})$ and $b=({{=k}},0)$. What is $a\\cdot b$?"
     solution: "The first pair contributes ${{=h}}\\cdot{{=k}}={{=h*k}}$. The second contributes ${{=v}}\\cdot0=0$, so the total is ${{=h*k}}$."
@@ -329,7 +329,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 2
     prompt: "Two arrows have dot product 6. Reverse the second arrow without changing its length. What is their new dot product?"
     solution: "Reversing one vector negates each matching product. Their sum becomes $-6$, because $a$ now goes against the reversed arrow's direction."
@@ -356,7 +356,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "Arrows $(2,0)$ and $(-2,0)$ both have length 2. Why can't lengths alone measure how much they point the same way?"
     solution: "Their equal lengths do not record their opposite directions. Their dot product is $2\\cdot(-2)+0\\cdot0=-4$, which records that opposition."
@@ -383,7 +383,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 2
     prompt: "Two robot movements are $a=(3,4)$ and $b=(4,3)$, in metres east and north. What is their cosine similarity?"
     solution: "The dot product is $12+12=24$ and both lengths are 5. Divide by both lengths to get $24/(5\\cdot5)=0.96$."
@@ -394,7 +394,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 2
     prompt: "Two arrows are $a=(3,4)$ and $b=({{=k}},3)$. What is their cosine similarity? Round to three decimal places."
     solution: "The dot product is $3\\cdot{{=k}}+4\\cdot3={{=3*k+12}}$. The arrow lengths are 5 and $\\sqrt{ {{=k*k+9}} }$. Dividing by their product gives ${{=(3*k+12)/(5*sqrt(k*k+9))}}$."
@@ -407,7 +407,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "One non-zero arrow is made three times as long without turning. Another non-zero arrow stays fixed. Why does their cosine similarity stay unchanged?"
     solution: "The top and bottom of the fraction both triple. Cancelling that factor leaves cosine similarity unchanged."
@@ -434,7 +434,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 2
     prompt: "A robot has not moved, so its movement vector is $(0,0)$. Another movement is $(1,2)$ metres east and north. Can cosine similarity compare their directions?"
     solution: "Cosine similarity divides by both norms. The zero vector has norm zero, making the ratio undefined."
@@ -461,7 +461,7 @@ exercises:
     dimension: transfer
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 2
     prompt: "Two arrows have dot product 2. Every entry of one vector is multiplied by 3 while the other vector stays fixed. What happens to the dot product?"
     solution: "Each matching product becomes three times as large, so their sum is $3\\cdot2=6$. The dot product depends on arrow lengths as well as their directions."

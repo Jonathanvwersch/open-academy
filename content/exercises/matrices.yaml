@@ -130,7 +130,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "The second row of $A$ is $({{=a}},{{=b}})$ and the first column of $B$ is $({{=c}},{{=d}})$. What is the entry in row 2, column 1 of $AB$?"
     solution: "Dot the selected row with the selected column: ${{=a}}\\cdot{{=c}}+({{=b}})\\cdot{{=d}}={{=a*c+b*d}}$. One row-column pair produces one output entry."
@@ -204,7 +204,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 1
     prompt: "A house has area 4 tens of square metres and 1 bedroom. A simplified model uses weights $(2,-1)$ thousand pounds per unit. What sale-price prediction does their matrix-vector product give, in thousands of pounds?"
     solution: "Multiply matching entries and add: $4\\cdot2+1\\cdot(-1)=8-1=7$."
@@ -214,7 +214,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: |
       A house has measurements $({{=u}},{{=v}})$ and the model's weights are $({{=a}},{{=b}})$. What score does the row-vector product give?
@@ -292,7 +292,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "For $A=\\begin{bmatrix}2&0&1\\\\1&3&-1\\end{bmatrix}$ and $B=\\begin{bmatrix}1&2\\\\0&1\\\\4&0\\end{bmatrix}$, what is entry (row 2, column 1) of $AB$?"
     solution: "Use row two $(1,3,-1)$ and column one $(1,0,4)$. Their dot product is $1\\cdot1+3\\cdot0+(-1)\\cdot4=1+0-4=-3$."
@@ -303,7 +303,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "Five houses each have three measurements. Their $5\\times3$ table multiplies a $3\\times2$ weight table whose columns predict sale price and monthly rent. What does the result hold?"
     solution: "The inner measurement count three matches, giving shape $5\\times2$. Each of the five house rows contains a sale-price and a monthly-rent prediction."
@@ -330,7 +330,7 @@ exercises:
     dimension: implementation
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "A model stores five houses with three measurements each in NumPy array X, shape (5, 3). W holds weights for sale price and monthly rent, shape (3, 2), and b holds one fixed adjustment for each output, shape (2,). Which line gives both adjusted predictions for every house?"
     solution: "X rows dot W columns, giving shape (5, 2). Adding b broadcasts one bias per score across all five houses."
@@ -357,7 +357,7 @@ exercises:
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "A house has area ${{=a}}$ tens of square metres and ${{=b}}$ bedrooms. A simplified sale-price model uses weights $(2,-1)$ thousand pounds per feature unit and adds a bias of {{=c}} thousand pounds. What is its predicted sale price, in thousands of pounds?"
     solution: "First take the dot product: $2\\cdot{{=a}}-{{=b}}={{=2*a-b}}$. Add the bias to get ${{=2*a-b}}+({{=c}})={{=2*a-b+c}}$."
@@ -372,7 +372,7 @@ exercises:
     dimension: implementation
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
     prompt: "W stores the sale-price and monthly-rent weights as rows, with three measurements per output, shape (2, 3). X stores five houses with the same measurements, shape (5, 3). Which product gives both predictions for every house?"
     solution: "Transpose swaps the two weight rows into columns without changing their values. Then (5, 3) times (3, 2) gives (5, 2)."
@@ -426,7 +426,7 @@ exercises:
     dimension: implementation
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 2
     prompt: "Why use `X @ W` instead of a Python loop of separate house-score dot products, and why isn't `X * W` a substitute?"
     solution: "A loop can compute the same predictions, but `@` groups the row-column dot products for efficient numerical-library execution. For house row $(12,3,20)$ and price weights $(25,10,-1)$, the prediction is $12\\cdot25+3\\cdot10+20\\cdot(-1)=310$. Elementwise multiplication does not sum those contributions."
@@ -453,7 +453,7 @@ exercises:
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 1
+    difficulty: 3
     est_minutes: 2
     prompt: "A has shape $2\\times3$ and B has shape $3\\times4$. Which is $(AB)^\\top$?"
     solution: "The product AB has shape two by four, so its transpose is four by two. Reversing the transposed factors gives (4 by 3)(3 by 2), the correct order and shape."
@@ -608,3 +608,57 @@ exercises:
     accept: ["X @ W + b", "np.dot(X, W) + b", "np.matmul(X, W) + b", "X.dot(W) + b", "b + X @ W"]
     hints: ["Which order of `X` and `W` makes the inner dimensions match?"]
     solution: "`Y = X @ W + b`: $(n\\times d)(d \\times k) = n \\times k$, and `b` broadcasts across the `n` rows."
+  - id: matp-recover-weight-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      A two-row matrix of house measurements is $X=\begin{bmatrix}1&0\\{{=a}}&1\end{bmatrix}$. A weight
+      vector $w$ gives $Xw=({{=p}},{{=q}})$. What is the second entry of $w$?
+    params:
+      a:
+        min: 2
+        max: 4
+      p:
+        min: 2
+        max: 5
+      q:
+        min: 20
+        max: 25
+    answer_expr: q-a*p
+    tolerance:
+      abs: 0
+    solution: |-
+      The first row selects the first weight; use it in the second row and subtract its contribution.
+
+      $$w_1={{=p}}$$
+
+      $${{=a}}w_1+w_2={{=q}}$$
+
+      $$w_2={{=q}}-{{=a}}\times{{=p}}$$
+
+      $$w_2={{=q-a*p}}$$
+  - id: matp-recover-factor-entry
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      The first row of $A$ is $(2,1)$ and the second column of $B$ is $(3,t)$. Entry (row 1, column 2) of
+      $AB$ is 11. What is $t$?
+    answer: 5
+    tolerance:
+      abs: 0
+    solution: |-
+      The output entry is the dot product of the given row and column. Subtract the known contribution to find the missing entry.
+
+      $$2\times3+1\times t=11$$
+
+      $$6+t=11$$
+
+      $$t=11-6$$
+
+      $$t=5$$
