@@ -94,9 +94,9 @@ exercises:
         }
       - {
           id: d,
-          text: "A model that memorises every training example exactly.",
+          text: "The most detailed model you can train, used as the final answer.",
           correct: false,
-          feedback: "Memorising the training data is the opposite of a simple reference model.",
+          feedback: "A baseline is the simple model a detailed one has to beat, not the final model.",
         }
     solution: "A baseline is a simple model used to check whether a more detailed house-price model is useful."
   - id: loss-check-mse
@@ -457,7 +457,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: Squared-error slopes grow with the error without a cap. It is absolute error whose slope size stays fixed.
-    solution: For an individual error r, the squared-error slope is 2r. Errors 9, 1 and 0.1 give slopes 18, 2 and 0.2, so the slope's size tracks the miss. Absolute error gives a slope of size 1 for all three.
+    solution: For an individual error e, the squared-error slope is 2e. Errors 9, 1 and 0.1 give slopes 18, 2 and 0.2, so the slope's size tracks the miss. Absolute error gives a slope of size 1 for all three.
   - id: lossp-mae-slope
     dimension: conceptual
     type: mc
@@ -505,8 +505,8 @@ exercises:
         category: incorrect_reasoning
         feedback: The right slope is +1, but the left slope differs.
     solution:
-      The sign function can be defined as zero at zero, but that convention does not make the
-      corner of absolute error differentiable.
+      Just below the target the slope is −1 and just above it is +1, so the curve has a corner
+      there and no single slope.
   - id: lossp-sensor
     dimension: transfer
     type: mc
