@@ -24,7 +24,7 @@ export function SessionActivityHeader({
       <div className="flex items-center gap-2">
         {lessonHref ? (
           <Button asChild variant="outline" size="sm">
-            <a href={lessonHref}>View lesson</a>
+            <a href={lessonHref}>View full lesson</a>
           </Button>
         ) : null}
       </div>

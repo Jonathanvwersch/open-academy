@@ -71,7 +71,7 @@ async function createSession(page: Page, focusConcept = true) {
   ).toEqual(['sl-explain-setup']);
   await page.goto(`/session/${session.session.id}`);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
-  await expect(page.getByText(/^Learn · Activity \d+ of \d+ today$/)).toBeVisible();
+  await expect(page.getByText(/^New lesson · Activity \d+ of \d+ today$/)).toBeVisible();
   await expect.poll(async () => (await currentRun(page))?.pendingProblem?.id).toBeTruthy();
   return session.session.id as string;
 }
@@ -250,6 +250,15 @@ async function openFirstCheckpoint(page: Page) {
   await expect(page.getByTestId('kp-checkpoint')).toBeVisible();
   return response.json();
 }
+
+test('lesson session header uses the updated activity copy', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await createSession(page);
+  await expect(page.getByRole('link', { name: 'View full lesson' })).toBeVisible();
+  if (process.env.HEADER_COPY_SCREENSHOT) {
+    await page.screenshot({ path: process.env.HEADER_COPY_SCREENSHOT });
+  }
+});
 
 test('a passed knowledge point shows its XP checkpoint before the next step', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
@@ -491,11 +500,13 @@ test('passes every knowledge point and restores the exact problem and result aft
   releaseGradingRequest();
   const selfCheck = page.getByRole('button', { name: 'Submit self-check' });
   const retry = page.getByRole('button', { name: /Try again/ });
+  const followUp = page.getByRole('button', { name: 'Submit again' });
   await expect
     .poll(
       async () =>
         (await selfCheck.isVisible()) ||
         (await retry.isVisible()) ||
+        (await followUp.isVisible()) ||
         (await page.getByRole('button', { name: 'Continue' }).isVisible()),
     )
     .toBe(true);
@@ -504,6 +515,8 @@ test('passes every knowledge point and restores the exact problem and result aft
     await selfCheck.click();
   } else if (await retry.isVisible()) {
     await retry.click();
+  } else if (await followUp.isVisible()) {
+    await followUp.click();
   }
   await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
   await page.reload();
@@ -735,12 +748,14 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
   await page.getByRole('button', { name: 'Submit answer' }).click();
   const selfCheck = page.getByRole('button', { name: 'Submit self-check' });
   const retry = page.getByRole('button', { name: /Try again/ });
+  const followUp = page.getByRole('button', { name: 'Submit again' });
   const continueButton = page.getByRole('button', { name: 'Continue' });
   await expect
     .poll(
       async () =>
         (await selfCheck.isVisible()) ||
         (await retry.isVisible()) ||
+        (await followUp.isVisible()) ||
         (await continueButton.isVisible()),
     )
     .toBe(true);
@@ -749,6 +764,8 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
     await selfCheck.click();
   } else if (await retry.isVisible()) {
     await retry.click();
+  } else if (await followUp.isVisible()) {
+    await followUp.click();
   }
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
   await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();

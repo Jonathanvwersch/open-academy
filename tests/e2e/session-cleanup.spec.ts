@@ -85,7 +85,7 @@ test('legacy session header links to a read-only lesson and returns with the res
   await expect(page.getByRole('list', { name: 'Session timeline' })).toHaveCount(0);
   await expect(page.getByText(/About \d+ minutes remaining/)).toHaveCount(0);
   await expect(page.getByText('Review', { exact: true })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'View lesson' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'View full lesson' })).toBeVisible();
   await page.screenshot({
     path: `${screenshotDir}/legacy-practice-header.png`,
     fullPage: true,
@@ -96,7 +96,7 @@ test('legacy session header links to a read-only lesson and returns with the res
   await expect(page.getByText('Not quite', { exact: true })).toBeVisible();
   const questionText = (await page.getByTestId('exercise-prompt').textContent()) ?? '';
   expect(questionText.trim()).not.toBe('');
-  await page.getByRole('link', { name: 'View lesson' }).click();
+  await page.getByRole('link', { name: 'View full lesson' }).click();
   await expect(page).toHaveURL(new RegExp(`/lessons/vectors\\?from=${sessionId}`));
   await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Show answer' }).first()).toBeVisible();
