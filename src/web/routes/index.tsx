@@ -190,11 +190,25 @@ function LearnPage() {
                   <Link to="/course">View course</Link>
                 </Button>
               </div>
-              {data.course.estimatedFinish ? (
+              {data.course.estimatedFinish &&
+              data.course.estimatedFinish === data.course.estimatedFinishAtGoal ? (
                 <p className="text-sm text-muted-foreground">
                   Estimated finish {formatDate(data.course.estimatedFinish)}
                 </p>
-              ) : null}
+              ) : (
+                <>
+                  {data.course.estimatedFinish ? (
+                    <p className="text-sm text-muted-foreground">
+                      At your pace: {formatDate(data.course.estimatedFinish)}
+                    </p>
+                  ) : null}
+                  {data.course.estimatedFinishAtGoal ? (
+                    <p className="text-sm text-muted-foreground">
+                      At your daily goal: {formatDate(data.course.estimatedFinishAtGoal)}
+                    </p>
+                  ) : null}
+                </>
+              )}
             </div>
 
             <div className="space-y-3 border-t pt-5">

@@ -1,11 +1,7 @@
-export const DAILY_XP_GOAL = {
-  weekday: 60,
-  saturday: 300,
-  sunday: 60,
-} as const;
+import type { SessionKind, SessionPreferences } from './session-budget.js';
+import { sessionBudget } from './session-budget.js';
 
 const XP_PER_REMAINING_TOPIC = 40;
-const DEFAULT_AVERAGE_DAILY_XP = (6 * DAILY_XP_GOAL.weekday + DAILY_XP_GOAL.saturday) / 7;
 const DAY_MS = 86_400_000;
 
 export interface XpEventDate {
@@ -17,11 +13,24 @@ export interface LessonXpState {
   points: Array<{ status: string }>;
 }
 
-export function xpGoalFor(localDate: string): number {
+function kindFor(localDate: string): Exclude<SessionKind, 'custom'> {
   const weekday = new Date(`${localDate}T00:00:00.000Z`).getUTCDay();
-  if (weekday === 6) return DAILY_XP_GOAL.saturday;
-  if (weekday === 0) return DAILY_XP_GOAL.sunday;
-  return DAILY_XP_GOAL.weekday;
+  if (weekday === 6) return 'saturday';
+  if (weekday === 0) return 'sunday';
+  return 'weekday';
+}
+
+function defaultAverageDailyXp(prefs?: SessionPreferences): number {
+  return (
+    (5 * sessionBudget('weekday', prefs) +
+      sessionBudget('saturday', prefs) +
+      sessionBudget('sunday', prefs)) /
+    7
+  );
+}
+
+export function xpGoalFor(localDate: string, prefs?: SessionPreferences): number {
+  return sessionBudget(kindFor(localDate), prefs);
 }
 
 export function estimateTaskXp(
@@ -34,7 +43,11 @@ export function estimateTaskXp(
   return activity.plannedMinutes;
 }
 
-export function weekXp(events: readonly XpEventDate[], todayLocal: string) {
+export function weekXp(
+  events: readonly XpEventDate[],
+  todayLocal: string,
+  prefs?: SessionPreferences,
+) {
   const monday = new Date(`${todayLocal}T00:00:00.000Z`);
   const daysSinceMonday = (monday.getUTCDay() + 6) % 7;
   monday.setUTCDate(monday.getUTCDate() - daysSinceMonday);
@@ -46,7 +59,11 @@ export function weekXp(events: readonly XpEventDate[], todayLocal: string) {
     const date = new Date(monday);
     date.setUTCDate(monday.getUTCDate() + index);
     const localDate = date.toISOString().slice(0, 10);
-    return { date: localDate, xp: totals.get(localDate) ?? 0, goal: xpGoalFor(localDate) };
+    return {
+      date: localDate,
+      xp: totals.get(localDate) ?? 0,
+      goal: xpGoalFor(localDate, prefs),
+    };
   });
 }
 
@@ -68,8 +85,9 @@ export function estimatedFinishDate(
   remainingTopics: number,
   avgDailyXp: number,
   today: string,
+  prefs?: SessionPreferences,
 ): string {
-  const dailyXp = avgDailyXp > 0 ? avgDailyXp : DEFAULT_AVERAGE_DAILY_XP;
+  const dailyXp = avgDailyXp > 0 ? avgDailyXp : defaultAverageDailyXp(prefs);
   const days = Math.ceil((Math.max(0, remainingTopics) * XP_PER_REMAINING_TOPIC) / dailyXp);
   return addLocalDays(today, days);
 }

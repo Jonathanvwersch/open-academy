@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/ui/alert.js';
 import { Badge } from '@/ui/badge.js';
 import { Button } from '@/ui/button.js';
 import { Card, CardContent } from '@/ui/card.js';
+import { Progress } from '@/ui/progress.js';
 import { apiFetch } from '../authenticated-fetch.js';
 import {
   type AnswerOptions,
@@ -79,6 +80,46 @@ export const Route = createFileRoute('/session/$id')({
   ),
   component: SessionPage,
 });
+
+function SessionCompletion({
+  xp,
+  onFinish,
+  finishing,
+}: {
+  xp: { session: number; today: number; goal: number };
+  onFinish: () => void;
+  finishing: boolean;
+}) {
+  const finalProgress = Math.min(100, Math.max(0, (xp.today / xp.goal) * 100));
+  const startingProgress = Math.min(100, Math.max(0, ((xp.today - xp.session) / xp.goal) * 100));
+  const [progress, setProgress] = useState(startingProgress);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setProgress(finalProgress));
+    return () => window.cancelAnimationFrame(frame);
+  }, [finalProgress]);
+
+  return (
+    <section className="space-y-4">
+      <h1 className="text-3xl font-semibold">Session complete</h1>
+      <p className="text-4xl font-bold">+{xp.session} XP</p>
+      <p className="text-muted-foreground">
+        Today: {xp.today} / {xp.goal} XP
+      </p>
+      <Progress
+        value={progress}
+        aria-label="Today's XP goal"
+        className="h-3"
+        indicatorClassName="transition-[transform] duration-700 motion-reduce:transition-none"
+      />
+      {xp.today >= xp.goal ? <p className="font-medium">Daily goal reached</p> : null}
+      <p className="text-muted-foreground">Your progress has been saved.</p>
+      <Button type="button" onClick={onFinish} loading={finishing}>
+        Finish session
+      </Button>
+    </section>
+  );
+}
 
 function SessionPage() {
   const { id } = Route.useParams();
@@ -388,13 +429,11 @@ function SessionPage() {
 
   if (!activity) {
     return (
-      <section className="space-y-4">
-        <h1 className="text-3xl font-semibold">Session complete</h1>
-        <p className="text-muted-foreground">Your progress has been saved.</p>
-        <Button type="button" onClick={endSession} loading={endingSession}>
-          Finish session
-        </Button>
-      </section>
+      <SessionCompletion
+        xp={sessionQuery.data.xp}
+        onFinish={endSession}
+        finishing={endingSession}
+      />
     );
   }
   const mode =

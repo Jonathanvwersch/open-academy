@@ -26,6 +26,7 @@ const courseStructureBatch3ScreenshotDir = `${courseStructureScreenshotDir}/batc
 const mathLinesScreenshotDir = '/home/ubuntu/screenshots/math-lines';
 const courseComingSoonScreenshotDir = '/home/ubuntu/screenshots/course-coming-soon';
 const navCleanupScreenshotDir = '/home/ubuntu/screenshots/nav-cleanup';
+const xpFinishScreenshotDir = '/home/ubuntu/screenshots/xp-finish';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(brandScreenshotDir, { recursive: true });
 mkdirSync(courseStructureScreenshotDir, { recursive: true });
@@ -35,6 +36,7 @@ mkdirSync(courseStructureBatch3ScreenshotDir, { recursive: true });
 mkdirSync(mathLinesScreenshotDir, { recursive: true });
 mkdirSync(courseComingSoonScreenshotDir, { recursive: true });
 mkdirSync(navCleanupScreenshotDir, { recursive: true });
+mkdirSync(xpFinishScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async ({ page }) => {
@@ -74,6 +76,7 @@ async function markDiagnosticComplete() {
 test('Home shows XP and tasks, starts a session, and Course links to lessons and projects', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   await markDiagnosticComplete();
   await db.insert(xpEvents).values([
     {
@@ -101,10 +104,22 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
   const lessonTasks = page.locator('li').filter({ has: page.getByText('Lesson', { exact: true }) });
   await expect(lessonTasks.first()).toContainText('Vectors');
-  await expect(page.getByText('10 / 60 XP')).toBeVisible();
+  const learn = await page.evaluate(async () => {
+    const response = await fetch('/api/learn');
+    return response.json();
+  });
+  await expect(
+    page.getByText(`${learn.xp.today} / ${learn.xp.goal} XP`, { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/^At your pace:/)).toBeVisible();
+  await expect(page.getByText(/^At your daily goal:/)).toBeVisible();
   await expect(page.getByText('Total XP').locator('..')).toContainText('45');
   await expect(page.getByRole('button', { name: 'Start learning' })).toBeEnabled();
   await page.screenshot({ path: `${screenshotDir}/learn-with-xp.png`, fullPage: true });
+  await page.screenshot({
+    path: `${xpFinishScreenshotDir}/home-progress.png`,
+    fullPage: true,
+  });
 
   await page.getByRole('link', { name: 'View course' }).click();
   await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();

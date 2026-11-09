@@ -8,9 +8,11 @@ const db = createDb(env.TEST_DATABASE_URL);
 const screenshotDir = '/home/ubuntu/screenshots/shadcn';
 const lessonCardScreenshotDir = '/home/ubuntu/screenshots/lesson-cards';
 const questionDotsScreenshotDir = '/home/ubuntu/screenshots/question-dots';
+const xpFinishScreenshotDir = '/home/ubuntu/screenshots/xp-finish';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(questionDotsScreenshotDir, { recursive: true });
+mkdirSync(xpFinishScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async () => {
@@ -113,6 +115,45 @@ test('wrong numeric answers offer one persisted retry', async ({ page }) => {
   await page.screenshot({ path: `${screenshotDir}/wrong-numeric-retry.png`, fullPage: true });
   await page.reload();
   await expect(page.getByRole('button', { name: 'Try again · 1 try left' })).toBeVisible();
+});
+
+test('session completion shows XP and daily goal progress', async ({ page }) => {
+  const sessionId = await createActivity('vectors', 'vectors-magnitude');
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`/session/${sessionId}`);
+  await page.getByLabel('Your answer').fill('5');
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByText('Correct', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByRole('heading', { name: 'Session complete', exact: true })).toBeVisible();
+
+  const xp = await page.evaluate(async (id) => {
+    const response = await fetch(`/api/sessions/${id}`);
+    return (await response.json()).xp as { session: number; today: number; goal: number };
+  }, sessionId);
+  await expect(page.getByText(`+${xp.session} XP`, { exact: true })).toBeVisible();
+  await expect(page.getByText(`Today: ${xp.today} / ${xp.goal} XP`, { exact: true })).toBeVisible();
+  const goalBar = page.getByRole('progressbar', { name: "Today's XP goal" });
+  await expect
+    .poll(async () => Number(await goalBar.getAttribute('aria-valuenow')))
+    .toBeCloseTo(Math.min(100, (xp.today / xp.goal) * 100), 1);
+  await goalBar.locator('[data-slot="progress-indicator"]').evaluate(async (indicator) => {
+    await Promise.all(
+      indicator.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+    );
+  });
+  await page.screenshot({
+    path: `${xpFinishScreenshotDir}/session-complete-desktop.png`,
+    fullPage: true,
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByText(`+${xp.session} XP`, { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({
+    path: `${xpFinishScreenshotDir}/session-complete-mobile.png`,
+    fullPage: true,
+  });
 });
 
 test('practice question progress shows outcomes, current question, and wraps on mobile', async ({

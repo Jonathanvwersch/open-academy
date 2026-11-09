@@ -100,6 +100,7 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
     topicsDone: expect.any(Number),
     topicsTotal: expect.any(Number),
     estimatedFinish: expect.any(String),
+    estimatedFinishAtGoal: expect.any(String),
   });
 
   const courseResponse = await get('/course');
@@ -288,6 +289,73 @@ test('active-session tasks, done-today activity, and local-date KP XP are return
     },
   ]);
   expect(await rowCounts()).toEqual(before);
+});
+
+test('learn XP goal follows the learner daily study time', async () => {
+  await db
+    .update(users)
+    .set({ prefs: { scheduleMinutes: 30, saturdayMinutes: 45, sundayMinutes: 75 } })
+    .where(eq(users.id, userId));
+  const response = await get('/learn');
+  expect(response.status).toBe(200);
+  const learn = await response.json();
+  expect(learn.xp.goal).toBe(30);
+  expect(learn.xp.week.map((day: { goal: number }) => day.goal)).toEqual([
+    30, 30, 30, 30, 30, 45, 75,
+  ]);
+});
+
+test('session XP counts events during the session and all events from the local day', async () => {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 60,
+      status: 'completed',
+      startedAt: new Date('2026-01-07T10:00:00.000Z'),
+      endedAt: new Date('2026-01-07T11:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create XP session');
+  await db.insert(xpEvents).values([
+    {
+      userId,
+      kind: 'activity',
+      sourceKey: 'xp-session-before',
+      amount: 20,
+      earnedAt: new Date('2026-01-07T09:59:00.000Z'),
+      localDate: '2026-01-07',
+    },
+    {
+      userId,
+      kind: 'activity',
+      sourceKey: 'xp-session-inside',
+      amount: 15,
+      earnedAt: new Date('2026-01-07T10:30:00.000Z'),
+      localDate: '2026-01-07',
+    },
+    {
+      userId,
+      kind: 'activity',
+      sourceKey: 'xp-session-after',
+      amount: 50,
+      earnedAt: new Date('2026-01-07T11:01:00.000Z'),
+      localDate: '2026-01-07',
+    },
+    {
+      userId,
+      kind: 'activity',
+      sourceKey: 'xp-today-only',
+      amount: 10,
+      earnedAt: new Date('2026-01-07T12:00:00.000Z'),
+      localDate: '2026-01-07',
+    },
+  ]);
+  const response = await get(`/sessions/${session.id}`);
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(body.xp).toEqual({ session: 15, today: 95, goal: 60 });
 });
 
 test('request timezone updates the learner, rebuckets XP, and drives the local week', async () => {
