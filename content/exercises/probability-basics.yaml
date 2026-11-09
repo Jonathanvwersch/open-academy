@@ -1,158 +1,5 @@
 concept: probability-basics
 exercises:
-  - id: pb-complement-counts
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 2
-    est_minutes: 2
-    prompt: "Of twelve house sales, nine were above asking. What is the frequency-based probability estimate for a sale that was not above asking?"
-    hints:
-      - "Find the number not above asking before dividing by all twelve sales."
-    solution: |
-      First find the count in the complement:
-
-      $$12 - 9 = 3$$
-
-      Then divide by the total number of sales:
-
-      $$\frac{3}{12} = 0.25$$
-    answer: 0.25
-    tolerance: { abs: 0.000001 }
-    common_wrong:
-      - {
-          answer: 0.75,
-          category: incorrect_reasoning,
-          feedback: "That is the above-asking estimate; the question asks for its complement.",
-        }
-      - {
-          answer: 3,
-          category: incomplete_explanation,
-          feedback: "Three is the number of matching sales. Divide by all twelve to get a probability.",
-        }
-  - id: pb-event-recover-total
-    dimension: transfer
-    type: numeric
-    role: practice
-    difficulty: 3
-    est_minutes: 3
-    prompt: "A robot completed 18 test grasps successfully. Its frequency-based success probability was exactly 0.75. How many grasps were tested in total?"
-    hints:
-      - "The estimate is the successful count divided by the total count. Work backwards from that ratio."
-    solution: |
-      Let $n$ be the total number of test grasps. The frequency estimate gives:
-
-      $$\frac{18}{n} = 0.75$$
-
-      Multiply by $n$, then divide by 0.75:
-
-      $$18 = 0.75n$$
-
-      $$n = \frac{18}{0.75} = 24$$
-
-      There were 24 test grasps, of which 18 succeeded.
-    answer: 24
-    tolerance: { abs: 0.000001 }
-    common_wrong:
-      - {
-          answer: 13.5,
-          category: misapplied_technique,
-          feedback: "Multiplying 18 by 0.75 treats 18 as the total, but 18 is already the successful count.",
-        }
-  - id: pb-distribution-missing
-    dimension: transfer
-    type: numeric
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "A robot makes exactly zero, one or two stops on a route. The probabilities of zero and one stop are 0.25 and 0.5. What probability must its distribution assign to two stops?"
-    hints:
-      - "These are all the possible stop counts, so their probabilities must sum to 1."
-    solution: |
-      Add the two known probabilities:
-
-      $$0.25 + 0.5 = 0.75$$
-
-      The remaining probability belongs to two stops:
-
-      $$1 - 0.75 = 0.25$$
-
-      The completed distribution sums to 1.
-    answer: 0.25
-    tolerance: { abs: 0.000001 }
-    common_wrong:
-      - {
-          answer: 0.75,
-          category: incomplete_explanation,
-          feedback: "That is the probability already assigned to zero or one stop. Subtract it from 1.",
-        }
-  - id: pb-expectation-recover-count
-    dimension: transfer
-    type: numeric
-    role: practice
-    difficulty: 3
-    est_minutes: 3
-    prompt: "A robot inspection finds zero faults with probability 0.5, one fault with probability 0.25, or $k$ faults with probability 0.25. These are the only possible counts. If the expected number of faults is 1.25, what is $k$?"
-    hints:
-      - "Write the probability-weighted average with the unknown count included."
-    solution: |
-      Weight each possible fault count by its probability:
-
-      $$0 \times 0.5 + 1 \times 0.25 + k \times 0.25 = 1.25$$
-
-      Subtract the known contribution:
-
-      $$0.25k = 1.25 - 0.25 = 1$$
-
-      Divide by the unknown count's probability:
-
-      $$k = \frac{1}{0.25} = 4$$
-
-      Four faults is the remaining possible count, not the average across inspections.
-    answer: 4
-    tolerance: { abs: 0.000001 }
-    common_wrong:
-      - {
-          answer: 5,
-          category: incomplete_explanation,
-          feedback: "The one-fault outcome already contributes 0.25 to the expectation. Subtract that contribution before dividing.",
-        }
-  - id: pb-conditional-empty
-    dimension: conceptual
-    type: mc
-    role: practice
-    difficulty: 3
-    est_minutes: 2
-    prompt: "In a sample of twenty house sales, no house received at least two offers. What can you report as the frequency-based probability of selling above asking, given at least two offers?"
-    options:
-      - {
-          id: a,
-          text: "Zero, because no house in the sample met the condition.",
-          correct: false,
-          category: misapplied_technique,
-          feedback: "Zero successes out of a non-empty group would give zero. Here the conditioned group itself is empty.",
-        }
-      - {
-          id: b,
-          text: "The overall above-asking rate, using all twenty sales instead.",
-          correct: false,
-          category: misapplied_technique,
-          feedback: "That changes the question: a conditional rate uses only houses meeting the condition.",
-        }
-      - {
-          id: c,
-          text: "No defined estimate, because the conditioned group is empty.",
-          correct: true,
-          feedback: "The conditional frequency would divide zero by zero, so this sample provides no defined conditional rate.",
-        }
-      - {
-          id: d,
-          text: "One, because every house in the empty group qualifies.",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "There are no observations in the conditioned group. An empty group does not supply a probability of one.",
-        }
-    solution: "The conditioned group contains zero houses, so the conditional frequency would be $0/0$, which is undefined. A frequency-based conditional estimate requires a non-empty conditioned group; it is not the overall rate or a zero probability."
   - id: pb-events-basics
     dimension: conceptual
     type: mc
@@ -161,444 +8,563 @@ exercises:
     est_minutes: 1
     prompt: "What is an event?"
     options:
-      - {
-          id: a,
-          text: "One outcome chosen without any condition",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "An event can contain one outcome, but its definition is a set of outcomes selected by a condition.",
-        }
-      - {
-          id: b,
-          text: "The total number of observations in a dataset",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The sample size counts observations; an event says which outcomes to count.",
-        }
-      - {
-          id: c,
-          text: "A set of outcomes that meet a stated condition",
-          correct: true,
-          feedback: "An event collects the outcomes that satisfy a condition.",
-        }
-      - {
-          id: d,
-          text: "A number assigned to every possible outcome",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "That describes a random variable, which is introduced in the next step.",
-        }
-    solution: "An event is a set of outcomes selected by a condition, such as sales above asking."
-  - id: pb-frequency-fixed
-    dimension: math
-    type: numeric
-    role: practice
-    difficulty: 1
-    est_minutes: 2
-    prompt: "In eight past house sales, three were above asking. What is the frequency-based probability estimate for an above-asking sale?"
-    hints: ["Divide the number of above-asking sales by the total number of sales."]
-    solution: |
-      Divide the matching count by all eight sales:
-
-      $$\frac{3}{8} = 0.375$$
-    answer: 0.375
-    tolerance: { abs: 0.000001 }
-    common_wrong:
-      - {
-          answer: 0.625,
-          category: incorrect_reasoning,
-          feedback: "That is the estimated probability of the complement, not of an above-asking sale.",
-        }
-      - {
-          answer: 0.6,
-          category: math_error,
-          feedback: "The denominator is all eight sales, not just the five that were not above asking.",
-        }
+      - id: a
+        text: "One outcome chosen without any condition"
+        correct: false
+        category: misunderstood_definition
+        feedback: "An event can contain just one outcome, but it is defined as the set of outcomes that meet a condition."
+      - id: b
+        text: "The total number of observations in a dataset"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is the sample size. An event says which outcomes to count."
+      - id: c
+        text: "A set of outcomes that meet a stated condition"
+        correct: true
+        feedback: "An event collects the outcomes that satisfy a condition, such as rolling at least 5."
+      - id: d
+        text: "A number assigned to every possible outcome"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That describes a random variable, which comes in the next part."
+    solution: "An event is a set of outcomes picked out by a condition, such as rolling at least 5 or a sale going above asking."
   - id: pb-complement-why
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why is the estimated probability of not selling above asking 0.625 when the above-asking estimate is 0.375?"
+    prompt: "In the worked example, why does $1-0.45$ give the chance that a sale is not above asking?"
     options:
-      - {
-          id: a,
-          text: "0.625, because the complement fills the rest of the probability total.",
-          correct: true,
-          feedback: "Every sale is either above asking or not, so the complementary probabilities sum to 1.",
-        }
-      - {
-          id: b,
-          text: "0.375, because complements have the same probability.",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "A complement can have a different probability; five of eight sales were not above asking.",
-        }
-      - {
-          id: c,
-          text: "0.6, from dividing 3 above-asking sales by the 5 other sales.",
-          correct: false,
-          category: misapplied_technique,
-          feedback: "That uses the other outcomes as the denominator; divide by all eight sales.",
-        }
-      - {
-          id: d,
-          text: "1.375, from adding the above-asking estimate to 1.",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "The two probabilities must add to 1, so subtract 0.375 from 1 instead.",
-        }
-    solution: "The complement covers the remaining sales, so its estimated probability is 1 minus 0.375, or 0.625."
-  - id: pb-frequency-template
+      - id: a
+        text: "Every sale is either above asking or not, so the two chances add to 1."
+        correct: true
+        feedback: "Each sale falls in exactly one of the two events, so their probabilities share the total of 1."
+      - id: b
+        text: "An event and its complement always have equal chances of one half."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Equal chances would give 0.5 each. Here 11 of 20 sales were not above asking, so the complement is more likely."
+      - id: c
+        text: "Subtracting from 1 turns the count of 9 sales into a probability."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "0.45 is already a probability, 9 divided by 20. Subtracting it from 1 gives the share left for the other sales."
+      - id: d
+        text: "The 1 stands for the one sale being predicted, minus the rest."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The 1 is the total probability of all outcomes, not a single sale."
+    solution: "Every sale is in exactly one of the two events, above asking or not, so $P(A)+P(\\text{not }A)=1$ and $P(\\text{not }A)=1-0.45=0.55$."
+  - id: pb-frequency-fixed
     dimension: math
     type: numeric
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "In a sample of ${{=above + other}}$ house sales, ${{=above}}$ were above asking. What is the frequency-based probability estimate?"
-    hints: ["Use all sampled sales as the denominator."]
-    solution: "The estimate is ${{=above}}/{{=above + other}} = {{=above / (above + other)}}$."
-    answer_expr: "above / (above + other)"
+    prompt: "In 10 past house sales, 4 were above asking. What is the frequency-based probability estimate for an above-asking sale?"
+    hints: ["Divide the number of above-asking sales by the total number of sales."]
+    solution: |
+      Divide the count in the event by all ten sales:
+
+      $$\frac{4}{10}=0.4$$
+    answer: 0.4
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer: 0.6
+        category: incorrect_reasoning
+        feedback: "That is the estimated probability of the complement, not of an above-asking sale."
+      - answer: 0.6667
+        category: math_error
+        feedback: "The denominator is all ten sales, not just the six that were not above asking."
+      - answer: 4
+        category: incomplete_explanation
+        feedback: "Four is the number of matching sales. Divide by all ten sales to get a probability."
+  - id: pb-complement-counts
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Of 12 house sales, 9 were above asking. What is the frequency-based probability estimate for a sale that was not above asking?"
+    hints:
+      - "Find the number not above asking before dividing by all twelve sales."
+    solution: |
+      First find the count in the complement:
+
+      $$12-9=3$$
+
+      Then divide by the total number of sales:
+
+      $$\frac{3}{12}=0.25$$
+    answer: 0.25
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer: 0.75
+        category: incorrect_reasoning
+        feedback: "That is the above-asking estimate; the question asks for its complement."
+      - answer: 3
+        category: incomplete_explanation
+        feedback: "Three is the number of sales not above asking. Divide by all twelve to get a probability."
+      - answer: 0.3333
+        category: math_error
+        feedback: "That divides 3 by the 9 above-asking sales. Divide by all twelve sales instead."
+  - id: pb-complement-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "In a sample of ${{=above + other}}$ house sales, ${{=above}}$ were above asking. What is the frequency-based probability estimate that a sale was **not** above asking?"
+    hints: ["Find the chance of above asking, then subtract it from 1."]
+    solution: "The above-asking estimate is ${{=above}}/{{=above + other}}$, so the complement is $1-{{=above}}/{{=above + other}}={{=other}}/{{=above + other}}={{=other / (above + other)}}$."
+    answer_expr: "other / (above + other)"
     params:
-      above: { min: 1, max: 5 }
-      other: { min: 1, max: 5 }
-    tolerance: { abs: 0.00001 }
+      above: { min: 1, max: 9 }
+      other: { min: 1, max: 9 }
+    constraints: ["above != other"]
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: "above / (above + other)"
+        category: incorrect_reasoning
+        feedback: "That is the chance of above asking. The question asks for its complement."
+  - id: pb-robot-grasp-failures
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot attempted 200 grasps, and from those trials its chance of a successful grasp is estimated as 0.85. How many of the 200 grasps failed?"
+    hints:
+      - "Failure is the complement of success."
+      - "A frequency is a count divided by 200, so multiply back by 200."
+    solution: |
+      The chance of failure is the complement:
+
+      $$1-0.85=0.15$$
+
+      That frequency is the failure count divided by 200, so:
+
+      $$0.15\times200=30$$
+    answer: 30
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer: 170
+        category: incorrect_reasoning
+        feedback: "170 is the number of successful grasps. Use the complement to count failures."
+      - answer: 0.15
+        category: incomplete_explanation
+        feedback: "0.15 is the estimated chance of failure. Multiply by 200 to get the number of failed grasps."
   - id: pb-distribution-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What is a discrete random variable?"
+    prompt: "What does the distribution of a random variable list?"
     options:
-      - {
-          id: a,
-          text: "A list containing only the most likely outcome",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The variable can take every possible value, not only the most likely one.",
-        }
-      - {
-          id: b,
-          text: "The average of all observed numbers in a dataset",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "An average summarises values; the variable assigns a value to each outcome.",
-        }
-      - {
-          id: c,
-          text: "A probability that must be larger than 1",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "A probability is between 0 and 1; a random variable is the number assigned to an outcome.",
-        }
-      - {
-          id: d,
-          text: "A rule that assigns a countable number to each possible outcome",
-          correct: true,
-          feedback: "A discrete random variable assigns a number to each outcome and has countable possible values.",
-        }
-    solution: "A discrete random variable assigns a countable number to each possible outcome."
+      - id: a
+        text: "Only its most likely value, with that value's probability"
+        correct: false
+        category: misunderstood_definition
+        feedback: "A distribution includes every value the variable can take, not only the most likely one."
+      - id: b
+        text: "Every value it can take, with the probability of each"
+        correct: true
+        feedback: "A distribution pairs each possible value with its probability, and those probabilities add to 1."
+      - id: c
+        text: "The average of all the values it can take"
+        correct: false
+        category: misunderstood_definition
+        feedback: "An average summarises the values in one number. A distribution keeps every value and its chance."
+      - id: d
+        text: "The outcomes of one event and of its complement"
+        correct: false
+        category: misunderstood_definition
+        feedback: "An event and its complement split outcomes into two groups. A distribution covers every numeric value."
+    solution: "A distribution lists every value a random variable can take, with the probability of each value."
   - id: pb-distribution-why
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why does a distribution list probabilities beside the possible offer counts?"
+    prompt: "In the spinner picture, why is $P(X=0)$ equal to $1/2$ rather than $1/3$?"
     options:
-      - {
-          id: a,
-          text: "The probabilities make every possible offer count equally likely.",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "A distribution records the observed chances; it does not make them equal.",
-        }
-      - {
-          id: b,
-          text: "The probabilities preserve which counts occur more often in the sales.",
-          correct: true,
-          feedback: "The probabilities record the relative frequencies of the possible offer counts.",
-        }
-      - {
-          id: c,
-          text: "The probabilities replace the offer counts with house prices.",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The values remain offer counts; probabilities describe how often each count occurs.",
-        }
-      - {
-          id: d,
-          text: "The probabilities show which individual house will receive each count.",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "A distribution describes chances across outcomes, not a guaranteed result for one house.",
-        }
-    solution: "A distribution pairs every possible offer count with its relative frequency, retaining differences between counts."
+      - id: a
+        text: "The 0 is printed on two of the four equal sectors, so it covers half the spinner."
+        correct: true
+        feedback: "Each sector has chance 1/4, and two sectors show 0, so $P(X=0)=2/4=1/2$."
+      - id: b
+        text: "The smallest value of a random variable is always the most likely one."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Nothing makes small values more likely. The 0 is likely here because it covers two sectors."
+      - id: c
+        text: "The chances must add to 1, so the first value listed gets half."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Adding to 1 is a check on the whole list. The sector count sets each value's chance."
+      - id: d
+        text: "Two of the three values, 0 and 1, give fewer than 2 points."
+        correct: false
+        category: misapplied_technique
+        feedback: "That counts values, not equally likely sectors, and it describes $X<2$ rather than $X=0$."
+    solution: "The four sectors are equally likely, each with chance $1/4$. Two of them show 0, so $P(X=0)=2/4=1/2$, while 1 and 2 each get $1/4$."
   - id: pb-distribution-fixed
     dimension: math
     type: numeric
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Four of ten houses received exactly two offers. What probability does the frequency distribution assign to two offers?"
-    hints: ["Divide the count for two offers by all ten sales."]
-    solution: "Four of the ten houses received two offers, so the probability is $4/10 = 0.4$."
-    answer: 0.4
+    prompt: "In 20 spins of a spinner, 10 gave 0 points, 6 gave 1 point and 4 gave 2 points. Let $X$ be the points from one spin. Estimate $P(X=1)$."
+    hints: ["Divide the number of spins that gave 1 point by all 20 spins."]
+    solution: |
+      Divide the count for the value 1 by all spins:
+
+      $$\frac{6}{20}=0.3$$
+    answer: 0.3
     tolerance: { abs: 0.000001 }
     common_wrong:
-      - {
-          answer: 0.2,
-          category: recall_failure,
-          feedback: "That is the probability of zero offers; four of ten houses received two offers.",
-        }
-      - {
-          answer: 0.3,
-          category: recall_failure,
-          feedback: "That is the probability of one offer; use the four houses with two offers.",
-        }
+      - answer: 6
+        category: incomplete_explanation
+        feedback: "Six is the number of spins that gave 1 point. Divide by all 20 spins to get a probability."
+      - answer: 0.3333
+        category: misunderstood_definition
+        feedback: "The three values are not equally likely here. Use the observed counts: 6 of 20 spins."
+  - id: pb-at-least-two-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "The number of offers $X$ on a house has distribution $P(X=0)=0.1$, $P(X=1)=0.35$, $P(X=2)=0.4$ and $P(X=3)=0.15$. What is $P(X\\ge2)$, the chance of at least two offers?"
+    hints: ["List the values that count as at least two, then add their probabilities."]
+    solution: |
+      At least two offers covers the values 2 and 3:
+
+      $$P(X\ge2)=0.4+0.15=0.55$$
+    answer: 0.55
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer: 0.4
+        category: incomplete_explanation
+        feedback: "That is the chance of exactly two offers. At least two also includes three offers."
+      - answer: 0.45
+        category: incorrect_reasoning
+        feedback: "That is the chance of at most one offer, the complement of the event asked for."
   - id: pb-distribution-template
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A sample has ${{=zero_count}}$ houses with zero offers, ${{=one_count}}$ with one, ${{=two_count}}$ with two and ${{=three_count}}$ with three. What is the probability of exactly two offers?"
-    hints: ["Use the two-offer count over the total number of houses."]
-    solution: "The two-offer probability is ${{=two_count}}/{{=zero_count + one_count + two_count + three_count}} = {{=two_count / (zero_count + one_count + two_count + three_count)}}$."
-    answer_expr: "two_count / (zero_count + one_count + two_count + three_count)"
+    prompt: "A random variable $X$ can only be 0, 1 or 2. If $P(X=0)={{=a / 10}}$ and $P(X=1)={{=b / 10}}$, what is $P(X=2)$?"
+    hints: ["The probabilities in a distribution add to 1."]
+    solution: "The three probabilities add to 1, so $P(X=2)=1-{{=a / 10}}-{{=b / 10}}={{=(10 - a - b) / 10}}$."
+    answer_expr: "(10 - a - b) / 10"
     params:
-      zero_count: { min: 1, max: 5 }
-      one_count: { min: 1, max: 5 }
-      two_count: { min: 1, max: 5 }
-      three_count: { min: 1, max: 5 }
-    tolerance: { abs: 0.00001 }
+      a: { min: 1, max: 6 }
+      b: { min: 1, max: 6 }
+    constraints: ["a + b <= 9", "a + b != 5"]
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer_expr: "(a + b) / 10"
+        category: incorrect_reasoning
+        feedback: "That adds the two given chances. Subtract them from 1 to find the chance left for the value 2."
+  - id: pb-valid-distribution
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A model predicts the number of offers $X$, which can be 0, 1, 2 or 3. Which list of $P(X=0)$, $P(X=1)$, $P(X=2)$, $P(X=3)$ could be a valid distribution?"
+    options:
+      - id: a
+        text: "$0.2$, $0.3$, $0.4$, $0.2$"
+        correct: false
+        category: math_error
+        feedback: "These add to 1.1. The probabilities in a distribution must add to exactly 1."
+      - id: b
+        text: "$0.5$, $0.5$, $0.5$, $-0.5$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "These add to 1, but a probability can never be negative."
+      - id: c
+        text: "$0.1$, $0.2$, $0.3$, $0.4$"
+        correct: true
+        feedback: "Each value is between 0 and 1 and together they add to 1, so this is a valid distribution."
+      - id: d
+        text: "$0.25$, $0.25$, $0.25$, $0.15$"
+        correct: false
+        category: math_error
+        feedback: "These add to 0.9, so some chance is missing. A distribution must add to exactly 1."
+    solution: "A distribution needs every probability between 0 and 1 and a total of exactly 1. Only $0.1+0.2+0.3+0.4=1$ meets both."
   - id: pb-expectation-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What is an expectation?"
+    prompt: "How do you find the expected value of a random variable?"
     options:
-      - {
-          id: a,
-          text: "The plain average of the possible values, regardless of their probabilities",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The expectation uses the distribution's probabilities, not equal weights for every value.",
-        }
-      - {
-          id: b,
-          text: "The probability-weighted average of a random variable's possible values",
-          correct: true,
-          feedback: "Weighting each value by its probability gives the expectation.",
-        }
-      - {
-          id: c,
-          text: "The most likely value, which every observation will have",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The expectation is an average, not a guarantee or necessarily the most likely value.",
-        }
-      - {
-          id: d,
-          text: "The largest value that the random variable can take",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The largest possible value is not generally the probability-weighted average.",
-        }
-    solution: "An expectation is the average of possible values after each is weighted by its probability."
+      - id: a
+        text: "Add up its possible values and divide by how many there are"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That plain average ignores the chances. It matches the expected value only when every value is equally likely."
+      - id: b
+        text: "Pick the value that has the largest probability"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is the most likely value. The expected value weights every value by its chance."
+      - id: c
+        text: "Multiply each value by its probability, then add the results"
+        correct: true
+        feedback: "The expected value is the probability-weighted average of the values."
+      - id: d
+        text: "Add up the probabilities of all its possible values"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The probabilities always add to 1. The expected value also uses the values themselves."
+    solution: "Multiply each value by its probability and add the results. This weighted average is the long-run average value."
   - id: pb-expectation-why
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why is the plain average of the possible offer counts not the expectation for these sales?"
+    prompt: "In the spinner picture, why is $E[X]=0.75$ rather than the plain average of the values, 1?"
     options:
-      - {
-          id: a,
-          text: "An expectation ignores probabilities and uses only the largest offer count.",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The expectation uses every possible value and its probability.",
-        }
-      - {
-          id: b,
-          text: "Every possible count must be equally likely before an average can be calculated.",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "Unequal chances are handled by weighting each count by its own probability.",
-        }
-      - {
-          id: c,
-          text: "The count that appears most often is always the expectation.",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The most likely count and the probability-weighted average can be different.",
-        }
-      - {
-          id: d,
-          text: "The offer counts have different probabilities, so they need different weights.",
-          correct: true,
-          feedback: "The distribution assigns unequal probabilities, so the average must use those weights.",
-        }
-    solution: "The observed probabilities are unequal, so a plain average gives the counts the wrong weights."
+      - id: a
+        text: "The value 0 has twice the chance of each other value, so it pulls the average down."
+        correct: true
+        feedback: "Half the weight sits at 0, so the balance point moves below 1, to 0.75."
+      - id: b
+        text: "The value 0 adds nothing to the sum, so its sector can be ignored."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Ignoring the 0 sectors would give 1.5. The 0 adds nothing to the sum, but its chance still counts."
+      - id: c
+        text: "An expected value always lies below the middle of the possible values."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "It can lie above or below. Here it is below because the most likely value is 0."
+      - id: d
+        text: "The expected value subtracts the chance of 2 points from the plain average."
+        correct: false
+        category: misapplied_technique
+        feedback: "$1-0.25$ happens to equal 0.75 here, but the rule is a weighted sum: $0(1/2)+1(1/4)+2(1/4)$."
+    solution: "The expected value weights each value by its chance: $0(1/2)+1(1/4)+2(1/4)=0.75$. The value 0 carries half the weight, so the result is below the plain average 1."
   - id: pb-expectation-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A random variable $X$ is 1, 2 or 3 with probabilities 0.5, 0.3 and 0.2. What is $E[X]$?"
+    hints: ["Multiply each value by its probability, then add."]
+    solution: |
+      Multiply each value by its probability:
+
+      $$1(0.5)=0.5,\quad 2(0.3)=0.6,\quad 3(0.2)=0.6$$
+
+      Then add the products:
+
+      $$E[X]=0.5+0.6+0.6=1.7$$
+    answer: 1.7
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer: 2
+        category: misunderstood_definition
+        feedback: "That is the plain average of 1, 2 and 3. Weight each value by its probability."
+      - answer: 1
+        category: incorrect_reasoning
+        feedback: "That is the sum of the probabilities. Multiply each value by its probability before adding."
+  - id: pb-expected-total
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "The probabilities of zero, one, two and three offers are 0.2, 0.3, 0.4 and 0.1. What is the expected number of offers?"
-    hints: ["Multiply each offer count by its probability, then add the products."]
+    prompt: "A house gets 0, 1 or 2 offers with probabilities 0.4, 0.4 and 0.2. An agent is selling 50 such houses. About how many offers should the agent expect in total?"
+    hints:
+      - "Find the expected number of offers for one house first."
+      - "The expected value is a long-run average per house."
     solution: |
-      Weight each offer count by its probability:
+      Find the expected offers for one house:
 
-      $$0 \times 0.2 = 0$$
+      $$E[X]=0(0.4)+1(0.4)+2(0.2)=0.8$$
 
-      $$1 \times 0.3 = 0.3$$
+      Multiply the average per house by the number of houses:
 
-      $$2 \times 0.4 = 0.8$$
-
-      $$3 \times 0.1 = 0.3$$
-
-      $$0 + 0.3 + 0.8 + 0.3 = 1.4$$
-    answer: 1.4
+      $$50\times0.8=40$$
+    answer: 40
     tolerance: { abs: 0.000001 }
     common_wrong:
-      - {
-          answer: 1.5,
-          category: incorrect_reasoning,
-          feedback: "That is the plain average of the possible offer counts; weight each count by its probability.",
-        }
-      - {
-          answer: 2,
-          category: misunderstood_definition,
-          feedback: "Two offers is the most likely count, not the probability-weighted average.",
-        }
+      - answer: 0.8
+        category: incomplete_explanation
+        feedback: "0.8 offers is the expected value for a single house. Multiply by 50 houses."
+      - answer: 100
+        category: misapplied_technique
+        feedback: "That treats every house as getting the largest count, 2. Use the expected value, 0.8, per house."
+      - answer: 50
+        category: misunderstood_definition
+        feedback: "That uses the plain average of 0, 1 and 2. Weight each count by its probability: 0.8 per house."
   - id: pb-expectation-template
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A sample has ${{=count0}}$ houses with zero offers, ${{=count1}}$ with one, ${{=count2}}$ with two and ${{=count3}}$ with three. What is the expected number of offers?"
-    hints: ["Weight each offer count by its frequency, then divide by the total."]
-    solution: "The weighted average is ${{=(count1 + 2 * count2 + 3 * count3) / (count0 + count1 + count2 + count3)}}$ offers."
-    answer_expr: "(count1 + 2 * count2 + 3 * count3) / (count0 + count1 + count2 + count3)"
+    prompt: "A spin pays 0, 1 or ${{=v}}$ points with probabilities 0.5, 0.3 and 0.2. What is the expected number of points per spin?"
+    hints: ["Multiply each value by its probability, then add."]
+    solution: "$E[X]=0(0.5)+1(0.3)+{{=v}}(0.2)={{=0.3 + 0.2 * v}}$."
+    answer_expr: "0.3 + 0.2 * v"
     params:
-      count0: { min: 1, max: 5 }
-      count1: { min: 1, max: 5 }
-      count2: { min: 1, max: 5 }
-      count3: { min: 1, max: 5 }
-    tolerance: { abs: 0.00001 }
+      v: { min: 2, max: 10 }
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer_expr: "(1 + v) / 3"
+        category: misunderstood_definition
+        feedback: "That is the plain average of the three values. Weight each value by its probability."
+  - id: pb-robot-expected-reward
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot's grasp succeeds with probability 0.8 and earns a reward of 10. A failed grasp gives a reward of $-5$. What is the expected reward per attempt?"
+    hints:
+      - "The reward is a random variable with two values, 10 and $-5$."
+      - "Failure has probability $1-0.8$."
+    solution: |
+      Failure is the complement of success:
+
+      $$1-0.8=0.2$$
+
+      Weight each reward by its probability and add:
+
+      $$E[R]=10(0.8)+(-5)(0.2)=8-1=7$$
+    answer: 7
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer: 2.5
+        category: misunderstood_definition
+        feedback: "That is the plain average of 10 and $-5$. Success is four times as likely as failure, so weight by the chances."
+      - answer: 9
+        category: math_error
+        feedback: "The failure reward is negative, so its term is $-5(0.2)=-1$, not $+1$."
+      - answer: 8
+        category: incomplete_explanation
+        feedback: "That counts only the success term. Add the failure term, $-5(0.2)$."
   - id: pb-conditional-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What is the conditional probability $P(A \\mid B)$?"
+    prompt: "What does $P(A\\mid B)$ mean?"
     options:
-      - {
-          id: a,
-          text: "The probability that A occurs among outcomes where B has occurred",
-          correct: true,
-          feedback: "The condition B restricts the outcomes being considered.",
-        }
-      - {
-          id: b,
-          text: "The probability that A and B both occur, without conditioning",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "That is the joint probability; a conditional probability divides by the probability of B.",
-        }
-      - {
-          id: c,
-          text: "The probability of A across all outcomes, whether or not B occurred",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "That is the overall probability of A, not the probability restricted to B.",
-        }
-      - {
-          id: d,
-          text: "The probability that B occurs among outcomes where A has occurred",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "That reverses the condition: $P(B \\mid A)$ asks a different question.",
-        }
-    solution: "The condition B restricts attention to outcomes where B occurred, and then we measure how often A also occurred."
-  - id: pb-independence-why
+      - id: a
+        text: "The chance that $A$ and $B$ both happen, out of all outcomes"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That divides by all outcomes. $P(A\\mid B)$ keeps only the outcomes in $B$."
+      - id: b
+        text: "The chance of $B$ once you know that $A$ has happened"
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is $P(B\\mid A)$. The event after the bar is the one you know."
+      - id: c
+        text: "The chance of $A$ once you know that $B$ has happened"
+        correct: true
+        feedback: 'The bar reads "given": keep only the outcomes in $B$, then find the fraction also in $A$.'
+      - id: d
+        text: "The chance of $A$ divided by the chance of $B$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "The top of the fraction counts outcomes in both $A$ and $B$, not all of $A$."
+    solution: "$P(A\\mid B)$ is the probability of $A$ given $B$: keep only the outcomes where $B$ happened, then find the fraction of them that are also in $A$."
+  - id: pb-conditional-why
     dimension: conceptual
     type: mc
     role: practice
-    difficulty: 2
+    difficulty: 1
     est_minutes: 2
-    prompt: "Why do these sales not show independence between selling above asking and receiving at least two offers?"
+    prompt: "In the worked example, why does the estimate of $P(A\\mid B)$ divide by 10 rather than by 20?"
     options:
-      - {
-          id: a,
-          text: "The conditional rate is 0.45, while the overall above-asking rate is 0.75.",
-          correct: false,
-          category: math_error,
-          feedback: "For the conditional rate, divide the six above-asking houses by the eight with at least two offers.",
-        }
-      - {
-          id: b,
-          text: "The joint rate is 0.30, which is larger than both overall event rates.",
-          correct: false,
-          category: math_error,
-          feedback: "The joint rate 0.30 is smaller than both 0.40 and 0.45; compare the conditional and overall rates instead.",
-        }
-      - {
-          id: c,
-          text: "The conditional rate is 0.75, while the overall above-asking rate is 0.45.",
-          correct: true,
-          feedback: "Independence would leave the chance of A unchanged after learning B; these rates differ.",
-        }
-      - {
-          id: d,
-          text: "The table has twenty houses, but independence requires equal row totals.",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Independence is about whether conditioning changes a probability, not whether the table rows are equal in size.",
-        }
-    solution: "The rate among houses with at least two offers is 0.75, which differs from the overall rate of 0.45."
+      - id: a
+        text: "Knowing $B$ leaves only the 10 sales with at least two offers to count from."
+        correct: true
+        feedback: "The condition throws out the other 10 sales, so the 10 sales in $B$ are the new total."
+      - id: b
+        text: "10 is the number of sales above asking, which is the event we want."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Nine sales were above asking. The 10 is the number of sales with at least two offers, the condition $B$."
+      - id: c
+        text: "Dividing by the smaller count always gives a conditional probability."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The divisor is the count of outcomes in the condition, whatever its size."
+      - id: d
+        text: "Dividing by 20 would count the 7 matching sales twice over."
+        correct: false
+        category: misapplied_technique
+        feedback: "7/20 counts each sale once; it is the chance of both events among all sales, not the chance given $B$."
+    solution: "The condition $B$ keeps only the 10 sales with at least two offers. Of those, 7 sold above asking, so $P(A\\mid B)\\approx7/10=0.7$."
   - id: pb-conditional-fixed
     dimension: math
     type: numeric
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Of eight houses with at least two offers, six sold above asking. What is the conditional probability of selling above asking, given at least two offers?"
-    hints: ["Use only the eight houses that meet the condition."]
+    prompt: "A fair die is rolled and you are told the roll is odd. What is the probability that it is at most 3?"
+    hints:
+      - "List the odd faces: these are the only outcomes left."
+      - "Count how many of them are at most 3."
     solution: |
-      Restrict the denominator to the eight houses with at least two offers:
+      The odd faces are 1, 3 and 5. Of these, 1 and 3 are at most 3:
 
-      $$\frac{6}{8} = 0.75$$
-    answer: 0.75
-    tolerance: { abs: 0.000001 }
+      $$P(\text{at most 3}\mid\text{odd})=\frac{2}{3}\approx0.667$$
+    answer: 0.6667
+    tolerance: { abs: 0.002 }
     common_wrong:
-      - {
-          answer: 0.3,
-          category: misapplied_technique,
-          feedback: "That is the joint share among all twenty houses; the condition restricts the denominator to eight.",
-        }
-      - {
-          answer: 0.45,
-          category: misapplied_technique,
-          feedback: "That is the overall above-asking rate; use only houses with at least two offers.",
-        }
+      - answer: 0.5
+        category: incomplete_explanation
+        feedback: "That is the chance of at most 3 before you knew the roll was odd. Keep only the odd faces."
+      - answer: 0.3333
+        category: misapplied_technique
+        feedback: "That divides by all six faces. Divide by the three odd faces instead."
+  - id: pb-reverse-conditional
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "Of 20 past sales, 9 sold above asking, and 7 of those 9 had at least two offers. Estimate $P(\\text{at least two offers}\\mid\\text{above asking})$."
+    hints: ["The condition is now above asking: keep only those 9 sales."]
+    solution: |
+      Keep only the 9 sales above asking, then find the fraction with at least two offers:
+
+      $$\frac{7}{9}\approx0.778$$
+    answer: 0.7778
+    tolerance: { abs: 0.002 }
+    common_wrong:
+      - answer: 0.7
+        category: misunderstood_definition
+        feedback: "That is the chance of above asking given at least two offers. Here the condition is above asking."
+      - answer: 0.35
+        category: misapplied_technique
+        feedback: "That divides by all 20 sales. Keep only the 9 sales that meet the condition."
   - id: pb-conditional-template
     dimension: math
     type: numeric
     role: practice
-    difficulty: 1
+    difficulty: 2
     est_minutes: 2
-    prompt: "Among ${{=above_and_many + not_above_and_many}}$ houses with at least two offers, ${{=above_and_many}}$ sold above asking. What is the conditional probability of selling above asking?"
+    prompt: "Among ${{=above_and_many + not_above_and_many}}$ houses with at least two offers, ${{=above_and_many}}$ sold above asking. Estimate the probability of selling above asking given at least two offers."
     hints: ["Divide the above-asking count by all houses that meet the condition."]
     solution: "Among houses with at least two offers, the share above asking is ${{=above_and_many}}/{{=above_and_many + not_above_and_many}} = {{=above_and_many / (above_and_many + not_above_and_many)}}$."
     answer_expr: "above_and_many / (above_and_many + not_above_and_many)"
@@ -606,6 +572,34 @@ exercises:
       above_and_many: { min: 1, max: 5 }
       not_above_and_many: { min: 1, max: 5 }
     tolerance: { abs: 0.00001 }
+  - id: pb-independence-check
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "Of 40 sales, 20 sold above asking. Of the 16 sales with a garage, 8 sold above asking. In this data, is selling above asking independent of having a garage?"
+    options:
+      - id: a
+        text: "No: only 8 garage sales went above asking, fewer than the 20 overall."
+        correct: false
+        category: misapplied_technique
+        feedback: "Compare chances, not counts. 8 of 16 is 0.5, the same as 20 of 40."
+      - id: b
+        text: "Yes: the chance of above asking is 0.5 with or without knowing about a garage."
+        correct: true
+        feedback: "$P(\\text{above}\\mid\\text{garage})=8/16=0.5=P(\\text{above})$, so the garage changes nothing."
+      - id: c
+        text: "No: only 16 of the 40 sales had a garage, so knowing it must matter."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "How common a garage is doesn't decide independence. Check whether it changes the chance of above asking."
+      - id: d
+        text: "No: $P(\\text{garage}\\mid\\text{above})=0.4$ differs from $P(\\text{above}\\mid\\text{garage})=0.5$."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Those two usually differ. Independence compares $P(\\text{above}\\mid\\text{garage})$ with $P(\\text{above})$."
+    solution: "Overall, $P(\\text{above})=20/40=0.5$. Given a garage, $P(\\text{above}\\mid\\text{garage})=8/16=0.5$. The condition leaves the chance unchanged, so the events are independent in this data. Without a garage the rate is $12/24=0.5$ too."
   - id: probability-basics-explain
     dimension: conceptual
     type: explain
@@ -614,22 +608,16 @@ exercises:
     est_minutes: 4
     prompt: "Use house-sale data to explain the difference between an event probability, a distribution of offer counts, an expected number of offers and a conditional probability. Include how a complement is estimated and how you would check whether selling above asking is independent of receiving at least two offers."
     rubric:
-      - {
-          id: event-and-complement,
-          criterion: "Defines an event as a set of outcomes and explains that an event and its complement have probabilities summing to one.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: distribution-and-expectation,
-          criterion: "Explains that a distribution lists values with probabilities and that expectation weights values by those probabilities.",
-          weight: 1,
-          required: true,
-        }
-      - {
-          id: conditional-and-independent,
-          criterion: "Explains that conditional probability restricts the outcomes and that independence means the condition does not change the probability.",
-          weight: 1,
-          required: true,
-        }
-    exemplar: "An event is a set of outcomes, such as houses selling above asking. Its frequency estimates its probability, and the complement covers the remaining sales. A distribution pairs each possible offer count with its probability; the expected count weights each value by that probability. A conditional probability of selling above asking given at least two offers uses only houses with at least two offers. To check independence, compare this rate with the overall above-asking rate; equal rates indicate independence in the data."
+      - id: event-and-complement
+        criterion: "Defines an event as a set of outcomes and explains that an event and its complement have probabilities summing to one."
+        weight: 1
+        required: true
+      - id: distribution-and-expectation
+        criterion: "Explains that a distribution lists values with probabilities and that expectation weights values by those probabilities."
+        weight: 1
+        required: true
+      - id: conditional-and-independent
+        criterion: "Explains that conditional probability restricts the outcomes and that independence means the condition does not change the probability."
+        weight: 1
+        required: true
+    exemplar: "An event is a set of outcomes, such as a sale going above asking. The fraction of past sales in the event estimates its probability, and the complement, not above asking, gets 1 minus that. A distribution pairs each possible offer count with its probability, and those probabilities add to 1; the expected number of offers multiplies each count by its probability and adds, giving the long-run average. A conditional probability, such as above asking given at least two offers, keeps only the sales with at least two offers and finds the fraction above asking. To check independence, compare that rate with the overall above-asking rate: if they are equal, knowing the offers tells you nothing."

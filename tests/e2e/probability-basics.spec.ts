@@ -34,7 +34,7 @@ test.describe('Probability basics real-content rendering', () => {
     const titles = [
       'Events and probabilities',
       'Random variables and distributions',
-      'Expected number of offers',
+      'Expected value',
       'Conditional probability',
     ];
     const points = page.locator('article');
@@ -42,7 +42,11 @@ test.describe('Probability basics real-content rendering', () => {
     for (const [index, title] of titles.entries()) {
       const point = points.nth(index);
       await expect(point).toContainText(title);
-      await expect(point).toContainText('This example shows');
+      await expect(point).toContainText('The question.');
+      await expect(point).toContainText('Common confusion.');
+      await expect(point).toContainText('Compare cases.');
+      await expect(point).toContainText('Where it shows up.');
+      await expect(point.getByRole('img')).toHaveCount(1);
       await expect(point.locator('.katex-error')).toHaveCount(0);
       await point.screenshot({
         path: `${screenshotDir}/kp-${index + 1}-${title.toLowerCase().replaceAll(' ', '-')}.png`,
@@ -98,11 +102,11 @@ test.describe('Probability basics real-content rendering', () => {
     const correctIds = Array.isArray(answerPayload.answer)
       ? answerPayload.answer
       : [answerPayload.answer];
-    const correctIndex = firstRun.pendingProblem.exercise.options.findIndex(
-      (option: { id: string }) => correctIds.includes(option.id),
+    const correctOption = firstRun.pendingProblem.exercise.options.find((option: { id: string }) =>
+      correctIds.includes(option.id),
     );
-    expect(correctIndex).toBeGreaterThanOrEqual(0);
-    await page.getByRole('radio').nth(correctIndex).click();
+    expect(correctOption).toBeDefined();
+    await page.getByRole('radio', { name: correctOption.text, exact: true }).click();
     const basicsResponse = page.waitForResponse(
       (response) =>
         response.url().endsWith(`/api/lessons/${conceptId}/run/answer`) &&
@@ -115,12 +119,35 @@ test.describe('Probability basics real-content rendering', () => {
     await page.getByRole('button', { name: 'Next problem' }).click();
     await expect
       .poll(async () => (await currentRun(page))?.pendingProblem?.exercise.id)
+      .toBe('pb-complement-why');
+
+    const selfExplanation = (await currentRun(page)).pendingProblem;
+    const equalChancesOption = selfExplanation.exercise.options.find((option: { text: string }) =>
+      option.text.includes('equal chances of one half'),
+    );
+    expect(equalChancesOption).toBeDefined();
+    await page.getByRole('radio', { name: equalChancesOption.text, exact: true }).click();
+    const selfExplanationResponse = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/lessons/${conceptId}/run/answer`) &&
+        response.request().method() === 'POST',
+    );
+    await page.getByRole('button', { name: 'Submit answer' }).click();
+    expect((await selfExplanationResponse).status()).toBe(200);
+    await page.reload();
+    await expect(page.getByRole('status')).toContainText('Not quite');
+    await expect(page.getByRole('status')).toContainText(
+      'Here 11 of 20 sales were not above asking, so the complement is more likely.',
+    );
+    await page.getByRole('button', { name: 'Next problem' }).click();
+    await expect
+      .poll(async () => (await currentRun(page))?.pendingProblem?.exercise.id)
       .toBe('pb-frequency-fixed');
 
     await expect(page.getByTestId('lesson-problem-prompt')).toContainText(
       'What is the frequency-based probability estimate',
     );
-    await page.getByLabel('Your answer').fill('0.625');
+    await page.getByLabel('Your answer').fill('0.6');
     const calculationResponse = page.waitForResponse(
       (response) =>
         response.url().endsWith(`/api/lessons/${conceptId}/run/answer`) &&

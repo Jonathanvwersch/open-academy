@@ -454,20 +454,34 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   });
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  for (const [conceptId, title, knowledgePointTitle, screenshotName] of [
+  for (const [conceptId, title, knowledgePointTitle, screenshotName, expectedTexts] of [
     [
       'partial-derivatives',
       'Partial derivatives',
-      'Change one weight, hold the rest fixed',
+      'Move one input, hold the rest fixed',
       'pd-hold-fixed',
+      ['The question.', 'Compare cases.'],
     ],
-    ['backpropagation', 'Backpropagation', 'Compute one weight gradient backward', 'bp-by-hand'],
-    ['chain-rule', 'Chain rule', 'Rates along a chain multiply', 'cr-rates-multiply'],
+    [
+      'backpropagation',
+      'Backpropagation',
+      'Compute one weight gradient backward',
+      'bp-by-hand',
+      ['The idea.', 'Worked example.'],
+    ],
+    [
+      'chain-rule',
+      'Chain rule',
+      'Rates along a chain multiply',
+      'cr-rates-multiply',
+      ['The question.', 'Picture it.', 'The idea.', 'Common confusion.'],
+    ],
     [
       'gradient-descent',
       'Gradient descent',
-      'Update the house model opposite its gradient',
+      'Step against the gradient',
       'gd-downhill-update',
+      ['The question.', 'Picture it.', 'The idea.', 'Common confusion.'],
     ],
   ] as const) {
     await mockLessonReview(page, conceptId, title);
@@ -477,14 +491,11 @@ test('authored course-structure lessons render their diagrams', async ({ page })
       .locator('article')
       .filter({ has: page.getByRole('heading', { name: new RegExp(knowledgePointTitle) }) });
     await expect(knowledgePoint).toHaveCount(1);
-    for (const text of conceptId === 'chain-rule'
-      ? ['The question.', 'Picture it.', 'The idea.', 'Common confusion.']
-      : conceptId === 'backpropagation'
-        ? ['The idea.', 'This example shows']
-        : ['How it works.', 'This example shows']) {
-      await expect(knowledgePoint).toContainText(text);
+    const usesWriteLessonLabels = conceptId === 'chain-rule' || conceptId === 'gradient-descent';
+    for (const expectedText of expectedTexts) {
+      await expect(knowledgePoint).toContainText(expectedText);
     }
-    if (conceptId === 'chain-rule') {
+    if (usesWriteLessonLabels) {
       await expect(knowledgePoint.locator('figure img[alt]')).toHaveCount(1);
     }
     await expect(knowledgePoint.locator('.katex-error')).toHaveCount(0);
