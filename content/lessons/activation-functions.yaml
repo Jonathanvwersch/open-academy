@@ -29,7 +29,7 @@ knowledge_points:
       <circle cx="320.0" cy="218.0" r="4" fill="#10b981"/>
       <circle cx="480.0" cy="110.0" r="4" fill="#10b981"/>
       <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="168" y="344" fill="#737373">−7</text>
-      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="156" y="262" fill="#10b981" text-anchor="middle">−4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="160" y="294" fill="#10b981" text-anchor="middle">−4</text>
       <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="330" y="236">−1</text>
       <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="466" y="102" text-anchor="end">5</text>
       <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="410" y="46" fill="#737373">nothing between: y = 6x − 1</text>
@@ -208,7 +208,7 @@ knowledge_points:
 
       where $\tanh^2(z)$ means the tanh output squared.
 
-      ReLU has no single slope at its corner, $z=0$; by convention it is taken as $0$ there. You will derive the sigmoid and tanh slopes in the chain-rule lesson; for now take them as given, and the worked example checks the sigmoid one with a nudge. A flat stretch where the slope is close to $0$ is called **saturation**.
+      ReLU has no single slope at its corner, $z=0$; by convention it is taken as $0$ there. The sigmoid and tanh slopes come from the chain rule, which a later lesson teaches; for now take them as given, and the worked example checks the sigmoid one with a nudge. A flat stretch where the slope is close to $0$ is called **saturation**.
 
       **Common confusion.** “A neuron with a big output must have a big slope.” No: height and slope are different things. At $z=4$ the sigmoid outputs $0.982$, but its slope is only $0.018$, because the curve is almost flat there.
     worked: |
