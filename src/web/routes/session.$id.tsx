@@ -6,7 +6,6 @@ import { Alert, AlertDescription } from '@/ui/alert.js';
 import { Badge } from '@/ui/badge.js';
 import { Button } from '@/ui/button.js';
 import { Card, CardContent } from '@/ui/card.js';
-import { Progress } from '@/ui/progress.js';
 import { apiFetch } from '../authenticated-fetch.js';
 import {
   type AnswerOptions,
@@ -30,6 +29,7 @@ import {
 import { RouteLoadError } from '../route-error.js';
 import { QuestionProgress, type QuestionState } from '../session/QuestionProgress.js';
 import { SessionActivityHeader } from '../session/SessionActivityHeader.js';
+import { XpGoalBar } from '../session/XpGoalBar.js';
 import { LessonSkeleton } from '../skeletons.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
 
@@ -90,15 +90,6 @@ function SessionCompletion({
   onFinish: () => void;
   finishing: boolean;
 }) {
-  const finalProgress = Math.min(100, Math.max(0, (xp.today / xp.goal) * 100));
-  const startingProgress = Math.min(100, Math.max(0, ((xp.today - xp.session) / xp.goal) * 100));
-  const [progress, setProgress] = useState(startingProgress);
-
-  useEffect(() => {
-    const frame = window.requestAnimationFrame(() => setProgress(finalProgress));
-    return () => window.cancelAnimationFrame(frame);
-  }, [finalProgress]);
-
   return (
     <section className="space-y-4">
       <h1 className="text-3xl font-semibold">Session complete</h1>
@@ -106,12 +97,7 @@ function SessionCompletion({
       <p className="text-muted-foreground">
         Today: {xp.today} / {xp.goal} XP
       </p>
-      <Progress
-        value={progress}
-        aria-label="Today's XP goal"
-        className="h-3"
-        indicatorClassName="transition-[transform] duration-700 motion-reduce:transition-none"
-      />
+      <XpGoalBar today={xp.today} goal={xp.goal} previousToday={xp.today - xp.session} />
       {xp.today >= xp.goal ? <p className="font-medium">Daily goal reached</p> : null}
       <p className="text-muted-foreground">Your progress has been saved.</p>
       <Button type="button" onClick={onFinish} loading={finishing}>
@@ -531,6 +517,7 @@ function SessionPage() {
       <LessonRunner
         conceptId={activity.conceptId}
         activityId={activity.id}
+        sessionId={id}
         title={activity.conceptTitle ?? activity.conceptId}
         activityLabel={activityLabel}
         activityPosition={activityPosition}

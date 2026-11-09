@@ -1,9 +1,17 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../authenticated-fetch.js';
 import { ExerciseForm, FeedbackPanel, LessonBlock, Markdown } from '../components.js';
-import { type LessonRunPayload, lessonQueryOptions, lessonRunQueryOptions } from '../queries.js';
+import {
+  type LessonRunPayload,
+  learnQueryOptions,
+  lessonQueryOptions,
+  lessonRunQueryOptions,
+  sessionQueryOptions,
+} from '../queries.js';
 import { SessionActivityHeader } from '../session/SessionActivityHeader.js';
+import { XpGoalBar } from '../session/XpGoalBar.js';
 import { LessonSkeletonBody } from '../skeletons.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
 import { Alert, AlertDescription } from '../ui/alert.js';
@@ -14,6 +22,7 @@ import { Card, CardContent } from '../ui/card.js';
 export function LessonRunner({
   conceptId,
   activityId,
+  sessionId,
   title,
   activityLabel,
   activityPosition,
@@ -25,6 +34,7 @@ export function LessonRunner({
 }: {
   conceptId: string;
   activityId: string;
+  sessionId: string;
   title: string;
   activityLabel: string;
   activityPosition: number;
@@ -35,6 +45,7 @@ export function LessonRunner({
   onContinue: (status: 'completed' | 'needs_retry') => Promise<void>;
 }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const tutorSidebar = useTutorSidebar();
   const queryOptions = lessonRunQueryOptions(conceptId);
   const query = useSuspenseQuery(queryOptions);
@@ -55,6 +66,15 @@ export function LessonRunner({
   const [busyAction, setBusyAction] = useState<'submit' | 'next' | 'continue' | null>(null);
   const [error, setError] = useState('');
   const [viewingPointId, setViewingPointId] = useState<string | null>(null);
+  const [checkpoint, setCheckpoint] = useState<{
+    title: string;
+    nextTitle: string;
+    xpEarned: number;
+    pointNumber: number;
+    pointCount: number;
+    today: number;
+    goal: number;
+  } | null>(null);
   const activePoint = state
     ? (lesson?.knowledge_points?.find((point) => point.id === state.currentPointId) ?? undefined)
     : undefined;
@@ -66,6 +86,9 @@ export function LessonRunner({
       : undefined;
   const point = answeredPoint ?? activePoint ?? state?.currentPoint;
   const pointId = point?.id;
+  const nextPoint = state?.currentPointId
+    ? lesson?.knowledge_points?.find((item) => item.id === state.currentPointId)
+    : undefined;
   const basicsExerciseId = lesson?.knowledge_points?.find((item) => item.id === pointId)
     ?.problems[0];
   const contextProblem = state?.pendingProblem ?? state?.lastAnsweredProblem;
@@ -210,22 +233,32 @@ export function LessonRunner({
       }
       return;
     }
-    if (state.currentPointId) {
+    const answeredPointId = state.lastAnsweredProblem?.knowledgePointId;
+    const answeredPointIndex = state.points.findIndex((item) => item.id === answeredPointId);
+    const answeredPoint = state.points[answeredPointIndex];
+    const checkpointDetails =
+      answeredPoint?.status === 'passed' && nextPoint
+        ? {
+            title:
+              lesson?.knowledge_points?.find((item) => item.id === answeredPoint.id)?.title ??
+              title,
+            nextTitle: nextPoint.title,
+            xpEarned: answeredPoint.xpEarned,
+            pointNumber: answeredPointIndex + 1,
+            pointCount: state.points.length,
+          }
+        : null;
+    const heightPointId = point?.id ?? state.currentPointId;
+    if (heightPointId) {
       const promptHeight = problemPromptRef.current?.getBoundingClientRect().height ?? 0;
       const inputAreaHeight =
         problemCardRef.current
           ?.querySelector('[data-testid="exercise-inputs"]')
           ?.getBoundingClientRect().height ?? 0;
       setStableCardHeights((current) => ({
-        pointId: state.currentPointId as string,
-        prompt: Math.max(
-          current?.pointId === state.currentPointId ? current.prompt : 0,
-          promptHeight,
-        ),
-        inputs: Math.max(
-          current?.pointId === state.currentPointId ? current.inputs : 0,
-          inputAreaHeight,
-        ),
+        pointId: heightPointId,
+        prompt: Math.max(current?.pointId === heightPointId ? current.prompt : 0, promptHeight),
+        inputs: Math.max(current?.pointId === heightPointId ? current.inputs : 0, inputAreaHeight),
       }));
     }
     setBusy(true);
@@ -239,6 +272,17 @@ export function LessonRunner({
       });
       const data = (await response.json()) as LessonRunPayload;
       if (!response.ok || !data.run) throw new Error('Could not load the next problem.');
+      if (checkpointDetails) {
+        const freshSession = await queryClient.fetchQuery({
+          ...sessionQueryOptions(sessionId),
+          staleTime: 0,
+        });
+        setCheckpoint({
+          ...checkpointDetails,
+          today: freshSession.xp.today,
+          goal: freshSession.xp.goal,
+        });
+      }
       await updateState(data.run);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load the next problem.');
@@ -246,6 +290,11 @@ export function LessonRunner({
       setBusyAction(null);
       setBusy(false);
     }
+  };
+
+  const stopHere = async () => {
+    await queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey });
+    await navigate({ to: '/' });
   };
 
   if (!state) {
@@ -367,6 +416,43 @@ export function LessonRunner({
             {backButtonLabel}
           </Button>
         </>
+      ) : checkpoint ? (
+        <Card data-testid="kp-checkpoint">
+          <CardContent className="space-y-3">
+            <h2 className="text-lg font-semibold">✓ {checkpoint.title}</h2>
+            <p className="text-xl font-bold">+{checkpoint.xpEarned} XP</p>
+            <p className="text-sm text-muted-foreground">
+              Today: {checkpoint.today} / {checkpoint.goal} XP
+            </p>
+            <XpGoalBar
+              today={checkpoint.today}
+              goal={checkpoint.goal}
+              previousToday={checkpoint.today - checkpoint.xpEarned}
+            />
+            <p className="text-sm text-muted-foreground">
+              Knowledge point {checkpoint.pointNumber} of {checkpoint.pointCount} done
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                className="h-auto min-h-9 w-full whitespace-normal sm:w-auto"
+                disabled={busy}
+                onClick={() => setCheckpoint(null)}
+              >
+                Continue to {checkpoint.nextTitle}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto min-h-9 w-full sm:w-auto"
+                disabled={busy}
+                onClick={() => void stopHere()}
+              >
+                Stop here
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ) : state.status === 'completed' ? (
         <Card className="border-green-300 bg-green-50">
           <CardContent className="space-y-3 text-green-950">
@@ -480,7 +566,12 @@ export function LessonRunner({
                     primaryAction={
                       showingAnswer
                         ? {
-                            label: pointStatus?.status === 'passed' ? 'Next step' : 'Next problem',
+                            label:
+                              pointStatus?.status === 'passed' && nextPoint
+                                ? `Next: ${nextPoint.title}`
+                                : pointStatus?.status === 'passed'
+                                  ? 'Next step'
+                                  : 'Next problem',
                             onClick: () => void next(),
                             loading: busyAction === 'next',
                             disabled: busy && busyAction !== 'next',

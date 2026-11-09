@@ -648,7 +648,9 @@ export function ExerciseForm({
           onClick={primaryAction?.onClick}
           disabled={primaryAction?.disabled ?? disabled}
           loading={primaryAction?.loading ?? loading}
-          className="min-w-48"
+          className={
+            primaryAction ? 'min-w-48 max-w-full h-auto min-h-8 whitespace-normal' : 'min-w-48'
+          }
         >
           {primaryAction?.label ?? submitLabel}
         </Button>

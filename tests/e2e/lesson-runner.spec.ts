@@ -1,7 +1,12 @@
 import { mkdirSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 import { createDb } from '../../src/server/db/client.js';
-import { sessionActivities, studySessions, users } from '../../src/server/db/schema.js';
+import {
+  diagnosticRuns,
+  sessionActivities,
+  studySessions,
+  users,
+} from '../../src/server/db/schema.js';
 import { env } from '../../src/server/env.js';
 
 const conceptId = 'supervised-learning';
@@ -12,6 +17,7 @@ const feedbackCorrectScreenshotDir = '/home/ubuntu/screenshots/feedback-correct'
 const mcShuffleScreenshotDir = '/home/ubuntu/screenshots/mc-shuffle';
 const buttonLoadingScreenshotDir = '/home/ubuntu/screenshots/button-loading';
 const finalContinueScreenshotDir = '/home/ubuntu/screenshots/final-continue';
+const checkpointScreenshotDir = '/home/ubuntu/screenshots/kp-checkpoint';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
@@ -19,15 +25,27 @@ mkdirSync(feedbackCorrectScreenshotDir, { recursive: true });
 mkdirSync(mcShuffleScreenshotDir, { recursive: true });
 mkdirSync(buttonLoadingScreenshotDir, { recursive: true });
 mkdirSync(finalContinueScreenshotDir, { recursive: true });
+mkdirSync(checkpointScreenshotDir, { recursive: true });
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
   await db.delete(users);
-  await db.insert(users).values({
-    displayName: 'Lesson runner E2E learner',
-    timezone: 'UTC',
-    startDate: '2026-01-01',
-    prefs: { scheduleMinutes: 60 },
+  const [user] = await db
+    .insert(users)
+    .values({
+      displayName: 'Lesson runner E2E learner',
+      timezone: 'UTC',
+      startDate: '2026-01-01',
+      prefs: { scheduleMinutes: 60 },
+    })
+    .returning({ id: users.id });
+  if (!user) throw new Error('Could not create lesson runner learner');
+  await db.insert(diagnosticRuns).values({
+    userId: user.id,
+    status: 'completed',
+    state: {},
+    startedAt: new Date(),
+    completedAt: new Date(),
   });
   await db.$client.end();
 });
@@ -119,13 +137,18 @@ async function nextProblemAndReload(
   assertWithinStepScroll = false,
 ) {
   const before = await currentRun(page, runConceptId);
-  const buttonName =
+  const pointPassed =
     before.points.find(
       (point: { id: string }) => point.id === before.lastAnsweredProblem?.knowledgePointId,
-    )?.status === 'passed'
-      ? 'Next step'
-      : 'Next problem';
-  const checkScroll = buttonName === 'Next step' || assertWithinStepScroll;
+    )?.status === 'passed';
+  const nextPointTitle = before.currentPoint?.title;
+  const buttonName = pointPassed
+    ? nextPointTitle
+      ? `Next: ${nextPointTitle}`
+      : 'Next step'
+    : 'Next problem';
+  const opensCheckpoint = buttonName.startsWith('Next: ');
+  const checkScroll = opensCheckpoint || buttonName === 'Next step' || assertWithinStepScroll;
   if (checkScroll) {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
@@ -139,7 +162,18 @@ async function nextProblemAndReload(
   const response = await responsePromise;
   const body = await response.json();
   expect(response.status()).toBe(200);
-  if (buttonName === 'Next step') {
+  if (opensCheckpoint) {
+    await expect(page.getByTestId('kp-checkpoint')).toBeVisible();
+    const continueButton = page.getByRole('button', {
+      name: `Continue to ${body.run.currentPoint.title}`,
+      exact: true,
+    });
+    await continueButton.click();
+    await expect(
+      page.getByRole('heading', { name: body.run.currentPoint.title, exact: true }),
+    ).toBeVisible();
+    await expect(page.getByTestId('lesson-problem')).toBeVisible();
+  } else if (buttonName === 'Next step') {
     await expect(
       page.getByRole('heading', { name: body.run.currentPoint.title, exact: true }),
     ).toBeVisible();
@@ -156,6 +190,133 @@ async function nextProblemAndReload(
   expect(await currentRun(page, runConceptId)).toEqual(body.run);
   return body.run;
 }
+
+async function actionButtonBox(page: Page, name: string) {
+  const button = page.getByRole('button', { name, exact: true });
+  await button.scrollIntoViewIfNeeded();
+  return button.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      x: rect.x + window.scrollX,
+      y: rect.y + window.scrollY,
+      height: rect.height,
+    };
+  });
+}
+
+async function passFirstKnowledgePoint(page: Page) {
+  const sessionId = await createSession(page);
+  const lesson = await page.evaluate(async () => {
+    const response = await fetch('/api/lessons/supervised-learning');
+    return response.json();
+  });
+  let run = await currentRun(page);
+  let actionBefore: { x: number; y: number; height: number } | undefined;
+  while (run.points[0].status !== 'passed') {
+    if (!run.pendingProblem) run = await nextProblemAndReload(page, conceptId, true);
+    if (run.points[0].streak === 1) {
+      actionBefore = await actionButtonBox(page, 'Submit answer');
+    }
+    run = await answerAndReload(page, true);
+  }
+  const nextTitle = run.currentPoint?.title;
+  if (!nextTitle) throw new Error('Expected a next knowledge point');
+  const actionAfter = await actionButtonBox(page, `Next: ${nextTitle}`);
+  if (actionBefore) {
+    expect(Math.abs(actionAfter.x - actionBefore.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(actionAfter.y - actionBefore.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(actionAfter.height - actionBefore.height)).toBeLessThanOrEqual(1);
+  }
+  return {
+    sessionId,
+    run,
+    firstTitle: lesson.knowledge_points[0].title as string,
+    nextTitle,
+  };
+}
+
+async function openFirstCheckpoint(page: Page) {
+  const run = await currentRun(page);
+  const nextTitle = run.currentPoint?.title;
+  if (!nextTitle) throw new Error('Expected a next knowledge point');
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/lessons/${conceptId}/run`) &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: `Next: ${nextTitle}`, exact: true }).click();
+  const response = await responsePromise;
+  expect(response.status()).toBe(200);
+  await expect(page.getByTestId('kp-checkpoint')).toBeVisible();
+  return response.json();
+}
+
+test('a passed knowledge point shows its XP checkpoint before the next step', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const { sessionId, run, firstTitle, nextTitle } = await passFirstKnowledgePoint(page);
+  expect(run.points[0].xpEarned).toBe(10);
+  await expect(page.getByText('Correct · +10 XP')).toBeVisible();
+  await expect(page.getByRole('button', { name: `Next: ${nextTitle}`, exact: true })).toBeVisible();
+
+  const advancedRun = await openFirstCheckpoint(page);
+  const session = await page.evaluate(async (id) => {
+    const response = await fetch(`/api/sessions/${id}`);
+    return response.json();
+  }, sessionId);
+  expect(session.xp.session).toBe(10);
+  expect(session.xp.today).toBe(10);
+  await expect(page.getByTestId('kp-checkpoint')).toContainText(`✓ ${firstTitle}`);
+  await expect(page.getByTestId('kp-checkpoint')).toContainText('+10 XP');
+  await expect(
+    page.getByText(`Today: ${session.xp.today} / ${session.xp.goal} XP`, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(`Knowledge point 1 of ${run.points.length} done`, { exact: true }),
+  ).toBeVisible();
+  const goalBar = page.getByRole('progressbar', { name: "Today's XP goal" });
+  await expect
+    .poll(async () => Number(await goalBar.getAttribute('aria-valuenow')))
+    .toBeGreaterThan(0);
+  expect(Number(await goalBar.getAttribute('aria-valuenow'))).toBeCloseTo(
+    (session.xp.today / session.xp.goal) * 100,
+  );
+  await page.waitForTimeout(750);
+  await page.screenshot({
+    path: `${checkpointScreenshotDir}/checkpoint-desktop.png`,
+    fullPage: true,
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({
+    path: `${checkpointScreenshotDir}/checkpoint-mobile.png`,
+    fullPage: true,
+  });
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.getByRole('button', { name: `Continue to ${nextTitle}`, exact: true }).click();
+  await expect(page.getByRole('heading', { name: nextTitle, exact: true })).toBeVisible();
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
+  expect(advancedRun.run.currentPoint.title).toBe(nextTitle);
+});
+
+test('stopping at a checkpoint resumes on the next knowledge point', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const { sessionId, nextTitle } = await passFirstKnowledgePoint(page);
+  await openFirstCheckpoint(page);
+  await page.getByRole('button', { name: 'Stop here', exact: true }).click();
+  await expect(page).toHaveURL('/');
+  const resume = page.getByRole('link', { name: 'Resume session', exact: true });
+  await expect(resume).toBeVisible();
+  await resume.click();
+  await expect(page).toHaveURL(new RegExp(`/session/${sessionId}$`));
+  await expect(page.getByRole('heading', { name: nextTitle, exact: true })).toBeVisible();
+  await expect(page.getByTestId('kp-checkpoint')).toHaveCount(0);
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
+  const resumedRun = await currentRun(page);
+  expect(resumedRun.currentPoint.title).toBe(nextTitle);
+  expect(resumedRun.pendingProblem).toBeTruthy();
+});
 
 test('passes every knowledge point and restores the exact problem and result after reloads', async ({
   page,
