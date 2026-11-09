@@ -330,9 +330,9 @@ exercises:
     prompt: "In the worked example, why is $\\partial L/\\partial w=2\\cdot1\\cdot3$?"
     options:
       - id: a
-        text: "Each operation scales the change received from the previous one."
+        text: "Each factor gives one node's output change per unit input change."
         correct: true
-        feedback: "The weight nudge is scaled by 3, then 1, then 2."
+        feedback: "The derivative for each node links its input change to its output change."
       - id: b
         text: "Each operation receives the original weight change independently."
         correct: false
@@ -370,7 +370,7 @@ exercises:
         text: "$2$, from keeping only the first rate."
         correct: false
         feedback: "The later rates also scale the nudge."
-    solution: "A path contribution is the product $2\\cdot4\\cdot3=24$, because each operation scales the preceding change."
+    solution: "A path contribution is $2\\cdot4\\cdot3=24$: each local derivative gives a node's output change per unit change in its input, and the chain rule multiplies them."
   - id: cgp-chain-template
     dimension: "math"
     type: "numeric"
