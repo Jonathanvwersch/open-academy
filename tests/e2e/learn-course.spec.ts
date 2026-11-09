@@ -454,20 +454,34 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   });
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  for (const [conceptId, title, knowledgePointTitle, screenshotName] of [
+  for (const [conceptId, title, knowledgePointTitle, screenshotName, expectedTexts] of [
     [
       'partial-derivatives',
       'Partial derivatives',
-      'Change one weight, hold the rest fixed',
+      'Move one input, hold the rest fixed',
       'pd-hold-fixed',
+      ['The question.', 'Compare cases.'],
     ],
-    ['backpropagation', 'Backpropagation', 'Compute one weight gradient backward', 'bp-by-hand'],
-    ['chain-rule', 'Chain rule', 'Rates along a chain multiply', 'cr-rates-multiply'],
+    [
+      'backpropagation',
+      'Backpropagation',
+      'Compute one weight gradient backward',
+      'bp-by-hand',
+      ['How it works.', 'This example shows'],
+    ],
+    [
+      'chain-rule',
+      'Chain rule',
+      'Rates along a chain multiply',
+      'cr-rates-multiply',
+      ['How it works.', 'This example shows'],
+    ],
     [
       'gradient-descent',
       'Gradient descent',
       'Update the house model opposite its gradient',
       'gd-downhill-update',
+      ['How it works.', 'This example shows'],
     ],
   ] as const) {
     await mockLessonReview(page, conceptId, title);
@@ -477,8 +491,9 @@ test('authored course-structure lessons render their diagrams', async ({ page })
       .locator('article')
       .filter({ has: page.getByRole('heading', { name: new RegExp(knowledgePointTitle) }) });
     await expect(knowledgePoint).toHaveCount(1);
-    await expect(knowledgePoint).toContainText('How it works.');
-    await expect(knowledgePoint).toContainText('This example shows');
+    for (const expectedText of expectedTexts) {
+      await expect(knowledgePoint).toContainText(expectedText);
+    }
     await expect(knowledgePoint.locator('.katex-error')).toHaveCount(0);
     await knowledgePoint.screenshot({
       path: `${mathLinesScreenshotDir}/${screenshotName}.png`,

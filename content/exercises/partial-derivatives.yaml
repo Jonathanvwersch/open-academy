@@ -28,9 +28,9 @@ exercises:
         }
       - {
           id: d,
-          text: "The mean of all input values across the examples in a training batch.",
+          text: "The average of all the input values at the current point.",
           correct: false,
-          feedback: "That is an input statistic rather than a rate of change.",
+          feedback: "An average of input values is a single number about the point, not a rate of change.",
         }
     solution: "A partial derivative measures a function's rate with respect to one input while holding the others fixed."
   - id: pd-compute-basics
@@ -39,66 +39,73 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "What does a partial formula for one weight give?"
+    prompt: "You have worked out the partial-derivative formula of a model's loss for one weight. What does that formula give you?"
     options:
       - {
           id: a,
-          text: "The weight value that makes every training error equal to zero.",
+          text: "The single weight value at which the model's prediction exactly matches the price.",
           correct: false,
-          feedback: "A derivative formula gives a slope, not a guaranteed zero-error weight.",
+          feedback: "A derivative formula gives a slope. It does not by itself pick out a weight that makes the error zero.",
         }
       - {
           id: b,
-          text: "The loss slope for one weight at any parameter setting.",
+          text: "The loss's slope for that weight, at any values of the model's weights you put in.",
           correct: true,
-          feedback: "The formula gives the loss slope for that parameter at any current setting.",
+          feedback: "The formula is a function of all the parameters: put in their values to get that weight's slope there.",
         }
       - {
           id: c,
-          text: "The prediction made by the model at its current setting.",
+          text: "The model's predicted price for the house at its current weights.",
           correct: false,
-          feedback: "A prediction is a forward-pass result, not a loss slope.",
+          feedback: "The prediction is the model's output, not a rate of change of the loss.",
         }
       - {
           id: d,
-          text: "The change in the target when the input feature changes.",
+          text: "How fast the house's sale price changes when the house's area changes.",
           correct: false,
-          feedback: "The target is fixed; the derivative concerns model loss.",
+          feedback: "The price and area are recorded data and stay fixed; the partial is about how the loss changes with a weight.",
         }
-    solution: "A partial formula gives the loss slope for one weight at any parameter setting."
+    solution: "A partial-derivative formula for one weight gives the loss's slope for that weight at any setting of the parameters: put in their values to get the slope there."
   - id: pd-many-inputs-basics
     dimension: conceptual
     type: mc
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "For squared loss $(\\hat y - y)^2$ with error $e = \\hat y - y$, what is the partial derivative with respect to the bias?"
+    prompt: "For one house, the error is $e$ = prediction minus price, and the loss is $e^2$. The bias $b$ is added to the prediction. What is the loss's partial derivative with respect to $b$?"
     options:
       - {
           id: a,
-          text: "$2e$, because the bias enters the prediction with multiplier 1",
+          text: "$2e$, because the bias adds to the prediction with multiplier $1$",
           correct: true,
-          feedback: "The bias changes prediction one-for-one, so the chain rule gives the loss partial $2e$.",
+          feedback: "Raising $b$ by $1$ raises $e$ by $1$, so the partial is $2e\\cdot1=2e$.",
         }
       - {
           id: b,
-          text: "$2e x_j$, because a weight partial includes its feature value",
+          text: "$2e$ times a feature value, because every partial includes a feature",
           correct: false,
-          feedback: "A weight partial includes its feature multiplier, while the bias multiplier is one.",
+          feedback: "A weight's partial includes the feature it multiplies. The bias multiplies no feature, so its multiplier is $1$.",
         }
       - {
           id: c,
-          text: "$e$, because the squared-loss derivative has no factor of 2",
+          text: "$e$, because the derivative of the squared loss has no factor of $2$",
           correct: false,
-          feedback: "Differentiating the square contributes a factor of two, giving $2e$ rather than $e$.",
+          feedback: "Differentiating $e\\cdot e$ with the product rule gives two equal terms, so there is a factor of $2$: $2e$, not $e$.",
         }
       - {
           id: d,
-          text: "$b$, because the bias setting itself is the loss's slope",
+          text: "$b$, because the bias's own value is the loss's slope",
           correct: false,
-          feedback: "The bias is a parameter value; its partial derivative is the loss's change with respect to it.",
+          feedback: "The bias's value is a setting, not a rate. Its partial is how fast the loss changes as $b$ moves.",
         }
-    solution: "Because $b$ enters $\\hat y=w\\cdot x+b$ with multiplier 1, the squared-loss partial is $\\partial L/\\partial b=2e$."
+    solution: |
+      Freeze the weights. The error changes one-for-one with the bias:
+
+      $$\frac{\partial e}{\partial b}=1$$
+
+      The product rule on $L=e\cdot e$ gives:
+
+      $$\frac{\partial L}{\partial b}=2e\cdot1=2e$$
   - id: pd-check-1
     dimension: math
     type: expression
@@ -700,3 +707,122 @@ exercises:
       $$\frac{\partial f}{\partial g} = 2 \cdot (-1) \cdot 4 = -8$$
 
       Raising the gain a little would lower the error, because the sensor currently reads short.
+  - id: pdp-freeze-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In step 2 of the worked example, why does the $2.25$ contribute $0$ to the slope in $y$?"
+    options:
+      - id: a
+        text: "With $x$ frozen at $1.5$, the $x^2$ term is the fixed number $2.25$, which does not change as $y$ moves."
+        correct: true
+        feedback: "A fixed number has derivative $0$, so only $2y^2$ contributes to the slope in $y$."
+      - id: b
+        text: "Holding $x$ fixed means setting $x$ to $0$, so the $x^2$ term vanishes from the function entirely."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Fixed does not mean zero: $x$ stays at $1.5$, which is why the term is $2.25$ rather than $0$."
+      - id: c
+        text: "Any squared term has derivative $0$ at a point, so $x^2$ adds nothing to either partial derivative."
+        correct: false
+        category: misapplied_technique
+        feedback: "Squared terms do have slopes: $x^2$ gives the $2x=3$ slope along $x$. It adds nothing only when $x$ is the frozen input."
+      - id: d
+        text: "Only the larger term of $f$ at $P$ affects the slope, and $2y^2$ is the larger one when $y$ equals $1$."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Size has nothing to do with it; in fact $2.25$ is larger than $2y^2=2$ at $P$. What matters is whether the term changes as $y$ moves."
+    solution: "With $x$ frozen at $1.5$, $x^2$ is the constant $2.25$. A constant does not change as $y$ moves, so its derivative is $0$."
+  - id: pdp-constant-factor-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In step 1 of the worked example, why does $x^2y$ give $2xy$ rather than $2x$?"
+    options:
+      - id: a
+        text: "$y$ is held fixed, so it is a constant factor that stays in place, like the $5$ in $5x^2$."
+        correct: true
+        feedback: "A constant factor carries through the derivative, so $x^2y$ becomes $2x\\cdot y$."
+      - id: b
+        text: "Both inputs are differentiated at once, and the two separate results are then multiplied together."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Only $x$ moves in $\\partial f/\\partial x$. Differentiating $y$ too would give $2x\\cdot1$, not $2xy$."
+      - id: c
+        text: "$y$ is set to $1$ while it is held fixed, and its letter is written back in at the very end."
+        correct: false
+        category: misunderstood_definition
+        feedback: "A held input keeps whatever value it has; it is not set to $1$. It simply behaves as a constant."
+      - id: d
+        text: "Every term of a partial derivative must contain both inputs, so a factor $y$ is added to complete it."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Terms can lose inputs: $5y$ gives $0$ in $x$ and $x^3$ gives $3x^2$. The $y$ stays only because it was a factor already."
+    solution: "With $y$ held fixed, $x^2y$ is a constant $y$ times $x^2$. The constant factor stays, so the partial in $x$ is $2x\\cdot y=2xy$."
+  - id: pdp-error-rate-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, why does the error $e$ change at rate $20$ per unit of $w_3$?"
+    options:
+      - id: a
+        text: "$w_3$ multiplies the house's age, $20$, and every other term in $e$ is frozen while $w_3$ moves."
+        correct: true
+        feedback: "Only the term $20w_3$ changes, and it changes by $20$ for each unit of $w_3$."
+      - id: b
+        text: "The error itself is $-20$, so every parameter changes the error at that same rate of $20$."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The error's value is $-20$, but its rate depends on the parameter: $12$ for $w_1$, $3$ for $w_2$, $1$ for $b$."
+      - id: c
+        text: "The current weight is $w_3=-1$, so the rate is the age multiplied by that weight and flipped in sign."
+        correct: false
+        category: math_error
+        feedback: "The current value of $w_3$ does not appear in the rate: $20w_3$ changes by $20$ per unit wherever $w_3$ starts."
+      - id: d
+        text: "Larger features always change the error faster, and age is the largest of the three features here."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Age does give the largest rate here, but the reason is that the rate equals the feature $w_3$ multiplies, $20$."
+    solution: "In $e=12w_1+3w_2+20w_3+b-330$, only $20w_3$ contains $w_3$. With the others frozen, $e$ changes by $20$ for each unit of $w_3$."
+  - id: pdp-bias-zero
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "For the lesson's house, the loss is $L=(12w_1+3w_2+20w_3+b-330)^2$. Keep the weights at $w_1=25$, $w_2=10$, $w_3=-1$. At which bias $b$ is $\\frac{\\partial L}{\\partial b}=0$?"
+    answer: 20
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: -20,
+          category: math_error,
+          feedback: "Check the sign: with these weights the error is $310+b-330=b-20$, which is zero when $b=20$.",
+        }
+      - {
+          answer: 0,
+          category: misunderstood_definition,
+          feedback: "At $b=0$ the partial is $2(-20)=-40$, not $0$. Set the error $b-20$ to zero instead.",
+        }
+    hints:
+      - "$\\frac{\\partial L}{\\partial b}=2e$, where $e=12w_1+3w_2+20w_3+b-330$."
+      - "With these weights, $e=310+b-330$. Set it to zero."
+    solution: |
+      The bias partial is twice the error:
+
+      $$\frac{\partial L}{\partial b}=2e$$
+
+      With these weights the error is:
+
+      $$e=310+b-330=b-20$$
+
+      It is zero when the prediction equals the price:
+
+      $$b=20$$
