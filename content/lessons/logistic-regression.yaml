@@ -204,9 +204,13 @@ knowledge_points:
 
       $$\frac{\partial L}{\partial p}=-\frac{y}{p}+\frac{1-y}{1-p}.$$
 
-      Next, differentiate the sigmoid and rewrite the result using $p=\sigma(z)$:
+      Next, differentiate $\sigma(z)=(1+e^{-z})^{-1}$ using the derivatives lesson's power and exponential rules, multiplying the inner slopes:
 
       $$\sigma'(z)=\frac{e^{-z}}{(1+e^{-z})^2}.$$
+      $$\sigma'(z)=\frac{1}{1+e^{-z}}\cdot\frac{e^{-z}}{1+e^{-z}}.$$
+
+      Since $e^{-z}/(1+e^{-z})=1-1/(1+e^{-z})$, rewrite using $p=\sigma(z)$:
+
       $$\sigma'(z)=\frac{1}{1+e^{-z}}\left(1-\frac{1}{1+e^{-z}}\right).$$
       $$\frac{\partial p}{\partial z}=\sigma(z)(1-\sigma(z))=p(1-p).$$
 
