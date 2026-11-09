@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { ExerciseSchema } from '../src/server/content/schemas.js';
+import { type Exercise, ExerciseSchema } from '../src/server/content/schemas.js';
 import {
   deriveLessonState,
   type LessonProblemRow,
@@ -28,6 +28,31 @@ function row(position: number, correct: number | null, kpId = 'kp', round = 1): 
     answeredAt: correct === null ? null : servedAt,
     correct,
   };
+}
+
+function numericExercise(id: string, difficulty: number, template = false) {
+  return ExerciseSchema.parse({
+    id,
+    dimension: 'math',
+    type: 'numeric',
+    role: 'practice',
+    difficulty,
+    est_minutes: 1,
+    prompt: template ? 'Template {{=x}}' : 'Fixed',
+    hints: [],
+    solution: 'Solution',
+    ...(template ? { answer_expr: 'x', params: { x: { min: 1, max: 5 } } } : { answer: 1 }),
+    tolerance: { abs: 0.001 },
+  });
+}
+
+function selectionRow(
+  exerciseId: string,
+  position: number,
+  correct: number | null = null,
+  seed: number | null = null,
+) {
+  return { exerciseId, position, correct, seed };
 }
 
 function derive(
@@ -134,36 +159,9 @@ test('last answered uses answer time, then authored point order, round and posit
   });
 });
 
-test('problem selection follows authored order, cycles templates with fresh seeds, and caps at five', () => {
-  const fixed = (id: string) =>
-    ExerciseSchema.parse({
-      id,
-      dimension: 'math',
-      type: 'numeric',
-      role: 'practice',
-      difficulty: 1,
-      est_minutes: 1,
-      prompt: 'Fixed',
-      hints: [],
-      solution: 'Fixed solution',
-      answer: 1,
-      tolerance: { abs: 0.001 },
-    });
-  const template = (id: string) =>
-    ExerciseSchema.parse({
-      id,
-      dimension: 'math',
-      type: 'numeric',
-      role: 'practice',
-      difficulty: 1,
-      est_minutes: 1,
-      prompt: 'Template {{=x}}',
-      hints: [],
-      solution: 'Template solution',
-      answer_expr: 'x',
-      params: { x: { min: 1, max: 5 } },
-      tolerance: { abs: 0.001 },
-    });
+test('problem selection keeps authored order for equal difficulty, cycles templates, and caps at five', () => {
+  const fixed = (id: string) => numericExercise(id, 1);
+  const template = (id: string) => numericExercise(id, 1, true);
   const basics = ExerciseSchema.parse({
     id: 'kp-basics',
     dimension: 'conceptual',
@@ -179,7 +177,7 @@ test('problem selection follows authored order, cycles templates with fresh seed
       { id: 'no', text: 'Another idea', correct: false, feedback: 'That describes another idea.' },
     ],
   });
-  const exercises = new Map([
+  const exercises = new Map<string, Exercise>([
     ['kp-basics', basics],
     ['fixed-a', fixed('fixed-a')],
     ['template-a', template('template-a')],
@@ -187,10 +185,10 @@ test('problem selection follows authored order, cycles templates with fresh seed
     ['template-b', template('template-b')],
   ]);
   const kp = point('kp', ['fixed-a', 'template-a', 'fixed-b', 'template-b']);
-  const served: Array<{ exerciseId: string; seed: number | null; position: number }> = [];
+  const served: Array<ReturnType<typeof selectionRow>> = [];
   const take = (seed: number) => {
     const selected = selectNextProblem(kp, exercises, served, seed);
-    if (selected) served.push(selected);
+    if (selected) served.push({ ...selected, correct: null });
     return selected;
   };
   expect(take(100)).toEqual({ exerciseId: 'kp-basics', seed: null, position: 1 });
@@ -209,11 +207,11 @@ test('problem selection follows authored order, cycles templates with fresh seed
     'fixed-b',
   ]);
 
-  const retryProblems: Array<{ exerciseId: string; seed: number | null; position: number }> = [];
+  const retryProblems: Array<ReturnType<typeof selectionRow>> = [];
   const usedSeeds = new Set([101, 103, 104]);
   const retryTake = (seed: number) => {
     const selected = selectNextProblem(kp, exercises, retryProblems, seed, usedSeeds);
-    if (selected) retryProblems.push(selected);
+    if (selected) retryProblems.push({ ...selected, correct: null });
     return selected;
   };
   expect(retryTake(101)).toEqual({ exerciseId: 'kp-basics', seed: null, position: 1 });
@@ -221,10 +219,10 @@ test('problem selection follows authored order, cycles templates with fresh seed
   expect(retryTake(101)).toEqual({ exerciseId: 'template-a', seed: 102, position: 3 });
 
   const fixedOnly = point('kp', ['fixed-a', 'fixed-b']);
-  const fixedOnlyRows: Array<{ exerciseId: string; seed: number | null; position: number }> = [];
+  const fixedOnlyRows: Array<ReturnType<typeof selectionRow>> = [];
   for (const seed of [200, 201, 202]) {
     const selected = selectNextProblem(fixedOnly, exercises, fixedOnlyRows, seed);
-    if (selected) fixedOnlyRows.push(selected);
+    if (selected) fixedOnlyRows.push({ ...selected, correct: null });
   }
   expect(fixedOnlyRows.map((problem) => problem.exerciseId)).toEqual([
     'kp-basics',
@@ -270,11 +268,12 @@ test('basics does not use one of the five problem slots', () => {
   ]);
   const kp = point('kp', ['a', 'b', 'c', 'd', 'e']);
   const fourNonBasics = [
-    { exerciseId: 'kp-basics', seed: null, position: 1 },
+    selectionRow('kp-basics', 1),
     ...['a', 'b', 'c', 'd'].map((exerciseId, index) => ({
       exerciseId,
       seed: null,
       position: index + 2,
+      correct: null,
     })),
   ];
   expect(selectNextProblem(kp, exercises, fourNonBasics, 10)).toEqual({
@@ -286,10 +285,149 @@ test('basics does not use one of the five problem slots', () => {
     selectNextProblem(
       kp,
       exercises,
-      [...fourNonBasics, { exerciseId: 'e', seed: null, position: 6 }],
+      [...fourNonBasics, { exerciseId: 'e', seed: null, position: 6, correct: null }],
       11,
     ),
   ).toBeUndefined();
+});
+
+test('a correct answer at difficulty one or two moves to the next higher level', () => {
+  const exercises = new Map<string, Exercise>([
+    ['d1', numericExercise('d1', 1)],
+    ['d2', numericExercise('d2', 2)],
+    ['d3', numericExercise('d3', 3)],
+  ]);
+  const kp = point('kp', ['d1', 'd2', 'd3']);
+
+  expect(selectNextProblem(kp, exercises, [selectionRow('d1', 1, 1)], 10)?.exerciseId).toBe('d2');
+  expect(selectNextProblem(kp, exercises, [selectionRow('d2', 1, 1)], 10)?.exerciseId).toBe('d3');
+});
+
+test('an unstarted knowledge point begins with its lowest difficulty', () => {
+  const exercises = new Map<string, Exercise>([
+    ['d1', numericExercise('d1', 1)],
+    ['d2', numericExercise('d2', 2)],
+    ['d3', numericExercise('d3', 3)],
+  ]);
+
+  expect(selectNextProblem(point('kp', ['d3', 'd2', 'd1']), exercises, [], 10)?.exerciseId).toBe(
+    'd1',
+  );
+});
+
+test('a wrong answer moves down, or repeats the same difficulty when there is no lower level', () => {
+  const exercises = new Map<string, Exercise>([
+    ['d1', numericExercise('d1', 1)],
+    ['d1-repeat', numericExercise('d1-repeat', 1)],
+    ['d2', numericExercise('d2', 2)],
+    ['d3', numericExercise('d3', 3)],
+  ]);
+
+  expect(
+    selectNextProblem(
+      point('kp', ['d1', 'd1-repeat', 'd2', 'd3']),
+      exercises,
+      [selectionRow('d2', 1, 0)],
+      10,
+    )?.exerciseId,
+  ).toBe('d1');
+  expect(
+    selectNextProblem(
+      point('kp', ['d1', 'd1-repeat', 'd2', 'd3']),
+      exercises,
+      [selectionRow('d1', 1, 0)],
+      10,
+    )?.exerciseId,
+  ).toBe('d1-repeat');
+});
+
+test('a correct answer at difficulty three repeats that level or falls back to the highest lower level', () => {
+  const exercises = new Map<string, Exercise>([
+    ['d1', numericExercise('d1', 1)],
+    ['d2', numericExercise('d2', 2)],
+    ['d3', numericExercise('d3', 3)],
+    ['d3-repeat', numericExercise('d3-repeat', 3)],
+  ]);
+
+  expect(
+    selectNextProblem(
+      point('kp', ['d3', 'd3-repeat', 'd2']),
+      exercises,
+      [selectionRow('d3', 1, 1)],
+      10,
+    )?.exerciseId,
+  ).toBe('d3-repeat');
+  expect(
+    selectNextProblem(point('kp', ['d3', 'd1', 'd2']), exercises, [selectionRow('d3', 1, 1)], 10)
+      ?.exerciseId,
+  ).toBe('d2');
+});
+
+test('difficulty ties keep authored order', () => {
+  const exercises = new Map<string, Exercise>([
+    ['d1', numericExercise('d1', 1)],
+    ['d2-later', numericExercise('d2-later', 2)],
+    ['d2-earlier', numericExercise('d2-earlier', 2)],
+  ]);
+
+  expect(
+    selectNextProblem(
+      point('kp', ['d1', 'd2-later', 'd2-earlier']),
+      exercises,
+      [selectionRow('d1', 1, 1)],
+      10,
+    )?.exerciseId,
+  ).toBe('d2-later');
+});
+
+test('an unserved basics problem takes priority over authored non-basics problems', () => {
+  const basics = ExerciseSchema.parse({
+    id: 'kp-basics',
+    dimension: 'conceptual',
+    type: 'mc',
+    role: 'basics',
+    difficulty: 1,
+    est_minutes: 1,
+    prompt: 'What is the idea?',
+    hints: [],
+    solution: 'The idea is defined.',
+    options: [
+      { id: 'yes', text: 'The idea', correct: true, feedback: 'This matches the definition.' },
+      { id: 'no', text: 'Another idea', correct: false, feedback: 'That describes another idea.' },
+    ],
+  });
+  const exercises = new Map<string, Exercise>([
+    ['non-basics', numericExercise('non-basics', 1)],
+    ['kp-basics', basics],
+  ]);
+
+  expect(
+    selectNextProblem({ problems: ['non-basics', 'kp-basics'] }, exercises, [], 10),
+  ).toMatchObject({ exerciseId: 'kp-basics', seed: null, position: 1 });
+});
+
+test('template fallback follows difficulty and favors the least-served tied template', () => {
+  const exercises = new Map<string, Exercise>([
+    ['template-d1', numericExercise('template-d1', 1, true)],
+    ['template-d2-first', numericExercise('template-d2-first', 2, true)],
+    ['template-d2-second', numericExercise('template-d2-second', 2, true)],
+  ]);
+  const roundProblems = [
+    selectionRow('template-d2-first', 1, null, 101),
+    selectionRow('template-d2-first', 2, null, 102),
+    selectionRow('template-d2-second', 3, null, 103),
+    selectionRow('template-d1', 4, 1, 104),
+  ];
+
+  expect(
+    selectNextProblem(
+      point('kp', ['template-d1', 'template-d2-first', 'template-d2-second']),
+      exercises,
+      roundProblems,
+      100,
+      new Set([100]),
+    ),
+  ).toEqual({ exerciseId: 'template-d2-second', seed: 105, position: 5 });
 });
 
 test('retry uses only the latest round and resumes the failed knowledge point', () => {
