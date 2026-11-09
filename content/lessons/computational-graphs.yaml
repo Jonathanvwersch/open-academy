@@ -1,130 +1,226 @@
 concept: computational-graphs
-version: 3
+version: 4
 objective: |
-  **Goal:** represent a house-network calculation as operations and use local derivatives to trace its loss.
+  **Goal:** draw a calculation as a graph of simple operations, find each operation's local derivative, and multiply along paths back from the output to find its derivative with respect to any input.
 where_this_fits: |
-  The chain rule multiplied local derivatives along each route from a house feature to the price loss. An MLP can contain many repeated operations and routes, so it helps to make the calculation explicit. A computational graph records each value and shows which later operation uses it.
+  Training a model needs the loss's derivative with respect to every weight. The chain rule handles a chain written by hand, but a model's calculation can have many steps, values reused in several places and many inputs. Writing every chain by hand is slow and error-prone. A computational graph lays out the calculation so finding derivatives becomes mechanical:
+
+  1. Draw each simple operation and the values it uses.
+  2. Find each operation's local derivatives.
+  3. Multiply derivatives along each path and add the path contributions.
+
+  Backpropagation, the next lesson, runs this process efficiently for every weight.
 knowledge_points:
   - id: cg-drawing-graphs
-    title: Break the house calculation into operation nodes
+    title: Break a calculation into simple operations
     explain: |
-      **What a computational graph is.** It is a directed diagram of values and operations, with an arrow from each input value to the operation that uses it.
+      **The question.** A formula can hide the order of its steps and the values in between. How do you lay out a calculation so each step is visible?
 
-      **How it works.** For the running house:
+      **Picture it.** Use a small calculation: add two numbers, then multiply their sum by a third. The output is $f=(x+y)\cdot z$, with inputs $x=1$, $y=2$, $z=4$. The circles marked $+$ and $\times$ are operations; their blue labels name the results.
 
-      $$z=0.1(12)=1.2.$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 370" aria-label="Inputs x and y feed addition q; q and z feed multiplication f">
+      <defs><marker id="cg1-grey" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="cg1-green" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker></defs>
+      <path d="M75.98 66.62 L224.02 113.38" stroke="#737373" stroke-width="2" marker-end="url(#cg1-grey)"/>
+      <path d="M75.98 173.38 L224.02 126.62" stroke="#737373" stroke-width="2" marker-end="url(#cg1-grey)"/>
+      <path d="M265.87 126.96 L464.13 193.04" stroke="#737373" stroke-width="2" marker-end="url(#cg1-grey)"/>
+      <path d="M265.87 273.04 L464.13 206.96" stroke="#737373" stroke-width="2" marker-end="url(#cg1-grey)"/>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717" text-anchor="middle">
+      <circle cx="55" cy="60" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="55" y="65" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">x</text><text x="55" y="106" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1</text>
+      <circle cx="55" cy="180" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="55" y="185" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">y</text><text x="55" y="226" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">2</text>
+      <circle cx="245" cy="120" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="245" y="125" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+</text><text x="245" y="166" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">q = 3</text>
+      <circle cx="245" cy="280" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="245" y="285" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">z</text><text x="245" y="326" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">4</text>
+      <circle cx="485" cy="200" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="485" y="205" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">×</text><text x="485" y="246" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">f = 12</text>
+      <text x="245" y="25" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">q = x + y</text>
+      <text x="485" y="95" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">f = q · z</text>
+      </g>
+      </svg>
+      ```
 
-      The maximum operation gives:
+      Follow the grey arrows: $x$ and $y$ feed addition, producing the intermediate value $q=3$. That value and $z$ feed multiplication, producing $f=12$. Blue numbers are forward values, not derivatives. You cannot compute $f$ until you know $q$.
 
-      $$h=\max(0,z)=1.2.$$
+      **The idea.** Make each small operation visible. A **computational graph** is a diagram with one node per input and per simple operation, such as addition, multiplication or squaring. An arrow connects each value to every operation that uses it; arrows point forward, with no loops. Computing each node in arrow order is the **forward pass**. An operation node also represents the value it produces: $q$ names the addition's output, not an extra operation.
 
-      It is zero for a negative score, otherwise the score. The predicted price and loss are:
-
-      $$
-      \begin{aligned}
-      \hat y &= 15h+306.5=324.5,\\
-      L &= (\hat y-330)^2=30.25.
-      \end{aligned}
-      $$
-
-      Draw one node for each multiply, maximum, add and square; arrows show the order of dependence. Separate operation nodes make each local derivative simple to calculate.
-
-      **Why this is useful.** A graph makes every dependency in the house-price calculation visible before computing its gradients.
+      **Common confusion.** “If a value is used twice, I draw it twice.” No: draw one node with two outgoing arrows. For $(x+y)\cdot(y+z)$, the tiny dependency sketch $y\to(x+y)$ and $y\to(y+z)$ has the same $y$ feeding both additions. Keeping that shared input visible will later tell you to include both paths.
     worked: |
-      This example shows the calculation.
-      $$a=12\longrightarrow z=0.1a=1.2\longrightarrow h=\max(0,z)=1.2\longrightarrow\hat y=15h+306.5=324.5\longrightarrow L=(\hat y-330)^2=30.25.$$
+      **Worked example.** A model multiplies an input $x$ by a weight $w$ and compares the result with a target value $t$. Its squared error is $L=(w\cdot x-t)^2$, with $w=2$, $x=3$, $t=5$.
+
+      1. **List the operations.**
+         $$p=w\cdot x.$$
+         $$e=p-t.$$
+         $$L=e^2.$$
+
+      2. **Order them.**
+         $$w,x\longrightarrow p;\qquad p,t\longrightarrow e;\qquad e\longrightarrow L.$$
+
+      3. **Compute each node.**
+         $$p=2\cdot3=6.$$
+         $$e=6-5=1.$$
+         $$L=1^2=1.$$
+
+      **Compare cases.**
+
+      | Expression | Operation nodes | Inputs used more than once |
+      | --- | --- | --- |
+      | $x+y$ | 1 | None |
+      | $(x+y)\cdot z$ | 2 | None |
+      | $(x+y)^2$ | 2 | None |
+      | $(x+y)\cdot(y+z)$ | 3 | $y$ |
+
+      **Where it shows up.** A model's prediction and loss form just such a graph of multiplies, adds and squares.
     problems:
-      [
-        cg-drawing-graphs-basics,
-        cgp-steps-for-expression,
-        cgp-arrow-meaning,
-        cgp-why-order,
-        cgp-node-count,
-        cgp-forward-value,
-        cgp-shared-input,
-        cgp-backwards-weight,
-      ]
+      - cg-drawing-graphs-basics
+      - cgp-why-order
+      - cgp-arrow-meaning
+      - cgp-node-count
+      - cgp-forward-template
+      - cgp-shared-input
+      - cgp-robot-forward
   - id: cg-local-derivatives
-    title: Each graph operation has a local derivative
+    title: Each operation has its own small derivative
     explain: |
-      **What a local derivative is.** It is the rate at one operation's output with respect to one of its inputs, holding the other inputs fixed.
+      **The question.** To see how the output changes with an input, must you differentiate the whole formula at once? Or can you start with one operation at a time?
 
-      **How it works.** In the house graph:
+      **Picture it.** Return to $f=(x+y)\cdot z$ at $x=1$, $y=2$, $z=4$. Blue labels show the forward values; amber labels show how each operation's output responds to one input.
 
-      $$d(0.1a)/da=0.1.$$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 370" aria-label="Inputs x and y feed addition q; q and z feed multiplication f">
+      <defs><marker id="cg2-grey" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="cg2-green" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker></defs>
+      <path d="M75.98 66.62 L224.02 113.38" stroke="#737373" stroke-width="2" marker-end="url(#cg2-grey)"/>
+      <path d="M75.98 173.38 L224.02 126.62" stroke="#737373" stroke-width="2" marker-end="url(#cg2-grey)"/>
+      <path d="M265.87 126.96 L464.13 193.04" stroke="#737373" stroke-width="2" marker-end="url(#cg2-grey)"/>
+      <path d="M265.87 273.04 L464.13 206.96" stroke="#737373" stroke-width="2" marker-end="url(#cg2-grey)"/>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717" text-anchor="middle">
+      <circle cx="55" cy="60" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="55" y="65" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">x</text><text x="55" y="106" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1</text>
+      <circle cx="55" cy="180" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="55" y="185" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">y</text><text x="55" y="226" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">2</text>
+      <circle cx="245" cy="120" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="245" y="125" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+</text><text x="245" y="166" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">q = 3</text>
+      <circle cx="245" cy="280" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="245" y="285" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">z</text><text x="245" y="326" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">4</text>
+      <circle cx="485" cy="200" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="485" y="205" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">×</text><text x="485" y="246" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">f = 12</text>
+      <text x="148" y="55" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂q/∂x = 1</text>
+      <text x="148" y="215" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂q/∂y = 1</text>
+      <text x="390" y="108" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂f/∂q = z = 4</text>
+      <text x="397" y="298" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂f/∂z = q = 3</text>
+      </g>
+      </svg>
+      ```
 
-      The maximum operation has slope 1 for this positive score. The output multiply has derivative:
+      Addition passes a small change in either input straight through to $q$, giving rate 1. Multiplication scales a change in $q$ by $z=4$, or a change in $z$ by $q=3$. Each amber label concerns only the operation at that arrow's end.
 
-      $$d(15h+306.5)/dh=15.$$
+      **The idea.** Differentiate one small operation at a time. A **local derivative** is the derivative of one node's output with respect to one of its own inputs, holding that node's other inputs fixed. In $\partial q/\partial x$, the top names the output and the bottom names the input being changed.
 
-      The squared loss has derivative:
+      For addition $a+b$, both local derivatives are 1. For multiplication $a\cdot b$, the derivative with respect to $a$ is $b$, and with respect to $b$ is $a$. For subtraction $a-b$, they are 1 and $-1$, respectively. For squaring $u^2$, the derivative is $2u$. Some rules need the forward values: here $\partial f/\partial q=z=4$.
 
-      $$d(\hat y-330)^2/d\hat y=2(\hat y-330)=-11.$$
-
-      These are small rules attached to their operation nodes. The forward values provide the current error $\hat y-330$ needed to differentiate the square.
-
-      **Why this is useful.** Local derivatives reduce a large house-network gradient calculation to familiar rules for each operation.
+      **Common confusion.** “The local derivative at $x$ tells me how $f$ changes with $x$.” No: $\partial q/\partial x=1$ only describes $q$. The full derivative $\partial f/\partial x$ is 4; the next point combines the local rates to find it.
     worked: |
-      This example shows the calculation.
-      At $\hat y=324.5$, the last operation gives:
+      **Worked example.** Use the same squared error $L=(w\cdot x-t)^2$ at $w=2$, $x=3$, $t=5$. The forward pass gave $p=6$, $e=1$, $L=1$.
 
-      $$dL/d\hat y=2(324.5-330)=-11.$$
+      1. **Differentiate the multiplication.**
+         $$\frac{\partial p}{\partial w}=x=3.$$
+         $$\frac{\partial p}{\partial x}=w=2.$$
 
-      The output multiply gives:
+      2. **Differentiate the subtraction.**
+         $$\frac{\partial e}{\partial p}=1.$$
+         $$\frac{\partial e}{\partial t}=-1.$$
 
-      $$d\hat y/dh=15.$$
+      3. **Differentiate the square.**
+         $$\frac{\partial L}{\partial e}=2e=2.$$
+
+      4. **Check one local rate with a nudge.** Hold $x=3$ fixed and increase $w$ from 2 to 2.01.
+         $$p_{\text{new}}=2.01\cdot3=6.03.$$
+         $$p_{\text{new}}-p=0.03=0.01\cdot3.$$
+
+      **Compare cases.**
+
+      | Operation | Local derivative rule | Value in this example |
+      | --- | --- | --- |
+      | $p=w\cdot x$ | $\partial p/\partial w=x$ | 3 |
+      | $p=w\cdot x$ | $\partial p/\partial x=w$ | 2 |
+      | $e=p-t$ | $\partial e/\partial p=1$ | 1 |
+      | $e=p-t$ | $\partial e/\partial t=-1$ | $-1$ |
+      | $L=e^2$ | $\partial L/\partial e=2e$ | 2 |
+
+      **Where it shows up.** A loss built from these operations needs only this short list of local rules, even when its graph is large.
     problems:
-      [
-        cg-local-derivatives-basics,
-        cgp-multiply-local,
-        cgp-multiply-nudge,
-        cgp-square-local,
-        cgp-why-store-values,
-        cgp-subtract-local,
-        cgp-square-nudge,
-        cgp-max-node,
-      ]
+      - cg-local-derivatives-basics
+      - cgp-why-store-values
+      - cgp-add-local
+      - cgp-multiply-template
+      - cgp-local-not-total
+      - cgp-square-template
+      - cgp-robot-subtract
   - id: cg-chaining-paths
-    title: Multiply derivatives backward along a path
+    title: Multiply along paths, add where they meet
     explain: |
-      **What a backward path is.** It follows the graph from the final loss toward an earlier input, multiplying the local derivatives along the way.
+      **The question.** You now know each operation's local rates. How do you combine them to find the output's derivative with respect to an early input, especially one used twice?
 
-      **How it works.** From loss back to area weight $w$, the factors are:
+      **Picture it.** Let the output $g$ multiply two sums: $g=(x+y)\cdot(y+z)$. At $x=1$, $y=2$, $z=4$, the sums are $a=3$ and $b=6$, so $g=18$. Green highlights the two paths carrying a change in $y$ towards $g$; blue still marks forward values.
 
-      $$
-      \begin{aligned}
-      dL/d\hat y &= -11,\\
-      d\hat y/dh &= 15,\\
-      dh/dz &= 1,\\
-      dz/dw &= 12.
-      \end{aligned}
-      $$
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 410" aria-label="Two paths from y through a equals x plus y and b equals y plus z to g equals a times b">
+      <defs><marker id="cg3-grey" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="cg3-green" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker></defs>
+      <path d="M76.42 60.04 L203.58 89.96" stroke="#737373" stroke-width="2" marker-end="url(#cg3-grey)"/>
+      <path d="M75.34 156.62 L204.66 103.38" stroke="#10b981" stroke-width="2" marker-end="url(#cg3-green)"/>
+      <path d="M75.34 173.38 L204.66 226.62" stroke="#10b981" stroke-width="2" marker-end="url(#cg3-green)"/>
+      <path d="M76.42 269.96 L203.58 240.04" stroke="#737373" stroke-width="2" marker-end="url(#cg3-grey)"/>
+      <path d="M246.05 101.41 L433.95 158.59" stroke="#10b981" stroke-width="2" marker-end="url(#cg3-green)"/>
+      <path d="M246.05 228.59 L433.95 171.41" stroke="#10b981" stroke-width="2" marker-end="url(#cg3-green)"/>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717" text-anchor="middle">
+      <circle cx="55" cy="55" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="55" y="60" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">x</text><text x="55" y="101" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1</text>
+      <circle cx="55" cy="165" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="55" y="170" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">y</text><text x="55" y="211" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">2</text>
+      <circle cx="55" cy="275" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="55" y="280" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">z</text><text x="55" y="321" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">4</text>
+      <circle cx="225" cy="95" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="225" y="100" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+</text><text x="225" y="141" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">a = 3</text>
+      <circle cx="225" cy="235" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="225" y="240" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+</text><text x="225" y="281" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">b = 6</text>
+      <circle cx="455" cy="165" r="22" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="455" y="170" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">×</text><text x="455" y="211" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">g = 18</text>
+      <text x="395" y="65" fill="#10b981" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">via a: 6 × 1 = 6</text>
+      <text x="395" y="280" fill="#10b981" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">via b: 3 × 1 = 3</text>
+      <text x="320" y="375" fill="#10b981" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂g/∂y = 6 + 3 = 9</text>
+      </g>
+      </svg>
+      ```
 
-      Their product is:
+      Via $a$, the path contributes $\partial g/\partial a\cdot\partial a/\partial y=6\cdot1=6$. Via $b$, it contributes $\partial g/\partial b\cdot\partial b/\partial y=3\cdot1=3$. Both move the same output, so the total is 9.
 
-      $$dL/dw=(-11)(15)(1)(12)=-1980.$$
+      **The idea.** Multiply rates along each route, then add the routes. On a **computational graph**, the derivative of the output with respect to any value is the sum, over every path from that value to the output, of the product of local derivatives along that path. This is the chain rule from the previous lesson: multiplying rates along a chain and adding routes. You can trace back from the output to collect those same factors; the graph's arrows still point forward.
 
-      If a value feeds two later paths, add their contributions. The derivative at the weight is the loss slope needed to update that parameter.
-
-      **Why this is useful.** The graph organizes the route from each house-network weight to the prediction loss.
+      **Common confusion.** “If a value feeds two operations, I just follow one path.” No: each path is a separate way it moves the output. One path gives 6 or 3, not 9. Differentiating the expanded expression checks that both contributions are needed:
+      $$\frac{\partial g}{\partial y}=(y+z)+(x+y)=6+3=9.$$
     worked: |
-      This example shows the calculation.
-      $$\frac{dL}{dw}=\frac{dL}{d\hat y}\frac{d\hat y}{dh}\frac{dh}{dz}\frac{dz}{dw}=(-11)(15)(1)(12)=-1980.$$
+      **Worked example.** Return to the squared error $L=(w\cdot x-t)^2$ at $w=2$, $x=3$, $t=5$. With $p=w\cdot x=6$ and $e=p-t=1$, find the loss rate for each input.
+
+      1. **Trace back to the weight.**
+         $$\frac{\partial L}{\partial w}=\frac{\partial L}{\partial e}\cdot\frac{\partial e}{\partial p}\cdot\frac{\partial p}{\partial w}.$$
+         $$\frac{\partial L}{\partial w}=2\cdot1\cdot3=6.$$
+
+      2. **Trace back to the input.**
+         $$\frac{\partial L}{\partial x}=2\cdot1\cdot2=4.$$
+
+      3. **Check the weight rate with a nudge.**
+         $$L_{\text{new}}=(2.01\cdot3-5)^2=1.0609.$$
+         $$L_{\text{new}}-L=0.0609\approx0.01\cdot6=0.06.$$
+
+      The derivative predicts the change for a small nudge, not an exact finite change.
+
+      **Compare cases.** For the two-sum graph $g=(x+y)\cdot(y+z)$ pictured above:
+
+      | Input | Paths to $g$ | Products | Output derivative |
+      | --- | --- | --- | --- |
+      | $x$ | 1 | $6\cdot1$ | $\partial g/\partial x=6$ |
+      | $y$ | 2 | $6\cdot1$ and $3\cdot1$ | $\partial g/\partial y=9$ |
+      | $z$ | 1 | $3\cdot1$ | $\partial g/\partial z=3$ |
+
+      **Where it shows up.** Training needs $\partial L/\partial w$ for every weight, and multiplying local derivatives backward through the graph gives these rates. Backpropagation does this efficiently.
     problems:
-      [
-        cg-chaining-paths-basics,
-        cgp-path-product,
-        cgp-why-multiply-path,
-        cgp-chain-template,
-        cgp-one-path-only,
-        cgp-used-twice,
-        cgp-robot-error,
-        cgp-dead-path,
-      ]
+      - cg-chaining-paths-basics
+      - cgp-why-multiply-path
+      - cgp-path-product
+      - cgp-chain-template
+      - cgp-one-path-only
+      - cgp-shared-template
+      - cgp-robot-error
 final: cg-explain
 summary: |
-  - A computational graph records each operation and the values it depends on.
-  - Local derivatives attach a simple slope to each operation.
-  - Multiplying along paths and adding shared routes gives the loss slope for a house-network parameter.
+  - I can draw each simple operation as a node and compute its value in arrow order.
+  - I can find one operation's local derivative while holding its other inputs fixed.
+  - I can multiply local derivatives along every path and add the path contributions.
 
-  **Next:** Backpropagation applies these graph calculations efficiently to every network weight.
+  **Next:** Backpropagation organises these calculations efficiently for every model weight.
