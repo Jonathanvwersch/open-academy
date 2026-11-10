@@ -257,6 +257,7 @@ test('practice answers expose selected options and reveal correct ids only after
     retryAllowed: true,
     answerOptions: { selected: [wrongIds[0]] },
   });
+  expect(firstResult).not.toHaveProperty('solution');
   expect(firstResult.answerOptions).not.toHaveProperty('correct');
 
   const final = await submit(wrongIds[1] ?? '');
@@ -271,6 +272,61 @@ test('practice answers expose selected options and reveal correct ids only after
   });
   const payload = await sessionResponse.json();
   expect(payload.activities[0].lastAttempt.answerOptions).toEqual(finalResult.answerOptions);
+});
+
+test('a correct practice answer returns its solution when no retry is pending', async () => {
+  await resetLearner();
+  const exercise = content.exercisesById.get('vectors-magnitude');
+  if (exercise?.type !== 'numeric' || !('answer' in exercise) || !exercise.solution) {
+    throw new Error('Expected a numeric practice exercise with a solution');
+  }
+
+  const response = await app.request('/api/attempts', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({
+      exerciseId: exercise.id,
+      answer: exercise.answer,
+      mode: 'practice',
+    }),
+  });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({
+    correct: 1,
+    retryAllowed: false,
+    solution: exercise.solution,
+  });
+});
+
+test('a correct diagnostic answer returns the solution', async () => {
+  await resetLearner();
+  const runResponse = await app.request('/api/diagnostic', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({}),
+  });
+  expect(runResponse.status).toBe(201);
+  const run = await runResponse.json();
+  const nextResponse = await app.request(`/api/diagnostic/${run.id}/next`, {
+    headers: headersAt(now),
+  });
+  const next = await nextResponse.json();
+  const exercise = content.exercisesById.get(next.exercise.id);
+  if (!exercise?.solution) throw new Error('Expected a diagnostic exercise with a solution');
+
+  const response = await app.request(`/api/diagnostic/${run.id}/answer`, {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({
+      exerciseId: exercise.id,
+      answer: correctAnswer(exercise.id, null),
+    }),
+  });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({
+    correct: 1,
+    solution: exercise.solution,
+  });
 });
 
 test('debug answer option ids identify the selected and correct line and fix', () => {

@@ -582,7 +582,7 @@ test('passes every knowledge point and restores the exact problem and result aft
   ).toBeVisible();
 });
 
-test('shows a correct lesson-run solution inline when no feedback exists', async ({ page }) => {
+test('shows a correct lesson-run solution without repeating generic feedback', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const db = createDb(env.TEST_DATABASE_URL);
   const [learner] = await db.select({ id: users.id }).from(users).limit(1);
@@ -628,6 +628,8 @@ test('shows a correct lesson-run solution inline when no feedback exists', async
 
   const status = page.getByRole('status');
   await expect(status).toContainText('Correct');
+  await expect(status.getByText('Correct', { exact: true })).toHaveCount(1);
+  await expect(status.getByText('Correct.', { exact: true })).toHaveCount(0);
   await expect(status).toContainText('1 + 1 = 2.');
   await expect(page.getByText('Solution', { exact: true })).toHaveCount(0);
   await page.screenshot({
