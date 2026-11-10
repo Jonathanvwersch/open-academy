@@ -32,20 +32,24 @@ test.describe('Probability basics real-content rendering', () => {
     await expect(page.getByRole('heading', { name: 'Probability basics' })).toBeVisible();
 
     const titles = [
-      'Events and probabilities',
-      'Random variables and distributions',
-      'Expected value',
-      'Conditional probability',
+      'Measure how likely something is',
+      'List the chance of each possible number',
+      'Average the results over many tries',
+      'Update a chance with new information',
+    ];
+    const firstHeadings = [
+      'Six faces of a die',
+      'A number decided by chance',
+      'Averaging many spins',
+      'Ruling out faces',
     ];
     const points = page.locator('article');
     await expect(points).toHaveCount(titles.length);
     for (const [index, title] of titles.entries()) {
       const point = points.nth(index);
       await expect(point).toContainText(title);
-      await expect(point).toContainText('The question.');
-      await expect(point).toContainText('Common confusion.');
-      await expect(point).toContainText('Compare cases.');
-      await expect(point).toContainText('Where it shows up.');
+      await expect(point.getByRole('heading', { name: firstHeadings[index] })).toBeVisible();
+      await expect(point).toContainText('Be careful');
       await expect(point.getByRole('img')).toHaveCount(1);
       await expect(point.locator('.katex-error')).toHaveCount(0);
       await point.screenshot({
@@ -145,7 +149,7 @@ test.describe('Probability basics real-content rendering', () => {
       .toBe('pb-frequency-fixed');
 
     await expect(page.getByTestId('lesson-problem-prompt')).toContainText(
-      'What is the frequency-based probability estimate',
+      'Use the fraction of these sales to estimate the probability that a sale was above asking.',
     );
     await page.getByLabel('Your answer').fill('0.6');
     const calculationResponse = page.waitForResponse(
