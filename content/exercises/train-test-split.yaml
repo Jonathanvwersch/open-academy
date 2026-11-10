@@ -10,7 +10,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "To estimate how well the model does on data it was never fitted or tuned on",
+          text: "To estimate how well the model does on houses it was never trained on",
           correct: true,
           feedback: "The held-out score estimates how well the model predicts data excluded from fitting and choices.",
         }
@@ -619,7 +619,7 @@ exercises:
       |---|---:|---:|
       | Size | 620 | not run |
       | Size and bedrooms | 460 | 480 |
-      | Size, bedrooms and location | 510 | not run |
+      | Size, bedrooms and 12 more details | 510 | not run |
 
       Which version should you select based on these results?
     options:
@@ -637,7 +637,7 @@ exercises:
         }
       - {
           id: c,
-          text: "Size, bedrooms and location, because more inputs should fit better",
+          text: "Size, bedrooms and 12 more details, because more inputs should fit better",
           correct: false,
           category: incorrect_reasoning,
           feedback: "More inputs do not guarantee better performance; this version's validation error is higher.",
@@ -1060,7 +1060,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "In the worked example, why does training error rank the memoriser first while test error ranks the weights model first?"
+    prompt: "In the worked example, why does training error rank the memoriser first while test error ranks the line model first?"
     options:
       - id: a
         text: "The memoriser stores the training prices, so only the test houses show how it handles houses it hasn't stored."
@@ -1070,7 +1070,7 @@ exercises:
         text: "The test houses are more expensive, so every model's squared errors are bound to be larger on them."
         correct: false
         category: incorrect_reasoning
-        feedback: "The weights model's test errors stay at 20; the memoriser's grow because it can only copy stored prices."
+        feedback: "The line model's test errors stay at 20; the memoriser's grow because it can only copy stored prices."
       - id: c
         text: "Test error uses a different loss from training error, so the two rankings are not comparable at all."
         correct: false
@@ -1080,8 +1080,8 @@ exercises:
         text: "Two test houses are too few to average, so the test ranking is a rounding effect and can be ignored."
         correct: false
         category: incorrect_reasoning
-        feedback: "Two houses keep the picture small, but the memoriser's misses of 40 and 50 are real errors on unseen houses."
-    solution: "The memoriser is exact on training houses only because it stored their prices. The test houses were never stored, so they reveal that it prices new houses badly, while the weights model stays within 20."
+        feedback: "Two houses keep the picture small, but the memoriser's misses of 40 are real errors on unseen houses."
+    solution: "The memoriser is exact on training houses only because it stored their prices. The test houses were never stored, so they reveal that it prices new houses badly, while the line model stays within 20."
   - id: ttsp-splits-self-explain
     dimension: conceptual
     type: mc
@@ -1119,14 +1119,14 @@ exercises:
     prompt: "In the worked example, why is size and bedrooms chosen even though the model with 14 inputs has the lowest training error, 280?"
     options:
       - id: a
-        text: "No validation sale was used to fit any weights, so the lowest validation error, 470, shows which does best on unseen houses."
+        text: "No validation sale was used to fit any weights, so the lowest validation error, 460, shows which does best on unseen houses."
         correct: true
         feedback: "Validation error compares the settings on houses none of them was fitted to."
       - id: b
         text: "Models with fewer inputs are always better, so the simpler model would be chosen whatever the errors were."
         correct: false
         category: incorrect_reasoning
-        feedback: "Size only has fewer inputs still but a higher validation error, 640; the choice follows the validation errors."
+        feedback: "Size only has fewer inputs still but a higher validation error, 620; the choice follows the validation errors."
       - id: c
         text: "Size and bedrooms had the lowest test error of the three, and the test set decides between settings."
         correct: false
@@ -1137,7 +1137,7 @@ exercises:
         correct: false
         category: incorrect_reasoning
         feedback: "A low training error is expected when more inputs let the weights fit those particular houses closely."
-    solution: "The 14 inputs let the weights fit the training houses closely, which lowers training error without helping on new houses. Validation sales were not used for fitting, so their errors, 640, 470 and 530, pick size and bedrooms."
+    solution: "The 14 inputs let the weights fit the training houses closely, which lowers training error without helping on new houses. Validation sales were not used for fitting, so their errors, 620, 460 and 510, pick size and bedrooms."
   - id: ttsp-leakage-self-explain
     dimension: conceptual
     type: mc

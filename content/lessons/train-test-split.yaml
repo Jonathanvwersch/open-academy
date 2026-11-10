@@ -1,94 +1,102 @@
 concept: train-test-split
-version: 4
+version: 5
 objective: |
   **Goal:** check how well a trained model will do on new examples by holding data out, give the training, validation and test sets their separate jobs, and keep held-out information from leaking into training.
+recap:
+  - concept: supervised-learning
+    text: "A supervised model turns an example's inputs, such as a house's size, into a prediction of its target, such as its price. Training picks the parameters that give the smallest average squared error on the training examples."
+  - concept: gradient-descent
+    text: "Gradient descent trains a model by stepping its weights and bias downhill on the loss, over and over. We choose the learning rate $\\eta$, the size of each step, before training starts."
 where_this_fits: |
-  Gradient descent, from the earlier lessons, fits a model that predicts a house's sale price from details such as its size, by making its average error small on the sales it trains on. But the model is for pricing houses that haven't sold yet, and a model can fit the sales it has seen and still price new ones badly. You also need to choose between models without fooling yourself about how good the winner is. This lesson builds an honest check in four steps:
+  ### What are training and test sets?
 
-  1. Score the model on examples kept out of training.
-  2. Give training, validation and test sets one job each.
-  3. Choose settings that training can't learn, such as the learning rate, with the validation set.
-  4. Stop information from held-out examples leaking into training.
+  Splitting the data means dividing our examples into separate groups before any training, each with its own job. The model learns from one group, the training set, and the others are kept back so that we can check the model on examples it has never seen.
+
+  Training makes a model's error small on the examples it learns from. But we want good predictions for new examples, such as houses that haven't sold yet, and a model can fit its training examples closely and still do badly on new ones. Training error can't tell these apart. We'll see how to set examples aside, use them to choose between models, and stop them leaking into training.
 knowledge_points:
   - id: tts-why-hold-out
-    title: "Test on data the model hasn't seen"
+    title: "Test on houses the model hasn't seen"
     explain: |
-      **The question.** Gradient descent made the house model's average squared error small on the sales it trained on. But you want the model for houses that haven't sold yet. Does a small error on the training sales tell you how far off those predictions will be?
+      ### Two ways to fit four sales
 
-      **Picture it.** Take six past sales. Hide two of them (amber) and train on the other four (blue). Then compare two models. The **weights model** is the usual weights-and-bias model fitted by gradient descent: it misses every house by 10 or 20 thousand pounds. The **memoriser** stores the four training prices, and for any other house predicts the stored price of the training house closest in size. On the training houses it is exactly right; on the two hidden houses it misses by 40 and 50.
+      In the gradient descent lesson, we made a model's average squared error small on the sales it trained on. But we want the model for houses that haven't sold yet. Does a small training error tell us how far off those predictions will be? Let's find out with six past sales, with prices in thousands of pounds.
+
+      We hide two of the sales, the orange ones, and train on the other four, the blue ones. Then we compare two models. The **line model** is $\hat y=3\times\text{size}+50$, the best-fitting line for the four blue sales, found by gradient descent. The **memoriser** stores the four blue prices, and for any other house it copies the price of the blue house closest in size, so 130 m² gets the price of 140 m². Under each house is each model's error, its prediction minus the sale price.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" aria-label="Six house sales: four blue training houses and two amber test houses. Below each house, the weights model's error and the memoriser's error. The weights model misses every house by 10 or 20; the memoriser is exact on the training houses but misses the test houses by 40 and 50.">
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <text x="294" y="38" text-anchor="middle" fill="#3b82f6">training set: the model is fitted to these</text>
-          <text x="548" y="38" text-anchor="middle" fill="#f59e0b">test set: kept out</text>
-          <rect x="150" y="55" width="60" height="50" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
-          <rect x="226" y="55" width="60" height="50" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
-          <rect x="302" y="55" width="60" height="50" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
-          <rect x="378" y="55" width="60" height="50" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
-          <rect x="480" y="55" width="60" height="50" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="2"/>
-          <rect x="556" y="55" width="60" height="50" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="2"/>
-          <g font-size="13" text-anchor="middle">
-            <text x="180" y="85">house 1</text>
-            <text x="256" y="85">house 2</text>
-            <text x="332" y="85">house 3</text>
-            <text x="408" y="85">house 4</text>
-            <text x="510" y="85">house 5</text>
-            <text x="586" y="85">house 6</text>
-          </g>
-          <path d="M459 50 V185" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="5 4"/>
-          <text x="10" y="140">weights model</text>
-          <text x="10" y="172">memoriser</text>
-          <g text-anchor="middle">
-            <text x="180" y="140">+10</text>
-            <text x="256" y="140">−10</text>
-            <text x="332" y="140">+20</text>
-            <text x="408" y="140">−20</text>
-            <text x="510" y="140">+20</text>
-            <text x="586" y="140">−20</text>
-            <text x="180" y="172">0</text>
-            <text x="256" y="172">0</text>
-            <text x="332" y="172">0</text>
-            <text x="408" y="172">0</text>
-            <text x="510" y="172">+40</text>
-            <text x="586" y="172">−50</text>
-          </g>
-          <text x="150" y="215" font-size="13" fill="#737373">error = prediction − sale price, in thousands of pounds</text>
-        </g>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 262" aria-label="Six house sales. Four blue training sales: 60, 80, 100 and 140 square metres, sold for 210, 310, 360 and 460. Two orange test sales: 110 and 130 square metres, sold for 400 and 420. The line model misses the training houses by 20, 20, 10 and 10, and the test houses by 20 each. The memoriser is exact on the training houses but misses each test house by 40.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="287" y="26" text-anchor="middle" fill="#3b82f6">training set: the models learn from these</text>
+      <text x="537" y="26" text-anchor="middle" fill="#f59e0b">test set: kept out</text>
+      <rect x="143.0" y="40" width="64" height="58" rx="4" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+      <text x="175" y="64" text-anchor="middle" fill="#171717">60 m²</text>
+      <text x="175" y="87" text-anchor="middle" fill="#171717">210</text>
+      <text x="175" y="146" text-anchor="middle" fill="#171717">+20</text>
+      <text x="175" y="184" text-anchor="middle" fill="#171717">0</text>
+      <rect x="218.0" y="40" width="64" height="58" rx="4" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+      <text x="250" y="64" text-anchor="middle" fill="#171717">80 m²</text>
+      <text x="250" y="87" text-anchor="middle" fill="#171717">310</text>
+      <text x="250" y="146" text-anchor="middle" fill="#171717">−20</text>
+      <text x="250" y="184" text-anchor="middle" fill="#171717">0</text>
+      <rect x="293.0" y="40" width="64" height="58" rx="4" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+      <text x="325" y="64" text-anchor="middle" fill="#171717">100 m²</text>
+      <text x="325" y="87" text-anchor="middle" fill="#171717">360</text>
+      <text x="325" y="146" text-anchor="middle" fill="#171717">−10</text>
+      <text x="325" y="184" text-anchor="middle" fill="#171717">0</text>
+      <rect x="368.0" y="40" width="64" height="58" rx="4" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+      <text x="400" y="64" text-anchor="middle" fill="#171717">140 m²</text>
+      <text x="400" y="87" text-anchor="middle" fill="#171717">460</text>
+      <text x="400" y="146" text-anchor="middle" fill="#171717">+10</text>
+      <text x="400" y="184" text-anchor="middle" fill="#171717">0</text>
+      <rect x="468.0" y="40" width="64" height="58" rx="4" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="2"/>
+      <text x="500" y="64" text-anchor="middle" fill="#171717">110 m²</text>
+      <text x="500" y="87" text-anchor="middle" fill="#171717">400</text>
+      <text x="500" y="146" text-anchor="middle" fill="#171717">−20</text>
+      <text x="500" y="184" text-anchor="middle" fill="#171717">−40</text>
+      <rect x="543.0" y="40" width="64" height="58" rx="4" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="2"/>
+      <text x="575" y="64" text-anchor="middle" fill="#171717">130 m²</text>
+      <text x="575" y="87" text-anchor="middle" fill="#171717">420</text>
+      <text x="575" y="146" text-anchor="middle" fill="#171717">+20</text>
+      <text x="575" y="184" text-anchor="middle" fill="#171717">+40</text>
+      <text x="10" y="64" text-anchor="start" fill="#737373">size</text>
+      <text x="10" y="87" text-anchor="start" fill="#737373">sale price</text>
+      <path d="M450 34 V196" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="5 4"/>
+      <text x="10" y="128" text-anchor="start" fill="#171717">error of the</text>
+      <text x="10" y="146" text-anchor="start" fill="#171717">line model</text>
+      <text x="10" y="184" text-anchor="start" fill="#171717">memoriser</text>
+      <text x="10" y="222" text-anchor="start" fill="#737373" font-size="13">error = prediction − sale price</text>
+      <text x="10" y="244" text-anchor="start" fill="#737373" font-size="13">prices and errors in thousands of pounds</text>
+      </g>
       </svg>
       ```
 
-      On training houses the memoriser looks perfect. The hidden houses were picked at random from the same kind of sales, so they stand in for new houses, and on them it is worse.
+      On the blue houses the memoriser is exactly right, while the line model misses each one by 10 or 20. But on the two hidden houses the memoriser misses by 40, and the line model still misses by only 20. The hidden sales were picked at random, so they stand in for new houses.
 
-      **The idea.** A small training error can come from fitting the training examples themselves, so it can't tell you how a model does on anything else. To find out, keep some examples out of training. The examples a model is trained on are its **training set**, and its average loss on them is the **training error**. A **test set** is a group of examples the model is never trained on; its average loss on them, the **test error**, estimates its error on new examples of the same kind.
+      ### Training error and test error
 
-      **Common confusion.** "If the training error is tiny, the model must be good." No: the memoriser has training error 0 and is the worse model. Only held-out examples show how it handles new ones.
+      A small training error can come from fitting the training examples themselves, so on its own it can't tell us how a model does on anything else. To find out, we keep some examples out of training. The examples a model is trained on are its **training set**, and its average loss on them is its **training error**. A **test set** is a group of examples the model is never trained on. Its average loss on them, the **test error**, estimates its error on new examples of the same kind.
+
+      Be careful not to read a tiny training error as a sign of a good model. The memoriser's training error is $0$, yet it's the worse model for new houses.
+
+      ### What a test error can't tell us
+
+      A test error only speaks for new examples like the ones in the test set. Test sales from one town can't vouch for houses in another town, where prices may behave differently.
     worked: |
-      Compute both models' training and test errors from the errors in the picture. The errors are in thousands of pounds, so the averages below are in squared thousands of pounds.
+      Let's work out both models' training and test errors from the picture, as average squared errors.
 
-      1. **Average the weights model's squared training errors.**
-         $$\frac{10^2+(-10)^2+20^2+(-20)^2}{4}=\frac{100+100+400+400}{4}=250.$$
+      1. **Average the line model's squared training errors.** We square each of its four training errors and take the mean.
+         $$\frac{20^2+(-20)^2+(-10)^2+10^2}{4}=\frac{400+400+100+100}{4}=250$$
 
-      2. **Do the same on its two test houses.**
-         $$\frac{20^2+(-20)^2}{2}=\frac{400+400}{2}=400.$$
+      2. **Do the same on its two test houses.** These sales played no part in fitting the line.
+         $$\frac{(-20)^2+20^2}{2}=\frac{400+400}{2}=400$$
 
-      3. **Average the memoriser's squared training errors.**
-         $$\frac{0+0+0+0}{4}=0.$$
+      3. **Average the memoriser's squared training errors.** It stored these prices, so every error is $0$.
+         $$\frac{0+0+0+0}{4}=0$$
 
-      4. **Do the same on its two test houses.**
-         $$\frac{40^2+(-50)^2}{2}=\frac{1600+2500}{2}=2050.$$
+      4. **Do the same on its two test houses.** Here it can only copy the price of the nearest stored house.
+         $$\frac{(-40)^2+40^2}{2}=\frac{1600+1600}{2}=1600$$
 
-      **Compare cases.**
-
-      | Model | Training error | Test error |
-      | --- | ---: | ---: |
-      | weights model | 250 | 400 |
-      | memoriser | 0 | 2050 |
-      | lower error | memoriser | weights model |
-
-      Training error favours the memoriser; test error shows the weights model is the one you would want for pricing new houses. Picking a model by its test error, though, starts to spoil the test score; the next section shows how to choose properly.
-
-      **Where it shows up.** A robot that learns to grasp from recorded attempts is scored on attempts it never trained on, for the same reason.
+      Training error ranks the memoriser first, $0$ against $250$, but test error ranks the line model first, $400$ against $1600$. The line model is the one we'd want for pricing new houses.
     problems:
       - tts-why-hold-out-basics
       - ttsp-hold-out-self-explain
@@ -100,66 +108,55 @@ knowledge_points:
       - ttsp-pick-model
       - ttsp-robot-heldout
   - id: tts-three-splits
-    title: "Training, validation and test sets"
+    title: "Split the data into three sets"
     explain: |
-      **The question.** Usually you have several candidate models, say versions A, B and C trained in different ways. You could train all three, pick the one with the lowest test error and report that error. Is the reported number still a fair estimate for new houses?
+      ### Choosing between models
 
-      **Picture it.** Split 1,000 past sales once, before any training, into three sets. Each sale goes in exactly one set, and each set has one job.
+      Suppose we have 1,000 past sales and three candidate models. Model A uses only a house's size, B uses its size and number of bedrooms, and C uses size, bedrooms and 12 more details, such as the house's age. We could train all three, pick the one with the lowest test error and report that error. Would the reported number still be a fair estimate for new houses?
+
+      Not quite. Say the test set is 150 of the sales. An error measured on 150 houses wobbles, because a different 150 would give a different number. So each score is the model's error on new houses plus some luck, and the lowest of three scores is the one most likely to have had good luck. That means we can't use the same sales both to choose a model and to give its final score.
+
+      ### Three sets, three jobs
+
+      So we split the 1,000 sales once, before any training, into three sets.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="A bar of 1,000 house sales split in proportion into 700 blue training sales, 150 green validation sales and 150 amber test sales, each labelled with its job: training fits the weights, validation chooses the model, test scores the chosen model once.">
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <text x="40" y="62">1,000 house sales</text>
-          <rect x="40" y="75" width="392" height="50" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="2"/>
-          <rect x="432" y="75" width="84" height="50" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="2"/>
-          <rect x="516" y="75" width="84" height="50" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="2"/>
-          <g text-anchor="middle">
-            <text x="236" y="105">700</text>
-            <text x="474" y="105">150</text>
-            <text x="558" y="105">150</text>
-          </g>
-          <path d="M236 125 V148" stroke="#3b82f6" stroke-width="1.5"/>
-          <path d="M474 125 V188" stroke="#10b981" stroke-width="1.5"/>
-          <path d="M558 125 V228" stroke="#f59e0b" stroke-width="1.5"/>
-          <text x="236" y="166" text-anchor="middle" fill="#3b82f6">training: fits the weights</text>
-          <text x="500" y="206" text-anchor="end" fill="#10b981">validation: chooses the model</text>
-          <text x="600" y="246" text-anchor="end" fill="#f59e0b">test: scores the chosen model once</text>
-        </g>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 40 640 216" aria-label="A bar of 1,000 house sales split in proportion into 700 blue training sales, 150 green validation sales and 150 orange test sales. Training fits the weights, validation chooses the model, and test scores the chosen model once.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="40" y="62" text-anchor="start" fill="#171717">1,000 house sales</text>
+      <rect x="40" y="75" width="392" height="50" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="2"/>
+      <text x="236" y="105" text-anchor="middle" fill="#171717">700</text>
+      <path d="M236 125 V150" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="236" y="166" text-anchor="middle" fill="#3b82f6">training: fits the weights</text>
+      <rect x="432" y="75" width="84" height="50" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="2"/>
+      <text x="474" y="105" text-anchor="middle" fill="#171717">150</text>
+      <path d="M474 125 V190" stroke="#10b981" stroke-width="1.5"/>
+      <text x="500" y="206" text-anchor="end" fill="#10b981">validation: chooses the model</text>
+      <rect x="516" y="75" width="84" height="50" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="2"/>
+      <text x="558" y="105" text-anchor="middle" fill="#171717">150</text>
+      <path d="M558 125 V230" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="600" y="246" text-anchor="end" fill="#f59e0b">test: scores the chosen model once</text>
+      </g>
       </svg>
       ```
 
-      Gradient descent fits the weights to the training sales only. The validation sales score each trained candidate so you can choose one. The test sales are used once, at the end, to score the chosen model.
+      Gradient descent fits each model's weights to the 700 training sales. The **validation set** is a group of held-out examples that we use to compare the trained models and choose one. The test set is used once, after every choice has been made, so its score played no part in any decision. A 70/15/15 split is common, not a rule.
 
-      **The idea.** Any score on 150 houses wobbles: a different 150 would give a somewhat different number. Picture two equally good models scored on the same 150 houses: one happens by luck to price a few of those houses better and wins. So when you pick the lowest of several scores, the winner's score on the set used for choosing is likely a little too good. Hence choosing and final scoring need different sets. The **validation set** is the held-out examples used to compare candidates and choose one. The test set is used only after every choice is made, so its score played no part in any decision.
-
-      **Common confusion.** "The test sales never trained the weights, so choosing with them is harmless." No: choosing is also a kind of fitting, done on whole models instead of weights. Once test scores pick the winner, its reported test error is likely too good, just as the validation winner's is. If the final test score disappoints, you can still go back and change the model, but the test set has then helped choose, so you need fresh test sales for an honest number.
+      Be careful not to think that choosing with the test set is harmless just because its sales never trained any weights. Picking a model because it scores well on some sales is a way of fitting to those sales, so a winner's score is likely too low on whichever set did the picking. If we change the model after seeing the test score, the test set has helped choose.
     worked: |
-      Use 1,000 sales, a 70/15/15 train/validation/test split (a common choice, not a rule) and three candidate models A, B and C.
+      Let's run models A, B and C through the 70/15/15 split.
 
-      1. **Split before any training.**
-         $$
-         \begin{aligned}
-         \text{training} &= 1000\times0.70=700,\\
-         \text{validation} &= 1000\times0.15=150,\\
-         \text{test} &= 1000\times0.15=150.
-         \end{aligned}
-         $$
+      1. **Split before any training.** Each set gets its share of the 1,000 sales, and no sale goes in two sets.
+         $$1000\times0.70=700,\qquad 1000\times0.15=150,\qquad 1000\times0.15=150$$
 
-      2. **Train each candidate on the 700 training sales only.** The validation and test sales play no part in fitting any weights.
+      2. **Train each model on the 700 training sales only.**
 
-      3. **Score each candidate on the 150 validation sales and choose the lowest.** The validation errors are A 620, B 460 and C 510, so choose B.
+      3. **Score each model on the 150 validation sales and choose the lowest.** The validation errors are A $620$, B $460$ and C $510$, so we choose B.
 
-      4. **Score B once on the 150 test sales, and report that.** B's test error is 480. Report 480, not 460: 460 helped pick B, so it is likely a little low.
+      4. **Score B once on the 150 test sales, and report that.** We report the test error, because the validation error helped pick B and is likely a little low.
+         $$\text{B's test error}=480$$
 
-      **Compare cases.**
-
-      | Set | Sales | Job | Can its scores change the model? |
-      | --- | ---: | --- | --- |
-      | training | 700 | fit the weights | yes, directly |
-      | validation | 150 | choose between candidates | yes, through the choice |
-      | test | 150 | score the chosen model once | no |
-
-      **Where it shows up.** A robotics team picks among saved versions of a grasping model using validation attempts, then reports its success rate on a separate set of test attempts.
+      So we report $480$, not $460$, because the test sales never helped choose anything.
     problems:
       - tts-three-splits-basics
       - ttsp-splits-self-explain
@@ -170,84 +167,72 @@ knowledge_points:
       - ttsp-why-separate-test
       - ttsp-swap-after-test
   - id: tts-hyperparameters
-    title: "Tune settings on the validation set"
+    title: "Choose the settings training can't learn"
     explain: |
-      **The question.** Gradient descent learns the weights and bias, but some things it doesn't learn. Someone has to choose the learning rate $\eta$, and which inputs the model uses: size only, or size and bedrooms. How should you choose those?
+      ### What training learns, and what we choose
 
-      **Picture it.** Try three input choices. Train each on the same training sales, score each on the validation sales, and keep the lowest. Only the chosen model goes on to the test set.
+      Gradient descent learns a model's weights and bias, which are its **parameters**. But there are things it never changes. We choose the learning rate $\eta$, how many steps to take and which inputs the model uses, all before training starts. A **hyperparameter** is a setting like this, fixed before training, that training itself doesn't change. Models A, B and C differ only in one hyperparameter, their inputs.
+
+      ### Choosing with the validation set
+
+      To choose a hyperparameter, we train one model per setting on the training set, score each one on the validation set, and keep the setting with the lowest validation error.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="Three columns, one per input choice: size; size and bedrooms; size, bedrooms and 12 more details. Each is fitted on the training set, with training errors 610, 450 and 280, then scored on the validation set, with validation errors 640, 470 and 530. The lowest validation error, 470, is chosen and goes on to the test set once, with test error 490.">
-        <defs>
-          <marker id="tts3-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
-        </defs>
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717" text-anchor="middle">
-          <rect x="20" y="20" width="180" height="52" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
-          <rect x="230" y="20" width="180" height="52" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
-          <rect x="440" y="20" width="180" height="52" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
-          <text x="110" y="51">size</text>
-          <text x="320" y="51">size, bedrooms</text>
-          <text x="530" y="42">size, bedrooms</text>
-          <text x="530" y="62">+ 12 more details</text>
-          <path d="M110 72 V98" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
-          <path d="M320 72 V98" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
-          <path d="M530 72 V98" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
-          <rect x="20" y="102" width="180" height="58" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
-          <rect x="230" y="102" width="180" height="58" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
-          <rect x="440" y="102" width="180" height="58" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
-          <text x="110" y="126">fit on training set</text>
-          <text x="320" y="126">fit on training set</text>
-          <text x="530" y="126">fit on training set</text>
-          <text x="110" y="148">training error 610</text>
-          <text x="320" y="148">training error 450</text>
-          <text x="530" y="148">training error 280</text>
-          <path d="M110 160 V186" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
-          <path d="M320 160 V186" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
-          <path d="M530 160 V186" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
-          <rect x="20" y="190" width="180" height="58" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="2"/>
-          <rect x="230" y="190" width="180" height="58" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="4"/>
-          <rect x="440" y="190" width="180" height="58" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="2"/>
-          <text x="110" y="214">validation error</text>
-          <text x="320" y="214">validation error</text>
-          <text x="530" y="214">validation error</text>
-          <text x="110" y="236">640</text>
-          <text x="320" y="236" font-weight="700">470</text>
-          <text x="530" y="236">530</text>
-          <path d="M320 248 V296" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
-          <text x="332" y="278" text-anchor="start">lowest: chosen</text>
-          <rect x="230" y="300" width="180" height="58" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="2"/>
-          <text x="320" y="324">test set, used once</text>
-          <text x="320" y="346">test error 490</text>
-        </g>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="Three columns, one for each choice of inputs: A uses size; B uses size and bedrooms; C uses size, bedrooms and 12 more details. Each model is fitted on the blue training set, with training errors 600, 440 and 280, then scored on the green validation set, with validation errors 620, 460 and 510. B has the lowest validation error, so it is chosen and goes on to the orange test set once, with test error 480.">
+      <defs><marker id="tts3-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717" text-anchor="middle">
+      <rect x="20" y="20" width="180" height="52" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="110" y="51">A: size</text>
+      <path d="M110 72 V98" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+      <path d="M110 160 V186" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+      <rect x="20" y="102" width="180" height="58" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+      <text x="110" y="126">fit on training set</text><text x="110" y="148">training error 600</text>
+      <rect x="20" y="190" width="180" height="58" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="2"/>
+      <text x="110" y="214">validation error</text><text x="110" y="236">620</text>
+      <rect x="230" y="20" width="180" height="52" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="320" y="51">B: size, bedrooms</text>
+      <path d="M320 72 V98" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+      <path d="M320 160 V186" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+      <rect x="230" y="102" width="180" height="58" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+      <text x="320" y="126">fit on training set</text><text x="320" y="148">training error 440</text>
+      <rect x="230" y="190" width="180" height="58" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="4"/>
+      <text x="320" y="214">validation error</text><text x="320" y="236" font-weight="700">460</text>
+      <rect x="440" y="20" width="180" height="52" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
+      <text x="530" y="42">C: size, bedrooms</text><text x="530" y="62">+ 12 more details</text>
+      <path d="M530 72 V98" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+      <path d="M530 160 V186" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+      <rect x="440" y="102" width="180" height="58" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="2"/>
+      <text x="530" y="126">fit on training set</text><text x="530" y="148">training error 280</text>
+      <rect x="440" y="190" width="180" height="58" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="2"/>
+      <text x="530" y="214">validation error</text><text x="530" y="236">510</text>
+      <path d="M320 248 V296" stroke="#737373" stroke-width="1.5" marker-end="url(#tts3-arrow)"/>
+      <text x="332" y="278" text-anchor="start">lowest: B is chosen</text>
+      <rect x="230" y="300" width="180" height="58" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="2"/>
+      <text x="320" y="324">test set, used once</text><text x="320" y="346">test error 480</text>
+      </g>
       </svg>
       ```
 
-      The model with 14 inputs has the lowest training error, 280, but size and bedrooms has the lowest validation error, 470, so that one is chosen.
+      ### Why not use the training error?
 
-      **The idea.** The numbers gradient descent learns, the weights and bias, are the model's **parameters**. A **hyperparameter** is a setting fixed before training that training itself doesn't change, such as the learning rate, the number of gradient-descent steps or which inputs to use. To choose one, train a model for each candidate setting on the training set and keep the setting whose model has the lowest validation error. The more settings you try, the more chances one has to score low on the validation set by luck, so the test set stays untouched until the end.
+      Be careful not to choose by training error. It falls from 600 to 440 to 280 as we add inputs, because each extra input gives the weights another way to fit the quirks of those 700 particular houses. The validation error tells a different story. It falls from 620 to 460, then rises to 510 for C. So the training error would pick C, while the validation error picks B, which does best on houses it wasn't fitted to.
 
-      **Common confusion.** "Pick the setting with the lowest training error." That rewards whichever setting fits the training houses most closely, and more inputs give the weights more ways to fit quirks of those particular houses. Here training error falls from 610 to 280 as inputs are added, while validation error rises from 470 to 530 at 14 inputs.
+      The more settings we try, the more likely one scores low on validation by luck, which is another reason the test set waits until the end.
     worked: |
-      Choose which inputs the house model uses. The steps are the same train, validate, test routine as before; what is new is that the candidates differ only in a hyperparameter.
+      Let's choose the inputs.
 
-      1. **Sort the numbers into parameters and hyperparameters.** The weights and bias are parameters: gradient descent sets them. The input choice and the learning rate are hyperparameters: you fix them before training starts.
+      1. **Sort parameters from hyperparameters.** Gradient descent sets the weights and bias, which are parameters. We fix the inputs and learning rate ourselves, so they're hyperparameters.
 
-      2. **Train one model per input choice on the training sales.** Their training errors are 610, 450 and 280.
+      2. **Train one model per input choice on the training sales.** Training errors fall as inputs are added, because more inputs fit those 700 houses more closely.
+         $$\text{A}=600,\qquad\text{B}=440,\qquad\text{C}=280$$
 
-      3. **Compare validation errors and keep the lowest.** They are 640, 470 and 530, so choose size and bedrooms.
+      3. **Compare validation errors and keep the lowest.** No validation sale helped fit any weights, so these errors compare the models on houses they haven't seen.
+         $$\text{A}=620,\qquad\text{B}=460,\qquad\text{C}=510$$
 
-      4. **Score the chosen model once on the test sales.** Its test error is 490, and that is the number to report.
+      4. **Score B once on the test sales.** The gap between its test and validation errors is roughly how much luck helped B win, plus some wobble from using different houses.
+         $$480-460=20$$
 
-      **Compare cases.**
-
-      | Inputs | Training error | Validation error |
-      | --- | ---: | ---: |
-      | size | 610 | 640 |
-      | size, bedrooms | 450 | 470 |
-      | size, bedrooms + 12 more | 280 | 530 |
-      | lowest | size, bedrooms + 12 more | size, bedrooms |
-
-      **Where it shows up.** A robot grasping model's learning rate and number of training steps are hyperparameters too, chosen by its success on validation attempts.
+      So we use size and bedrooms, even though C fits the training sales best.
     problems:
       - tts-hyperparameters-basics
       - ttsp-hyper-self-explain
@@ -260,9 +245,9 @@ knowledge_points:
   - id: tts-leakage
     title: "Keep test data out of training"
     explain: |
-      **The question.** Suppose the three sets are kept apart and the test set is used once. Can information from the test houses still reach training, even if nobody uses their prices?
+      ### Two ways test data sneaks in
 
-      **Picture it.** Two common leaks, marked in red.
+      Even if we keep the sets apart and use the test set only once, can test information still reach training? It can, and the picture shows two common ways, in red.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 270" aria-label="Two leaks. Left: sale 17 appears in both the training set and the test set, joined by a red dashed line. Right: training sizes 80, 100, 120 and one missing; test sizes 160 and one missing. The mean of all known sizes is 115 because it includes the test size 160; the mean of training sizes only is 100.">
@@ -301,39 +286,32 @@ knowledge_points:
       </svg>
       ```
 
-      On the left, a sale recorded twice was split into both sets, so the model has seen that test house's price. On the right, some sizes are missing. Dropping those houses would waste their prices, so a common fix is to fill each gap with the average size. Averaging over all houses lets the test house's 160 m² push the fill value from 100 up to 115, and that value is written into the training data, so the model is partly shaped by a test house.
+      On the left, one sale was recorded twice by mistake, and the split put one copy in training and the other in test, so the model has already seen that test house's price. On the right, some house sizes are missing. A common fix is to fill each gap with the average size. But if we average over all the houses, the test house's 160 m² pushes the fill value up from 100 to 115. That value is then written into the training data, so a test house has partly shaped the model.
 
-      **The idea.** **Data leakage** is any route by which held-out information reaches the model beyond its set's job: validation or test examples shaping the weights, or test examples shaping the choice of model. Choosing with validation errors is allowed. Leakage can make held-out scores look better than the model will do on new houses. Three rules stop the common cases:
+      ### What leakage is
 
-      1. Remove exact duplicate records, then split, before any processing that computes values from the data.
-      2. Compute every value the processing needs, such as a fill-in average, from the training set only, then apply that same value to validation and test examples.
-      3. Keep related records together: two sales of the same house share its size, bedrooms and location, so even if the price changed, the model has seen that exact house; both go in one set.
+      **Data leakage** is any way that held-out examples shape the model beyond their job, such as validation or test examples changing the training data, or test examples helping choose the model. Leakage usually makes held-out errors look too good.
 
-      **Common confusion.** "Leakage only happens if test prices are used in training." No: test inputs leak too. The test house's size changed the fill value without its price ever being used.
+      ### Three rules that stop it
+
+      1. Remove exact duplicate records, then split, before any processing that works out values from the data, such as an average.
+      2. Work out every value the processing needs, such as a fill-in average, from the training set only, then use that same value for the validation and test examples.
+      3. Keep related records together. Two sales of the same house share its details and usually have similar prices, so both go in one set.
+
+      Be careful not to think that leakage needs test prices. In the fill-value example, only a test house's size leaked, never its price.
     worked: |
-      Work out the fill value, then what duplicates do to a test error.
+      Let's work out the fair fill value, then see what duplicates do.
 
-      1. **Average the training sizes only.** The known training sizes are 80, 100 and 120 m²:
-         $$\frac{80+100+120}{3}=100.$$
+      1. **Average the training sizes only.** The known training sizes are 80, 100 and 120 m², so the fill value comes from those alone.
+         $$\frac{80+100+120}{3}=100$$
 
-      2. **Compare with the leaky average over every known size.** The extra 15 comes from the test house's 160 m², so fill the missing sizes in all three sets with 100, not 115.
-         $$\frac{80+100+120+160}{4}=115.$$
+      2. **Compare with the leaky average over every known size.** The extra 15 comes from the test house's 160 m², so we fill the missing sizes in all three sets with 100, not 115.
+         $$\frac{80+100+120+160}{4}=115$$
 
-      3. **Find the test error when 15 of 150 test sales are copies of training sales.** A model fitted closely to its training sales prices those copies almost exactly (squared error about 0), and the other 135 have average squared error 500:
-         $$\frac{15\times0+135\times500}{150}=\frac{67500}{150}=450.$$
+      3. **Find the test error when 15 of 150 test sales are copies of training sales.** A model fitted closely to its training sales prices the copies with squared error about $0$. Suppose the other 135 have an average squared error of 500.
+         $$\frac{15\times0+135\times500}{150}=\frac{67500}{150}=450$$
 
-      4. **Compare with the honest figure.** The 135 genuinely unseen sales average 500, the better guide to new houses; the copies pull the reported error down to 450.
-
-      **Compare cases.**
-
-      | Setup | Leaks? | Fix |
-      | --- | --- | --- |
-      | fill value averaged over all 1,000 sales | yes | average the training sales only |
-      | fill value averaged over training sales | no | none needed |
-      | same sale copied into training and test | yes | keep one copy, in one set |
-      | one house sold in 2019 and 2023, sales split apart | yes | put both sales in one set |
-
-      **Where it shows up.** A robot's recorded attempts are runs of hundreds of near-identical camera pictures, so robot data is split by whole attempt, never by picture.
+      The 135 truly unseen sales average 500, the better guide to new houses, but the copies pull the reported error down to 450.
     problems:
       - tts-leakage-basics
       - ttsp-leakage-self-explain
@@ -345,9 +323,9 @@ knowledge_points:
       - ttsp-robot-frames
 final: tts-explain
 summary: |
-  - A model's error on held-out test examples, not its training error, estimates how well it will do on new examples.
-  - Training fits the weights, validation chooses between models, and test scores the chosen model once.
-  - Hyperparameters, such as the learning rate or the input choice, are fixed before training and chosen by validation error.
-  - Data leakage lets held-out information into training: split first, compute processing values from training only, and keep related records in one set.
+  - Training error only measures fit to the training examples. Error on a held-out test set estimates error on new examples of the same kind.
+  - Training fits the weights, validation chooses between models, and test scores the chosen model once, because a comparison winner's score is likely a little too good.
+  - Hyperparameters, such as the learning rate or the inputs, are fixed before training and chosen by validation error, not training error.
+  - Data leakage lets held-out examples shape the model. To stop it, remove duplicates and split first, work out processing values from the training set only, and keep related records in one set.
 
   **Next:** Probability basics describes uncertainty in data and model predictions.
