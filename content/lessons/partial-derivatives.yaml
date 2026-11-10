@@ -1,285 +1,304 @@
 concept: partial-derivatives
-version: 4
+version: 5
 objective: |
   **Goal:** compute the partial derivative of a function of several inputs with respect to any one of them, and read it as the rate of change when only that input moves.
+recap:
+  - concept: derivatives
+    text: "The derivative $f'(a)$ is the slope of a function at the input $a$, so a small nudge to the input changes the output by about $f'(a)$ times the nudge. Rules like $(x^n)'=nx^{n-1}$ and the product rule find it quickly."
 where_this_fits: |
-  A house-price model multiplies each recorded fact about a house by an adjustable **weight**, adds the results and one more adjustable number, the **bias**, to predict a price. Its **loss**, a function whose inputs are the weights and bias, scores how far the prediction is from the real price; training adjusts the weights to make it smaller. The derivatives lesson gave slopes for one input, but each weight moves the loss at its own rate. This lesson gives each input its own slope, the **partial derivative**:
+  ### What is a partial derivative?
 
-  1. Move one input and hold the others fixed.
-  2. Get a formula for that slope with the derivative rules you already know.
-  3. Apply this to a house model's loss: one slope per weight, with the house's recorded facts held fixed.
+  A partial derivative is the slope of a function that has more than one input, measured while only one of those inputs changes and the others stay where they are. So a function of two inputs has two partial derivatives.
 
+  Why do we need them? The derivative handles a function of one input, but most functions in machine learning have many. A machine-learning model is a formula that makes predictions, and its error depends on every adjustable number in it at once, and to improve the model we need to know how the error responds to each of those numbers on its own. Partial derivatives give us exactly that, one slope per input, worked out with the derivative rules we already know.
 knowledge_points:
   - id: pd-hold-fixed
     title: "Change one input at a time"
     explain: |
-      **The question.** Take a function with two inputs, $f(x,y)$. Think of $f$ as the height of the ground above each point $(x,y)$ on a map. Standing at one point, the ground may rise steeply one way and gently another. Which slope do you measure, and how?
+      ### A function with two inputs
 
-      **Picture it.** Take $f(x,y)=x^2+2y^2$ and stand at $P=(1.5,1)$, where the height is $1.5^2+2(1)^2=4.25$. Walk along the amber line on the map, where $y$ stays at $1$ and only $x$ changes (left). Along that line the height is $f(x,1)=x^2+2$, an ordinary function of $x$ alone (right). By the power rule its slope is $2x$, which is $3$ at $x=1.5$.
+      In the derivatives lesson, every function had one input. Now let's take a function with two inputs, $f(x,y)=x^2+2y^2$. Think of $(x,y)$ as a point on a map and $f(x,y)$ as the height of the ground above it.
+
+      We'll stand at $P=(1.5,1)$, where the height is $1.5^2+2\times1^2=4.25$. The ground may rise at different rates in the $x$ and $y$ directions, so we have to say which way we're walking.
+
+      ### Walking with only x changing
+
+      Let's walk along the orange line on the left, where $y$ stays at $1$ and only $x$ changes. Along that line the height is $f(x,1)=x^2+2$, a function of $x$ alone, drawn on the right with $P$ at height $4.25$. By the power rule the slope is $2x$, so at $x=1.5$ it's $3$, the slope of the blue line touching the curve at $P$.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Left: a map of inputs x and y with the point P at (1.5, 1) and an amber line through it where y stays 1. Right: the height x squared plus 2 along that line, with P at height 4.25 and a blue tangent of slope 3">
-        <defs>
-          <marker id="pd1-axis-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
-        </defs>
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <text x="20" y="30">the map: inputs (x, y)</text>
-          <path d="M40 280 H262" stroke="#737373" fill="#0000" marker-end="url(#pd1-axis-arrow)"/>
-          <path d="M40 280 V98" stroke="#737373" fill="#0000" marker-end="url(#pd1-axis-arrow)"/>
-          <path d="M40 200 H240" stroke="#f59e0b" stroke-width="3"/>
-          <circle cx="160" cy="200" r="4.5" fill="#171717"/>
-          <text x="150" y="222">P = (1.5, 1)</text>
-          <text x="48" y="190" fill="#f59e0b">y stays 1, x moves</text>
-          <text x="268" y="285">x</text>
-          <text x="34" y="90">y</text>
-          <text x="20" y="300" fill="#737373">0</text>
-          <text x="340" y="30">height along the amber line</text>
-          <path d="M360 300 H632" stroke="#737373" fill="#0000" marker-end="url(#pd1-axis-arrow)"/>
-          <path d="M360 300 V40" stroke="#737373" fill="#0000" marker-end="url(#pd1-axis-arrow)"/>
-          <path d="M360 240 Q485 240 610 52.5" stroke="#f59e0b" stroke-width="3" fill="#0000"/>
-          <path d="M460 217.5 L560 127.5" stroke="#3b82f6" stroke-width="3"/>
-          <circle cx="510" cy="172.5" r="4.5" fill="#171717"/>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="524" y="190">P, height 4.25</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="452" y="132" fill="#3b82f6">slope 3</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="372" y="268" fill="#f59e0b">f(x, 1) = x² + 2</text>
-          <text x="618" y="322">x</text>
-          <text x="368" y="52">height</text>
-        </g>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Left: a map of the inputs x and y, with the point P at (1.5, 1) and an orange line through it along which y stays 1 and only x moves. Right: the height along that orange line, the curve x squared plus 2, with P at height 4.25 and a blue line touching the curve at P with slope 3">
+      <defs><marker id="pd1-axis" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M50 290 H265.0 M50 290 V105" stroke="#737373" fill="#ffffff" fill-opacity="0" marker-end="url(#pd1-axis)"/>
+      <path d="M150 290 v5" stroke="#737373"/>
+      <text x="150" y="312" fill="#737373" text-anchor="middle">1</text>
+      <path d="M250 290 v5" stroke="#737373"/>
+      <text x="250" y="312" fill="#737373" text-anchor="middle">2</text>
+      <path d="M50 190 h-5" stroke="#737373"/>
+      <text x="40" y="195" fill="#737373" text-anchor="end">1</text>
+      <path d="M50 190 H250" stroke="#f59e0b" stroke-width="3"/>
+      <circle cx="200.0" cy="190" r="4.5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="200" y="214" text-anchor="middle">P = (1.5, 1)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="58" y="178" fill="#f59e0b">y stays 1, x moves</text>
+      <text x="273" y="295">x</text>
+      <text x="46" y="97">y</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="20" y="30">the map, seen from above</text>
+      <path d="M380 300 H616.5 M380 300 V28.0" stroke="#737373" fill="#ffffff" fill-opacity="0" marker-end="url(#pd1-axis)"/>
+      <path d="M490 300 v5" stroke="#737373"/>
+      <text x="490" y="322" fill="#737373" text-anchor="middle">1</text>
+      <path d="M600 300 v5" stroke="#737373"/>
+      <text x="600" y="322" fill="#737373" text-anchor="middle">2</text>
+      <path d="M380 220 h-5" stroke="#737373"/>
+      <text x="370" y="225" fill="#737373" text-anchor="end">2</text>
+      <path d="M380 140 h-5" stroke="#737373"/>
+      <text x="370" y="145" fill="#737373" text-anchor="end">4</text>
+      <path d="M380 60 h-5" stroke="#737373"/>
+      <text x="370" y="65" fill="#737373" text-anchor="end">6</text>
+      <path d="M380 220 385.5 219.9 391 219.6 396.5 219.1 402 218.4 407.5 217.5 413 216.4 418.5 215.1 424 213.6 429.5 211.9 435 210 440.5 207.9 446 205.6 451.5 203.1 457 200.4 462.5 197.5 468 194.4 473.5 191.1 479 187.6 484.5 183.9 490 180 495.5 175.9 501 171.6 506.5 167.1 512 162.4 517.5 157.5 523 152.4 528.5 147.1 534 141.6 539.5 135.9 545 130 550.5 123.9 556 117.6 561.5 111.1 567 104.4 572.5 97.5 578 90.4 583.5 83.1 589 75.6 594.5 67.9 600 60" stroke="#f59e0b" stroke-width="3" fill="#ffffff" fill-opacity="0"/>
+      <path d="M501 178 L589 82" stroke="#3b82f6" stroke-width="3"/>
+      <circle cx="545" cy="130" r="4.5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="531" y="124" text-anchor="end">P, height 4.25</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560.5" y="168" fill="#3b82f6">slope 3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="390" y="248" fill="#f59e0b">height x² + 2</text>
+      <text x="624.5" y="305">x</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="340" y="30">the height along the orange line</text>
+      </g>
       </svg>
       ```
 
-      **The idea.** The **partial derivative** of a function with respect to one input is its rate of change when only that input changes and all the other inputs are held fixed. For $f(x,y)$ we write $\frac{\partial f}{\partial x}$, read "partial $f$ by partial $x$". The curly $\partial$ signals that other inputs exist and are frozen. It is the derivative's limit definition from the derivatives lesson, with the small step $h$ given to $x$ only:
+      ### The definition
+
+      The **partial derivative** of a function with respect to one of its inputs is its slope when only that input changes and every other input is held fixed. We write it $\frac{\partial f}{\partial x}$, read "partial $f$ by partial $x$", meaning the change in $f$ per change in $x$. The curly $\partial$ signals that the other inputs are frozen. It's the limit that defined the derivative, except that only $x$ gets the small step $h$:
 
       $$\frac{\partial f}{\partial x}=\lim_{h\to0}\frac{f(x+h,y)-f(x,y)}{h}.$$
 
-      At $P$, with $y=1$, the top of the fraction is:
+      In practice we skip the limit and use the derivative rules, as we did with $x^2+2$.
 
-      $$(1.5+h)^2=2.25+3h+h^2,$$
+      ### Slopes at different points
 
-      $$f(1.5+h,1)-f(1.5,1)=(2.25+3h+h^2+2)-4.25=3h+h^2.$$
+      Freezing $y$ at any value $c$ gives $x^2+2c^2$, whose slope is always $2x$. Freezing $x$ instead, the slope along $y$ is $4y$, as we'll check in the worked example. So the slopes change from point to point:
 
-      So the slope at $P$, written $\frac{\partial f}{\partial x}(P)$, is:
+      - At $(1.5,1)$, the slope is $3$ along $x$ and $4$ along $y$.
+      - At $(0,1)$, the slope along $x$ is $0$, so a small step in $x$ is level, but along $y$ it's still $4$.
+      - At $(-1.5,1)$, the slope along $x$ is $-3$, so increasing $x$ takes us downhill.
 
-      $$\frac{\partial f}{\partial x}(P)=\lim_{h\to0}\frac{3h+h^2}{h}=\lim_{h\to0}(3+h)=3.$$
-
-      In practice you freeze the other inputs and use the derivative rules, then check by working out the fraction with a small $h$, such as $0.01$, instead of the limit.
-
-      **Common confusion.** "A point on a graph has one slope." That was true with one input. From $P$, walking along $x$ gives slope $3$, but walking along $y$ gives slope $4$ (worked out below). A function of two inputs has one partial derivative for each input, and they usually differ.
+      Be careful not to expect one slope at a point. With one input there was only one way to move, but now each input has its own slope.
     worked: |
-      Find $\frac{\partial f}{\partial y}$ for $f(x,y)=x^2+2y^2$ at $P=(1.5,1)$.
+      Let's find the slope in the $y$ direction at $P=(1.5,1)$ for the same function, $f(x,y)=x^2+2y^2$. We write it $\frac{\partial f}{\partial y}(P)$, where $(P)$ means the slope is measured at the point $P$.
 
-      1. **Freeze $x$ at its value at $P$.**
-         $$f(1.5,y)=1.5^2+2y^2=2.25+2y^2.$$
+      1. **Freeze $x$ at its value at $P$.** Only $y$ moves, so $x$ stays at $1.5$ and the $x^2$ term becomes the fixed number $2.25$.
+         $$f(1.5,y)=2.25+2y^2$$
 
-      2. **Differentiate this one-input function.** The $2.25$ is a constant, so it contributes $0$.
-         $$\frac{d}{dy}\left(2.25+2y^2\right)=4y.$$
+      2. **Differentiate this one-input function.** The $2.25$ is a constant, so its slope is $0$, and the power rule turns $2y^2$ into $4y$.
+         $$\frac{\partial f}{\partial y}=0+4y=4y$$
 
-      3. **Put in $y=1$.**
-         $$\frac{\partial f}{\partial y}(P)=4(1)=4.$$
+      3. **Put in $y=1$.** This gives the slope at $P$ itself.
+         $$\frac{\partial f}{\partial y}(P)=4\times1=4$$
 
-      4. **Check with a small step $h=0.01$ in $y$ only.**
-         $$\frac{f(1.5,1.01)-f(1.5,1)}{0.01}=\frac{4.2902-4.25}{0.01}=4.02\approx4.$$
-         The extra $0.02$ is there because $h$ is not zero; a smaller $h$ shrinks it.
+      4. **Check with a small step.** If we move $y$ alone from $1$ to $1.01$, the height should rise by about $4\times0.01=0.04$, so dividing the rise by $0.01$ should give about $4$.
+         $$\frac{f(1.5,\,1.01)-f(1.5,\,1)}{0.01}=\frac{4.2902-4.25}{0.01}=4.02$$
 
-      **Compare cases.** The slopes depend on where you stand. For this $f$, the slope along $x$ depends only on $x$: freeze $y$ at any value $c$ and the height is $x^2+2c^2$, whose slope is $2x$. Likewise the slope along $y$ is always $4y$. In the last row the slope along $x$ is negative, so $f$ falls as $x$ grows there.
-
-      | Point | Slope along $x$ | Slope along $y$ |
-      | --- | --- | --- |
-      | $(1.5,1)$ | $3$ | $4$ |
-      | $(0,1)$ | $0$ | $4$ |
-      | $(1.5,0)$ | $3$ | $0$ |
-      | $(-1.5,1)$ | $-3$ | $4$ |
-
-      **Where it shows up.** A model's loss depends on all of its weights. The partial derivative for one weight says how fast the loss changes if you nudge only that weight, which tells you whether raising or lowering it will make the loss smaller.
+      The check gives $4.02$, close to $4$, and the extra $0.02$ comes from the step not being zero. So from $P$ the ground rises at $3$ along $x$ but at $4$ along $y$.
     problems:
-      [
-        pd-hold-fixed-basics,
-        pdp-freeze-self-explain,
-        pdp-meaning,
-        pdp-why-freeze,
-        pdp-sign,
-        pdp-how-many,
-        pdp-house-rate,
-        pdp-nudge-check,
-        pdp-flat-weight,
-      ]
+      - pd-hold-fixed-basics
+      - pdp-freeze-self-explain
+      - pdp-meaning
+      - pdp-why-freeze
+      - pdp-sign
+      - pdp-how-many
+      - pdp-house-rate
+      - pdp-nudge-check
+      - pdp-flat-weight
   - id: pd-compute
     title: "Work out a partial derivative"
     explain: |
-      **The question.** In $x^2+2y^2$ each input sat in its own term, so freezing one was easy. In $f(x,y)=x^2y+5y$ the inputs are multiplied together in $x^2y$. Can you still get one formula for $\frac{\partial f}{\partial x}$ that gives the slope at any point?
+      ### Inputs that are multiplied together
 
-      **Picture it.** Start with the simplest product of two inputs, a rectangle's area $A(x,y)=xy$, with width $x=3$ and height $y=2$. Widen it by a small amount $h$ while the height stays $2$ (left). The added strip has area $2h$, so the area grows at rate $2$ per unit of width. That $2$ is the height, so at any size $\frac{\partial A}{\partial x}=y$. Raise the height instead, with the width fixed at $3$ (right). The strip has area $3h$, so $\frac{\partial A}{\partial y}=x$. The frozen input survives as a multiplier.
+      In $x^2+2y^2$, each term contained only one input, so freezing the other was easy. But what about $f(x,y)=x^2y+5y$, where $x$ and $y$ are multiplied together in $x^2y$? Can we still find one formula for $\frac{\partial f}{\partial x}$ that works at every point, so we needn't redo the work each time?
+
+      Let's start with the simplest product, the area of a rectangle, $A(x,y)=xy$, with width $x=3$ and height $y=2$. On the left, we widen it by a small amount $h$ while the height stays at $2$. The orange strip we add has area $2h$, so the area grows at $2$ per unit of width, and that $2$ is the height. So $\frac{\partial A}{\partial x}=y$.
+
+      On the right, we raise the height by $h$ and keep the width at $3$. Now the strip has area $3h$, so $\frac{\partial A}{\partial y}=x$. Either way, the input we froze becomes the multiplier.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Two copies of a 3 by 2 rectangle. Left: an amber strip of width h added on the right has area 2h. Right: an amber strip of height h added on top has area 3h">
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <text x="30" y="40">widen: x moves, y stays 2</text>
-          <rect x="40" y="100" width="180" height="120" fill="#ffffff" stroke="#737373" stroke-width="2"/>
-          <rect x="220" y="100" width="30" height="120" fill="#f59e0b" fill-opacity="0.35" stroke="#f59e0b" stroke-width="2"/>
-          <text x="112" y="245">x = 3</text>
-          <text x="226" y="245" fill="#f59e0b">h</text>
-          <text x="2" y="165">y = 2</text>
-          <text x="98" y="165">area 3 × 2</text>
-          <text x="196" y="85" fill="#f59e0b">added 2h</text>
-          <text x="350" y="40">raise: y moves, x stays 3</text>
-          <rect x="380" y="130" width="180" height="120" fill="#ffffff" stroke="#737373" stroke-width="2"/>
-          <rect x="380" y="100" width="180" height="30" fill="#f59e0b" fill-opacity="0.35" stroke="#f59e0b" stroke-width="2"/>
-          <text x="452" y="275">x = 3</text>
-          <text x="568" y="195">y = 2</text>
-          <text x="568" y="120" fill="#f59e0b">h</text>
-          <text x="438" y="195">area 3 × 2</text>
-          <text x="438" y="85" fill="#f59e0b">added 3h</text>
-        </g>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 290" aria-label="Two copies of a rectangle 3 wide and 2 tall, with area 6. Left: an orange strip of width h added to the right side has area 2h. Right: an orange strip of height h added to the top has area 3h">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="30" y="40">widen: x moves, y stays 2</text>
+      <rect x="60" y="100" width="180" height="120" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+      <rect x="240" y="100" width="30" height="120" fill="#f59e0b" fill-opacity="0.35" stroke="#f59e0b" stroke-width="2"/>
+      <text x="150" y="245" text-anchor="middle">x = 3</text>
+      <text x="255" y="245" fill="#f59e0b" text-anchor="middle">h</text>
+      <text x="50" y="165" text-anchor="end">y = 2</text>
+      <text x="150" y="165" text-anchor="middle">area 3 × 2 = 6</text>
+      <text x="255" y="88" fill="#f59e0b" text-anchor="middle">added 2h</text>
+      <text x="350" y="40">raise: y moves, x stays 3</text>
+      <rect x="390" y="130" width="180" height="120" fill="#ffffff" stroke="#737373" stroke-width="2"/>
+      <rect x="390" y="100" width="180" height="30" fill="#f59e0b" fill-opacity="0.35" stroke="#f59e0b" stroke-width="2"/>
+      <text x="480" y="275" text-anchor="middle">x = 3</text>
+      <text x="580" y="195">y = 2</text>
+      <text x="580" y="120" fill="#f59e0b">h</text>
+      <text x="480" y="195" text-anchor="middle">area 3 × 2 = 6</text>
+      <text x="480" y="88" fill="#f59e0b" text-anchor="middle">added 3h</text>
+      </g>
       </svg>
       ```
 
-      **The idea.** A frozen input behaves exactly like a constant number, so the ordinary derivative rules apply unchanged. To find $\frac{\partial f}{\partial x}$, treat every input except $x$ as a constant and differentiate term by term:
+      ### Treat the other inputs as constants
 
-      - a constant factor stays as a factor, so $\frac{\partial}{\partial x}(x^2y)=2xy$, just as the derivative of $5x^2$ is $10x$;
-      - a term with no $x$ in it is a constant, so its derivative is $0$: $\frac{\partial}{\partial x}(5y)=0$.
+      A frozen input behaves exactly like a fixed number, so the derivative rules work unchanged. To find $\frac{\partial f}{\partial x}$, we treat every input except $x$ as a constant and differentiate term by term:
 
-      The result, the **partial-derivative formula**, is itself a function of the inputs: put in any point to get the slope there.
+      - A constant factor stays as a factor, so $x^2y$ gives $2xy$, just as $5x^2$ gives $10x$.
+      - A term with no $x$ in it is a constant, so its slope is $0$, and $5y$ gives $0$.
 
-      **Common confusion.** "Since $y$ is held fixed, it drops out of $\frac{\partial f}{\partial x}$." Only terms with no $x$ drop out. When $y$ multiplies $x$, it stays as a constant factor: $\frac{\partial}{\partial x}(xy)=y$, not $1$ or $0$. That $y$ is the height of the strip in the picture.
-    worked: |
-      Find both partial-derivative formulas of $f(x,y)=x^2y+5y$, then the slopes at $(3,2)$.
+      So $\frac{\partial f}{\partial x}=2xy$. This result is itself a function of both inputs, which we call a **partial-derivative formula**, and putting in any point gives the slope there.
 
-      1. **Differentiate in $x$, treating $y$ as a constant.**
-         $$\frac{\partial f}{\partial x}=2x\cdot y+0=2xy.$$
+      ### How common terms behave
 
-      2. **Differentiate in $y$, treating $x$ as a constant.**
-         $$\frac{\partial f}{\partial y}=x^2\cdot1+5=x^2+5.$$
-
-      3. **Put in the point $(3,2)$.**
-         $$\frac{\partial f}{\partial x}(3,2)=2(3)(2)=12.$$
-         $$\frac{\partial f}{\partial y}(3,2)=3^2+5=14.$$
-
-      4. **Check the $x$-slope with a small step $h=0.01$ in $x$ only.**
-         $$\frac{f(3.01,2)-f(3,2)}{0.01}=\frac{28.1202-28}{0.01}=12.02\approx12.$$
-
-      **Compare cases.** How common kinds of term behave:
+      Here's how a few common terms behave:
 
       | Term | Partial in $x$ | Partial in $y$ |
       | --- | --- | --- |
+      | $xy$ | $y$ | $x$ |
       | $x^2y$ | $2xy$ | $x^2$ |
       | $5y$ | $0$ | $5$ |
-      | $xy$ | $y$ | $x$ |
-      | $x^3$ | $3x^2$ | $0$ |
       | $e^y$ | $0$ | $e^y$ |
 
-      **Where it shows up.** A house model's loss, as the next section shows, is built from its weights with sums, products and powers, so these rules give a formula for each weight's partial derivative. Training changes the weights many times, so you derive the formula once and evaluate it at whatever values the weights have each time.
+      Be careful not to drop an input just because it's held fixed. Only terms with no $x$ at all disappear. When $y$ multiplies $x$, it stays as a factor, so the partial of $xy$ in $x$ is $y$, not $1$ or $0$, just like the height of the strip in the picture.
+    worked: |
+      Let's find both partial-derivative formulas of $f(x,y)=x^2y+5y$, and then the two slopes at the point $(3,2)$.
+
+      1. **Differentiate in $x$, treating $y$ as a constant.** The $y$ in $x^2y$ is a constant factor, so it stays, and $5y$ has no $x$, so it gives $0$.
+         $$\frac{\partial f}{\partial x}=2x\cdot y+0=2xy$$
+
+      2. **Differentiate in $y$, treating $x$ as a constant.** Now $x^2$ is the constant factor in front of $y$, and $5y$ gives $5$.
+         $$\frac{\partial f}{\partial y}=x^2\cdot1+5=x^2+5$$
+
+      3. **Put in the point $(3,2)$.** Each formula gives its slope at that point.
+         $$\frac{\partial f}{\partial x}(3,2)=2\times3\times2=12,\qquad\frac{\partial f}{\partial y}(3,2)=3^2+5=14$$
+
+      4. **Check the $x$ slope with a small step.** We move $x$ alone from $3$ to $3.01$, where $f(3.01,2)=28.1202$, and divide the rise by $0.01$.
+         $$\frac{f(3.01,\,2)-f(3,\,2)}{0.01}=\frac{28.1202-28}{0.01}=12.02$$
+
+      The check gives $12.02$, close to $12$. So at $(3,2)$ this function rises at $12$ along $x$ and at $14$ along $y$.
     problems:
-      [
-        pd-compute-basics,
-        pdp-constant-factor-self-explain,
-        pdp-compute-x,
-        pdp-compute-y,
-        pdp-why-zero,
-        pdp-value-template,
-        pdp-exp-log,
-        pdp-product,
-      ]
+      - pd-compute-basics
+      - pdp-constant-factor-self-explain
+      - pdp-compute-x
+      - pdp-compute-y
+      - pdp-why-zero
+      - pdp-value-template
+      - pdp-exp-log
+      - pdp-product
   - id: pd-many-inputs
-    title: "Slopes for a model's weights"
+    title: "Find the slopes of a model's error"
     explain: |
-      **The question.** A loss can depend on many numbers at once. For a house-price model, which of them get partial derivatives, and what do those partials look like?
+      ### A model with two adjustable numbers
 
-      **Picture it.** A **linear model** predicts a price by multiplying each **feature** (a recorded fact about the house) by its weight, adding the results, and adding one more adjustable number, the **bias** $b$. Take a house with area $12$ (in tens of m², so 120 m²), $3$ bedrooms and age $20$ years, which sold for $330$ (thousands of pounds). With weights $w_1=25$, $w_2=10$, $w_3=-1$ (older houses sell for less) and $b=0$, the prediction is:
+      Partial derivatives matter in machine learning because a model's error depends on several numbers at once. A **model** is a formula that makes predictions, and **training** means adjusting its numbers until the predictions get closer to the true answers. Let's build the smallest one.
 
-      $$12(25)+3(10)+20(-1)+0=310.$$
+      Our model predicts a house's price from its area $x$. It multiplies the area by a **weight** $w$, which says how much the price rises per unit of area, and adds a **bias** $b$, a fixed amount on top. So it predicts $wx+b$, and since training adjusts $w$ and $b$, we call them the model's **parameters**.
 
-      The **error** $e$ is prediction minus price, $310-330=-20$. The **squared loss** is $e^2=400$: squaring makes misses positive and big misses count more. Amber: adjusted by training; grey: fixed data.
+      Our house has area $x=2$, in hundreds of square metres, and sold for $y=7$, in hundreds of thousands of pounds. With $w=1$ and $b=1$, the model predicts $1\times2+1=3$. The **error** is prediction minus price, $e=3-7=-4$, the red gap on the left. Squaring it gives the **squared error**, $L=e^2=16$, so every miss counts as positive. A score like this is called a **loss**, and training tries to make it small.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="The house model as a flow: area 12 times w1, bedrooms 3 times w2, age 20 times w3 and bias b add to the prediction 310; minus the price 330 gives error minus 20; squaring gives loss 400. Weights and bias are amber, data are grey">
-        <defs>
-          <marker id="pd3-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
-        </defs>
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <rect x="16" y="30" width="170" height="40" rx="6" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/>
-          <text x="28" y="55"><tspan fill="#737373">area 12</tspan> × <tspan fill="#f59e0b">w₁ = 25</tspan></text>
-          <rect x="16" y="90" width="170" height="40" rx="6" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/>
-          <text x="24" y="115" font-size="13"><tspan fill="#737373">bedrooms 3</tspan> × <tspan fill="#f59e0b">w₂ = 10</tspan></text>
-          <rect x="16" y="150" width="170" height="40" rx="6" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/>
-          <text x="28" y="175"><tspan fill="#737373">age 20</tspan> × <tspan fill="#f59e0b">w₃ = −1</tspan></text>
-          <rect x="16" y="210" width="170" height="40" rx="6" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/>
-          <text x="28" y="235" fill="#f59e0b">bias b = 0</text>
-          <path d="M186 50 L246 130 M186 110 L246 135 M186 170 L246 145 M186 230 L246 150" stroke="#d4d4d4" stroke-width="1.5" fill="#171717" fill-opacity="0"/>
-          <rect x="246" y="115" width="130" height="50" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
-          <text x="258" y="137">add up:</text>
-          <text x="258" y="155">prediction 310</text>
-          <path d="M376 130 L414 104" stroke="#737373" stroke-width="1.5" marker-end="url(#pd3-arrow)"/>
-          <rect x="418" y="60" width="206" height="60" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
-          <text x="430" y="84">minus <tspan fill="#737373">price 330</tspan>:</text>
-          <text x="430" y="106">error e = −20</text>
-          <path d="M521 120 V176" stroke="#737373" stroke-width="1.5" marker-end="url(#pd3-arrow)"/>
-          <rect x="418" y="180" width="206" height="50" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/>
-          <text x="430" y="210">loss e² = 400</text>
-          <text x="16" y="284" fill="#f59e0b">amber: adjusted by training</text>
-          <text x="260" y="284" fill="#737373">grey: recorded data, fixed</text>
-        </g>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Left: area against price. The grey line is the model prediction w x plus b with w equal to 1 and b equal to 1, which predicts 3 at area 2. The house is the black dot at area 2 and price 7, and a red dashed segment from 3 up to 7 shows the error of minus 4. Right: the loss as w changes while b stays 1, a curve that is 16 at w equal to 1, where a blue line touches it with slope minus 16, and falls to 0 at w equal to 3">
+      <defs><marker id="pd3-axis" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="20" y="30">the house and the model</text>
+      <path d="M60 300 H281.0 M60 300 V48.0" stroke="#737373" fill="#ffffff" fill-opacity="0" marker-end="url(#pd3-axis)"/>
+      <path d="M125 300 v5" stroke="#737373"/>
+      <text x="125" y="322" fill="#737373" text-anchor="middle">1</text>
+      <path d="M190 300 v5" stroke="#737373"/>
+      <text x="190" y="322" fill="#737373" text-anchor="middle">2</text>
+      <path d="M255 300 v5" stroke="#737373"/>
+      <text x="255" y="322" fill="#737373" text-anchor="middle">3</text>
+      <path d="M60 210 h-5" stroke="#737373"/>
+      <text x="50" y="215" fill="#737373" text-anchor="end">3</text>
+      <path d="M60 90 h-5" stroke="#737373"/>
+      <text x="50" y="95" fill="#737373" text-anchor="end">7</text>
+      <path d="M60 270 L268.0 174" stroke="#737373" stroke-width="2.5"/>
+      <path d="M190 210 V90" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="6 4"/>
+      <circle cx="190" cy="90" r="5" fill="#171717"/>
+      <circle cx="190" cy="210" r="4" fill="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="200" y="84">house: area 2, price 7</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="180" y="155" fill="#ef4444" text-anchor="end">error −4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="205" y="232" fill="#737373">prediction wx + b</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="205" y="250" fill="#737373">with w = 1, b = 1</text>
+      <text x="287" y="305">area</text>
+      <text x="70" y="58">price</text>
+      <text x="340" y="30">the loss as w changes, b stays 1</text>
+      <path d="M380 300 H616.5 M380 300 V34" stroke="#737373" fill="#ffffff" fill-opacity="0" marker-end="url(#pd3-axis)"/>
+      <path d="M435 300 v5" stroke="#737373"/>
+      <text x="435" y="322" fill="#737373" text-anchor="middle">1</text>
+      <path d="M490 300 v5" stroke="#737373"/>
+      <text x="490" y="322" fill="#737373" text-anchor="middle">2</text>
+      <path d="M545 300 v5" stroke="#737373"/>
+      <text x="545" y="322" fill="#737373" text-anchor="middle">3</text>
+      <path d="M600 300 v5" stroke="#737373"/>
+      <text x="600" y="322" fill="#737373" text-anchor="middle">4</text>
+      <path d="M380 188 h-5" stroke="#737373"/>
+      <text x="370" y="193" fill="#737373" text-anchor="end">16</text>
+      <path d="M380 48 h-5" stroke="#737373"/>
+      <text x="370" y="53" fill="#737373" text-anchor="end">36</text>
+      <path d="M380 48 385.5 64.52 391 80.48 396.5 95.88 402 110.72 407.5 125 413 138.72 418.5 151.88 424 164.48 429.5 176.52 435 188 440.5 198.92 446 209.28 451.5 219.08 457 228.32 462.5 237 468 245.12 473.5 252.68 479 259.68 484.5 266.12 490 272 495.5 277.32 501 282.08 506.5 286.28 512 289.92 517.5 293 523 295.52 528.5 297.48 534 298.88 539.5 299.72 545 300 550.5 299.72 556 298.88 561.5 297.48 567 295.52 572.5 293 578 289.92 583.5 286.28 589 282.08 594.5 277.32 600 272" stroke="#737373" stroke-width="2.5" fill="#ffffff" fill-opacity="0"/>
+      <path d="M404.75 126.4 L465.25 249.6" stroke="#3b82f6" stroke-width="3"/>
+      <circle cx="435" cy="188" r="4.5" fill="#171717"/>
+      <circle cx="545" cy="300" r="4.5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="447" y="192">w = 1, loss 16</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="447" y="170" fill="#3b82f6">slope −16</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="545" y="266" text-anchor="middle">loss 0 at w = 3</text>
+      <text x="622.5" y="305">w</text>
+      </g>
       </svg>
       ```
 
-      **The idea.** The loss is treated as a function of the **parameters**, the numbers training adjusts (here $w_1,w_2,w_3,b$), so there is one partial per parameter. The data act as constants. For this house:
+      ### Which inputs training can change
 
-      $$e=12w_1+3w_2+20w_3+b-330,$$
+      If we write the loss out in full, it is
 
-      $$L=e^2=e\cdot e.$$
+      $$L=(wx+b-y)^2.$$
 
-      Here $e$ is the error, not the number $e\approx2.718$.
+      It contains four quantities, but training can only change $w$ and $b$, because the house's area and price are recorded facts. So $x$ and $y$ are constants, and only $w$ and $b$ get partials.
 
-      The power rule on $e^2$ gives $2e$, but that is the rate per unit of $e$, and $e$ is not $w_1$. With the other parameters frozen, $e$ is an ordinary function of $w_1$, so use the product rule from the derivatives lesson on $e\cdot e$:
+      Since $L$ is $e$ times $e$, the product rule handles it. With $b$ frozen, it gives $e$ times the rate of $e$, plus the rate of $e$ times $e$, which add up to
 
-      $$\frac{\partial L}{\partial w_1}=\frac{\partial e}{\partial w_1}\cdot e+e\cdot\frac{\partial e}{\partial w_1}=2e\cdot\frac{\partial e}{\partial w_1}.$$
+      $$\frac{\partial L}{\partial w}=2e\cdot\frac{\partial e}{\partial w}.$$
 
-      Here $\frac{\partial e}{\partial w_1}=12$, the area, because area is the feature that $w_1$ multiplies. Each weight's partial is $2e$ times its feature; the bias's is $2e$ times $1$.
+      If $w$ rises by $1$, the prediction $wx+b$ rises by $x$, and so does the error. So the weight's slope is $2e$ times $x$. The bias adds to the error one for one, so its slope is $2e$ times $1$.
 
-      **Common confusion.** "The features and the price are inputs too, so the loss needs partials for them." Training can't change a house's area or its sale price, so only the parameters, which it will adjust, need partials.
+      The right-hand picture plots the loss against $w$, with $b$ kept at $1$. At $w=1$, $2e$ times $x$ is $2\times(-4)\times2=-16$. It's negative, so raising $w$ a little lowers the loss, and the curve reaches $0$ at $w=3$, where the prediction is exactly $7$.
     worked: |
-      For the house above, find the loss's partial derivative for every parameter at $w_1=25$, $w_2=10$, $w_3=-1$, $b=0$.
+      Let's find both slopes of the loss for our house, with area $x=2$ and price $y=7$, at $w=1$ and $b=1$.
 
-      1. **Compute the error.**
-         $$e=12(25)+3(10)+20(-1)+0-330=-20.$$
+      1. **Work out the error.** The prediction is $wx+b$, and the error is prediction minus price.
+         $$e=1\times2+1-7=-4$$
 
-      2. **Find how fast $e$ moves with each parameter.** Freeze the others; the rate is the feature that parameter multiplies (the $20$ for $w_3$ is the age, not the error).
-         $$\frac{\partial e}{\partial w_1}=12,\quad\frac{\partial e}{\partial w_2}=3,\quad\frac{\partial e}{\partial w_3}=20,\quad\frac{\partial e}{\partial b}=1.$$
+      2. **Find how fast the error moves with each parameter.** With $b$ frozen, $w$ changes the error at the rate $x=2$, the area it multiplies. With $w$ frozen, $b$ changes it one for one.
+         $$\frac{\partial e}{\partial w}=2,\qquad\frac{\partial e}{\partial b}=1$$
 
-      3. **Multiply each rate by $2e=-40$.**
-         $$\frac{\partial L}{\partial w_1}=-40(12)=-480,\qquad\frac{\partial L}{\partial w_2}=-40(3)=-120.$$
-         $$\frac{\partial L}{\partial w_3}=-40(20)=-800,\qquad\frac{\partial L}{\partial b}=-40(1)=-40.$$
+      3. **Multiply each rate by $2e$.** The product rule on $e\cdot e$ puts a factor of $2e=-8$ in front of each rate.
+         $$\frac{\partial L}{\partial w}=-8\times2=-16,\qquad\frac{\partial L}{\partial b}=-8\times1=-8$$
 
-      4. **Check $w_3$ with a small step of $0.01$ in $w_3$ only.** The error moves by $20\times0.01=0.2$, to $-19.8$.
-         $$\frac{(-19.8)^2-(-20)^2}{0.01}=\frac{392.04-400}{0.01}=-796\approx-800.$$
-         The gap of $4$ is $0.5\%$ of $800$; as before, it comes from the step not being zero and shrinks with a smaller step.
+      4. **Check the weight's slope with a small step.** Raising $w$ alone from $1$ to $1.01$ raises the prediction by $0.02$, so the error becomes $-3.98$.
+         $$\frac{(-3.98)^2-(-4)^2}{0.01}=\frac{15.8404-16}{0.01}=-15.96$$
 
-      **Compare cases.** Every partial is $2e=-40$ times the parameter's multiplier. All are negative: the model predicts too low, so raising any one parameter a little lowers this house's loss.
-
-      | Parameter | Multiplies | Partial of $L$ |
-      | --- | --- | --- |
-      | $w_1$ | area $12$ | $-480$ |
-      | $w_2$ | bedrooms $3$ | $-120$ |
-      | $w_3$ | age $20$ | $-800$ |
-      | $b$ | $1$ | $-40$ |
-
-      **Where it shows up.** Training reads these four slopes to decide which way to move each parameter, and a slope further from zero means that parameter moves the loss faster. With many houses, the loss is usually the average of their losses. Each partial is then the average of the houses' partials, because the derivative of a sum is the sum of the derivatives. Real models have thousands or millions of weights, and each one gets its own partial derivative in exactly this way.
+      The check gives $-15.96$, close to $-16$. Both slopes are negative because the model predicts too low, so raising either parameter a little lowers the loss. The weight's slope is twice the bias's because a change in $w$ is multiplied by the area, $2$.
     problems:
-      [
-        pd-many-inputs-basics,
-        pdp-error-rate-self-explain,
-        pdp-why-data-fixed,
-        pdp-three-inputs,
-        pdp-gap-w,
-        pdp-gap-template,
-        pdp-gap-b,
-        pdp-turn-dial,
-        pdp-bias-zero,
-        pdp-sensor-gain,
-      ]
+      - pd-many-inputs-basics
+      - pdp-error-rate-self-explain
+      - pdp-why-data-fixed
+      - pdp-three-inputs
+      - pdp-gap-w
+      - pdp-gap-template
+      - pdp-gap-b
+      - pdp-turn-dial
+      - pdp-bias-zero
+      - pdp-sensor-gain
 final: pd-explain
 summary: |
-  - A partial derivative is the slope of a function when only one input moves and every other input is held fixed.
-  - To find a partial-derivative formula, treat the other inputs as constants and use the ordinary derivative rules.
-  - A model's loss has one partial for each weight and for the bias; the data stay fixed because training cannot change them.
+  - A partial derivative is the slope of a function of several inputs when only one input changes and every other input is held fixed. We write it $\frac{\partial f}{\partial x}$.
+  - A function has one partial derivative for each input, and they usually differ. At $(1.5,1)$, $x^2+2y^2$ rises at $3$ along $x$ and at $4$ along $y$.
+  - To find a partial-derivative formula, treat the other inputs as constants and use the ordinary derivative rules. A constant factor stays, and a term without the moving input gives $0$.
+  - For a model's squared error $L=(wx+b-y)^2$, only the parameters get slopes, $\frac{\partial L}{\partial w}=2(wx+b-y)x$ and $\frac{\partial L}{\partial b}=2(wx+b-y)$, while the data stay fixed.
 
-  **Next:** Gradients collect these partial derivatives into a single list of numbers, one entry per input.
+  **Next:** The gradients lesson collects a function's partial derivatives into one list and uses it to find the direction in which the function rises fastest.

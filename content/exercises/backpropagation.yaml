@@ -37,93 +37,93 @@ exercises:
     role: "practice"
     difficulty: 1
     est_minutes: 2
-    prompt: "In the worked example, why is the loss slope 6 calculated only once at the total?"
+    prompt: "In the worked example, why is the slope 6 at the prediction worked out only once?"
     options:
       [
         {
           "id": "a",
-          "text": "Both dial routes share the same square operation after the total.",
+          "text": "Both parameters reach the loss only through the prediction.",
           "correct": true,
-          "feedback": "Correct: everything after the total is shared, so its loss slope is found once and reused.",
+          "feedback": "Correct: everything after the prediction is shared, so its slope is found once and reused.",
         },
         {
           "id": "b",
-          "text": "Both dials have the same local derivative before the total.",
+          "text": "Both parameters have the same local derivative.",
           "correct": false,
           "category": "incorrect_reasoning",
           "feedback": "Their local derivatives are 2 and 1, not equal.",
         },
         {
           "id": "c",
-          "text": "Both dials must receive the same final loss derivative.",
+          "text": "Both parameters must end up with the same slope.",
           "correct": false,
           "category": "incorrect_reasoning",
           "feedback": "Their final derivatives are 12 and 6.",
         },
       ]
-    solution: "The square depends on the shared total, so its derivative is reused before multiplying by each dial’s own local slope."
+    solution: "The loss depends on both parameters only through the prediction, so its slope 6 is reused and then multiplied by each parameter’s own local derivative, 2 for $w$ and 1 for $b$."
   - id: "bp-reuse-local"
     dimension: "math"
     type: "numeric"
     role: "practice"
     difficulty: 1
     est_minutes: 3
-    prompt: "For the dial machine $z=2w+b$, the saved total is 3. The shared loss slope is $2z=6$. Complete the backward step: what is the loss slope for $w$?"
+    prompt: "The model $\\hat y=2w+b$ has target $y=0$. The saved prediction is 3, and the shared slope at the prediction is $2(3-0)=6$. Complete the backward step: what is $\\partial L/\\partial w$?"
     answer: 12
     tolerance: { "abs": 0.001 }
-    solution: "Multiply the shared loss slope 6 by the local slope 2, giving 12."
+    solution: "Multiply the shared slope 6 by the weight’s local derivative 2, giving 12."
   - id: "bp-reuse-template"
     dimension: "math"
     type: "numeric"
     role: "practice"
     difficulty: 2
     est_minutes: 3
-    prompt: "A dial machine has $z={{= a }}w+b$ and $L=z^2$. At $w={{= w }}$ and $b=1$, what is $\\partial L/\\partial w$?"
+    prompt: "A model predicts $\\hat y={{= a }}w+b$, with target $y=0$ and loss $L=(\\hat y-0)^2$. At $w={{= w }}$ and $b=1$, what is $\\partial L/\\partial w$?"
     answer_expr: "2 * (a * w + 1) * a"
     tolerance: { "abs": 0.001 }
     params: { "a": { "min": 1, "max": 3, "step": 1 }, "w": { "min": 1, "max": 3, "step": 1 } }
-    solution: "The square gives $2z$ and the total gives local slope {{= a }}. Their product is {{= 2 * (a * w + 1) * a }}."
+    solution: "The prediction is {{= a * w + 1 }}, so its slope is twice that, {{= 2 * (a * w + 1) }}. The weight’s local derivative is {{= a }}, and the product is {{= 2 * (a * w + 1) * a }}."
   - id: "bp-reuse-branch"
     dimension: "conceptual"
     type: "mc"
     role: "practice"
     difficulty: 2
     est_minutes: 2
-    prompt: "Two parameters enter a shared total, which then feeds one square. Which plan avoids repeating the shared derivative?"
+    prompt: "Two parameters feed one prediction, which then feeds a squared-error loss. Which plan avoids repeating the shared work?"
     options:
       [
         {
           "id": "a",
-          "text": "Differentiate the square once, then continue separately to each parameter.",
+          "text": "Find the prediction’s slope once, then multiply it by each parameter’s own local derivative.",
           "correct": true,
           "feedback": "Correct: the shared slope is found once, then each parameter multiplies it by its own local slope.",
         },
         {
           "id": "b",
-          "text": "Differentiate the square separately for every earlier parameter.",
+          "text": "Find the prediction’s slope again for every parameter.",
           "correct": false,
           "category": "incorrect_reasoning",
           "feedback": "That works mathematically but repeats the shared work.",
         },
         {
           "id": "c",
-          "text": "Differentiate the square once, then copy it unchanged to every parameter.",
+          "text": "Find the prediction’s slope once, then give it unchanged to every parameter.",
           "correct": false,
           "category": "incorrect_reasoning",
           "feedback": "You still need each parameter’s local multiplier.",
         },
       ]
-    solution: "Reuse the derivative at the total, then multiply by each incoming route’s local derivative."
+    solution: "Reuse the slope at the prediction, then multiply by each parameter’s local derivative."
   - id: "bp-reuse-robot"
     dimension: "math"
     type: "numeric"
     role: "practice"
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot’s score is $L=z^2$, where $z=3u+v$ and $u,v$ are adjustable settings. At $u=1,v=2$, what is the loss slope for $v$?"
+    prompt: "A robot scores two adjustable settings $u$ and $v$ with the loss $L=z^2$, where $z=3u+v$. At $u=1$ and $v=2$, what is $\\partial L/\\partial v$?"
     answer: 10
     tolerance: { "abs": 0.001 }
-    solution: "The saved total is 5, so the shared loss slope is 10. The local slope of $z$ with respect to $v$ is 1, leaving 10."
+    solution: "The saved value is $z=5$, so the shared slope at $z$ is $2\\times5=10$. The local derivative of $z$ for $v$ is 1, leaving 10."
   - id: "bp-by-hand-basics"
     dimension: "conceptual"
     type: "mc"
@@ -161,7 +161,7 @@ exercises:
     role: "practice"
     difficulty: 1
     est_minutes: 2
-    prompt: "Why does step 3 of the worked example multiply by 1 rather than by the saved ReLU output 2?"
+    prompt: "Why does the ReLU step of the worked example multiply by 1 rather than by ReLU’s output 2?"
     options:
       [
         {
@@ -202,11 +202,11 @@ exercises:
     role: "practice"
     difficulty: 2
     est_minutes: 3
-    prompt: "A machine uses $z=wx$, $h=\\operatorname{ReLU}(z)$, $p=3h$ and $L=(p-t)^2$. At $w=1$, $x={{= x }}$ and $t={{= t }}$, what is $\\partial L/\\partial w$?"
+    prompt: "A network computes $z=wx$, $h=\\operatorname{ReLU}(z)$, $\\hat y=3h$ and $L=(\\hat y-y)^2$. At $w=1$, $x={{= x }}$ and target $y={{= t }}$, what is $\\partial L/\\partial w$?"
     answer_expr: "2 * (3 * x - t) * 3 * x"
     tolerance: { "abs": 0.001 }
     params: { "x": { "min": 1, "max": 3, "step": 1 }, "t": { "min": 1, "max": 5, "step": 1 } }
-    solution: "The score is positive, so the ReLU factor is 1. Multiply the error slope, output multiplier and input: $2(3x-t)\\cdot3\\cdot x={{=2*(3*x-t)*3*x}}$."
+    solution: "The score is positive, so ReLU’s local derivative is 1. Multiply the prediction’s slope, the output weight 3 and the input: $2(3x-y)\\cdot3\\cdot x={{=2*(3*x-t)*3*x}}$."
   - id: "bp-hand-split"
     dimension: "math"
     type: "numeric"
@@ -223,10 +223,10 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot predicts a distance $p=2\\operatorname{ReLU}(wx)$ and uses loss $L=(p-3)^2$. With fixed sensor input $x=2$ and weight $w=1$, what is $\\partial L/\\partial w$?"
+    prompt: "A robot predicts a distance $\\hat y=2\\operatorname{ReLU}(wx)$ and uses the loss $L=(\\hat y-3)^2$. With fixed sensor input $x=2$ and weight $w=1$, what is $\\partial L/\\partial w$?"
     answer: 8
     tolerance: { "abs": 0.001 }
-    solution: "The score is 2 and prediction is 4. The backward factors are $2(4-3)$, output multiplier 2, ReLU slope 1 and input 2, giving 8."
+    solution: "The score is 2 and the prediction is 4. The backward factors are the prediction’s slope $2(4-3)=2$, the output weight 2, ReLU’s local derivative 1 and the input 2, giving 8."
   - id: "bp-arrays-basics"
     dimension: "conceptual"
     type: "mc"
@@ -295,28 +295,28 @@ exercises:
     role: "practice"
     difficulty: 1
     est_minutes: 3
-    prompt: "For $p=wx+b$, two output loss slopes are 2 and 4, already scaled for the chosen loss. Complete the bias step: what is $\\partial L/\\partial b$?"
+    prompt: "For $\\hat y=wx+b$ on a batch of two examples, the prediction slopes are 2 and 4, already including the MSE’s division. Complete the bias step: what is $\\partial L/\\partial b$?"
     answer: 6
     tolerance: { "abs": 0.001 }
-    solution: "The bias has local multiplier 1 in each row, so its derivative is $2+4=6$."
+    solution: "The bias has local derivative 1 in each example, so its slope is $2+4=6$."
   - id: "bp-array-template"
     dimension: "math"
     type: "numeric"
     role: "practice"
     difficulty: 2
     est_minutes: 3
-    prompt: "A batch uses $p=wx+b$ with inputs 1 and 2. Output loss slopes are {{= g }} and {{= q }}, already scaled for the loss. What is the weight derivative?"
+    prompt: "A batch uses $\\hat y=wx+b$ with inputs 1 and 2. The prediction slopes are {{= g }} and {{= q }}, already including the MSE’s division. What is $\\partial L/\\partial w$?"
     answer_expr: "g + 2 * q"
     tolerance: { "abs": 0.001 }
     params: { "g": { "min": -2, "max": 2, "step": 1 }, "q": { "min": 1, "max": 3, "step": 1 } }
-    solution: "Sum input times output slope across rows: $1({{= g }})+2({{= q }})={{=g+2*q}}$."
+    solution: "Add input times prediction slope over the examples: $1({{= g }})+2({{= q }})={{=g+2*q}}$."
   - id: "bp-array-shape"
     dimension: "conceptual"
     type: "mc"
     role: "practice"
     difficulty: 2
     est_minutes: 2
-    prompt: "With examples in rows, $X$ has shape $4\\times3$ and $G$ has shape $4\\times2$. What shape does $dW=X^\\top G$ have?"
+    prompt: "With examples in rows, $X$ has shape $4\\times3$ and $G$ has shape $4\\times2$. What shape do the weight slopes $X^\\top G$ have?"
     options:
       [
         {
@@ -347,7 +347,7 @@ exercises:
     role: "practice"
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot uses one shared sensor weight on inputs 2 and 3. Backpropagation returns output loss slopes -1 and 2, already including the mean loss’s scaling. What is the weight slope?"
+    prompt: "A robot uses one shared sensor weight on two examples with inputs 2 and 3. Backpropagation returns the prediction slopes -1 and 2, already including the MSE’s division. What is the weight’s slope?"
     answer: 4
     tolerance: { "abs": 0.001 }
     solution: "Sum the two contributions: $2(-1)+3(2)=4$. Dividing again would count the mean-loss scaling twice."

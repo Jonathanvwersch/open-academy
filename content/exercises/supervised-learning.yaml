@@ -264,9 +264,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A house has size ${{=size}}$ m² and ${{=bedrooms}}$ bedrooms. The model is $\\hat y=w_1\\cdot\\text{size}+w_2\\cdot\\text{bedrooms}+b$, with $w_1={{=w1}}$, $w_2={{=w2}}$, and $b={{=b}}$. What price does it predict, in thousands?"
+    prompt: "A house has size ${{=size}}$ m² and ${{=bedrooms}}$ bedrooms. The model is $\\hat y=w_1\\times\\text{size}+w_2\\times\\text{bedrooms}+b$, with $w_1={{=w1}}$, $w_2={{=w2}}$, and $b={{=b}}$. What price does it predict, in thousands?"
     hints: ["Substitute each value into the model, then add the three terms."]
-    solution: "Substitute the values: ${{=w1}}\\cdot{{=size}} + {{=w2}}\\cdot{{=bedrooms}} + {{=b}} = {{=w1 * size + w2 * bedrooms + b}}$ thousand."
+    solution: "Substitute the values: ${{=w1}}\\times{{=size}} + {{=w2}}\\times{{=bedrooms}} + {{=b}} = {{=w1 * size + w2 * bedrooms + b}}$ thousand."
     answer_expr: "w1 * size + w2 * bedrooms + b"
     params:
       w1: { min: 1, max: 5 }
@@ -279,7 +279,7 @@ exercises:
       - {
           answer_expr: "w1 * size + b",
           category: math_error,
-          feedback: "Include the bedroom term too: $w_2\\cdot\\text{bedrooms}$.",
+          feedback: "Include the bedroom term too: $w_2\\times\\text{bedrooms}$.",
         }
   - id: slp-why-targets
     dimension: conceptual
@@ -347,9 +347,9 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A model estimates the price of a 100 m², two-bedroom house using $\\hat y=w_1\\cdot\\text{size}+w_2\\cdot\\text{bedrooms}+b$. What does $\\theta$ stand for?"
+    prompt: "A model estimates the price of a 100 m², two-bedroom house using $\\hat y=w_1\\times\\text{size}+w_2\\times\\text{bedrooms}+b$. What does $\\theta$ stand for?"
     options:
-      - { id: a, text: "The adjustable settings $w_1$, $w_2$ and $b$", correct: true }
+      - { id: a, text: "The adjustable numbers $w_1$, $w_2$ and $b$", correct: true }
       - {
           id: b,
           text: "The house's size and bedroom count",
@@ -521,7 +521,7 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A house-price model predicts 7 hundred thousand pounds for a house that sold for 5 hundred thousand. Using the numbers 7 and 5, what is the squared error, (prediction − target)²?"
+    prompt: "Working in hundreds of thousands of pounds, a house-price model predicts 7 for a house that sold for 5. What is the squared error, $(\\hat y-y)^2$?"
     answer: 4
     tolerance: { abs: 0.000001 }
     solution: "The error is 7 − 5 = 2. Squaring it gives 2² = 4."
@@ -856,7 +856,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "In the worked example, Setting A's errors $+10$, $-20$ and $+10$ add up to 0. Why does step 3 add the signed errors before squaring them?"
+    prompt: "In the worked example, Setting A's errors $+10$, $-20$ and $+10$ add up to 0. Why does step 2 add the signed errors before step 3 squares them?"
     options:
       - {
           id: a,

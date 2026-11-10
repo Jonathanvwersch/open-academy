@@ -32,7 +32,7 @@ exercises:
           correct: false,
           feedback: "That is a gradient-descent update.",
         }
-    solution: "A layer computes weighted scores for several neurons and applies an activation function to each."
+    solution: "Each neuron uses its own weights and bias to form a score from the shared inputs. Applying the activation to each score gives the layer outputs."
   - id: mlp-two-layers-basics
     dimension: conceptual
     type: mc
@@ -45,7 +45,7 @@ exercises:
           id: a,
           text: "Calculating a prediction by passing values through each layer in order.",
           correct: true,
-          feedback: "Each layer consumes preceding values and produces the next values toward the prediction.",
+          feedback: "Each layer reads the previous layer outputs and passes its own outputs to the next layer.",
         }
       - {
           id: b,

@@ -60,31 +60,31 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "With $w=2$, $x=3$ and $b=-2$, the contribution $wx$ is 6. Complete the score $z=6+b$."
+    prompt: "A house had $x=3$ viewings in its first week, and the model has weight $w=2$ and bias $b=-2$. The weighted input $wx$ is 6. Complete the score $z=6+b$."
     answer: 4
     tolerance: { abs: 0.000001 }
-    solution: Add the bias once after the feature contribution, giving $6-2=4$.
+    solution: Add the bias once after the weighted input, giving $6-2=4$.
   - id: lr-classification-template
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A classifier has one feature $x={{=x}}$, weight $w={{=w}}$ and bias $b={{=b}}$. Find its score $z$."
+    prompt: "A house had $x={{=x}}$ viewings in its first week. The model has weight $w={{=w}}$ and bias $b={{=b}}$. Find the score $z=wx+b$."
     params:
       x: { min: 0, max: 4 }
       w: { min: 1, max: 3 }
       b: { min: -3, max: 0 }
     answer_expr: w*x+b
     tolerance: { abs: 0.000001 }
-    solution: Multiply the feature by its weight and add the bias once; the score is ${{=w*x+b}}$, not yet a probability.
+    solution: Multiply the input by its weight and add the bias once; the score is ${{=w*x+b}}$, not yet a probability.
   - id: lr-classification-confusion
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A classifier produces score 0. Is it necessarily assigning zero chance to label 1?
+    prompt: A house gets a score of 0. Does that mean the model gives it zero chance of selling within a month?
     options:
       - {
           id: a,
@@ -111,10 +111,10 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "A robot predicts whether a doorway is blocked. With sensor feature $x=2$ and weight $w=3$, its score is $z=-1$. Find the bias in $z=wx+b$."
+    prompt: "A robot predicts whether a doorway is blocked. With sensor reading $x=2$ and weight $w=3$, its score is $z=-1$. Find the bias in $z=wx+b$."
     answer: -7
     tolerance: { abs: 0.000001 }
-    solution: The feature contribution is 6, so the bias must be $-1-6=-7$ to give the stated score.
+    solution: The weighted input is 6, so the bias must be $-1-6=-7$ to give the stated score.
   - id: lr-sigmoid-basics
     dimension: conceptual
     type: mc
@@ -148,7 +148,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: Why does step 3 of the worked example predict label 1 after finding probability three quarters?
+    prompt: Why does step 3 of the worked example predict label 1 after finding a probability of 0.88?
     options:
       - {
           id: a,
@@ -261,11 +261,11 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: Why does the worked example use negative log of three quarters rather than negative log of one quarter?
+    prompt: Why does the worked example use $-\ln0.119$ rather than $-\ln0.881$?
     options:
       - {
           id: a,
-          text: "The observed label is 1, whose assigned probability is three quarters.",
+          text: "The house sold, so $y=1$, and the model gave label 1 probability 0.119.",
           correct: true,
           feedback: "Choose the term for the observed label.",
         }
@@ -342,6 +342,33 @@ exercises:
     answer: 1.38629436112
     tolerance: { abs: 0.0001 }
     solution: The true-label probability is $1-3/4=1/4$, so the loss is $-\ln(1/4)=\ln4\approx1.3863$.
+  - id: lr-bce-squared-error
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A house sold ($y=1$), but the model gave it $p=0.01$. Why does binary cross-entropy punish this more than squared error would?"
+    options:
+      - {
+          id: a,
+          text: "Its loss, $-\\ln0.01\\approx4.6$, keeps growing, but squared error stays below 1.",
+          correct: true,
+          feedback: "Cross-entropy climbs without limit as the probability of the true label shrinks.",
+        }
+      - {
+          id: b,
+          text: "Squared error is zero whenever the decision is wrong, so it gives no push.",
+          correct: false,
+          feedback: "Squared error here is $(0.01-1)^2\\approx0.98$, not zero.",
+        }
+      - {
+          id: c,
+          text: "Cross-entropy ignores the label and only looks at how small $p$ is.",
+          correct: false,
+          feedback: "The label chooses whether the loss uses $p$ or $1-p$.",
+        }
+    solution: "Squared error is $(0.01-1)^2\\approx0.98$, close to its largest possible value of 1, while cross-entropy is $-\\ln0.01\\approx4.61$ and keeps rising as $p$ falls further."
   - id: lr-gradient-basics
     dimension: conceptual
     type: mc
@@ -366,9 +393,9 @@ exercises:
           id: c,
           text: "The loss derivative for every weight without scaling.",
           correct: false,
-          feedback: "Each weight slope also needs its feature factor.",
+          feedback: "Each weight slope also multiplies by its input.",
         }
-    solution: The chain rule simplifies the score derivative to $p-y$, and each weight slope multiplies this by its feature.
+    solution: The slope of the loss with respect to the score works out to $p-y$, and each weight slope multiplies this by its input.
   - id: lr-gradient-reason
     dimension: conceptual
     type: mc
@@ -379,7 +406,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "The feature is 2, while the bias changes the score one-for-one.",
+          text: "The input is 2, while the bias changes the score one-for-one.",
           correct: true,
           feedback: "The score derivatives with respect to weight and bias are x and 1.",
         }
@@ -387,7 +414,7 @@ exercises:
           id: b,
           text: "There are two labels, so every weight slope must be doubled.",
           correct: false,
-          feedback: "The factor comes from the feature value, not the label count.",
+          feedback: "The factor comes from the input value, not the label count.",
         }
       - {
           id: c,
@@ -395,17 +422,17 @@ exercises:
           correct: false,
           feedback: "The bias affects the score directly and has slope p-y.",
         }
-    solution: In $z=wx+b$, the feature scales a weight change while a bias change enters directly; the chain rule preserves that distinction.
+    solution: In $z=wx+b$, raising $w$ by a small amount raises the score by $x$ times that amount, while raising $b$ raises it by the same amount.
   - id: lr-gradient-faded
     dimension: math
     type: numeric
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "With $p=1/2$, $y=1$ and $x=4$, the score slope is $-1/2$. Complete the weight slope $(p-y)x$."
+    prompt: "A house with $x=4$ viewings sold, so $y=1$, and the model gave it $p=1/2$. The score slope is $-1/2$. Complete the weight slope $(p-y)x$."
     answer: -2
     tolerance: { abs: 0.000001 }
-    solution: Multiply the score slope by the feature, giving $(-1/2)(4)=-2$.
+    solution: Multiply the score slope by the input, giving $(-1/2)(4)=-2$.
   - id: lr-gradient-template
     dimension: math
     type: numeric
@@ -419,7 +446,7 @@ exercises:
       x: { min: -2, max: 4 }
     answer_expr: (k/4-y)*x
     tolerance: { abs: 0.000001 }
-    solution: Subtract the observed label from the probability, then multiply by the feature; the weight slope is ${{=(k/4-y)*x}}$.
+    solution: Subtract the observed label from the probability, then multiply by the input; the weight slope is ${{=(k/4-y)*x}}$.
   - id: lr-gradient-confusion
     dimension: conceptual
     type: mc
@@ -432,7 +459,7 @@ exercises:
           id: a,
           text: "A zero weight slope and a nonzero bias slope.",
           correct: true,
-          feedback: "The zero feature removes the weight contribution but not the bias contribution.",
+          feedback: "The zero input removes the weight slope but not the bias slope.",
         }
       - {
           id: b,
@@ -444,7 +471,7 @@ exercises:
           id: c,
           text: "Zero slopes for both the weight and the bias.",
           correct: false,
-          feedback: "The bias slope is p-y regardless of this feature being zero.",
+          feedback: "The bias slope is p-y even when the input is zero.",
         }
     solution: The weight slope is $(p-y)0=0$, while the bias slope remains $p-y$.
   - id: lr-gradient-transfer
@@ -453,7 +480,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot starts with $w=0$, $b=0$, feature $x=-2$, observed label $y=1$, and learning rate $1/2$. After one simultaneous weight-and-bias update, what is its new score for this example?"
+    prompt: "A robot starts with $w=0$, $b=0$, input $x=-2$, observed label $y=1$, and learning rate $1/2$. After one simultaneous weight-and-bias update, what is its new score for this example?"
     answer: 1.25
     tolerance: { abs: 0.000001 }
     solution: Initially $p=1/2$, so the weight slope is 1 and the bias slope is $-1/2$. The new parameters are $w=-1/2$, $b=1/4$, giving score $(-1/2)(-2)+1/4=5/4$.
@@ -463,7 +490,7 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 5
-    prompt: Explain how you would train a model to predict whether a house sells above asking, rather than its price. Connect the score, probability, decision, loss and parameter update; explain why a correct class can still have nonzero loss.
+    prompt: How would you train a model to predict whether a house sells within a month, rather than its price? Explain how the score, the probability, the decision, the loss and the update to the weight and bias connect, and why a correct decision can still have a loss above zero.
     rubric:
       - {
           id: prediction,
@@ -483,4 +510,4 @@ exercises:
           weight: 1,
           required: true,
         }
-    exemplar: Encode sold above asking as 1 and not as 0. Compute a weighted score plus bias, use the sigmoid to estimate the chance of label 1, and compare that chance with a chosen threshold for the decision. Binary cross-entropy is the negative natural log of the probability assigned to the observed label; even a correct decision can leave that probability below one and hence a positive loss. The score slope is p-y, each weight slope multiplies it by its feature, and the bias slope is p-y. Subtract learning-rate-scaled slopes from the parameters and repeat with fresh predictions.
+    exemplar: Encode sold within a month as 1 and not sold as 0. Compute a weighted score plus bias, use the sigmoid to estimate the chance of label 1, and compare that chance with a chosen threshold for the decision. Binary cross-entropy is the negative natural log of the probability assigned to the observed label; even a correct decision can leave that probability below one and hence a positive loss. The score slope is p-y, each weight slope multiplies it by its input, and the bias slope is p-y. Subtract learning-rate-scaled slopes from the parameters and repeat with fresh predictions.

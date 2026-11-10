@@ -1,270 +1,334 @@
 concept: logistic-regression
-version: 2
+version: 3
 objective: |
-  **Goal:** turn a weighted score into a yes-or-no prediction, measure its probability error, and update the model to reduce that error.
+  **Goal:** answer a yes-or-no question with logistic regression, by turning a weighted score into a probability, measuring that probability with binary cross-entropy and updating the weight and bias to lower the loss.
+recap:
+  - concept: linear-regression
+    text: "A linear model with one input predicts $wx+b$: it multiplies the input $x$ by a weight $w$ and adds a bias $b$. The weight says how much the output rises when $x$ rises by one."
+  - concept: gradient-descent
+    text: "Gradient descent trains a model by repeating one step: find the slope of the loss for each parameter, multiply it by a small learning rate $\\eta$ and subtract it, so $w_{\\text{new}}=w-\\eta\\times\\text{slope}$."
+  - concept: probability-basics
+    text: "A probability is a number from 0 to 1 saying how likely something is, where 0 means impossible and 1 means certain. If something has probability $p$, the chance that it doesn't happen is $1-p$."
 where_this_fits: |
-  A model might need to predict whether a house sells above asking, not how much it costs. Training still means changing weights to reduce a loss, but a price prediction is the wrong kind of answer: it can be negative or much larger than one. We need a number that expresses how likely “yes” is, and a loss that checks that number against what actually happened. This lesson builds that model in four steps:
+  ### What is logistic regression?
 
-  1. Separate a two-category target from a numerical amount.
-  2. Turn a weighted score into a chance, then a decision.
-  3. Penalise predictions that give little chance to the observed answer.
-  4. Use that penalty's slopes to update the weights.
+  Logistic regression is a model that answers a yes-or-no question by giving the probability that the answer is yes. Like linear regression, it multiplies inputs by weights and adds them up, but then it squeezes that total into a number between 0 and 1.
+
+  Why do we need it? Many useful questions have two answers: will this house sell within a month, is this email spam, is the robot's path blocked? Linear regression predicts an amount, and an amount such as $-3$ or $7$ can't be a probability. So we need a new last step for the model, a new loss that checks a probability against what happened, and a training step that uses them.
 knowledge_points:
   - id: lr-classification
-    title: Predict a category, not an amount
+    title: "Predict a yes-or-no answer"
     explain: |
-      **The question.** You know how to predict an amount with a weighted sum. What changes when the answer must be “yes” or “no” rather than a price or a distance?
+      ### Two answers written as 0 and 1
 
-      **Picture it.** You want to predict whether a seed has sprouted from the days since you watered it. Each dot below is an observed seed: the horizontal position is its age in days, and the label records whether it has sprouted.
+      Suppose an estate agent wants to know which houses will sell within a month. There are only two possible answers, so we write them as numbers: $y=1$ means it sold within a month and $y=0$ means it didn't. These numbers are names for the two answers, called **labels**, not amounts.
 
-      Label 1 means “yes”; label 0 means “no”. These labels name categories, not amounts of growth.
+      Predicting one of two labels is called **binary classification**. "Binary" means there are two labels; the number of inputs can be anything.
+
+      ### A score from one input
+
+      Let's use one input, $x$, the number of viewings a house had in its first week. The picture shows six houses. The three with 1, 2 and 3 viewings didn't sell within a month, so they sit on the line for label 0. The three with 5, 6 and 7 viewings did, so they sit on the line for label 1. The blue line, which we'll build next, uses the same vertical axis for its score.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 145" aria-label="Observed seeds on a days-since-watering line: day zero and day one have label zero, day two has label one">
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
-          <path d="M60 70 H420" stroke="#d4d4d4"/>
-          <circle cx="60" cy="70" r="5" fill="#171717"/><circle cx="240" cy="70" r="5" fill="#171717"/><circle cx="420" cy="70" r="5" fill="#171717"/>
-          <text x="30" y="40">y = 0</text><text x="210" y="40">y = 0</text><text x="390" y="40">y = 1</text>
-          <text x="55" y="100">0</text><text x="235" y="100">1</text><text x="415" y="100">2</text>
-          <text x="135" y="135">days since watering (x)</text>
-        </g>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="Six houses plotted by the number of viewings in the first week. The houses with 1, 2 and 3 viewings sit on the line for label 0, not sold, and the houses with 5, 6 and 7 viewings sit on the line for label 1, sold within a month. The blue line is the score z equals x minus 4. It gives the house with 6 viewings a score of 2, above 1, and the house with 2 viewings a score of minus 2, below 0">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M80 180 H560 M80 135 H560" stroke="#d4d4d4"/>
+      <path d="M80 328.5 V31.5" stroke="#d4d4d4"/>
+      <path d="M140 315 L500 45" stroke="#3b82f6" stroke-width="3" fill="#ffffff" fill-opacity="0"/>
+      <circle cx="140" cy="180" r="6" fill="#171717"/>
+      <circle cx="200" cy="180" r="6" fill="#171717"/>
+      <circle cx="260" cy="180" r="6" fill="#171717"/>
+      <circle cx="380" cy="135" r="6" fill="#171717"/>
+      <circle cx="440" cy="135" r="6" fill="#171717"/>
+      <circle cx="500" cy="135" r="6" fill="#171717"/>
+      <circle cx="440" cy="90" r="5" fill="#3b82f6"/><circle cx="200" cy="270" r="5" fill="#3b82f6"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="320" fill="#737373" text-anchor="end">−3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="275" fill="#737373" text-anchor="end">−2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="230" fill="#737373" text-anchor="end">−1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="185" fill="#737373" text-anchor="end">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="140" fill="#737373" text-anchor="end">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="95" fill="#737373" text-anchor="end">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="50" fill="#737373" text-anchor="end">3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="350.5" fill="#737373" text-anchor="middle">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="140" y="350.5" fill="#737373" text-anchor="middle">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="200" y="350.5" fill="#737373" text-anchor="middle">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="260" y="350.5" fill="#737373" text-anchor="middle">3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="350.5" fill="#737373" text-anchor="middle">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="380" y="350.5" fill="#737373" text-anchor="middle">5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="440" y="350.5" fill="#737373" text-anchor="middle">6</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="500" y="350.5" fill="#737373" text-anchor="middle">7</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560" y="350.5" fill="#737373" text-anchor="middle">8</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="370.5" fill="#737373" text-anchor="middle">viewings in the first week, x</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="90" y="127">label 1: sold within a month</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560" y="200" text-anchor="end">label 0: not sold</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="428" y="84" fill="#3b82f6" text-anchor="end">6 viewings: score 2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="212" y="275" fill="#3b82f6">2 viewings: score −2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="510" y="50" fill="#3b82f6">score z = x − 4</text>
+      </g>
       </svg>
       ```
 
-      **The idea.** Predict which of two categories an input belongs to. **Binary classification** is prediction with exactly two possible labels, usually encoded as $y=0$ and $y=1$, where $y$ is the observed target. Start with a **score**, a number that can range freely, calculated from the input features. With one feature $x$, weight $w$ and bias $b$, write that score as $z=wx+b$; with several features it is $z=w\cdot x+b$. The score is not yet a class or a probability. A probability means a chance from 0 to 1; next you will turn the score into an estimated chance of label 1.
+      We can start just as linear regression does. The **score** is the weighted input plus the bias,
 
-      **Common confusion.** “Because the labels are numbers, this is just predicting an amount.” No: 0 and 1 name categories. A score of 3 is allowed, but it is neither a third category nor a valid probability.
+      $$z=wx+b.$$
+
+      Here $x$ is the input, $w$ is its weight and $b$ is the bias. With several inputs we add one weighted term for each, $z=w_1x_1+w_2x_2+\dots+b$, where $x_j$ is the $j$th input and $w_j$ is its weight. For now we'll pick $w=1$ and $b=-4$ by hand, so the score is $z=x-4$, the blue line. The last step shows how training adjusts them.
+
+      ### Why a score is not yet an answer
+
+      The blue line rises with the number of viewings, which is the right pattern. But a house with 6 viewings scores $2$ and a house with 2 viewings scores $-2$. Neither is a label, and neither can be a probability, because a probability must lie between 0 and 1. So the next step turns each score into a probability.
     worked: |
-      **Worked example.** A seed was watered two days ago, so $x=2$. Use weight $w=2$ and bias $b=-2$ to calculate its score, not its class.
+      Let's work out the score of a house with 6 viewings in its first week, using $w=1$ and $b=-4$.
 
-      1. **Find the feature contribution.**
-         $$wx=2(2)=4.$$
-      2. **Add the offset.**
-         $$z=4-2=2.$$
-      3. **Check its meaning.**
-         A chance must be between 0 and 1, but this score is 2. It cannot mean “200% likely to sprout”; you still need a rule that converts scores to chances.
+      1. **Multiply the input by its weight.** Each viewing adds $w$ to the score.
+         $$wx=1\times6=6.$$
 
-      **Compare cases.** Keep the same weight and bias.
+      2. **Add the bias.** The bias is added once, whatever the input is.
+         $$z=6+(-4)=2.$$
 
-      | Feature $x$ | Score $2x-2$ | Interpretation |
-      | --- | --- | --- |
-      | 0 | $-2$ | Outside the probability range |
-      | 1 | $0$ | Contributions cancel; this does not mean sprouting is impossible |
-      | 2 | $2$ | Outside the probability range |
-
-      **Where it shows up.** For house sales, label 1 can mean “sold above asking” and label 0 “did not”. You train on those observed categories rather than on prices.
+      The score is $2$. It's bigger than 1, so it can't be a probability yet.
     problems:
-      [
-        lr-classification-basics,
-        lr-classification-reason,
-        lr-classification-faded,
-        lr-classification-template,
-        lr-classification-confusion,
-        lr-classification-transfer,
-      ]
+      - lr-classification-basics
+      - lr-classification-reason
+      - lr-classification-faded
+      - lr-classification-template
+      - lr-classification-confusion
+      - lr-classification-transfer
   - id: lr-sigmoid
     title: "Turn a score into a probability"
     explain: |
-      **The question.** A score can be any real number, but a chance must lie between 0 and 1. How can you convert the score without losing which inputs have stronger evidence for “yes”?
+      ### Squeezing a score between 0 and 1
 
-      **Picture it.** Read the score along the horizontal axis and the estimated chance of label 1 up the vertical axis. The blue curve rises smoothly: negative scores give chances below one half, zero gives one half, and positive scores give chances above one half. Even very large scores stay below probability 1.
+      Our scores can be any number, but a probability must lie between 0 and 1. So we need a function that turns any score into a number in that range, with bigger scores giving bigger numbers.
+
+      The **sigmoid** is a smooth S-shaped function that does this. It takes any number $z$ and gives a number strictly between 0 and 1:
+
+      $$\sigma(z)=\frac{1}{1+e^{-z}}.$$
+
+      The Greek letter $\sigma$ (sigma) is the sigmoid's name, and $e\approx2.718$ is the number from the derivatives lesson. When $z$ is large, $e^{-z}$ is close to 0, so $\sigma(z)$ is close to 1. When $z$ is very negative, $e^{-z}$ is huge, so $\sigma(z)$ is close to 0. At $z=0$, $e^{0}=1$, so $\sigma(0)=1/2$.
+
+      **Logistic regression** is the model that works out the score and then passes it through the sigmoid. Its output, $p=\sigma(wx+b)$, is the model's probability that the label is 1. Training with the loss in the next step is what makes these probabilities good estimates.
+
+      ### Three houses on the curve
+
+      The green curve is the sigmoid, with the score along the bottom and the probability up the side. Here are three new houses marked on it, with the score $z=x-4$:
+
+      - 2 viewings: score $-2$, probability $0.12$, so a sale is unlikely.
+      - 4 viewings: score $0$, probability $0.5$, so the model can't tell.
+      - 6 viewings: score $2$, probability $0.88$, so a sale is likely.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 245" aria-label="Sigmoid probability increases with score, crossing probability one half at score zero">
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <path d="M60 30 V190 H420 M60 110 H420" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
-          <path d="M60 187.122 L65.625 186.747 L71.25 186.324 L76.875 185.847 L82.5 185.310 L88.125 184.706 L93.75 184.028 L99.375 183.266 L105 182.412 L110.625 181.455 L116.25 180.386 L121.875 179.193 L127.5 177.863 L133.125 176.384 L138.75 174.744 L144.375 172.930 L150 170.928 L155.625 168.726 L161.25 166.312 L166.875 163.677 L172.5 160.812 L178.125 157.710 L183.75 154.368 L189.375 150.786 L195 146.969 L200.625 142.926 L206.25 138.669 L211.875 134.217 L217.5 129.593 L223.125 124.827 L228.75 119.948 L234.375 114.993 L240 110.000 L245.625 105.007 L251.25 100.052 L256.875 95.173 L262.5 90.407 L268.125 85.783 L273.75 81.331 L279.375 77.074 L285 73.031 L290.625 69.214 L296.25 65.632 L301.875 62.290 L307.5 59.188 L313.125 56.323 L318.75 53.688 L324.375 51.274 L330 49.072 L335.625 47.070 L341.25 45.256 L346.875 43.616 L352.5 42.137 L358.125 40.807 L363.75 39.614 L369.375 38.545 L375 37.588 L380.625 36.734 L386.25 35.972 L391.875 35.294 L397.5 34.690 L403.125 34.153 L408.75 33.676 L414.375 33.253 L420 32.878" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="3"/>
-          <circle cx="240" cy="110" r="4" fill="#3b82f6"/>
-          <text x="20" y="35">1</text><text x="14" y="115">0.5</text><text x="20" y="195">0</text>
-          <text x="50" y="213">-4</text><text x="235" y="213">0</text><text x="415" y="213">4</text>
-          <text x="65" y="19">chance of label 1</text><text x="340" y="237">score z</text>
-        </g>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" aria-label="The green sigmoid curve of the chance of label 1 against the score z, from minus 4 to 4. It rises smoothly from near 0 to near 1 and crosses the dashed threshold line at 0.5 when the score is 0. The houses with 2, 4 and 6 viewings, with scores minus 2, 0 and 2, get chances of 0.12, 0.5 and 0.88">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M80 300 H560 M320 300 V65" stroke="#d4d4d4"/>
+      <path d="M80 60 H560" stroke="#d4d4d4" stroke-dasharray="4 4"/>
+      <path d="M80 180.0 H560" stroke="#737373" stroke-dasharray="6 4"/>
+      <path d="M80 295.68 L92 294.75 L104 293.62 L116 292.25 L128 290.6 L140 288.62 L152 286.24 L164 283.41 L176 280.04 L188 276.06 L200 271.39 L212 265.96 L224 259.68 L236 252.52 L248 244.45 L260 235.45 L272 225.59 L284 214.96 L296 203.69 L308 191.96 L320 180 L332 168.04 L344 156.31 L356 145.04 L368 134.41 L380 124.55 L392 115.55 L404 107.48 L416 100.32 L428 94.04 L440 88.61 L452 83.94 L464 79.96 L476 76.59 L488 73.76 L500 71.38 L512 69.4 L524 67.75 L536 66.38 L548 65.25 L560 64.32" stroke="#10b981" stroke-width="3" fill="#ffffff" fill-opacity="0"/>
+      <circle cx="200" cy="271.39" r="5" fill="#171717"/>
+      <circle cx="320" cy="180.0" r="5" fill="#171717"/>
+      <circle cx="440" cy="88.61" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="210" y="293.39">2 viewings: 0.12</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="332" y="202">4 viewings: 0.5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="430" y="76.61" text-anchor="end">6 viewings: 0.88</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560" y="172" fill="#737373" text-anchor="end">threshold 0.5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="305" fill="#737373" text-anchor="end">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="185" fill="#737373" text-anchor="end">0.5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="65" fill="#737373" text-anchor="end">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="322" fill="#737373" text-anchor="middle">−4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="200" y="322" fill="#737373" text-anchor="middle">−2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="322" fill="#737373" text-anchor="middle">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="440" y="322" fill="#737373" text-anchor="middle">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560" y="322" fill="#737373" text-anchor="middle">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="342" fill="#737373" text-anchor="middle">score z</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="46" fill="#737373">chance of label 1, p</text>
+      </g>
       </svg>
       ```
 
-      **The idea.** Convert scores to chances so a higher score gives a higher chance. The **sigmoid** is the increasing function $\sigma(z)=1/(1+e^{-z})$; $\sigma$ names the function and $e\approx2.718$ is the exponential base from the derivatives lesson. **Logistic regression** applies it to a weighted score, giving $p=\sigma(z)$, the estimated probability of label 1; label 0 has chance $1-p$.
+      ### From a probability to a decision
 
-      If you need a yes-or-no answer rather than just a chance, use a **threshold**, a cut-off probability. Here predict 1 if $p\geq1/2$, otherwise 0.
+      To decide, we compare the probability with a **threshold**, usually $0.5$: predict label 1 if $p\ge0.5$, and label 0 otherwise. Because $\sigma(0)=0.5$, this is the same as predicting 1 whenever the score is at least 0.
 
-      One half is where label 1 becomes at least as likely as label 0; other thresholds are possible when one kind of mistake costs more than the other.
-
-      At score zero, $e^0=1$, so $\sigma(0)=1/(1+1)=1/2$. Because higher scores give higher chances, $p\geq1/2$ means exactly $z\geq0$.
-
-      **Common confusion.** “If the model predicts label 1, that outcome is certain.” No: the threshold turns an uncertain estimate into a decision. Probability $3/4$ still leaves a chance of label 0, and the model's estimate itself can be inaccurate.
+      Be careful not to read a decision as certainty. When the model predicts that the house with 6 viewings will sell, it still gives a $1-0.88=0.12$ chance that it won't. The probability keeps that doubt.
     worked: |
-      **Worked example.** A seed receives score $z=\ln3$. As in the derivatives lesson, $\ln3$ asks which power of $e$ gives 3, so $e^{\ln3}=3$.
+      Let's turn the score of the house with 6 viewings, $z=2$, into a probability and then a decision.
 
-      1. **Evaluate the exponential.**
-         $$e^{-\ln3}=1/3.$$
-      2. **Convert to a probability.**
-         $$p=\frac{1}{1+1/3}=\frac34.$$
-      3. **Apply the threshold.**
-         $$\frac34\geq\frac12.$$
-         Predict label 1, without claiming certainty.
+      1. **Work out $e^{-z}$.** The sigmoid needs $e$ raised to minus the score.
+         $$e^{-2}\approx0.135.$$
 
-      **Compare cases.**
+      2. **Put it into the sigmoid.** Dividing 1 by $1+e^{-z}$ gives a number between 0 and 1.
+         $$p=\frac{1}{1+0.135}\approx0.88.$$
 
-      | Score | Chance of label 1 | Predicted label at threshold $1/2$ |
-      | --- | --- | --- |
-      | $-\ln3$ | $1/4$ | 0 |
-      | $0$ | $1/2$ | 1 |
-      | $\ln3$ | $3/4$ | 1 |
+      3. **Compare with the threshold.** The probability is at least $0.5$, so the model predicts label 1.
+         $$0.88\ge0.5.$$
 
-      **Where it shows up.** A house-sale model can report an estimated chance of selling above asking as well as a yes-or-no prediction. The probability retains information that the final label discards.
+      The model predicts that this house will sell within a month.
     problems:
-      [
-        lr-sigmoid-basics,
-        lr-sigmoid-reason,
-        lr-sigmoid-faded,
-        lr-sigmoid-template,
-        lr-sigmoid-confusion,
-        lr-sigmoid-transfer,
-      ]
+      - lr-sigmoid-basics
+      - lr-sigmoid-reason
+      - lr-sigmoid-faded
+      - lr-sigmoid-template
+      - lr-sigmoid-confusion
+      - lr-sigmoid-transfer
   - id: lr-binary-cross-entropy
-    title: "Score how wrong a probability is"
+    title: "Measure how wrong a probability is"
     explain: |
-      **The question.** Two predictions can choose the same class but have different confidence. How do you give training a loss that distinguishes a cautious correct prediction from a confident mistake?
+      ### What a good loss should do
 
-      **Picture it.** Suppose the observed label is 1. Each green bar shows the probability assigned to that true label: a longer bar is better. Probability $1/4$ gives the observed answer less support than $3/4$, so it should receive a larger loss. If the observed label were 0, you would compare $1-p$ instead.
+      To train the model we need a loss. A prediction is now a probability, so a good loss should look at the probability the model gave to what actually happened. If that probability is near 1, the loss should be near 0. If it is near 0, the model was confidently wrong, and the loss should be large.
+
+      ### Minus the log of the probability of what happened
+
+      The natural logarithm, $\ln$, does this when we put a minus sign in front. We met it in the derivatives lesson: $\ln1=0$, and $\ln q$ falls without limit as $q$ shrinks towards 0. The red curve shows $-\ln q$, where $q$ is the probability the model gave to the observed label.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 160" aria-label="For true label one, probability one quarter has a shorter bar than probability three quarters">
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <path d="M140 30 H420 M140 90 H420" stroke="#d4d4d4"/>
-          <path d="M140 30 H210 M140 90 H350" stroke="#10b981" stroke-width="10"/>
-          <text x="20" y="35">p = 1/4</text><text x="20" y="95">p = 3/4</text>
-          <text x="130" y="130">0</text><text x="410" y="130">1</text>
-          <text x="160" y="153">probability of true label (y = 1)</text>
-        </g>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" aria-label="Loss against the probability given to the true label, from 0 to 1. The red curve, minus ln of that probability, is 0 at probability 1 and climbs steeply as the probability falls towards 0, with losses of 0.13 at 0.88, 0.69 at 0.5 and 2.13 at 0.12. The grey dashed curve, squared error, is never more than 1">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M80 300 H560 M80 300 V48.0" stroke="#d4d4d4"/>
+      <path d="M89.6 65.28 L92 78.67 L94.4 89.61 L96.8 98.86 L99.2 106.87 L101.6 113.93 L104 120.26 L106.4 125.97 L108.8 131.2 L111.2 136 L113.6 140.44 L116 144.58 L118.4 148.46 L120.8 152.09 L123.2 155.52 L125.6 158.77 L128 161.84 L130.4 164.77 L132.8 167.56 L135.2 170.23 L137.6 172.78 L140 175.23 L142.4 177.59 L144.8 179.85 L147.2 182.03 L149.6 184.14 L152 186.17 L154.4 188.14 L156.8 190.05 L159.2 191.89 L161.6 193.68 L164 195.42 L166.4 197.11 L168.8 198.76 L171.2 200.36 L173.6 201.91 L176 203.43 L178.4 204.92 L180.8 206.36 L183.2 207.77 L185.6 209.15 L188 210.5 L190.4 211.82 L192.8 213.11 L195.2 214.37 L197.6 215.61 L200 216.82 L202.4 218.01 L204.8 219.18 L207.2 220.32 L209.6 221.44 L212 222.54 L214.4 223.62 L216.8 224.68 L219.2 225.73 L221.6 226.75 L224 227.76 L226.4 228.75 L228.8 229.73 L231.2 230.69 L233.6 231.63 L236 232.56 L238.4 233.48 L240.8 234.38 L243.2 235.27 L245.6 236.15 L248 237.01 L250.4 237.86 L252.8 238.7 L255.2 239.53 L257.6 240.34 L260 241.15 L262.4 241.94 L264.8 242.73 L267.2 243.5 L269.6 244.27 L272 245.02 L274.4 245.77 L276.8 246.5 L279.2 247.23 L281.6 247.95 L284 248.66 L286.4 249.36 L288.8 250.06 L291.2 250.74 L293.6 251.42 L296 252.09 L298.4 252.75 L300.8 253.41 L303.2 254.06 L305.6 254.7 L308 255.33 L310.4 255.96 L312.8 256.58 L315.2 257.2 L317.6 257.81 L320 258.41 L322.4 259.01 L324.8 259.6 L327.2 260.18 L329.6 260.76 L332 261.34 L334.4 261.91 L336.8 262.47 L339.2 263.03 L341.6 263.58 L344 264.13 L346.4 264.67 L348.8 265.21 L351.2 265.74 L353.6 266.27 L356 266.8 L358.4 267.32 L360.8 267.83 L363.2 268.34 L365.6 268.85 L368 269.35 L370.4 269.85 L372.8 270.34 L375.2 270.83 L377.6 271.32 L380 271.8 L382.4 272.28 L384.8 272.75 L387.2 273.22 L389.6 273.69 L392 274.15 L394.4 274.61 L396.8 275.07 L399.2 275.52 L401.6 275.97 L404 276.42 L406.4 276.86 L408.8 277.3 L411.2 277.74 L413.6 278.17 L416 278.6 L418.4 279.03 L420.8 279.45 L423.2 279.87 L425.6 280.29 L428 280.7 L430.4 281.12 L432.8 281.53 L435.2 281.93 L437.6 282.34 L440 282.74 L442.4 283.14 L444.8 283.53 L447.2 283.93 L449.6 284.32 L452 284.71 L454.4 285.09 L456.8 285.48 L459.2 285.86 L461.6 286.24 L464 286.61 L466.4 286.99 L468.8 287.36 L471.2 287.73 L473.6 288.09 L476 288.46 L478.4 288.82 L480.8 289.18 L483.2 289.54 L485.6 289.89 L488 290.25 L490.4 290.6 L492.8 290.95 L495.2 291.3 L497.6 291.64 L500 291.99 L502.4 292.33 L504.8 292.67 L507.2 293.01 L509.6 293.34 L512 293.68 L514.4 294.01 L516.8 294.34 L519.2 294.67 L521.6 295 L524 295.32 L526.4 295.65 L528.8 295.97 L531.2 296.29 L533.6 296.61 L536 296.92 L538.4 297.24 L540.8 297.55 L543.2 297.86 L545.6 298.17 L548 298.48 L550.4 298.79 L552.8 299.09 L555.2 299.4 L557.6 299.7 L560 300" stroke="#ef4444" stroke-width="3" fill="#ffffff" fill-opacity="0"/>
+      <path d="M80 240 L84.8 241.19 L89.6 242.38 L94.4 243.55 L99.2 244.7 L104 245.85 L108.8 246.98 L113.6 248.11 L118.4 249.22 L123.2 250.31 L128 251.4 L132.8 252.47 L137.6 253.54 L142.4 254.59 L147.2 255.62 L152 256.65 L156.8 257.66 L161.6 258.67 L166.4 259.66 L171.2 260.63 L176 261.6 L180.8 262.55 L185.6 263.5 L190.4 264.43 L195.2 265.34 L200 266.25 L204.8 267.14 L209.6 268.03 L214.4 268.9 L219.2 269.75 L224 270.6 L228.8 271.43 L233.6 272.26 L238.4 273.07 L243.2 273.86 L248 274.65 L252.8 275.42 L257.6 276.19 L262.4 276.94 L267.2 277.67 L272 278.4 L276.8 279.11 L281.6 279.82 L286.4 280.51 L291.2 281.18 L296 281.85 L300.8 282.5 L305.6 283.15 L310.4 283.78 L315.2 284.39 L320 285 L324.8 285.59 L329.6 286.18 L334.4 286.75 L339.2 287.3 L344 287.85 L348.8 288.38 L353.6 288.91 L358.4 289.42 L363.2 289.91 L368 290.4 L372.8 290.87 L377.6 291.34 L382.4 291.79 L387.2 292.22 L392 292.65 L396.8 293.06 L401.6 293.47 L406.4 293.86 L411.2 294.23 L416 294.6 L420.8 294.95 L425.6 295.3 L430.4 295.63 L435.2 295.94 L440 296.25 L444.8 296.54 L449.6 296.83 L454.4 297.1 L459.2 297.35 L464 297.6 L468.8 297.83 L473.6 298.06 L478.4 298.27 L483.2 298.46 L488 298.65 L492.8 298.82 L497.6 298.99 L502.4 299.14 L507.2 299.27 L512 299.4 L516.8 299.51 L521.6 299.62 L526.4 299.71 L531.2 299.78 L536 299.85 L540.8 299.9 L545.6 299.95 L550.4 299.98 L555.2 299.99 L560 300" stroke="#737373" stroke-width="2" stroke-dasharray="6 4" fill="#ffffff" fill-opacity="0"/>
+      <circle cx="502.78" cy="292.38" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="502.78" y="278.38" text-anchor="middle">0.88: loss 0.13</text>
+      <circle cx="320.0" cy="258.41" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="330" y="242.41">0.5: loss 0.69</text>
+      <circle cx="137.22" cy="172.38" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="149.22" y="172.38">0.12: loss 2.13</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="305" fill="#737373" text-anchor="end">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="245" fill="#737373" text-anchor="end">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="185" fill="#737373" text-anchor="end">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="125" fill="#737373" text-anchor="end">3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="65" fill="#737373" text-anchor="end">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="322" fill="#737373" text-anchor="middle">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="322" fill="#737373" text-anchor="middle">0.5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560" y="322" fill="#737373" text-anchor="middle">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="342" fill="#737373" text-anchor="middle">probability given to the true label</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="108" y="65" fill="#ef4444">red: minus ln of that probability</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="94.4" y="282" fill="#737373">grey dashed: squared error</text>
+      </g>
       </svg>
       ```
 
-      **The idea.** Penalise the model for assigning little probability to what actually happened. Why use a negative logarithm? It gives zero penalty at probability 1, increases as the true-label probability falls, and has no upper limit as that probability approaches zero.
+      **Binary cross-entropy** is the loss that takes minus the natural log of the probability the model gave to the observed label. With $p$ the model's probability of label 1 and $y$ the observed label, it is
 
-      For examples treated as independent (one outcome does not change another's chance), the chance of all the observed outcomes is the product of their chances. Logarithms turn products into sums, $\ln(ab)=\ln a+\ln b$, so the total loss becomes a sum of one loss per example.
+      $$L=-\left[y\ln p+(1-y)\ln(1-p)\right].$$
 
-      **Binary cross-entropy** is this negative natural logarithm of the probability assigned to the observed binary label. With observed label $y$, predicted probability $p$ of label 1, and loss $L$, its formula is:
+      Only one of the two terms is ever used. If $y=1$, the second term is multiplied by 0, so $L=-\ln p$. If $y=0$, it is $L=-\ln(1-p)$, using the chance of label 0.
 
-      $$L=-[y\ln p+(1-y)\ln(1-p)].$$
+      ### Three houses that sold
 
-      For $y=1$, only $-\ln p$ remains; for $y=0$, only $-\ln(1-p)$ remains.
+      Suppose the three new houses, with 2, 4 and 6 viewings, all sold. Each has $y=1$, so the loss is $-\ln p$:
 
-      **Common confusion.** “Once the predicted class is correct, the loss is zero.” No: the loss uses the probability, not the thresholded class. It still rewards raising the probability of the true label, even after you cross the decision threshold.
+      - 6 viewings, $p=0.88$: the loss is $0.13$.
+      - 4 viewings, $p=0.5$: the loss is $0.69$.
+      - 2 viewings, $p=0.12$: the loss is $2.13$, because the model was confident and wrong.
+
+      Be careful: a correct decision doesn't mean zero loss. The house with 6 viewings was predicted correctly, but it still has a loss of $0.13$, because the model gave it $0.88$ rather than 1.
+
+      ### Why not squared error?
+
+      For a probability, the squared error $(p-y)^2$ can never be more than 1, as the grey dashed curve shows. A sold house given $p=0.01$ costs $0.98$, not much more than the $0.25$ for an unsure $p=0.5$. Cross-entropy charges $4.61$ and keeps climbing, so confident mistakes cost the most.
     worked: |
-      **Worked example.** The observed label is $y=1$ and the model predicts $p=3/4$.
+      Let's work out the loss for the new house with 2 viewings, which sold, so $y=1$. The sigmoid gave it $p=\sigma(-2)\approx0.119$.
 
-      1. **Select the observed label's term.**
-         $$L=-[1\ln(3/4)+0\ln(1/4)].$$
-      2. **Simplify the loss.**
-         $$L=-\ln(3/4)=\ln(4/3).$$
-      3. **Compare a confident mistake.** For the same label, change the prediction to $p=1/4$.
-         $$L=-\ln(1/4)=\ln4.$$
-         The logarithm increases, so this loss is larger.
+      1. **Put the label into the loss.** With $y=1$, the term with $1-y$ is multiplied by 0.
+         $$L=-\left[1\times\ln0.119+0\times\ln0.881\right]=-\ln0.119.$$
 
-      **Compare cases.** Keep $y=1$.
+      2. **Take the natural log.** A small probability has a large negative log, and the minus sign makes it positive.
+         $$L\approx-(-2.13)=2.13.$$
 
-      | Probability $p$ | Loss | Relative penalty |
-      | --- | --- | --- |
-      | $1/4$ | $\ln4$ | Largest |
-      | $1/2$ | $\ln2$ | Middle |
-      | $3/4$ | $\ln(4/3)$ | Smallest |
-
-      **Where it shows up.** For a house that did not sell above asking, training penalises a high predicted chance of selling above asking. Average the losses so each training example contributes equally to one number that you can minimise.
+      The loss is $2.13$, much bigger than the $0.13$ for the house with 6 viewings, because the model gave so little probability to the sale.
     problems:
-      [
-        lr-bce-basics,
-        lr-bce-reason,
-        lr-bce-faded,
-        lr-bce-template,
-        lr-bce-confusion,
-        lr-bce-transfer,
-      ]
+      - lr-bce-basics
+      - lr-bce-reason
+      - lr-bce-faded
+      - lr-bce-template
+      - lr-bce-confusion
+      - lr-bce-transfer
+      - lr-bce-squared-error
   - id: lr-gradient
-    title: "How the weights get updated"
+    title: "Update the weight and bias"
     explain: |
-      **The question.** You can measure a prediction's loss. Which slopes should gradient descent use to change the weights and bias?
+      ### The slope of the loss against the score
 
-      **Picture it.** Start at score zero, so the model gives each label chance one half. If the observed label is 1, increasing the score raises its probability and lowers the loss; if the label is 0, decreasing the score lowers the loss. The green segments show those loss-reducing directions on the score line, not update sizes.
+      To use gradient descent, we need the slope of the loss for each parameter. Let's start with how the loss changes as the score changes, for a house that sold. The red curve shows its loss, $-\ln p$, drawn against the score.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 160" aria-label="At score zero, move right to lower loss for label one and left for label zero">
-        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-          <path d="M70 50 H410 M70 110 H410" stroke="#d4d4d4"/>
-          <path d="M240 50 H340 L330 44 M340 50 L330 56 M240 110 H140 L150 104 M140 110 L150 116" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="3"/>
-          <circle cx="240" cy="50" r="4" fill="#3b82f6"/><circle cx="240" cy="110" r="4" fill="#3b82f6"/>
-          <text x="20" y="25">y = 1: raise score</text><text x="20" y="85">y = 0: lower score</text>
-          <text x="230" y="145">z = 0</text><text x="360" y="145">score z</text>
-        </g>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" aria-label="The red curve is the loss for a house with label 1, drawn against the score z from minus 4 to 4. It falls as the score rises and flattens out towards 0. Orange tangent lines show its slope: minus 0.5 at score 0, where p is 0.5, and only minus 0.12 at score 2, where p is 0.88">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M80 300 H560 M320 300 V79.99999999999997" stroke="#d4d4d4"/>
+      <path d="M80 99.09 L92 108.89 L104 118.65 L116 128.36 L128 138 L140 147.57 L152 157.05 L164 166.42 L176 175.66 L188 184.75 L200 193.65 L212 202.35 L224 210.8 L236 218.98 L248 226.84 L260 234.34 L272 241.44 L284 248.13 L296 254.35 L308 260.09 L320 265.34 L332 270.09 L344 274.35 L356 278.13 L368 281.44 L380 284.34 L392 286.84 L404 288.98 L416 290.8 L428 292.35 L440 293.65 L452 294.75 L464 295.66 L476 296.42 L488 297.05 L500 297.57 L512 298 L524 298.36 L536 298.65 L548 298.89 L560 299.09" stroke="#ef4444" stroke-width="3" fill="#ffffff" fill-opacity="0"/>
+      <path d="M272 245.34 L368 285.34" stroke="#f59e0b" stroke-width="3"/>
+      <circle cx="320" cy="265.34" r="5" fill="#171717"/>
+      <path d="M392 288.89 L488 298.42" stroke="#f59e0b" stroke-width="3"/>
+      <circle cx="440" cy="293.65" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="296" y="299.34" fill="#f59e0b" text-anchor="end">score 0, p = 0.5: slope −0.5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560" y="249.65" fill="#f59e0b" text-anchor="end">score 2, p = 0.88: slope −0.12</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="305" fill="#737373" text-anchor="end">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="255" fill="#737373" text-anchor="end">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="205" fill="#737373" text-anchor="end">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="155" fill="#737373" text-anchor="end">3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="105" fill="#737373" text-anchor="end">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="322" fill="#737373" text-anchor="middle">−4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="200" y="322" fill="#737373" text-anchor="middle">−2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="322" fill="#737373" text-anchor="middle">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="440" y="322" fill="#737373" text-anchor="middle">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560" y="322" fill="#737373" text-anchor="middle">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="342" fill="#737373" text-anchor="middle">score z</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="90" y="85" fill="#ef4444">loss for a house with label 1</text>
+      </g>
       </svg>
       ```
 
-      **The idea.** Every weight affects the loss through the score, so first find how the loss changes with that score. The **chain rule** handles calculations that feed into each other: multiply the slope of each step by the slope of the step before it. Here the score gives the probability, and the probability gives the loss.
+      At score 0, where $p=0.5$, the orange line shows a slope of $-0.5$. A small nudge checks this: raising the score from 0 to $0.1$ lowers the loss from $0.69$ to $0.64$. At score 2, where $p=0.88$, the slope is only $-0.12$. In both cases the slope is $p-1$, the probability minus the label. Working out the derivative, which we'll skip here, shows that this holds for every score and for label 0 too, so
 
-      First, differentiate the loss with respect to probability:
-
-      $$\frac{\partial L}{\partial p}=-\frac{y}{p}+\frac{1-y}{1-p}.$$
-
-      Next, differentiate $\sigma(z)=(1+e^{-z})^{-1}$ with the chain rule. The power rule gives the outer slope $-(1+e^{-z})^{-2}$; the inner part $1+e^{-z}$ has slope $-e^{-z}$ (the exponential rule, times the slope $-1$ of $-z$). Multiply them:
-
-      $$\sigma'(z)=\frac{e^{-z}}{(1+e^{-z})^2}.$$
-      $$\sigma'(z)=\frac{1}{1+e^{-z}}\cdot\frac{e^{-z}}{1+e^{-z}}.$$
-
-      Since $e^{-z}/(1+e^{-z})=1-1/(1+e^{-z})$, rewrite using $p=\sigma(z)$:
-
-      $$\sigma'(z)=\frac{1}{1+e^{-z}}\left(1-\frac{1}{1+e^{-z}}\right).$$
-      $$\frac{\partial p}{\partial z}=\sigma(z)(1-\sigma(z))=p(1-p).$$
-
-      Now multiply the two slopes, score to probability and probability to loss:
-
-      $$\frac{\partial L}{\partial z}=\left(-\frac{y}{p}+\frac{1-y}{1-p}\right)p(1-p).$$
-      $$\frac{\partial L}{\partial z}=-y(1-p)+(1-y)p.$$
-      $$\frac{\partial L}{\partial z}=-y+yp+p-yp.$$
       $$\frac{\partial L}{\partial z}=p-y.$$
 
-      This is the **score derivative**: probability minus observed label.
+      It's negative when $p$ is below the label, so raising the score lowers the loss, and positive when $p$ is above it.
 
-      For $z=wx+b$, the weight slope is $(p-y)x$ and the bias slope is $p-y$: changing the weight changes the score by $x$ times as much, while changing the bias changes it one-for-one. Each additional weight uses its own feature factor for the same reason.
+      ### From the score to the weight and bias
 
-      **Common confusion.** “Probability minus label is every weight's gradient.” Not quite: it is the score slope. Each weight needs its own feature factor because changing that weight changes the score by that feature's value.
+      The score is $z=wx+b$. Raising $w$ by a small amount raises the score by $x$ times that amount, so the slope for the weight is $x$ times the slope for the score. Raising $b$ raises the score by the same amount, so the bias keeps the score slope unchanged:
+
+      $$\frac{\partial L}{\partial w}=(p-y)\,x,\qquad\frac{\partial L}{\partial b}=p-y.$$
+
+      With several inputs, the slope for each weight $w_j$ is $(p-y)\,x_j$.
+
+      ### One gradient descent step
+
+      Now we subtract each slope times the learning rate $\eta$, just as in the gradient descent lesson:
+
+      $$w_{\text{new}}=w-\eta\,(p-y)\,x,\qquad b_{\text{new}}=b-\eta\,(p-y).$$
+
+      Be careful with an input of 0. The weight slope is then 0, so the weight doesn't move, but the bias still does.
     worked: |
-      **Worked example.** A seed watered two days ago has sprouted: $x=2$, $y=1$. Use initial $w=0$, $b=0$, and the learning rate $\eta$ from gradient descent, set to $1/2$.
+      Let's take one gradient descent step for the new house with 2 viewings, which sold, so $x=2$ and $y=1$, starting from $w=1$ and $b=-4$ with a learning rate of $\eta=0.5$. Its score is $-2$ and its probability is $0.12$.
 
-      1. **Predict with the current parameters.**
-         $$z=0(2)+0=0.$$
-         $$p=\sigma(0)=1/2.$$
-      2. **Find the parameter slopes.**
-         $$p-y=1/2-1=-1/2.$$
-         $$\frac{\partial L}{\partial w}=(-1/2)(2)=-1.$$
-         $$\frac{\partial L}{\partial b}=-1/2.$$
-      3. **Subtract scaled slopes.** Update the weight and bias together using the slopes just calculated. If you updated $w$ first and recomputed $p$, the bias slope would describe a different model from the one you measured.
-         $$w_{\text{new}}=0-(1/2)(-1)=1/2.$$
-         $$b_{\text{new}}=0-(1/2)(-1/2)=1/4.$$
-      4. **Check the direction.**
-         $$z_{\text{new}}=(1/2)(2)+1/4=5/4.$$
-         The score rose, so the true label's probability rose and its loss fell.
+      1. **Find the score slope.** The score slope is the probability minus the label.
+         $$p-y=0.12-1=-0.88.$$
 
-      **Compare cases.** Start from $p=1/2$, $x=2$, $w=b=0$, and the same rate.
+      2. **Find the weight and bias slopes.** For the weight, we multiply the score slope by the input, 2; the bias slope is the score slope itself.
+         $$\frac{\partial L}{\partial w}=-0.88\times2=-1.76,\qquad\frac{\partial L}{\partial b}=-0.88.$$
 
-      | Observed label | Score slope | New weight | New bias |
-      | --- | --- | --- | --- |
-      | 1 | $-1/2$ | $1/2$ | $1/4$ |
-      | 0 | $1/2$ | $-1/2$ | $-1/4$ |
+      3. **Subtract the scaled slopes.** Both slopes are negative, so subtracting them raises both parameters.
+         $$w=1-0.5\times(-1.76)=1.88,\qquad b=-4-0.5\times(-0.88)=-3.56.$$
 
-      **Where it shows up.** A house-sale classifier repeats prediction, loss, fresh gradients and parameter updates just like the price model. Average the examples' slopes to get the slope of their average loss, using the derivatives lesson's sum and constant-multiple rules: differentiate each term, then add and divide by the number of examples.
+      4. **Check the new prediction.** The new score is $1.88\times2-3.56=0.2$, so the new probability is $\sigma(0.2)\approx0.55$.
+         $$L=-\ln0.55\approx0.60.$$
+
+      The loss fell from $2.13$ to $0.60$ in one step. In training we average each parameter's slopes over all the houses, take one step and repeat.
+
     problems:
-      [
-        lr-gradient-basics,
-        lr-gradient-reason,
-        lr-gradient-faded,
-        lr-gradient-template,
-        lr-gradient-confusion,
-        lr-gradient-transfer,
-      ]
+      - lr-gradient-basics
+      - lr-gradient-reason
+      - lr-gradient-faded
+      - lr-gradient-template
+      - lr-gradient-confusion
+      - lr-gradient-transfer
 final: lr-explain-logistic-regression
 summary: |
-  - Binary classification predicts one of two categories, using a score that is not itself a probability.
-  - Logistic regression turns the score into a probability with the sigmoid, then applies a threshold to choose a label.
-  - Binary cross-entropy penalises assigning little probability to the observed label, even when the predicted class is correct.
-  - The score slope is probability minus label; multiply by each feature for its weight slope, then subtract scaled slopes to train.
+  - Binary classification predicts one of two labels, 0 or 1; logistic regression starts from a score $z=wx+b$, which can be any number.
+  - The sigmoid $\sigma(z)=1/(1+e^{-z})$ turns the score into the probability $p$ of label 1, and a threshold such as $p\ge0.5$ turns that into a decision.
+  - Binary cross-entropy, $L=-[y\ln p+(1-y)\ln(1-p)]$, is minus the log of the probability given to the observed label, so a correct decision can still have a loss.
+  - The slope of the loss is $p-y$ for the score and the bias, and $(p-y)x$ for each weight. Gradient descent subtracts each slope times the learning rate.
 
-  **Next:** The perceptron lesson compares this probability-based decision with a direct threshold on a weighted score.
+  **Next:** Later lessons join many weighted scores like this one, each passed through a smooth function such as the sigmoid, to build neural networks.

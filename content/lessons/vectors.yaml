@@ -1,25 +1,25 @@
 concept: vectors
-version: 4
+version: 5
 objective: |
   **Goal:** write points, moves and measurements as vectors, add and scale them, and find a vector's length and the distance between two points.
 where_this_fits: |
-  A delivery robot needs to record where it is and how it has moved. A house-price **model** (a program that estimates prices) must read a house's area, bedrooms and age as one input. Both need several numbers kept together, each with its own fixed meaning. One number can't hold that; a loose pile of numbers forgets which is which. This lesson builds the tool that does, the **vector**, in three steps:
+  ### What is a vector?
 
-  1. Write a point, a move or a list of measurements as an ordered list of numbers, and combine two moves.
-  2. Stretch, shrink or reverse a move by multiplying it by one number.
-  3. Measure how long a move is and how far apart two points are.
+  A vector is an ordered list of numbers, where each position in the list has its own meaning. We often draw one as an arrow.
 
-  Later lessons store a model's inputs and learned numbers as vectors.
+  Why do we need it? Lots of things can't be described by one number. A delivery robot's position needs a distance east and a distance north, and a house needs its area, its number of bedrooms and its age. A vector keeps those numbers together and in order, so we always know which is which. A machine-learning model is a program that learns to make predictions from examples, and it reads each example as a vector. So in this lesson, we'll learn to write vectors, add them, stretch them and measure how long they are.
 knowledge_points:
   - id: vec-points-moves
-    title: "What a vector is"
+    title: "Write a move as numbers"
     explain: |
-      **The question.** A delivery robot leaves its dock and drives 1 metre east and 3 metres north, then 2 east and 1 north. How do you write each move as numbers a computer can follow, and where does the robot end up?
+      ### A robot's two moves
 
-      **Picture it.** The map below is a grid seen from above, with the dock at $(0,0)$, east to the right and north up. The blue arrow is the first move, written $a=(1,3)$: first number east, second north. The green arrow $b=(2,1)$ starts where $a$ ends. The amber arrow goes straight from the dock to where the robot finishes, $(3,4)$.
+      A delivery robot leaves its dock, drives 1 metre east and 3 north, then 2 east and 1 north.
+
+      On the map, the dock is at $(0,0)$, with east to the right and north up. The first move is $a=(1,3)$, the blue arrow. The second, $b=(2,1)$, is the green arrow, starting where the blue one ends. Each arrow shows the change in position, not the route. The orange arrow joins the dock to the end.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="A grid with the dock at the origin. A blue arrow a = (1,3) goes 1 east and 3 north; a green arrow b = (2,1) starts at the tip of a; an amber arrow a + b = (3,4) goes from the dock to the final point">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="A grid seen from above with the dock at (0,0), east to the right and north up. The blue arrow a = (1,3) goes 1 east and 3 north. The green arrow b = (2,1) starts at the tip of a. The orange arrow a + b = (3,4) goes straight from the dock to where the robot ends">
         <defs>
           <marker id="v1-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
           <marker id="v1-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
@@ -44,7 +44,7 @@ knowledge_points:
           <circle cx="140" cy="130" r="3.5" fill="#171717"/>
           <circle cx="260" cy="70" r="4" fill="#171717"/>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="72" y="348">dock (0,0)</text>
-          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="66" y="224" fill="#3b82f6" text-anchor="end">a = (1,3)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="104" y="224" fill="#3b82f6" text-anchor="end">a = (1,3)</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="150" y="80" fill="#10b981">b = (2,1)</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="188" y="220" fill="#f59e0b">a + b = (3,4)</text>
           <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="272" y="75">end (3,4)</text>
@@ -54,37 +54,40 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** A **vector** is an ordered list of numbers. Each number is a **component**, and its position says what it means. A vector can mark a point (its **coordinates**, measured from the **origin** $(0,0)$) or a move (an arrow, which can start anywhere). Negative components mean west or south.
+      ### Vectors and their components
 
-      To **add vectors**, add matching components: on the map, put the second arrow at the tip of the first.
+      A **vector** is an ordered list of numbers. Each number is a **component**, and its position says what it means. Here the first is east and the second north, so negative means west or south.
 
-      Components need not be distances. A list of measurements of one thing, such as a house's area, bedrooms and age, is a **feature vector**. We write $x=(x_1,\ldots,x_n)$: $x_i$ is component number $i$ and $n$ counts them. For the house $x=(120,3,15)$, $x_1=120$ and $n=3$. $x\in\mathbb{R}^n$ (“$x$ is in R-n”) says $x$ lists $n$ real numbers: $\in$ means “is in”, $\mathbb{R}$ is every number on the number line, and $n$ is a count, not a power.
+      A vector can be a move, which only says how far to go each way, so its arrow can start anywhere. It can also be a point. We write a point as the move that reaches it from a fixed start, the **origin**, and call its components **coordinates**.
 
-      **Common confusion.** “$(2,5)$ and $(5,2)$ are the same vector: they have the same numbers.” No. Position is meaning: $(2,5)$ is 2 east and 5 north, $(5,2)$ is 5 east and 2 north, a different place.
+      Order matters. $(2,5)$, 2 metres east and 5 north, is a different place from $(5,2)$.
+
+      ### Adding two moves
+
+      To make one move after another, we add the east distances and the north distances. This is **vector addition**. Writing $a_1$ for $a$'s first component and $a_2$ for its second,
+
+      $$a+b=(a_1+b_1,\;a_2+b_2).$$
+
+      On the map, that's drawing the second arrow from the tip of the first.
+
+      ### Lists of measurements
+
+      Components don't have to be distances. $(120,3,15)$ can describe a house with 120 square metres, 3 bedrooms and an age of 15 years. A list of measurements of one thing is a **feature vector**, and it's how a model receives an example. Just as $(3,4)$ is a point on a map with two directions, east and north, the house is a point in a space with three directions, one per measurement. Similar houses sit close together.
+
+      We write a vector with $n$ components as $x=(x_1,x_2,\ldots,x_n)$, where $x_i$ is component number $i$. For the house, $n=3$ and $x_2=3$. Later lessons write $x\in\mathbb{R}^n$, read "x is in R n", to say $x$ is a list of $n$ numbers. Here $\mathbb{R}$ means all the numbers on the number line, and the $n$ above it counts the components.
     worked: |
-      The robot moves $a=(1,3)$, then $b=(2,1)$, in metres east and north. Where does it end up?
+      Let's work out where the robot ends up after the move $a=(1,3)$ and then the move $b=(2,1)$, in metres east and north of the dock.
 
-      1. **Add the east components.**
+      1. **Add the east components.** The first components are both distances east, so they belong together.
          $$1+2=3$$
 
-      2. **Add the north components.**
+      2. **Add the north components.** The second components are both distances north.
          $$3+1=4$$
 
-      3. **Collect them in the same order.**
+      3. **Write the totals in the same order.** East comes first and north second, just as in $a$ and $b$.
          $$a+b=(1+2,\;3+1)=(3,4)$$
 
-      The robot ends 3 metres east and 4 metres north of the dock.
-
-      **Compare cases.**
-
-      | First move | Second move | Sum |
-      | --- | --- | --- |
-      | $(1,3)$ | $(2,1)$ | $(3,4)$ |
-      | $(2,1)$ | $(1,3)$ | $(3,4)$, same end point |
-      | $(1,3)$ | $(2,-3)$ | $(3,0)$, back on the east line |
-      | $(1,3)$ | $(-1,-3)$ | $(0,0)$, back at the dock |
-
-      **Where it shows up.** A model takes each example as a feature vector, such as $(120,3,15)$ for a house with 120 square metres, 3 bedrooms and 15 years of age, always in that order. If the house gains 10 square metres and a bedroom and gets 1 year older, adding $(10,1,1)$ gives its new feature vector $(130,4,16)$.
+      So the robot ends up 3 metres east and 4 metres north of the dock, at the tip of the orange arrow.
     problems:
       - vec-points-moves-basics
       - vecp-add-self-explain
@@ -98,12 +101,14 @@ knowledge_points:
   - id: vec-change-move
     title: "Multiply a vector by a number"
     explain: |
-      **The question.** The robot's move $b=(2,1)$ goes 2 metres east and 1 north. How do you write “the same move, twice as far”, or “the same move, backwards”? And what move takes the robot from one point to another?
+      ### Longer, shorter and backwards
 
-      **Picture it.** All the arrows below start at the origin. Green is $b=(2,1)$. Amber is $(4,2)$: it lies on the same dashed line through the origin and is twice as long. Red is $(-2,-1)$: the same length as $b$, pointing the opposite way. The grey point $(3,2)$ comes from adding 1 to each component of $b$, and it lies off the line, so an arrow to it points another way.
+      We can now put moves together, but what if the robot needs the same move twice as far, or back the way it came? Let's draw arrows from the origin, starting with $b=(2,1)$ from the first step.
+
+      The green arrow is $b$. The orange arrow, $(4,2)$, has both components doubled, so it lies along the same dashed line and is twice as long. The red arrow, $(-2,-1)$, has both signs flipped, so it's the same length as $b$ but points the opposite way. The grey dot, $(3,2)$, is what we get by adding 1 to each component instead, and it sits off the line.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 350" aria-label="Arrows from the origin: green b = (2,1), amber 2b = (4,2) twice as long on the same dashed line, red minus b = (-2,-1) pointing the opposite way; the grey point (3,2), made by adding 1 to each entry of b, lies off the line">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 350" aria-label="Arrows from the origin. The green arrow b = (2,1). The orange arrow 2b = (4,2) lies on the same dashed line and is twice as long. The red arrow minus b = (−2,−1) is the same length and points the opposite way. The grey dot (3,2), made by adding 1 to each component of b, lies off the line">
         <defs>
           <marker id="v2-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
           <marker id="v2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
@@ -127,43 +132,67 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Multiplying every component by the same number changes an arrow's length but keeps it on its line. That number is a **scalar**, and the operation is **scaling**: for a scalar $c$ and vector $x$, $cx$ multiplies each component of $x$ by $c$.
+      ### Scaling a vector
 
-      - $c$ greater than 1 stretches the arrow; $c$ between 0 and 1 shrinks it.
-      - A negative $c$ also reverses it, so $-x$ is $x$ pointing backwards.
-      - $c=0$ gives the **zero vector** $(0,0)$: no move, and no direction.
+      Multiplying a vector by a number is called **scaling**, and the number is a **scalar**. For a scalar $c$ and a vector $x$, $cx$, meaning $c$ times $x$, multiplies every component of $x$ by $c$.
 
-      **Vector subtraction** is adding the reversed vector: $x-y=x+(-y)$, so you subtract matching components. With both arrows drawn from the origin, $x-y$ is what you add to $y$ to reach $x$, so it runs from the tip of $y$ to the tip of $x$.
+      $$cx=(cx_1,\;cx_2,\;\ldots,\;cx_n).$$
 
-      **Common confusion.** “Adding the same number to each component also makes the arrow longer.” Usually it turns the arrow too (unless the components are equal). $b=(2,1)$ goes twice as far east as north. $(3,2)$ doesn't, so it points another way. Multiplying by a nonzero number, as in $(4,2)$, always keeps that ratio.
+      Every component changes by the same factor, so the arrow stays on its line.
+
+      - With $c=2$, the arrow $2b=(4,2)$ is twice as long, and with $c=0.5$, $(1,0.5)$ is half as long. Both point the same way as $b$.
+      - With $c=-1$, $-b=(-2,-1)$ is the same length but reversed.
+      - With $c=0$, we get $(0,0)$, the **zero vector**, which is no move at all and has no direction.
+
+      Be careful not to think that adding the same number to each component stretches the arrow too. $b=(2,1)$ goes 2 metres east for every 1 north, but $(3,2)$ goes 3 east for every 2 north, so it points a different way. Multiplying by a positive number keeps the 2-to-1 balance, so the arrow keeps its direction. A negative number keeps the line but flips the arrow along it.
+
+      ### Subtracting vectors
+
+      Subtracting a vector means adding its reverse, $x-y=x+(-y)$, so we subtract matching components. Suppose the robot is at the tip of $b$, the point $(2,1)$, and needs to get to the tip of $a=(1,3)$. The move it needs is $a-b=(-1,2)$, 1 metre west and 2 north, which is the orange arrow below.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Two arrows from the origin, the blue a = (1,3) and the green b = (2,1). The orange arrow a minus b = (−1,2) runs from the tip of b to the tip of a">
+        <defs>
+          <marker id="v4-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+          <marker id="v4-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
+          <marker id="v4-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+          <path d="M80 290 V50 M140 290 V50 M200 290 V50 M260 290 V50 M320 290 V50 M80 290 H320 M80 230 H320 M80 170 H320 M80 110 H320 M80 50 H320" stroke="#d4d4d4" stroke-width="1" fill="#171717" fill-opacity="0"/>
+          <path d="M80 290 H350 M80 290 V20" stroke="#737373" stroke-width="1.5" fill="#171717" fill-opacity="0"/>
+          <path d="M80 290 L140 110" stroke="#3b82f6" stroke-width="3.5" marker-end="url(#v4-blue)"/>
+          <path d="M80 290 L200 230" stroke="#10b981" stroke-width="3.5" marker-end="url(#v4-green)"/>
+          <path d="M200 230 L140 110" stroke="#f59e0b" stroke-width="3.5" marker-end="url(#v4-amber)"/>
+          <circle cx="80" cy="290" r="4" fill="#171717"/>
+          <circle cx="140" cy="110" r="4" fill="#171717"/>
+          <circle cx="200" cy="230" r="4" fill="#171717"/>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="72" y="314">(0,0)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="150" y="104" fill="#3b82f6">a = (1,3)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="212" y="246" fill="#10b981">b = (2,1)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="178" y="168" fill="#f59e0b">a − b = (−1,2)</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="380" y="120">a − b runs from the tip</text>
+          <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="380" y="140">of b to the tip of a</text>
+        </g>
+      </svg>
+      ```
+
+      With both arrows drawn from the origin, $x-y$ always runs from the tip of $y$ to the tip of $x$.
     worked: |
-      Use $b=(2,1)$ and, from the first part, $a=(1,3)$.
+      Let's scale, reverse and subtract the robot's moves $a=(1,3)$ and $b=(2,1)$, then check what the subtraction gave us.
 
-      1. **Double $b$: multiply each component by 2.**
-         $$2b=(2\cdot2,\;2\cdot1)=(4,2)$$
+      1. **Double $b$.** Scaling by 2 multiplies each component by 2.
+         $$2b=(2\times2,\;2\times1)=(4,2)$$
 
-      2. **Reverse $b$: multiply each component by $-1$.**
-         $$-b=(-2,-1)$$
+      2. **Reverse $b$.** Reversing is scaling by $-1$, which flips both signs.
+         $$-b=(-1\times2,\;-1\times1)=(-2,-1)$$
 
-      3. **Subtract: take $b$'s components from $a$'s.**
+      3. **Subtract $b$ from $a$.** We take each component of $b$ from the matching component of $a$.
          $$a-b=(1-2,\;3-1)=(-1,2)$$
 
-      4. **Check what $a-b$ means: start at the point $(2,1)$, the tip of $b$ drawn from the origin, and make that move.**
+      4. **Check where the move $a-b$ leads.** Starting at the tip of $b$, the point $(2,1)$, we add the move and see where we land.
          $$b+(a-b)=(2-1,\;1+2)=(1,3)=a$$
 
-      So $a-b$ is the move from the point $(2,1)$ to the point $(1,3)$.
-
-      **Compare cases.**
-
-      | Scalar $c$ | $c\,b$ | What happens |
-      | --- | --- | --- |
-      | $2$ | $(4,2)$ | twice as long, same direction |
-      | $0.5$ | $(1,0.5)$ | half as long, same direction |
-      | $0$ | $(0,0)$ | no move at all |
-      | $-1$ | $(-2,-1)$ | same length, reversed |
-      | $-2$ | $(-4,-2)$ | twice as long, reversed |
-
-      **Where it shows up.** A model learns by repeatedly adjusting its vector of learned numbers: it shrinks a vector of suggested changes with a small scalar such as $0.1$ and subtracts the result (the gradient-descent lesson shows where the changes come from and why they are subtracted). That one step uses both scaling and subtraction.
+      We land on the tip of $a$, so $a-b$ really is the move from the point $(2,1)$ to the point $(1,3)$.
     problems:
       - vec-change-move-basics
       - vecp-scale-self-explain
@@ -175,14 +204,16 @@ knowledge_points:
       - vecp-subtract
       - vecp-find-scalar
   - id: vec-length-distance
-    title: "Length and distance"
+    title: "Measure length and distance"
     explain: |
-      **The question.** After its two moves, the robot is at $(3,4)$. How far is it from the dock in a straight line? More generally, how far apart are two points?
+      ### How far is the robot from the dock?
 
-      **Picture it.** On the left, the move $(3,4)$ is the long side of a right-angled triangle whose other sides are 3 (east) and 4 (north). Pythagoras' theorem says that in such a triangle, the squares of the two short sides add up to the square of the long side: $3^2+4^2=9+16=25$, so the long side is $\sqrt{25}=5$. On the right, the arrow from $p=(1,1)$ to $q=(4,5)$ is the move $q-p=(3,4)$, so those points are also 5 apart.
+      Along the grid, $(3,4)$ is $3+4=7$ metres away. But how far is it from the dock in a straight line?
+
+      On the left of the picture, the orange arrow $(3,4)$ is the longest side of a triangle whose other two sides, 3 east and 4 north, meet at a square corner, called a right angle. **Pythagoras' rule** says that in a triangle with a right angle, the squares of the two shorter sides add up to the square of the longest. Here $3^2$, read "3 squared", means $3\times3=9$, so the arrow's length squared is $3^2+4^2=25$. Its length is the square root $\sqrt{25}=5$ metres, the positive number whose square is 25.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" aria-label="Left: the arrow (3,4) from the origin is the long side of a right-angled triangle with sides 3 and 4, so its length is 5. Right: points p = (1,1) and q = (4,5); the arrow q minus p = (3,4) joins them, so the distance between them is 5">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" aria-label="Left: the orange arrow (3,4) from the origin is the longest side of a right-angled triangle with shorter sides 3 and 4, so its length is 5. Right: the points p = (1,1) and q = (4,5) are joined by the orange arrow q minus p = (3,4), so the distance between them is 5">
         <defs>
           <marker id="v3-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
           <marker id="v3-amber2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
@@ -218,44 +249,42 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** A vector's length is the square root of the sum of its squared components. This is the **L2 norm**, written $\|x\|_2$: the double bars mean “length of”, and the 2 refers to the squaring. In 3D, Pythagoras on the floor gives $x_1^2+x_2^2$, and again with the height adds $x_3^2$. Each new component adds one more square:
+      ### The length of any vector
 
-      $$\|x\|_2=\sqrt{x_1^2+x_2^2+\cdots+x_n^2}=\sqrt{\sum_{i=1}^{n}x_i^2}$$
+      For any vector, we square each component, add the squares and take the square root. Beyond two components, we take this recipe as the definition of length. This length is the **L2 norm**, written $\|x\|_2$. The double bars mean "the length of", and the 2 is for the squaring.
 
-      Here $\sum_{i=1}^{n}$, read “sum from $i=1$ to $n$”, means add the term that follows for every $i$ from 1 to $n$. The square root $\sqrt{\phantom{x}}$ undoes the squaring, so the robot's answer is in metres, not square metres.
+      $$\|x\|_2=\sqrt{x_1^2+x_2^2+\cdots+x_n^2}=\sqrt{\sum_{i=1}^{n}x_i^2}.$$
 
-      The **Euclidean distance** between points $p$ and $q$ is the length of the move that joins them, $\|q-p\|_2$. Swapping the points reverses the arrow but keeps its length.
+      The symbol $\sum_{i=1}^{n}$, read "the sum from $i=1$ to $n$", means we add up the term after it for every $i$ from 1 to $n$. The square root undoes the squaring, so for the robot the answer is in metres, not square metres.
 
-      **Common confusion.** “The length of $(3,4)$ is $3+4=7$.” No: 7 is the route along the grid, east and then north. The straight line cuts the corner, so it is shorter: 5. Squaring also means signs don't matter: $(3,-4)$ has length 5 too.
+      Be careful not to add the components instead. For $(3,4)$, that gives the 7-metre route along the grid.
+
+      ### The distance between two points
+
+      On the right, the robot is at $p=(1,1)$ and a parcel at $q=(4,5)$. The move from the robot to the parcel is $q-p=(3,4)$, so they're 5 metres apart. In general, the **Euclidean distance** between two points is the length of the move that joins them, $\|q-p\|_2$.
+
+      ### Limitations
+
+      Suppose we judge how similar two houses are by the distance between their feature vectors. If two houses differ by 50 square metres and 2 bedrooms, the area adds $50^2=2500$ to the sum of squares and the bedrooms only $2^2=4$. The distance is almost all area, even though 2 bedrooms is a big difference. So people usually first divide each measurement by a typical size, such as 100 square metres for area, so that none swamps the others.
     worked: |
-      Find the straight-line distance from the dock to the robot at $(3,4)$, then the distance between $p=(1,1)$ and $q=(4,5)$.
+      Let's find how far the robot at $(3,4)$ is from the dock, and then the distance between the robot at $p=(1,1)$ and the parcel at $q=(4,5)$.
 
-      1. **Square each component.**
+      1. **Square each component.** Pythagoras' rule works with the squares of the two sides.
          $$3^2=9,\qquad 4^2=16$$
 
-      2. **Add the squares.**
+      2. **Add the squares.** Their sum is the square of the straight-line length.
          $$9+16=25$$
 
-      3. **Take the square root.**
+      3. **Take the square root.** This undoes the squaring and gives a length in metres.
          $$\|(3,4)\|_2=\sqrt{25}=5$$
 
-      4. **For two points, first find the move between them.**
+      4. **Find the move between the two points.** The distance between points is the length of the move that joins them, so we subtract first.
          $$q-p=(4-1,\;5-1)=(3,4)$$
 
-      5. **Measure that move.**
+      5. **Measure that move.** It's the same move as before, so it has the same length.
          $$\|q-p\|_2=\sqrt{3^2+4^2}=5$$
 
-      **Compare cases.**
-
-      | Vector | Sum of squares | Length |
-      | --- | --- | --- |
-      | $(3,4)$ | $25$ | $5$ |
-      | $(3,-4)$ | $25$ | $5$, sign doesn't matter |
-      | $(6,8)$ | $100$ | $10$, doubling doubles length |
-      | $(0,0)$ | $0$ | $0$ |
-      | $(1,2,2)$ | $9$ | $3$, three components |
-
-      **Where it shows up.** A model can judge how similar two houses are by the distance between their feature vectors: a small distance means their measurements are close. But a 50 square-metre gap in area adds $50^2=2500$ to the sum while a 2-bedroom gap adds only $2^2=4$, so each measurement is usually rescaled first (for example, divided by its typical size) so that no single one dominates.
+      So the robot is 5 metres from the dock, and the parcel is 5 metres from $p$.
     problems:
       - vec-length-distance-basics
       - vecp-distance-self-explain
@@ -268,8 +297,8 @@ knowledge_points:
       - vecp-zero-length
 final: vec-explain
 summary: |
-  - A vector is an ordered list of numbers whose positions give them meaning; to add vectors, add matching components.
-  - Multiplying a vector by a scalar stretches, shrinks or reverses it along the same line, and subtracting means adding the reversed vector.
-  - A vector's length is the square root of its sum of squared components, and the distance between two points is the length of the move between them.
+  - A vector is an ordered list of numbers, called components, whose positions give them their meaning. It can stand for a point, a move or a list of measurements, and we add two vectors by adding matching components.
+  - Scaling a vector by a number $c$ multiplies every component by $c$, which stretches, shrinks or reverses the arrow along its line. Subtracting adds the reversed vector, so $x-y$ runs from the tip of $y$ to the tip of $x$.
+  - A vector's length is $\|x\|_2=\sqrt{\sum_{i=1}^{n}x_i^2}$, and the distance between two points $p$ and $q$ is $\|q-p\|_2$. Measurements on very different scales should be rescaled before comparing distances.
 
-  **Next:** The dot-product lesson combines two vectors into one number by multiplying matching components and adding; a model uses it with a vector of weights to turn a house's feature vector into a predicted price.
+  **Next:** The dot-product lesson multiplies the matching components of two vectors and adds them up. If one vector holds a house's measurements and the other holds a price for each unit of each measurement, the result is a predicted price.

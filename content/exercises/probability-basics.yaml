@@ -17,7 +17,7 @@ exercises:
         text: "The total number of observations in a dataset"
         correct: false
         category: misunderstood_definition
-        feedback: "That is the sample size. An event says which outcomes to count."
+        feedback: "That is how many cases there are in total. An event says which outcomes to count."
       - id: c
         text: "A set of outcomes that meet a stated condition"
         correct: true
@@ -26,7 +26,7 @@ exercises:
         text: "A number assigned to every possible outcome"
         correct: false
         category: misunderstood_definition
-        feedback: "That describes a random variable, which comes in the next part."
+        feedback: "That describes a random variable, which comes in the next step."
     solution: "An event is a set of outcomes picked out by a condition, such as rolling at least 5 or a sale going above asking."
   - id: pb-complement-why
     dimension: conceptual
@@ -62,7 +62,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "In 10 past house sales, 4 were above asking. What is the frequency-based probability estimate for an above-asking sale?"
+    prompt: "In 10 past house sales, 4 were above asking. Use the fraction of these sales to estimate the probability that a sale was above asking."
     hints: ["Divide the number of above-asking sales by the total number of sales."]
     solution: |
       Divide the count in the event by all ten sales:
@@ -76,7 +76,7 @@ exercises:
         feedback: "That is the estimated probability of the complement, not of an above-asking sale."
       - answer: 0.6667
         category: math_error
-        feedback: "The denominator is all ten sales, not just the six that were not above asking."
+        feedback: "Divide by all ten sales, not just the six that were not above asking."
       - answer: 4
         category: incomplete_explanation
         feedback: "Four is the number of matching sales. Divide by all ten sales to get a probability."
@@ -86,7 +86,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Of 12 house sales, 9 were above asking. What is the frequency-based probability estimate for a sale that was not above asking?"
+    prompt: "Of 12 house sales, 9 were above asking. Use the fraction of these sales to estimate the probability that a sale was not above asking."
     hints:
       - "Find the number not above asking before dividing by all twelve sales."
     solution: |
@@ -115,7 +115,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "In a sample of ${{=above + other}}$ house sales, ${{=above}}$ were above asking. What is the frequency-based probability estimate that a sale was **not** above asking?"
+    prompt: "Of ${{=above + other}}$ house sales, ${{=above}}$ were above asking. Use the fraction of these sales to estimate the probability that a sale was **not** above asking."
     hints: ["Find the chance of above asking, then subtract it from 1."]
     solution: "The above-asking estimate is ${{=above}}/{{=above + other}}$, so the complement is $1-{{=above}}/{{=above + other}}={{=other}}/{{=above + other}}={{=other / (above + other)}}$."
     answer_expr: "other / (above + other)"
@@ -209,7 +209,7 @@ exercises:
         text: "Two of the three values, 0 and 1, give fewer than 2 points."
         correct: false
         category: misapplied_technique
-        feedback: "That counts values, not equally likely sectors, and it describes $X<2$ rather than $X=0$."
+        feedback: "That counts values, not equally likely sectors, and it describes fewer than 2 points rather than $X=0$."
     solution: "The four sectors are equally likely, each with chance $1/4$. Two of them show 0, so $P(X=0)=2/4=1/2$, while 1 and 2 each get $1/4$."
   - id: pb-distribution-fixed
     dimension: math
@@ -507,7 +507,7 @@ exercises:
         text: "Dividing by the smaller count always gives a conditional probability."
         correct: false
         category: incorrect_reasoning
-        feedback: "The divisor is the count of outcomes in the condition, whatever its size."
+        feedback: "You divide by the number of outcomes in the condition, whatever its size."
       - id: d
         text: "Dividing by 20 would count the 7 matching sales twice over."
         correct: false
