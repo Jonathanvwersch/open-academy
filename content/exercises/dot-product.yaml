@@ -16,23 +16,23 @@ exercises:
         }
       - {
           id: b,
-          text: "It adds entries in matching positions and keeps the result as a vector.",
+          text: "It adds components in matching positions and keeps the result as a vector.",
           correct: false,
-          feedback: "That is vector addition; a dot product multiplies matching entries and returns one number.",
+          feedback: "That is vector addition; a dot product multiplies matching components and returns one number.",
         }
       - {
           id: c,
-          text: "It multiplies matching entries and adds their products into one number.",
+          text: "It multiplies matching components and adds their products into one number.",
           correct: true,
           feedback: "The sum combines each matched feature's weighted contribution into one scalar.",
         }
       - {
           id: d,
-          text: "It multiplies matching entries but leaves each product as a separate output entry.",
+          text: "It multiplies matching components but leaves each product as a separate output component.",
           correct: false,
           feedback: "That is element-wise multiplication; the dot product also adds the products together.",
         }
-    solution: "The dot product multiplies matching vector entries and adds those products to make one number."
+    solution: "The dot product multiplies matching vector components and adds those products to make one number."
   - id: dot-arrow-alignment-basics
     dimension: conceptual
     type: mc
@@ -55,15 +55,15 @@ exercises:
         }
       - {
           id: c,
-          text: "Positive means roughly the same way, zero means a right angle, negative means apart.",
+          text: "Positive means roughly the same way, zero means a right angle, and negative means more than a right angle apart.",
           correct: true,
           feedback: "The sign follows whether one arrow's shadow on the other points forwards, nowhere or backwards.",
         }
       - {
           id: d,
-          text: "Positive means every entry of both arrows is positive, and negative means one is not.",
+          text: "Positive means every component of both arrows is positive, and negative means one is not.",
           correct: false,
-          feedback: "Signs of single entries are not enough; $(3,-1)\\cdot(1,0)=3$ is positive even with a negative entry.",
+          feedback: "Signs of single components are not enough; $(3,-1)\\cdot(1,0)=3$ is positive even with a negative component.",
         }
     solution: "A dot product is positive for arrows less than a right angle apart, zero for perpendicular arrows and negative for arrows more than a right angle apart."
   - id: dot-direction-only-basics
@@ -106,7 +106,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: "Two vectors are $a=(1,2,3)$ and $b=(4,-5,6)$. What is their dot product?"
-    solution: "Multiply matching entries, then add: $1\\cdot4+2\\cdot(-5)+3\\cdot6=4-10+18=12$. The result is one number."
+    solution: "Multiply matching components, then add: $1\\times4+2\\times(-5)+3\\times6=4-10+18=12$. The result is one number."
     options:
       - { id: a, text: "12", correct: true, feedback: "The contributions are 4, minus 10 and 18." }
       - {
@@ -119,7 +119,7 @@ exercises:
           id: c,
           text: "21",
           correct: false,
-          feedback: "That adds all six entries and drops the minus sign; multiply matching pairs first, then add.",
+          feedback: "That adds all six components and drops the minus sign; multiply matching pairs first, then add.",
         }
   - id: dotp-total-template
     dimension: math
@@ -128,7 +128,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: "A simplified house-price model uses weights $w=({{=u}},{{=v}})$ for area in tens of square metres and age in years. A house has $x=({{=a}},{{=b}})$ in that order. Each weight is in thousand pounds per feature unit. What is $w\\cdot x$, in thousand pounds?"
-    solution: "The contributions are ${{=u}}\\cdot{{=a}}={{=u*a}}$ and ${{=v}}\\cdot{{=b}}={{=v*b}}$. Adding them gives ${{=u*a+v*b}}$, the weighted score."
+    solution: "The contributions are ${{=u}}\\times{{=a}}={{=u*a}}$ and ${{=v}}\\times{{=b}}={{=v*b}}$. Adding them gives ${{=u*a+v*b}}$, the weighted score."
     tolerance: { abs: 0.000001 }
     params:
       u: { min: 1, max: 4 }
@@ -144,7 +144,7 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: "A simplified house-price model uses weights $(0.5,2)$ for area in tens of square metres and bedroom count, in thousand pounds per feature unit. A house gains one bedroom while its area stays fixed. How does the predicted price change?"
-    solution: "The extra bedroom adds $2\\cdot1=2$ thousand pounds to the total. The area contribution does not change."
+    solution: "The extra bedroom adds $2\\times1=2$ thousand pounds to the total. The area contribution does not change."
     options:
       - {
           id: a,
@@ -181,7 +181,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: "A house's features are $(4,1)$ in the order (area in tens of square metres, bedrooms). A model stores weights $(2,0.5)$ in the reverse order (bedrooms, area), in thousand pounds per feature unit. What should it do before calculating their dot product?"
-    solution: "The dot product pairs entries by position. Reorder one list so each feature is matched to its own weight."
+    solution: "The dot product pairs components by position. Reorder one list so each feature is matched to its own weight."
     options:
       - {
           id: a,
@@ -193,7 +193,7 @@ exercises:
           id: b,
           text: "It should add the two vectors first.",
           correct: false,
-          feedback: "Adding entries does not fix which feature each weight belongs to.",
+          feedback: "Adding components does not fix which feature each weight belongs to.",
         }
       - {
           id: c,
@@ -208,7 +208,7 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: "A simplified house-price model uses weights $(2,-1)$ for area in tens of square metres and age in years, in thousand pounds per feature unit. If age increases by one year while area stays fixed, what happens to the prediction?"
-    solution: "The extra year adds $(-1)\\cdot1=-1$ thousand pounds to the total. The prediction falls by 1 thousand pounds."
+    solution: "The extra year adds $(-1)\\times1=-1$ thousand pounds to the total. The prediction falls by 1 thousand pounds."
     options:
       - {
           id: a,
@@ -268,17 +268,17 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: "In the worked example, why is the projection of $a=(7,1)$ onto $b=(6,8)$ exactly 5?"
-    solution: "The step $(4,-3)$ from $(3,4)$ to $a$'s tip meets $b$'s line at a right angle, so $a$'s shadow ends at $(3,4)$, which is $\\sqrt{3^2+4^2}=5$ from the origin."
+    solution: "The drop $(4,-3)$ from $(3,4)$ to $a$'s tip meets $b$'s line at a right angle, so $a$'s shadow ends at $(3,4)$, which is $\\sqrt{3^2+4^2}=5$ from the origin."
     options:
       - {
           id: a,
-          text: "The step from $(3,4)$ to $a$'s tip meets $b$'s line at a right angle, and $(3,4)$ is 5 from the origin.",
+          text: "The drop from $(3,4)$ to $a$'s tip meets $b$'s line at a right angle, and $(3,4)$ is 5 from the origin.",
           correct: true,
           feedback: "A right-angle drop marks where the shadow ends.",
         }
       - {
           id: b,
-          text: "The length of $a$ is 5, and an arrow's shadow on a line is always as long as the arrow.",
+          text: "An arrow's shadow on a line is always exactly as long as the arrow itself, and here that is 5.",
           correct: false,
           feedback: "$a$ has length $\\sqrt{50}\\approx7.07$; its shadow is shorter because $a$ does not lie along $b$.",
         }
@@ -295,7 +295,7 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: "Arrow $b=(1,0)$ points right. Arrow $a$ points up and to the left. What sign is $a\\cdot b$?"
-    solution: "With $b=(1,0)$, $a\\cdot b$ is $a$'s first coordinate: how far $a$ goes to the right. Going left makes that negative, so the dot product is negative."
+    solution: "With $b=(1,0)$, $a\\cdot b$ is $a$'s first component: how far $a$ goes to the right. Going left makes that negative, so the dot product is negative."
     options:
       - {
           id: a,
@@ -322,7 +322,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: "Two arrows from the origin are $a=({{=h}},{{=v}})$ and $b=({{=k}},0)$. What is $a\\cdot b$?"
-    solution: "The first pair contributes ${{=h}}\\cdot{{=k}}={{=h*k}}$. The second contributes ${{=v}}\\cdot0=0$, so the total is ${{=h*k}}$."
+    solution: "The first pair contributes ${{=h}}\\times{{=k}}={{=h*k}}$. The second contributes ${{=v}}\\times0=0$, so the total is ${{=h*k}}$."
     tolerance: { abs: 0.000001 }
     params:
       h: { min: -4, max: 4 }
@@ -364,7 +364,7 @@ exercises:
     difficulty: 1
     est_minutes: 2
     prompt: "Two arrows are $a=(3,4)$ and $b=(2,0)$. The projection of $a$ onto $b$, the distance $a$ goes in $b$'s direction, is 3. What is $a\\cdot b$?"
-    solution: "Multiply the projection by $b$'s length: $3\\cdot2=6$. Direct multiplication agrees: $3\\cdot2+4\\cdot0=6$."
+    solution: "Multiply the projection by $b$'s length: $3\\times2=6$. Direct multiplication agrees: $3\\times2+4\\times0=6$."
     tolerance: { abs: 0.000001 }
     answer: 6
 
@@ -402,7 +402,7 @@ exercises:
     difficulty: 3
     est_minutes: 3
     prompt: "A straight corridor runs in the direction of $b=(3,4)$, in metres east and north. A robot moves $a=(2,11)$ metres. How many metres has it moved along the corridor?"
-    solution: "The distance along the corridor is the projection of $a$ onto $b$. The dot product is $2\\cdot3+11\\cdot4=50$ and $\\|b\\|=5$, so the projection is $50/5=10$ metres."
+    solution: "The distance along the corridor is the projection of $a$ onto $b$. The dot product is $2\\times3+11\\times4=50$ and $\\|b\\|=5$, so the projection is $50/5=10$ metres."
     tolerance: { abs: 0.000001 }
     answer: 10
   - id: dotp-why-not-lengths
@@ -412,7 +412,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: "Arrows $(2,0)$ and $(-2,0)$ both have length 2. Why can't lengths alone measure how much they point the same way?"
-    solution: "Their equal lengths do not record their opposite directions. Their dot product is $2\\cdot(-2)+0\\cdot0=-4$, which records that opposition."
+    solution: "Their equal lengths do not record their opposite directions. Their dot product is $2\\times(-2)+0\\times0=-4$, which records that opposition."
     options:
       - {
           id: a,
@@ -439,7 +439,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: "Two robot movements are $a=(3,4)$ and $b=(4,3)$, in metres east and north. What is their cosine similarity?"
-    solution: "The dot product is $12+12=24$ and both lengths are 5. Divide by both lengths to get $24/(5\\cdot5)=0.96$."
+    solution: "The dot product is $12+12=24$ and both lengths are 5. Divide by both lengths to get $24/(5\\times5)=0.96$."
     tolerance: { abs: 0.000001 }
     answer: 0.96
 
@@ -450,7 +450,7 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt: "Two arrows are $a=(3,4)$ and $b=({{=k}},3)$. What is their cosine similarity? Round to three decimal places."
-    solution: "The dot product is $3\\cdot{{=k}}+4\\cdot3={{=3*k+12}}$. The arrow lengths are 5 and $\\sqrt{ {{=k*k+9}} }$. Dividing by their product gives ${{=(3*k+12)/(5*sqrt(k*k+9))}}$."
+    solution: "The dot product is $3\\times{{=k}}+4\\times3={{=3*k+12}}$. The arrow lengths are 5 and $\\sqrt{ {{=k*k+9}} }$. Dividing by their product gives ${{=(3*k+12)/(5*sqrt(k*k+9))}}$."
     tolerance: { abs: 0.00051 }
     params:
       k: { min: 1, max: 6 }
@@ -463,7 +463,7 @@ exercises:
     difficulty: 3
     est_minutes: 2
     prompt: "Two arrows have lengths 2 and 3, and their cosine similarity is 0.5. What is their dot product?"
-    solution: "Cosine similarity is the dot product divided by both lengths, so the dot product is $2\\cdot3\\cdot0.5=3$."
+    solution: "Cosine similarity is the dot product divided by both lengths, so the dot product is $2\\times3\\times0.5=3$."
     tolerance: { abs: 0.000001 }
     answer: 3
   - id: dotp-scaling
@@ -532,14 +532,14 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: "Two arrows have dot product 2. Every entry of one vector is multiplied by 3 while the other vector stays fixed. What happens to the dot product?"
-    solution: "Each matching product becomes three times as large, so their sum is $3\\cdot2=6$. The dot product depends on arrow lengths as well as their directions."
+    prompt: "Two arrows have dot product 2. Every component of one vector is multiplied by 3 while the other vector stays fixed. What happens to the dot product?"
+    solution: "Each matching product becomes three times as large, so their sum is $3\\times2=6$. The dot product depends on arrow lengths as well as their directions."
     options:
       - {
           id: a,
           text: "The dot product becomes 6 even though neither arrow has turned.",
           correct: true,
-          feedback: "Each entry of one vector triples, so every product in the sum triples.",
+          feedback: "Each component of one vector triples, so every product in the sum triples.",
         }
       - {
           id: b,
@@ -589,7 +589,7 @@ exercises:
     prompt: "Calculate the dot product of vectors $(1,2,3)$ and $(4,-5,6)$."
     answer: 12
     tolerance: { abs: 0.001 }
-    hints: ["Multiply matching entries: $1\\cdot4$, $2\\cdot(-5)$, $3\\cdot6$."]
+    hints: ["Multiply matching components: $1\\times4$, $2\\times(-5)$, $3\\times6$."]
     solution: "$4 - 10 + 18 = 12$."
   - id: dot-faded-cos
     dimension: math
@@ -606,7 +606,7 @@ exercises:
           category: incomplete_explanation,
           feedback: "24 is the dot product. Cosine similarity divides by $\\|a\\|\\|b\\| = 25$.",
         }
-    hints: ["$a \\cdot b = 24$.", "Divide by $\\|a\\|\\|b\\| = 5 \\cdot 5$."]
+    hints: ["$a \\cdot b = 24$.", "Divide by $\\|a\\|\\|b\\| = 5 \\times 5$."]
     solution: "$24 / 25 = 0.96$: almost the same direction."
   - id: dot-cos-core
     dimension: math
@@ -657,7 +657,7 @@ exercises:
           text: "The vectors are identical.",
           correct: false,
           category: misunderstood_definition,
-          feedback: "Identical non-zero vectors have a positive dot product, because it adds the squares of their entries.",
+          feedback: "Identical non-zero vectors have a positive dot product, because it adds the squares of their components.",
         }
     solution: "$a\\cdot b = \\|a\\|\\|b\\|\\cos\\theta = 0$ with non-zero lengths means $\\cos\\theta = 0$, so $\\theta = 90^\\circ$."
   - id: dot-review-weighted
@@ -704,7 +704,7 @@ exercises:
           category: incorrect_reasoning,
           feedback: "Multiplying a positive score by three keeps it positive.",
         }
-    hints: ["What happens to each product if only one vector's entry triples?"]
+    hints: ["What happens to each product if only one vector's component triples?"]
     solution: "Every matching product becomes three times as large, so the total triples. The angle has not changed. Cosine similarity divides by both lengths to compare direction alone."
   - id: dot-explain
     dimension: conceptual
@@ -712,7 +712,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Two robot movement vectors record metres east and north. Explain in 2–4 sentences how their dot product measures agreement between their directions, and why a longer movement can raise the score without making the headings closer."
+    prompt: "Two robots record their movements as vectors of metres east and north. Explain in 2–4 sentences what the dot product of the two movement vectors tells you about their directions, why a longer movement can raise it even though the directions are no closer, and how cosine similarity fixes that."
     rubric:
       - {
           id: r1,
