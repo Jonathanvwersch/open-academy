@@ -1,11 +1,25 @@
 import { contentVersion } from './hash.js';
-import type { Dimension, ExerciseRole } from './schemas.js';
+import type { Dimension, ExerciseRole, LessonPrerequisite } from './schemas.js';
 import type { ContentIndex, ContentSourceData, IndexedExercise, IndexedPaper } from './types.js';
 
 function appendToMap<Key, Value>(map: Map<Key, Value[]>, key: Key, value: Value) {
   const values = map.get(key) ?? [];
   values.push(value);
   map.set(key, values);
+}
+
+export function getLessonPrerequisites(
+  index: ContentIndex,
+  conceptId: string,
+): LessonPrerequisite[] {
+  const concept = index.conceptsById.get(conceptId);
+  if (!concept) return [];
+  return concept.prereqs.flatMap(({ id }) => {
+    const prerequisite = index.conceptsById.get(id);
+    return prerequisite && index.lessonsByConcept.has(id)
+      ? [{ id, title: prerequisite.title }]
+      : [];
+  });
 }
 
 export function buildContentIndex(data: ContentSourceData): ContentIndex {

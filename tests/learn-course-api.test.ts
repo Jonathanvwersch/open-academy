@@ -82,6 +82,16 @@ async function get(path: string) {
   });
 }
 
+test('lesson response includes ordered authored prerequisites', async () => {
+  const response = await get('/lessons/gradient-descent');
+  expect(response.status).toBe(200);
+  expect((await response.json()).prerequisites).toEqual([
+    { id: 'gradients', title: 'Gradient vectors' },
+    { id: 'loss-functions', title: 'Loss functions (MSE, MAE)' },
+    { id: 'linear-regression', title: 'Linear regression' },
+  ]);
+});
+
 test('planned Learn tasks and Course numbering are read-only', async () => {
   const before = await rowCounts();
   const learnResponse = await get('/learn');

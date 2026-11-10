@@ -204,12 +204,14 @@ export type LessonBlock = z.infer<typeof LessonBlockSchema>;
 export type KnowledgePoint = z.infer<typeof KnowledgePointSchema>;
 export type LessonInput = z.infer<typeof LessonSchema>;
 export type KnowledgePointLessonInput = z.infer<typeof KnowledgePointLessonSchema>;
+export type LessonPrerequisite = { id: string; title: string };
 export type Lesson = Omit<z.infer<typeof LegacyLessonSchema>, 'fast_path'> & {
   fast_path: z.infer<typeof LegacyLessonSchema>['fast_path'];
   knowledge_points?: KnowledgePoint[];
   final?: string;
   where_this_fits?: string;
   summary?: string;
+  prerequisites?: LessonPrerequisite[];
 };
 
 export function normalizeLesson(

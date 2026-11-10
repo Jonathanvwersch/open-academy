@@ -330,7 +330,11 @@ export function LessonRunner({
     <section data-testid="lesson-step-content" className="space-y-4">
       {displayedPoint.id === lesson?.knowledge_points?.[0]?.id &&
       (lesson?.where_this_fits ?? state.where_this_fits) ? (
-        <LessonBlock kind="fits" md={lesson?.where_this_fits ?? state.where_this_fits} />
+        <LessonBlock
+          kind="fits"
+          md={lesson?.where_this_fits ?? state.where_this_fits}
+          prerequisites={state.prerequisites ?? lesson?.prerequisites}
+        />
       ) : null}
       <Markdown>{displayedPoint.explain}</Markdown>
       <LessonBlock kind="worked" md={displayedPoint.worked} />

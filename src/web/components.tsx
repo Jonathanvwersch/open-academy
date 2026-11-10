@@ -7,6 +7,7 @@ import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import type { LessonPrerequisite } from '../server/content/schemas.js';
 import { normalizeDisplayMath } from '../shared/markdown';
 import { seededOrder } from '../shared/shuffle.js';
 import { apiFetch } from './authenticated-fetch.js';
@@ -145,10 +146,12 @@ export function LessonBlock({
   kind,
   md,
   children,
+  prerequisites,
 }: {
   kind: LessonBlockKind;
   md?: string;
   children?: ReactNode;
+  prerequisites?: LessonPrerequisite[];
 }) {
   const content =
     kind === 'objective'
@@ -173,6 +176,22 @@ export function LessonBlock({
         <CardTitle className="text-sm font-medium">{lessonBlockLabels[kind]}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
+        {kind === 'fits' && prerequisites?.length ? (
+          <p className="text-sm text-muted-foreground">
+            Before this:{' '}
+            {prerequisites.map((prerequisite, index) => (
+              <React.Fragment key={prerequisite.id}>
+                {index > 0 ? ', ' : null}
+                <a
+                  className="cursor-pointer underline"
+                  href={`/lessons/${encodeURIComponent(prerequisite.id)}`}
+                >
+                  {prerequisite.title}
+                </a>
+              </React.Fragment>
+            ))}
+          </p>
+        ) : null}
         {content ? <Markdown>{content}</Markdown> : null}
         {children}
       </CardContent>
