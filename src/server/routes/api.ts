@@ -790,6 +790,12 @@ export function createApiRoutes(deps: {
           revealedSolution: false,
         });
       }
+      const optionTexts =
+        exercise.type === 'mc'
+          ? exercise.options
+          : exercise.type === 'debug'
+            ? exercise.fix_options
+            : [];
       const generatedHint = await tutorService.respond(
         {
           conceptTitle: concept?.title ?? exercise.concept,
@@ -800,6 +806,9 @@ export function createApiRoutes(deps: {
               .map((block) => block.md)
               .join('\n') ?? '',
           exercisePrompt: exercise.prompt,
+          exerciseOptions: optionTexts.map(
+            ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
+          ),
           learnerAnswer: priorAttempt ? JSON.stringify(priorAttempt.answer) : '',
           graderVerdict: priorAttempt
             ? `${priorAttempt.correct ? 'Correct' : 'Incorrect'}${priorAttempt.mistakeCategory ? ` (${priorAttempt.mistakeCategory})` : ''}`

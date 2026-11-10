@@ -265,6 +265,40 @@ test('unanswered and answered lesson problems pass the right solution privacy co
   expect(captured.at(-1)?.solution).not.toBe('');
 });
 
+test('unanswered multiple-choice lesson problems pass only lettered option text to the tutor', async () => {
+  const start = await app.request('/api/lessons/chain-rule/run', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({}),
+  });
+  const run = (await start.json()).run;
+  const pending = run.pending;
+  if (!pending) throw new Error('Expected a pending Chain rule lesson problem');
+  const exercise = concreteExercise(pending.exerciseId, pending.seed);
+  if (exercise.type !== 'mc') throw new Error('Expected a multiple-choice Chain rule problem');
+
+  const response = await send('Help with this question', undefined, {
+    lessonProblemId: pending.id,
+  });
+  expect(response.status).toBe(200);
+
+  const tutorInput = captured.at(-1);
+  const optionInput = tutorInput?.exerciseOptions ?? [];
+  expect(tutorInput).toMatchObject({
+    problem_status: 'unanswered',
+    exerciseOptions: exercise.options.map(
+      ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
+    ),
+  });
+  expect(tutorInput).not.toHaveProperty('options');
+  expect(tutorInput).not.toHaveProperty('correct');
+  expect(tutorInput).not.toHaveProperty('feedback');
+  expect(JSON.stringify(optionInput)).not.toContain('correct');
+  for (const option of exercise.options) {
+    if (option.feedback) expect(JSON.stringify(tutorInput)).not.toContain(option.feedback);
+  }
+});
+
 test('lesson problems owned by another learner are not available to the tutor', async () => {
   const start = await app.request('/api/lessons/supervised-learning/run', {
     method: 'POST',
