@@ -48,7 +48,7 @@ After:
 Let's take that step carefully, on the same bowl, starting from $P=(1.5,1)$ with a learning rate of $\eta=0.1$.
 
 1. **Find the gradient at $P$.** The slopes of $x^2+2y^2$ are $2x$ and $4y$, so at $P$ they are $3$ and $4$.
-</example>
+   </example>
 
 <example>
 Before:
