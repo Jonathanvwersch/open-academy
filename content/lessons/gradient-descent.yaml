@@ -1,21 +1,21 @@
 concept: gradient-descent
 version: 4
 objective: |
-  **Goal:** train a model with gradient descent: step every parameter against its loss slope, choose a learning rate that neither crawls nor blows up, and repeat the loop while the loss falls.
+  **Goal:** train a model with gradient descent, which means stepping every parameter against its loss slope, choosing a learning rate that neither crawls nor blows up, and repeating until the loss stops falling.
 where_this_fits: |
-  A model starts with poor weights and has to improve them from data. The gradients lesson showed that $-\nabla f$ points the way a function falls fastest, but a direction alone doesn't change any weights. You still need to decide how far to move, how to get the gradient of a model's loss, and what to do after the first move. This lesson turns that direction into **gradient descent**, the method that trains most machine-learning models, in four steps:
+  A model starts with poor weights and has to improve them using data. In the gradients lesson, we found that $-\nabla f$ points in the direction where a function falls fastest. But a direction on its own doesn't change any weights. We still have to decide how far to move, how to get the gradient of a model's loss, and what to do after the first move. Putting those answers together gives **gradient descent**, the method that trains most machine-learning models. We'll build it in four steps:
 
-  1. Step every input of a function, such as a model's weight, against its slope.
-  2. Choose how big each step is.
-  3. Get the slopes from a model's error.
-  4. Repeat the step in a loop while the loss falls.
+  1. Take one step downhill.
+  2. Choose how big the step should be.
+  3. Work out the slopes from a model's error.
+  4. Repeat the step until the loss stops falling.
 knowledge_points:
   - id: gd-downhill-update
     title: "Take one step downhill"
     explain: |
-      **The question.** The gradients lesson ended with a direction: $-\nabla f$ is the steepest way down. Knowing a direction doesn't move you, though. Standing at a point, how do you turn it into an actual move to a lower point?
+      In the gradients lesson, we found that $-\nabla f$ points in the steepest downhill direction. But knowing which way is downhill doesn't move us anywhere. If we're standing at a point, how far should we walk, and where do we end up?
 
-      **Picture it.** Go back to the bowl $f(x,y)=x^2+2y^2$, seen from above as a contour map: each ring joins points of equal height, and outer rings are higher. At $P=(1.5,1)$ the height is $4.25$ and the gradient is $(3,4)$, the blue arrow pointing uphill. The amber arrow is the move: the gradient reversed and shrunk to a tenth, $-0.1\times(3,4)=(-0.3,-0.4)$. It lands at $(1.2,0.6)$, on a lower ring, where the height is $2.16$.
+      Let's look at the bowl $f(x,y)=x^2+2y^2$ from above. Each ring joins points at the same height, and the outer rings are higher. We're standing at $P=(1.5,1)$, where the height is $4.25$. The blue arrow is the gradient, $(3,4)$, and it points uphill. To go downhill we turn it around, and so that we don't overshoot we take only a tenth of it, which gives $(-0.3,-0.4)$. That's the orange arrow. It takes us to $(1.2,0.6)$, on a lower ring, where the height is $2.16$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Contour map of the bowl x squared plus 2y squared seen from above. From P at (1.5, 1) on the height-4.25 ring, the blue gradient arrow (3, 4) points uphill and the amber step, minus 0.1 times the gradient, goes the opposite way to (1.2, 0.6) on the lower height-2.16 ring">
@@ -41,31 +41,33 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Take a small step in the direction opposite the gradient, then repeat from where you land. For a model, the inputs of the loss are its weights and bias. Each input moves against its own slope: an input with a positive slope goes down, one with a negative slope goes up. This method is **gradient descent**. Write $\mathbf p$ for the current point, the list of all the inputs. One step of gradient descent is
+      So the recipe is to work out the gradient where you're standing, take a small step the opposite way, and then do the same again from wherever you land. This is called **gradient descent**. You can also see it one input at a time. If an input's slope is positive, increasing that input would make the height go up, so we decrease it. If the slope is negative, we increase it.
+
+      To write this down, we call the current point $\mathbf p$, which is the list of all the inputs. One step of gradient descent is
 
       $$\mathbf p_{\text{new}}=\mathbf p-\eta\,\nabla f(\mathbf p).$$
 
-      Here $\eta$ (the Greek letter eta) is a small positive number called the **learning rate**. It sets how big each step is; the next part is about choosing it.
+      The Greek letter $\eta$ (eta) is a small positive number called the **learning rate**, and it sets how big each step is. We'll see how to choose it in the next part of the lesson.
 
-      **Common confusion.** “The gradient tells me where to go, so shouldn't I add it?” No. The gradient points uphill, so adding it climbs: $(1.5,1)+0.1\times(3,4)=(1.8,1.4)$ has height $7.16$, higher than $4.25$. Descent subtracts.
+      You might wonder why we subtract the gradient, when it's the gradient that tells us where to go. The reason is that the gradient points uphill, so adding it would climb. If we add a tenth of it instead, we land at $(1.8,1.4)$, where the height is $7.16$, higher than where we started.
     worked: |
-      This example takes one gradient-descent step on the bowl $f(x,y)=x^2+2y^2$ from $P=(1.5,1)$ with learning rate $\eta=0.1$.
+      Let's take that step carefully, on the same bowl, starting from $P=(1.5,1)$ with a learning rate of $\eta=0.1$.
 
-      1. **Find the gradient at $P$.**
+      1. **Find the gradient at $P$.** The slopes of $x^2+2y^2$ are $2x$ and $4y$, so we put in $x=1.5$ and $y=1$.
          $$\nabla f(P)=(2x,4y)=(2(1.5),4(1))=(3,4).$$
 
-      2. **Scale it by the learning rate.**
+      2. **Scale it by the learning rate.** Multiplying by $\eta$ shrinks the gradient to the size of step we want.
          $$\eta\,\nabla f(P)=0.1\times(3,4)=(0.3,0.4).$$
 
-      3. **Subtract it from $P$.**
+      3. **Subtract it from $P$.** Subtracting, rather than adding, is what sends us downhill.
          $$P_{\text{new}}=(1.5,1)-(0.3,0.4)=(1.2,0.6).$$
 
-      4. **Check that the height fell.**
+      4. **Check that the height fell.** We put the new point back into $f$.
          $$f(1.2,0.6)=1.2^2+2(0.6)^2=1.44+0.72=2.16.$$
 
-      The height fell from $4.25$ to $2.16$.
+      The height fell from $4.25$ to $2.16$, so the step took us downhill.
 
-      **Compare cases.** Three moves of the same length, $0.5$, from $P$:
+      To see why the direction matters, here are three moves of the same length, $0.5$, all starting from $P$. Only the move against the gradient goes downhill. Moving at right angles to the gradient hardly changes the height at first, and here it ends up a little higher because the bowl curves upward.
 
       | Move from $P$ | New point | Height | Change |
       | --- | --- | --- | --- |
@@ -73,7 +75,7 @@ knowledge_points:
       | add $0.1\nabla f(P)$ | $(1.8,1.4)$ | $7.16$ | $+2.91$ |
       | at right angles to $\nabla f$, $(0.4,-0.3)$ | $(1.9,0.7)$ | $4.59$ | $+0.34$ |
 
-      **Where it shows up.** For a model, the inputs are its weights and bias, and the height is its training loss $L$. One update subtracts $\eta$ times each parameter's loss slope from that parameter, all at the same time.
+      When we train a model, this same step is applied to all of its weights and its bias at once, and the height is the model's training loss $L$.
     problems:
       - gd-downhill-update-basics
       - gdp-downhill-self-explain
@@ -86,13 +88,13 @@ knowledge_points:
   - id: gd-step-size
     title: "How big a step to take"
     explain: |
-      **The question.** The update is $\mathbf p-\eta\nabla f(\mathbf p)$, but what value should $\eta$ take? A tiny step is safe but slow. Does a big step simply get there sooner?
+      We now know the update is $\mathbf p-\eta\nabla f(\mathbf p)$, but we haven't said what $\eta$ should be. A tiny step is safe but slow, so it's tempting to think a big step just gets us there sooner. Let's see whether it does.
 
-      **Picture it.** Use the simplest bowl, $f(w)=w^2$, with one input $w$. Its slope is $2w$, so one step gives
+      To keep things simple, we'll use a bowl with only one input, $f(w)=w^2$. Its slope is $2w$, so one step gives
 
       $$w_{\text{new}}=w-\eta(2w)=(1-2\eta)\,w.$$
 
-      Each step multiplies $w$ by the same number, $1-2\eta$. Each panel starts at $w=5$ and takes two steps with a different learning rate. With $\eta=0.1$, $w$ creeps down one side. With $\eta=0.75$, it jumps across the bottom but lands closer each time. With $\eta=1.25$, it jumps across and lands higher each time.
+      That means every step multiplies $w$ by the same number, $1-2\eta$. In each panel below we start at $w=5$ and take two steps with a different learning rate. With $\eta=0.1$, $w$ creeps slowly down one side of the bowl. With $\eta=0.75$, it jumps over the bottom to the other side, but each landing is closer than the last. With $\eta=1.25$, it jumps over and lands higher every time.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="Three copies of the curve f of w equals w squared, each starting at w equals 5. With learning rate 0.1 the steps creep down one side from 5 to 4 to 3.2; with 0.75 they jump across the bottom to minus 2.5 then 1.25 and settle; with 1.25 they jump across to minus 7.5 then 11.25 and climb higher each time">
@@ -147,7 +149,9 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Choose a learning rate big enough to make quick progress but small enough that every step lowers the loss. In practice: try a rate, watch the loss for some passes, and restart smaller if it rises. Too small, and the loss falls smoothly but slowly. Too large, and each step **overshoots**: it jumps past the bottom. A large overshoot lands higher than it started, so the loss grows every step: training **diverges**. For $f(w)=w^2$, the distance $|w|$ from the bottom shrinks only if the multiplier's size is below $1$:
+      So we want a learning rate that's big enough to make quick progress but small enough that every step still lowers the loss. If it's too small, the loss falls smoothly but slowly. If it's too large, each step **overshoots**, which means it jumps past the bottom. A big enough overshoot lands higher than where it started, so the loss grows with every step, and we say training **diverges**. In practice you try a rate, watch the loss for a few passes, and start again with a smaller one if the loss rises.
+
+      For $f(w)=w^2$ we can work out exactly where the limit is. The distance from the bottom, $|w|$, shrinks only when the multiplier is between $-1$ and $1$:
 
       $$-1<1-2\eta<1$$
 
@@ -155,27 +159,27 @@ knowledge_points:
 
       $$0<\eta<1\quad\text{(divide by }-2\text{, which flips the signs)}$$
 
-      How large is too large depends on how fast the slope grows: for the steeper bowl $2w^2$, the slope is $4w$, one step multiplies $w$ by $1-4\eta$, and the limit drops to $\eta<0.5$.
+      How large is too large depends on how quickly the slope grows. For the steeper bowl $2w^2$ the slope is $4w$, so one step multiplies $w$ by $1-4\eta$, and the limit drops to $\eta<0.5$.
 
-      **Common confusion.** “If $w$ jumps from one side of the bottom to the other, the learning rate is too big.” Only half right. At $\eta=0.75$, $w$ swaps sides every step, yet the loss still falls: $25$, then $6.25$, then $1.5625$. The warning sign is a loss that rises.
+      It's easy to think that if $w$ keeps jumping from one side of the bottom to the other, the learning rate must be too big. That's only half right. At $\eta=0.75$, $w$ swaps sides on every step, yet the loss still falls from $25$ to $6.25$ to $1.5625$. The real warning sign is a loss that goes up.
     worked: |
-      This example runs two steps on $f(w)=w^2$ from $w=5$ with $\eta=0.75$, and reads the loss.
+      Let's run two steps on $f(w)=w^2$, starting from $w=5$ with $\eta=0.75$, and watch what the loss does.
 
-      1. **Find the multiplier.**
+      1. **Find the multiplier.** Every step multiplies $w$ by $1-2\eta$, so we work that out first.
          $$1-2\eta=1-2(0.75)=-0.5.$$
 
-      2. **Take the first step.**
+      2. **Take the first step.** We subtract $\eta$ times the slope, $2w$, at $w=5$.
          $$w=5-0.75\times(2\times5)=5-7.5=-2.5.$$
 
-      3. **Take the second step.**
+      3. **Take the second step.** We do the same again from where we landed.
          $$w=-2.5-0.75\times(2\times(-2.5))=-2.5+3.75=1.25.$$
 
-      4. **Read the loss after each step.**
+      4. **Read the loss after each step.** The loss is just $w^2$ at each point.
          $$f(5)=25,\quad f(-2.5)=6.25,\quad f(1.25)=1.5625.$$
 
-      The loss falls, so this rate works even though $w$ changes sign.
+      The loss keeps falling, so this rate works even though $w$ changes sign on every step.
 
-      **Compare cases.** Every run starts at $w=5$, where $f=25$.
+      Here is the same experiment with five learning rates. Every run starts at $w=5$, where $f=25$.
 
       | $\eta$ | Multiplier $1-2\eta$ | $w$ over two steps | Loss over two steps | What you see |
       | --- | --- | --- | --- | --- |
@@ -185,7 +189,7 @@ knowledge_points:
       | $1$ | $-1$ | $-5,\ 5$ | $25,\ 25$ | bounces forever |
       | $1.25$ | $-1.5$ | $-7.5,\ 11.25$ | $56.25,\ 126.5625$ | diverges |
 
-      **Where it shows up.** When a model trains, $\eta$ is the first setting to change if its loss falls too slowly or starts to rise. A steeper loss needs a smaller rate, just as $2w^2$ needs $\eta<0.5$ where $w^2$ allows $\eta<1$.
+      When a model trains, the learning rate is the first setting to change if the loss falls too slowly or starts to rise. A steeper loss needs a smaller rate, just as $2w^2$ needs $\eta<0.5$ where $w^2$ allows anything below $1$.
     problems:
       - gd-step-size-basics
       - gdp-step-size-self-explain
@@ -198,9 +202,9 @@ knowledge_points:
   - id: gd-price-gradients
     title: "Find the slopes from the model's error"
     explain: |
-      **The question.** On the bowl, $f$ was a formula you could differentiate directly. A model's loss depends on its weights only through its predictions. What is the loss slope for each weight, and where does it come from?
+      So far our bowl was a formula we could differentiate directly. A model's loss is different, because it depends on the weights only through the model's predictions. So how do we get the loss slope for each weight?
 
-      **Picture it.** Take the smallest model: one input $x$, a weight $w$ and a bias $b$, predicting $\hat y=wx+b$. Start at $w=1$, $b=1$, the grey line. Give it one training example: input $x=2$ with true output $y=7$, the black dot. The model predicts $\hat y=1\times2+1=3$, so its **error** $e=\hat y-y$ is $3-7=-4$: too low by $4$, the red gap. The loss is the squared error, $L=e^2=16$. One gradient-descent step gives the amber line.
+      Let's take the smallest model there is. It has one input $x$, a weight $w$ and a bias $b$, and it predicts $\hat y=wx+b$. We'll start at $w=1$ and $b=1$, which is the grey line. Now we give it one training example, the black dot, where the input is $x=2$ and the true output is $y=7$. The model predicts $\hat y=1\times2+1=3$, so it's too low by $4$, which is the red gap. We call the difference $e=\hat y-y$ the **error**, so here $e=3-7=-4$. The loss is the squared error, $L=e^2=16$. After one gradient-descent step, the model becomes the orange line.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 350" aria-label="Input x against output. The grey line is the starting model, prediction equals x plus 1, which predicts 3 at x equals 2. The training example is the black dot at (2, 7). A red segment from 3 up to 7 shows the error of minus 4. The amber line is the model after one gradient-descent step, prediction equals 1.8x plus 1.4, which predicts 5 at x equals 2">
@@ -231,40 +235,40 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Each weight's loss slope is twice the error times that weight's input, and the bias's slope is twice the error. A **parameter gradient** is the partial derivative of the loss with respect to one weight or the bias. For a linear model $\hat y=w\cdot x+b$ with squared-error loss $L=(\hat y-y)^2$ and error $e=\hat y-y$, the partial-derivatives lesson found
+      In the partial-derivatives lesson, we worked out these slopes for a linear model $\hat y=w\cdot x+b$ with squared-error loss $L=(\hat y-y)^2$ and error $e=\hat y-y$. Each weight's slope is twice the error times that weight's input, and the bias's slope is just twice the error. A slope like this, the partial derivative of the loss with respect to one weight or the bias, is called a **parameter gradient**:
 
       $$\frac{\partial L}{\partial w_j}=2e\,x_j,$$
 
       $$\frac{\partial L}{\partial b}=2e.$$
 
-      Here $x_j$ is the $j$th input and $w_j$ its weight; the bias acts like a weight whose input is always $1$. With several examples and MSE as the loss, compute every example's error from the same current parameters, average each slope over the examples, then take one update.
+      Here $x_j$ is the $j$th input and $w_j$ is its weight. The bias behaves like a weight whose input is always $1$, which is why its slope has no input in it. When there are several examples and the loss is their MSE, we work out every example's error from the same current parameters, average each slope over the examples, and then take one update.
 
-      **Common confusion.** “The weight with the biggest slope is the one that's most wrong.” No. Every slope shares the same error $e$; they differ only by their inputs. A weight paired with a large input gets a large slope, even though the error belongs to the whole prediction.
+      It's tempting to think the weight with the biggest slope must be the one that's most wrong. It isn't. Every slope here contains the same error, $e$, so the only thing that makes one bigger than another is its input. A weight attached to a large input gets a large slope, even though the mistake belongs to the whole prediction.
     worked: |
-      This example takes one gradient-descent step for $\hat y=wx+b$ from $w=1$, $b=1$, on the example $x=2$, $y=7$, with $\eta=0.05$.
+      Let's take one gradient-descent step for $\hat y=wx+b$, starting from $w=1$ and $b=1$, on the example $x=2$, $y=7$, with $\eta=0.05$.
 
-      1. **Predict.**
+      1. **Predict.** We put the input into the model with the current weight and bias.
          $$\hat y=1\times2+1=3.$$
 
-      2. **Find the error.**
+      2. **Find the error.** The error compares the prediction with the true output.
          $$e=\hat y-y=3-7=-4.$$
 
-      3. **Find the weight's slope.**
+      3. **Find the weight's slope.** It's twice the error times the input.
          $$\frac{\partial L}{\partial w}=2ex=2(-4)(2)=-16.$$
 
-      4. **Find the bias's slope.**
+      4. **Find the bias's slope.** It's just twice the error.
          $$\frac{\partial L}{\partial b}=2e=2(-4)=-8.$$
 
-      5. **Update both.**
+      5. **Update both.** Each one moves against its own slope, by $\eta$ times that slope.
          $$w_{\text{new}}=1-0.05\times(-16)=1.8,$$
          $$b_{\text{new}}=1-0.05\times(-8)=1.4.$$
 
-      6. **Check the new loss.**
+      6. **Check the new loss.** We predict again with the new weight and bias.
          $$\hat y=1.8\times2+1.4=5,\qquad e=-2,\qquad L=4.$$
 
-      The loss fell from $16$ to $4$.
+      The loss fell from $16$ to $4$, so the step helped.
 
-      **Compare cases.** The same model, $w=1$ and $b=1$, on different examples:
+      To see how the error drives everything, here is the same starting model, $w=1$ and $b=1$, on four different examples:
 
       | Example $(x,y)$ | $\hat y$ | $e$ | $\partial L/\partial w=2ex$ | $\partial L/\partial b=2e$ | The step moves $w$ |
       | --- | --- | --- | --- | --- | --- |
@@ -273,7 +277,7 @@ knowledge_points:
       | $(2,3)$ | $3$ | $0$ | $0$ | $0$ | not at all |
       | $(10,15)$ | $11$ | $-4$ | $-80$ | $-8$ | up, 5 times as far |
 
-      **Where it shows up.** The partial-derivatives lesson's house-price model has three inputs, $x=(12,3,20)$ with age $20$ last, and with $w=(25,10,-1)$, $b=0$ it predicts $310$ against a sale price of $330$, so $e=-20$ and its gradient over $(w_1,w_2,w_3,b)$ is $(-480,-120,-800,-40)$. The age slope is the largest in size only because age, $20$, is the largest input.
+      The same thing happens in bigger models. In the partial-derivatives lesson, a house-price model had three inputs, $x=(12,3,20)$, with the house's age, $20$, last. With $w=(25,10,-1)$ and $b=0$ it predicted $310$ for a house that sold for $330$, so $e=-20$, and its gradient over $(w_1,w_2,w_3,b)$ was $(-480,-120,-800,-40)$. The age slope is the biggest only because age is the biggest input.
     problems:
       - gd-price-gradients-basics
       - gdp-gradient-self-explain
@@ -286,9 +290,9 @@ knowledge_points:
   - id: gd-training-loop
     title: "Repeat until the loss stops falling"
     explain: |
-      **The question.** One step lowered the loss from $16$ to $4$, but not to $0$. What do you do next, and how do you know when to stop?
+      One step lowered the loss from $16$ to $4$, but not all the way to $0$. So what do we do next, and how do we know when to stop?
 
-      **Picture it.** Training repeats the same four stages. Each pass through them starts from the weight and bias the previous pass produced. The chart shows the loss of the one-example model from the previous part, measured in each of four passes: it falls to a quarter each time.
+      We simply go round again. Training repeats the same four stages over and over, and each pass starts from the weight and bias that the previous pass left behind. The chart on the right shows the loss of our one-example model from the previous part, measured on each of four passes. Each time, it falls to a quarter of what it was.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" aria-label="Left: the training loop as four boxes in a cycle, predict, measure error and loss, compute slopes, update weight and bias, with an arrow back to predict. Right: bars of the loss after each of four steps, 16, 4, 1 and 0.25">
@@ -325,26 +329,28 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Keep stepping, and recompute everything from the current parameters each time. A **training loop** is the repeated cycle of prediction, loss, gradient and parameter update. The gradient must be recomputed every pass, because the slopes belong to the point where you stand. You stop after a fixed number of passes, or once a pass lowers the loss by only a tiny amount, say less than $0.1\%$ of its current value. A plot of the loss in each pass is a **loss curve**, the main way to check training: a steady fall is good, a fall that stays slow and steady from the start suggests a larger learning rate, and a rise suggests a smaller one.
+      This repeated cycle of predicting, measuring the loss, finding the gradient and updating the parameters is called a **training loop**. The gradient has to be worked out again on every pass, because the slopes belong to the point where we're standing, and that point moves. We stop after a fixed number of passes, or once a pass lowers the loss by only a tiny amount, say less than $0.1\%$ of its current value.
 
-      **Common confusion.** “The gradient is the direction to the answer, so I can compute it once and keep subtracting it.” No. It is the slope where you are standing, and it changes as you move. After the first step the error halves from $-4$ to $-2$, so the gradient halves too, from $(-16,-8)$ to $(-8,-4)$. Reusing the first gradient keeps every step full size, so by the third step the prediction is $9$, past the true $7$.
+      A plot of the loss on each pass is called a **loss curve**, and it's the main way to check that training is working. A steady fall is good. If the loss falls slowly and steadily from the very start, the learning rate is probably too small, and if it rises, the learning rate is probably too large.
+
+      It's tempting to think of the gradient as the direction to the answer, so that we could work it out once and keep subtracting it. That doesn't work, because the gradient is the slope where we're standing, and it changes as we move. After the first step the error halves from $-4$ to $-2$, so the gradient halves too, from $(-16,-8)$ to $(-8,-4)$. If we kept reusing the first gradient, every step would stay full size, and by the third step the prediction would be $9$, past the true value of $7$.
     worked: |
-      This example runs the second pass of the loop for $\hat y=wx+b$ on the example $x=2$, $y=7$, with $\eta=0.05$. The first pass left $w=1.8$ and $b=1.4$.
+      Let's run the second pass of the loop by hand. The model is still $\hat y=wx+b$ with the example $x=2$, $y=7$ and $\eta=0.05$, and the first pass left us with $w=1.8$ and $b=1.4$.
 
-      1. **Predict.**
+      1. **Predict.** We use the weight and bias from the first pass.
          $$\hat y=1.8\times2+1.4=5.$$
 
-      2. **Measure the error and loss.**
+      2. **Measure the error and loss.** We compare the prediction with the true output, then square the error.
          $$e=5-7=-2,\qquad L=(-2)^2=4.$$
 
-      3. **Find the slopes.**
+      3. **Find the slopes.** We work these out again from the new error, rather than reusing the first pass's slopes.
          $$\frac{\partial L}{\partial w}=2(-2)(2)=-8,\qquad \frac{\partial L}{\partial b}=2(-2)=-4.$$
 
-      4. **Update.**
+      4. **Update.** Each parameter moves against its own slope.
          $$w=1.8-0.05\times(-8)=2.2,$$
          $$b=1.4-0.05\times(-4)=1.6.$$
 
-      The same loop in Python, for four passes. `**` means "to the power", `range(1, 5)` counts passes $1$ to $4$, and `w, b = ..., ...` updates both from the old values at once. The indented lines repeat each pass, and `round(loss, 4)` rounds to $4$ decimal places.
+      Here is the same loop in Python, running four passes. In Python, `**` means "to the power of", `range(1, 5)` counts the passes from $1$ to $4$, and `w, b = ..., ...` updates both from their old values at the same time. The indented lines run once per pass, and `round(loss, 4)` rounds the loss to $4$ decimal places.
 
       ```python
       x, y = 2.0, 7.0
@@ -360,7 +366,7 @@ knowledge_points:
       # prints 1 16.0, 2 4.0, 3 1.0, 4 0.25
       ```
 
-      **Compare cases.** Each pass, measured before its update, so the losses match what the code prints:
+      This table follows all four passes. Each row is measured before that pass's update, so the losses match what the code prints.
 
       | Pass | $w$ | $b$ | $\hat y$ | $e$ | $L$ | Slopes $(\partial L/\partial w,\ \partial L/\partial b)$ |
       | --- | --- | --- | --- | --- | --- | --- |
@@ -369,9 +375,9 @@ knowledge_points:
       | $3$ | $2.2$ | $1.6$ | $6$ | $-1$ | $1$ | $(-4,-2)$ |
       | $4$ | $2.4$ | $1.7$ | $6.5$ | $-0.5$ | $0.25$ | $(-2,-1)$ |
 
-      The slopes shrink as the error shrinks, so the steps get smaller near the bottom on their own. With many examples that don't lie on one line, the single errors can't all reach $0$, but their averaged slopes still shrink toward $0$ near the best parameters.
+      Notice that the slopes shrink as the error shrinks, so the steps get smaller near the bottom on their own. With many examples that don't all lie on one line, the errors can't all reach $0$, but their averaged slopes still shrink toward $0$ as we get close to the best parameters.
 
-      **Where it shows up.** Training a real model, such as the house-price model, runs this loop thousands of times, with each slope averaged over all the training examples. The loss curve is what you watch while it runs.
+      Training a real model, such as a house-price model, runs this same loop thousands of times, with each slope averaged over all the training examples, and the loss curve is what you watch while it runs.
     problems:
       - gd-training-loop-basics
       - gdp-loop-self-explain
@@ -383,9 +389,6 @@ knowledge_points:
       - gdp-robot-loop
 final: gd-explain-training
 summary: |
-  - Gradient descent steps every input against its own slope: $\mathbf p_{\text{new}}=\mathbf p-\eta\nabla f(\mathbf p)$.
-  - The learning rate sets the step size: too small is slow, too large overshoots and can make the loss grow.
-  - For a linear model with squared error, each weight's slope is twice the error times its input, and the bias's slope is twice the error.
-  - Training repeats predict, loss, gradient and update, recomputing the gradient every pass and watching the loss curve.
+  Gradient descent lowers the loss by taking small steps against the gradient, $\mathbf p_{\text{new}}=\mathbf p-\eta\nabla f(\mathbf p)$, so every parameter moves against its own slope. The learning rate $\eta$ sets how big those steps are: too small and training crawls, too large and the steps overshoot and the loss can grow. For a linear model with squared error, each weight's slope is twice the error times its input, and the bias's slope is twice the error. Training repeats predict, loss, gradient and update, working the gradient out afresh on every pass, and the loss curve tells you whether it's working.
 
   **Next:** Training and evaluation splits show whether these updates help on examples the model has not seen.

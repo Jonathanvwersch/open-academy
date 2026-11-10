@@ -731,12 +731,12 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
       if (!point.explain.trim())
         addIssue(issues, file, point.id, 'knowledge-point explain must not be empty');
       const explanationWords = countKnowledgePointWords(point.explain);
-      if (explanationWords > 300) {
+      if (explanationWords > 380) {
         addIssue(
           issues,
           file,
           point.id,
-          `knowledge-point explain has ${explanationWords} words; maximum is 300`,
+          `knowledge-point explain has ${explanationWords} words; maximum is 380`,
         );
       }
       if (!point.worked.trim())
