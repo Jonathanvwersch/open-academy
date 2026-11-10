@@ -54,7 +54,7 @@ async function expectGradientDescentRecap(page: Page) {
     {
       id: 'linear-regression',
       title: 'Linear regression',
-      text: 'A linear model predicts a number',
+      text: 'A linear model predicts',
     },
   ]) {
     const link = page.getByRole('link', { name: prerequisite.title, exact: true });

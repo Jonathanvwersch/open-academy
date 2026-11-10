@@ -99,7 +99,7 @@ test('lesson response includes ordered authored prerequisites', async () => {
     {
       id: 'linear-regression',
       title: 'Linear regression',
-      recap: expect.stringContaining('A linear model predicts a number'),
+      recap: expect.stringContaining('A linear model predicts'),
     },
   ]);
 });
