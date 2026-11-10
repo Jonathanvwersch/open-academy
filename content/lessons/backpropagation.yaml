@@ -1,63 +1,72 @@
 concept: backpropagation
-version: 4
+version: 5
 objective: |
-  **Goal:** reuse saved calculations to find every parameter's loss slope, combine slopes across examples, and check them with small nudges.
+  **Goal:** find every parameter's loss slope in one backward sweep by reusing saved forward values and shared slopes, add the contributions from a batch, and check a slope by nudging a weight.
+recap:
+  - concept: computational-graphs
+    text: "A computational graph splits a calculation into small operations, and a local derivative is one operation's slope for one of its inputs. To get the output's slope, we multiply local derivatives along each path and add the paths."
+  - concept: mlp-forward-pass
+    text: "A layer weights its inputs, adds a bias and applies an activation. ReLU keeps a positive score and turns a negative one into $0$. In a batch, each example is one row of $X$."
+  - concept: loss-functions
+    text: "For squared error $(\\hat y-y)^2$, the slope for the prediction $\\hat y$ is twice the error, $2(\\hat y-y)$. The mean squared error (MSE) averages the squared errors over the examples."
+  - concept: partial-derivatives
+    text: "A partial derivative such as $\\partial L/\\partial w$ is the slope of $L$ when only $w$ changes and everything else stays fixed."
 where_this_fits: |
-  Training a model means changing its weights and biases to reduce its loss. You can already follow a chain of operations to find one weight's loss slope. But a network has many parameters, and tracing each one separately repeats the same calculations near the loss. This lesson organises that work so you can get all the slopes without starting again for each weight:
+  ### What is backpropagation?
 
-  1. Save the forward values and reuse slopes on the way back.
-  2. Calculate the backward steps through a small network.
-  3. Combine contributions from several examples using arrays.
-  4. Check the calculated slopes against small parameter nudges.
+  Backpropagation is a way of finding how the loss changes with every weight and bias of a model, in one sweep that runs backwards from the loss towards the inputs.
+
+  We need it because training lowers the loss by changing every parameter, and to know which way to change each one, it needs that parameter's slope. In the computational graphs lesson, we found one slope by multiplying local derivatives along paths. But different parameters' paths share their last stretch, the part nearest the loss. Handling one parameter at a time redoes that stretch for each of a network's millions of parameters. Backpropagation works out each shared piece once.
 knowledge_points:
   - id: bp-why-backprop
-    title: "Reuse forward-pass values to get slopes"
+    title: "Work backwards from the loss"
     explain: |
-      **The question.** You can multiply local derivatives along a graph to find one parameter's loss slope. Must you start from the loss again for every other parameter?
+      ### A model with two parameters
 
-      **Picture it.** Imagine a machine with two adjustable dials, $w$ and $b$. It doubles the first dial, adds the second, then squares the total. Call the total $z$ and the final score $L$. At $w=1$ and $b=1$, the total is 3 and the score is 9. Grey lines show forward dependencies; the blue arrow carries the shared loss slope back.
+      Let's start with the smallest model, which predicts $\hat y=wx+b$ from one input $x$. It has two parameters, a weight $w$ and a bias $b$, and we want the loss's partial derivative for each. We'll take one example with input $x=2$ and target $y=0$, and start from $w=1$ and $b=1$.
+
+      The forward pass, along the grey arrows, gives the prediction $\hat y=3$ and the squared-error loss $L=9$. We keep these values for the way back, where, for example, the weight's local derivative is the input $x$.
+
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 150" aria-label="Two dials feed a shared total z equals 3 and loss L equals 9; shared slope 6 supplies both dial derivatives">
-      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
-      <text x="15" y="35">w = 1</text><text x="15" y="125">b = 1</text><text x="240" y="80">z = 3</text><text x="485" y="80">L = 9</text>
-      <path d="M80 30 L230 72 M80 120 L230 80 M310 75 H475" stroke="#737373" fill="#171717" fill-opacity="0"/>
-      <text x="115" y="30">× 2</text><text x="365" y="55">square</text>
-      <path d="M470 95 H320 l10 -5 m-10 5 l10 5" stroke="#3b82f6" fill="#171717" fill-opacity="0"/>
-      <text x="345" y="125" fill="#3b82f6">shared loss slope 6</text>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="Computational graph for the prediction 2w plus b. Grey arrows run forward from w equals 1 and b equals 1 to the prediction 3, then to the loss 9. Blue arrows run back. The loss hands the slope 6 to the prediction once, and the prediction hands 6 times 2, which is 12, to w and 6 times 1, which is 6, to b">
+      <defs><marker id="bp1-grey" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="bp1-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="20" y="30" width="110" height="40" fill="#ffffff" stroke="#737373" rx="8"/><text x="75" y="55" text-anchor="middle">w = 1</text>
+      <rect x="20" y="160" width="110" height="40" fill="#ffffff" stroke="#737373" rx="8"/><text x="75" y="185" text-anchor="middle">b = 1</text>
+      <rect x="255" y="100" width="130" height="40" fill="#ffffff" stroke="#737373" rx="8"/><text x="320" y="125" text-anchor="middle">ŷ = 2w + b = 3</text>
+      <rect x="500" y="100" width="120" height="40" fill="#ffffff" stroke="#737373" rx="8"/><text x="560" y="125" text-anchor="middle">L = ŷ² = 9</text>
+      <path d="M130 58 L253 108" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#bp1-grey)"/>
+      <path d="M130 172 L253 132" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#bp1-grey)"/>
+      <path d="M385 112 L498 112" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#bp1-grey)"/>
+      <path d="M498 130 L387 130" stroke="#3b82f6" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#bp1-blue)"/>
+      <path d="M255 100 L132 42" stroke="#3b82f6" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#bp1-blue)"/>
+      <path d="M255 140 L132 188" stroke="#3b82f6" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#bp1-blue)"/>
+      <text x="442" y="100" text-anchor="middle" fill="#737373">square</text>
+      <text x="442" y="160" text-anchor="middle" fill="#3b82f6">6, found once</text>
+      <text x="200" y="40" text-anchor="middle" fill="#3b82f6">6 × 2 = 12</text>
+      <text x="200" y="210" text-anchor="middle" fill="#3b82f6">6 × 1 = 6</text>
       </g>
       </svg>
       ```
 
-      **The idea.** Both dials affect the same total $z$, so calculate its loss slope once and reuse it for both dials. **Backpropagation** is the reverse application of the chain rule through a computational graph to find the loss derivative for every parameter. The forward pass saves intermediate values; the backward pass uses them to evaluate local derivatives. In $\partial L/\partial z$, the symbol $\partial$ denotes a partial derivative: the loss slope when only $z$ changes.
+      ### What backpropagation does
 
-      **Common confusion.** “Going backwards means undoing the prediction.” No: you pass rates of change backwards, not original inputs. You keep the forward values until their local derivatives have been calculated; the backward pass itself does not change the dials.
+      **Backpropagation** finds the loss's partial derivative for every parameter by moving back from the loss through the graph one operation at a time. At each one, it multiplies the arriving slope by the local derivative and passes the result on to the operations before it. Here $w$ and $b$ affect the loss only through $\hat y$, so in the picture the blue arrows give the prediction its slope $6$ once, and then $w$ and $b$ each multiply that $6$ by their own local derivative. The list of all the slopes is called the **gradient** of the loss.
+
+      Be careful not to think of going backwards as undoing the prediction. It doesn't recover the inputs or change $w$ and $b$; it only passes slopes back.
     worked: |
-      **Worked example.** This example shows one shared slope supplying both dial derivatives.
+      Let's find both slopes with $x=2$, $y=0$, $w=1$ and $b=1$.
 
-      1. Save the total and score.
+      1. **Run the forward pass.** We keep the values for later.
+         $$\hat y=1\times2+1=3,\qquad L=(3-0)^2=9$$
+      2. **Find the shared slope at the prediction.** It's twice the error, and both parameters pass through it.
+         $$\frac{\partial L}{\partial\hat y}=2(\hat y-y)=2(3-0)=6$$
+      3. **Multiply by the weight's local derivative.** Raising $w$ by one raises $\hat y$ by $x=2$.
+         $$\frac{\partial L}{\partial w}=6\times2=12$$
+      4. **Reuse the same $6$ for the bias.** Raising $b$ by one raises $\hat y$ by one.
+         $$\frac{\partial L}{\partial b}=6\times1=6$$
 
-      $$z=2(1)+1=3$$
-
-      $$L=z^2=9$$
-
-      2. Find how loss changes with the total: the slope of $L=z^2$ is $2z$.
-
-      $$\frac{\partial L}{\partial z}=2z=6$$
-
-      3. Find each dial's loss slope. Multiply by the local slope of $z=2w+b$: 2 for $w$ and 1 for $b$.
-
-      $$\frac{\partial L}{\partial w}=6\cdot2=12$$
-
-      $$\frac{\partial L}{\partial b}=6\cdot1=6$$
-
-      **Compare cases.** Keep the other dial fixed in each row so the slope measures only the named dial's effect.
-
-      | Dial you change | Local slope of total | Loss slope |
-      | --- | --- | --- |
-      | $w$ | 2 | 12 |
-      | $b$ | 1 | 6 |
-
-      **Where it shows up.** A network's weights share many later operations. Reusing their loss slopes avoids recalculating the same part of the chain for each weight.
+      The weight's slope is twice the bias's because the input $2$ doubles every change in $w$.
     problems:
       [
         bp-why-backprop-basics,
@@ -68,53 +77,78 @@ knowledge_points:
         bp-reuse-robot,
       ]
   - id: bp-by-hand
-    title: "Find the slope for one weight"
+    title: "Work backwards through a small network"
     explain: |
-      **The question.** How do you continue the backward calculation when the machine includes an activation that can block a change?
+      ### A network with a ReLU
 
-      **Picture it.** ReLU acts like a gate: it passes positive scores unchanged and replaces negative scores with zero. First multiply fixed input $x=2$ by adjustable weight $w=1$, giving score $z=wx=2$. Then apply ReLU, giving its output $h=2$. Multiply that by 3 to get prediction $p=6$, and compare it with target $t=5$ using squared loss $L=(p-t)^2$. The diagram shows saved values, not slopes.
+      A network has layers with an activation between them, so let's go backwards through the smallest one, with two layers of one neuron. It multiplies the input $x=2$ by the weight $w_1=1$ to get the score $z=2$, and ReLU gives the hidden value $h=2$. The output layer multiplies by $w_2=3$ to predict $\hat y=6$, and with target $y=5$ the loss is $L=1$.
+
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 150" aria-label="Forward values through multiply, ReLU, multiply and squared error">
-      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
-      <text x="10" y="65">x = 2</text><text x="140" y="65">z = 2</text><text x="270" y="65">h = 2</text><text x="400" y="65">p = 6</text><text x="525" y="65">L = 1</text>
-      <path d="M70 60 H130 l-8 -4 m8 4 l-8 4 M200 60 H260 l-8 -4 m8 4 l-8 4 M330 60 H390 l-8 -4 m8 4 l-8 4 M460 60 H515 l-8 -4 m8 4 l-8 4" stroke="#737373" fill="#171717" fill-opacity="0"/>
-      <text x="75" y="35">× w</text><text x="205" y="35">ReLU</text><text x="335" y="35">× 3</text><text x="465" y="35">(p − 5)²</text>
-      <text x="130" y="115" fill="#3b82f6">Backward: pass loss slopes towards earlier values</text>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 190" aria-label="A chain of five boxes. Grey arrows run forward from x equals 2, times w1 equals 1, to z equals 2, through ReLU to h equals 2, times w2 equals 3, to the prediction 6, and on to the loss 1 with target 5. Underneath, blue arrows run back with the slopes 2 for the prediction, 6 for h and 6 for z. The weight w2 gets 4 and the weight w1 gets 12">
+      <defs><marker id="bp2-grey" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="bp2-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="10" y="50" width="90" height="36" fill="#ffffff" stroke="#737373" rx="8"/><text x="55" y="73" text-anchor="middle">x = 2</text>
+      <rect x="140" y="50" width="90" height="36" fill="#ffffff" stroke="#737373" rx="8"/><text x="185" y="73" text-anchor="middle">z = 2</text>
+      <rect x="270" y="50" width="90" height="36" fill="#ffffff" stroke="#737373" rx="8"/><text x="315" y="73" text-anchor="middle">h = 2</text>
+      <rect x="400" y="50" width="90" height="36" fill="#ffffff" stroke="#737373" rx="8"/><text x="445" y="73" text-anchor="middle">ŷ = 6</text>
+      <rect x="530" y="50" width="90" height="36" fill="#ffffff" stroke="#737373" rx="8"/><text x="575" y="73" text-anchor="middle">L = 1</text>
+      <path d="M100 68 L138 68 M230 68 L268 68 M360 68 L398 68 M490 68 L528 68" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0"/>
+      <path d="M130 68 L138 68" stroke="#737373" stroke-width="2" marker-end="url(#bp2-grey)"/>
+      <path d="M260 68 L268 68" stroke="#737373" stroke-width="2" marker-end="url(#bp2-grey)"/>
+      <path d="M390 68 L398 68" stroke="#737373" stroke-width="2" marker-end="url(#bp2-grey)"/>
+      <path d="M520 68 L528 68" stroke="#737373" stroke-width="2" marker-end="url(#bp2-grey)"/>
+      <text x="120" y="40" text-anchor="middle" fill="#737373">× w₁ = 1</text>
+      <text x="250" y="40" text-anchor="middle" fill="#737373">ReLU</text>
+      <text x="380" y="40" text-anchor="middle" fill="#737373">× w₂ = 3</text>
+      <text x="510" y="40" text-anchor="middle" fill="#737373">target 5</text>
+      <path d="M565 120 L462 120" stroke="#3b82f6" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#bp2-blue)"/>
+      <path d="M428 120 L332 120" stroke="#3b82f6" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#bp2-blue)"/>
+      <path d="M298 120 L202 120" stroke="#3b82f6" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#bp2-blue)"/>
+      <text x="445" y="125" text-anchor="middle" fill="#3b82f6">2</text>
+      <text x="315" y="125" text-anchor="middle" fill="#3b82f6">6</text>
+      <text x="185" y="125" text-anchor="middle" fill="#3b82f6">6</text>
+      <text x="10" y="125" fill="#737373">slopes</text>
+      <text x="120" y="170" text-anchor="middle" fill="#3b82f6">w₁ gets 12</text>
+      <text x="380" y="170" text-anchor="middle" fill="#3b82f6">w₂ gets 4</text>
       </g>
       </svg>
       ```
 
-      **The idea.** At each operation, multiply the arriving loss slope by that operation's local slope. A **backward step** converts the loss derivative with respect to an operation's output into the derivative with respect to an input. If a value feeds two later operations, changing it affects the loss through both routes: add their loss-slope contributions before continuing. For ReLU the local slope is 1 at positive scores and 0 at negative scores. At zero those slopes meet without a single slope; our calculation uses 0 there by convention.
+      ### One backward step at a time
 
-      **Common confusion.** “The ReLU slope is its saved output.” No: at score 2 the output is 2, but the slope is 1. The saved score tells you which side of the gate you are on, not what number to multiply by directly.
-    worked: |
-      **Worked example.** This example shows how the saved positive score leads back to the weight.
+      At each operation, a **backward step** multiplies the slope arriving for its output by a local derivative, which gives a slope for each of its inputs. So if we read the blue numbers from right to left, as the backward pass does, each one is the number to its right times a local derivative. The output layer $\hat y=w_2h$ has two inputs, so it sends one slope to $h$ and one to $w_2$.
 
-      1. Start at the squared error.
+      ### The ReLU step
 
-      $$\frac{\partial L}{\partial p}=2(p-t)=2(6-5)=2$$
+      ReLU keeps a positive score and turns a negative one into $0$, so its local derivative is $1$ where the saved score is positive, and $0$ where it's negative, because there the output stays at $0$. At exactly $0$, we use $0$ by convention. Here's what happens to an arriving slope of $6$:
 
-      2. Find the loss slope for $h$: multiply by the local slope of $p=3h$, which is 3.
-
-      $$\frac{\partial L}{\partial h}=2\cdot3=6$$
-
-      3. Pass through ReLU: the positive score selects local slope 1.
-
-      $$\frac{\partial L}{\partial z}=6\cdot1=6$$
-
-      4. Find the weight's loss slope: multiply by the local slope of $z=wx$ with respect to $w$, which is the fixed input $x=2$.
-
-      $$\frac{\partial L}{\partial w}=6\cdot2=12$$
-
-      **Compare cases.** For an arriving loss slope of 6:
-
-      | Saved score | ReLU local slope | Loss slope passed back |
+      | Saved score $z$ | Local derivative | Slope for $z$ |
       | --- | --- | --- |
-      | 2 | 1 | 6 |
-      | -2 | 0 | 0 |
-      | 0 | 0 by our convention | 0 |
+      | $2$ | $1$ | $6$ |
+      | $-2$ | $0$ | $0$ |
 
-      **Where it shows up.** A neural network repeats these same local steps through its layers. Each weight receives a loss slope, rather than a new prediction.
+      That's why the forward pass saves $z$; the backward step needs its sign.
+
+      Be careful not to use ReLU's output as its slope. Here the output is $2$, but the local derivative is $1$.
+
+      ### When one value feeds two operations
+
+      If a value feeds two later operations, it moves the loss along both routes, so, as in the computational graphs lesson, we add the two slopes that arrive at it.
+    worked: |
+      Let's run the backward pass for $x=2$, $w_1=1$, $w_2=3$ and $y=5$, with the saved values $z=2$, $h=2$ and $\hat y=6$.
+
+      1. **Start at the loss.** The slope for the prediction is twice the error.
+         $$\frac{\partial L}{\partial\hat y}=2(6-5)=2$$
+      2. **Find the output weight's slope.** Raising $w_2$ by one raises $\hat y=w_2h$ by $h=2$.
+         $$\frac{\partial L}{\partial w_2}=2\times2=4$$
+      3. **Pass the slope back to the hidden value.** Raising $h$ by one raises $\hat y$ by $w_2=3$.
+         $$\frac{\partial L}{\partial h}=2\times3=6$$
+      4. **Pass through ReLU.** The saved score $z=2$ is positive, so the local derivative is $1$.
+         $$\frac{\partial L}{\partial z}=6\times1=6$$
+      5. **Pass through the first weight.** Raising $w_1$ by one raises $z=w_1x$ by $x=2$.
+         $$\frac{\partial L}{\partial w_1}=6\times2=12$$
+
+      One sweep gave both weights' slopes, $4$ and $12$, and each slope on the way was worked out once.
     problems:
       [
         bp-by-hand-basics,
@@ -125,70 +159,70 @@ knowledge_points:
         bp-hand-robot,
       ]
   - id: bp-arrays
-    title: "Slopes for a whole batch at once"
+    title: "Find the slopes for a whole batch"
     explain: |
-      **The question.** If several examples use the same weight and bias, how do their backward contributions become one slope per parameter?
+      ### One weight, many examples
 
-      **Picture it.** Use $p=wx+b$ on two inputs. Stack them in column $X$, one example per row:
+      Every example in a batch shares the same weights and bias. Let's go back to the model $\hat y=wx+b$, now with $w=2$ and $b=1$, and a batch of two examples: input $1$ with target $1$, and input $2$ with target $1$. The predictions are $3$ and $5$, the errors $2$ and $4$, and the mean squared error $10$. The MSE divides the sum by $2$, so each prediction's slope is twice its error divided by $2$, which is just the error.
 
-      $$X=\begin{pmatrix}1\\2\end{pmatrix}$$
-
-      The backward calculation has found loss slopes 2 and 4 for the predictions; stack these in column $G$. For a mean loss, these slopes already include division by the example count.
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 150" aria-label="Two example contributions to a shared weight add: 1 times 2 plus 2 times 4 equals 10">
-      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
-      <text x="20" y="30">input</text><text x="160" y="30">output slope</text><text x="350" y="30">weight contribution</text>
-      <text x="35" y="65">1</text><text x="200" y="65" fill="#3b82f6">2</text><text x="380" y="65" fill="#3b82f6">1 × 2 = 2</text>
-      <text x="35" y="100">2</text><text x="200" y="100" fill="#3b82f6">4</text><text x="380" y="100" fill="#3b82f6">2 × 4 = 8</text>
-      <path d="M80 60 H145 M260 60 H340 M80 95 H145 M260 95 H340" stroke="#737373"/>
-      <text x="350" y="140" fill="#3b82f6">add: weight slope 10</text>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" aria-label="One weight w equals 2 feeds two predictions with grey arrows, 3 for the input 1 and 5 for the input 2, and both feed the mean squared error 10. The predictions get the slopes 2 and 4. In blue, the weight collects 2 times 1, which is 2, from the first example and 4 times 2, which is 8, from the second, and adds them to get 10">
+      <defs><marker id="bp3-grey" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="20" y="90" width="100" height="40" fill="#ffffff" stroke="#737373" rx="8"/><text x="70" y="115" text-anchor="middle">w = 2</text>
+      <rect x="250" y="30" width="150" height="40" fill="#ffffff" stroke="#737373" rx="8"/><text x="325" y="55" text-anchor="middle">ŷ₁ = 3 (x = 1)</text>
+      <rect x="250" y="150" width="150" height="40" fill="#ffffff" stroke="#737373" rx="8"/><text x="325" y="175" text-anchor="middle">ŷ₂ = 5 (x = 2)</text>
+      <rect x="500" y="90" width="120" height="40" fill="#ffffff" stroke="#737373" rx="8"/><text x="560" y="115" text-anchor="middle">L = 10</text>
+      <path d="M120 100 L248 55" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#bp3-grey)"/>
+      <path d="M120 120 L248 165" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#bp3-grey)"/>
+      <path d="M400 55 L498 102" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#bp3-grey)"/>
+      <path d="M400 165 L498 118" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0" marker-end="url(#bp3-grey)"/>
+      <text x="460" y="50" text-anchor="middle" fill="#3b82f6">slope 2</text>
+      <text x="460" y="185" text-anchor="middle" fill="#3b82f6">slope 4</text>
+      <text x="170" y="62" text-anchor="middle" fill="#3b82f6">2 × 1 = 2</text>
+      <text x="170" y="170" text-anchor="middle" fill="#3b82f6">4 × 2 = 8</text>
+      <text x="70" y="158" text-anchor="middle" fill="#3b82f6">2 + 8 = 10</text>
       </g>
       </svg>
       ```
 
-      **The idea.** Add contributions wherever a parameter is shared. A **batch gradient** gives one loss slope per parameter for a group of examples. Here the weight contributions are input times output slope: $1(2)$ and $2(4)$. Transposing $X$, written $X^\top$, turns its column into a row. Multiplying that row by column $G$ adds those matching products. For several inputs and outputs, the same operation gives the weight-gradient array $dW=X^\top G$: slopes, not parameter changes.
+      ### Adding up the examples
 
-      A bias adds equally to every prediction: its local slope is 1. Add down its output's column of $G$, here $2+4$, to get the bias slope.
+      The weight is used once in each example, so, like a value that feeds two operations, it adds up one contribution per example. Each is the prediction's slope times that example's input, as the blue numbers show. The bias's local derivative is $1$ in every example, so its slope is just the sum of the prediction slopes.
 
-      ReLU uses one local slope per saved score. The **indicator** $\mathbf{1}[z>0]$ reads “1 if score $z$ is greater than zero, otherwise 0”. For arrays, $\odot$ multiplies matching entries without summing.
+      For a big batch, we don't want to write that sum out. If we put the inputs in the rows of a matrix $X$ and the prediction slopes in a column $G$, the sum is a matrix product:
 
-      **Common confusion.** “Always average gradients at the end.” No: if $G$ already includes mean-loss scaling, dividing again makes slopes too small by the example count.
+      $$\frac{\partial L}{\partial w}=X^\top G$$
+
+      Each entry of $X^\top G$ is the dot product of one column of inputs with $G$. The same holds for a layer: for scores $Z=XW$, with one column of $W$ per neuron and $G$ holding the slopes of $Z$, the weight slopes $X^\top G$ form a matrix the same shape as $W$. The bias slopes are the column sums of $G$.
+
+      ### ReLU on a whole array
+
+      In a ReLU layer, each saved score has its own local derivative, and we need two new symbols to write that down. We write the **indicator** $\mathbf 1[z>0]$ for "$1$ if $z$ is positive, otherwise $0$", and $\odot$ for multiplying arrays entry by entry. The slopes passed back are the arriving slopes $\odot\,\mathbf 1[Z>0]$.
+
+      Be careful not to divide by the batch size again at the end. The MSE has already divided by it inside $G$, so averaging again would make every slope too small.
     worked: |
-      **Worked example.** This example combines two rows without dividing their already-scaled slopes again.
+      Let's compute the slopes for $w=2$, $b=1$ and the examples $(x,y)=(1,1)$ and $(2,1)$.
 
-      1. Arrange inputs and output slopes by row.
+      1. **Find each prediction's slope.** It's twice the error divided by the $2$ examples, which is just the error.
+         $$G=\begin{pmatrix}2\\4\end{pmatrix}$$
+      2. **Multiply by the inputs and add.** Transposing the column $X$ makes it a row, and a row times a column multiplies matching entries and adds them.
+         $$\frac{\partial L}{\partial w}=X^\top G=1\times2+2\times4=10$$
+      3. **Add the slopes for the bias.** The bias moves every prediction by the same amount.
+         $$\frac{\partial L}{\partial b}=2+4=6$$
 
-      $$X=\begin{pmatrix}1\\2\end{pmatrix}$$
+      In NumPy, `X.T` is the transpose, `@` multiplies matrices and `G.sum(axis=0)` adds down each column, while `Z > 0` gives `True` or `False`, which count as $1$ or $0$.
 
-      $$G=\begin{pmatrix}2\\4\end{pmatrix}$$
+      ```python
+      import numpy as np
+      X = np.array([[1.], [2.]])    # one example per row
+      G = np.array([[2.], [4.]])    # prediction slopes
+      print(X.T @ G, G.sum(axis=0))
+      Z = np.array([[2.], [-2.]])   # saved ReLU scores
+      print(6 * (Z > 0))
+      ```
 
-      2. Turn the input column into a row so multiplication pairs each input with its own output slope.
-
-      $$X^\top=\begin{pmatrix}1&2\end{pmatrix}$$
-
-      $$dW=X^\top G=1(2)+2(4)$$
-
-      $$dW=2+8=10$$
-
-      3. Add bias contributions: changing the bias changes each prediction by the same amount.
-
-      $$\frac{\partial L}{\partial b}=1(2)+1(4)=6$$
-
-      4. Apply ReLU slopes separately if passing through a ReLU layer. For saved scores $(2,-2)$ the local slopes $\mathbf{1}[z>0]$ are $(1,0)$, so arriving loss slopes $(6,6)$ become:
-
-      $$(6,6)\odot(1,0)=(6\cdot1,6\cdot0)$$
-
-      $$=(6,0)$$
-
-      **Compare cases.** These shapes use one example per row.
-
-      | Inputs $X$ | Output slopes $G$ | Weight slopes $X^\top G$ |
-      | --- | --- | --- |
-      | $2\times1$ | $2\times1$ | $1\times1$ |
-      | $2\times3$ | $2\times1$ | $3\times1$ |
-      | $2\times3$ | $2\times2$ | $3\times2$ |
-
-      **Where it shows up.** Array operations calculate a network's batch gradients without a separate loop for every weight. The result has the same shape as the weights it describes.
+      It prints `[[10.]] [6.]`, then `[[6] [0]]`: only the positive score lets the $6$ through.
     problems:
       [
         bp-arrays-basics,
@@ -201,54 +235,60 @@ knowledge_points:
   - id: bp-checking
     title: "Check a slope by nudging a weight"
     explain: |
-      **The question.** A backward calculation returns a number, but how can you tell whether a sign, multiplier or batch scaling is wrong?
+      ### Measuring a slope directly
 
-      **Picture it.** Return to the two-dial machine with $L=(2w+b)^2$ and fix $b=1$. Near $w=1$, compare the loss just to the left and just to the right. The graph uses horizontal position for the weight and vertical position for loss; the blue line joins the two nearby measurements. Its slope estimates the loss slope at the middle.
+      Backward code with a mistake still gives a number, so we also measure the slope another way, by nudging one parameter and watching the loss.
+
+      Let's go back to the first model, $\hat y=wx+b$ with $x=2$ and $y=0$, and hold $b=1$ fixed, so the loss is $L(w)=(2w+1)^2$. At $w=1$, backpropagation gave $12$. The grey curve is the loss as $w$ changes. We measure it at $w=0.9$ and $w=1.1$, and the slope of the orange line joining them is our measurement.
+
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 245" aria-label="Loss (2w plus 1) squared near w equals 1 with two-sided measurements 7.84 and 10.24">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="The grey curve shows the loss (2w plus 1) squared for w from 0.6 to 1.4. It passes through 7.84 at w equals 0.9, 9 at w equals 1 and 10.24 at w equals 1.1. An orange line joins the two outer points, and its slope, 2.4 divided by 0.2, is 12">
       <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
-      <path d="M50 200 H420 M50 200 V20" stroke="#737373" fill="#171717" fill-opacity="0"/>
-      <path d="M50 160 Q230 112 410 40" stroke="#737373" stroke-width="2" fill="#171717" fill-opacity="0"/>
-      <path d="M170 125.333333 L290 85.333333" stroke="#3b82f6" stroke-width="2"/>
-      <circle cx="170" cy="125.333333" r="4" fill="#3b82f6"/><circle cx="290" cy="85.333333" r="4" fill="#3b82f6"/><circle cx="230" cy="106" r="4" fill="#171717"/>
-      <text x="162" y="113.333333" text-anchor="end">7.84</text><text x="300" y="109.333333">10.24</text><text x="238" y="130">L = 9</text>
-      <text x="155" y="220">0.9</text><text x="225" y="220">1</text><text x="280" y="220">1.1</text><text x="400" y="235">w</text><text x="15" y="25">loss</text>
+      <path d="M50 225 H600 M50 225 V25" stroke="#d4d4d4"/>
+      <path d="M255 225 v6 M320 225 v6 M385 225 v6" stroke="#737373"/>
+      <text x="255" y="248" text-anchor="middle" fill="#737373">0.9</text>
+      <text x="320" y="248" text-anchor="middle" fill="#737373">1</text>
+      <text x="385" y="248" text-anchor="middle" fill="#737373">1.1</text>
+      <text x="608" y="230" fill="#737373">w</text>
+      <text x="58" y="30" fill="#737373">loss</text>
+      <path d="M60.0 210.5 73.0 207.4 86.0 204.3 99.0 201.1 112.0 197.9 125.0 194.6 138.0 191.3 151.0 187.9 164.0 184.4 177.0 180.9 190.0 177.3 203.0 173.7 216.0 170.0 229.0 166.3 242.0 162.5 255.0 158.7 268.0 154.8 281.0 150.8 294.0 146.8 307.0 142.8 320.0 138.6 333.0 134.5 346.0 130.2 359.0 126.0 372.0 121.6 385.0 117.2 398.0 112.8 411.0 108.3 424.0 103.7 437.0 99.1 450.0 94.4 463.0 89.7 476.0 84.9 489.0 80.1 502.0 75.2 515.0 70.2 528.0 65.2 541.0 60.2 554.0 55.1 567.0 49.9 580.0 44.7" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0"/>
+      <path d="M255 158.7 L385 117.2" stroke="#f59e0b" stroke-width="3" fill="#ffffff" fill-opacity="0"/>
+      <circle cx="255" cy="158.7" r="5" fill="#f59e0b"/>
+      <circle cx="385" cy="117.2" r="5" fill="#f59e0b"/>
+      <circle cx="320" cy="138.6" r="5" fill="#171717"/>
+      <text x="245" y="180" text-anchor="end">7.84</text>
+      <text x="395" y="140">10.24</text>
+      <text x="330" y="165">9</text>
+      <text x="420" y="60" fill="#f59e0b">slope of orange line: 12</text>
       </g>
       </svg>
       ```
 
-      **The idea.** Compare the calculated slope with a slope measured from nearby losses. Dividing a change in loss by a small change in a parameter gives a **finite-difference estimate** of its derivative. A **gradient check** compares this estimate with backpropagation's derivative, keeping inputs, targets and other parameters fixed. A **central difference** measures the loss at equal distances below and above the current parameter, then divides their loss difference by the full distance between them. For weight $w$ and positive nudge size $\varepsilon$ (epsilon), it is:
+      ### Measuring from both sides
+
+      A **finite-difference estimate** divides a change in the loss by a small change in one parameter, with everything else fixed. The **central difference** measures the loss a nudge $\varepsilon$ (epsilon) below and above the parameter, and divides by the distance between them, $2\varepsilon$:
 
       $$\frac{L(w+\varepsilon)-L(w-\varepsilon)}{2\varepsilon}$$
 
-      **Common confusion.** “A smaller nudge always gives a better check.” No: extremely small differences can lose accuracy in computer arithmetic. Try several modestly small sizes. Avoid nudges across ReLU's zero score: its slope jumps there, so the estimate mixes two slopes. Agreement supports the implementation at the tested points, not a proof that every case is correct.
+      Comparing it with backpropagation's answer is a **gradient check**. Here are two mistakes it catches at $w=1$:
+
+      - Nudging only upwards, $(10.24-9)/0.1$, gives $12.4$, which is off because the curve bends, so we nudge both ways.
+      - Code that forgot to multiply by $x$ returns $6$, only half of the measured $12$.
+
+      ### What a check can't do
+
+      Each estimate costs two extra forward passes for one parameter, far too slow for every weight, so we only check a few. Very tiny nudges lose accuracy in computer arithmetic, so nudges of about $0.01$ usually work better. We avoid nudging a ReLU score across $0$, where its slope jumps. And a passing check only covers the points we tested.
     worked: |
-      **Worked example.** This example checks the backward weight slope 12 with both dials initially at 1.
+      Let's check the slope $12$ for $L(w)=(2w+1)^2$ at $w=1$, with the nudge $\varepsilon=0.1$.
 
-      1. Choose a nudge and recompute the two losses with $b=1$ fixed.
+      1. **Measure the loss just above.** We raise $w$ by the nudge and keep $b$ fixed.
+         $$L(1.1)=(2\times1.1+1)^2=3.2^2=10.24$$
+      2. **Measure the loss just below.** We lower $w$ by the same nudge.
+         $$L(0.9)=(2\times0.9+1)^2=2.8^2=7.84$$
+      3. **Divide by the distance between the two weights.** They are two nudges, $0.2$, apart.
+         $$\frac{10.24-7.84}{0.2}=\frac{2.4}{0.2}=12$$
 
-      $$\varepsilon=0.1$$
-
-      $$L(1.1)=(2(1.1)+1)^2=10.24$$
-
-      $$L(0.9)=(2(0.9)+1)^2=7.84$$
-
-      2. Divide the loss difference by the distance between the two tested weights: they are two nudges apart, so the distance is $2\varepsilon=0.2$.
-
-      $$\frac{10.24-7.84}{0.2}=12$$
-
-      3. Compare with the backward result.
-
-      $$\frac{\partial L}{\partial w}=2(2w+b)\cdot2=12$$
-
-      **Compare cases.** Both nudge sizes give the expected slope here.
-
-      | Nudge size | Central estimate | Backward result |
-      | --- | --- | --- |
-      | 0.1 | 12 | 12 |
-      | 0.01 | 12 | 12 |
-
-      **Where it shows up.** Check a few network parameters before trusting a new backward implementation. If the backward slope and the estimate differ by a factor equal to the number of examples, the mean was probably divided twice or not at all.
+      The estimate matches backpropagation's $12$, so we can trust it at $w=1$.
     problems:
       [
         bp-checking-basics,
@@ -260,9 +300,9 @@ knowledge_points:
       ]
 final: bp-explain
 summary: |
-  - Backpropagation saves forward values and reuses shared loss slopes to reach every parameter.
-  - Each backward step multiplies by a local slope, and shared routes contribute a sum.
-  - Batch gradients add example contributions with array operations, including loss averaging only once.
-  - Small two-sided parameter nudges check whether calculated loss slopes agree with measured ones.
+  - Backpropagation finds every parameter's loss slope in one backward sweep, multiplying arriving slopes by local derivatives and reusing shared ones.
+  - The forward pass saves values the backward steps need. For example, ReLU passes a slope back only where its saved score was positive.
+  - A shared parameter adds up its contributions, so the weight slopes are $X^\top G$ and the bias slopes are the column sums of $G$.
+  - A gradient check compares a few slopes with the central difference $\frac{L(w+\varepsilon)-L(w-\varepsilon)}{2\varepsilon}$.
 
-  **Next:** You will see how software records the operations and calculates their derivatives for you.
+  **Next:** Automatic differentiation shows how software runs this backward sweep for you.

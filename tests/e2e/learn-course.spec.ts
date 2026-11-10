@@ -472,9 +472,9 @@ test('authored course-structure lessons render their diagrams', async ({ page })
     [
       'backpropagation',
       'Backpropagation',
-      'Find the slope for one weight',
+      'Work backwards through a small network',
       'bp-by-hand',
-      ['The idea.', 'Worked example.'],
+      ['One backward step at a time', 'Worked example'],
     ],
     [
       'chain-rule',
