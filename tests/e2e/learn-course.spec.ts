@@ -465,7 +465,7 @@ test('authored course-structure lessons render their diagrams', async ({ page })
     [
       'backpropagation',
       'Backpropagation',
-      'Reuse forward-pass values to get slopes',
+      'Find the slope for one weight',
       'bp-by-hand',
       ['The idea.', 'Worked example.'],
     ],
