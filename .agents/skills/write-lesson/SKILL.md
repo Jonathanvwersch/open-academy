@@ -1,137 +1,171 @@
 ---
 
 name: write-lesson
-description: How to write or rewrite an Open Academy lesson (content/lessons/*.yaml and its exercises). Use for every new lesson and every lesson rewrite. It defines the evidence-based structure of each knowledge point, the diagram and number rules, and the cold-reader review a lesson must pass before it ships.
+description: How to write or rewrite an Open Academy lesson (content/lessons/*.yaml and its exercises). Use for every new lesson and every lesson rewrite. It defines the structure of a lesson and of each step, how lessons should sound, the diagram and number rules, and the cold-reader review a lesson must pass before it ships.
 ---
 
 # Writing a lesson
 
-A lesson teaches one concept as 2–4 **knowledge points** (KPs), one idea each. The file format is in `docs/CONTENT_FORMAT.md`. This skill covers _how to explain_. Every rule below is there to make a first-time reader understand. When a rule and clarity conflict, choose clarity and say why in the PR.
+A lesson teaches one concept. It opens by recapping what the learner needs and saying what the new idea is, then teaches it in 2–4 **steps** (knowledge points, KPs), each ending with questions, and closes with a summary. The file format is in `docs/CONTENT_FORMAT.md`. This skill covers _how to explain_, and everything you need is in it. When a rule and clarity conflict, choose clarity and say why in the PR.
 
-## How a lesson should sound
+The structure comes from the way Khan Academy's best teaching articles are built. A learner first sees what they need to remember, then a plain answer to "what is this?", then why it's useful, then how it works, with a picture before the formula, then examples, then where it goes wrong, and finally a summary. Each part answers the question a learner naturally has at that point, so the lesson reads as one explanation rather than a form.
+
+## 1. The shape of a lesson
+
+```
+recap            → "Recap" list: each prerequisite lesson, linked, with the one fact you need from it
+where_this_fits  → "### What is X?": what it is in plain words, then why it's useful
+knowledge_points → 2–4 steps, each: how this part works → examples → questions
+                   (a "Limitations" section goes in the step it belongs to, when the topic has real ones)
+final, summary   → one written question, then bullets restating the main results
+```
+
+### Recap (`recap`)
+
+One item for each prerequisite lesson. Each item gives the one fact from that lesson that this lesson relies on, in a sentence or two of plain words (at most 40 words). The app shows them as a "Recap" list, with each title linked to its lesson.
+
+The recap is what lets a lesson build on earlier lessons and still stand on its own. The learner sees exactly what they're expected to remember, and can follow the link if they've forgotten it. So write the fact itself ("The derivative is the slope of a function at a point: how fast its output changes as its input changes."), not a description of the earlier lesson ("We studied derivatives."). Include a symbol only if this lesson uses it, and say what it means.
+
+### What it is, and why (`where_this_fits`, 30–130 words)
+
+Start with a `###` heading that asks the question, "### What is the chain rule?", and answer it straight away in a sentence or two of plain words. The first sentence is a definition a beginner can follow, often tied to something they already know:
+
+- "The dot product is a way of multiplying two vectors that gives a single number."
+- "Like the dot product, the cross product is an operation between two vectors."
+
+Then say why the idea is useful: what problem it solves, and why what the learner already knows isn't enough. This is the paragraph that makes the learner want the rest of the lesson. Keep it in words. A very small example is fine if it makes the problem obvious, but save the main example, the diagram and the general formula for the steps, because the learner hasn't been shown how to read them yet.
+
+The opening must not start with an example, a scenario or a formula ("Consider $f(x)=x^2$…", "A model starts with poor weights…"). The learner should know what the lesson is about by the end of the first sentence.
+
+The `objective` is one plain sentence, "**Goal:** …", describing what the learner will be able to do.
+
+### The steps (`knowledge_points`)
+
+Each step teaches one part of the idea, and the steps go in the order the learner needs them: usually the basic mechanism first, then the setting that controls it, then how it applies to a model, then how it's used repeatedly or at scale. Split the `explain` into 2–4 short sections, each with a `###` heading that names what's in it ("Walking downhill", "Three step sizes on one curve", "Where the limit is"). A reader skimming the headings should be able to see the argument.
+
+Within a step, follow this order. Leave out a part that the idea doesn't need.
+
+1. **Where we are.** Open with a sentence or two connecting to what the learner already has, from the opening, the recap or the previous step, and say what this step adds. Ask the question the step answers if that helps ("But how big should each step be?").
+2. **How it works, with the simplest case you can picture.** Describe the picture first, in the order you'd point at it on a whiteboard, with a diagram when the idea is spatial (§4). Use clean numbers.
+3. **The definition and the formula.** Name the idea in **bold**, in a general sentence ("a vector of partial derivatives, one for each input", not "one for each house weight"), because only the general form carries over to new problems. Then give the formula and say what each symbol means in words.
+4. **Examples that show behaviour.** When the idea depends on a setting, such as a size, a sign, a direction or a starting point, show 2–3 cases from the same example side by side, as a bulleted list or a small table. Each case should show something the others don't (one converges, one overshoots, one diverges).
+5. **Limitations,** when the topic has real ones, in their own section headed "Limitations" or by the problem itself ("Getting stuck in a valley"). Say what goes wrong, show it on a simple case, and say what people do about it. Leave this out for topics with no real limits.
+6. **Be careful,** only for a trap a beginner will really fall into. Start with "Be careful…", say what the learner might think, that it's wrong, and why.
+
+Then the `worked` example, then the questions.
+
+**Worked example** (`worked`, shown in a "Worked example" card). Open with a sentence saying what we're about to work out and from where. Number the steps, start each with a short bold label saying what it does ("1. **Find each slope.**"), follow the label with a sentence saying why, then show the calculation as display maths. End with a sentence on what the result shows.
+
+**Questions at the end of each step** (`problems`, in order; the runner starts easy and steps up). Put the `basics` MC question first. Then add one self-explanation question about the worked example ("Why does step 2 use the dot product?"), written as an `mc` whose options are plausible reasons, each wrong one with its own `feedback`. Knowledge-point problems can't be `explain` type; only the lesson `final` is. After that, go from partly worked to full and from easy to hard, with difficulty 1, 2 and 3 all present. The last problems use a new setting, such as a different function or a robot.
+
+**Step titles.** Each step's `title` is shown under the lesson name while the learner works through it. Write it in plain words that a beginner understands _before_ reading the step, saying what the step does ("Take one step downhill", "Multiply a matrix by a vector"). At most about 6 words. No slogans, no wordplay, and no term that only the step itself explains ("Step against the gradient" fails).
+
+### The end (`final`, `summary`)
+
+- **final:** one `explain` question that makes the learner connect the steps in their own words, because recalling beats rereading. Give it 2–3 rubric criteria and an exemplar.
+- **summary:** 3–4 bullets that restate the main results, each a complete sentence a learner could revise from, formula included where there is one. Add nothing new. Finish with the `**Next:**` line saying what the next lesson does with this idea.
+
+## 2. How a lesson should sound
 
 Write the way a good teacher talks while working through a problem at a whiteboard with one student. The learner should feel that a person is explaining something to them, not reading notes about it. Lessons written as compressed facts separated by colons and full stops are hard to follow, and they read as machine-written, so learners stop trusting them and skip to the questions.
 
-Use full sentences that follow from each other. Words like "so", "but", "because" and "which means" show why each sentence comes after the last one; without them a paragraph reads like a list. Say "we" when you and the learner are doing something together ("we take a step downhill") and "you" when it's the learner's move. Describe things in the order you'd point at them on the board: first what we're looking at, then what it means. Use everyday names for what's on screen, such as "the orange arrow" rather than "the amber arrow", and "the step we take" rather than "the move". Save colons for introducing a list or a formula. When you build on an earlier lesson, say it the way a person would: "In the gradients lesson, we found that…".
+Use full sentences that follow from each other. Words like "so", "but", "because" and "which means" show why each sentence comes after the last one; without them a paragraph reads like a list. Say "we" when you and the learner are doing something together ("we take a step downhill") and "you" when it's the learner's move. Describe things in the order you'd point at them on the board: first what we're looking at, then what it means. Use everyday names for what's on screen, such as "the orange arrow" rather than "the amber arrow". Save colons for introducing a list or a formula. When you build on an earlier lesson, say it the way a person would: "In the derivatives lesson, we found that…".
 
-Before you keep a paragraph, read it aloud. If a sentence would sound odd said to a friend sitting next to you, rewrite it until it doesn't. Clarity matters more than brevity: an extra sentence that makes the step obvious is worth its words, while a sentence that only restates the last one is not.
+Keep paragraphs short, usually one to three sentences, but keep the connecting words so that each paragraph follows from the last. Asking the reader a question and answering it in the next sentence is a good way to move to the next point.
 
-These pairs show the difference. Match the "after" voice.
+Before you keep a paragraph, read it aloud. If a sentence would sound odd said to a friend sitting next to you, rewrite it until it doesn't. Clarity matters more than brevity: an extra sentence that makes a step obvious is worth its words, while a sentence that only restates the last one is not.
+
+These pairs show the difference. Match the "after" versions.
 
 <example>
-Before:
-**The question.** The gradients lesson ended with a direction: $-\nabla f$ is the steepest way down. Knowing a direction doesn't move you, though. Standing at a point, how do you turn it into an actual move to a lower point?
-
-**Picture it.** Go back to the bowl $f(x,y)=x^2+2y^2$, seen from above as a contour map: each ring joins points of equal height, and outer rings are higher. At $P=(1.5,1)$ the height is $4.25$ and the gradient is $(3,4)$, the blue arrow pointing uphill. The amber arrow is the move: the gradient reversed and shrunk to a tenth, $-0.1\times(3,4)=(-0.3,-0.4)$. It lands at $(1.2,0.6)$, on a lower ring, where the height is $2.16$.
+An opening. Before:
+A model has to combine many measurements into one number. In the vectors lesson, $\mathbf a=(2,1)$ and $\mathbf b=(3,4)$ were arrows. Here $\mathbf a\cdot\mathbf b=2\times3+1\times4=10$. We'll build it in three steps:
 
 After:
-In the gradients lesson, we found that $-\nabla f$ points in the steepest downhill direction. But knowing which way is downhill doesn't move us anywhere. If we're standing at a point, how far should we walk, and where do we end up?
+### What is the dot product?
 
-Let's look at the bowl $f(x,y)=x^2+2y^2$ from above. Each ring joins points at the same height, and the outer rings are higher. We're standing at $P=(1.5,1)$, where the height is $4.25$. The blue arrow is the gradient, $(3,4)$, and it points uphill. To go downhill we turn it around, and so that we don't overshoot we take only a tenth of it, which gives $(-0.3,-0.4)$. That's the orange arrow. It takes us to $(1.2,0.6)$, on a lower ring, where the height is $2.16$.
+The dot product is a way of multiplying two vectors that gives a single number. You multiply the matching entries and add the results up.
+
+It's useful because so much of machine learning is adding up weighted inputs. A model that predicts a house's price multiplies each measurement by its own weight and adds them up, and that total is exactly a dot product. The same number also tells us how closely two vectors point the same way.
 </example>
 
 <example>
-Before:
-**The idea.** Take a small step in the direction opposite the gradient, then repeat from where you land. For a model, the inputs of the loss are its weights and bias. Each input moves against its own slope: an input with a positive slope goes down, one with a negative slope goes up. This method is **gradient descent**.
+Explaining a picture. Before:
+**Picture it.** The curve $f(x)=x^2$. At $x=3$ the tangent is the move: slope $6$, a nudge of $0.1$ lifts the output by $0.6$.
 
 After:
-So the recipe is to work out the gradient where you're standing, take a small step the opposite way, and then do the same again from wherever you land. This is called **gradient descent**. You can also see it one input at a time. If an input's slope is positive, increasing that input would make the height go up, so we decrease it. If the slope is negative, we increase it.
+Let's look at the curve $f(x)=x^2$ near $x=3$. If we nudge $x$ from $3$ to $3.1$, the output goes from $9$ to $9.61$, so it rises by about $0.6$, which is six times the nudge. That six is the slope of the curve at $x=3$. The straight line that just touches the curve there, the tangent, has the same slope.
 </example>
 
 <example>
-Before:
-This example takes one gradient-descent step on the bowl $f(x,y)=x^2+2y^2$ from $P=(1.5,1)$ with learning rate $\eta=0.1$.
+Starting a worked example. Before:
+This example computes $\mathbf a\cdot\mathbf b$ for $\mathbf a=(2,1)$, $\mathbf b=(3,4)$.
 
-1. **Find the gradient at $P$.**
+1. **Products.**
 
 After:
-Let's take that step carefully, on the same bowl, starting from $P=(1.5,1)$ with a learning rate of $\eta=0.1$.
+Let's work out the dot product of $\mathbf a=(2,1)$ and $\mathbf b=(3,4)$.
 
-1. **Find the gradient at $P$.** The slopes of $x^2+2y^2$ are $2x$ and $4y$, so at $P$ they are $3$ and $4$.
+1. **Multiply the matching entries.** The dot product pairs each entry with the one in the same place, so the first entries give $2\times3=6$ and the second give $1\times4=4$.
    </example>
 
 <example>
-Before:
-**Common confusion.** “The weight with the biggest slope is the one that's most wrong.” No. Every slope shares the same error $e$; they differ only by their inputs.
+A caveat. Before:
+**Common confusion.** "A big value means a big slope." No. Slope measures change, not size.
 
 After:
-It's tempting to think the weight with the biggest slope must be the one that's most wrong. It isn't. Every slope here contains the same error, $e$, so the only thing that makes one bigger than another is its input. A weight attached to a large input gets a large slope, even though the mistake belongs to the whole prediction.
+Be careful not to read a big value as a big slope. The slope says how fast the output is changing, not how large it is. The curve $f(x)=10-x^2$ reaches its largest value, $10$, at $x=0$, and that's exactly where it's flat, with a slope of $0$.
 </example>
 
-## 0. Plan before writing
+## 3. Writing rules
 
-1. Read the concept in `content/concepts/*.yaml` and the lessons of its prerequisites. List what the learner already knows (terms, symbols, results) and what they don't. Never use a term or symbol before the lesson that teaches it (`content/notation.yaml` enforces this).
-2. Write down, in one line each:
-   - the question the lesson answers;
-   - the 2–4 ideas (one per KP);
-   - the confusions a beginner will have, phrased as their own question ("Isn't the directional derivative just the gradient?").
-3. Pick the **simplest case you can picture** for each idea, e.g. 2 inputs rather than 4, a hill rather than a loss surface, and numbers that come out clean ((3, 4) → 5, not 40√554).
-
-## 1. How a lesson is laid out
-
-This layout follows Khan Academy's teaching articles. In an analysis of 310 Khan articles, the ones that teach (rather than review) mostly share the shape below, and in every article the headings name the content rather than the part ("Interpreting the gradient", never "The idea."). A lesson isn't a form to fill in, so leave out or rearrange parts when a topic is clearer that way. Two things never change: the learner knows where the lesson is going before the details start, and every step ends with questions.
-
-**The opening** (`where_this_fits`, shown as "What you're learning", 30–130 words). The app shows the prerequisite lessons above it as "Before this" links, so don't list them again. Start in plain words with what the idea is, in a sentence or two, the way Khan's gradient descent article opens: "Gradient descent is an algorithm that numerically estimates where a function outputs its lowest values." Then say why it's needed, meaning what problem it solves and why what the learner already knows isn't enough. Then write "What we're building to:" and 2–4 bullets that state the lesson's results in words. Keep example objects, numbers and formulas out of the opening, because the learner hasn't met them yet: the bowl, the numbers and the symbols belong in the steps. The `objective` is one plain sentence, "**Goal:** …".
-
-**Each step** (a knowledge point) teaches one idea. Break its `explain` into 2–4 short sections, each with a `###` heading that names what the section is about ("Walking downhill", "Three learning rates on one bowl", "Where the limit is"). A heading should tell a learner skimming the page what they'll find under it. Within a step, the usual order is:
-
-1. **Why, then the idea in words.** Start from something the learner already knows, and name the earlier lesson it came from ("In the gradients lesson, we found that…"). Then say what the new idea is in a sentence or two, before any notation.
-2. **The simplest case you can picture,** with a diagram when the idea is spatial (see §3). Use short paragraphs that follow the picture in the order you'd point at it.
-3. **The definition and formula.** The term goes in **bold**, written generally rather than through the example ("a vector of partial derivatives, one per input", not "one per house weight"). Then the formula, explaining each symbol in words.
-4. **What changes when you change something,** if the idea has a setting such as size, sign or direction. Show 2–3 short cases side by side in a bulleted list or a small table, each one showing something new.
-5. **A caveat, only when there's a real trap,** starting "Be careful…". Khan does this in about one article in five. Say what the learner might wrongly think, that it's wrong, and why.
-
-Keep paragraphs short, usually one to three sentences, but keep the connecting words ("so", "but", "because") so that each paragraph follows from the last. Asking the reader a question and answering it in the next sentence is a good way to move on to the next point.
-
-**Examples** (`worked`, shown in a "Worked example" card). Open with a sentence saying what we're about to work out and where we start. Number the steps, start each with a short bold label saying what it does ("1. **Find each slope.**"), follow the label with a sentence saying why, then show the calculation as display maths. End with one sentence on what the result shows. A second short example, or a table of cases from the same example, is welcome when it shows a different behaviour.
-
-**Questions at the end of each step** (`problems`, in order; the runner starts easy and steps up). Put the `basics` MC question first. Then add one self-explanation question about the worked example ("Why does step 2 use the dot product?"), written as an `mc` whose options are plausible reasons, each wrong one with its own `feedback` (Chi et al. 1989; Bisra et al. 2018; Aleven & Koedinger 2002). Knowledge-point problems can't be `explain` type; only the lesson `final` is. After that, go from partly worked to full and from easy to hard, with difficulty 1, 2 and 3 all present (Renkl & Atkinson 2003). The last problems use a new setting, such as a different function or a robot.
-
-**Step titles.** Each knowledge point's `title` is shown under the lesson name while you work through it. Write it in plain words a beginner understands _before_ reading the step, saying what the step does ("Take one step downhill", "Multiply a matrix by a vector"). At most ~6 words. No slogans, no wordplay, and no term that only the step itself explains ("Step against the gradient" fails).
-
-**The end of the lesson.**
-- **summary:** 3–4 bullets that restate the results, matching the "What we're building to" bullets at the top, so the lesson closes where it said it would go. Add nothing new. Finish with the `**Next:**` line.
-- **final:** one `explain` question that makes the learner connect the steps in their own words, because recalling beats rereading (Roediger & Karpicke 2006; Dunlosky et al. 2013). Give it 2–3 rubric criteria and an exemplar.
-
-## 2. Writing rules
-
-- **Each lesson stands on its own.** Introduce every example, object and set of numbers inside the lesson that uses it before using it. Never write "this house", "the model" or "the same data" for something set up only in another lesson. To build on an earlier lesson, name it and recap what it was in one sentence ("In the linear-regression lesson you predicted a house's price as $w\cdot x + b$; …").
-- **Explain the setting before using it.** Before any calculation, say what the function or object stands for ("the loss as the height of the ground over each pair of weights") and what each kind of picture shows ("a contour map is the landscape seen from above; each ring joins points at the same height"). Never open a KP with a bare formula.
-- **Cut everything that doesn't teach.** No boilerplate headings ("Why this is useful"), no filler, no repeated sentences, no summary of what you just said. _(Coherence principle: Mayer & Moreno 2003.)_
-- `explain` is usually 150–380 words per KP. If it's longer, the KP holds two ideas: split it.
-- Keep paragraphs short, usually one to three sentences, written in plain British English in the voice described in "How a lesson should sound".
-- **Examples:** use the simplest example that shows the idea, and reuse it across KPs when that helps. Say where the idea is used in ML or robotics only when it isn't already obvious, in a sentence, not a mandatory paragraph.
+- **Each lesson stands on its own.** Introduce every example, object and set of numbers inside the lesson before using it. Never write "this house", "the model" or "the same data" for something set up only in another lesson. Anything the lesson needs from an earlier one goes in the recap, or is restated where it's used.
+- **Explain the setting before using it.** Before any calculation, say what the function or object stands for ("think of the loss as the height of the ground") and what each kind of picture shows ("a contour map is the landscape seen from above; each ring joins points at the same height"). Never open a step with a bare formula.
+- **No part labels or boilerplate.** Never write "The question.", "Picture it.", "The idea.", "Common confusion." or a heading like "Why this is useful". Headings name the content. Cut filler, repeated sentences and summaries of what you just said.
+- **Never use a term or symbol before the lesson that teaches it** (`content/notation.yaml` enforces this).
+- `explain` is usually 150–380 words per step. If it's longer, the step holds two ideas: split it.
 - **Numbers:** choose them so every result is a whole number or a simple fraction, unless the point is the messy number.
 - **Maths:** one display line per step, never several equations inside one sentence. In `aligned` blocks, one step per line.
-- **Teach directly.** Explain, then practise. Don't make the learner discover the idea unaided _(Kirschner et al. 2006; Alfieri et al. 2011)_.
+- **Use one running example** across the steps when you can, so the learner isn't learning a new setting each time. Mention ML or robotics where it shows why the idea matters, not as a required paragraph.
+- **Teach directly.** Explain, then practise. Don't make the learner discover the idea unaided.
 
-## 3. Diagrams
+## 4. Diagrams
 
-Every KP whose idea is spatial (directions, slopes, surfaces, arrows, splits, processes) has a diagram where its simplest case is walked through. Write it as a fenced `svg` block (rules in `docs/CONTENT_FORMAT.md`):
+Every step whose idea is spatial (directions, slopes, surfaces, arrows, splits, processes) has a diagram where its simplest case is walked through. Write it as a fenced `svg` block (rules in `docs/CONTENT_FORMAT.md`):
 - `viewBox` at most 640 wide; an `aria-label` that states what the diagram shows;
 - show only what the text talks about, labelled in the diagram itself; no decoration;
 - text at least 13px, `font-family="ui-sans-serif, system-ui, sans-serif"`;
-- hex colours from the palette only: text `#171717`, muted `#737373`, lines `#d4d4d4`, green `#10b981`, amber `#f59e0b`, blue `#3b82f6`, red `#ef4444`. Use one colour per meaning, consistently across the lesson (e.g. gradient always blue, chosen direction always amber);
+- hex colours from the palette only: text `#171717`, muted `#737373`, lines `#d4d4d4`, green `#10b981`, amber `#f59e0b`, blue `#3b82f6`, red `#ef4444`. Use one colour per meaning, consistently across the lesson (e.g. gradient always blue, chosen step always amber, which the text calls orange);
 - compute coordinates, don't eyeball them: arrows must have the stated direction and relative lengths, and contour lines must be the stated function's level sets.
 
-## 4. Problems
+## 5. Problems
 
-- Each KP: the `basics` MC, then ≥5 fixed problems or a template, covering difficulty 1, 2 and 3.
+- Each step: the `basics` MC, then ≥5 fixed problems or a template, covering difficulty 1, 2 and 3.
 - Mix: recognition, computation (a parameterised template when there is arithmetic), misconception MC (each wrong option is a real mistake, with its own `feedback`), and application in a new setting.
 - Every problem has a 1–3 sentence `solution` that says _why_. MC options are of similar length, with no "all of the above".
-- Problems test this KP and earlier ones, never later ones.
+- Problems test this step and earlier ones, never later ones.
+- In a rewrite, keep every existing problem ID and its correct answer, so learners' progress and reviews carry over; improve the wording freely.
 
-## 5. Review before it ships
+## 6. Plan before writing
+
+1. Read the concept in `content/concepts/*.yaml` and the lessons of its prerequisites. List what the learner already knows (terms, symbols, results) and what they don't.
+2. Write down, in one line each:
+   - the plain-words answer to "what is it?";
+   - why it's useful, and why what the learner already knows isn't enough;
+   - the one fact needed from each prerequisite (the recap);
+   - the 2–4 steps, in the order the learner needs them;
+   - the real limitations, if any, and the traps a beginner will fall into, phrased as their own thought ("Isn't a zigzag a sign it's failing?").
+3. Pick the **simplest case you can picture** for each step, e.g. 2 inputs rather than 4, and numbers that come out clean ((3, 4) → 5, not 40√554).
+
+## 7. Review before it ships
 
 1. Run `pnpm content:check` and the content tests (`pnpm exec vitest run tests/content*.test.ts` or the full `pnpm test`).
-2. **Self-check** each KP against "How a lesson should sound" and §1–§3: it says what the idea is before notation, the definition is general, the numbers are clean, the diagram is present and correct, each section has a content heading, there are no part labels or boilerplate, and it is ≤380 words.
-3. **Cold-reader review.** Give a separate agent, which hasn't seen your plan, only the rendered lesson text (YAML `explain`, `worked`, `summary` and the first two problems of each KP), the titles of the prerequisite lessons, and this prompt verbatim:
+2. **Self-check** against §1–§4. The recap gives facts. The opening says what the idea is in its first sentence, then why it's useful. Each step follows the order above, with content headings, a general definition, clean numbers and a correct diagram. Limitations appear where they exist. There are no part labels, and each `explain` is ≤380 words.
+3. **Cold-reader review.** Give a separate agent, which hasn't seen your plan, only the rendered lesson text (recap, `where_this_fits`, each step's `explain` and `worked`, `summary`, and the first two problems of each step), the titles of the prerequisite lessons, and this prompt verbatim:
 
    > You are a motivated learner who knows only the prerequisite lessons listed. Read this lesson once, in order, as if seeing it for the first time. List every place where you (a) met a word, symbol or step you couldn't follow, (b) couldn't picture what was meant, (c) didn't see why a step was taken, (d) didn't know what you were learning or why it mattered, (e) met an example or object the lesson never introduced, (f) found a step title a beginner couldn't parse before reading that step, (g) read a sentence a teacher wouldn't say out loud to a student (clipped, stiff, or strung together with colons), or (h) got bored or lost the thread. Quote the exact sentence for each. Then say, in two sentences, what you think the lesson's main idea is. Do not suggest rewrites and do not praise.
 
    Fix every item it raises, or note in the PR why it isn't a problem. If its two-sentence main idea doesn't match the objective, the lesson isn't clear yet: revise and review again.
-4. Open the lesson in the running app (`pnpm dev`, Course → the lesson) and check each KP rendered: diagrams visible and readable, maths rendered, no part overflowing.
+4. Open the lesson in the running app (`pnpm dev`, Course → the lesson) and check each step rendered: recap links work, diagrams are visible and readable, maths is rendered, and nothing overflows.
 
-## Model lesson
-
-`content/lessons/gradients.yaml` is the reference implementation of this skill's structure. Where its wording differs from "How a lesson should sound", follow the voice section.
+Older lessons, including `content/lessons/gradients.yaml`, were written before this structure. Where they differ from this skill, follow the skill.
