@@ -110,11 +110,17 @@ test('session lesson shows recap facts and opens a prerequisite lesson', async (
   await expect(page).toHaveURL(/\/lessons\/gradients$/);
 });
 
-test('lesson without recaps keeps authored prerequisite links', async ({ page }) => {
+test('loss functions shows its authored prerequisite recap', async ({ page }) => {
   await page.goto('/lessons/loss-functions');
-  const beforeThis = page.locator('p').filter({ hasText: 'Before this:' });
 
-  await expect(beforeThis).toBeVisible();
-  await expect(beforeThis.getByRole('link').first()).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Recap' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Recap' })).toBeVisible();
+  await expect(page.getByText('Before this:', { exact: false })).toHaveCount(0);
+  for (const prerequisite of [
+    { id: 'supervised-learning', title: 'Supervised learning setup' },
+    { id: 'derivatives', title: 'Derivatives' },
+  ]) {
+    const link = page.getByRole('link', { name: prerequisite.title, exact: true });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', `/lessons/${prerequisite.id}`);
+  }
 });

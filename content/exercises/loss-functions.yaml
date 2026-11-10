@@ -28,7 +28,7 @@ exercises:
         }
       - {
           id: d,
-          text: "A non-negative score that grows as a prediction moves farther from its target.",
+          text: "A non-negative score that grows as a model's predictions move farther from their targets.",
           correct: true,
           feedback: "A prediction farther from its target receives a larger non-negative error score.",
         }
@@ -39,33 +39,33 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "How does squared loss treat a large miss compared with absolute loss?"
+    prompt: "How does squared error treat a large miss compared with absolute error?"
     options:
       - {
           id: a,
-          text: "Squared loss and absolute loss both add the same amount for each extra error unit.",
+          text: "Squared error and absolute error both add the same amount for each extra unit of error.",
           correct: false,
-          feedback: "Squared loss grows faster as the miss gets larger.",
+          feedback: "Squared error grows faster as the miss gets larger.",
         }
       - {
           id: b,
-          text: "Squared loss makes large misses count more than absolute loss does.",
+          text: "Squared error makes large misses count more than absolute error does.",
           correct: true,
-          feedback: "Squaring makes the penalty grow faster as a miss grows, unlike absolute loss.",
+          feedback: "Squaring makes the cost grow faster as a miss grows, unlike absolute error.",
         }
       - {
           id: c,
-          text: "Squared loss takes the absolute value, while absolute loss squares the miss.",
+          text: "Squared error takes the absolute value, while absolute error squares the miss.",
           correct: false,
           feedback: "Those definitions are reversed.",
         }
       - {
           id: d,
-          text: "Squared loss and absolute loss stay unchanged as prediction errors grow.",
+          text: "Squared error and absolute error stay unchanged as prediction errors grow.",
           correct: false,
-          feedback: "Both losses increase as prediction error grows.",
+          feedback: "Both costs increase as the error grows.",
         }
-    solution: "Squared loss makes large misses count disproportionately more, while absolute loss increases at a constant rate."
+    solution: "Squared error makes large misses count far more, because doubling a miss quadruples its cost, while absolute error grows at a constant rate."
   - id: loss-constant-choice-basics
     dimension: conceptual
     type: mc
@@ -88,7 +88,7 @@ exercises:
         }
       - {
           id: c,
-          text: "A model that predicts a different price for every feature.",
+          text: "A model that predicts a different number for every example.",
           correct: false,
           feedback: "A baseline is deliberately simple; a constant baseline predicts one value for every example.",
         }
@@ -730,7 +730,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "In step 4 of the worked example, raising the third prediction by $0.1$ lowers its squared error by about $1.2$ but its absolute error by only $0.1$. Why the difference?"
+    prompt: "In steps 4 and 5 of the worked example, raising the third prediction by $0.1$ lowers its squared error by about $1.2$ but its absolute error by only $0.1$. Why the difference?"
     options:
       - id: a
         text: "At an error of $-6$ the squared-error slope is $2e=-12$, while the absolute-error slope is $-1$."
@@ -780,6 +780,34 @@ exercises:
         category: incorrect_reasoning
         feedback: "Between $1$ and $2$ the slope is $-1$, so the total falls there."
     solution: "Between 2 and 6, raising $c$ moves it further from 1 and 2 and closer to 6. Two distances grow and one shrinks, so the slope is $+1$ and the total rises."
+  - id: lossp-choose-loss
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A model predicts how far a robot arm should move. One miss of $2$ cm can knock a part over, but two misses of $1$ cm are harmless. Which loss matches this, and why?"
+    options:
+      - id: a
+        text: "MSE, because one miss of $2$ costs $4$, more than the $1+1=2$ of two misses of $1$."
+        correct: true
+        feedback: "Squaring makes one big miss cost more than several small ones adding up to the same size."
+      - id: b
+        text: "MAE, because one miss of $2$ costs $2$, the same as two misses of $1$."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "That is exactly the problem: MAE charges them the same, but here the single big miss is much worse."
+      - id: c
+        text: "MAE, because its slope has the same size for every miss, so big misses push harder."
+        correct: false
+        category: misunderstood_definition
+        feedback: "A slope of the same size means a big miss pushes no harder than a small one. Squared error's slope grows with the miss."
+      - id: d
+        text: "Either one, because both losses are $0$ only when every prediction is exact."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Both are $0$ for perfect predictions, but they rank imperfect ones differently, and that is what training uses."
+    solution: "Under MSE one miss of $2$ costs $2^2=4$, while two misses of $1$ cost $1+1=2$, so MSE treats the single big miss as worse, which matches the task. MAE would charge both $2$."
   - id: loss-explain-choice
     dimension: conceptual
     type: explain
