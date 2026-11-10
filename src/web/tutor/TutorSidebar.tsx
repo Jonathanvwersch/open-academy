@@ -773,7 +773,10 @@ export function TutorContextProvider({
                           </>
                         ) : null}
                       </ConversationContent>
-                      <ConversationScrollButton aria-label="Scroll to latest message" />
+                      <ConversationScrollButton
+                        aria-label="Scroll to latest message"
+                        className="bg-background shadow-md dark:bg-background"
+                      />
                     </Conversation>
                   </SidebarContent>
                   <SidebarFooter className="border-t p-4">
