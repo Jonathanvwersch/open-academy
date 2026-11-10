@@ -3,13 +3,15 @@ version: 4
 objective: |
   **Goal:** train a model with gradient descent: step every weight against its slope, choose a learning rate that works, and repeat until the loss stops falling.
 where_this_fits: |
-  A model learns by changing its weights to make its loss smaller. For a bowl like $x^2+2y^2$ we can see that the lowest point is at $(0,0)$, where both slopes are zero. A real model has thousands of weights, so we can't draw its loss or solve for the point where every slope is zero. Gradient descent finds a low point anyway, by walking downhill one small step at a time.
+  Gradient descent is the method most machine-learning models use to learn. It finds the weights that make a model's loss as small as possible, by starting somewhere and repeatedly taking a small step downhill.
+
+  Why not just work the answer out? For a simple function we can, with algebra, but a real model has thousands of weights and no neat formula for its lowest point. Gradient descent only needs the slope where we're standing.
 
   What we're building to:
 
-  - One step moves every input against its slope, $\mathbf p_{\text{new}}=\mathbf p-\eta\,\nabla f(\mathbf p)$.
-  - The learning rate $\eta$ sets the step size. Too small and training crawls; too large and the loss grows.
-  - For a model, each weight's slope comes from the error, $2e\,x_j$.
+  - Each step moves every weight a little in the direction that lowers the loss.
+  - The learning rate sets the step size: too small is slow, too large overshoots.
+  - Each weight's slope comes from the model's error.
   - Training repeats the step until the loss stops falling.
 knowledge_points:
   - id: gd-downhill-update
