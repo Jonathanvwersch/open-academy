@@ -8,6 +8,56 @@ description: How to write or rewrite an Open Academy lesson (content/lessons/*.y
 
 A lesson teaches one concept as 2–4 **knowledge points** (KPs), one idea each. The file format is in `docs/CONTENT_FORMAT.md`. This skill covers _how to explain_. Every rule below is there to make a first-time reader understand. When a rule and clarity conflict, choose clarity and say why in the PR.
 
+## How a lesson should sound
+
+Write the way a good teacher talks while working through a problem at a whiteboard with one student. The learner should feel that a person is explaining something to them, not reading notes about it. Lessons written as compressed facts separated by colons and full stops are hard to follow, and they read as machine-written, so learners stop trusting them and skip to the questions.
+
+Use full sentences that follow from each other. Words like "so", "but", "because" and "which means" show why each sentence comes after the last one; without them a paragraph reads like a list. Say "we" when you and the learner are doing something together ("we take a step downhill") and "you" when it's the learner's move. Describe things in the order you'd point at them on the board: first what we're looking at, then what it means. Use everyday names for what's on screen, such as "the orange arrow" rather than "the amber arrow", and "the step we take" rather than "the move". Save colons for introducing a list or a formula. When you build on an earlier lesson, say it the way a person would: "In the gradients lesson, we found that…".
+
+Before you keep a paragraph, read it aloud. If a sentence would sound odd said to a friend sitting next to you, rewrite it until it doesn't. Clarity matters more than brevity: an extra sentence that makes the step obvious is worth its words, while a sentence that only restates the last one is not.
+
+These pairs show the difference. Match the "after" voice.
+
+<example>
+Before:
+**The question.** The gradients lesson ended with a direction: $-\nabla f$ is the steepest way down. Knowing a direction doesn't move you, though. Standing at a point, how do you turn it into an actual move to a lower point?
+
+**Picture it.** Go back to the bowl $f(x,y)=x^2+2y^2$, seen from above as a contour map: each ring joins points of equal height, and outer rings are higher. At $P=(1.5,1)$ the height is $4.25$ and the gradient is $(3,4)$, the blue arrow pointing uphill. The amber arrow is the move: the gradient reversed and shrunk to a tenth, $-0.1\times(3,4)=(-0.3,-0.4)$. It lands at $(1.2,0.6)$, on a lower ring, where the height is $2.16$.
+
+After:
+**The question.** In the gradients lesson, we found that $-\nabla f$ points in the steepest downhill direction. But knowing which way is downhill doesn't move us anywhere. If we're standing at a point, how far should we walk, and where do we end up?
+
+**Picture it.** Let's look at the bowl $f(x,y)=x^2+2y^2$ from above. Each ring joins points at the same height, and the outer rings are higher. We're standing at $P=(1.5,1)$, where the height is $4.25$. The blue arrow is the gradient, $(3,4)$, and it points uphill. To go downhill we turn it around, and so that we don't overshoot we take only a tenth of it, which gives $(-0.3,-0.4)$. That's the orange arrow. It takes us to $(1.2,0.6)$, on a lower ring, where the height is $2.16$.
+</example>
+
+<example>
+Before:
+**The idea.** Take a small step in the direction opposite the gradient, then repeat from where you land. For a model, the inputs of the loss are its weights and bias. Each input moves against its own slope: an input with a positive slope goes down, one with a negative slope goes up. This method is **gradient descent**.
+
+After:
+**The idea.** So the recipe is to work out the gradient where you're standing, take a small step the opposite way, and then do the same again from wherever you land. This is called **gradient descent**. You can also see it one input at a time. If an input's slope is positive, increasing that input would make the height go up, so we decrease it. If the slope is negative, we increase it.
+</example>
+
+<example>
+Before:
+This example takes one gradient-descent step on the bowl $f(x,y)=x^2+2y^2$ from $P=(1.5,1)$ with learning rate $\eta=0.1$.
+
+1. **Find the gradient at $P$.**
+
+After:
+Let's take that step carefully, on the same bowl, starting from $P=(1.5,1)$ with a learning rate of $\eta=0.1$.
+
+1. **Find the gradient at $P$.** The slopes of $x^2+2y^2$ are $2x$ and $4y$, so at $P$ they are $3$ and $4$.
+</example>
+
+<example>
+Before:
+**Common confusion.** “The weight with the biggest slope is the one that's most wrong.” No. Every slope shares the same error $e$; they differ only by their inputs.
+
+After:
+**Common confusion.** It's tempting to think the weight with the biggest slope must be the one that's most wrong. It isn't. Every slope here contains the same error, $e$, so the only thing that makes one bigger than another is its input. A weight attached to a large input gets a large slope, even though the mistake belongs to the whole prediction.
+</example>
+
 ## 0. Plan before writing
 
 1. Read the concept in `content/concepts/*.yaml` and the lessons of its prerequisites. List what the learner already knows (terms, symbols, results) and what they don't. Never use a term or symbol before the lesson that teaches it (`content/notation.yaml` enforces this).
@@ -27,10 +77,10 @@ In `explain`:
 1. **The question.** 1–2 sentences posing the problem this idea solves, before any answer. _(Asking first prepares the learner to take in the explanation: Schwartz & Bransford 1998.)_
 2. **Picture it.** The simplest concrete case, with a diagram right beside the words (see §3). Walk through what the picture shows in plain words. _(Words plus a picture beat words alone, and simple diagrams beat detailed ones: Mayer 2008; Butcher 2006.)_
 3. **The idea.** First the idea in one plain sentence. Then the general definition, with the term in **bold**. Notation comes last, with each symbol explained in words where it first appears. The definition must be general, not phrased through the example: "a vector of partial derivatives, one per input", not "one per house weight". _(Concrete first, then fade to the general form, which is what transfers: Fyfe et al. 2014; Kaminski et al. 2008.)_
-4. **Common confusion.** State the beginner's likely wrong belief as they would say it, say plainly that it's wrong (or only half right), and explain why. One per KP, for the confusion that matters most. _(Refutation text: Tippett 2010.)_
+4. **Common confusion.** Describe the belief a beginner is likely to hold, in words they might use, then say plainly that it's wrong (or only half right) and explain why in full sentences. One per KP, for the confusion that matters most. _(Refutation text: Tippett 2010.)_
 
 In `worked`:
-5. **Worked example.** Clean numbers. Number each step, and start each step with its purpose in a few words ("1. Find each slope."). Show every calculation as display maths, one step per line. _(Worked examples beat cold problem solving for novices, and labelled subgoals help: Sweller & Cooper 1985; Atkinson et al. 2000.)_
+5. **Worked example.** Clean numbers. Open with a sentence that says, in the lesson's voice, what we're about to work out and from where. Number each step, start it with a short bold label saying what the step does ("1. **Find each slope.**"), and follow the label with a sentence saying why, before the maths. Show every calculation as display maths, one step per line. _(Worked examples beat cold problem solving for novices, and labelled subgoals help: Sweller & Cooper 1985; Atkinson et al. 2000.)_
 6. **Compare cases.** Where the idea varies with a setting (direction, size, sign), give a small table of contrasting cases from the same example: e.g. direction → slope, with +x gives 3, steepest gives 5, sideways gives 0, downhill gives −5. _(Comparing cases side by side: Rittle-Johnson et al. 2015; Schwartz & Bransford 1998.)_
 7. **Where it shows up.** At most 2 sentences tying the idea to ML or robotics, built only from ideas already taught. This always comes last, never first. _(Applying it in a new setting supports transfer.)_
 
@@ -49,7 +99,7 @@ Lesson level:
 - **Explain the setting before using it.** Before any calculation, say what the function or object stands for ("the loss as the height of the ground over each pair of weights") and what each kind of picture shows ("a contour map is the landscape seen from above; each ring joins points at the same height"). Never open a KP with a bare formula.
 - **Cut everything that doesn't teach.** No boilerplate headings ("Why this is useful"), no filler, no repeated sentences, no summary of what you just said. _(Coherence principle: Mayer & Moreno 2003.)_
 - `explain` is 150–300 words per KP. If it's longer, the KP holds two ideas: split it.
-- Paragraphs of 1–3 sentences. Second person, plain British English.
+- Keep paragraphs short enough to read in one breath, usually two to four sentences, written in plain British English in the voice described in "How a lesson should sound".
 - **Examples:** use the simplest example that shows the idea, and reuse it across KPs when that helps. The ML/house example belongs in "Where it shows up" and in problems, not in every definition.
 - **Numbers:** choose them so every result is a whole number or a simple fraction, unless the point is the messy number.
 - **Maths:** one display line per step, never several equations inside one sentence. In `aligned` blocks, one step per line.
@@ -77,11 +127,11 @@ Every KP whose idea is spatial (directions, slopes, surfaces, arrows, splits, pr
 2. **Self-check** each KP against §1–§3: all seven parts in order, general definition, clean numbers, diagram present and correct, no boilerplate, ≤300 words.
 3. **Cold-reader review.** Give a separate agent, which hasn't seen your plan, only the rendered lesson text (YAML `explain`, `worked`, `summary` and the first two problems of each KP), the titles of the prerequisite lessons, and this prompt verbatim:
 
-   > You are a motivated learner who knows only the prerequisite lessons listed. Read this lesson once, in order, as if seeing it for the first time. List every place where you (a) met a word, symbol or step you couldn't follow, (b) couldn't picture what was meant, (c) didn't see why a step was taken, (d) didn't know what you were learning or why it mattered, (e) met an example or object the lesson never introduced, (f) found a step title a beginner couldn't parse before reading that step, or (g) got bored or lost the thread. Quote the exact sentence for each. Then say, in two sentences, what you think the lesson's main idea is. Do not suggest rewrites and do not praise.
+   > You are a motivated learner who knows only the prerequisite lessons listed. Read this lesson once, in order, as if seeing it for the first time. List every place where you (a) met a word, symbol or step you couldn't follow, (b) couldn't picture what was meant, (c) didn't see why a step was taken, (d) didn't know what you were learning or why it mattered, (e) met an example or object the lesson never introduced, (f) found a step title a beginner couldn't parse before reading that step, (g) read a sentence a teacher wouldn't say out loud to a student (clipped, stiff, or strung together with colons), or (h) got bored or lost the thread. Quote the exact sentence for each. Then say, in two sentences, what you think the lesson's main idea is. Do not suggest rewrites and do not praise.
 
    Fix every item it raises, or note in the PR why it isn't a problem. If its two-sentence main idea doesn't match the objective, the lesson isn't clear yet: revise and review again.
 4. Open the lesson in the running app (`pnpm dev`, Course → the lesson) and check each KP rendered: diagrams visible and readable, maths rendered, no part overflowing.
 
 ## Model lesson
 
-`content/lessons/gradients.yaml` is the reference implementation of this skill.
+`content/lessons/gradients.yaml` is the reference implementation of this skill's structure. Where its wording differs from "How a lesson should sound", follow the voice section.
