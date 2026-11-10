@@ -467,7 +467,7 @@ test('authored course-structure lessons render their diagrams', async ({ page })
       'Partial derivatives',
       'Change one input at a time',
       'pd-hold-fixed',
-      ['The question.', 'Compare cases.'],
+      ['A function with two inputs', 'The definition'],
     ],
     [
       'backpropagation',

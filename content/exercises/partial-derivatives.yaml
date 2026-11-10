@@ -39,33 +39,33 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: "You have worked out the partial-derivative formula of a model's loss for one weight. What does that formula give you?"
+    prompt: "You have worked out the partial-derivative formula $\\frac{\\partial f}{\\partial x}$ for a function $f(x, y)$. What does that formula give you?"
     options:
       - {
           id: a,
-          text: "The single weight value at which the model's prediction exactly matches the price.",
+          text: "The single value of $x$ at which the function $f$ equals zero.",
           correct: false,
-          feedback: "A derivative formula gives a slope. It does not by itself pick out a weight that makes the error zero.",
+          feedback: "A derivative formula gives a slope. It does not by itself pick out where $f$ is zero.",
         }
       - {
           id: b,
-          text: "The loss's slope for that weight, at any values of the model's weights you put in.",
+          text: "The slope of $f$ along $x$, at any point $(x, y)$ you put in.",
           correct: true,
-          feedback: "The formula is a function of all the parameters: put in their values to get that weight's slope there.",
+          feedback: "The formula is a function of both inputs: put in a point to get the slope along $x$ there.",
         }
       - {
           id: c,
-          text: "The model's predicted price for the house at its current weights.",
+          text: "The value of the function $f$ at the point you put in.",
           correct: false,
-          feedback: "The prediction is the model's output, not a rate of change of the loss.",
+          feedback: "That is $f$ itself, not a rate of change.",
         }
       - {
           id: d,
-          text: "How fast the house's sale price changes when the house's area changes.",
+          text: "How fast the input $y$ changes when the input $x$ changes.",
           correct: false,
-          feedback: "The price and area are recorded data and stay fixed; the partial is about how the loss changes with a weight.",
+          feedback: "$y$ is held fixed. The formula says how fast $f$ changes as $x$ moves.",
         }
-    solution: "A partial-derivative formula for one weight gives the loss's slope for that weight at any setting of the parameters: put in their values to get the slope there."
+    solution: "A partial-derivative formula is itself a function of the inputs. Put in any point $(x, y)$ to get the slope of $f$ along $x$ there."
   - id: pd-many-inputs-basics
     dimension: conceptual
     type: mc
@@ -82,9 +82,9 @@ exercises:
         }
       - {
           id: b,
-          text: "$2e$ times a feature value, because every partial includes a feature",
+          text: "$2e$ times an input value, because every partial includes an input such as the area",
           correct: false,
-          feedback: "A weight's partial includes the feature it multiplies. The bias multiplies no feature, so its multiplier is $1$.",
+          feedback: "A weight's partial includes the input it multiplies. The bias multiplies no input, so its multiplier is $1$.",
         }
       - {
           id: c,
@@ -149,12 +149,8 @@ exercises:
           feedback: "The difference $r = wx + b - y$ changes at rate $x = 3$ when $w$ changes. Multiply by that rate: $\\partial f/\\partial w = 2r \\cdot x$.",
         }
       - { answer: 9, category: math_error, feedback: "Don't forget the factor 2 from the square." }
-    hints:
-      [
-        "Let the inner difference be $r = wx + b - y$.",
-        "$r = 3$; $\\partial f/\\partial w = 2 r x$.",
-      ]
-    solution: "The inner difference is $3 + 1 - 1 = 3$, so $\\partial f/\\partial w = 2 \\cdot 3 \\cdot 3 = 18$."
+    hints: ["Let the error be $e = wx + b - y$.", "$e = 3$; $\\partial f/\\partial w = 2 e x$."]
+    solution: "The error is $3 + 1 - 1 = 3$, so $\\partial f/\\partial w = 2 \\cdot 3 \\cdot 3 = 18$."
   - id: pd-review-exp
     dimension: math
     type: expression
@@ -499,21 +495,21 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "A house-price model predicts $wx + b$ for a house of size $x$ that sold for $y$. Its squared error is $f(w, b) = (wx + b - y)^2$. Keeping $x$ and $y$ fixed, give $\\frac{\\partial f}{\\partial w}$ in terms of $w$, $b$, $x$ and $y$."
+    prompt: "A house-price model predicts $wx + b$ for a house of area $x$ that sold for $y$. Its squared error is $f(w, b) = (wx + b - y)^2$. Keeping $x$ and $y$ fixed, give $\\frac{\\partial f}{\\partial w}$ in terms of $w$, $b$, $x$ and $y$."
     answer: "2*(w*x + b - y)*x"
     variables: { w: [-2, 2], b: [-2, 2], x: [-2, 2], y: [-2, 2] }
     common_wrong:
       - {
           answer: "2*(w*x + b - y)",
           category: math_error,
-          feedback: "That is $\\partial f/\\partial b$. The partial of the gap with respect to $w$ is $x$, not 1.",
+          feedback: "That is $\\partial f/\\partial b$. The error $wx + b - y$ changes at rate $x$ with $w$, not 1.",
         }
     hints:
       [
-        "Write $g = wx + b - y$, so $f = g \\cdot g$ and $f' = 2g\\,g'$.",
-        "$\\frac{\\partial g}{\\partial w} = x$.",
+        "Write the error as $e = wx + b - y$, so $f = e \\cdot e$ and the product rule gives $\\frac{\\partial f}{\\partial w} = 2e\\,\\frac{\\partial e}{\\partial w}$.",
+        "$\\frac{\\partial e}{\\partial w} = x$.",
       ]
-    solution: "With $g = wx + b - y$, the product rule gives $2g \\cdot \\frac{\\partial g}{\\partial w} = 2(wx + b - y)\\,x$."
+    solution: "With the error $e = wx + b - y$, the product rule gives $2e \\cdot \\frac{\\partial e}{\\partial w} = 2(wx + b - y)\\,x$."
   - id: pdp-gap-template
     dimension: math
     type: numeric
@@ -522,8 +518,8 @@ exercises:
     est_minutes: 2
     prompt: "Let $f(w, b) = (wx + b - y)^2$ with $x = {{=x}}$ and $y = {{=y}}$. At $w = {{=w}}$, $b = {{=b}}$, what is $\\frac{\\partial f}{\\partial w}$?"
     hints:
-      ["First compute the gap $g = wx + b - y$.", "$\\frac{\\partial f}{\\partial w} = 2g\\,x$."]
-    solution: "The gap is ${{=w}} \\times {{=x}} + {{=b}} - {{=y}} = {{=w*x+b-y}}$, so $\\frac{\\partial f}{\\partial w} = 2 \\times {{=w*x+b-y}} \\times {{=x}} = {{=2*(w*x+b-y)*x}}$."
+      ["First compute the error $e = wx + b - y$.", "$\\frac{\\partial f}{\\partial w} = 2e\\,x$."]
+    solution: "The error is ${{=w}} \\times {{=x}} + {{=b}} - {{=y}} = {{=w*x+b-y}}$, so $\\frac{\\partial f}{\\partial w} = 2 \\times {{=w*x+b-y}} \\times {{=x}} = {{=2*(w*x+b-y)*x}}$."
     answer_expr: "2 * (w*x + b - y) * x"
     params:
       x: { min: 2, max: 5, step: 1 }
@@ -536,7 +532,7 @@ exercises:
       - {
           answer_expr: "2 * (w*x + b - y)",
           category: math_error,
-          feedback: "You dropped the factor $x = {{=x}}$: the partial of the gap with respect to $w$ is $x$.",
+          feedback: "You dropped the factor $x = {{=x}}$: the error changes at rate $x$ with $w$.",
         }
       - {
           answer_expr: "(w*x + b - y) * x",
@@ -556,28 +552,28 @@ exercises:
       - {
           answer: 4,
           category: math_error,
-          feedback: "Check the sign of the gap: $6 + 1 - 9 = -2$.",
+          feedback: "Check the sign of the error: $6 + 1 - 9 = -2$.",
         }
       - {
           answer: -8,
           category: math_error,
-          feedback: "The partial of the gap with respect to $b$ is 1, so there is no factor $x$ here.",
+          feedback: "The error changes one for one with $b$, so there is no factor $x$ here.",
         }
-    hints: ["The gap is $g = 3 \\cdot 2 + 1 - 9$.", "$\\frac{\\partial f}{\\partial b} = 2g$."]
-    solution: "The gap is $6 + 1 - 9 = -2$, so $\\frac{\\partial f}{\\partial b} = 2 \\times (-2) = -4$."
+    hints: ["The error is $e = 3 \\cdot 2 + 1 - 9$.", "$\\frac{\\partial f}{\\partial b} = 2e$."]
+    solution: "The error is $6 + 1 - 9 = -2$, so $\\frac{\\partial f}{\\partial b} = 2 \\times (-2) = -4$."
   - id: pdp-why-data-fixed
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A house-price model predicts $wx + b$, with adjustable numbers $w$ and $b$. The house has size $x = 3$ and recorded sale price $y = 1$. Why do we keep $x$ and $y$ constant when using $f(w, b) = (wx + b - y)^2$ to improve the model?"
+    prompt: "A house-price model predicts $wx + b$, with adjustable numbers $w$ and $b$. The house has area $x = 3$ and recorded sale price $y = 1$. Why do we keep $x$ and $y$ constant when using $f(w, b) = (wx + b - y)^2$ to improve the model?"
     options:
       - id: a
         text: "They are recorded facts about the house; we can adjust the model's $w$ and $b$ instead"
         correct: true
       - id: b
-        text: "Holding the data fixed makes their values 0 in the gap"
+        text: "Holding the data fixed makes their values 0 in the error"
         correct: false
         category: misunderstood_definition
         feedback: "They are held at their actual values, such as $x = 3$ and $y = 1$, not set to 0."
@@ -587,11 +583,11 @@ exercises:
         category: misunderstood_definition
         feedback: "The house's facts stay fixed, but the model's adjustable numbers can change. Keeping those fixed too would prevent any improvement."
       - id: d
-        text: 'They aren''t; you also need $\partial f / \partial x$ to shrink the gap'
+        text: 'They aren''t; you also need $\partial f / \partial x$ to shrink the error'
         correct: false
         category: incorrect_reasoning
-        feedback: "You cannot change the house's size or recorded sale price to improve the model. You need the rates of change for $w$ and $b$ instead."
-    solution: "The size and sale price are fixed facts about the house. To improve the model, calculate how its error changes with the adjustable numbers $w$ and $b$."
+        feedback: "You cannot change the house's area or recorded sale price to improve the model. You need the rates of change for $w$ and $b$ instead."
+    solution: "The area and sale price are fixed facts about the house. To improve the model, calculate how its error changes with the adjustable numbers $w$ and $b$."
   - id: pdp-turn-dial
     dimension: conceptual
     type: mc
@@ -639,7 +635,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A model's loss depends on two weights: $L(a, b) = a^2 - 4ab + 5b^2$. Holding $b = 3$ fixed, at which value of $a$ is $\\frac{\\partial L}{\\partial a} = 0$?"
+    prompt: "A machine's running cost depends on two settings, $a$ and $b$, as $L(a, b) = a^2 - 4ab + 5b^2$. Holding $b = 3$ fixed, at which value of $a$ is the slope along $a$, $\\frac{\\partial L}{\\partial a}$, equal to $0$?"
     answer: 6
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -688,7 +684,7 @@ exercises:
       - {
           answer: -1,
           category: math_error,
-          feedback: "That is the calibration gap $gr + c - t$. Multiply by 2 and by $r$ to get the partial in $g$.",
+          feedback: "That is the calibration error $gr + c - t$. Multiply by 2 and by $r$ to get the partial in $g$.",
         }
     hints:
       - "The reading $r$ and the distance $t$ are recorded facts; $g$ and $c$ are the adjustable numbers."
@@ -698,7 +694,7 @@ exercises:
 
       $$\frac{\partial f}{\partial g} = 2(gr + c - t)\,r$$
 
-      The calibration gap is:
+      The calibration error is:
 
       $$gr + c - t = 2 \cdot 4 + 1 - 10 = -1$$
 
@@ -769,35 +765,35 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "In the worked example, why does the error $e$ change at rate $20$ per unit of $w_3$?"
+    prompt: "In step 2 of the worked example, why does the error $e$ change at rate $2$ per unit of $w$?"
     options:
       - id: a
-        text: "The error itself is $-20$, so every parameter changes the error at that same rate of $20$."
+        text: "The error is $-4$, and every parameter changes the error at half the error's size."
         correct: false
         category: misunderstood_definition
-        feedback: "The error's value is $-20$, but its rate depends on the parameter: $12$ for $w_1$, $3$ for $w_2$, $1$ for $b$."
+        feedback: "The error's value is $-4$, but its rate depends on the parameter: $2$ for $w$ and $1$ for $b$."
       - id: b
-        text: "The current weight is $w_3=-1$, so the rate is the age multiplied by that weight and flipped in sign."
+        text: "The current weight is $w=1$, so the rate is that weight times the area, $1\\times2$."
         correct: false
         category: math_error
-        feedback: "The current value of $w_3$ does not appear in the rate: $20w_3$ changes by $20$ per unit wherever $w_3$ starts."
+        feedback: "The current value of $w$ does not appear in the rate: $wx$ changes by $x=2$ per unit of $w$ wherever $w$ starts."
       - id: c
-        text: "Larger features always change the error faster, and age is the largest of the three features here."
+        text: "A weight always changes the error twice as fast as the bias, whatever the house."
         correct: false
         category: incorrect_reasoning
-        feedback: "Age does give the largest rate here, but the reason is that the rate equals the feature $w_3$ multiplies, $20$."
+        feedback: "The $2$ here is the area. For a house with area $5$, the rate would be $5$."
       - id: d
-        text: "$w_3$ multiplies the house's age, $20$, and every other term in $e$ is frozen while $w_3$ moves."
+        text: "$w$ multiplies the house's area, $2$, and $b$ stays frozen while $w$ moves."
         correct: true
-        feedback: "Only the term $20w_3$ changes, and it changes by $20$ for each unit of $w_3$."
-    solution: "In $e=12w_1+3w_2+20w_3+b-330$, only $20w_3$ contains $w_3$. With the others frozen, $e$ changes by $20$ for each unit of $w_3$."
+        feedback: "Only the term $wx$ changes, and it changes by $x=2$ for each unit of $w$."
+    solution: "In $e=wx+b-y$, only $wx$ contains $w$. With $b$ frozen and the area $x=2$ fixed, $e$ changes by $2$ for each unit of $w$."
   - id: pdp-bias-zero
     dimension: math
     type: numeric
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "For the lesson's house, the loss is $L=(12w_1+3w_2+20w_3+b-330)^2$. Keep the weights at $w_1=25$, $w_2=10$, $w_3=-1$. At which bias $b$ is $\\frac{\\partial L}{\\partial b}=0$?"
+    prompt: "A house-price model has three weights and a bias. For a house with area $12$, $3$ bedrooms and age $20$ that sold for $330$, its loss is $L=(12w_1+3w_2+20w_3+b-330)^2$. Keep the weights at $w_1=25$, $w_2=10$, $w_3=-1$. At which bias $b$ is $\\frac{\\partial L}{\\partial b}=0$?"
     answer: 20
     tolerance: { abs: 0.001 }
     common_wrong:
