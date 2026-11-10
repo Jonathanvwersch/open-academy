@@ -256,6 +256,119 @@ test('knowledge-point lesson opening counts words after removing math and fenced
   );
 });
 
+test('knowledge-point recap rejects a concept that is not a prerequisite', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
+  if (!lesson || !('knowledge_points' in lesson.value))
+    throw new Error('Missing derivatives lesson');
+  lesson.value.recap = [{ concept: 'gradients', text: 'A recap fact.' }];
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'derivatives',
+        message: 'lesson recap concept "gradients" is not a prerequisite',
+      }),
+    ]),
+  );
+});
+
+test('knowledge-point recap requires an authored prerequisite lesson', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
+  const concept = data.concepts.find(({ value }) => value.id === 'derivatives');
+  if (!lesson || !('knowledge_points' in lesson.value) || !concept) {
+    throw new Error('Missing derivatives fixture');
+  }
+  concept.value.prereqs.push({ id: 'matrix-products', strength: 'soft' });
+  lesson.value.recap = [
+    { concept: 'vectors', text: 'Vectors have magnitude and direction.' },
+    { concept: 'matrix-products', text: 'This prerequisite has no authored lesson.' },
+  ];
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'derivatives',
+        message: 'lesson recap concept "matrix-products" has no authored lesson',
+      }),
+    ]),
+  );
+});
+
+test('knowledge-point recap rejects duplicate prerequisite concepts', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
+  if (!lesson || !('knowledge_points' in lesson.value))
+    throw new Error('Missing derivatives lesson');
+  lesson.value.recap = [
+    { concept: 'vectors', text: 'Vectors have magnitude and direction.' },
+    { concept: 'vectors', text: 'A vector is a list of numbers.' },
+  ];
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'derivatives',
+        message: 'lesson recap concept "vectors" is listed more than once',
+      }),
+    ]),
+  );
+});
+
+test('knowledge-point recap requires an entry for every authored prerequisite', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
+  const concept = data.concepts.find(({ value }) => value.id === 'derivatives');
+  if (!lesson || !('knowledge_points' in lesson.value) || !concept) {
+    throw new Error('Missing derivatives fixture');
+  }
+  concept.value.prereqs.push({ id: 'linear-models', strength: 'soft' });
+  lesson.value.recap = [{ concept: 'vectors', text: 'Vectors have magnitude and direction.' }];
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'derivatives',
+        message: 'lesson recap for prerequisite "linear-models" is missing',
+      }),
+    ]),
+  );
+});
+
+test('knowledge-point recap is limited to 40 words', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
+  if (!lesson || !('knowledge_points' in lesson.value))
+    throw new Error('Missing derivatives lesson');
+  lesson.value.recap = [
+    { concept: 'vectors', text: Array.from({ length: 41 }, () => 'word').join(' ') },
+  ];
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'derivatives',
+        message: 'lesson recap for concept "vectors" has 41 words; maximum is 40',
+      }),
+    ]),
+  );
+});
+
+test('knowledge-point lesson accepts recaps for every authored prerequisite', async () => {
+  const data = await notationFixture();
+  const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
+  if (!lesson || !('knowledge_points' in lesson.value))
+    throw new Error('Missing derivatives lesson');
+  lesson.value.recap = [{ concept: 'vectors', text: 'Vectors have magnitude and direction.' }];
+
+  expect(
+    validateContent(data).filter(
+      (issue) => issue.id === 'derivatives' && issue.message.includes('recap'),
+    ),
+  ).toEqual([]);
+});
+
 test('knowledge-point lesson summary requires the Next line', async () => {
   const data = await notationFixture();
   const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
@@ -521,6 +634,7 @@ test('knowledge-point lessons derive the legacy block shape', () => {
     objective: 'Learn the idea.',
     where_this_fits: 'This explains where the idea fits.',
     final: 'final-explain',
+    recap: [{ concept: 'vectors', text: 'Vectors have magnitude and direction.' }],
     knowledge_points: [
       {
         id: 'kp-one',
@@ -541,6 +655,9 @@ test('knowledge-point lessons derive the legacy block shape', () => {
   });
   if (!('knowledge_points' in input)) throw new Error('Expected a KP lesson fixture');
   const lesson = normalizeLesson(input, (id) => id === 'template');
+  expect(lesson.recap).toEqual([
+    { concept: 'vectors', text: 'Vectors have magnitude and direction.' },
+  ]);
   expect(lesson.blocks).toEqual([
     { kind: 'objective', md: 'Learn the idea.' },
     {

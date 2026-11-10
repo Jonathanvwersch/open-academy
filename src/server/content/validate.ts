@@ -655,11 +655,64 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
 
 function validateKnowledgePointContent(data: ContentSourceData, issues: ContentIssue[]) {
   const exercises = new Map(data.exercises.map((entry) => [entry.value.id, entry]));
+  const concepts = new Map(data.concepts.map(({ value }) => [value.id, value]));
+  const authoredLessons = new Set(data.lessons.map(({ value }) => value.concept));
   const knowledgePointIds = new Set<string>();
   const references = new Map<string, number>();
 
   for (const { value: lesson, file } of data.lessons) {
     if (lesson.knowledge_points) {
+      if (lesson.recap) {
+        const prerequisites = concepts.get(lesson.concept)?.prereqs ?? [];
+        const prerequisiteIds = new Set(prerequisites.map(({ id }) => id));
+        const recapConcepts = new Set<string>();
+        for (const recap of lesson.recap) {
+          if (!prerequisiteIds.has(recap.concept)) {
+            addIssue(
+              issues,
+              file,
+              lesson.concept,
+              `lesson recap concept "${recap.concept}" is not a prerequisite`,
+            );
+          }
+          if (!authoredLessons.has(recap.concept)) {
+            addIssue(
+              issues,
+              file,
+              lesson.concept,
+              `lesson recap concept "${recap.concept}" has no authored lesson`,
+            );
+          }
+          if (recapConcepts.has(recap.concept)) {
+            addIssue(
+              issues,
+              file,
+              lesson.concept,
+              `lesson recap concept "${recap.concept}" is listed more than once`,
+            );
+          }
+          recapConcepts.add(recap.concept);
+          const recapWords = countKnowledgePointWords(recap.text);
+          if (recapWords > 40) {
+            addIssue(
+              issues,
+              file,
+              lesson.concept,
+              `lesson recap for concept "${recap.concept}" has ${recapWords} words; maximum is 40`,
+            );
+          }
+        }
+        for (const prerequisite of prerequisites) {
+          if (authoredLessons.has(prerequisite.id) && !recapConcepts.has(prerequisite.id)) {
+            addIssue(
+              issues,
+              file,
+              lesson.concept,
+              `lesson recap for prerequisite "${prerequisite.id}" is missing`,
+            );
+          }
+        }
+      }
       const openingWords = countKnowledgePointWords(lesson.where_this_fits ?? '');
       if (openingWords < 30 || openingWords > 130) {
         addIssue(

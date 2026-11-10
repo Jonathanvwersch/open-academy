@@ -14,10 +14,19 @@ export function getLessonPrerequisites(
 ): LessonPrerequisite[] {
   const concept = index.conceptsById.get(conceptId);
   if (!concept) return [];
+  const lessonRecap = index.lessonsByConcept.get(conceptId)?.recap;
   return concept.prereqs.flatMap(({ id }) => {
     const prerequisite = index.conceptsById.get(id);
-    return prerequisite && index.lessonsByConcept.has(id)
-      ? [{ id, title: prerequisite.title }]
+    const prerequisiteLesson = index.lessonsByConcept.get(id);
+    const recap = lessonRecap?.find((entry) => entry.concept === id)?.text;
+    return prerequisite && prerequisiteLesson
+      ? [
+          {
+            id,
+            title: prerequisite.title,
+            ...(recap === undefined ? {} : { recap }),
+          },
+        ]
       : [];
   });
 }

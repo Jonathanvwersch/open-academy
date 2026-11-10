@@ -2,10 +2,19 @@ concept: gradient-descent
 version: 4
 objective: |
   **Goal:** train a model with gradient descent: step every weight against its slope, choose a learning rate that works, and repeat until the loss stops falling.
+recap:
+  - concept: gradients
+    text: "The gradient $\\nabla f$ collects a function's slopes, one for each input, and points the way the function rises fastest. So $-\\nabla f$ points the way it falls fastest."
+  - concept: loss-functions
+    text: "A loss is one number that measures how wrong a model's predictions are. Squared error, $(\\hat y-y)^2$, is a common one."
+  - concept: linear-regression
+    text: "A linear model predicts a number by multiplying each input by its weight, adding them up and adding a bias, $\\hat y=w\\cdot x+b$."
 where_this_fits: |
-  Gradient descent is the method most machine-learning models use to learn. It finds the weights that make a model's loss as small as possible, by starting somewhere and repeatedly taking a small step downhill.
+  ### What is gradient descent?
 
-  Why not just work the answer out? For a simple function we can, with algebra, but a real model has thousands of weights and no neat formula for its lowest point. Gradient descent only needs the slope where we're standing.
+  Gradient descent is a method for finding where a function is lowest. Most machine-learning models learn by repeatedly taking small steps downhill to lower the loss.
+
+  Why not just work the answer out? For a simple function we can find the lowest point with algebra, but a real model has thousands of weights and no neat formula for where its loss is lowest. Gradient descent only needs the slope where we're standing.
 
   What we're building to:
 
@@ -21,7 +30,7 @@ knowledge_points:
 
       Think of the loss as the height of the ground, with one direction on the ground for each weight. In the gradients lesson, we found that the gradient points the way the height rises fastest. So to go down, we walk the opposite way, $-\nabla f$.
 
-      One step of that walk is simple. We work out the gradient where we're standing, then take a small step in the opposite direction. From wherever we land, we do it again. This is **gradient descent**.
+      One step of that walk is simple. We work out the gradient where we're standing, then take a small step in the opposite direction. From wherever we land, we do it again. That's the whole method.
 
       ### One step on a bowl
 

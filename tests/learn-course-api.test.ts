@@ -85,10 +85,22 @@ async function get(path: string) {
 test('lesson response includes ordered authored prerequisites', async () => {
   const response = await get('/lessons/gradient-descent');
   expect(response.status).toBe(200);
-  expect((await response.json()).prerequisites).toEqual([
-    { id: 'gradients', title: 'Gradient vectors' },
-    { id: 'loss-functions', title: 'Loss functions (MSE, MAE)' },
-    { id: 'linear-regression', title: 'Linear regression' },
+  expect((await response.json()).prerequisites).toMatchObject([
+    {
+      id: 'gradients',
+      title: 'Gradient vectors',
+      recap: expect.stringContaining('The gradient'),
+    },
+    {
+      id: 'loss-functions',
+      title: 'Loss functions (MSE, MAE)',
+      recap: expect.stringContaining('A loss is one number'),
+    },
+    {
+      id: 'linear-regression',
+      title: 'Linear regression',
+      recap: expect.stringContaining('A linear model predicts a number'),
+    },
   ]);
 });
 

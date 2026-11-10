@@ -40,6 +40,12 @@ function titleFor(index: ContentIndex, conceptId: string | null | undefined): st
   return conceptId ? (index.conceptsById.get(conceptId)?.title ?? conceptId) : 'General';
 }
 
+function recapFor(index: ContentIndex, lesson: IndexedLesson): string {
+  return (lesson.recap ?? [])
+    .map(({ concept, text }) => `${titleFor(index, concept)}: ${text}`)
+    .join('\n');
+}
+
 function section(title: string, content: string): string {
   return content ? `## ${title}\n\n${content}` : '';
 }
@@ -111,6 +117,7 @@ export function buildTutorPageContent(input: {
       `Lesson available: ${lesson ? 'yes' : 'no'}`,
       ...(lesson
         ? [
+            section('Recap', recapFor(index, lesson)),
             section("What you're learning", lesson.where_this_fits ?? ''),
             section('Summary', summaryFor(lesson)),
           ]
@@ -126,10 +133,11 @@ export function buildTutorPageContent(input: {
     const pointIndex = knowledgePointId
       ? points.findIndex((point) => point.id === knowledgePointId)
       : -1;
+    const recap = section('Recap', recapFor(index, lesson));
     const whereThisFits = section("What you're learning", lesson.where_this_fits ?? '');
     if (pointIndex < 0) {
       return sanitizePageContent(
-        [`# ${title}`, whereThisFits, section('Summary', summaryFor(lesson))]
+        [`# ${title}`, recap, whereThisFits, section('Summary', summaryFor(lesson))]
           .filter(Boolean)
           .join('\n\n'),
       );
@@ -140,6 +148,7 @@ export function buildTutorPageContent(input: {
     return sanitizePageContent(
       [
         `# ${title}`,
+        recap,
         whereThisFits,
         `## Current step (${pointIndex + 1} of ${points.length}): ${point.title}`,
         point.explain,
@@ -155,6 +164,7 @@ export function buildTutorPageContent(input: {
     return sanitizePageContent(
       [
         `# ${title}`,
+        section('Recap', recapFor(index, lesson)),
         section("What you're learning", lesson.where_this_fits ?? ''),
         ...points.flatMap((point) => [
           `## ${point.title}`,
