@@ -84,7 +84,7 @@ def numerical_grad(f, params, eps=1e-5):
     return gradients
 
 
-def train(params, X, y, lr=0.2, steps=2000):
+def train(params, X, y, lr=0.2, steps=4000):
     history = []
     for _ in range(steps):
         y_hat, cache = forward(params, X)

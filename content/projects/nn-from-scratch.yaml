@@ -22,7 +22,7 @@ tasks:
   - id: t-init
     title: Initialize the network
     md: |
-      Implement `init_params(n_in, n_hidden, n_out, seed)` and return `W1`, `b1`, `W2`, and `b2`. Each row of `W1` belongs to one hidden neuron, and each row of `W2` belongs to one output neuron. Use seeded random weights and zero biases.
+      Implement `init_params(n_in, n_hidden, n_out, seed)` and return `W1`, `b1`, `W2`, and `b2`. Start with `rng = np.random.default_rng(seed)`. Draw `W1` first with shape `(n_hidden, n_in)` from a normal distribution with variance `2/n_in`, using `rng.normal(0, np.sqrt(2/n_in), size=(n_hidden, n_in))`. Then draw `W2` with shape `(n_out, n_hidden)` from variance `1/n_hidden`, using `rng.normal(0, np.sqrt(1/n_hidden), size=(n_out, n_hidden))`. Set both biases to zero.
   - id: t-forward
     title: Calculate predictions
     md: |

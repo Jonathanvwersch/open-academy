@@ -50,7 +50,7 @@ def numerical_grad(f, params, eps=1e-5):
     raise NotImplementedError
 
 
-def train(params, X, y, lr=0.2, steps=2000):
+def train(params, X, y, lr=0.2, steps=4000):
     """Update params with full-batch gradient descent and return loss history."""
     raise NotImplementedError
 

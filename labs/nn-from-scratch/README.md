@@ -30,7 +30,7 @@ For this project, `W1` has shape `(n_hidden, n_in)`, `b1` has shape `(n_hidden,)
 
 ### 1. Initialize the parameters
 
-Implement `init_params(n_in, n_hidden, n_out, seed)`. Return a dictionary with `W1`, `b1`, `W2`, and `b2`. Use seeded random weights and zero biases. Different hidden neurons need different initial weights so they can learn different features.
+Implement `init_params(n_in, n_hidden, n_out, seed)`. Return a dictionary with `W1`, `b1`, `W2`, and `b2`. Different hidden neurons need different initial weights so they can learn different features. Start with `rng = np.random.default_rng(seed)`. Draw `W1` first with shape `(n_hidden, n_in)` from a normal distribution with variance `2/n_in`, using `rng.normal(0, np.sqrt(2/n_in), size=(n_hidden, n_in))`. Then draw `W2` with shape `(n_out, n_hidden)` from variance `1/n_hidden`, using `rng.normal(0, np.sqrt(1/n_hidden), size=(n_out, n_hidden))`. Set both biases to zero.
 
 ### 2. Make a prediction
 
@@ -76,7 +76,7 @@ Only the selected parameter changes in each pair of evaluations. A moderate `eps
 
 Implement `train(params, X, y, lr, steps)` with full-batch gradient descent. On each step, calculate the gradients and update each parameter with `parameter -= lr * gradient`. Update the supplied parameter arrays and return the loss history, including the loss after the last update. Implement `accuracy(y_hat, y)` using a probability threshold of `0.5`.
 
-Use a hidden width of `16`, learning rate `0.2`, `2000` steps, and initialization seed `7` as a reliable starting point. Train only on the training split and report accuracy on the validation split. The verifier also fits a logistic-regression baseline directly to the two input features.
+Use a hidden width of `32`, learning rate `0.2`, `4000` steps, and initialization seed `7` as a reliable starting point. Train only on the training split and report accuracy on the validation split. The verifier also fits a logistic-regression baseline directly to the two input features.
 
 ## Run the verifier
 

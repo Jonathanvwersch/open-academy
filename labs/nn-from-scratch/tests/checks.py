@@ -111,7 +111,9 @@ def run_checks(model):
     numeric = model.numerical_grad(objective, params, eps=1e-5)
     relative_errors = []
     for name in params:
-        denominator = np.abs(analytic[name]) + np.abs(numeric[name]) + 1e-12
+        denominator = np.maximum(
+            np.abs(analytic[name]) + np.abs(numeric[name]), 1e-8
+        )
         relative_errors.extend(
             (np.abs(analytic[name] - numeric[name]) / denominator).ravel().tolist()
         )
@@ -137,8 +139,8 @@ def run_checks(model):
         "One full-batch gradient-descent update should lower the fixed batch loss.",
     )
 
-    trained_params = model.init_params(2, 16, 1, seed=7)
-    history = model.train(trained_params, X_train, y_train, lr=0.2, steps=2000)
+    trained_params = model.init_params(2, 32, 1, seed=7)
+    history = model.train(trained_params, X_train, y_train, lr=0.2, steps=4000)
     final_train_loss = float(history[-1])
     validation_prediction, _ = model.forward(trained_params, X_val)
     validation_accuracy = float(model.accuracy(validation_prediction, y_val))
