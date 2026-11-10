@@ -57,6 +57,26 @@ body {
   margin: 0;
 }
 
+[data-slot="sidebar-wrapper"][data-resizing="true"] [data-slot="sidebar-gap"],
+[data-slot="sidebar-wrapper"][data-resizing="true"] [data-slot="sidebar-container"] {
+  transition: none;
+}
+
+.tutor-resize-handle::after {
+  position: absolute;
+  inset-block: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: transparent;
+  content: "";
+}
+
+.tutor-resize-handle:hover::after,
+.tutor-resize-handle:focus-visible::after {
+  background: var(--sidebar-border);
+}
+
 button:not(:disabled),
 [role="button"],
 a[href],
@@ -174,6 +194,17 @@ label[for],
       transparent
     )
     right / 0.75rem 100% no-repeat scroll;
+}
+
+.tutor-display-math {
+  display: block;
+  margin-block: 0.5rem;
+  overflow-x: auto;
+  text-align: center;
+}
+
+.markdown > .tutor-display-math {
+  margin-block: 0.5rem;
 }
 
 @theme inline {

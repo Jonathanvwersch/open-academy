@@ -23,7 +23,23 @@ const latexScreenshotDir = '/home/ubuntu/screenshots/tutor-latex';
 mkdirSync(latexScreenshotDir, { recursive: true });
 const tutorMathScreenshotDir = '/home/ubuntu/screenshots/tutor-math';
 mkdirSync(tutorMathScreenshotDir, { recursive: true });
+const tutorSidebarScreenshotDir = '/home/ubuntu/shots/tutor-sidebar';
+mkdirSync(tutorSidebarScreenshotDir, { recursive: true });
 let sessionId = '';
+
+async function waitForTutorSidebarToSettle(page: Page, panelSelector: string) {
+  const panel = page.locator(panelSelector);
+  const wrapper = page.locator('[data-slot="sidebar-wrapper"]');
+  await expect
+    .poll(async () => {
+      const panelRight = await panel.evaluate((element) => element.getBoundingClientRect().right);
+      const wrapperRight = await wrapper.evaluate(
+        (element) => element.getBoundingClientRect().right,
+      );
+      return Math.abs(wrapperRight - panelRight);
+    })
+    .toBeLessThanOrEqual(1);
+}
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -119,8 +135,131 @@ async function openMockedTutorReply(page: Page, threadId: string, question: stri
   await textarea.fill(question);
   await textarea.press('Enter');
   const assistantMessage = tutor.getByTestId('tutor-assistant-message');
-  await expect(assistantMessage.locator('.katex-display')).toHaveCount(1);
+  await expect(assistantMessage.locator('.katex').first()).toBeVisible();
+  await waitForTutorSidebarToSettle(page, '[data-slot="sidebar-container"]');
   return { tutor, assistantMessage };
+}
+
+type MockedTutorMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+};
+
+async function openMockedLongTutorThread(page: Page, threadId: string) {
+  const question = 'Open the long tutor thread.';
+  const updatedAt = '2026-01-01T12:00:00.002Z';
+  let messages: MockedTutorMessage[] = [
+    {
+      id: `${threadId}-user`,
+      role: 'user',
+      content: question,
+      createdAt: '2026-01-01T12:00:00.001Z',
+    },
+    {
+      id: `${threadId}-assistant`,
+      role: 'assistant',
+      content: Array.from(
+        { length: 20 },
+        (_, index) =>
+          `Reply ${index + 1}: ${'This explanation adds enough detail to make the tutor conversation scroll. '.repeat(4)}`,
+      ).join('\n\n'),
+      createdAt: updatedAt,
+    },
+  ];
+  const thread = {
+    id: threadId,
+    conceptId: 'supervised-learning',
+    title: 'Long tutor thread',
+    updatedAt,
+  };
+  let postCount = 0;
+
+  await page.addInitScript(() => {
+    localStorage.removeItem('academy.tutor.width');
+    localStorage.removeItem('academy.tutor.thread');
+    localStorage.setItem('academy.tutor.open', 'false');
+  });
+  await page.route('**/api/tutor/threads**', async (route) => {
+    const request = route.request();
+    const url = request.url();
+    if (request.method() === 'POST') {
+      postCount += 1;
+      if (postCount > 1) {
+        const { question: nextQuestion } = request.postDataJSON() as { question: string };
+        const newMessages: MockedTutorMessage[] = [
+          {
+            id: `${threadId}-follow-up-${postCount}`,
+            role: 'user',
+            content: nextQuestion,
+            createdAt: '2026-01-01T12:01:00.001Z',
+          },
+          {
+            id: `${threadId}-follow-up-reply-${postCount}`,
+            role: 'assistant',
+            content: `Tutor reply to: ${nextQuestion}`,
+            createdAt: '2026-01-01T12:01:00.002Z',
+          },
+        ];
+        messages = [...messages, ...newMessages];
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ thread, messages: newMessages }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ thread, messages }),
+      });
+      return;
+    }
+    if (url.endsWith(`/api/tutor/threads/${threadId}`)) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          thread: {
+            ...thread,
+            conceptTitle: 'Supervised learning',
+            messageCount: messages.length,
+            lastMessagePreview: messages.at(-1)?.content,
+          },
+          messages,
+        }),
+      });
+      return;
+    }
+    if (url.endsWith('/api/tutor/threads')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            ...thread,
+            conceptTitle: 'Supervised learning',
+            messageCount: messages.length,
+            lastMessagePreview: messages.at(-1)?.content,
+          },
+        ]),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  await tutor.getByLabel('Ask the tutor').fill(question);
+  await tutor.getByLabel('Ask the tutor').press('Enter');
+  await expect(tutor.getByTestId('tutor-assistant-message').last()).toContainText('Reply 20:');
+  await waitForTutorSidebarToSettle(page, '[data-slot="sidebar-container"]');
+  return { tutor, conversation: tutor.locator('.tutor-message-scroll-area') };
 }
 
 test('Course tutor sidebar fills at least 90 percent of the viewport height', async ({ page }) => {
@@ -135,6 +274,105 @@ test('Course tutor sidebar fills at least 90 percent of the viewport height', as
   expect(
     await tutor.evaluate((element) => element.getBoundingClientRect().height),
   ).toBeGreaterThanOrEqual(viewportHeight * 0.9);
+});
+
+test('tutor sidebar defaults to 448px when width storage is empty', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.removeItem('academy.tutor.width');
+    localStorage.removeItem('academy.tutor.thread');
+    localStorage.setItem('academy.tutor.open', 'true');
+  });
+  await page.goto('/course');
+
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const container = tutor.locator('[data-slot="sidebar-container"]');
+  await expect(container).toBeVisible();
+  await expect
+    .poll(() => container.evaluate((element) => element.getBoundingClientRect().width))
+    .toBe(448);
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('academy.tutor.width')))
+    .toBeNull();
+});
+
+test('tutor sidebar width resizes, persists, responds to the keyboard, and clamps', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('tutor-width-test-initialized') !== 'true') {
+      localStorage.removeItem('academy.tutor.width');
+      localStorage.removeItem('academy.tutor.thread');
+      localStorage.setItem('academy.tutor.open', 'true');
+      sessionStorage.setItem('tutor-width-test-initialized', 'true');
+    }
+  });
+  await page.goto('/course');
+
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const container = tutor.locator('[data-slot="sidebar-container"]');
+  const separator = tutor.getByRole('separator', { name: 'Resize tutor' });
+  const width = () => container.evaluate((element) => element.getBoundingClientRect().width);
+  const inset = page.locator('[data-slot="sidebar-inset"]');
+  const insetWidthBefore = await inset.evaluate((element) => element.getBoundingClientRect().width);
+  await expect.poll(width).toBe(448);
+
+  const dragBy = async (amount: number) => {
+    const box = await separator.boundingBox();
+    if (!box) throw new Error('Tutor resize separator is not visible');
+    const x = box.x + box.width / 2;
+    const y = box.y + 100;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x - amount, y, { steps: 8 });
+    await page.mouse.up();
+  };
+
+  await dragBy(200);
+  await expect.poll(width).toBe(648);
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('academy.tutor.width')))
+    .toBe('648');
+  const insetWidthAfter = await inset.evaluate((element) => element.getBoundingClientRect().width);
+  expect(Math.abs(insetWidthBefore - insetWidthAfter - 200)).toBeLessThanOrEqual(4);
+  await page.screenshot({ path: `${tutorSidebarScreenshotDir}/widened.png` });
+
+  await page.reload();
+  await expect.poll(width).toBe(648);
+  await separator.press('ArrowLeft');
+  await expect.poll(width).toBe(664);
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('academy.tutor.width')))
+    .toBe('664');
+
+  const box = await separator.boundingBox();
+  if (!box) throw new Error('Tutor resize separator is not visible');
+  const x = box.x + box.width / 2;
+  const y = box.y + 100;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(0, y, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(width).toBe(768);
+  await expect(separator).toHaveAttribute('aria-valuemax', '768');
+  await expect(separator).toHaveAttribute('aria-valuenow', '768');
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('academy.tutor.width')))
+    .toBe('768');
+
+  await page.setViewportSize({ width: 800, height: 900 });
+  await expect.poll(width).toBe(320);
+  await expect(separator).toHaveAttribute('aria-valuemax', '320');
+  await page.reload();
+  await expect.poll(width).toBe(320);
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  await separator.dblclick();
+  await expect.poll(width).toBe(448);
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('academy.tutor.width')))
+    .toBe('448');
 });
 
 test('tutor chat sends optimistically and supports chat-list navigation', async ({ page }) => {
@@ -577,25 +815,80 @@ test('tutor reply renders TeX inline and display delimiters', async ({ page }) =
   await page.screenshot({ path: `${latexScreenshotDir}/reply.png`, fullPage: true });
 });
 
-test('long tutor display math scrolls within its message and panel at desktop and mobile widths', async ({
+test('sending a tutor message scrolls back to the latest message', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { tutor, conversation } = await openMockedLongTutorThread(
+    page,
+    '00000000-0000-4000-8000-000000000006',
+  );
+  const atBottom = () =>
+    conversation.evaluate(
+      (element) => element.scrollTop + element.clientHeight >= element.scrollHeight - 2,
+    );
+  await conversation.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await expect.poll(atBottom).toBe(false);
+
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.fill('Return to the latest message');
+  await textarea.press('Enter');
+  await expect(tutor.getByTestId('tutor-assistant-message').last()).toContainText(
+    'Tutor reply to: Return to the latest message',
+  );
+  await expect.poll(atBottom).toBe(true);
+});
+
+test('tutor scroll-to-latest button returns to the bottom', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { tutor, conversation } = await openMockedLongTutorThread(
+    page,
+    '00000000-0000-4000-8000-000000000007',
+  );
+  const atBottom = () =>
+    conversation.evaluate(
+      (element) => element.scrollTop + element.clientHeight >= element.scrollHeight - 2,
+    );
+  await conversation.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await expect.poll(atBottom).toBe(false);
+
+  const scrollButton = tutor.getByRole('button', { name: 'Scroll to latest message' });
+  await expect(scrollButton).toBeVisible();
+  await page.screenshot({ path: `${tutorSidebarScreenshotDir}/scroll-latest.png` });
+  await scrollButton.click();
+  await expect.poll(atBottom).toBe(true);
+  await expect(scrollButton).toHaveCount(0);
+});
+
+test('long tutor display math wraps within its message at desktop and mobile widths', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const reply = String.raw`$$\mathrm{MSE}(c)=\frac{(c-23)^2+(c-26)^2+(c-41)^2}{3}$$`;
-  const { tutor } = await openMockedTutorReply(
+  await page.addInitScript(() => localStorage.removeItem('academy.tutor.width'));
+  const reply = String.raw`$$E[X]=0\cdot P(X=0)+1\cdot P(X=1)+2\cdot P(X=2)+3\cdot P(X=3)$$`;
+  const { assistantMessage } = await openMockedTutorReply(
     page,
     '00000000-0000-4000-8000-000000000003',
-    'Show the mean squared error formula.',
+    'Show the expected value formula.',
     reply,
   );
-  const display = page.getByTestId('tutor-assistant-message').locator('.katex-display');
-  const measure = async (viewport: string) => {
+  const displayForViewport = (mobile: boolean) =>
+    mobile
+      ? page.locator('[data-slot="sidebar"][data-mobile="true"] .tutor-display-math')
+      : assistantMessage.locator('.tutor-display-math');
+  const measure = async (viewport: string, mobile = false) => {
+    const display = displayForViewport(mobile);
     const geometry = await display.evaluate((element) => {
       const displayRect = element.getBoundingClientRect();
       const messageContent = element.closest('.markdown')?.parentElement;
       const messageRect = messageContent?.getBoundingClientRect();
       const panelRect = element.closest('.bg-sidebar')?.getBoundingClientRect();
-      if (!messageRect || !panelRect) throw new Error('Tutor math containers were not found');
+      if (!messageContent || !messageRect || !panelRect) {
+        throw new Error('Tutor math containers were not found');
+      }
+      const lineHeight = Number.parseFloat(getComputedStyle(messageContent).lineHeight);
       return {
         scrollWidth: element.scrollWidth,
         clientWidth: element.clientWidth,
@@ -603,28 +896,71 @@ test('long tutor display math scrolls within its message and panel at desktop an
         displayRight: displayRect.right,
         messageContentRight: messageRect.right,
         panelRight: panelRect.right,
+        height: displayRect.height,
+        lineHeight,
+        viewportWidth: window.innerWidth,
       };
     });
     console.log(`tutor math ${viewport}: ${JSON.stringify(geometry)}`);
-    expect(geometry.scrollWidth).toBeGreaterThan(geometry.clientWidth);
+    expect(geometry.scrollWidth - geometry.clientWidth).toBeLessThanOrEqual(1);
     expect(geometry.displayRight).toBeLessThanOrEqual(geometry.messageContentRight + 0.5);
     expect(geometry.messageContentRight).toBeLessThanOrEqual(geometry.panelRight + 0.5);
+    expect(geometry.panelRight).toBeLessThanOrEqual(geometry.viewportWidth + 0.5);
+    expect(geometry.height).toBeGreaterThan(geometry.lineHeight);
     return geometry;
   };
 
-  await tutor.screenshot({
-    path: `${tutorMathScreenshotDir}/long-equation-desktop.png`,
-    animations: 'disabled',
-  });
+  await expect(assistantMessage.locator('.katex-error')).toHaveCount(0);
+  await measure('desktop');
+  await page.screenshot({ path: `${tutorSidebarScreenshotDir}/default-width.png` });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileTutor = page.locator('[data-slot="sidebar"][data-mobile="true"]');
+  await expect(mobileTutor).toBeVisible();
+  await waitForTutorSidebarToSettle(page, '[data-slot="sidebar"][data-mobile="true"]');
+  await expect(mobileTutor.getByRole('separator', { name: 'Resize tutor' })).toHaveCount(0);
+  await measure('mobile', true);
+  await page.screenshot({ path: `${tutorSidebarScreenshotDir}/mobile.png` });
+});
+
+test('wide tutor fractions stay within their message and panel', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const reply = String.raw`$$\mathrm{MSE}(c)=\frac{(c-23)^2+(c-26)^2+(c-41)^2}{3}$$`;
+  const { assistantMessage } = await openMockedTutorReply(
+    page,
+    '00000000-0000-4000-8000-000000000013',
+    'Show the mean squared error formula.',
+    reply,
+  );
+  const displayForViewport = (mobile: boolean) =>
+    mobile
+      ? page.locator('[data-slot="sidebar"][data-mobile="true"] .tutor-display-math')
+      : assistantMessage.locator('.tutor-display-math');
+  const measure = async (viewport: string, mobile = false) => {
+    const display = displayForViewport(mobile);
+    const geometry = await display.evaluate((element) => {
+      const displayRect = element.getBoundingClientRect();
+      const messageRect = element.closest('.markdown')?.parentElement?.getBoundingClientRect();
+      const panelRect = element.closest('.bg-sidebar')?.getBoundingClientRect();
+      if (!messageRect || !panelRect) throw new Error('Tutor math containers were not found');
+      return {
+        displayRight: displayRect.right,
+        messageRight: messageRect.right,
+        panelRight: panelRect.right,
+        viewportWidth: window.innerWidth,
+      };
+    });
+    console.log(`MSE tutor math ${viewport}: ${JSON.stringify(geometry)}`);
+    expect(geometry.displayRight).toBeLessThanOrEqual(geometry.messageRight + 0.5);
+    expect(geometry.messageRight).toBeLessThanOrEqual(geometry.panelRight + 0.5);
+    expect(geometry.panelRight).toBeLessThanOrEqual(geometry.viewportWidth + 0.5);
+  };
+
   await measure('desktop');
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileTutor = page.locator('[data-slot="sidebar"][data-mobile="true"]');
   await expect(mobileTutor).toBeVisible();
-  await mobileTutor.screenshot({
-    path: `${tutorMathScreenshotDir}/long-equation-mobile.png`,
-    animations: 'disabled',
-  });
-  await measure('mobile');
+  await waitForTutorSidebarToSettle(page, '[data-slot="sidebar"][data-mobile="true"]');
+  await measure('mobile', true);
 });
 
 test('short tutor display math fits without scrolling', async ({ page }) => {
@@ -635,7 +971,7 @@ test('short tutor display math fits without scrolling', async ({ page }) => {
     'Show a short equation.',
     '$$x^2+y^2=1$$',
   );
-  const display = assistantMessage.locator('.katex-display');
+  const display = assistantMessage.locator('.tutor-display-math');
   await expect(assistantMessage.locator('.katex-error')).toHaveCount(0);
   await expect
     .poll(() => display.evaluate((element) => element.scrollWidth - element.clientWidth))
