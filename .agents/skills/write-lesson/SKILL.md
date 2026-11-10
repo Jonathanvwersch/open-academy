@@ -41,20 +41,22 @@ The `objective` is one plain sentence, "**Goal:** …", describing what the lear
 
 ### The steps (`knowledge_points`)
 
-Each step teaches one part of the idea, and the steps go in the order the learner needs them: usually the basic mechanism first, then the setting that controls it, then how it applies to a model, then how it's used repeatedly or at scale. Split the `explain` into 2–4 short sections, each with a `###` heading that names what's in it ("Walking downhill", "Three step sizes on one curve", "Where the limit is"). A reader skimming the headings should be able to see the argument.
+Each step teaches one part of the idea, and the steps go in the order the learner needs them: usually the basic mechanism first, then the setting that controls it, then how it applies to a model, then how it's used repeatedly or at scale. Split the `explain` into 2–4 short sections, each with a `###` heading that names what's in it ("Walking downhill", "Three step sizes on one curve", "Where the limit is"). A reader skimming the headings should be able to see the argument. Like step titles, these headings use plain words a beginner understands before reading the section ("Three step sizes on one curve", not "Stability").
 
 Within a step, follow this order. Leave out a part that the idea doesn't need.
 
 1. **Where we are.** Open with a sentence or two connecting to what the learner already has, from the opening, the recap or the previous step, and say what this step adds. Ask the question the step answers if that helps ("But how big should each step be?").
 2. **How it works, with the simplest case you can picture.** Describe the picture first, in the order you'd point at it on a whiteboard, with a diagram when the idea is spatial (§4). Use clean numbers.
-3. **The definition and the formula.** Name the idea in **bold**, in a general sentence ("a vector of partial derivatives, one for each input", not "one for each house weight"), because only the general form carries over to new problems. Then give the formula and say what each symbol means in words.
+3. **The definition and the formula.** Name the idea in **bold**, in a general sentence ("a vector of partial derivatives, one for each input", not "one for each house weight"), because only the general form carries over to new problems. Then give the formula and say what each symbol means in words. A general formula may use symbols for the general case, such as $x_j$ and $w_j$ for "the $j$th input and its weight", even when the lesson's example has only one input, as long as the text says in words what they stand for. Work the example itself on the simplest case.
 4. **Examples that show behaviour.** When the idea depends on a setting, such as a size, a sign, a direction or a starting point, show 2–3 cases from the same example side by side, as a bulleted list or a small table. Each case should show something the others don't (one converges, one overshoots, one diverges).
 5. **Limitations,** when the topic has real ones, in their own section headed "Limitations" or by the problem itself ("Getting stuck in a valley"). Say what goes wrong, show it on a simple case, and say what people do about it. Leave this out for topics with no real limits.
 6. **Be careful,** only for a trap a beginner will really fall into. Start with "Be careful…", say what the learner might think, that it's wrong, and why.
 
 Then the `worked` example, then the questions.
 
-**Worked example** (`worked`, shown in a "Worked example" card). Open with a sentence saying what we're about to work out and from where. Number the steps, start each with a short bold label saying what it does ("1. **Find each slope.**"), follow the label with a sentence saying why, then show the calculation as display maths. End with a sentence on what the result shows.
+**Worked example** (`worked`, shown in a "Worked example" card). Open with a sentence saying what we're about to work out and from where. Number the steps, start each with a short bold label saying what it does ("1. **Find each slope.**"), follow the label with a sentence saying why, then show the calculation as display maths. End with a sentence on what the result shows. The worked example usually carries out a calculation that the `explain` set up, using the same numbers. That's intended, not repetition: let the `explain` describe what happens and why, and leave the full arithmetic to the worked example, so the learner never reads the same calculation twice.
+
+**Code** (when the concept's objective includes implementing the idea). Put a short, runnable code block (Python unless the course says otherwise) at the end of the `worked` example of the step that implements it, after the calculation by hand, and use the same numbers so the learner can match the two. Before the block, explain in a sentence any syntax a learner new to the language might not know. Show what it prints in a comment at the end, and run it to check that it prints exactly that.
 
 **Questions at the end of each step** (`problems`, in order; the runner starts easy and steps up). Put the `basics` MC question first. Then add one self-explanation question about the worked example ("Why does step 2 use the dot product?"), written as an `mc` whose options are plausible reasons, each wrong one with its own `feedback`. Knowledge-point problems can't be `explain` type; only the lesson `final` is. After that, go from partly worked to full and from easy to hard, with difficulty 1, 2 and 3 all present. The last problems use a new setting, such as a different function or a robot.
 
@@ -123,10 +125,10 @@ Be careful not to read a big value as a big slope. The slope says how fast the o
 - **Explain the setting before using it.** Before any calculation, say what the function or object stands for ("think of the loss as the height of the ground") and what each kind of picture shows ("a contour map is the landscape seen from above; each ring joins points at the same height"). Never open a step with a bare formula.
 - **No part labels or boilerplate.** Never write "The question.", "Picture it.", "The idea.", "Common confusion." or a heading like "Why this is useful". Headings name the content. Cut filler, repeated sentences and summaries of what you just said.
 - **Never use a term or symbol before the lesson that teaches it** (`content/notation.yaml` enforces this).
-- `explain` is usually 150–380 words per step. If it's longer, the step holds two ideas: split it.
-- **Numbers:** choose them so every result is a whole number or a simple fraction, unless the point is the messy number.
-- **Maths:** one display line per step, never several equations inside one sentence. In `aligned` blocks, one step per line.
-- **Use one running example** across the steps when you can, so the learner isn't learning a new setting each time. Mention ML or robotics where it shows why the idea matters, not as a required paragraph.
+- `explain` is 150–380 words per step, and `pnpm content:check` rejects more than 380. If a step needs more, it usually holds two ideas: split it. In a rewrite, where the step IDs are fixed, make room in this order: cut repetition and filler, then move arithmetic into the `worked` example, then shorten the examples. Keep every sentence a learner needs to follow the argument.
+- **Numbers:** choose them so every result is a whole number, a simple fraction or a short decimal (one or two places, such as $0.1$ or $2.16$), unless the point is the messy number.
+- **Maths:** in the `explain`, put each key formula on its own display line, and never pack several equations into one sentence. In a worked example, each numbered step has at most one display line. In `aligned` blocks, one step per line.
+- **Use one running example** across the steps when you can, so the learner isn't learning a new setting each time. When a step needs a different example (a curve instead of a surface, a model instead of a function), connect it to the last one in a sentence ("Along the line $y=0$, the bowl is just $x^2$"). Mention ML or robotics where it shows why the idea matters, not as a required paragraph.
 - **Teach directly.** Explain, then practise. Don't make the learner discover the idea unaided.
 
 ## 4. Diagrams
@@ -144,7 +146,7 @@ Every step whose idea is spatial (directions, slopes, surfaces, arrows, splits, 
 - Mix: recognition, computation (a parameterised template when there is arithmetic), misconception MC (each wrong option is a real mistake, with its own `feedback`), and application in a new setting.
 - Every problem has a 1–3 sentence `solution` that says _why_. MC options are of similar length, with no "all of the above".
 - Problems test this step and earlier ones, never later ones.
-- In a rewrite, keep every existing problem ID and its correct answer, so learners' progress and reviews carry over; improve the wording freely.
+- In a rewrite, keep every existing problem ID and its correct answer, so learners' progress and reviews carry over; improve the wording freely, and reword problems to use the lesson's terms and examples. Never delete or repurpose an existing problem. When the rewrite adds a section that no existing problem tests, such as a new limitation, add a new problem with a new ID at the end of that step's list.
 
 ## 6. Plan before writing
 
@@ -154,18 +156,18 @@ Every step whose idea is spatial (directions, slopes, surfaces, arrows, splits, 
    - why it's useful, and why what the learner already knows isn't enough;
    - the one fact needed from each prerequisite (the recap);
    - the 2–4 steps, in the order the learner needs them;
-   - the real limitations, if any, and the traps a beginner will fall into, phrased as their own thought ("Isn't a zigzag a sign it's failing?").
+   - the real limitations, if any, and the traps a beginner will fall into, each written as the wrong thought they'd have ("Isn't a zigzag a sign it's failing?"). In the lesson, each trap becomes a "Be careful…" sentence (§1).
 3. Pick the **simplest case you can picture** for each step, e.g. 2 inputs rather than 4, and numbers that come out clean ((3, 4) → 5, not 40√554).
 
 ## 7. Review before it ships
 
 1. Run `pnpm content:check` and the content tests (`pnpm exec vitest run tests/content*.test.ts` or the full `pnpm test`).
 2. **Self-check** against §1–§4. The recap gives facts. The opening says what the idea is in its first sentence, then why it's useful. Each step follows the order above, with content headings, a general definition, clean numbers and a correct diagram. Limitations appear where they exist. There are no part labels, and each `explain` is ≤380 words.
-3. **Cold-reader review.** Give a separate agent, which hasn't seen your plan, only the rendered lesson text (recap, `where_this_fits`, each step's `explain` and `worked`, `summary`, and the first two problems of each step), the titles of the prerequisite lessons, and this prompt verbatim:
+3. **Cold-reader review.** Give a separate agent, which hasn't seen your plan, only the rendered lesson text (recap, `where_this_fits`, each step's `explain` and `worked`, `summary`, and the first two problems of each step, with each diagram replaced by its `aria-label`, plus the screenshots if the agent can view images), the titles of the prerequisite lessons, and this prompt verbatim:
 
    > You are a motivated learner who knows only the prerequisite lessons listed. Read this lesson once, in order, as if seeing it for the first time. List every place where you (a) met a word, symbol or step you couldn't follow, (b) couldn't picture what was meant, (c) didn't see why a step was taken, (d) didn't know what you were learning or why it mattered, (e) met an example or object the lesson never introduced, (f) found a step title a beginner couldn't parse before reading that step, (g) read a sentence a teacher wouldn't say out loud to a student (clipped, stiff, or strung together with colons), or (h) got bored or lost the thread. Quote the exact sentence for each. Then say, in two sentences, what you think the lesson's main idea is. Do not suggest rewrites and do not praise.
 
-   Fix every item it raises, or note in the PR why it isn't a problem. If its two-sentence main idea doesn't match the objective, the lesson isn't clear yet: revise and review again.
-4. Open the lesson in the running app (`pnpm dev`, Course → the lesson) and check each step rendered: recap links work, diagrams are visible and readable, maths is rendered, and nothing overflows.
+   Fix every item it raises, or note in the PR why it isn't a problem. If its two-sentence main idea doesn't match the objective, the lesson isn't clear yet: revise and review again. After substantial fixes, run a new round with a fresh agent. Stop when a round raises nothing new under (a)–(e) and its main idea matches the objective, or after three rounds. In the PR, list each item you didn't fix and why.
+4. Open the lesson in the running app (`pnpm dev`, Course → the lesson) and check each step rendered: recap links work, diagrams are visible and readable, and maths is rendered. Check that nothing overflows at 1280px and 390px wide: the page has no horizontal scrollbar, and no table, diagram or display equation sticks out past the lesson column (a wide equation may scroll inside its own box).
 
 Older lessons, including `content/lessons/gradients.yaml`, were written before this structure. Where they differ from this skill, follow the skill.
