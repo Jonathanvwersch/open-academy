@@ -13,7 +13,7 @@ where_this_fits: |
   4. Repeat the complete calculation with fresh predictions and gradients.
 knowledge_points:
   - id: ptb-tensors
-    title: Give the numbers a shape
+    title: "Store numbers in tensors"
     explain: |
       **The question.** You want to apply the same calculation to several examples at once. How do you tell PyTorch which numbers belong to each example?
 
@@ -91,7 +91,7 @@ knowledge_points:
         ptb-tensor-transfer,
       ]
   - id: ptb-linear
-    title: Put the rule and its parameters together
+    title: "Build a model"
     explain: |
       **The question.** Training must remember and change the weights used in a prediction. How do you keep the prediction rule and its adjustable numbers together?
 
@@ -166,7 +166,7 @@ knowledge_points:
         ptb-linear-transfer,
       ]
   - id: ptb-loss-optimizer
-    title: Connect the loss gradient to an update
+    title: "Get gradients and update weights"
     explain: |
       **The question.** A recorded calculation can give you a gradient, but the number you are adjusting has not moved yet. What connects that gradient to an actual update?
 
@@ -253,7 +253,7 @@ knowledge_points:
         ptb-loss-transfer,
       ]
   - id: ptb-training-loop
-    title: Repeat with fresh values
+    title: "Write the training loop"
     explain: |
       **The question.** One update changes the model, so the next prediction and gradient will differ. How do you repeat training without accidentally using old information?
 

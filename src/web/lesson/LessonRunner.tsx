@@ -306,6 +306,7 @@ export function LessonRunner({
           position={activityPosition}
           total={activityCount}
           lessonHref={lessonHref}
+          subtitleSkeleton
         />
         <LessonSkeletonBody />
       </section>
@@ -327,7 +328,6 @@ export function LessonRunner({
       : `Back to step ${Math.max(0, currentPointIndex) + 1}`;
   const stepContent = displayedPoint ? (
     <section data-testid="lesson-step-content" className="space-y-4">
-      <h2 className="text-xl font-semibold">{displayedPoint.title}</h2>
       {displayedPoint.id === lesson?.knowledge_points?.[0]?.id &&
       (lesson?.where_this_fits ?? state.where_this_fits) ? (
         <LessonBlock kind="fits" md={lesson?.where_this_fits ?? state.where_this_fits} />
@@ -336,6 +336,10 @@ export function LessonRunner({
       <LessonBlock kind="worked" md={displayedPoint.worked} />
     </section>
   ) : null;
+  const sessionSubtitle = viewingPastStep
+    ? displayedPoint?.title
+    : (checkpoint?.title ??
+      (state.status === 'completed' ? 'Lesson complete' : displayedPoint?.title));
 
   const viewStep = (stepId: string) => {
     const nextViewingPointId = stepId === state.currentPointId ? null : stepId;
@@ -356,6 +360,7 @@ export function LessonRunner({
         position={activityPosition}
         total={activityCount}
         lessonHref={lessonHref}
+        subtitle={sessionSubtitle}
       />
       <ol aria-label="Lesson steps" className="flex flex-wrap gap-2">
         {state.points.map((item, index) => (

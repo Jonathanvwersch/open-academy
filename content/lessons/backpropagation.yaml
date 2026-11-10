@@ -11,7 +11,7 @@ where_this_fits: |
   4. Check the calculated slopes against small parameter nudges.
 knowledge_points:
   - id: bp-why-backprop
-    title: Save once, reuse on the way back
+    title: "Reuse forward-pass values to get slopes"
     explain: |
       **The question.** You can multiply local derivatives along a graph to find one parameter's loss slope. Must you start from the loss again for every other parameter?
 
@@ -68,7 +68,7 @@ knowledge_points:
         bp-reuse-robot,
       ]
   - id: bp-by-hand
-    title: Compute one weight gradient backward
+    title: "Find the slope for one weight"
     explain: |
       **The question.** How do you continue the backward calculation when the machine includes an activation that can block a change?
 
@@ -125,7 +125,7 @@ knowledge_points:
         bp-hand-robot,
       ]
   - id: bp-arrays
-    title: Combine example contributions with arrays
+    title: "Slopes for a whole batch at once"
     explain: |
       **The question.** If several examples use the same weight and bias, how do their backward contributions become one slope per parameter?
 
@@ -199,7 +199,7 @@ knowledge_points:
         bp-array-robot,
       ]
   - id: bp-checking
-    title: Check slopes with small parameter nudges
+    title: "Check a slope by nudging a weight"
     explain: |
       **The question.** A backward calculation returns a number, but how can you tell whether a sign, multiplier or batch scaling is wrong?
 

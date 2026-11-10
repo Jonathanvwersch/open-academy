@@ -10,7 +10,7 @@ where_this_fits: |
   3. Add the contributions when an input reaches the output by more than one route.
 knowledge_points:
   - id: cr-rates-multiply
-    title: Rates along a chain multiply
+    title: "Multiply the rates along a chain"
     explain: |
       **The question.** Suppose $x$ feeds a first step that produces an in-between value $u$, and $u$ feeds a second step that produces the output $y$. You know how fast each step responds to its own input. How fast does $y$ respond to $x$?
 
@@ -83,7 +83,7 @@ knowledge_points:
       - crp-rate-product
       - crp-three-steps
   - id: cr-nested-formulas
-    title: Differentiate a formula inside a formula
+    title: "Slope of a formula inside a formula"
     explain: |
       **The question.** How do you differentiate $y=(3x+1)^2$ without expanding the bracket? The rules you know handle $u^2$ and $3x+1$ separately, but here one sits inside the other.
 
@@ -159,7 +159,7 @@ knowledge_points:
       - crp-diff-log
       - crp-root-slope
   - id: cr-two-routes
-    title: Add the routes when an input has two
+    title: "When an input affects the output two ways"
     explain: |
       **The question.** Sometimes one input feeds two in-between values, and both feed the output. A chain gives one product of rates, but now there are two chains. How do you combine them?
 

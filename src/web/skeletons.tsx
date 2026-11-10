@@ -217,7 +217,6 @@ export function LessonSkeletonBody() {
           ))}
         </div>
         <div className="space-y-4">
-          <Skeleton className="h-7 w-3/4" />
           <LessonBlockSkeleton titleWidth="w-36" widths={['w-full', 'w-11/12', 'w-4/5']} />
           <div className="space-y-3">
             <SkeletonRows count={3} widths={['w-full', 'w-11/12', 'w-4/5']} />

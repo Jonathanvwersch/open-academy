@@ -92,7 +92,7 @@ knowledge_points:
       - ml-adjust-direction
       - ml-fit-weight
   - id: ml-house-model
-    title: The pieces a model needs to learn
+    title: "What a model needs to learn"
     explain: |
       **The question.** One weight and three sales can be fitted by trying values. A real house-price model uses several measurements, each with its own weight, and thousands of sales. What does a computer need to find all those weights by itself?
 
@@ -183,7 +183,7 @@ knowledge_points:
       - ml-why-derivatives
       - ml-why-new-houses
   - id: ml-to-robots
-    title: The same loop teaches a robot
+    title: "Machine learning in robotics"
     explain: |
       **The question.** This course ends with robots that learn tasks such as picking up a cup. A robot sees camera images and moves its joints; it never prices a house. So why spend Week 1 on house prices?
 

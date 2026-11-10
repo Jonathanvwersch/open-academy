@@ -12,7 +12,7 @@ where_this_fits: |
   That direction is what the next lesson, gradient descent, follows.
 knowledge_points:
   - id: grad-vector-of-partials
-    title: The gradient collects the slopes
+    title: "One slope per input, in one list"
     explain: |
       **The question.** Picture the loss of a model with just two weights, $x$ and $y$, as a landscape: above each point $(x,y)$ on a map, the height of the ground is the loss. Training means walking downhill. Standing at one spot, you can measure the slope going in the $x$ direction (only $x$ changes) and in the $y$ direction (only $y$ changes): those are the two partial derivatives. How do you describe the slope at that spot as one thing?
 
@@ -169,7 +169,7 @@ knowledge_points:
       - gradp-target-drop
       - gradp-robot-direction
   - id: grad-steepest-descent
-    title: Steepest uphill and steepest downhill
+    title: "Which way is steepest"
     explain: |
       **The question.** Of all unit directions from $P$, which one climbs fastest, and which one lowers $f$ fastest?
 

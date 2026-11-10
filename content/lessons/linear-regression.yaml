@@ -10,7 +10,7 @@ where_this_fits: |
   3. Predict a whole batch of examples with one matrix product.
 knowledge_points:
   - id: lr-add-contributions
-    title: One prediction from weighted features plus a bias
+    title: "Make one prediction"
     explain: |
       **The question.** You know two things about a house, its area and its number of bedrooms, and you want one predicted sale price. What is the simplest rule that turns both measurements into one number, letting each push the price by its own amount?
 
@@ -163,7 +163,7 @@ knowledge_points:
       - lrp-units
       - lrp-robot-change
   - id: lr-batch-predictions
-    title: Predict every example with one matrix product
+    title: "Predict every example at once"
     explain: |
       **The question.** A dataset has hundreds of houses, and the model must price every one with the same weights and bias. How do you get all the predictions in one calculation instead of one dot product at a time?
 

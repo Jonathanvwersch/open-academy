@@ -10,7 +10,7 @@ where_this_fits: |
   3. Find the single best prediction under each loss.
 knowledge_points:
   - id: loss-measure-misses
-    title: Turning errors into one score
+    title: "Turn many errors into one score"
     explain: |
       **The question.** A model makes many predictions, each with an error: prediction minus true value. Some errors are positive, some negative. How do you turn all of them into one score that says how wrong the model is?
 
@@ -96,7 +96,7 @@ knowledge_points:
       - lossp-repeat
       - lossp-mae-backwards
   - id: loss-large-errors
-    title: Why squared error weighs a large miss more
+    title: "Why squaring punishes big misses"
     explain: |
       **The question.** In the last table, four sets of errors all had MAE $4$, but their MSE ranged from $16$ to $48$. Why does MSE care so much about one large miss? And if training nudges a prediction, how fast does each miss's loss change?
 
@@ -182,7 +182,7 @@ knowledge_points:
       - lossp-corner
       - lossp-sensor
   - id: loss-constant-choice
-    title: "The best single prediction: mean or median"
+    title: "Best single guess: mean or median"
     explain: |
       **The question.** The simplest model ignores its inputs and predicts the same number $c$ for every example; any real model has to beat it. Which $c$ gives the smallest loss? The answer depends on the loss.
 

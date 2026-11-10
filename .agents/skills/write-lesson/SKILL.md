@@ -21,6 +21,8 @@ A lesson teaches one concept as 2–4 **knowledge points** (KPs), one idea each.
 
 Use these parts, in this order. The bold labels are literal; each starts its own paragraph.
 
+**Step titles.** Each knowledge point's `title` is shown under the lesson name while you work through it. Write it in plain words a beginner understands _before_ reading the step, saying what the step does ("Take one step downhill", "Multiply a matrix by a vector"). At most ~6 words. No slogans, no wordplay, and no term that only the step itself explains ("Step against the gradient" fails).
+
 In `explain`:
 1. **The question.** 1–2 sentences posing the problem this idea solves, before any answer. _(Asking first prepares the learner to take in the explanation: Schwartz & Bransford 1998.)_
 2. **Picture it.** The simplest concrete case, with a diagram right beside the words (see §3). Walk through what the picture shows in plain words. _(Words plus a picture beat words alone, and simple diagrams beat detailed ones: Mayer 2008; Butcher 2006.)_
@@ -75,7 +77,7 @@ Every KP whose idea is spatial (directions, slopes, surfaces, arrows, splits, pr
 2. **Self-check** each KP against §1–§3: all seven parts in order, general definition, clean numbers, diagram present and correct, no boilerplate, ≤300 words.
 3. **Cold-reader review.** Give a separate agent, which hasn't seen your plan, only the rendered lesson text (YAML `explain`, `worked`, `summary` and the first two problems of each KP), the titles of the prerequisite lessons, and this prompt verbatim:
 
-   > You are a motivated learner who knows only the prerequisite lessons listed. Read this lesson once, in order, as if seeing it for the first time. List every place where you (a) met a word, symbol or step you couldn't follow, (b) couldn't picture what was meant, (c) didn't see why a step was taken, (d) didn't know what you were learning or why it mattered, (e) met an example or object the lesson never introduced, or (f) got bored or lost the thread. Quote the exact sentence for each. Then say, in two sentences, what you think the lesson's main idea is. Do not suggest rewrites and do not praise.
+   > You are a motivated learner who knows only the prerequisite lessons listed. Read this lesson once, in order, as if seeing it for the first time. List every place where you (a) met a word, symbol or step you couldn't follow, (b) couldn't picture what was meant, (c) didn't see why a step was taken, (d) didn't know what you were learning or why it mattered, (e) met an example or object the lesson never introduced, (f) found a step title a beginner couldn't parse before reading that step, or (g) got bored or lost the thread. Quote the exact sentence for each. Then say, in two sentences, what you think the lesson's main idea is. Do not suggest rewrites and do not praise.
 
    Fix every item it raises, or note in the PR why it isn't a problem. If its two-sentence main idea doesn't match the objective, the lesson isn't clear yet: revise and review again.
 4. Open the lesson in the running app (`pnpm dev`, Course → the lesson) and check each KP rendered: diagrams visible and readable, maths rendered, no part overflowing.

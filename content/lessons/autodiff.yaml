@@ -12,7 +12,7 @@ where_this_fits: |
   You'll connect the chain rule you know to the single call that requests those slopes.
 knowledge_points:
   - id: ad-recording
-    title: Record the calculation as it runs
+    title: "Record each step of a calculation"
     explain: |
       **The question.** You already know how to calculate derivatives through a graph. How can software build that graph when you have only written the forward calculation?
 
@@ -60,7 +60,7 @@ knowledge_points:
         ad-record-robot,
       ]
   - id: ad-reverse
-    title: Run the chain rule backward
+    title: "Work out slopes from the end backwards"
     explain: |
       **The question.** The forward record gives a final value, but training needs loss slopes. What happens when you ask PyTorch to follow the record backward?
 
@@ -124,7 +124,7 @@ knowledge_points:
         ad-reverse-robot,
       ]
   - id: ad-modes
-    title: Choose the direction that shares the work
+    title: "Forward or backward: which is faster"
     explain: |
       **The question.** The chain rule can be applied in either direction. Why does software usually go backward when training a model?
 

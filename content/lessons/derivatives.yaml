@@ -12,7 +12,7 @@ where_this_fits: |
 final: der-explain
 knowledge_points:
   - id: der-speed-at-instant
-    title: The derivative is the slope at one point
+    title: "The slope at a single point"
     explain: |
       **The question.** A car has driven $d(t)=t^2$ metres after $t$ seconds. You can measure how far it goes during any stretch of time, which gives its average speed. How fast is it going at exactly $t=3$, the number a speedometer would show?
 
@@ -155,7 +155,7 @@ knowledge_points:
       - derp-power-fraction
       - derp-flat-slope
   - id: der-exp-log
-    title: Exponentials and the natural logarithm
+    title: "Exponentials and logarithms"
     explain: |
       **The question.** The power rule needs a fixed power, as in $x^3$. In $2^x$ the input is the power itself. A **logarithm** goes the other way: it asks which power gives a number, so $\log_2 8=3$ because $2^3=8$. What are the slopes of these two kinds of function?
 
@@ -231,7 +231,7 @@ knowledge_points:
       - derp-exp-log-mix
       - derp-log-flat
   - id: der-product-quotient
-    title: Products and quotients
+    title: "Slopes of products and fractions"
     explain: |
       **The question.** How do you differentiate two changing functions multiplied together, like $x^2e^x$, or one divided by the other?
 

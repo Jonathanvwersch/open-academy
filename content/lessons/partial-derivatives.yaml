@@ -11,7 +11,7 @@ where_this_fits: |
 
 knowledge_points:
   - id: pd-hold-fixed
-    title: Move one input, hold the rest fixed
+    title: "Change one input at a time"
     explain: |
       **The question.** Take a function with two inputs, $f(x,y)$. Think of $f$ as the height of the ground above each point $(x,y)$ on a map. Standing at one point, the ground may rise steeply one way and gently another. Which slope do you measure, and how?
 
@@ -104,7 +104,7 @@ knowledge_points:
         pdp-flat-weight,
       ]
   - id: pd-compute
-    title: Treat the frozen inputs as constants
+    title: "Work out a partial derivative"
     explain: |
       **The question.** In $x^2+2y^2$ each input sat in its own term, so freezing one was easy. In $f(x,y)=x^2y+5y$ the inputs are multiplied together in $x^2y$. Can you still get one formula for $\frac{\partial f}{\partial x}$ that gives the slope at any point?
 
@@ -180,7 +180,7 @@ knowledge_points:
         pdp-product,
       ]
   - id: pd-many-inputs
-    title: One partial per adjustable number; the data stay fixed
+    title: "Slopes for a model's weights"
     explain: |
       **The question.** A loss can depend on many numbers at once. For a house-price model, which of them get partial derivatives, and what do those partials look like?
 

@@ -665,6 +665,9 @@ function SessionPage() {
         position={activityPosition}
         total={activities.length}
         lessonHref={lessonHref}
+        subtitle={
+          activity.kind === 'learn' && lesson?.final === exerciseId ? 'Final question' : undefined
+        }
       />
       {exerciseQuery.data ? (
         <Card data-testid="session-exercise">

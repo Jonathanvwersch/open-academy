@@ -117,7 +117,7 @@ knowledge_points:
       - cgp-shared-input
       - cgp-robot-forward
   - id: cg-local-derivatives
-    title: Each operation has its own small derivative
+    title: "The slope of each small operation"
     explain: |
       **The question.** To see how the output changes with an input, must you differentiate the whole formula at once? Or can you start with one operation at a time?
 
@@ -192,7 +192,7 @@ knowledge_points:
       - cgp-square-template
       - cgp-robot-subtract
   - id: cg-chaining-paths
-    title: Multiply along paths, add where they meet
+    title: "Combine the small slopes into one"
     explain: |
       **The question.** How do you combine local derivatives to find the output's derivative for an early input, especially one used twice?
 
