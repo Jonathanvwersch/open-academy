@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Eye, Plus, Sparkles, X } from 'lucide-react';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type { StickToBottomContext } from 'use-stick-to-bottom';
 import { useIsMobile } from '@/hooks/use-mobile.js';
 import { apiFetch } from '../authenticated-fetch.js';
 import { Markdown } from '../components.js';
@@ -14,6 +23,7 @@ import {
   Conversation,
   ConversationContent,
   ConversationEmptyState,
+  ConversationScrollButton,
 } from '../ui/ai/conversation.js';
 import { Loader } from '../ui/ai/loader.js';
 import { Message, MessageContent } from '../ui/ai/message.js';
@@ -62,6 +72,27 @@ interface TutorContextValue {
 const TutorContext = createContext<TutorContextValue | null>(null);
 const OPEN_KEY = 'academy.tutor.open';
 const THREAD_KEY = 'academy.tutor.thread';
+const WIDTH_KEY = 'academy.tutor.width';
+const DEFAULT_SIDEBAR_WIDTH = 448;
+const MIN_SIDEBAR_WIDTH = 320;
+const MAX_SIDEBAR_WIDTH = 768;
+
+function maxSidebarWidth(viewportWidth = window.innerWidth) {
+  return Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, viewportWidth - 480));
+}
+
+function clampSidebarWidth(width: number, viewportWidth = window.innerWidth) {
+  return Math.max(MIN_SIDEBAR_WIDTH, Math.min(maxSidebarWidth(viewportWidth), width));
+}
+
+function initialSidebarWidth() {
+  const storedWidth = localStorage.getItem(WIDTH_KEY);
+  if (storedWidth === null || !storedWidth.trim()) {
+    return clampSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+  }
+  const width = Number(storedWidth);
+  return clampSidebarWidth(Number.isFinite(width) ? width : DEFAULT_SIDEBAR_WIDTH);
+}
 
 interface TutorSendVariables {
   question: string;
@@ -176,6 +207,16 @@ export function TutorContextProvider({
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [pendingSend, setPendingSend] = useState<PendingTutorMessage | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(initialSidebarWidth);
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStart = useRef<{
+    pointerId: number;
+    startX: number;
+    startWidth: number;
+  } | null>(null);
+  const conversationContextRef = useRef<StickToBottomContext | null>(null);
+  const sidebarWidthMax = maxSidebarWidth(viewportWidth);
   const tutorFlag = useQuery({
     queryKey: ['tutor', 'enabled'],
     queryFn: () => getJson<{ tutorEnabled: boolean }>('/api/today'),
@@ -197,6 +238,22 @@ export function TutorContextProvider({
     if (selectedId) localStorage.setItem(THREAD_KEY, selectedId);
     else localStorage.removeItem(THREAD_KEY);
   }, [selectedId]);
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+      setSidebarWidth((width) => clampSidebarWidth(width));
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  useEffect(() => {
+    if (!isResizing) return;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.userSelect = 'none';
+    return () => {
+      document.body.style.userSelect = previousUserSelect;
+    };
+  }, [isResizing]);
   useEffect(() => {
     if (!focusComposerOnOpen || !open || view !== 'conversation' || !routeAllowed) return;
     const frame = window.requestAnimationFrame(() => {
@@ -413,13 +470,59 @@ export function TutorContextProvider({
       context,
       optimisticId,
     });
+    conversationContextRef.current?.scrollToBottom();
     if (context.selection) clearSelection();
+  };
+  const handleResizePointerDown = (event: React.PointerEvent<HTMLHRElement>) => {
+    if (event.button !== 0 || isMobile) return;
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    resizeStart.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startWidth: sidebarWidth,
+    };
+    setIsResizing(true);
+  };
+  const handleResizePointerMove = (event: React.PointerEvent<HTMLHRElement>) => {
+    const start = resizeStart.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+    setSidebarWidth(clampSidebarWidth(start.startWidth + start.startX - event.clientX));
+  };
+  const handleResizePointerUp = (event: React.PointerEvent<HTMLHRElement>) => {
+    const start = resizeStart.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+    const width = clampSidebarWidth(start.startWidth + start.startX - event.clientX);
+    setSidebarWidth(width);
+    localStorage.setItem(WIDTH_KEY, String(Math.round(width)));
+    resizeStart.current = null;
+    setIsResizing(false);
+  };
+  const handleResizePointerCancel = (event: React.PointerEvent<HTMLHRElement>) => {
+    const start = resizeStart.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+    setSidebarWidth(start.startWidth);
+    resizeStart.current = null;
+    setIsResizing(false);
+  };
+  const handleResizeKeyDown = (event: React.KeyboardEvent<HTMLHRElement>) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    const width = clampSidebarWidth(sidebarWidth + (event.key === 'ArrowLeft' ? 16 : -16));
+    setSidebarWidth(width);
+    localStorage.setItem(WIDTH_KEY, String(Math.round(width)));
+  };
+  const resetSidebarWidth = () => {
+    const width = clampSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
+    setSidebarWidth(width);
+    localStorage.setItem(WIDTH_KEY, String(Math.round(width)));
   };
   return (
     <SidebarProvider
       open={open && routeAllowed}
       onOpenChange={setOpen}
-      style={{ '--sidebar-width': '24rem' } as React.CSSProperties}
+      data-resizing={isResizing ? 'true' : undefined}
+      style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
     >
       <TutorContext.Provider value={value}>
         <SidebarInset className="min-w-0">{children}</SidebarInset>
@@ -427,10 +530,27 @@ export function TutorContextProvider({
           <Sidebar
             side="right"
             collapsible={shouldPushSidebar ? 'none' : 'offcanvas'}
-            className={shouldPushSidebar ? 'h-svh min-h-0' : undefined}
+            className={shouldPushSidebar ? 'relative h-svh min-h-0' : undefined}
             role="complementary"
             aria-label="Tutor"
           >
+            {!isMobile ? (
+              <hr
+                aria-orientation="vertical"
+                aria-label="Resize tutor"
+                aria-valuenow={Math.round(sidebarWidth)}
+                aria-valuemin={MIN_SIDEBAR_WIDTH}
+                aria-valuemax={sidebarWidthMax}
+                tabIndex={0}
+                onPointerDown={handleResizePointerDown}
+                onPointerMove={handleResizePointerMove}
+                onPointerUp={handleResizePointerUp}
+                onPointerCancel={handleResizePointerCancel}
+                onKeyDown={handleResizeKeyDown}
+                onDoubleClick={resetSidebarWidth}
+                className="tutor-resize-handle absolute inset-y-0 left-[-4px] z-20 m-0 h-full w-2 cursor-col-resize border-0 bg-transparent p-0 touch-none select-none"
+              />
+            ) : null}
             {enabled && context.allowed ? (
               view === 'list' ? (
                 <>
@@ -563,8 +683,11 @@ export function TutorContextProvider({
                     </div>
                   </SidebarHeader>
                   <SidebarContent className="min-h-0 flex-1 p-0">
-                    <Conversation aria-label="Tutor messages">
-                      <ConversationContent className="gap-4 p-4">
+                    <Conversation aria-label="Tutor messages" contextRef={conversationContextRef}>
+                      <ConversationContent
+                        className="gap-4 p-4"
+                        scrollClassName="tutor-message-scroll-area"
+                      >
                         {showGreeting && greeting ? (
                           <Message data-testid="tutor-greeting" from="assistant">
                             <p className="w-full text-left text-xs font-medium text-muted-foreground">
@@ -573,7 +696,7 @@ export function TutorContextProvider({
                             <MessageContent
                               style={{ '--katex-cover': 'var(--sidebar)' } as React.CSSProperties}
                             >
-                              <Markdown>{greeting.text}</Markdown>
+                              <Markdown wrapDisplayMath>{greeting.text}</Markdown>
                             </MessageContent>
                           </Message>
                         ) : null}
@@ -602,7 +725,7 @@ export function TutorContextProvider({
                                 } as React.CSSProperties
                               }
                             >
-                              <Markdown>{message.content}</Markdown>
+                              <Markdown wrapDisplayMath>{message.content}</Markdown>
                             </MessageContent>
                           </Message>
                         ))}
@@ -624,7 +747,7 @@ export function TutorContextProvider({
                                   { '--katex-cover': 'var(--secondary)' } as React.CSSProperties
                                 }
                               >
-                                <Markdown>{visiblePendingSend.content}</Markdown>
+                                <Markdown wrapDisplayMath>{visiblePendingSend.content}</Markdown>
                               </MessageContent>
                             </Message>
                             {mutation.isPending ? (
@@ -650,6 +773,7 @@ export function TutorContextProvider({
                           </>
                         ) : null}
                       </ConversationContent>
+                      <ConversationScrollButton aria-label="Scroll to latest message" />
                     </Conversation>
                   </SidebarContent>
                   <SidebarFooter className="border-t p-4">

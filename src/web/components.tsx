@@ -43,14 +43,60 @@ export interface AnswerOptions {
   correct?: string[];
 }
 
+type DisplayMathNode = {
+  type: string;
+  tagName?: string;
+  properties?: { className?: unknown };
+  children?: DisplayMathNode[];
+  value?: string;
+};
+
+function rehypeWrapTutorDisplayMath() {
+  return (tree: DisplayMathNode) => {
+    const visit = (node: DisplayMathNode) => {
+      const code = node.children?.[0];
+      const classNames = code?.properties?.className;
+      const codeClasses = Array.isArray(classNames)
+        ? classNames
+        : typeof classNames === 'string'
+          ? classNames.split(/\s+/)
+          : [];
+      if (
+        node.tagName === 'pre' &&
+        code?.tagName === 'code' &&
+        codeClasses.includes('language-math') &&
+        codeClasses.includes('math-display')
+      ) {
+        const tex = (code.children ?? []).map((child) => child.value ?? '').join('');
+        if (!tex.includes('\\begin{') && !tex.includes('\\\\')) {
+          node.tagName = 'div';
+          node.properties = { className: ['tutor-display-math'] };
+          node.children = [
+            {
+              type: 'element',
+              tagName: 'code',
+              properties: { className: ['language-math', 'math-inline'] },
+              children: [{ type: 'text', value: `\\displaystyle ${tex}` }],
+            },
+          ];
+        }
+      }
+      for (const child of node.children ?? []) visit(child);
+    };
+    visit(tree);
+  };
+}
+
 export function Markdown({
   children,
   inline = false,
   className,
+  wrapDisplayMath = false,
 }: {
   children: string;
   inline?: boolean;
   className?: string;
+  wrapDisplayMath?: boolean;
 }) {
   const markdownComponents: Components = {
     code({ className, children: codeChildren, ...props }) {
@@ -97,7 +143,11 @@ export function Markdown({
     <ReactMarkdown
       components={components}
       remarkPlugins={[remarkGfm, remarkMath]}
-      rehypePlugins={[rehypeKatex, rehypeHighlight]}
+      rehypePlugins={
+        wrapDisplayMath
+          ? [rehypeWrapTutorDisplayMath, rehypeKatex, rehypeHighlight]
+          : [rehypeKatex, rehypeHighlight]
+      }
     >
       {normalizeDisplayMath(children)}
     </ReactMarkdown>
