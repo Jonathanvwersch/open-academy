@@ -212,7 +212,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "In the compare-cases table, raising the area weight from 25 to 26 raises the prediction by 12, but raising the bedrooms weight from 10 to 12 raises it by only 6. Why?"
+    prompt: "In the table at the end of the second worked example, raising the area weight from 25 to 26 raises the prediction by 12, but raising the bedrooms weight from 10 to 12 raises it by only 6. Why?"
     options:
       - id: a
         text: "Each weight multiplies its own measurement: 1 more times area 12 is 12, and 2 more times 3 bedrooms is 6."
@@ -252,10 +252,10 @@ exercises:
         category: misunderstood_definition
         feedback: "A loss measures how wrong a prediction is."
       - id: c
-        text: "A gradient"
+        text: "A weighted sum"
         correct: false
         category: misunderstood_definition
-        feedback: "A gradient says which way to change the weights."
+        feedback: "A weighted sum is what the model computes from this list: each measurement times its weight, added up."
       - id: d
         text: "A weight"
         correct: false
@@ -376,9 +376,9 @@ exercises:
     prompt: "What stays the same when machine learning is applied to harder robot tasks?"
     options:
       - id: a
-        text: "The loop: a model with weights, a loss that scores its mistakes, and training to lower it."
+        text: "The cycle: a model with weights, a score for how well it did, and training that improves that score."
         correct: true
-        feedback: "The inputs and outputs change, but the model, loss and training loop carry over."
+        feedback: "The inputs and outputs change, and the score may be a loss or a reward, but the model, score and training cycle carry over."
       - id: b
         text: "The house measurements and sale prices, which are reused as inputs and targets for robots."
         correct: false
@@ -391,7 +391,7 @@ exercises:
         text: "A hand-written action rule, which a person keeps the same for every robot situation."
         correct: false
         feedback: "Learning uses examples and training rather than one fixed hand-written rule."
-    solution: "The learning loop stays the same: a model has weights, a loss measures its mistakes, and training changes the weights to lower the loss."
+    solution: "The learning cycle stays the same: a model has weights, a loss measures its mistakes, and training changes the weights to lower the loss."
   - id: ml-robot-self-explain
     dimension: conceptual
     type: mc
@@ -485,7 +485,7 @@ exercises:
     prompt: "Why does a course aimed at robotics start with house prices?"
     options:
       - id: a
-        text: "The house model uses the same loop as a robot policy, with numbers small enough to check by hand"
+        text: "The house model uses the same cycle as a robot policy, with numbers small enough to check by hand"
         correct: true
         feedback: "Model, loss and training carry over; only the inputs and outputs grow."
       - id: b
@@ -503,7 +503,7 @@ exercises:
         correct: false
         category: misunderstood_definition
         feedback: "They do: behavioral cloning measures how far the robot's movement is from the demonstrated one."
-    solution: "House prices make the model, loss and training loop small enough to check by hand, and the same loop trains a robot policy."
+    solution: "House prices make the model, loss and training cycle small enough to check by hand, and the same cycle trains a robot policy."
   - id: ml-robot-sorter
     dimension: transfer
     type: mc

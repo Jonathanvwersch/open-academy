@@ -1,20 +1,26 @@
 concept: what-is-ml
-version: 2
+version: 3
 objective: |
-  **Goal:** explain what machine learning is, name the pieces a computer needs to learn a rule from examples by itself, and see why the same pieces teach a robot.
+  **Goal:** explain what machine learning is and how it differs from writing a rule by hand, name the pieces a computer needs to learn a rule by itself (a model with weights, a loss and training), and see how Week 1 builds those pieces and how the same pieces later teach a robot.
 where_this_fits: |
-  You want a computer to do tasks that nobody can write exact instructions for: price a house from its details, or move a robot arm to pick up a cup. Ordinary programming needs a person to spell out the rule, and for these tasks no one knows it. Machine learning lets the computer find the rule from examples instead. This lesson shows how, in three steps:
+  ### What is machine learning?
 
-  1. What it means to learn a rule from examples.
-  2. The pieces a computer needs to learn a house-price rule by itself, which Week 1 builds one lesson at a time.
-  3. Why the same pieces teach a robot, and where each week of the course fits.
+  Machine learning is a way of getting a computer to do a task by learning a rule from examples, instead of having a person write the rule. We show it examples along with the answers they should give, and it adjusts its rule until its answers come as close to those as it can.
+
+  Why is that useful? Some tasks have a rule we can write down, like turning metres into centimetres. But nobody can write the exact rule that prices a house from its details, or that turns a camera image into the movement a robot arm should make. What we often do have is lots of examples, such as past house sales. Machine learning turns those examples into a rule.
 knowledge_points:
   - id: ml-what-it-is
-    title: Learning a rule from examples
+    title: "Learn a rule from examples"
     explain: |
-      **The question.** Converting metres to centimetres has an exact rule, multiply by 100, and you can type it straight into a computer. What a house will sell for has no rule anyone can write down. How can a computer still predict it?
+      ### Three sales and three possible rules
 
-      **Picture it.** Each dot below is a past sale: 50 m² sold for £150k, 80 m² for £240k and 100 m² for £300k. Each line is a candidate rule, price $=w\times$ area, where $w$ is the price per square metre in £ thousands ($w=3$ means £3,000 per m²). The line for $w=2$ runs below every sale and $w=4$ runs above, but $w=3$ passes through all three. Picking the line that fits the examples is learning, in its simplest form.
+      Let's start with a simple house-price problem. Here are three past sales: a 50 m² (square metre) house sold for £150k (£150,000), an 80 m² house for £240k and a 100 m² house for £300k. In the picture, each sale is a dot, with area along the bottom and price up the side.
+
+      Each line is a possible rule of the form
+
+      $$\text{price}=w\times\text{area},$$
+
+      where $w$ is the price per square metre in thousands of pounds, so $w=3$ means £3,000 per m². The grey line for $w=2$ runs below every sale and the grey line for $w=4$ runs above them, but the green line for $w=3$ passes through all three. Choosing the line that fits the examples is learning in its simplest form.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" aria-label="Three past house sales plotted as area against price, with three candidate lines price equals w times area: w equals 2 lies below every sale, w equals 4 above, and w equals 3 passes through all three">
@@ -50,39 +56,42 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** The computer chooses the rule to fit examples, instead of a person writing it. **Machine learning** means getting a computer to do a task by fitting a rule to examples, rather than having a person write the rule. The learned rule is called a **model**. A model contains adjustable numbers called **weights** (here, $w$), and learning means choosing their values. When every example comes with its correct answer, the answer is called the **target**, and learning from such examples is **supervised learning**. Here each house's sale price is its target.
+      ### Models, weights and targets
 
-      **Common confusion.** “So the computer just memorises the examples.” No. A list of past sales could only answer for those three houses. The rule price $=3\times$ area also prices a 70 m² house it has never seen, at £210k. The examples are there to choose the rule; the rule is what gets used.
-    worked: |
-      Learn the weight $w$ in price $=w\times$ area from the three sales (area in m², price in £ thousands). Learning repeats one cycle: predict, compare with the target, adjust.
+      In machine learning, the rule the computer learns from the examples is called a **model**. A model contains adjustable numbers called **weights**, like $w$ here, and learning means choosing their values. When each example comes with its correct answer, that answer is called the **target**, and learning from such examples is called **supervised learning**. Here each house's sale price is its target.
 
-      1. **Guess a weight and predict.** With $w=2$, the 50 m² house is predicted at
-         $$2\times50=100.$$
+      Be careful not to think that the computer just memorises the examples. A list of past sales could only answer for those three houses, but the rule price $=3\times$ area also prices a 70 m² house it has never seen, at £210k. The examples choose the rule, and the rule is what we use.
 
-      2. **Compare with the target.** It sold for 150, so the prediction is too low by
-         $$150-100=50.$$
+      ### When no line fits exactly
 
-      3. **Adjust the weight.** A larger $w$ gives a larger prediction, so raise it to $w=3$:
-         $$3\times50=150.$$
+      Real sales rarely sit exactly on one line. Suppose a fourth house, of 60 m², sold for £190k. Here are each line's misses, the prediction minus the sale price:
 
-      4. **Check the other examples.**
-         $$3\times80=240$$
-         $$3\times100=300$$
-         Both match their sale prices, so $w=3$ is the learned weight.
-
-      Here you chose the new value by eye. Week 1 shows how the computer works out both the direction and the size of each change.
-
-      **Compare cases.** Real sales never fit one line exactly. Add a fourth sale, 60 m² for 190, and list each prediction's miss (prediction minus price):
-
-      | Weight $w$ | Misses on 50, 80, 100, 60 m² |
+      | Weight $w$ | Misses on 50, 80, 100 and 60 m² |
       | --- | --- |
       | $2$ | −50, −80, −100, −70 |
       | $3$ | 0, 0, 0, −10 |
       | $4$ | +50, +80, +100, +50 |
 
-      No weight makes every miss 0, but $w=3$ makes them smallest, so it is still the one learning picks.
+      None of the three weights makes every miss 0, but $w=3$ keeps them closest to 0, so it's still the one we'd pick. Real models have thousands of weights, though, so the computer needs a way to choose them without a person checking a picture by eye.
+    worked: |
+      Let's learn the weight $w$ in price $=w\times$ area from the first three sales, which a line fits exactly, so we can check the answer. Area is in m² and price in thousands of pounds. Learning repeats one cycle: predict, compare with the target, and adjust.
 
-      **Where it shows up.** Real models have thousands or millions of weights, so guessing by hand is hopeless; Week 1 teaches how the computer works out which way to move each weight. A robot's model learns its weights from examples in the same way.
+      1. **Guess a weight and predict.** We have to start somewhere, so we try $w=2$ on the 50 m² house.
+         $$2\times50=100$$
+
+      2. **Compare with the target.** The house sold for 150, so we subtract that from the prediction to get the miss.
+         $$100-150=-50$$
+
+      3. **Adjust the weight.** The miss is negative, so the prediction is too low, and a larger $w$ gives a larger prediction, so we raise $w$ to the next whole number, 3.
+         $$3\times50=150$$
+
+      4. **Check the second sale.** One house isn't enough, so we try the new weight on the 80 m² house, which sold for 240.
+         $$3\times80=240$$
+
+      5. **Check the third sale.** The 100 m² house sold for 300.
+         $$3\times100=300$$
+
+      All three predictions now match their sale prices, so $w=3$ is the learned weight. Here we chose each new value by eye, and the rest of Week 1 shows how a computer works out both which way to change a weight and by how much.
     problems:
       - ml-what-it-is-basics
       - ml-fit-self-explain
@@ -92,14 +101,30 @@ knowledge_points:
       - ml-adjust-direction
       - ml-fit-weight
   - id: ml-house-model
-    title: "What a model needs to learn"
+    title: "What a computer needs to learn"
     explain: |
-      **The question.** One weight and three sales can be fitted by trying values. A real house-price model uses several measurements, each with its own weight, and thousands of sales. What does a computer need to find all those weights by itself?
+      ### A house as a list of numbers
 
-      **Picture it.** The diagram shows seven pieces, in the order the model uses them. In blue, a house becomes a list of numbers (a **vector**), each number is multiplied by its weight and the results added to give a price, and a **matrix** (a table of numbers) does that for a whole table of houses in one calculation. In amber, the computer scores how wrong the prices are, works out which way to move each weight, and moves them a little, over and over. In green, it checks the result on houses it never trained on. Each box gets its own lesson.
+      So far we fitted one weight by trying values, but a real model has several measurements, each with its own weight, and thousands of sales. So what does a computer need to find all those weights by itself?
+
+      First, it needs each house written as numbers. Take a house with an area of 120 m², 3 bedrooms and an age of 20 years. We count the area in tens of square metres, so that it's a small number like the other two, and the house becomes the list $(12,3,20)$. A list of numbers like this is called a **vector**.
+
+      ### Weights turn the list into a price
+
+      Next, the model gives each measurement its own weight and adds up each measurement times its weight. This is called a **weighted sum**. We call the measurements $x_1,x_2,x_3$ and their weights $w_1,w_2,w_3$, where the small number says which measurement it is and $w_1x_1$ means $w_1$ times $x_1$. Then
+
+      $$\text{prediction}=w_1x_1+w_2x_2+w_3x_3.$$
+
+      With weights $(25,10,-1)$, each ten square metres adds £25k, each bedroom adds £10k and each year of age takes off £1k, so this house is predicted at £310k. It actually sold for £330k.
+
+      ### Scoring the weights and improving them
+
+      Then it needs a score. A **loss** is one number that grows as the predictions move further from the targets, and is 0 only when every prediction is exact. One simple loss adds up the sizes of all the misses, ignoring their signs. **Training** means changing the weights again and again so that the loss on the examples gets smaller.
+
+      For that, it must know which way to move each weight. A **derivative** measures how much one number changes when you nudge another, so it shows how the loss responds to each weight. **Gradient descent** uses it to nudge every weight so the loss falls, over and over. A **matrix**, a grid of numbers with one row per house, lets it make every prediction at once, and finally we test the trained model on houses it never saw.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 470" aria-label="The seven steps of the house-price model, each taught by a Week 1 lesson">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 470" aria-label="The seven steps of the house-price model, each taught by a Week 1 lesson, from numbers and the weighted sum through matrices, loss, derivatives and gradient descent to test houses">
         <defs>
           <marker id="ml2-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
         </defs>
@@ -143,37 +168,32 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Learning needs three things: a model that predicts, a score for its mistakes, and a method that changes the weights to improve that score. A **loss** is one number that grows as the predictions move further from the targets, whether too high or too low; 0 means every prediction is exact. **Training** means changing the weights again and again so that the loss on a set of examples gets smaller. Together, the blue pieces make **linear regression**, the course's first model.
-
-      **Common confusion.** “The maths lessons are a detour before the real machine learning starts.” No: they are the machine learning. Without a weighted sum there is no prediction. A **derivative** measures how much one number changes when you nudge another; it is how the computer tells which way to move each of many weights. If a Week 1 lesson ever seems to come from nowhere, find its box in the diagram.
+      Each box in the diagram is one of these pieces and one Week 1 lesson, which is why the maths lessons aren't a detour before the machine learning but are how it works.
     worked: |
-      Follow one house through pieces 1 and 2 and score the result. It has 120 m², 3 bedrooms and is 20 years old, and it sold for £330k. The weights are given for now (training would find them): £25k per 10 m² of area, £10k per bedroom and −£1k per year of age.
+      Let's follow the 120 m² house through the model and score the result. Its weights are £25k per ten square metres, £10k per bedroom and −£1k per year of age, which we write as $(25,10,-1)$, and it sold for £330k. We've simply picked these weights for now, because finding good ones is the job of training.
 
-      1. **Record the house as numbers.** Area is counted in tens of square metres to keep the numbers small, so the list is
-         $$(12,\ 3,\ 20).$$
+      1. **Record the house as numbers.** We count area in tens of square metres, so the house is the vector
+         $$(12,\ 3,\ 20)$$
 
-      2. **Multiply each measurement by its weight.** The age weight is negative, so each year of age takes £1k off.
-         $$25\times12=300$$
-         $$10\times3=30$$
-         $$-1\times20=-20$$
+      2. **Multiply each measurement by its weight.** Each product is in thousands of pounds, and the age weight is negative, so age takes money off.
+         $$25\times12=300,\quad 10\times3=30,\quad -1\times20=-20$$
 
-      3. **Add to get the prediction.**
+      3. **Add the products to get the prediction.**
          $$300+30-20=310$$
 
-      4. **Compare with the target.**
+      4. **Compare with the target.** We subtract the sale price from the prediction.
          $$310-330=-20$$
-         The miss is −20: the prediction is £20k too low. A loss grows with the size of misses like this, ignoring the sign, and training pushes it towards 0.
 
-      **Compare cases.** Changing one weight at a time moves the prediction by different amounts:
+      The miss is −20, so the prediction is £20k too low. A loss grows with the size of misses like this, whatever their sign, and training changes the weights to push it towards 0. Here's what happens to the miss when we change one weight at a time, with the weights listed as (area, bedrooms, age):
 
-      | Weights (area, bedrooms, age) | Prediction | Prediction − price |
+      | Weights | Prediction | Miss |
       | --- | --- | --- |
       | $(25,\ 10,\ -1)$ | 310 | −20 |
       | $(26,\ 10,\ -1)$ | 322 | −8 |
       | $(27,\ 10,\ -1)$ | 334 | +4 |
       | $(25,\ 12,\ -1)$ | 316 | −14 |
 
-      **Where it shows up.** Choosing the best change for every weight across thousands of houses at once is the job of derivatives and gradient descent. A robot's model goes through the same pieces, with a camera image in place of the house's measurements.
+      Raising the area weight by 1 moves the prediction by 12, because area is recorded as 12, and a derivative measures this kind of response for the loss.
     problems:
       - ml-house-model-basics
       - ml-weight-self-explain
@@ -183,11 +203,13 @@ knowledge_points:
       - ml-why-derivatives
       - ml-why-new-houses
   - id: ml-to-robots
-    title: "Machine learning in robotics"
+    title: "Teach a robot the same way"
     explain: |
-      **The question.** This course ends with robots that learn tasks such as picking up a cup. A robot sees camera images and moves its joints; it never prices a house. So why spend Week 1 on house prices?
+      ### From house prices to a robot arm
 
-      **Picture it.** A camera image is numbers too: one brightness value per tiny dot (pixel). The diagram lines up each part of the house problem with the matching part of a robot learning to pick up a cup from recordings of a person steering the arm (say, with a joystick). Every row has a match. The inputs and outputs change, but there is still a model with weights, a target to aim for, and a loss that measures the gap.
+      This course ends with robots that learn tasks such as picking up a cup by looking through a camera. So why start with house prices?
+
+      Because a robot's problem has the same pieces. A camera image is numbers too, one brightness for each tiny dot, or pixel. The diagram compares house prices with a robot learning to pick up a cup from recordings of a person steering it. The inputs and outputs change, but there's still a model with weights, a loss and a target, which is the movement the person made.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="The house-price problem and a robot learning to pick up a cup, side by side: each has an input, a model with weights, an output, a target and a loss">
@@ -223,44 +245,44 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** A robot is trained with the same loop: predict, measure the loss, change the weights. A model that controls a robot is called a **policy**: its input is what the robot senses and its output is what the robot does next. The course uses three ways to tell a model how well it did:
-      - **Supervised learning:** examples with known answers (Weeks 1–4).
-      - **Imitation learning:** the supervised loop applied to a person's recorded demonstrations, which serve as the answers (Week 7).
-      - **Reinforcement learning:** no answers, only a score called a **reward** for how well an attempt went, so the robot learns by trial and error (Week 8).
+      A model that controls a robot is called a **policy**. Its input is what the robot senses, and its output is what the robot does next. We train it with the same cycle as the house model: predict, measure the loss, change the weights.
 
-      **Common confusion.** “Robots need a completely different kind of learning from house prices.” Only half right. The inputs are richer and the model is bigger, but the loop is the same. That is why you learn the loop first, on numbers small enough to check by hand.
-    worked: |
-      A person uses a joystick to steer a robot arm to pick up a cup 200 times, and every moment is recorded. Take one moment and look only at the elbow joint.
+      ### Three ways to learn
 
-      1. **Name the inputs.** The camera image and the arm's joint angles at that moment.
+      What changes across the course is what tells the model how well it did. There are three ways:
 
-      2. **Name the target.** What the person did then: turned the elbow by 10°.
+      - **Supervised learning** uses examples with known answers, as with house prices.
+      - **Imitation learning** treats a person's recorded demonstrations as the answers, and then uses the supervised cycle.
+      - **Reinforcement learning** has no answers at all, only a score called a **reward** for how well each attempt went. The robot learns by trial and error to make the reward as large as possible.
 
-      3. **Predict.** The policy, a neural network with weights (Week 2), outputs an elbow turn of 6°.
+      Be careful not to think robots need a completely different kind of learning. Their models still predict, get scored and change their weights, so we learn that cycle first on house prices, where we can check it by hand.
 
-      4. **Measure the miss.**
-         $$6-10=-4$$
-         The policy turns the elbow 4° too little. Training aims to bring misses like this to 0.
-
-      5. **Train.** Gradient descent (Week 1) changes the network's weights to shrink misses like this one across all the recorded moments; how it picks each change is what Weeks 1 and 2 teach.
-
-      Copying demonstrations with this supervised loop is called **behavioral cloning**, and Week 7 teaches it.
-
-      **Compare cases.** Each week changes what goes in or what the model learns from:
+      ### Where each week fits
 
       | Weeks | What's new | Learns from |
       | --- | --- | --- |
-      | 1 | the loop, on house prices | known sale prices |
-      | 2 | neural networks: many weighted sums | known answers |
-      | 3 | better training; images as inputs | known answers |
-      | 4 | transformers, the design behind ChatGPT | next word in text |
-      | 5–6 | robot basics: space, sensing, control | no learning |
+      | 1 | the cycle, on house prices | known sale prices |
+      | 2–3 | neural networks, models built from many weighted sums | known answers |
+      | 4 | transformers, the models behind chatbots like ChatGPT | the next word in a text |
+      | 5–6 | how robots move and sense | no learning |
       | 7 | imitation learning | demonstrations |
       | 8 | reinforcement learning | rewards |
-      | 9–10 | images + instructions → actions | demonstrations |
-      | 11–12 | robot-learning and final projects | everything above |
+      | 9–12 | vision, language and projects | all of these |
+    worked: |
+      Let's go through one moment of the cup task. A person used a joystick to steer a robot arm to pick up a cup 200 times, and every moment was recorded. We'll take one moment and look only at the elbow joint.
 
-      **Where it shows up.** Week 7 trains robot policies this way from recorded demonstrations, using the learning loop from Weeks 1–4 and the robot basics from Weeks 5–6.
+      1. **Name the inputs.** The policy decides from what the robot senses at that moment, which is the camera image and the angles of its joints.
+
+      2. **Name the target.** The answer to copy is what the person did at that moment, which was to turn the elbow by 10° (degrees).
+
+      3. **Predict.** The policy is a neural network, a bigger model built from many weighted sums, which Week 2 teaches. It outputs an elbow turn of 6°.
+
+      4. **Measure the miss.** As with house prices, we subtract the target from the prediction.
+         $$6-10=-4$$
+
+      5. **Train.** The policy's output was 4° too little. Training changes the network's weights to shrink misses like this one across all the recorded moments.
+
+      Copying demonstrations with this supervised cycle is called **behavioral cloning**, and Week 7 teaches it.
     problems:
       - ml-to-robots-basics
       - ml-robot-self-explain
@@ -270,8 +292,8 @@ knowledge_points:
       - ml-robot-sorter
 final: ml-explain
 summary: |
-  - Machine learning means a computer fits a rule, called a model, to examples instead of a person writing the rule; learning means choosing the model's weights.
-  - To learn its weights by itself, a model needs a prediction rule, a loss that scores its mistakes, and training that changes the weights to lower the loss.
-  - A robot's policy is trained with the same loop; only the inputs, the outputs and what it learns from change.
+  - Machine learning means a computer fits a rule, called a model, to examples instead of a person writing the rule, and learning means choosing the model's weights.
+  - The house model predicts with a weighted sum, $w_1x_1+w_2x_2+w_3x_3$, a loss scores how far its predictions are from the targets, and training changes the weights again and again to make the loss smaller.
+  - Week 1 builds these pieces one lesson at a time, and the same cycle of predict, score and change the weights later trains a robot's policy. Only the inputs, the outputs and the score change, and the score can be a loss to shrink or a reward to grow.
 
-  **Next:** Supervised learning names the parts of a learning problem precisely (inputs, target, model, loss and data), so the maths lessons have something to attach to.
+  **Next:** The supervised learning lesson looks carefully at each part of a learning problem (inputs, target, model and loss), and each later Week 1 lesson then builds one of those parts.
