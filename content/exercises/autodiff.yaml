@@ -6,7 +6,7 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 2
-    prompt: What does PyTorch record while a tracked forward calculation runs?
+    prompt: While a forward calculation that depends on a tracked weight runs, what does PyTorch record?
     options:
       - id: a
         text: The operations, their connections and values needed for derivatives.
@@ -24,9 +24,8 @@ exercises:
         text: Only the final loss value, without any intermediate connections.
         correct: false
         feedback: A final number alone does not show how earlier inputs affected it.
-    solution:
-      The record preserves how the result was calculated, so local derivative rules can later be
-      combined.
+    solution: The record keeps how the result was calculated, so each operation's local slope can be
+      multiplied in later on the way back.
   - id: ad-record-why-save
     dimension: conceptual
     type: mc
@@ -170,10 +169,10 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 2
-    prompt: What does `loss.backward()` do for a recorded one-number loss?
+    prompt: What does `loss.backward()` do when `loss` is a recorded tensor holding one number?
     options:
       - id: a
-        text: It applies the chain rule backward and adds gradients to leaf `.grad`.
+        text: It works back through the record and adds each leaf's slope to its `.grad`.
         correct: true
         feedback: The backward pass calculates loss slopes and accumulates the requested leaf gradients.
       - id: b
@@ -188,8 +187,8 @@ exercises:
         text: It runs the forward model again and stores predictions in `.grad`.
         correct: false
         feedback: Gradients are derivatives, not predictions.
-    solution: The backward pass combines local derivatives in reverse order. It accumulates leaf
-      gradients without changing the weights.
+    solution: The backward pass multiplies local slopes in reverse order and adds each leaf's slope
+      to its `.grad`, without changing the weights.
   - id: ad-reverse-why-multiply
     dimension: conceptual
     type: mc
@@ -319,7 +318,7 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 2
-    prompt: Which pass count finds every input-output derivative, including reverse mode’s recording pass?
+    prompt: To find the slope of every output with respect to every input, how many passes does each mode need?
     options:
       - id: a
         text: "Forward: one per input; reverse: one recording pass plus one per output."
