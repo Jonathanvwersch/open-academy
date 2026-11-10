@@ -481,7 +481,11 @@ test('authored course-structure lessons render their diagrams', async ({ page })
       'Chain rule',
       'Multiply the rates along a chain',
       'cr-rates-multiply',
-      ['The question.', 'Picture it.', 'The idea.', 'Common confusion.'],
+      [
+        'A nudge passing through two steps',
+        'The chain rule',
+        'How the second rate changes the answer',
+      ],
     ],
     [
       'gradient-descent',
