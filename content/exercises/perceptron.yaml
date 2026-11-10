@@ -6,14 +6,14 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "In the worked example, why is the output 1 rather than 4?"
+    prompt: "In the worked example, why is the output 1 rather than 3?"
     options:
       - { id: a, text: "The positive score becomes 1 through the step.", correct: true }
       - {
           id: b,
           text: "The bias is ignored after weighting the inputs.",
           correct: false,
-          feedback: "The bias was included to get score 4; the step changes that score into a decision.",
+          feedback: "The bias was included to get the score 3; the step changes that score into a decision.",
         }
       - {
           id: c,
@@ -27,7 +27,7 @@ exercises:
           correct: false,
           feedback: "The output depends on the score's sign, not one chosen weight.",
         }
-    solution: "The weighted sum plus bias is 4. Since 4 is positive, the step gives decision 1 rather than returning the score."
+    solution: "The weighted sum plus the bias is 3. Since 3 is positive, the step gives the decision 1 rather than returning the score."
   - id: percp-boundary-reason
     dimension: conceptual
     type: mc
@@ -41,7 +41,7 @@ exercises:
           id: b,
           text: "Its zero inputs place it on every boundary.",
           correct: false,
-          feedback: "The origin scores -4 here, so it is not on the boundary.",
+          feedback: "The origin scores -1 here, so it is not on the boundary.",
         }
       - {
           id: c,
@@ -53,9 +53,9 @@ exercises:
           id: d,
           text: "Its inputs determine a new pair of weights.",
           correct: false,
-          feedback: "The weights remain (1,2); testing an input does not change them.",
+          feedback: "The weights stay (2, -1); testing an input does not change them.",
         }
-    solution: "The line locates the zero scores but does not by itself label the sides. The origin scores -4, so the side containing it gives output 0."
+    solution: "The line locates the zero scores but does not by itself label the sides. The origin scores -1, so the side containing it gives output 0."
   - id: percp-xor-reason
     dimension: conceptual
     type: mc
@@ -106,9 +106,9 @@ exercises:
         }
       - {
           id: c,
-          text: "It chooses the closest recorded input and copies its known answer.",
+          text: "It copies the answer it gave to the most similar earlier input.",
           correct: false,
-          feedback: "A perceptron uses its weights and bias, not an answer copied from a nearby input.",
+          feedback: "A perceptron uses its weights and bias, not an answer copied from a similar input.",
         }
       - {
           id: d,
