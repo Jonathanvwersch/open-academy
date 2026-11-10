@@ -22,7 +22,7 @@ exercises:
         }
       - {
           id: c,
-          text: "It finds weights by testing every possible parameter setting and keeping the one with the smallest loss.",
+          text: "It finds weights by testing every possible parameter setting and keeping the one whose predictions are closest to the targets.",
           correct: false,
           feedback: "That describes one way of choosing weights, not what the model does. The model is the prediction rule: weighted features added up, plus a bias.",
         }
@@ -43,25 +43,25 @@ exercises:
     options:
       - {
           id: a,
-          text: "The feature's share of all training examples in the dataset.",
+          text: "How often that feature appears across the training examples in the dataset.",
           correct: false,
-          feedback: "That is a data frequency, not a model weight.",
+          feedback: "That would be a count about the data. A weight is a number in the model that multiplies its feature.",
         }
       - {
           id: b,
-          text: "The prediction shift when every feature value is zero.",
+          text: "The prediction the model makes when every feature is set to zero.",
           correct: false,
-          feedback: "That shift is the bias, not a weight; a weight measures one feature's per-unit effect.",
+          feedback: "That is the bias. A weight says how much one feature moves the prediction per unit.",
         }
       - {
           id: c,
-          text: "The change in every feature when the predicted price rises.",
+          text: "How much every feature changes when the predicted price goes up.",
           correct: false,
-          feedback: "A weight describes a model effect, not feature movement.",
+          feedback: "It works the other way round: a weight says how the prediction moves when its feature changes.",
         }
       - {
           id: d,
-          text: "A feature's per-unit effect on prediction, with other features fixed.",
+          text: "How much the prediction changes when its feature rises by one unit and the others stay fixed.",
           correct: true,
           feedback: "Changing one feature by a unit changes the prediction by its weight when others stay fixed.",
         }
@@ -82,7 +82,7 @@ exercises:
         }
       - {
           id: b,
-          text: "A vector of predictions computed for several house rows of $X$ in one matrix operation.",
+          text: "A vector of predictions, one for each row of $X$, computed in one matrix operation.",
           correct: true,
           feedback: "Each row contains one house's features, so multiplying by shared weights gives one prediction per row.",
         }
@@ -470,8 +470,8 @@ exercises:
         category: incorrect_reasoning
         feedback: Predictions can stay unchanged only if the weight compensates for the unit change.
     solution:
-      For a 100 m² house, the old contribution is 3 × 100 = 300 and the new one must be 300 × 1
-      = 300.
+      A 100 m² house now has area 1. Its area piece was 3 × 100 = 300, so to keep it at 300 the new
+      weight must be 300, because 300 × 1 = 300.
   - id: lrp-negative
     dimension: conceptual
     type: mc
@@ -767,3 +767,115 @@ exercises:
       do not show which feature matters more. For many houses, I store one house per row of X and
       use X @ w + b to get one price per row. Alternatively, I add a column containing 1 for every
       house and give that column weight 50. This already adds the bias, so I do not add it again.
+  - id: lrp-add-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does step 1 write the house as $x=(90,4)$, with area first, rather than $(4,90)$?
+    options:
+      - id: a
+        text: The dot product pairs entries by position, so area must sit where its weight $3$ sits.
+        correct: true
+        feedback: Matching the order makes area meet the weight $3$ and bedrooms meet the weight $10$.
+      - id: b
+        text: The larger number always goes first in a feature vector, so $90$ comes before $4$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The order is fixed by the weights, not by size. If bedrooms came first, the weights would have to be $(10,3)$.
+      - id: c
+        text: The order doesn't matter, because a dot product gives the same total either way round.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Swapping only the features gives $3\times4+10\times90+50=962$, not $360$, because each feature meets the wrong weight.
+      - id: d
+        text: The bias is added to the first feature, so area has to come first to receive it.
+        correct: false
+        category: misunderstood_definition
+        feedback: The bias is added once to the whole total, not to any one feature.
+    solution: The dot product multiplies the first entries together and the second entries together. With $w=(3,10)$, area must be first so that it is multiplied by $3$ and the bedrooms by $10$, giving $270+40=310$ before the bias.
+  - id: lrp-weights-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In step 2 of the worked example, why do the area piece and the bias disappear when we subtract $370$ from $380$?
+    options:
+      - id: a
+        text: The area stayed at $100$ m², so both predictions contain the same $300$ and the same $50$.
+        correct: true
+        feedback: Anything that is the same in both predictions cancels, leaving only the bedroom piece.
+      - id: b
+        text: The bias only applies to the first prediction, so it isn't part of the second one.
+        correct: false
+        category: misunderstood_definition
+        feedback: The bias is added to every prediction, including both of these; it cancels because it is in both.
+      - id: c
+        text: Area has a smaller weight than bedrooms, so its piece is too small to count.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The area piece is $300$, far from small. It cancels because it is the same in both predictions.
+      - id: d
+        text: Subtracting predictions always removes every piece except the one with the biggest weight.
+        correct: false
+        category: incorrect_reasoning
+        feedback: In step 4, both area and bedrooms change, and both pieces stay in the difference.
+    solution: Both predictions are $3\times100+10\times\text{bedrooms}+50$, so $300$ and $50$ appear in each and cancel. What's left is $10\times(3-2)=10$, the bedroom weight.
+  - id: lrp-straight-line
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An estate agent notices that in her town the first $50$ m² of a house add much more to its price than the area beyond $150$ m². Why can't the house-price model $3\cdot\text{area}+10\cdot\text{bedrooms}+50$ capture this?
+    options:
+      - id: a
+        text: Each square metre adds the same $3$ thousand pounds, so price rises in a straight line with area.
+        correct: true
+        feedback: A linear model gives every unit of a feature the same weight, wherever it is.
+      - id: b
+        text: The bias of $50$ is too small, and a larger bias would make big houses rise more slowly.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The bias shifts every prediction by the same amount; it doesn't change how fast the price rises with area.
+      - id: c
+        text: The model has too few bedrooms in it, and adding a bedroom weight would fix the curve.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The model already has a bedroom weight. The problem is that the area piece is always $3$ per m².
+      - id: d
+        text: The model can capture it, because large houses have more bedrooms, which slows the rise.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Extra bedrooms add to the price; they can't make each extra square metre worth less.
+    solution: The area piece is always $3\times\text{area}$, so going from $50$ to $51$ m² adds $3$, and so does going from $150$ to $151$ m². A pattern where early square metres are worth more needs a model whose predictions can bend.
+  - id: lrp-batch-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In step 3 of the worked example, why do we add $50$ to each of the three entries of $Xw$, rather than adding $50$ once?
+    options:
+      - id: a
+        text: Each entry is a different house's prediction, and every prediction includes its own bias.
+        correct: true
+        feedback: The model is $w\cdot x+b$ for every house, so each of the three prices gets $+50$.
+      - id: b
+        text: The bias is split equally between the houses, so each one gets a share of $50$.
+        correct: false
+        category: misunderstood_definition
+        feedback: Nothing is shared out. Each house gets the whole bias, so each price rises by $50$.
+      - id: c
+        text: Adding $50$ three times corrects for there being three houses in the matrix.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The bias isn't a correction for the number of houses; it is part of each house's own prediction.
+      - id: d
+        text: The bias belongs to the features, so it is added once per column of $X$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The bias is added once per row, one house at a time, not once per feature column.
+    solution: Row 1 on its own is $3\times100+10\times2+50=370$. Doing all three rows together must give the same prices as doing them one by one, so every entry of $Xw$ gets $+50$.
