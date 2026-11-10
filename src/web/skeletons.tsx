@@ -24,10 +24,12 @@ function LessonBlockSkeleton({
   titleWidth,
   widths,
   muted = false,
+  beforeThis = false,
 }: {
   titleWidth: string;
   widths: string[];
   muted?: boolean;
+  beforeThis?: boolean;
 }) {
   return (
     <Card className={muted ? 'gap-2 bg-muted/50' : 'gap-2'}>
@@ -35,6 +37,7 @@ function LessonBlockSkeleton({
         <Skeleton className={`h-4 ${titleWidth}`} />
       </CardHeader>
       <CardContent className="space-y-2">
+        {beforeThis ? <Skeleton className="h-4 w-40" /> : null}
         <SkeletonRows count={widths.length} widths={widths} />
       </CardContent>
     </Card>
@@ -217,7 +220,11 @@ export function LessonSkeletonBody() {
           ))}
         </div>
         <div className="space-y-4">
-          <LessonBlockSkeleton titleWidth="w-36" widths={['w-full', 'w-11/12', 'w-4/5']} />
+          <LessonBlockSkeleton
+            titleWidth="w-36"
+            widths={['w-full', 'w-11/12', 'w-4/5']}
+            beforeThis
+          />
           <div className="space-y-3">
             <SkeletonRows count={3} widths={['w-full', 'w-11/12', 'w-4/5']} />
             <Skeleton className="mx-auto h-5 w-2/3" />
@@ -237,7 +244,11 @@ export function LessonReviewSkeleton() {
         <Skeleton className="h-9 w-56" />
         <div className="space-y-5">
           <LessonBlockSkeleton titleWidth="w-10" widths={['w-full']} />
-          <LessonBlockSkeleton titleWidth="w-36" widths={['w-full', 'w-11/12', 'w-4/5']} />
+          <LessonBlockSkeleton
+            titleWidth="w-36"
+            widths={['w-full', 'w-11/12', 'w-4/5']}
+            beforeThis
+          />
           <article className="space-y-4">
             <Skeleton className="h-6 w-3/4" />
             <SkeletonRows count={4} widths={['w-full', 'w-11/12', 'w-5/6', 'w-2/3']} />

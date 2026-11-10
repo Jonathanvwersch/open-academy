@@ -1,6 +1,7 @@
 import { and, eq, like } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
+import { getLessonPrerequisites } from '../content/index.js';
 import { serializeExercise } from '../content/serialize.js';
 import { formatTemplateNumber, instantiateExercise, isTemplate } from '../content/templates.js';
 import type { ContentIndex, IndexedExercise, IndexedLesson } from '../content/types.js';
@@ -129,6 +130,7 @@ export function registerLessonRunRoutes(
       id: run.id,
       status: derived.status,
       where_this_fits: lesson.where_this_fits,
+      prerequisites: getLessonPrerequisites(index, lesson.concept),
       points: derived.points.map((point) => ({
         ...point,
         xpEarned: point.status === 'passed' ? xpForPassedPoint(point.answered) : 0,

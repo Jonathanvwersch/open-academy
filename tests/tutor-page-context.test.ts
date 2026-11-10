@@ -9,6 +9,28 @@ test('page content truncation leaves the required suffix within the size bound',
   expect(content.length).toBeLessThanOrEqual(12_000 + '\n…[truncated]'.length);
 });
 
+test('lesson, session, and map tutor context include prerequisite recap facts', async () => {
+  const index = await loadContent('tests/fixtures/content');
+  const lesson = index.lessonsByConcept.get('derivatives');
+  const point = lesson?.knowledge_points?.[0];
+  if (!lesson || !point) throw new Error('Missing derivatives fixture');
+  lesson.recap = [{ concept: 'vectors', text: 'A vector carries magnitude and direction.' }];
+
+  const expectedRecap = '## Recap\n\nVectors: A vector carries magnitude and direction.';
+  const lessonContext = buildTutorPageContent({ page: 'lesson', index, conceptId: 'derivatives' });
+  const sessionContext = buildTutorPageContent({
+    page: 'session',
+    index,
+    conceptId: 'derivatives',
+    knowledgePointId: point.id,
+  });
+  const mapContext = buildTutorPageContent({ page: 'map', index, conceptId: 'derivatives' });
+
+  expect(lessonContext).toContain(expectedRecap);
+  expect(sessionContext).toContain(expectedRecap);
+  expect(mapContext).toContain(expectedRecap);
+});
+
 test('paper tutor context is ordered, omits empty notes, includes adjacent pages, and preserves selection', async () => {
   const index = await loadContent('tests/fixtures/content');
   const paper = index.papers[0];

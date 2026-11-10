@@ -481,7 +481,7 @@ test('authored course-structure lessons render their diagrams', async ({ page })
       'Gradient descent',
       'Take one step downhill',
       'gd-downhill-update',
-      ['The question.', 'Picture it.', 'The idea.', 'Common confusion.'],
+      ['One step on a bowl', 'The update rule', 'Worked example'],
     ],
   ] as const) {
     await mockLessonReview(page, conceptId, title);

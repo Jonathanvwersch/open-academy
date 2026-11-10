@@ -1,4 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
+import type { LessonPrerequisite } from '../server/content/schemas.js';
 import { apiFetch } from './authenticated-fetch.js';
 import type { AnswerOptions, ClientExercise, LessonBlockKind } from './components.js';
 
@@ -132,6 +133,7 @@ export interface SessionPayload {
 
 export interface LessonPayload {
   where_this_fits?: string;
+  prerequisites?: LessonPrerequisite[];
   final?: string;
   blocks: Array<{ kind: LessonBlockKind; md?: string; exercise?: string }>;
   knowledge_points?: Array<{
@@ -156,6 +158,7 @@ export interface LessonRunPayload {
     id: string;
     status: 'in_progress' | 'needs_retry' | 'completed';
     where_this_fits?: string;
+    prerequisites?: LessonPrerequisite[];
     points: Array<{
       id: string;
       status: 'passed' | 'failed' | 'active' | 'locked';

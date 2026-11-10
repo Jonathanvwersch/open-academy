@@ -57,6 +57,11 @@ New lessons may use knowledge points instead of authored blocks:
 concept: supervised-learning
 version: 3
 objective: "What the learner will be able to do."
+where_this_fits: |
+  Explain how this lesson connects to what the learner already knows.
+recap:
+  - concept: vectors
+    text: "A vector is a list of numbers that can represent a direction or a quantity."
 knowledge_points:
   - id: sl-inputs-targets
     title: Inputs, targets and the model
@@ -70,6 +75,8 @@ knowledge_points:
     problems: [slp-squared-error, slp-error-sum, slp-why-square]
 summary: "..."
 ```
+`recap` is optional. If present, include exactly one entry for every prerequisite that has an authored lesson. Each `concept` must be a prerequisite with an authored lesson, and its `text` must state one fact in at most 40 words. The lesson shows each prerequisite as a link with its recap; without this field, it shows the usual “Before this” links instead. When a recap is present, `where_this_fits` is rendered as plain lesson prose below the Recap card.
+
 Knowledge-point IDs are globally unique. Each point needs 3 or more practice problems, at least one fixed problem, and either 5 fixed problems or a parameterised template. The loader derives legacy-compatible objective, intuition, worked, check, and summary blocks; each check uses the point's first fixed problem.
 
 ## content/exercises/<concept-id>.yaml

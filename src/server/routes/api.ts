@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { getLessonPrerequisites } from '../content/index.js';
 import { loadContent } from '../content/load.js';
 import { serializeConcept, serializeExercise, serializeLesson } from '../content/serialize.js';
 import { isTemplate } from '../content/templates.js';
@@ -669,7 +670,12 @@ export function createApiRoutes(deps: {
           }
         : lesson;
     return presentedLesson
-      ? context.json(serializeLesson(presentedLesson))
+      ? context.json(
+          serializeLesson({
+            ...presentedLesson,
+            prerequisites: getLessonPrerequisites(index, conceptId),
+          }),
+        )
       : context.json({ error: 'Lesson not found' }, 404);
   });
 
@@ -686,7 +692,10 @@ export function createApiRoutes(deps: {
       ),
     );
     return context.json({
-      lesson: serializeLesson(lesson),
+      lesson: serializeLesson({
+        ...lesson,
+        prerequisites: getLessonPrerequisites(index, conceptId),
+      }),
       checkAnswers,
       conceptTitle: index.conceptsById.get(conceptId)?.title ?? conceptId,
     });

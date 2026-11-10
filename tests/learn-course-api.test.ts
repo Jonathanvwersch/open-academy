@@ -82,6 +82,28 @@ async function get(path: string) {
   });
 }
 
+test('lesson response includes ordered authored prerequisites', async () => {
+  const response = await get('/lessons/gradient-descent');
+  expect(response.status).toBe(200);
+  expect((await response.json()).prerequisites).toMatchObject([
+    {
+      id: 'gradients',
+      title: 'Gradient vectors',
+      recap: expect.stringContaining('The gradient'),
+    },
+    {
+      id: 'loss-functions',
+      title: 'Loss functions (MSE, MAE)',
+      recap: expect.stringContaining('A loss is one number'),
+    },
+    {
+      id: 'linear-regression',
+      title: 'Linear regression',
+      recap: expect.stringContaining('A linear model predicts'),
+    },
+  ]);
+});
+
 test('planned Learn tasks and Course numbering are read-only', async () => {
   const before = await rowCounts();
   const learnResponse = await get('/learn');
