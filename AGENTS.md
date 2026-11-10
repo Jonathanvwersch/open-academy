@@ -10,4 +10,4 @@
 - API: `src/server/`; shared contracts: `src/shared/`.
 - Web routes and styles: `src/web/routes/` and `src/web/styles.css`.
 - E2E tests: `tests/e2e/`; local seed: `scripts/seed.ts`.
-- Lessons: write and rewrite every lesson with `.agents/skills/write-lesson/SKILL.md`; `content/lessons/gradients.yaml` is the model lesson.
+- Lessons: write and rewrite every lesson with `.agents/skills/write-lesson/SKILL.md`; `content/lessons/gradient-descent.yaml` is the model lesson.
