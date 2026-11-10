@@ -442,7 +442,7 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   await page.goto('/lessons/derivatives');
   await hideTutorLauncher(page);
   const derivativeDiagram = page.getByRole('img', {
-    name: 'The curve d equals t squared with the point at t equals 3, an amber line to t equals 4 with average slope 7, and a blue tangent line at t equals 3 with slope 6',
+    name: 'The curve d equals t squared, the distance in metres a car has driven after t seconds. An orange straight line joins the points at t equals 3 and t equals 4 with slope 7, the average speed over that second. A blue line just touches the curve at t equals 3 with slope 6, the speed at that instant',
   });
   await expect(derivativeDiagram).toBeVisible();
   await derivativeDiagram.evaluate((image) => {
