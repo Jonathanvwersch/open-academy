@@ -132,8 +132,6 @@ export type LessonBlockKind =
   | 'summary';
 
 const lessonBlockLabels: Partial<Record<LessonBlockKind, string>> = {
-  objective: 'Goal',
-  fits: "What you're learning",
   example: 'Example',
   math: 'Key formula',
   worked: 'Worked example',
@@ -153,15 +151,61 @@ export function LessonBlock({
   children?: ReactNode;
   prerequisites?: LessonPrerequisite[];
 }) {
-  const content =
-    kind === 'objective'
-      ? md
-          ?.replace(/^\s*\*\*Goal:\*\*\s*/, '')
-          .replace(
-            /^(\s*)([a-z])/,
-            (_, space: string, letter: string) => space + letter.toUpperCase(),
-          )
-      : md;
+  const content = md;
+  if (kind === 'fits') {
+    const hasCompleteRecap = Boolean(
+      prerequisites?.length && prerequisites.every(({ recap }) => recap !== undefined),
+    );
+    return (
+      <>
+        {hasCompleteRecap ? (
+          <Card className="gap-2">
+            <CardHeader className="gap-0">
+              <CardTitle className="text-sm font-medium" role="heading" aria-level={2}>
+                Recap
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="list-disc space-y-2 pl-5">
+                {prerequisites?.map((prerequisite) => (
+                  <li key={prerequisite.id}>
+                    <a
+                      className="cursor-pointer underline"
+                      href={`/lessons/${encodeURIComponent(prerequisite.id)}`}
+                    >
+                      {prerequisite.title}
+                    </a>
+                    {': '}
+                    <Markdown inline>{prerequisite.recap ?? ''}</Markdown>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        ) : null}
+        <div className="py-1">
+          {!hasCompleteRecap && prerequisites?.length ? (
+            <p className="text-sm text-muted-foreground">
+              Before this:{' '}
+              {prerequisites.map((prerequisite, index) => (
+                <React.Fragment key={prerequisite.id}>
+                  {index > 0 ? ', ' : null}
+                  <a
+                    className="cursor-pointer underline"
+                    href={`/lessons/${encodeURIComponent(prerequisite.id)}`}
+                  >
+                    {prerequisite.title}
+                  </a>
+                </React.Fragment>
+              ))}
+            </p>
+          ) : null}
+          {content ? <Markdown>{content}</Markdown> : null}
+          {children}
+        </div>
+      </>
+    );
+  }
   if (kind === 'intuition') {
     return (
       <div className="py-1">
@@ -170,69 +214,12 @@ export function LessonBlock({
       </div>
     );
   }
-  if (
-    kind === 'fits' &&
-    prerequisites?.length &&
-    prerequisites.every(({ recap }) => recap !== undefined)
-  ) {
-    return (
-      <>
-        <Card className="gap-2">
-          <CardHeader className="gap-0">
-            <CardTitle className="text-sm font-medium" role="heading" aria-level={2}>
-              Recap
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="list-disc space-y-2 pl-5">
-              {prerequisites.map((prerequisite) => (
-                <li key={prerequisite.id}>
-                  <a
-                    className="cursor-pointer underline"
-                    href={`/lessons/${encodeURIComponent(prerequisite.id)}`}
-                  >
-                    {prerequisite.title}
-                  </a>
-                  {': '}
-                  <Markdown inline>{prerequisite.recap ?? ''}</Markdown>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-        {content ? (
-          <div className="py-1">
-            <Markdown>{content}</Markdown>
-            {children}
-          </div>
-        ) : (
-          children
-        )}
-      </>
-    );
-  }
   return (
     <Card className={kind === 'worked' ? 'gap-2 bg-muted/50' : 'gap-2'}>
       <CardHeader className="gap-0">
         <CardTitle className="text-sm font-medium">{lessonBlockLabels[kind]}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {kind === 'fits' && prerequisites?.length ? (
-          <p className="text-sm text-muted-foreground">
-            Before this:{' '}
-            {prerequisites.map((prerequisite, index) => (
-              <React.Fragment key={prerequisite.id}>
-                {index > 0 ? ', ' : null}
-                <a
-                  className="cursor-pointer underline"
-                  href={`/lessons/${encodeURIComponent(prerequisite.id)}`}
-                >
-                  {prerequisite.title}
-                </a>
-              </React.Fragment>
-            ))}
-          </p>
-        ) : null}
         {content ? <Markdown>{content}</Markdown> : null}
         {children}
       </CardContent>
