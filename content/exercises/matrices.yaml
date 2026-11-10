@@ -21,9 +21,9 @@ exercises:
         correct: false
         feedback: That is a dot product.
       - id: d
-        text: A collection of training examples paired with their known target values.
+        text: A rule that adds up every number in a table to give one single total.
         correct: false
-        feedback: That is a labeled dataset; a matrix is only a rectangular arrangement of numbers.
+        feedback: A matrix is the grid itself. Multiplying it by a vector gives one total per row, not one total overall.
     solution: A matrix is a rectangular grid of numbers; its shape lists the number of rows and then columns.
   - id: matp-rows-self-explain
     dimension: conceptual
@@ -59,19 +59,19 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: A matrix has three rows and two columns. It multiplies a two-entry column vector. What comes out?
+    prompt: A matrix has three rows and two columns. It multiplies a vector with two entries. What comes out?
     solution: The shapes are $(3\times2)(2\times1)$, giving $3\times1$. There is one output entry per matrix row.
     options:
       - id: a
-        text: The result is a column vector with three entries.
+        text: A vector with three entries, one for each row.
         correct: true
         feedback: Each matrix row produces one dot product.
       - id: b
-        text: The result is a column vector with two entries.
+        text: A vector with two entries, one for each column.
         correct: false
         feedback: The input entry count is not the output entry count.
       - id: c
-        text: The result is one number combining all six entries.
+        text: One number that combines all six of the entries.
         correct: false
         feedback: Each row gives its own number, rather than one total for the matrix.
   - id: matp-vector-shape
@@ -172,7 +172,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A two-row matrix of house measurements is $X=\begin{bmatrix}1&0\\{{=a}}&1\end{bmatrix}$. A weight vector $w$ gives $Xw=({{=p}},{{=q}})$. What is the second entry of $w$?
+    prompt: A matrix of two measurements for two houses is $X=\begin{bmatrix}1&0\\{{=a}}&1\end{bmatrix}$. Multiplying it by a weight vector $w=(w_1,w_2)$ gives $Xw=({{=p}},{{=q}})$. What is $w_2$?
     params:
       a:
         min: 2
@@ -187,7 +187,7 @@ exercises:
     tolerance:
       abs: 0
     solution: |-
-      The first row selects the first weight; use it in the second row and subtract its contribution.
+      Row 1 dotted with $w$ is $1\times w_1+0\times w_2=w_1$, so it gives $w_1$ directly. Put that into row 2 and subtract its contribution.
 
       $$w_1={{=p}}$$
 
@@ -265,7 +265,7 @@ exercises:
       - id: b
         text: $3\times3$
         correct: false
-        feedback: The matching inner counts do not become the output shape.
+        feedback: The matching inner sizes are used up inside each dot product; the outer sizes give the shape.
       - id: c
         text: $4\times2$
         correct: false
@@ -284,13 +284,13 @@ exercises:
         correct: true
         feedback: A dot product needs a matching partner for every entry. These lists have different lengths.
       - id: b
-        text: The product is possible because both matrices have two rows.
+        text: Both matrices have two rows, and the row counts must differ.
         correct: false
-        feedback: Multiplication matches left columns with right rows, not both row counts.
+        feedback: Equal row counts don't matter. What must match is the columns on the left and the rows on the right.
       - id: c
-        text: The product is possible because it would have shape 3 by 4.
+        text: The answer would need shape 3 by 4, which is too large.
         correct: false
-        feedback: An output shape is valid only after the inner counts match.
+        feedback: The outer sizes only give a shape once the inner sizes match, and here they are 3 and 2.
   - id: matp-entry-template
     dimension: math
     type: numeric
@@ -426,7 +426,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: A NumPy product holds sale-price and monthly-rent predictions for five houses, shape (5, 2). You add b, an array of two fixed adjustments, shape (2,). What does broadcasting do?
+    prompt: A NumPy product holds sale-price and monthly-rent predictions for five houses, shape (5, 2). You add b, an array of two biases (one per prediction), shape (2,). What does broadcasting do?
     solution: NumPy reuses the two bias entries across the five rows. The output shape stays (5, 2).
     options:
       - id: a
@@ -447,7 +447,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A model stores five houses with three measurements each in NumPy array X, shape (5, 3). W holds weights for sale price and monthly rent, shape (3, 2), and b holds one fixed adjustment for each output, shape (2,). Which line gives both adjusted predictions for every house?
+    prompt: A model stores five houses with three measurements each in NumPy array X, shape (5, 3). W holds weights for sale price and monthly rent, shape (3, 2), and b holds one bias for each prediction, shape (2,). Which line gives both predictions, with their biases, for every house?
     solution: X rows dot W columns, giving shape (5, 2). Adding b broadcasts one bias per output across all five houses.
     options:
       - id: a
@@ -457,18 +457,18 @@ exercises:
       - id: b
         text: "`Y = W @ X + b`"
         correct: false
-        feedback: The inner counts two and five do not match in that order.
+        feedback: W has shape (3, 2) and X has shape (5, 3), so the inner sizes 2 and 5 don't match in that order.
       - id: c
         text: "`Y = X @ W.T + b`"
         correct: false
-        feedback: W.T has shape (2, 3), so its row count does not match X columns.
+        feedback: W.T has shape (2, 3), so the inner sizes 3 and 2 don't match.
   - id: matp-bias-template
     dimension: math
     type: numeric
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A house has area ${{=a}}$ tens of square metres and a bedroom count of ${{=b}}$. A simplified sale-price model uses weights $(2,-1)$ thousand pounds per measurement unit and adds a bias of ${{=c}}$ thousand pounds. What is its predicted sale price, in thousands of pounds?
+    prompt: A robot predicts its wheel speed, in centimetres per second, from two sensor readings, $({{=a}},{{=b}})$. The model has weights $(2,-1)$ and a bias of ${{=c}}$, and a negative speed means the wheel turns backwards. What speed does it predict?
     solution: 'First take the dot product: $2\cdot{{=a}}-{{=b}}={{=2*a-b}}$. Add the bias to get ${{=2*a-b}}+({{=c}})={{=2*a-b+c}}$.'
     tolerance:
       abs: 1.0e-06
@@ -499,11 +499,11 @@ exercises:
       - id: b
         text: "`X @ W`, which is undefined"
         correct: false
-        feedback: Without transposing, the inner counts three and two differ.
+        feedback: Without the transpose, the inner sizes 3 and 2 differ.
       - id: c
         text: "`X.T @ W`, which is undefined"
         correct: false
-        feedback: The inner counts five and two differ in that product.
+        feedback: X.T has shape (3, 5), so the inner sizes 5 and 2 differ.
   - id: matp-why-batch
     dimension: implementation
     type: mc
