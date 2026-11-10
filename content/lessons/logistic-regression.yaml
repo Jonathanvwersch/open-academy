@@ -63,7 +63,7 @@ knowledge_points:
         lr-classification-transfer,
       ]
   - id: lr-sigmoid
-    title: Turn a score into a chance and a decision
+    title: "Turn a score into a probability"
     explain: |
       **The question.** A score can be any real number, but a chance must lie between 0 and 1. How can you convert the score without losing which inputs have stronger evidence for “yes”?
 
@@ -121,7 +121,7 @@ knowledge_points:
         lr-sigmoid-transfer,
       ]
   - id: lr-binary-cross-entropy
-    title: Penalise little probability for the true label
+    title: "Score how wrong a probability is"
     explain: |
       **The question.** Two predictions can choose the same class but have different confidence. How do you give training a loss that distinguishes a cautious correct prediction from a confident mistake?
 
@@ -180,7 +180,7 @@ knowledge_points:
         lr-bce-transfer,
       ]
   - id: lr-gradient
-    title: Update with probability minus label
+    title: "How the weights get updated"
     explain: |
       **The question.** You can measure a prediction's loss. Which slopes should gradient descent use to change the weights and bias?
 

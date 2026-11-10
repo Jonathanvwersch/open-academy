@@ -11,7 +11,7 @@ where_this_fits: |
   4. Stop information from held-out examples leaking into training.
 knowledge_points:
   - id: tts-why-hold-out
-    title: Score the model on houses it hasn't seen
+    title: "Test on data the model hasn't seen"
     explain: |
       **The question.** Gradient descent made the house model's average squared error small on the sales it trained on. But you want the model for houses that haven't sold yet. Does a small error on the training sales tell you how far off those predictions will be?
 
@@ -100,7 +100,7 @@ knowledge_points:
       - ttsp-pick-model
       - ttsp-robot-heldout
   - id: tts-three-splits
-    title: Three sets, three jobs
+    title: "Training, validation and test sets"
     explain: |
       **The question.** Usually you have several candidate models, say versions A, B and C trained in different ways. You could train all three, pick the one with the lowest test error and report that error. Is the reported number still a fair estimate for new houses?
 
@@ -170,7 +170,7 @@ knowledge_points:
       - ttsp-why-separate-test
       - ttsp-swap-after-test
   - id: tts-hyperparameters
-    title: Choose settings with the validation set
+    title: "Tune settings on the validation set"
     explain: |
       **The question.** Gradient descent learns the weights and bias, but some things it doesn't learn. Someone has to choose the learning rate $\eta$, and which inputs the model uses: size only, or size and bedrooms. How should you choose those?
 
@@ -258,7 +258,7 @@ knowledge_points:
       - ttsp-why-not-train-choose
       - ttsp-why-best-of-many
   - id: tts-leakage
-    title: Stop held-out information leaking in
+    title: "Keep test data out of training"
     explain: |
       **The question.** Suppose the three sets are kept apart and the test set is used once. Can information from the test houses still reach training, even if nobody uses their prices?
 

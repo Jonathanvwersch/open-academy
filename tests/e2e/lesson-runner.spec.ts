@@ -50,7 +50,7 @@ test.beforeEach(async () => {
   await db.$client.end();
 });
 
-async function createSession(page: Page, focusConcept = true) {
+async function createSession(page: Page, focusConcept = true, waitForRun = true) {
   await page.goto('/');
   const session = await page.evaluate(async (concept) => {
     const response = await fetch('/api/sessions', {
@@ -71,8 +71,9 @@ async function createSession(page: Page, focusConcept = true) {
   ).toEqual(['sl-explain-setup']);
   await page.goto(`/session/${session.session.id}`);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
-  await expect(page.getByText(/^New lesson · Activity \d+ of \d+ today$/)).toBeVisible();
-  await expect.poll(async () => (await currentRun(page))?.pendingProblem?.id).toBeTruthy();
+  if (waitForRun) {
+    await expect.poll(async () => (await currentRun(page))?.pendingProblem?.id).toBeTruthy();
+  }
   return session.session.id as string;
 }
 
@@ -251,13 +252,42 @@ async function openFirstCheckpoint(page: Page) {
   return response.json();
 }
 
-test('lesson session header uses the updated activity copy', async ({ page }) => {
+test('lesson session header shows the active step title', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await createSession(page);
+  const run = await currentRun(page);
+  expect(run.currentPointId).toBe(run.points[0].id);
+  const firstTitle = run.currentPoint?.title as string;
+  expect(firstTitle).toBeTruthy();
+  await expect(page.locator('section > header h2')).toHaveText(firstTitle);
+  await expect(page.getByText(/Activity \d+ of \d+ today/)).toHaveCount(0);
+  await expect(page.getByTestId('lesson-step-content').locator(':scope > h2')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'View full lesson' })).toBeVisible();
-  if (process.env.HEADER_COPY_SCREENSHOT) {
-    await page.screenshot({ path: process.env.HEADER_COPY_SCREENSHOT });
+  if (process.env.TITLES_STEP_SCREENSHOT) {
+    await page.screenshot({ path: process.env.TITLES_STEP_SCREENSHOT });
   }
+});
+
+test('lesson runner loading state reserves the subtitle slot', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  let releaseRun = () => {};
+  const requestGate = new Promise<void>((resolve) => {
+    releaseRun = resolve;
+  });
+  await page.route('**/api/lessons/supervised-learning/run', async (route) => {
+    if (route.request().method() === 'POST') await requestGate;
+    await route.continue();
+  });
+  try {
+    await createSession(page, true, false);
+    await expect(page.getByTestId('lesson-subtitle-skeleton')).toBeVisible();
+    if (process.env.TITLES_LOADING_SCREENSHOT) {
+      await page.screenshot({ path: process.env.TITLES_LOADING_SCREENSHOT });
+    }
+  } finally {
+    releaseRun();
+  }
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
 });
 
 test('a passed knowledge point shows its XP checkpoint before the next step', async ({ page }) => {
@@ -268,6 +298,7 @@ test('a passed knowledge point shows its XP checkpoint before the next step', as
   await expect(page.getByRole('button', { name: `Next: ${nextTitle}`, exact: true })).toBeVisible();
 
   const advancedRun = await openFirstCheckpoint(page);
+  await expect(page.locator('section > header h2')).toHaveText(firstTitle);
   const session = await page.evaluate(async (id) => {
     const response = await fetch(`/api/sessions/${id}`);
     return response.json();
@@ -290,6 +321,9 @@ test('a passed knowledge point shows its XP checkpoint before the next step', as
     (session.xp.today / session.xp.goal) * 100,
   );
   await page.waitForTimeout(750);
+  if (process.env.TITLES_CHECKPOINT_SCREENSHOT) {
+    await page.screenshot({ path: process.env.TITLES_CHECKPOINT_SCREENSHOT });
+  }
   await page.screenshot({
     path: `${checkpointScreenshotDir}/checkpoint-desktop.png`,
     fullPage: true,
@@ -724,8 +758,10 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
       ? await answerAndReload(page, true, 'vectors')
       : await nextProblemAndReload(page, 'vectors');
   }
-  await expect(page.getByText(/^Lesson complete/)).toBeVisible();
+  await expect(page.locator('section > header h2')).toHaveText('Lesson complete');
+  await expect(page.getByRole('heading', { name: /^Lesson complete · \+\d+ XP$/ })).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.locator('section > header h2')).toHaveText('Final question');
   await expect(page.getByTestId('exercise-prompt')).toContainText(
     "Explain what a vector's magnitude represents.",
   );

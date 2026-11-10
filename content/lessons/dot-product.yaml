@@ -12,7 +12,7 @@ where_this_fits: |
   The matrices lesson then does many dot products at once.
 knowledge_points:
   - id: dot-weighted-total
-    title: The dot product multiplies matching entries and adds
+    title: "Multiply matching numbers and add"
     explain: |
       **The question.** You often have a list of amounts and a matching list of rates, and you want one total, such as items bought and their prices. How do you combine two such lists into a single number?
 
@@ -105,7 +105,7 @@ knowledge_points:
       - dotp-quiz-backwards
       - dotp-order
   - id: dot-arrow-alignment
-    title: For arrows, the dot product measures how far one goes along the other
+    title: "How far one arrow goes along another"
     explain: |
       **The question.** A robot often needs to know whether two arrows agree, such as its heading and the way to its goal. Can their dot product tell you whether they point roughly the same way, at right angles, or in opposite directions?
 
@@ -217,7 +217,7 @@ knowledge_points:
       - dotp-reverse
       - dotp-corridor
   - id: dot-direction-only
-    title: Cosine similarity compares directions alone
+    title: "Compare directions, ignoring length"
     explain: |
       **The question.** The dot product mixes two things: how closely the arrows' directions agree and how long the arrows are. How can you score direction alone, so length can't win?
 

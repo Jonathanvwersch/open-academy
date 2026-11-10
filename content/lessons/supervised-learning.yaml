@@ -11,7 +11,7 @@ where_this_fits: |
   4. Tell number targets from category targets, and check the model on houses it has not seen.
 knowledge_points:
   - id: sl-inputs-targets
-    title: Inputs, target and a model with adjustable numbers
+    title: "The parts of a supervised problem"
     explain: |
       **The question.** You have past house sales: each house's size and the price it sold for. You want a rule that prices a house that is for sale now. What exactly goes into the rule, what should come out, and what is the computer allowed to change?
 
@@ -79,7 +79,7 @@ knowledge_points:
       - slp-predict
       - slp-input-target
   - id: sl-measuring-error
-    title: "Scoring one prediction: squared error"
+    title: "Score one prediction"
     explain: |
       **The question.** Setting A predicts 350 for a house that sold for 370. To improve the model, the computer needs "how wrong" as a single number it can try to make smaller. Which number?
 
@@ -156,7 +156,7 @@ knowledge_points:
       - slp-why-square-not-absolute
       - slp-recover-prediction
   - id: sl-training-loss
-    title: Training picks the setting with the smallest average loss
+    title: "What training does"
     explain: |
       **The question.** Squared error scores one house. You have many houses, and every choice of $w$ and $b$ gives different predictions. How do you give a whole setting one score, and which setting should training keep?
 
@@ -235,7 +235,7 @@ knowledge_points:
       - slp-why-average
       - slp-recover-loss
   - id: sl-new-data-targets
-    title: New houses, and number or category targets
+    title: "Predicting numbers or categories"
     explain: |
       **The question.** Training made the average loss small on past sales. But the point is to price houses that have not sold yet, and sometimes the answer you want is not a number at all. How do you check the model, and what changes when the target is a category?
 

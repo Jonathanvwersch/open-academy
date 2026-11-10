@@ -12,7 +12,7 @@ where_this_fits: |
   Every prediction a network makes is this calculation.
 knowledge_points:
   - id: mlp-layer-of-neurons
-    title: A layer is several neurons side by side
+    title: "What a layer is"
     explain: |
       **The question.** A perceptron computes one weighted score from its inputs. If you want several different scores from the same inputs, each combining them in its own way, how do you compute them all together?
 
@@ -82,7 +82,7 @@ knowledge_points:
       - mlpp-unit-score-template
       - mlpp-robot-layer
   - id: mlp-two-layers
-    title: The forward pass runs the layers in order
+    title: "Run the layers in order"
     explain: |
       **The question.** A layer turns the inputs into a few new numbers, but you want one prediction. How do you get from the inputs to that prediction?
 
@@ -162,7 +162,7 @@ knowledge_points:
       - mlpp-why-no-sigmoid-output
       - mlpp-robot-forward
   - id: mlp-shapes
-    title: Shapes for a batch of examples
+    title: "Array shapes for a batch"
     explain: |
       **The question.** Networks usually handle many examples at once, called a **batch**. How do you lay them out so that one matrix product handles every example, and what size is each array?
 

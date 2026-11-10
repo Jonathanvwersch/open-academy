@@ -12,7 +12,7 @@ where_this_fits: |
   Linear regression, the next lesson, writes every prediction this way.
 knowledge_points:
   - id: mat-rows-shapes
-    title: One dot product per row
+    title: "Multiply a matrix by a vector"
     explain: |
       **The question.** The dot-product lesson priced one house. With measurements $x=(12,3,20)$ and weights $w=(25,10,-1)$, it predicted $w\cdot x=310$ thousand pounds. Now there are two houses, or two thousand. How do you write all their measurements down together and price every house in one calculation?
 
@@ -178,7 +178,7 @@ knowledge_points:
       - matp-batch-shape
       - matp-recover-factor-entry
   - id: mat-batches-transpose
-    title: Many houses at once in NumPy
+    title: "Matrix maths in NumPy"
     explain: |
       **The question.** On paper you can now price any number of houses with one product. How do you get a computer to do it for a thousand houses and add the model's bias?
 

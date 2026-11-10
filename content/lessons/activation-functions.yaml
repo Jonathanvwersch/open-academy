@@ -10,7 +10,7 @@ where_this_fits: |
   3. Find their slopes, which tell training how a nudge to a score changes the output.
 knowledge_points:
   - id: act-stacking-stays-straight
-    title: Stacking straight-line rules gives a straight line
+    title: "Why a network needs a bend"
     explain: |
       **The question.** A neuron's score, a weighted sum plus a bias, is a straight-line rule: draw the score against one input and you get a line. If you feed one neuron's score into a second neuron's weighted sum, can the result curve?
 
@@ -88,7 +88,7 @@ knowledge_points:
       - actp-equal-steps
       - actp-robot-linear
   - id: act-relu-sigmoid-tanh
-    title: ReLU, sigmoid and tanh
+    title: "Three common activation functions"
     explain: |
       **The question.** Which bending functions do networks actually use between layers, and what does each one do to a score?
 
@@ -165,7 +165,7 @@ knowledge_points:
       - actp-relu-bend
       - actp-why-sigmoid-output
   - id: act-slopes
-    title: Activation slopes say how a nudge passes through
+    title: "How steep each activation function is"
     explain: |
       **The question.** Training nudges a network's weights, and each nudge changes a neuron's score a little. When that score passes through an activation, how much does the output change?
 

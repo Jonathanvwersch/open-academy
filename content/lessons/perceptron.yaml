@@ -12,7 +12,7 @@ where_this_fits: |
   Next, you'll replace the on/off step with smoother functions.
 knowledge_points:
   - id: perc-score-and-step
-    title: Score the inputs, then answer yes or no
+    title: "Turn inputs into a yes or no"
     explain: |
       **The question.** How can you turn two input measurements into a yes-or-no answer, rather than just another number?
 
@@ -87,7 +87,7 @@ knowledge_points:
       - percp-score-zero
       - percp-robot-gripper
   - id: perc-straight-boundary
-    title: A straight line splits yes from no
+    title: "The line between yes and no"
     explain: |
       **The question.** Instead of checking inputs one at a time, can you see all the inputs that get a yes? Where does the answer change?
 
@@ -178,7 +178,7 @@ knowledge_points:
       - percp-crossing-template
       - percp-no-curve
   - id: perc-and-or-xor
-    title: AND and OR work; XOR cannot
+    title: "What one perceptron can't learn"
     explain: |
       **The question.** Which rules can one perceptron match on two yes-or-no inputs? A rule is the answers we want; the perceptron's output must match them.
 

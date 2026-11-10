@@ -11,7 +11,7 @@ where_this_fits: |
   4. Repeat the step in a loop while the loss falls.
 knowledge_points:
   - id: gd-downhill-update
-    title: Step against the gradient
+    title: "Take one step downhill"
     explain: |
       **The question.** The gradients lesson ended with a direction: $-\nabla f$ is the steepest way down. Knowing a direction doesn't move you, though. Standing at a point, how do you turn it into an actual move to a lower point?
 
@@ -84,7 +84,7 @@ knowledge_points:
       - gdp-zero
       - gdp-robot-step
   - id: gd-step-size
-    title: Choose the step size
+    title: "How big a step to take"
     explain: |
       **The question.** The update is $\mathbf p-\eta\nabla f(\mathbf p)$, but what value should $\eta$ take? A tiny step is safe but slow. Does a big step simply get there sooner?
 
@@ -196,7 +196,7 @@ knowledge_points:
       - gdp-threshold
       - gdp-drone-rate
   - id: gd-price-gradients
-    title: Get the slopes from the model's error
+    title: "Find the slopes from the model's error"
     explain: |
       **The question.** On the bowl, $f$ was a formula you could differentiate directly. A model's loss depends on its weights only through its predictions. What is the loss slope for each weight, and where does it come from?
 
@@ -284,7 +284,7 @@ knowledge_points:
       - gdp-feature-factor
       - gdp-backwards-error
   - id: gd-training-loop
-    title: Repeat the step in a training loop
+    title: "Repeat until the loss stops falling"
     explain: |
       **The question.** One step lowered the loss from $16$ to $4$, but not to $0$. What do you do next, and how do you know when to stop?
 

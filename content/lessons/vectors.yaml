@@ -12,7 +12,7 @@ where_this_fits: |
   Later lessons store a model's inputs and learned numbers as vectors.
 knowledge_points:
   - id: vec-points-moves
-    title: Lists of numbers that describe points and moves
+    title: "What a vector is"
     explain: |
       **The question.** A delivery robot leaves its dock and drives 1 metre east and 3 metres north, then 2 east and 1 north. How do you write each move as numbers a computer can follow, and where does the robot end up?
 
@@ -96,7 +96,7 @@ knowledge_points:
       - vecp-new-moves
       - vecp-missing-move
   - id: vec-change-move
-    title: Stretching, shrinking and reversing a move
+    title: "Multiply a vector by a number"
     explain: |
       **The question.** The robot's move $b=(2,1)$ goes 2 metres east and 1 north. How do you write “the same move, twice as far”, or “the same move, backwards”? And what move takes the robot from one point to another?
 
@@ -175,7 +175,7 @@ knowledge_points:
       - vecp-subtract
       - vecp-find-scalar
   - id: vec-length-distance
-    title: How long a move is, and how far apart two points are
+    title: "Length and distance"
     explain: |
       **The question.** After its two moves, the robot is at $(3,4)$. How far is it from the dock in a straight line? More generally, how far apart are two points?
 
