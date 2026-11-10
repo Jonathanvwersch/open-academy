@@ -36,6 +36,7 @@ function tutorContext(overrides: Partial<TutorContext> = {}): TutorContext {
     objectives: ['Understand the slope'],
     lessonSummary: 'A line models the relationship between two variables.',
     exercisePrompt: 'What does the slope represent?',
+    exerciseOptions: [],
     hintLevel: 1,
     authoredHints: ['Think about how y changes as x changes.'],
     solution: 'The slope is the change in y for each unit change in x.',

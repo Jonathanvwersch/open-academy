@@ -324,6 +324,12 @@ export function registerTutorThreadRoutes(
         : {}),
     });
     const correct = currentAttempt?.correct ?? lessonProblem?.correct;
+    const optionTexts =
+      exercise?.type === 'mc'
+        ? exercise.options
+        : exercise?.type === 'debug'
+          ? exercise.fix_options
+          : [];
     const service = deps.tutor(c);
     if (!service) return c.json({ error: 'Tutor unavailable' }, 503);
     const result = await service.respond(
@@ -336,6 +342,9 @@ export function registerTutorThreadRoutes(
             .map((b) => b.md)
             .join('\n') ?? '',
         exercisePrompt: exercise?.prompt ?? '',
+        exerciseOptions: optionTexts.map(
+          ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
+        ),
         learnerAnswer:
           status === 'answered' && currentAttempt && exercise
             ? answerDisplay(exercise, currentAttempt.answer)
