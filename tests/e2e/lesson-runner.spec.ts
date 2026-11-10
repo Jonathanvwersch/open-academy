@@ -372,7 +372,10 @@ test('passes every knowledge point and restores the exact problem and result aft
     return lesson.knowledge_points[0].title as string;
   });
   const fitsHeading = page.getByRole('heading', { name: "What you're learning", exact: true });
-  await expect(fitsHeading).toBeVisible();
+  await expect(fitsHeading).toHaveCount(0);
+  await expect(
+    page.getByText('Many useful tasks start with examples whose correct answers are already known'),
+  ).toBeVisible();
   const workedExample = page.getByRole('heading', { name: 'Worked example', exact: true });
   await expect(workedExample).toBeVisible();
   await expect(workedExample.locator('xpath=../..')).toHaveAttribute('data-slot', 'card');
@@ -573,6 +576,9 @@ test('passes every knowledge point and restores the exact problem and result aft
   await page.goto('/lessons/supervised-learning');
   await expect(
     page.getByRole('heading', { name: "What you're learning", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText('Many useful tasks start with examples whose correct answers are already known'),
   ).toBeVisible();
 });
 

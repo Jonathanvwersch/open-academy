@@ -605,7 +605,6 @@ function SessionPage() {
         !answeredOnServer.has(block.exercise),
     );
     const orderedBlocks = [
-      ...lesson.blocks.filter((block) => block.kind === 'objective'),
       ...lesson.blocks.filter((block) => block.kind !== 'objective' && block.kind !== 'summary'),
       ...lesson.blocks.filter((block) => block.kind === 'summary'),
     ];

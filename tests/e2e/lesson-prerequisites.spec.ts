@@ -111,7 +111,7 @@ test('session lesson shows recap facts and opens a prerequisite lesson', async (
 });
 
 test('lesson without recaps keeps authored prerequisite links', async ({ page }) => {
-  await page.goto('/lessons/linear-regression');
+  await page.goto('/lessons/loss-functions');
   const beforeThis = page.locator('p').filter({ hasText: 'Before this:' });
 
   await expect(beforeThis).toBeVisible();

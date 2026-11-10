@@ -43,7 +43,6 @@ function LessonReviewPage() {
   const finalBlock = lesson.blocks.find(
     (block) => block.kind === 'check' && block.exercise === lesson.final,
   );
-  const objectiveBlock = lesson.blocks.find((block) => block.kind === 'objective');
   useEffect(() => {
     tutorSidebar.setContext({
       conceptId,
@@ -65,7 +64,6 @@ function LessonReviewPage() {
       <h1 className="text-3xl font-semibold">{conceptTitle}</h1>
       {lesson.knowledge_points?.length ? (
         <div className="space-y-5">
-          {objectiveBlock ? <LessonBlock kind="objective" md={objectiveBlock.md} /> : null}
           {lesson.where_this_fits ? (
             <LessonBlock
               kind="fits"
@@ -98,20 +96,22 @@ function LessonReviewPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          {lesson.blocks.map((block) => (
-            <LessonBlock
-              key={block.exercise ?? `${block.kind}-${block.md}`}
-              kind={block.kind}
-              md={block.md}
-            >
-              {block.kind === 'check' && block.exercise ? (
-                <ReadOnlyCheck
-                  exerciseId={block.exercise}
-                  answer={checkAnswers[block.exercise] ?? ''}
-                />
-              ) : null}
-            </LessonBlock>
-          ))}
+          {lesson.blocks
+            .filter((block) => block.kind !== 'objective')
+            .map((block) => (
+              <LessonBlock
+                key={block.exercise ?? `${block.kind}-${block.md}`}
+                kind={block.kind}
+                md={block.md}
+              >
+                {block.kind === 'check' && block.exercise ? (
+                  <ReadOnlyCheck
+                    exerciseId={block.exercise}
+                    answer={checkAnswers[block.exercise] ?? ''}
+                  />
+                ) : null}
+              </LessonBlock>
+            ))}
         </div>
       )}
     </section>

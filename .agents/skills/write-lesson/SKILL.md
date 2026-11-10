@@ -37,7 +37,7 @@ Then say why the idea is useful: what problem it solves, and why what the learne
 
 The opening must not start with an example, a scenario or a formula ("Consider $f(x)=x^2$…", "A model starts with poor weights…"). The learner should know what the lesson is about by the end of the first sentence.
 
-The `objective` is one plain sentence, "**Goal:** …", describing what the learner will be able to do.
+The `objective` is one plain sentence, "**Goal:** …", describing what the learner will be able to do. Learners don't see it: it's what you write the lesson to and what the cold-reader's main idea is checked against, so "What is X?" must do the job of telling the learner what they're about to learn.
 
 ### The steps (`knowledge_points`)
 

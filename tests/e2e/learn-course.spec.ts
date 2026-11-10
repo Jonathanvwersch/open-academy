@@ -441,6 +441,13 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   await mockLessonReview(page, 'derivatives', 'Derivatives');
   await page.goto('/lessons/derivatives');
   await hideTutorLauncher(page);
+  await expect(page.getByRole('heading', { name: 'Goal', exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole('heading', { name: "What you're learning", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('heading', { name: 'What is a derivative?', exact: true }),
+  ).toBeVisible();
   const derivativeDiagram = page.getByRole('img', {
     name: 'The curve d equals t squared, the distance in metres a car has driven after t seconds. An orange straight line joins the points at t equals 3 and t equals 4 with slope 7, the average speed over that second. A blue line just touches the curve at t equals 3 with slope 6, the speed at that instant',
   });
@@ -487,6 +494,15 @@ test('authored course-structure lessons render their diagrams', async ({ page })
     await mockLessonReview(page, conceptId, title);
     await page.goto(`/lessons/${conceptId}`);
     await hideTutorLauncher(page);
+    await expect(page.getByRole('heading', { name: 'Goal', exact: true })).toHaveCount(0);
+    await expect(
+      page.getByRole('heading', { name: "What you're learning", exact: true }),
+    ).toHaveCount(0);
+    if (conceptId === 'gradient-descent') {
+      await expect(
+        page.getByRole('heading', { name: 'What is gradient descent?', exact: true }),
+      ).toBeVisible();
+    }
     const knowledgePoint = page
       .locator('article')
       .filter({ has: page.getByRole('heading', { name: new RegExp(knowledgePointTitle) }) });

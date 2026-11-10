@@ -362,7 +362,7 @@ test('legacy lesson review presents labelled blocks as cards with checks inside'
   await expect(page.getByRole('heading', { name: 'Training and evaluation splits' })).toBeVisible();
   await expect(page.getByRole('img', { name: 'Data split diagram' })).toBeVisible();
   for (const [label, count] of [
-    ['Goal', 1],
+    ['Goal', 0],
     ['Example', 1],
     ['Key formula', 1],
     ['Check yourself', 1],
