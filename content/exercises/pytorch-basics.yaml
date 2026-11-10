@@ -22,7 +22,7 @@ exercises:
         }
       - {
           id: c,
-          text: "The precision used to represent its numbers.",
+          text: "The kind of number it stores, such as decimals.",
           correct: false,
           feedback: "That is the data type, not the shape.",
         }
@@ -43,29 +43,29 @@ exercises:
     options:
       - {
           id: a,
-          text: "It gives each reading its own row with one column.",
+          text: "It gives each example its own row with one input.",
           correct: true,
           feedback: "The nested lists preserve the two-example table.",
         }
       - {
           id: b,
-          text: "It gives each reading its own separate data type.",
+          text: "It gives each example its own separate data type.",
           correct: false,
           feedback: "All entries share the tensor's data type; nesting specifies shape.",
         }
       - {
           id: c,
-          text: "It gives each reading a gradient without further setup.",
+          text: "It gives each example a slope without further setup.",
           correct: false,
           feedback: "Nesting does not enable gradient tracking.",
         }
       - {
           id: d,
-          text: "It gives each reading two copies in the result.",
+          text: "It gives each example two copies in the result.",
           correct: false,
           feedback: "There is still one value per row; no values are duplicated.",
         }
-    solution: "The inner lists are rows, each containing one reading. That makes a `(2, 1)` table for the matrix multiplication."
+    solution: "Each inner list is one row containing one input. That makes a `(2, 1)` table: two examples with one input each."
   - id: ptb-tensor-complete
     dimension: implementation
     type: code_complete
@@ -88,7 +88,7 @@ exercises:
     params:
       x: { min: 1, max: 4 }
       w: { min: 1, max: 3 }
-    prompt: "A one-row table is `[[{{= x }}.0]]` and its weight matrix is `[[{{= w }}.0]]`. Matrix multiplication pairs the entries: ${{= x }}\\times{{= w }}$. What number is in the result?"
+    prompt: "A one-row input table is `[[{{= x }}.0]]` and its weight table `w` is `[[{{= w }}.0]]`. Matrix multiplication pairs the entries: ${{= x }}\\times{{= w }}$. What number is in the result?"
     answer_expr: "x * w"
     tolerance: { abs: 0.000001 }
     solution: |
@@ -101,25 +101,25 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Which tensor represents two examples with one feature each?"
+    prompt: "Which tensor represents two examples with one input each?"
     options:
       - {
           id: a,
           text: "`torch.tensor([[3.0, 4.0]])` makes the required table.",
           correct: false,
-          feedback: "This has one row and two columns: one example with two features.",
+          feedback: "This has one row and two columns: one example with two inputs.",
         }
       - {
           id: b,
           text: "`torch.tensor([3.0, 4.0])` makes the required table.",
           correct: false,
-          feedback: "This is a vector of shape `(2,)`, not a two-row table.",
+          feedback: "This is a plain list of shape `(2,)`, not a two-row table.",
         }
       - {
           id: c,
           text: "`torch.tensor([[3.0], [4.0]])` makes the required table.",
           correct: true,
-          feedback: "Each inner list holds the one feature of one example.",
+          feedback: "Each inner list holds the one input of one example.",
         }
       - {
           id: d,
@@ -154,7 +154,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "Two robot readings form `[[1.0, 2.0], [3.0, 4.0]]`. Multiply this table by the weight matrix `[[2.0], [-1.0]]`. What number is in the second output row?"
+    prompt: "Two examples with two inputs each form `[[1.0, 2.0], [3.0, 4.0]]`. Multiply this input table by the weight table `[[2.0], [-1.0]]`. What number is in the second output row?"
     answer: 2
     tolerance: { abs: 0.000001 }
     solution: |
@@ -173,7 +173,7 @@ exercises:
     options:
       - {
           id: a,
-          text: "A prediction rule with registered weights and biases.",
+          text: "A prediction rule whose weights and biases training adjusts.",
           correct: true,
           feedback: "The rule computes outputs and exposes its parameters for training.",
         }
@@ -206,15 +206,15 @@ exercises:
     options:
       - {
           id: a,
-          text: "To set known values without recording setup as a gradient calculation.",
+          text: "To set starting values without PyTorch recording the edits for slopes.",
           correct: true,
-          feedback: "The assignments prepare a reproducible example, not a forward graph.",
+          feedback: "The assignments set known starting values without recording their slopes.",
         }
       - {
           id: b,
-          text: "To stop the model from registering its weight and bias as parameters.",
+          text: "To stop the model from treating its weight and bias as parameters.",
           correct: false,
-          feedback: "They remain registered parameters after the setup block.",
+          feedback: "They remain parameters that the optimiser can train after the setup block.",
         }
       - {
           id: c,
@@ -228,14 +228,14 @@ exercises:
           correct: false,
           feedback: "Future calls still use the parameters and can track their gradients.",
         }
-    solution: "The block excludes manual setup from operation recording. Subsequent model calls outside it can still build a gradient graph."
+    solution: "The block sets known weight and bias values without recording the setup for slope calculations. Later model calls outside it can still calculate slopes for training."
   - id: ptb-linear-complete
     dimension: implementation
     type: code_complete
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Create a linear module with one input feature and one output."
+    prompt: "Create a linear module with one input and one output per example."
     code: |
       import torch
       from torch import nn
@@ -248,7 +248,7 @@ exercises:
         "nn.Linear(in_features=1, out_features=1)",
         "torch.nn.Linear(in_features=1, out_features=1)",
       ]
-    solution: "The arguments specify one feature and one output, so two input rows give an output of shape `(2, 1)`."
+    solution: "The arguments specify one input and one output per example, so two input rows give an output of shape `(2, 1)`."
   - id: ptb-linear-template
     dimension: implementation
     type: numeric
@@ -276,9 +276,9 @@ exercises:
     options:
       - {
           id: a,
-          text: "Two input features and one output for each row.",
+          text: "Two inputs and one output for each example.",
           correct: true,
-          feedback: "They specify feature and output sizes, not parameter values.",
+          feedback: "They specify input and output counts, not parameter values.",
         }
       - {
           id: b,
@@ -294,11 +294,11 @@ exercises:
         }
       - {
           id: d,
-          text: "Two output features and one input for each row.",
+          text: "Two outputs and one input for each example.",
           correct: false,
           feedback: "The input size comes first and the output size second.",
         }
-    solution: "Linear takes the input feature count followed by the output count. It applies that mapping independently to each row."
+    solution: "`nn.Linear` takes the input count followed by the output count per example. It uses the same weight and bias values for every row."
   - id: ptb-linear-read
     dimension: implementation
     type: code_read
@@ -328,11 +328,11 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot's two-input linear module has weight row `[3.0, -1.0]`. For input row `[2.0, 4.0]` it must output 8. What bias must you assign?"
+    prompt: "A two-input linear module has weight row `[3.0, -1.0]`. For input row `[2.0, 4.0]` it must output $8$. What bias must you set?"
     answer: 6
     tolerance: { abs: 0.000001 }
     solution: |
-      Find the weighted sum, then the offset needed to reach the desired output.
+      Find the weighted sum, then the bias needed to reach the desired output.
 
       $$3(2)-1(4)=2.$$
 
@@ -349,25 +349,25 @@ exercises:
     options:
       - {
           id: a,
-          text: "`loss.backward()` calculates and applies the update.",
+          text: "`loss.backward()`, since it works out the slopes.",
           correct: false,
           feedback: "Backward stores gradients but does not change parameter values.",
         }
       - {
           id: b,
-          text: "`optimizer.step()` calculates and applies the update.",
+          text: "`optimizer.step()`, since it reads the stored slopes.",
           correct: true,
           feedback: "It reads the stored gradients and applies the configured update rule.",
         }
       - {
           id: c,
-          text: "`loss.item()` calculates and applies the update.",
+          text: "`loss.item()`, since it reads the loss value.",
           correct: false,
           feedback: "Item only extracts a number from a single-entry tensor.",
         }
       - {
           id: d,
-          text: "`model.parameters()` calculates and applies the update.",
+          text: "`model.parameters()`, since it lists the parameters.",
           correct: false,
           feedback: "This provides parameter tensors; it does not change them.",
         }
@@ -378,19 +378,19 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why does the dial example call `loss.backward()` before `optimizer.step()`?"
+    prompt: "Why does the worked example call `loss.backward()` before `optimizer.step()`?"
     options:
       - {
           id: a,
-          text: "The update needs the slope that backward stores for the dial.",
+          text: "The update needs the slopes that backward stores for the parameters.",
           correct: true,
-          feedback: "SGD reads that stored slope when it updates the value.",
+          feedback: "SGD reads each stored slope when it updates the weight and bias.",
         }
       - {
           id: b,
           text: "The update needs the target to become a trainable parameter.",
           correct: false,
-          feedback: "The target stays fixed; only the dial tensor is updated.",
+          feedback: "The targets stay fixed; the optimiser updates the weight and bias.",
         }
       - {
           id: c,
@@ -400,7 +400,7 @@ exercises:
         }
       - {
           id: d,
-          text: "The update needs the dial to move before its slope is calculated.",
+          text: "The update needs the parameters to move before their slopes are calculated.",
           correct: false,
           feedback: "That reverses the dependency: calculate the current slope first.",
         }
@@ -435,7 +435,7 @@ exercises:
     params:
       w: { min: 1, max: 4 }
       t: { min: 5, max: 8 }
-    prompt: "A tracked dial value is {{= w }} and its target is {{= t }}. The squared-error gradient is {{= 2 * (w - t) }}. With SGD learning rate 0.25, what value does `step()` produce?"
+    prompt: "A parameter has value ${{= w }}$ and target ${{= t }}$. The squared-error slope stored in `.grad` is ${{= 2 * (w - t) }}$. With SGD learning rate $0.25$, what value does `optimizer.step()` produce?"
     answer_expr: "w - 0.25 * 2 * (w - t)"
     tolerance: { abs: 0.000001 }
     solution: |
@@ -448,7 +448,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "The dial starts at 2 and backward stores gradient -4. Before any step, what is the dial value?"
+    prompt: "A parameter starts at $2$ and `loss.backward()` stores slope $-4$ in `.grad`. Before any `optimizer.step()` call, what is the parameter value?"
     options:
       - {
           id: a,
@@ -460,7 +460,7 @@ exercises:
           id: b,
           text: "It is now -4, because backward replaced it with its slope.",
           correct: false,
-          feedback: "The slope is stored separately in grad, not in the parameter value.",
+          feedback: "The slope is stored separately in `.grad`, not in the parameter value.",
         }
       - {
           id: c,
@@ -472,9 +472,9 @@ exercises:
           id: d,
           text: "It is now 4, because backward copied over the target.",
           correct: false,
-          feedback: "Backward calculates derivatives; it does not copy targets into parameters.",
+          feedback: "Backward calculates slopes; it does not copy targets into parameters.",
         }
-    solution: "The value remains 2 while its grad contains -4. Separate storage lets the optimiser choose how to use the slope."
+    solution: "The value remains $2$ while its `.grad` contains $-4$. Backward stores the slope; only the optimiser step changes the parameter."
   - id: ptb-loss-read
     dimension: implementation
     type: code_read
@@ -504,7 +504,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A robot's adjustable offset is 5 and its target offset is 1. Use squared error and one SGD step with learning rate 0.125. What is the new offset?"
+    prompt: "A parameter has value $5$ and target $1$. Use squared error and one SGD step with learning rate $0.125$. What is the new parameter value?"
     answer: 4
     tolerance: { abs: 0.000001 }
     solution: |
@@ -554,13 +554,13 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Why does the worked loop call `model(x)` again inside the inspection block?"
+    prompt: "Why does this step's worked loop call `model(x)` again inside `torch.no_grad()` to measure `new_loss` after the loop?"
     options:
       - {
           id: a,
-          text: "It needs a prediction using the parameters after the update.",
+          text: "It needs predictions using the parameters after all the updates.",
           correct: true,
-          feedback: "The earlier prediction and loss used the old parameters.",
+          feedback: "The last pass measured its loss before its update, so a fresh loss needs fresh predictions.",
         }
       - {
           id: b,
@@ -580,7 +580,7 @@ exercises:
           correct: false,
           feedback: "Model calls do not clear gradients; zero_grad does that.",
         }
-    solution: "The second call measures the changed model. Existing prediction and loss tensors do not automatically recalculate when parameters change."
+    solution: "After the loop, `model(x)` makes fresh predictions with the final parameters so `new_loss` measures the trained model. The last pass's loss was measured before its update. Existing prediction and loss tensors do not automatically recalculate when parameters change."
   - id: ptb-loop-complete
     dimension: implementation
     type: code_complete
@@ -701,7 +701,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 4
-    prompt: "A robot's linear rule has weight 0 and bias 0. Train once on input 2 and target 4 using squared error and SGD learning rate 0.125, updating both parameters. What is the freshly measured squared error after the step?"
+    prompt: "A linear model has weight $0$ and bias $0$. Train once on input $2$ and target $4$ using squared error and SGD learning rate $0.125$, updating both parameters. What is the fresh loss after the step?"
     answer: 1
     tolerance: { abs: 0.000001 }
     hints:
@@ -747,4 +747,4 @@ exercises:
           weight: 1,
           required: true,
         }
-    exemplar: "I put examples in rows of a floating-point input tensor and use targets of shape (n, 1) to match the one-output model. I create nn.Linear with the feature count and one output, use nn.MSELoss for error, and give model.parameters() and a learning rate to SGD. Each update clears gradients, calls the model, calculates loss, calls loss.backward(), then optimizer.step(). Backward stores slopes; step changes parameters. Without clearing, slopes accumulate across updates. I call the changed model again to measure its new loss, because old predictions and loss do not recalculate themselves."
+    exemplar: "I put examples in rows of a floating-point input tensor and use targets of shape `(n, 1)` to match the one-output model. I create `nn.Linear` with the input count per example and one output, use `nn.MSELoss()` for the loss, and give `model.parameters()` and a learning rate to SGD. Each pass calls `optimizer.zero_grad()`, calls the model, measures loss, calls `loss.backward()`, then `optimizer.step()`. Backward stores slopes in `.grad`; step changes parameters. Without clearing, slopes add up across passes. After the loop I call the changed model again inside `torch.no_grad()` to measure a fresh loss, because old predictions and loss do not recalculate themselves."
