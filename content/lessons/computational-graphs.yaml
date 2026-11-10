@@ -1,113 +1,69 @@
 concept: computational-graphs
-version: 7
+version: 8
 objective: |
-  **Goal:** draw a calculation as a graph of simple operations, find each operation's local derivative, and multiply along paths back from the output to find its derivative with respect to any input.
+  **Goal:** draw and evaluate a calculation as a graph of simple operations, find local derivatives, and combine every route to find the output derivative for an input.
+recap:
+  - concept: chain-rule
+    text: "Multiply derivatives along each route from an input to the output, then add the route contributions; a partial derivative changes one input while holding the others fixed."
 where_this_fits: |
-  Training a model needs the loss's derivative with respect to every weight. The chain rule handles a chain written by hand, but a model's calculation can have many steps, values reused in several places and many inputs. Writing every chain by hand is slow and error-prone. A computational graph lays out the calculation so finding derivatives becomes mechanical:
+  ### What is a computational graph?
 
-  1. Draw each simple operation and the values it uses.
-  2. Find each operation's local derivatives.
-  3. Multiply derivatives along each path and add the path contributions.
+  A computational graph is a diagram of the small operations in a calculation, with arrows showing which values each operation uses. It turns a long formula into steps you can follow one at a time.
 
-  Backpropagation, the next lesson, reuses shared products during one backward sweep to find every weight's derivative.
+  The chain rule tells us how to combine rates of change, but a formula can hide the steps between an input and the output. If one input is used in two operations, changing it can affect the output in two ways. Drawing both connections helps us find the output's derivative without missing either effect.
 knowledge_points:
   - id: cg-drawing-graphs
-    title: Break a calculation into simple operations
+    title: Draw and evaluate the graph
     explain: |
-      **The question.** To find a derivative, we'll need each step's effect on the output, but a formula can hide its steps and in-between values. How do you make each step visible?
+      ### From a formula to a picture
 
-      **Picture it.** Add two numbers, then multiply their sum by a third: $f=(x+y)\cdot z$, with inputs $x=1$, $y=2$, $z=4$. Rounded squares are inputs; circles are operations. Blue numbers are the values at the input nodes and the values each operation node computes.
+      We know how to follow a chain of rates. First, let's make the calculation itself visible.
+
+      We'll use a prediction and mistake score because they give us a calculation whose derivative tells us how changing a weight affects prediction mistakes. A simple prediction rule multiplies an input $x$ by an adjustable number $w$, called a weight. We'll call the prediction $p$. The desired result is the target, which we'll call $t$. Subtract the target to get the error $e$, then square it to get a mistake score $L$. Squaring gives positive scores for errors of either sign.
+
+      In the picture, start with $w=2$ and $x=3$ on the left. Their arrows point to the circle marked ×, which multiplies them. Its result feeds subtraction along with $t=5$. The error then feeds squaring. The numbers below the circles show the inputs and results, including $p=6$ below ×.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 370" aria-label="Inputs x and y feed addition q; q and z feed multiplication f">
-      <defs><marker id="cg1-grey" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="cg1-green" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker></defs>
-      <path d="M74 61.6 L226.86 103.64" stroke="#737373" stroke-width="2" marker-end="url(#cg1-grey)"/>
-      <path d="M74 158.4 L226.86 116.36" stroke="#737373" stroke-width="2" marker-end="url(#cg1-grey)"/>
-      <path d="M272.89 117.21 L497.11 187.79" stroke="#737373" stroke-width="2" marker-end="url(#cg1-grey)"/>
-      <path d="M74 270.91 L496.34 199.03" stroke="#737373" stroke-width="2" marker-end="url(#cg1-grey)"/>
-      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717" text-anchor="middle">
-      <rect x="26" y="31" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="60" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">x</text><text x="50" y="101" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1</text>
-      <rect x="26" y="141" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="170" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">y</text><text x="50" y="211" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">2</text>
-      <rect x="26" y="251" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="280" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">z</text><text x="50" y="321" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">4</text>
-      <circle cx="250" cy="110" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="250" y="115" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+</text><text x="250" y="156" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">q = 3</text>
-      <circle cx="520" cy="195" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="520" y="200" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">×</text><text x="520" y="241" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">f = 12</text>
-      <text x="250" y="30" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">q = x + y</text>
-      <text x="520" y="95" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">f = q · z</text>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" aria-label="w = 2 and x = 3 feed multiplication p = 6. p and t = 5 feed subtraction e = 1. e feeds squaring L = 1.">
+      <defs><marker id="cg-1" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <path d="M74.62 54.34 L195.38 75.66" stroke="#737373" stroke-width="2" marker-end="url(#cg-1)"/>
+      <path d="M72.09 158.3 L197.91 91.7" stroke="#737373" stroke-width="2" marker-end="url(#cg-1)"/>
+      <path d="M244.46 85.15 L385.54 114.85" stroke="#737373" stroke-width="2" marker-end="url(#cg-1)"/>
+      <path d="M242.59 199.3 L387.41 130.7" stroke="#737373" stroke-width="2" marker-end="url(#cg-1)"/>
+      <path d="M435 120 L555 120" stroke="#737373" stroke-width="2" marker-end="url(#cg-1)"/>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" text-anchor="middle">
+      <circle cx="50" cy="50" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="50" y="56" fill="#171717">w</text><text x="50" y="105" fill="#3b82f6">2</text>
+      <circle cx="50" cy="170" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="50" y="176" fill="#171717">x</text><text x="50" y="225" fill="#3b82f6">3</text>
+      <circle cx="220" cy="80" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="220" y="86" fill="#171717">×</text><text x="220" y="135" fill="#3b82f6">p = 6</text>
+      <circle cx="220" cy="210" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="220" y="216" fill="#171717">t</text><text x="220" y="265" fill="#3b82f6">5</text>
+      <circle cx="410" cy="120" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="410" y="126" fill="#171717">−</text><text x="410" y="175" fill="#3b82f6">e = 1</text>
+      <circle cx="580" cy="120" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="580" y="126" fill="#171717">²</text><text x="580" y="175" fill="#3b82f6">L = 1</text>
       </g>
       </svg>
       ```
 
-      Follow the grey arrows: $x$ and $y$ feed addition, producing $q=3$. That value and $z$ feed multiplication, producing $f=12$. You cannot compute $f$ until you know $q$.
+      ### Arrows tell us the order
 
-      **The idea.** Make each small operation visible. A **computational graph** is a diagram with one node per input and per simple operation, such as addition, multiplication or squaring. An arrow connects each value to every operation that uses it; arrows point forward, with no loops. Computing each node in arrow order is the **forward pass**; the computed values are called **forward values**. Each operation node stands for both the operation and the value it produces: $q$ is the value of the $+$ node.
+      A **computational graph** has a node for each input and each simple operation. Here, each node is a circle. An arrow points from a value to an operation that uses it. For example, the multiplication circle produces $p$, so its outgoing arrow carries that prediction to subtraction. Our formula is
 
-      **Common confusion.** “If a value is used twice, I draw it twice.” No: draw one node with two outgoing arrows. For $(x+y)\cdot(y+z)$, one $y$ feeds both additions, as shown below. Later in this lesson you'll add up both ways $y$ affects the output.
+      $$L=(w\cdot x-t)^2.$$
 
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" aria-label="One y input feeds two additions a and b, whose outputs feed multiplication g">
-      <defs><marker id="cg4-grey" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="cg4-green" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker></defs>
-      <path d="M74 59.8 L226.47 90.29" stroke="#737373" stroke-width="2" marker-end="url(#cg4-grey)"/>
-      <path d="M74 156.6 L227.35 102.93" stroke="#737373" stroke-width="2" marker-end="url(#cg4-grey)"/>
-      <path d="M74 175.8 L228.11 245.15" stroke="#737373" stroke-width="2" marker-end="url(#cg4-grey)"/>
-      <path d="M74 272.6 L226.12 257.39" stroke="#737373" stroke-width="2" marker-end="url(#cg4-grey)"/>
-      <path d="M273.01 101.82 L496.99 168.18" stroke="#737373" stroke-width="2" marker-end="url(#cg4-grey)"/>
-      <path d="M273.01 248.18 L496.99 181.82" stroke="#737373" stroke-width="2" marker-end="url(#cg4-grey)"/>
-      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717" text-anchor="middle">
-      <rect x="26" y="31" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="60" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">x</text><text x="50" y="101" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1</text>
-      <rect x="26" y="141" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="170" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">y</text><text x="50" y="211" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">2</text>
-      <rect x="26" y="251" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="280" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">z</text><text x="50" y="321" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">4</text>
-      <circle cx="250" cy="95" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="250" y="100" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+</text><text x="250" y="141" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">a = 3</text>
-      <circle cx="250" cy="255" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="250" y="260" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+</text><text x="250" y="301" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">b = 6</text>
-      <circle cx="520" cy="175" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="520" y="180" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">×</text><text x="520" y="221" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">g = 18</text>
-      </g>
-      </svg>
-      ```
+      The **forward pass** computes each operation after its inputs are ready. Here we multiply 2 by 3 to get $p=6$, then subtract 5 to get $e=1$, then square to get $L=1$. These results, $p=6$, $e=1$ and $L=1$, are the **forward values**: the numbers calculated as we follow the arrows. The arrows never loop back. If subtraction needed $L$ to produce $e$, while squaring needed $e$ to produce $L$, neither could start.
+
+      Be careful not to draw two separate input nodes for one reused value. In $x\cdot x$, both factors mean the same number: changing $x$ from 2 to 3 changes $2\cdot2$ to $3\cdot3$, not $3\cdot2$. Draw one $x$ node with two arrows into multiplication.
     worked: |
-      **Worked example.** A simple model, a rule for predicting from inputs, predicts $p=w\cdot x$: $w$ is an adjustable multiplier (a weight), and $t$ is the desired output (the target). Its squared error $L=(p-t)^2$ scores the prediction's mistake: squaring makes either sign of error positive and gives larger mistakes more importance. Use $w=2$, $x=3$, $t=5$.
+      Let's evaluate the pictured mistake score at $w=2$, $x=3$, $t=5$.
 
-      1. **List the operations.**
-         $$p=w\cdot x.$$
-         $$e=p-t.$$
-         $$L=e^2.$$
+      1. **Multiply to predict.** This supplies the value needed by subtraction.
+         $$p=w\cdot x=2\cdot3=6.$$
 
-      2. **Draw the graph.** The blue labels show the values computed in step 3.
+      2. **Subtract the target.** This tells us how far the prediction is from the desired result.
+         $$e=p-t=6-5=1.$$
 
-      ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 370" aria-label="Inputs w, x and t feed multiplication p, subtraction e, and squaring L">
-      <defs><marker id="cg5-grey" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="cg5-green" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker></defs>
-      <path d="M74 63.25 L187.3 102.2" stroke="#737373" stroke-width="2" marker-end="url(#cg5-grey)"/>
-      <path d="M74 156.75 L187.3 117.8" stroke="#737373" stroke-width="2" marker-end="url(#cg5-grey)"/>
-      <path d="M231.19 121.26 L348.81 183.74" stroke="#737373" stroke-width="2" marker-end="url(#cg5-grey)"/>
-      <path d="M74 269 L346.72 200.82" stroke="#737373" stroke-width="2" marker-end="url(#cg5-grey)"/>
-      <path d="M394 195 L516 195" stroke="#737373" stroke-width="2" marker-end="url(#cg5-grey)"/>
-      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717" text-anchor="middle">
-      <rect x="26" y="31" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="60" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">w</text><text x="50" y="101" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">2</text>
-      <rect x="26" y="141" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="170" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">x</text><text x="50" y="211" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">3</text>
-      <rect x="26" y="251" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="280" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">t</text><text x="50" y="321" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">5</text>
-      <circle cx="210" cy="110" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="210" y="115" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">×</text><text x="210" y="156" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">p = 6</text>
-      <circle cx="370" cy="195" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="370" y="200" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">−</text><text x="370" y="241" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">e = 1</text>
-      <circle cx="540" cy="195" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="540" y="200" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">( )²</text><text x="540" y="241" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">L = 1</text>
-      </g>
-      </svg>
-      ```
+      3. **Square the error.** This completes the last operation.
+         $$L=e^2=1^2=1.$$
 
-      3. **Compute each node.**
-         $$p=2\cdot3=6.$$
-         $$e=6-5=1.$$
-         $$L=1^2=1.$$
-
-      **Compare cases.**
-
-      | Expression | Operation nodes (squaring = one node) | Inputs used more than once |
-      | --- | --- | --- |
-      | $x+y$ | 1 | None |
-      | $(x+y)\cdot z$ | 2 | None |
-      | $(x+y)^2$ | 2 | None |
-      | $(x+y)\cdot(y+z)$ | 3 | $y$ |
-
-      In $(x+y)^2$, compute $x+y$ once and feed that single value once to the squaring node. Neither $x$ nor $y$ is a reused input: each has only one outgoing arrow.
-
-      **Where it shows up.** A model's prediction and loss form such a graph of multiplication, addition and squaring. Once drawn, its derivatives can be found one node at a time, as the next two points show.
+      The score is 1. We'll keep the in-between values $p=6$ and $e=1$ for the next step, where we'll use them to find how the operations respond to changes in their inputs.
     problems:
       - cg-drawing-graphs-basics
       - cgp-why-order
@@ -117,72 +73,71 @@ knowledge_points:
       - cgp-shared-input
       - cgp-robot-forward
   - id: cg-local-derivatives
-    title: "The slope of each small operation"
+    title: Measure how each operation responds
     explain: |
-      **The question.** To see how the output changes with an input, must you differentiate the whole formula at once? Or can you start with one operation at a time?
+      ### Look at one operation
 
-      **Picture it.** Return to $f=(x+y)\cdot z$ at $x=1$, $y=2$, $z=4$. Hold $z$ fixed: raising $q$ by 1 adds one more $z$ to $q\cdot z$, so $f$ grows by $z=4$. Therefore $\partial f/\partial q=z=4$. Blue labels are forward values; amber labels are local derivatives.
+      We have the forward values. Now we need the rate of change at each small operation before combining them with the chain rule.
+
+      Zoom in on the multiplication $p=w\cdot x$. We'll keep $x=3$ while changing $w$. Increasing $w$ by 0.1 raises $p$ by 0.3, three times as much. The picture leaves out subtraction and squaring so we can focus on how multiplication responds.
+
+      A **local derivative** is the rate of change of one operation's output with respect to one input, with other inputs fixed. Here it describes $p$, not the final score: $p$ rises by 0.3 when $w$ rises by 0.1, so the rate is 3.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 370" aria-label="Inputs x and y feed addition q; q and z feed multiplication f">
-      <defs><marker id="cg2-grey" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="cg2-green" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker></defs>
-      <path d="M74 61.6 L226.86 103.64" stroke="#737373" stroke-width="2" marker-end="url(#cg2-grey)"/>
-      <path d="M74 158.4 L226.86 116.36" stroke="#737373" stroke-width="2" marker-end="url(#cg2-grey)"/>
-      <path d="M272.89 117.21 L497.11 187.79" stroke="#737373" stroke-width="2" marker-end="url(#cg2-grey)"/>
-      <path d="M74 270.91 L496.34 199.03" stroke="#737373" stroke-width="2" marker-end="url(#cg2-grey)"/>
-      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717" text-anchor="middle">
-      <rect x="26" y="31" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="60" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">x</text><text x="50" y="101" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1</text>
-      <rect x="26" y="141" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="170" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">y</text><text x="50" y="211" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">2</text>
-      <rect x="26" y="251" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="280" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">z</text><text x="50" y="321" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">4</text>
-      <circle cx="250" cy="110" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="250" y="115" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+</text><text x="250" y="156" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">q = 3</text>
-      <circle cx="520" cy="195" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="520" y="200" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">×</text><text x="520" y="241" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">f = 12</text>
-      <text x="150" y="55" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂q/∂x = 1</text>
-      <text x="150" y="120" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂q/∂y = 1</text>
-      <text x="385" y="137.5" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂f/∂q = z = 4</text>
-      <text x="285" y="261" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂f/∂z = q = 3</text>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" aria-label="With x fixed at 3, w changes from 2 to 2.1 and multiplication p changes from 6 to 6.3. The local derivative of p with respect to w is 3.">
+      <defs><marker id="cg-2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <path d="M114.66 69.11 L365.34 110.89" stroke="#737373" stroke-width="2" marker-end="url(#cg-2)"/>
+      <path d="M114.16 188.56 L365.84 121.44" stroke="#737373" stroke-width="2" marker-end="url(#cg-2)"/>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" text-anchor="middle">
+      <circle cx="90" cy="65" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="90" y="71" fill="#171717">w</text><text x="90" y="120" fill="#3b82f6">2 → 2.1</text>
+      <circle cx="90" cy="195" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="90" y="201" fill="#171717">x</text><text x="90" y="250" fill="#3b82f6">3 (fixed)</text>
+      <circle cx="390" cy="115" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="390" y="121" fill="#171717">×</text><text x="390" y="170" fill="#3b82f6">p: 6 → 6.3</text>
+      <text x="480" y="220" fill="#f59e0b">∂p/∂w = 3</text>
       </g>
       </svg>
       ```
 
-      Addition passes a change in either input straight through to $q$, giving derivative 1. The multiplication's output $f$ changes by $q=3$ per unit change in $z$. Each amber label concerns only the operation at that arrow's end.
+      We write the rate of change of $p$ with respect to $w$ using partial-derivative notation:
 
-      **The idea.** Differentiate one small operation at a time. A **local derivative** is the derivative of one node's output with respect to one of its own inputs, holding that node's other inputs fixed. In $\partial q/\partial x$, the top names the output and the bottom names the input being changed.
+      $$\frac{\partial p}{\partial w}=x.$$
 
-      For addition $a+b$, both local derivatives are 1. For multiplication $a\cdot b$, the derivative with respect to $a$ is $b$, and with respect to $b$ is $a$. For subtraction $a-b$, they are 1 and $-1$, respectively. For squaring $u^2$, the derivative is $2u$. These rules can need forward values, such as $z=4$, so store those values during the forward pass before tracing backward.
+      The top names the output $p$; the bottom names the input $w$ we're changing. With $x=3$, every increase in $w$ is multiplied by 3, so $p$ changes three times as much.
 
-      **Common confusion.** “The local derivative at $x$ tells me how $f$ changes with $x$.” No: $\partial q/\partial x=1$ only describes $q$. How $f$ changes with $x$ is a different number, which the next point finds by combining local derivatives.
+      ### Rules for the small operations
+
+      For addition, each input has local derivative 1: increasing 2 to 3 in $2+3$ raises the sum from 5 to 6. For multiplication, each input's derivative is the other input's value: increasing $w$ from 2 to 3 in $w\cdot3$ raises $p$ from 6 to 9. For subtraction, the first input has derivative 1 and the subtracted input has derivative $-1$: in $6-5$, raising 6 to 7 raises the error to 2, while raising 5 to 6 lowers it to 0.
+
+      Squaring depends on its input value:
+
+      $$\frac{\partial L}{\partial e}=2e.$$
+
+      Let's see why the squaring rule needs the error's value. With $x=3$ and $t=5$, three different weights give different errors, so squaring has a different local derivative in each case:
+
+      | Weight $w$ | Error $e$ | Slope $2e$ |
+      | --- | --- | --- |
+      | 1 | $-2$ | $-4$ |
+      | 2 | 1 | 2 |
+      | 3 | 4 | 8 |
+
+      We keep the calculated error so we can choose the right rate for squaring: at $e=1$ it is 2, not the $-4$ we would use at $e=-2$.
+
+      Be careful not to read a local derivative as the final score's derivative. The rate $\partial p/\partial w$ describes $p$ only; the later operations still matter.
     worked: |
-      **Worked example.** Use the same squared error $L=(w\cdot x-t)^2$ at $w=2$, $x=3$, $t=5$. The forward pass gave $p=6$, $e=1$, $L=1$.
+      Let's find the local derivatives in our graph at $w=2$, $x=3$, $t=5$, where $p=6$ and $e=1$.
 
-      1. **Differentiate the multiplication.**
+      1. **We keep the input fixed.** The multiplier of $w$ tells us how the prediction responds to the weight.
          $$\frac{\partial p}{\partial w}=x=3.$$
+
+      2. **We keep the weight fixed.** Now $x$ changes while $w=2$, so the prediction changes twice as much as $x$.
          $$\frac{\partial p}{\partial x}=w=2.$$
 
-      2. **Differentiate the subtraction.**
-         $$\frac{\partial e}{\partial p}=1.$$
-         $$\frac{\partial e}{\partial t}=-1.$$
+      3. **We check the subtraction.** Raising the prediction raises the error; raising the target lowers it.
+         $$\frac{\partial e}{\partial p}=1,\qquad\frac{\partial e}{\partial t}=-1.$$
 
-      3. **Differentiate the squaring operation.**
-         $$\frac{\partial L}{\partial e}=2e=2.$$
+      4. **We find how squaring responds.** We use the error $e=1$ that we calculated in the forward pass, because the squaring rule needs its input's current value.
+         $$\frac{\partial L}{\partial e}=2e=2\cdot1=2.$$
 
-      4. **Check one local derivative with a nudge.** A **nudge** is a small change to one input, used to check a derivative numerically. Hold $x=3$ fixed and increase $w$ from 2 to 2.01.
-         $$p_{\text{new}}=2.01\cdot3=6.03.$$
-         $$p_{\text{new}}-p=0.03=0.01\cdot3.$$
-         $$\frac{0.03}{0.01}=3=\frac{\partial p}{\partial w}=x.$$
-
-      **Compare cases.**
-
-      Hold $x=3$ and $t=5$ fixed:
-
-      | $w$ | $p=w\cdot x$ | $e=p-t$ | $\partial p/\partial w=x$ | $\partial L/\partial e=2e$ |
-      | --- | --- | --- | --- | --- |
-      | 1 | 3 | $-2$ | 3 | $-4$ |
-      | 2 | 6 | 1 | 3 | 2 |
-      | 3 | 9 | 4 | 3 | 8 |
-
-      Squaring's local derivative depends on the current forward value $e$; the multiplication's derivative with respect to $w$ depends only on $x$.
-
-      **Where it shows up.** A loss is a score of prediction mistakes, such as our squared error. Even a large loss calculation built from these operations needs only this short list of local rules, reused at each node rather than a new rule for the whole formula.
+      These rates describe the small operations separately. Next we'll join them into rates for the whole score.
     problems:
       - cg-local-derivatives-basics
       - cgp-why-store-values
@@ -192,88 +147,65 @@ knowledge_points:
       - cgp-square-template
       - cgp-robot-subtract
   - id: cg-chaining-paths
-    title: "Combine the small slopes into one"
+    title: Combine changes through the whole calculation
     explain: |
-      **The question.** How do you combine local derivatives to find the output's derivative for an early input, especially one used twice?
+      ### One number changes two sums
 
-      **Picture it.** For $g=(x+y)\cdot(y+z)$ at $(x,y,z)=(1,2,4)$, the sums are $a=3$, $b=6$, giving $g=18$. Blue marks forward values, amber local derivatives, and green the paths from $y$ and their products. By the multiplication rule, $\partial g/\partial a=b=6$ and $\partial g/\partial b=a=3$.
+      We now combine local derivatives to find how the final output responds. A derivative label tells us how a change travels along an arrow. For example, rate 3 on the arrow from $w$ into multiplication means a 0.1 increase in $w$ raises $p$ by 0.3.
+
+      Let's see what happens when one input is used twice. Add $x$ to $y$ to get $a$, add $y$ to $z$ to get $b$, then multiply the sums to get $g$. We'll set $x=1$, $y=2$ and $z=4$, giving $a=3$, $b=6$ and $g=18$. One $y$ node feeds both additions, so changing $y$ changes both sums.
+
+      Each addition passes a change in $y$ on at rate 1. Multiplication's derivative is the other input's value. Holding $b=6$ fixed, raising $a$ from 3 to 4 raises $g$ from 18 to 24, so the rate is 6. Holding $a=3$ fixed gives rate 3 for changes in $b$. The diagram's two contributions multiply these rates by addition's rate 1, giving $6\cdot1$ and $3\cdot1$.
 
       ```svg
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" aria-label="One y input feeds two additions a and b, whose outputs feed multiplication g">
-      <defs><marker id="cg3-grey" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="cg3-green" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker></defs>
-      <path d="M74 59.8 L226.47 90.29" stroke="#737373" stroke-width="2" marker-end="url(#cg3-grey)"/>
-      <path d="M74 156.6 L227.35 102.93" stroke="#10b981" stroke-width="2" marker-end="url(#cg3-green)"/>
-      <path d="M74 175.8 L228.11 245.15" stroke="#10b981" stroke-width="2" marker-end="url(#cg3-green)"/>
-      <path d="M74 272.6 L226.12 257.39" stroke="#737373" stroke-width="2" marker-end="url(#cg3-grey)"/>
-      <path d="M273.01 101.82 L496.99 168.18" stroke="#10b981" stroke-width="2" marker-end="url(#cg3-green)"/>
-      <path d="M273.01 248.18 L496.99 181.82" stroke="#10b981" stroke-width="2" marker-end="url(#cg3-green)"/>
-      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717" text-anchor="middle">
-      <rect x="26" y="31" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="60" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">x</text><text x="50" y="101" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1</text>
-      <rect x="26" y="141" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="170" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">y</text><text x="50" y="211" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">2</text>
-      <rect x="26" y="251" width="48" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="50" y="280" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">z</text><text x="50" y="321" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">4</text>
-      <circle cx="250" cy="95" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="250" y="100" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+</text><text x="250" y="141" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">a = 3</text>
-      <circle cx="250" cy="255" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="250" y="260" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">+</text><text x="250" y="301" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">b = 6</text>
-      <circle cx="520" cy="175" r="24" fill="#ffffff" stroke="#171717" stroke-width="2"/><text x="520" y="180" fill="#171717" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">×</text><text x="520" y="221" fill="#3b82f6" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">g = 18</text>
-      <text x="145" y="50" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂a/∂x = 1</text>
-      <text x="145" y="290" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂b/∂z = 1</text>
-      <text x="145" y="110" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂a/∂y = 1</text>
-      <text x="145" y="245" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂b/∂y = 1</text>
-      <text x="405" y="95" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂g/∂a = b = 6</text>
-      <text x="405" y="275" fill="#f59e0b" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂g/∂b = a = 3</text>
-      <text x="405" y="35" fill="#10b981" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">via a: 6 × 1 = 6</text>
-      <text x="405" y="335" fill="#10b981" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">via b: 3 × 1 = 3</text>
-      <text x="320" y="395" fill="#10b981" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">∂g/∂y = 6 + 3 = 9</text>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 410" aria-label="x = 1 and y = 2 feed addition a = 3. y and z = 4 feed addition b = 6. a and b feed multiplication g = 18. The two paths from y contribute 6 times 1 and 3 times 1, totalling 9.">
+      <defs><marker id="cg-3" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <path d="M74.85 52.7 L255.15 72.3" stroke="#737373" stroke-width="2" marker-end="url(#cg-3)"/>
+      <path d="M73.11 160.46 L256.89 84.54" stroke="#737373" stroke-width="2" marker-end="url(#cg-3)"/>
+      <path d="M72.55 180.79 L257.45 269.21" stroke="#737373" stroke-width="2" marker-end="url(#cg-3)"/>
+      <path d="M74.98 288.91 L255.02 281.09" stroke="#737373" stroke-width="2" marker-end="url(#cg-3)"/>
+      <path d="M303.72 82.91 L541.28 162.09" stroke="#737373" stroke-width="2" marker-end="url(#cg-3)"/>
+      <path d="M303.32 271 L541.68 179" stroke="#737373" stroke-width="2" marker-end="url(#cg-3)"/>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" text-anchor="middle">
+      <circle cx="50" cy="50" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="50" y="56" fill="#171717">x</text><text x="50" y="105" fill="#3b82f6">1</text>
+      <circle cx="50" cy="170" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="50" y="176" fill="#171717">y</text><text x="50" y="225" fill="#3b82f6">2</text>
+      <circle cx="50" cy="290" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="50" y="296" fill="#171717">z</text><text x="50" y="345" fill="#3b82f6">4</text>
+      <circle cx="280" cy="75" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="280" y="81" fill="#171717">+</text><text x="280" y="130" fill="#3b82f6">a = 3</text>
+      <circle cx="280" cy="280" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="280" y="286" fill="#171717">+</text><text x="280" y="335" fill="#3b82f6">b = 6</text>
+      <circle cx="565" cy="170" r="25" fill="#d4d4d4" fill-opacity="0.2" stroke="#737373"/><text x="565" y="176" fill="#171717">×</text><text x="565" y="225" fill="#3b82f6">g = 18</text>
+      <text x="430" y="55" fill="#f59e0b">∂g/∂a = 6</text>
+      <text x="430" y="310" fill="#f59e0b">∂g/∂b = 3</text>
+      <text x="320" y="385" fill="#171717">From y: 6 × 1 + 3 × 1 = 9</text>
       </g>
       </svg>
       ```
 
-      Via $a$, the product is $6\cdot1=6$; via $b$, it is $3\cdot1=3$. A small change in $y$ changes both $a$ and $b$; each change moves $g$, so the effects add, giving 9.
+      ### Add the two changes in g
 
-      **The idea.** Multiply along each path, then add the results. On a **computational graph**, the output's derivative with respect to any value is the sum of the products of local derivatives along every path from that value to the output. The Chain rule lesson taught both parts: derivatives multiply along a chain and add when an input has two routes.
+      A **path** follows arrows from one node to another; here, $y$ to the upper addition to multiplication is one path from $y$ to $g$. Multiply local derivatives along each path, then add the products to get the output derivative. Here there are two paths from $y$:
 
-      To trace backward, start at the output and walk against the arrows' direction, multiplying the local derivative on each arrow you cross. The arrows stay as drawn; only your walk reverses direction.
+      $$\frac{\partial g}{\partial y}=\frac{\partial g}{\partial a}\frac{\partial a}{\partial y}+\frac{\partial g}{\partial b}\frac{\partial b}{\partial y}.$$
 
-      **Common confusion.** “If a value feeds two operations, I just follow one path.” No: one path gives 6 or 3, missing the other contribution. Expand to check:
-      $$g=xy+xz+y^2+yz.$$
-      $$\frac{\partial g}{\partial y}=x+2y+z=1+4+4=9.$$
+      The first term follows $y$ to $a$ to $g$; the second follows $y$ to $b$ to $g$.
+
+      - From $x$, only the path through $a$ contributes, giving $6\cdot1=6$.
+      - From $y$, both paths contribute, giving $6+3=9$.
+      - From $z$, only the path through $b$ contributes, giving $3\cdot1=3$.
+
+      Be careful not to stop after one path from a reused input. That would give 6 or 3 for $y$, missing the other effect. The paths add because a small change in $y$ moves the output through both sums, just as in the chain rule recap.
     worked: |
-      **Worked example.** Return to the squared error $L=(w\cdot x-t)^2$ at $w=2$, $x=3$, $t=5$. With $p=w\cdot x=6$ and $e=p-t=1$, find the loss derivative for each input.
+      Let's return to our prediction score $L=(w\cdot x-t)^2$ at $w=2$, $x=3$, $t=5$. Each input has just one path to $L$.
 
-      We adjust $w$ to reduce prediction mistakes; we also differentiate with respect to $x$ and $t$ to see which factors their derivatives share.
+      1. **Follow the weight's path.** The path goes through prediction, error and squaring, so multiply their local rates.
+         $$\frac{\partial L}{\partial w}=\frac{\partial L}{\partial e}\frac{\partial e}{\partial p}\frac{\partial p}{\partial w}=2\cdot1\cdot3=6.$$
 
-      1. **Trace back to the weight.**
-         $$\frac{\partial L}{\partial w}=\frac{\partial L}{\partial e}\cdot\frac{\partial e}{\partial p}\cdot\frac{\partial p}{\partial w}.$$
-         $$\frac{\partial L}{\partial w}=2\cdot1\cdot3=6.$$
-
-      2. **Trace back to the input.**
-         $$\frac{\partial L}{\partial x}=\frac{\partial L}{\partial e}\cdot\frac{\partial e}{\partial p}\cdot\frac{\partial p}{\partial x}.$$
+      2. **Follow the input's path.** Compared with the weight's path, the subtraction and squaring rates stay the same. At multiplication, $\partial p/\partial x=w=2$ replaces $\partial p/\partial w=x=3$.
          $$\frac{\partial L}{\partial x}=2\cdot1\cdot2=4.$$
 
-      3. **Trace back to the target.**
-         $$\frac{\partial L}{\partial t}=\frac{\partial L}{\partial e}\cdot\frac{\partial e}{\partial t}.$$
+      3. **Follow the target's path.** The target $t$ goes straight to the subtraction node, then the error goes to squaring. Multiplication uses only $w$ and $x$, so changing $t$ leaves the prediction $p$ fixed.
          $$\frac{\partial L}{\partial t}=2\cdot(-1)=-2.$$
 
-      Why start backward? The products above start at the output because factors near it can be reused further back: $w$ and $x$ share $\partial L/\partial e\cdot\partial e/\partial p=2$, while $t$ shares only $\partial L/\partial e=2$. Starting at the loss lets us build each shared product once, then use it for every earlier input that needs it.
-
-      4. **Check the weight derivative with a nudge.**
-         $$L_{\text{new}}=(2.01\cdot3-5)^2=1.0609.$$
-         $$L_{\text{new}}-L=0.0609\approx0.01\cdot6=0.06.$$
-
-      To see the gap from the derivative's prediction, write the nudged weight as $w=2+h$, where $h$ is the change in $w$:
-      $$L_{\text{new}}=(3(2+h)-5)^2.$$
-      $$L_{\text{new}}=(1+3h)^2=1+6h+9h^2.$$
-      $$L_{\text{new}}-L=6h+9h^2.$$
-      At $h=0.01$, the derivative predicts $6h=0.06$; the extra $9h^2=0.0009$ gives the actual change $0.0609$. At $h=0.001$, $6h=0.006$ and $9h^2=0.000009$: the correction shrinks 100-fold while the predicted change shrinks only tenfold.
-
-      **Compare cases.** For the two-sum graph $g=(x+y)\cdot(y+z)$ pictured above:
-
-      | Input | Paths to $g$ | Products | Output derivative |
-      | --- | --- | --- | --- |
-      | $x$ | 1 | $6\cdot1$ | $\partial g/\partial x=6$ |
-      | $y$ | 2 | $6\cdot1$ and $3\cdot1$ | $\partial g/\partial y=9$ |
-      | $z$ | 1 | $3\cdot1$ | $\partial g/\partial z=3$ |
-
-      **Where it shows up.** Adjusting every weight to reduce loss needs a derivative for each one; tracing inputs separately would repeat shared products such as $\partial L/\partial e\cdot\partial e/\partial p$. Backpropagation, the next lesson, computes each shared product once in a backward sweep and reuses it for every input that needs it.
+      Near these values, a small increase in the weight or input raises the score, while a small increase in the target lowers it. The graph tells us which factors belong in each derivative.
     problems:
       - cg-chaining-paths-basics
       - cgp-why-multiply-path
@@ -284,8 +216,8 @@ knowledge_points:
       - cgp-robot-error
 final: cg-explain
 summary: |
-  - I can draw each simple operation as a node and compute its value in arrow order.
-  - I can find one operation's local derivative while holding its other inputs fixed.
-  - I can multiply local derivatives along every path and add the path contributions.
+  - A computational graph draws inputs and simple operations as nodes, with arrows from each value to the operations that use it. The forward pass computes nodes after their inputs are ready.
+  - A local derivative describes one operation's output for one input, with other inputs held fixed. We keep the values calculated in the forward pass because some derivative rules need them; for example, squaring's local derivative $2e$ needs the error $e$.
+  - Multiply local derivatives along every path from an input to the output, then add the path products. One reused input can have several paths.
 
-  **Next:** Backpropagation reuses shared products in one backward sweep to find every model weight's derivative.
+  **Next:** Backpropagation uses these graph rules to reuse shared derivative calculations instead of following every path separately.
