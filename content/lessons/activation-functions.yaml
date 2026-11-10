@@ -1,20 +1,32 @@
 concept: activation-functions
-version: 4
+version: 5
 objective: |
   **Goal:** explain why a network needs a bending function between its layers, compute ReLU, sigmoid and tanh, and use their slopes to say how a small change in a score changes the output.
+recap:
+  - concept: perceptron
+    text: 'A perceptron computes a score $z=w\cdot x+b$, a weighted sum of its inputs plus a bias, then applies the step, giving $1$ if the score is positive and $0$ otherwise. Neurons can feed their outputs into other neurons.'
+  - concept: derivatives
+    text: "The derivative $f'(a)$ is the slope of $f$ at the input $a$. A small nudge to the input changes the output by about $f'(a)$ times the nudge."
 where_this_fits: |
-  A perceptron computes one weighted score and passes it through a step, so it can only draw a straight boundary. To follow curved patterns, a network arranges neurons in layers, and each layer's outputs become the next layer's inputs. But stacking weighted sums on their own doesn't help, and the step is flat almost everywhere, so its derivative is 0 and can't tell training which way to nudge a weight. This lesson finds the missing piece, the **activation function**, in three steps:
+  ### What is an activation function?
 
-  1. See why stacked weighted sums stay a straight line.
-  2. Meet three activations that bend a score: ReLU, sigmoid and tanh.
-  3. Find their slopes, which tell training how a nudge to a score changes the output.
+  An activation function is the function a neuron applies to its score before passing the result on. In the perceptron lesson, that function was the step, which turns the score into a yes or a no. Here we'll meet three that networks use far more often, ReLU, sigmoid and tanh.
+
+  Why do we need anything new? Real networks feed the outputs of some neurons into others, and we'll see that without an activation between them, all those neurons add up to no more than one weighted sum. The step fixes that, but it's flat everywhere except at its jump, so its slope can't tell training which way to nudge a weight. The activations in this lesson bend the score and still have useful slopes.
+final: act-explain-layers
 knowledge_points:
   - id: act-stacking-stays-straight
-    title: "Why a network needs a bend"
+    title: "Why stacked layers stay straight"
     explain: |
-      **The question.** A neuron's score, a weighted sum plus a bias, is a straight-line rule: draw the score against one input and you get a line. If you feed one neuron's score into a second neuron's weighted sum, can the result curve?
+      ### Feeding one score into another
 
-      **Picture it.** Take one input $x$. The first rule is $u=2x+1$ and the second is $y=3u-4$. The grey line is $y$ when nothing sits between the two rules: it is the straight line $y=6x-1$. The green dashed line puts $\max(0,u)$, the larger of $0$ and $u$, between them: it keeps a positive $u$ and turns a negative $u$ into $0$. Up to $x=-0.5$, $u$ is negative, so the green line stays flat at $-4$; after that it follows the grey line. That corner is a bend that no straight line can make.
+      In the perceptron lesson, we saw that XOR needs several neurons, with some of them feeding their outputs into others. Networks are built this way in **layers**. A layer is a group of neurons that all read the same inputs, and each layer's outputs become the next layer's inputs.
+
+      Stacking layers is how a network builds up more complex rules, so let's check what it gains. What happens if we stack two layers with nothing between them? Let's take the simplest case, with one input $x$ and one neuron in each layer. The first neuron computes $u=2x+1$, and the second takes $u$ as its input and computes $y=3u-4$.
+
+      ### A straight line stays straight
+
+      In the picture, the grey line shows $y$ against $x$. It's the straight line $y=6x-1$, because putting $2x+1$ in place of $u$ and multiplying out gives $3(2x+1)-4=6x-1$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Output y against input x for two stacked rules. Without anything between them the stack is the straight line y = 6x − 1, rising 6 per step at x = −1, 0, 1 (values −7, −1, 5). With max(0, u) between them the line is flat at −4 until x = −0.5, then rises: values −4, −1, 5.">
@@ -45,29 +57,31 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Feeding a straight-line rule into another always gives a straight-line rule. A **linear layer** is a set of neurons that each compute a weighted sum of their inputs plus a bias. For one input, two of them stacked give
+      This always happens. A **linear layer** is a layer whose neurons each compute a weighted sum of their inputs plus a bias. For one input, two of them stacked give
 
-      $$a(cx+d)+e=(ac)x+(ad+e),$$
+      $$a(cx+d)+e=(ac)x+(ad+e)$$
 
-      one slope $ac$ and one intercept $ad+e$. More inputs multiply out the same way: $3(2x_1+x_2+1)-4=6x_1+3x_2-1$. So any stack of linear layers equals a single one. To make extra layers count, a network applies a function whose graph is not a straight line to each score before passing it on: a nonlinear **activation function**. The perceptron's step is one, but its zero slope makes it a poor choice for training.
+      which is again one slope, $ac$, times $x$, plus one intercept, $ad+e$. More inputs multiply out in the same way, for example $3(2x_1+x_2+1)-4=6x_1+3x_2-1$. So any stack of linear layers is the same as a single linear layer.
 
-      **Common confusion.** “More layers always make a more powerful model.” Not on their own. Without an activation between them, ten linear layers can only ever give each output one weighted sum of the inputs plus a bias.
+      Be careful not to think that more layers always make a more powerful model. With nothing between them, ten linear layers still give each output one weighted sum of the inputs plus a bias.
+
+      ### Putting a bend between the layers
+
+      Now let's put $\max(0,u)$, the larger of $0$ and $u$, between the two layers. It keeps a positive $u$ and turns a negative $u$ into $0$. That's the green dashed line in the picture. Up to $x=-0.5$, $u=2x+1$ is negative, so $y=3\cdot0-4$ stays flat at $-4$, and after that the green line follows the grey one. That corner is a bend that no straight line can make.
+
+      So to make extra layers count, a network applies a function whose graph isn't a straight line to each score before passing it on. Such a function is called nonlinear, and it's the network's **activation function**.
     worked: |
-      Combine $u=2x+1$ and $y=3u-4$ into one rule, then compare it with the version that has $\max(0,u)$ between the layers.
+      Let's combine $u=2x+1$ and $y=3u-4$ into one rule, then compare it with the version that has $\max(0,u)$ between the layers.
 
-      1. **Substitute the first rule into the second.**
-         $$y=3(2x+1)-4.$$
-
-      2. **Multiply out the bracket.**
-         $$y=6x+3-4.$$
-
-      3. **Collect the constants.**
-         $$y=6x-1.$$
-
-      4. **Check at one input, $x=1$.**
-         $$u=2(1)+1=3,\qquad y=3(3)-4=5=6(1)-1.$$
-
-      **Compare cases.** A straight line rises by the same amount for each equal step in $x$; a bent one doesn't.
+      1. **Put the first rule into the second.** The second layer reads $u$, so we replace $u$ with $2x+1$.
+         $$y=3(2x+1)-4$$
+      2. **Multiply out the bracket.** The $3$ multiplies both the $2x$ and the $1$.
+         $$y=6x+3-4$$
+      3. **Collect the numbers.** This leaves one slope and one intercept.
+         $$y=6x-1$$
+      4. **Check one input.** At $x=1$ the two layers give $u=3$ and then $y=5$, the same as the single rule.
+         $$u=2(1)+1=3,\qquad y=3(3)-4=5=6(1)-1$$
+      5. **Compare equal steps in $x$.** A straight line rises by the same amount for each equal step in $x$, so a table shows whether the result bends.
 
       | $x$ | $u=2x+1$ | $y$, nothing between | $y$, $\max(0,u)$ between |
       | --- | --- | --- | --- |
@@ -76,7 +90,7 @@ knowledge_points:
       | $1$ | $3$ | $5$ | $5$ |
       | Rise per step | | $6$, then $6$ | $3$, then $6$ |
 
-      **Where it shows up.** A house-price network built from many linear layers with nothing between them is the same kind of rule as linear regression's single weighted sum. The activations between layers are what let it follow a price that, say, rises faster for bigger houses.
+      With nothing between the layers, the rise is $6$ every time, so the result is a straight line. With $\max(0,u)$ between them, the rise changes from $3$ to $6$, and that change is the bend.
     problems:
       - act-stacking-stays-straight-basics
       - actp-stack-self-explain
@@ -90,9 +104,13 @@ knowledge_points:
   - id: act-relu-sigmoid-tanh
     title: "Three common activation functions"
     explain: |
-      **The question.** Which bending functions do networks actually use between layers, and what does each one do to a score?
+      ### Why not use the step?
 
-      **Picture it.** The three curves show the output for each score $z$ from $-3$ to $3$. Green **ReLU** is flat at $0$ for negative scores and passes positive scores through unchanged, with one corner at $0$. Blue **sigmoid** rises smoothly from near $0$ to near $1$ and crosses $0.5$ at $z=0$. Amber **tanh** has the same S shape but runs from near $-1$ to near $1$ and crosses $0$ at $z=0$.
+      The perceptron's step is an activation function, and it does bend a stack of layers. But it's flat everywhere except at $z=0$, where it jumps. In the derivatives lesson, we saw that a nudge changes the output by about the slope times the nudge. The step's slope is $0$ wherever it has one, so nudging a score, or a weight behind it, changes nothing, and training can't tell which way to move. So we want functions that bend and still have a slope that training can use.
+
+      ### Three curves
+
+      The picture shows three such functions, each plotted against a neuron's score $z$ from $-3$ to $3$. The green line is **ReLU**. It's flat at $0$ for negative scores and passes positive scores through unchanged, with one corner at $0$. The blue curve is the **sigmoid**, which rises smoothly from near $0$ to near $1$ and crosses $0.5$ at $z=0$. The orange curve is **tanh**, which has the same S shape but runs from near $-1$ to near $1$ and crosses $0$ at $z=0$.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" aria-label="ReLU, sigmoid and tanh plotted against the score z from −3 to 3. ReLU is 0 for negative z and equals z for positive z. Sigmoid rises smoothly from near 0 to near 1 and is 0.5 at z = 0. Tanh rises smoothly from near −1 to near 1 and is 0 at z = 0.">
@@ -120,41 +138,41 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** Each activation takes a neuron's score $z$ and returns the value the neuron passes on. The three common ones are:
+      ### The three formulas
 
-      $$\operatorname{ReLU}(z)=\max(0,z),$$
+      $$\operatorname{ReLU}(z)=\max(0,z)$$
 
-      $$\sigma(z)=\frac{1}{1+e^{-z}},$$
+      $$\sigma(z)=\frac{1}{1+e^{-z}}$$
 
-      $$\tanh(z)=\frac{e^{z}-e^{-z}}{e^{z}+e^{-z}}.$$
+      $$\tanh(z)=\frac{e^{z}-e^{-z}}{e^{z}+e^{-z}}$$
 
-      ReLU, short for rectified linear unit, keeps positive scores and replaces negative ones with $0$. The sigmoid, written $\sigma$ (the Greek letter sigma), squashes any score into the range between $0$ and $1$. The hyperbolic tangent, tanh (a name borrowed from trigonometry; you only need the formula), squashes any score into the range between $-1$ and $1$. Here $e\approx2.718$ is the base of the exponential from the derivatives lesson. ReLU has no upper limit; sigmoid and tanh level off at both ends.
+      ReLU, short for rectified linear unit, is the $\max(0,u)$ from the first step. The sigmoid is written $\sigma$, the Greek letter sigma, and $e\approx2.718$ is the number from the derivatives lesson. Because $e^{-z}$ is always positive, the bottom of the sigmoid's fraction is more than $1$, so $\sigma(z)$ stays between $0$ and $1$. Tanh is short for hyperbolic tangent. ReLU has no upper limit, while the sigmoid and tanh level off at both ends.
 
-      **Common confusion.** “Sigmoid is just the step with a different name: it outputs 0 or 1.” No. The step jumps from $0$ to $1$ at $z=0$, while the sigmoid changes smoothly, so a score of $0$ gives $0.5$ and a score of $1$ gives about $0.73$. It only gets close to $0$ or $1$ for scores far from $0$.
+      Be careful not to treat the sigmoid as the step under another name. The step jumps from $0$ to $1$ at $z=0$, while the sigmoid changes smoothly, so a score of $0$ gives $0.5$ and a score of $1$ gives about $0.73$.
+
+      ### Where each one is used
+
+      Most networks use ReLU between their layers, because it's cheap to compute and, as the next step shows, its slope doesn't shrink for large scores. The sigmoid suits a final yes-or-no output, because a value between $0$ and $1$ can be read as how likely the answer is to be yes. Tanh suits outputs centred on $0$.
     worked: |
-      Pass the score $z=2$ through each of the three activations.
+      Let's pass the score $z=2$ through each of the three activations, then compare the results with $z=-2$ and $z=0$.
 
-      1. **ReLU keeps a positive score.**
-         $$\operatorname{ReLU}(2)=\max(0,2)=2.$$
+      1. **Apply ReLU.** The score is positive, so ReLU keeps it.
+         $$\operatorname{ReLU}(2)=\max(0,2)=2$$
+      2. **Find the two exponentials.** The sigmoid and tanh both use $e^{2}$ and $e^{-2}$, which is one over $e^{2}$.
+         $$e^{2}\approx7.389,\qquad e^{-2}=\frac{1}{e^{2}}\approx0.135$$
+      3. **Finish the sigmoid.** We put $e^{-2}$ into the bottom of its fraction.
+         $$\sigma(2)=\frac{1}{1+0.135}\approx0.881$$
+      4. **Finish tanh.** Its top subtracts the two exponentials and its bottom adds them.
+         $$\tanh(2)=\frac{7.389-0.135}{7.389+0.135}=\frac{7.254}{7.524}\approx0.964$$
+      5. **Compare three scores.** The same steps at $z=-2$ and $z=0$ fill in the rest of the table.
 
-      2. **Find the two exponentials.**
-         $$e^{2}\approx7.389,\qquad e^{-2}=\frac{1}{e^{2}}\approx0.135.$$
-
-      3. **Finish the sigmoid.**
-         $$\sigma(2)=\frac{1}{1+0.135}\approx0.881.$$
-
-      4. **Finish tanh.**
-         $$\tanh(2)=\frac{7.389-0.135}{7.389+0.135}=\frac{7.254}{7.524}\approx0.964.$$
-
-      **Compare cases.**
-
-      | Score $z$ | $\operatorname{ReLU}(z)$ | $\sigma(z)$ | $\tanh(z)$ |
+      | Score $z$ | ReLU | Sigmoid | Tanh |
       | --- | --- | --- | --- |
       | $-2$ | $0$ | $0.119$ | $-0.964$ |
       | $0$ | $0$ | $0.5$ | $0$ |
       | $2$ | $2$ | $0.881$ | $0.964$ |
 
-      **Where it shows up.** The layers before a house-price network's final output usually use ReLU: it bends the stack, is cheap to compute and, as the next part shows, its slope doesn't fade for large scores. A sigmoid suits a final yes-or-no output, such as whether a house sells above its asking price, because its 0-to-1 output can be read as a probability, and answering yes above $0.5$ turns it into a decision.
+      ReLU keeps a large positive score as it is, while the sigmoid and tanh squeeze it towards their upper limits. For the negative score, ReLU gives $0$, the sigmoid gives a small positive number and tanh gives the same size of answer as for $z=2$ but negative.
     problems:
       - act-relu-sigmoid-tanh-basics
       - actp-squash-self-explain
@@ -165,11 +183,15 @@ knowledge_points:
       - actp-relu-bend
       - actp-why-sigmoid-output
   - id: act-slopes
-    title: "How steep each activation function is"
+    title: "How steep each activation is"
     explain: |
-      **The question.** Training nudges a network's weights, and each nudge changes a neuron's score a little. When that score passes through an activation, how much does the output change?
+      ### How much does the output move?
 
-      **Picture it.** The blue curve is the sigmoid. Each red line touches it at one score and has the curve's slope there. At $z=0$ the curve is steepest, with slope $0.25$. At $z=3$ the output is about $0.95$ and the curve has nearly levelled off, so its slope is only about $0.045$: a nudge to the score there barely moves the output.
+      Training improves a network by nudging its weights, and each nudge changes a neuron's score a little. So we need to know how much an activation's output moves when its score moves. In the derivatives lesson, we saw that the answer is the slope. For a small change in score, the change in output is about the slope times the change in score.
+
+      ### The slope of each curve
+
+      The picture shows the blue sigmoid curve again, with two red lines that each just touch the curve at one score. These are its tangent lines. At $z=0$ the curve is at its steepest, with slope $0.25$. At $z=3$ the output is about $0.95$ and the curve has nearly levelled off, so its slope is only about $0.045$, and a nudge to the score there barely moves the output.
 
       ```svg
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="The sigmoid curve with two tangent lines. At z = 0 the curve is steepest and the tangent has slope 0.25. At z = 3 the curve has flattened and the tangent has slope about 0.045.">
@@ -198,45 +220,48 @@ knowledge_points:
       </svg>
       ```
 
-      **The idea.** An **activation slope** is the derivative of an activation's output with respect to its score. As with any derivative, for a small change in score, change in output ≈ slope × change in score. The three slopes are:
+      An **activation's slope** is its derivative, how fast its output changes as its score changes. For our three activations, the slopes are
 
-      $$\operatorname{ReLU}'(z)=1\text{ for }z>0,\qquad \operatorname{ReLU}'(z)=0\text{ for }z<0,$$
+      $$\operatorname{ReLU}'(z)=\begin{cases}1 & \text{if } z>0\\ 0 & \text{if } z<0\end{cases}$$
 
-      $$\sigma'(z)=\sigma(z)\,(1-\sigma(z)),$$
+      $$\sigma'(z)=\sigma(z)\,\bigl(1-\sigma(z)\bigr)$$
 
-      $$\tanh'(z)=1-\tanh^2(z),$$
+      $$\tanh'(z)=1-\tanh^2(z)$$
 
-      where $\tanh^2(z)$ means the tanh output squared.
+      where $\tanh^2(z)$ means the tanh output squared. ReLU has no single slope at its corner, $z=0$, so by convention we take it as $0$ there. The worked example finds the sigmoid's slope with the quotient rule. Tanh's slope comes out the same way, so we'll use it as given.
 
-      ReLU has no single slope at its corner, $z=0$; by convention it is taken as $0$ there. The sigmoid and tanh slopes come from the chain rule, which a later lesson teaches; for now take them as given, and the worked example checks the sigmoid one with a nudge. A flat stretch where the slope is close to $0$ is called **saturation**.
+      ### When the slope is nearly zero
 
-      **Common confusion.** “A neuron with a big output must have a big slope.” No: height and slope are different things. At $z=4$ the sigmoid outputs $0.982$, but its slope is only $0.018$, because the curve is almost flat there.
+      The sigmoid and tanh have a real weakness. Far from $z=0$ both curves are almost flat, so their slopes are close to $0$. A flat stretch like this is called **saturation**. At $z=-4$ the sigmoid's slope is only about $0.018$, so changing the weights behind that neuron hardly changes anything, and training learns very slowly. ReLU never flattens for positive scores, which is the main reason it's the usual choice between layers. But a ReLU neuron whose score is negative for every input always outputs $0$ with slope $0$, so it stops learning altogether. This is called a dead unit, unit being another word for neuron.
+
+      Be careful not to read a big output as a big slope. At $z=4$ the sigmoid outputs $0.982$, close to its largest value, but that's just where the curve is almost flat, so its slope is tiny.
     worked: |
-      Find the sigmoid's slope at $z=0$, then check it by nudging the score from $0$ to $0.1$.
+      Let's find the sigmoid's slope with the quotient rule from the derivatives lesson, use it at $z=0$, and check the answer by nudging the score from $0$ to $0.1$.
 
-      1. **Find the output.**
-         $$\sigma(0)=\frac{1}{1+e^{0}}=\frac{1}{2}=0.5.$$
+      1. **Rewrite the sigmoid.** Multiplying the top and bottom of the fraction by $e^{z}$ gives a fraction whose top and bottom are built only from $e^{z}$, whose slope we know.
+         $$\sigma(z)=\frac{1}{1+e^{-z}}=\frac{e^{z}}{e^{z}+1}$$
+      2. **Apply the quotient rule.** The top is $e^{z}$ and the bottom is $e^{z}+1$, and both have slope $e^{z}$, because $e^{z}$ is its own derivative.
+         $$\sigma'(z)=\frac{e^{z}(e^{z}+1)-e^{z}\cdot e^{z}}{(e^{z}+1)^2}=\frac{e^{z}}{(e^{z}+1)^2}$$
+      3. **Spot the sigmoid in the answer.** We split the fraction into two factors. The first is $\sigma(z)$ from step 1. The second is $1-\sigma(z)$, because $\frac{e^{z}}{e^{z}+1}+\frac{1}{e^{z}+1}=1$.
+         $$\sigma'(z)=\frac{e^{z}}{e^{z}+1}\cdot\frac{1}{e^{z}+1}=\sigma(z)\,\bigl(1-\sigma(z)\bigr)$$
+      4. **Put in $z=0$.** Here $e^{0}=1$, so the output is $0.5$.
+         $$\sigma'(0)=0.5\times(1-0.5)=0.25$$
+      5. **Predict the change for a nudge of $0.1$.** The change in output is about the slope times the nudge.
+         $$\text{change}\approx0.25\times0.1=0.025$$
+      6. **Compare with the actual change.** Working out $\sigma(0.1)$ directly gives almost the same change.
+         $$\sigma(0.1)-\sigma(0)\approx0.52498-0.5=0.02498$$
 
-      2. **Find the slope.**
-         $$\sigma'(0)=0.5\,(1-0.5)=0.25.$$
+      So for a small nudge, the slope predicts the change very closely. The table compares the slopes at other scores.
 
-      3. **Predict the change for a nudge of $0.1$.**
-         $$\text{change}\approx0.25\times0.1=0.025.$$
+      | Score $z$ | ReLU slope | Sigmoid slope | Tanh slope |
+      | --- | --- | --- | --- |
+      | $-4$ | $0$ | $0.018$ | $0.001$ |
+      | $-2$ | $0$ | $0.105$ | $0.071$ |
+      | $0$ | $0$ (by convention) | $0.25$ | $1$ |
+      | $2$ | $1$ | $0.105$ | $0.071$ |
+      | $4$ | $1$ | $0.018$ | $0.001$ |
 
-      4. **Compare with the actual change.**
-         $$\sigma(0.1)-\sigma(0)\approx0.52498-0.5=0.02498.$$
-
-      **Compare cases.**
-
-      | Score $z$ | $\sigma(z)$ | $\sigma'(z)$ | $\tanh'(z)$ | $\operatorname{ReLU}'(z)$ |
-      | --- | --- | --- | --- | --- |
-      | $-4$ | $0.018$ | $0.018$ | $0.001$ | $0$ |
-      | $-2$ | $0.119$ | $0.105$ | $0.071$ | $0$ |
-      | $0$ | $0.5$ | $0.25$ | $1$ | $0$ (corner) |
-      | $2$ | $0.881$ | $0.105$ | $0.071$ | $1$ |
-      | $4$ | $0.982$ | $0.018$ | $0.001$ | $1$ |
-
-      **Where it shows up.** A weight nudge changes a neuron's score, and the loss only feels it through the output change, slope × score change. If the slope is near 0, as in a saturated sigmoid (output near 1 but hardly moving) or a ReLU whose score is always negative, the loss barely changes, so training gets almost no signal for that weight.
+      Far from $0$, the sigmoid and tanh slopes shrink towards $0$, while ReLU's slope stays at $1$ for every positive score.
     problems:
       - act-slopes-basics
       - actp-nudge-self-explain
@@ -246,10 +271,10 @@ knowledge_points:
       - actp-tanh-slope
       - actp-why-saturation
       - actp-dead-unit
-final: act-explain-layers
 summary: |
-  - Stacked linear layers multiply out into one straight-line rule, so a network needs a nonlinear activation between its layers.
-  - ReLU keeps positive scores and zeroes negative ones; sigmoid squashes a score into 0 to 1 and tanh into −1 to 1.
-  - An activation's slope says how much a small change in its score changes its output; on flat, saturated stretches a change in score barely changes the output.
+  - Stacked linear layers multiply out into one weighted sum plus a bias, so a network needs a nonlinear activation function between its layers.
+  - $\operatorname{ReLU}(z)=\max(0,z)$ keeps positive scores and turns negative ones into $0$. The sigmoid $\sigma(z)=\frac{1}{1+e^{-z}}$ squeezes a score into $0$ to $1$, and tanh squeezes it into $-1$ to $1$.
+  - An activation's slope says how much a small change in its score changes its output. ReLU's slope is $1$ for positive scores and $0$ for negative ones, the sigmoid's is $\sigma(z)(1-\sigma(z))$ and tanh's is $1-\tanh^2(z)$.
+  - On saturated, almost flat stretches of the sigmoid and tanh, and for a dead ReLU unit, the slope is near $0$, so training barely changes that neuron.
 
-  **Next:** The forward-pass lesson stacks layers with activations between them to turn house features into a predicted price.
+  **Next:** In the forward-pass lesson, we stack whole layers of neurons with activations between them and follow the numbers from a network's input to its output.

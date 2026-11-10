@@ -247,7 +247,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: "A house score goes through two rules with nothing between them: $u = 4x + 2$, then $y = 3u - 1$. What kind of rule is $y$ in terms of $x$?"
+    prompt: "An input $x$ goes through two linear layers with nothing between them: $u = 4x + 2$, then $y = 3u - 1$. What kind of rule is $y$ in terms of $x$?"
     options:
       - { id: a, text: "A single straight-line rule, $y = 12x + 5$", correct: true }
       - {
