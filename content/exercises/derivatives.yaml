@@ -22,17 +22,17 @@ exercises:
         }
       - {
           id: c,
-          text: "How fast a function's output changes per unit of input, at one particular input value",
+          text: "How fast a function's output changes for each unit of input, at one particular input value",
           correct: true,
           feedback: "The derivative gives the local output rate per input unit at the specified input value.",
         }
       - {
           id: d,
-          text: "The input value where a function reaches its minimum, rather than a local rate.",
+          text: "The input value where a function reaches its minimum, rather than how fast it changes at one point.",
           correct: false,
           feedback: "That is where the output is lowest; the derivative is a rate measured at an input.",
         }
-    solution: "A derivative is the rate at which a function's output changes per unit of input at one point."
+    solution: "A derivative is the rate at which a function's output changes for each unit of input at one point."
   - id: der-power-rule-basics
     dimension: conceptual
     type: mc
@@ -115,23 +115,23 @@ exercises:
         }
       - {
           id: b,
-          text: "A changing factor times a constant, or a constant over a function.",
+          text: "A changing part times a constant, or a constant over a function.",
           correct: false,
-          feedback: "Those use constant-factor rules; product and quotient rules cover two changing factors.",
+          feedback: "Those use the constant-multiple rule; product and quotient rules cover two changing parts.",
         }
       - {
           id: c,
-          text: "A product of two changing factors and a quotient of two functions.",
+          text: "A product of two changing parts and a quotient of two functions.",
           correct: true,
-          feedback: "Both rules account for changes in both factors, or in both parts of a ratio.",
+          feedback: "Both rules account for changes in both parts of a product, or of a ratio.",
         }
       - {
           id: d,
-          text: "A nested function whose input is transformed by an inner function.",
+          text: "A function inside another function, such as $\\ln(3x)$.",
           correct: false,
           feedback: "A function fed into another function needs a different rule; product and quotient rules handle products and ratios.",
         }
-    solution: "The product rule differentiates two changing factors, while the quotient rule differentiates their ratio."
+    solution: "The product rule differentiates two changing parts, while the quotient rule differentiates their ratio."
   - id: der-check-power
     dimension: math
     type: expression
@@ -141,7 +141,7 @@ exercises:
     prompt: "Differentiate $f(x) = 5x^3 - 4x^2 + 7$ with respect to $x$."
     answer: "15*x^2 - 8*x"
     variables: { x: [-3, 3] }
-    hints: ["Power rule: $\\frac{d}{dx}x^n = n x^{n-1}$; constants differentiate to 0."]
+    hints: ["Power rule: $(x^n)' = n x^{n-1}$; a constant on its own has slope 0."]
     solution: "$15x^2 - 8x$."
   - id: der-faded-product
     dimension: math
@@ -242,7 +242,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "A model's loss for one weight is $L(w) = (2w - 6)^2$. Expand $L(w)$, find $L'(w)$ and $L'(2)$, then explain in 2–4 sentences what a small increase in $w$ near 2 will do to the loss."
+    prompt: "A model's loss, a score of how wrong its predictions are, depends on one adjustable number, its weight $w$, as $L(w) = (2w - 6)^2$. Expand $L(w)$, find $L'(w)$ and $L'(2)$, then explain in 2–4 sentences what a small increase in $w$ near 2 will do to the loss."
     rubric:
       - {
           id: r1,
@@ -498,7 +498,7 @@ exercises:
         correct: false
         category: misapplied_technique
         feedback: "The power goes down by one, not up."
-    solution: "Power rule: bring the 3 down and lower the power to 2, so $\\frac{d}{dx}x^3 = 3x^2$."
+    solution: "Power rule: bring the 3 down and lower the power to 2, so $(x^3)' = 3x^2$."
   - id: derp-constant-term
     dimension: conceptual
     type: mc
@@ -711,10 +711,10 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Why can't you find the derivative of $x^2 e^x$ by multiplying the derivatives of its two factors?"
+    prompt: "Why can't you find the derivative of $x^2 e^x$ by multiplying the derivatives of its two parts?"
     options:
       - id: a
-        text: "Both factors can change, so the product changes from each factor's contribution; the product rule adds both"
+        text: "Both parts can change, so the product changes from each part's contribution; the product rule adds both"
         correct: true
       - id: b
         text: "Nothing; the derivative of a product is the product of the derivatives"
@@ -807,7 +807,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A model's loss for one weight is $L(w)$. At $w = 2$ the loss is $L(2) = 5$ and its slope is $L'(2) = -4$. Use the derivative to estimate the small change $h$ in the weight that brings the loss down to $4.8$. Give $h$ with its sign."
+    prompt: "A model's loss, a score of how wrong its predictions are, depends on one adjustable number, its weight $w$, as $L(w)$. At $w = 2$ the loss is $L(2) = 5$ and its slope is $L'(2) = -4$. Use the derivative to estimate the small change $h$ in the weight that brings the loss down to $4.8$. Give $h$ with its sign."
     answer: 0.05
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -842,7 +842,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A model's loss for one weight is $L(w) = w^3 - 12w + 20$, for $w > 0$. At which positive weight is the slope $L'(w)$ zero?"
+    prompt: "A model's loss, a score of how wrong its predictions are, depends on one adjustable number, its weight $w$, as $L(w) = w^3 - 12w + 20$, for $w > 0$. At which positive weight is the slope $L'(w)$ zero?"
     answer: 2
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -879,7 +879,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: "A model's loss for one positive weight is $L(w) = w - 4\\ln w$. At which weight is the slope $L'(w)$ zero?"
+    prompt: "A model's loss, a score of how wrong its predictions are, depends on one positive adjustable number, its weight $w$, as $L(w) = w - 4\\ln w$. At which weight is the slope $L'(w)$ zero?"
     answer: 4
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -916,7 +916,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "In the worked example, why does step 1 work out the average speed for steps of 1, 0.1 and 0.01 seconds instead of stopping at the 1-second step?"
+    prompt: "In this step, why do we work out the car's average speed over 1, 0.1 and 0.01 seconds instead of stopping at the 1-second average?"
     options:
       - id: a
         text: "The 1-second average also counts how the speed changed later; shorter steps get closer to the speed at exactly $t = 3$."
@@ -1025,22 +1025,50 @@ exercises:
     prompt: "In the worked example, why is $f'(1)$ the sum of two parts, $2$ and $6$?"
     options:
       - id: a
-        text: "Both factors change with $x$; 2 is the change from $u$ times $v$, and 6 is $u$ times the change from $v$."
+        text: "Both parts change with $x$; 2 is the change from $u$ times $v$, and 6 is $u$ times the change from $v$."
         correct: true
         feedback: "Those are the two strips of the rectangle: $u'v = 2 \\cdot 1$ and $uv' = 2 \\cdot 3$."
       - id: b
         text: "The two parts are the slopes of $u$ and $v$ at $x = 1$, which are added together."
         correct: false
         category: misunderstood_definition
-        feedback: "The slopes are $u' = 2$ and $v' = 3$, which add to 5, not 8. Each part of the rule mixes one slope with the other factor's value."
+        feedback: "The slopes are $u' = 2$ and $v' = 3$, which add to 5, not 8. Each term of the rule mixes one slope with the other part's value."
       - id: c
         text: "The two parts are the values of $u$ and $v$ at $x = 1$, which are added together."
         correct: false
         category: misunderstood_definition
-        feedback: "At $x = 1$, $u = 2$ and $v = 1$, which add to 3. Each part of the rule mixes one slope with the other factor's value."
+        feedback: "At $x = 1$, $u = 2$ and $v = 1$, which add to 3. Each term of the rule mixes one slope with the other part's value."
       - id: d
         text: "The sum rule splits every function into two terms, and each term gets its own slope."
         correct: false
         category: misapplied_technique
-        feedback: "The sum rule is for added terms. Here the two factors are multiplied, so the product rule applies."
+        feedback: "The sum rule is for added terms. Here the two parts are multiplied, so the product rule applies."
     solution: "With $u = x^2 + 1$ and $v = 3x - 2$, at $x = 1$: $u'v = 2 \\cdot 1 = 2$ from the change in $u$, and $uv' = 2 \\cdot 3 = 6$ from the change in $v$, so $f'(1) = 8$."
+  - id: derp-big-nudge
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "For $f(x) = x^2$, we know $f(3) = 9$ and $f'(3) = 6$. Estimating $f(5)$ as $9 + 6 \\times 2$ gives 21, but in fact $f(5) = 25$. Why is the estimate so far off?"
+    options:
+      - id: a
+        text: "The estimate assumes the slope stays 6 all the way, but the curve gets steeper, so it only works for small nudges."
+        correct: true
+        feedback: "The slope at 3 describes the curve only near 3. Over a nudge of 2 the curve bends away from its tangent."
+      - id: b
+        text: "The slope at $x = 3$ is really 8, so the estimate used the wrong derivative from the very start."
+        correct: false
+        category: recall_failure
+        feedback: "The slope of $x^2$ is $2x$, which is 6 at $x = 3$. The derivative is right; the nudge is too big."
+      - id: c
+        text: "The estimate should subtract the slope times the nudge, because the output always falls as we move."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A positive slope means the output rises as the input rises, so adding is right. Subtracting gives 3, even further off."
+      - id: d
+        text: "The estimate should use the slope at $x = 5$, which is 10, because that is where we want the answer."
+        correct: false
+        category: misapplied_technique
+        feedback: "That gives $9 + 10 \\times 2 = 29$, which is off the other way. No single slope is right over such a big nudge."
+    solution: "The estimate $f(a + h) \\approx f(a) + f'(a)\\,h$ treats the curve as its tangent line. For $x^2$ the slope grows from 6 to 10 between 3 and 5, so over a nudge of 2 the tangent falls 4 short. For small nudges, like 0.1, the estimate is close."
