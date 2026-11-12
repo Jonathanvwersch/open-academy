@@ -206,16 +206,29 @@ export function registerLearnCourseRoutes(
           (right.activity.completedAt?.getTime() ?? 0),
       );
     const doneToday = todayDone.map(({ activity }) => {
-      const run = activity.conceptId ? runsByConcept.get(activity.conceptId) : undefined;
-      const activityEvent = events.find((event) => event.sourceKey === `activity:${activity.id}`);
-      const lessonXp = run
-        ? events
-            .filter(
-              (event) =>
-                event.sourceKey.startsWith(`kp:${run.id}:`) && event.localDate === todayLocal,
-            )
-            .reduce((total, event) => total + event.amount, 0)
-        : 0;
+      const run =
+        activity.kind === 'learn' && activity.conceptId
+          ? runsByConcept.get(activity.conceptId)
+          : undefined;
+      const activityXp = events
+        .filter(
+          (event) =>
+            event.sourceKey === `activity:${activity.id}` && event.localDate === todayLocal,
+        )
+        .reduce((total, event) => total + event.amount, 0);
+      const lessonXp =
+        run?.completedAt &&
+        activity.completedAt &&
+        run.completedAt.getTime() === activity.completedAt.getTime()
+          ? events
+              .filter(
+                (event) =>
+                  event.localDate === todayLocal &&
+                  (event.sourceKey.startsWith(`kp:${run.id}:`) ||
+                    event.sourceKey === `quiz:${run.id}`),
+              )
+              .reduce((total, event) => total + event.amount, 0)
+          : 0;
       return {
         activityId: activity.id,
         label: activityLabel(activity.kind),
@@ -223,7 +236,7 @@ export function registerLearnCourseRoutes(
           (activity.conceptId && index.conceptsById.get(activity.conceptId)?.title) ??
           (activity.projectId && index.projectsById.get(activity.projectId)?.title) ??
           titleForKind(activity.kind),
-        xp: activityEvent?.amount ?? lessonXp,
+        xp: activityXp + lessonXp,
         completedAt: activity.completedAt?.toISOString(),
       };
     });

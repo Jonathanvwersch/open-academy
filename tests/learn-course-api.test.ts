@@ -557,11 +557,21 @@ test('active-session tasks, done-today activity, and local-date KP XP are return
     ])
     .returning();
   if (!completed || !remaining) throw new Error('Could not create Learn fixture activities');
+  const [run] = await db
+    .insert(lessonRuns)
+    .values({
+      userId,
+      conceptId: 'supervised-learning',
+      status: 'in_progress',
+      startedAt: new Date('2026-01-07T11:00:00.000Z'),
+    })
+    .returning();
+  if (!run) throw new Error('Could not create active lesson run');
   await db.insert(xpEvents).values([
     {
       userId,
       kind: 'knowledge_point',
-      sourceKey: 'kp:fixture:point',
+      sourceKey: `kp:${run.id}:point`,
       conceptId: 'supervised-learning',
       amount: 10,
       earnedAt: new Date('2026-01-07T11:15:00.000Z'),
@@ -607,11 +617,107 @@ test('active-session tasks, done-today activity, and local-date KP XP are return
       activityId: expect.any(String),
       label: 'Practice',
       title: 'Vectors and vector operations',
-      xp: 12,
+      xp: 0,
       completedAt: '2026-01-07T11:30:00.000Z',
     },
   ]);
   expect(await rowCounts()).toEqual(before);
+});
+
+test('done-today XP rows include lesson quiz XP and sum to the earned total', async () => {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 60,
+      status: 'completed',
+      startedAt: new Date('2026-01-07T10:00:00.000Z'),
+      endedAt: new Date('2026-01-07T11:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create passed-quiz session');
+  const [lessonActivity, reviewActivity] = await db
+    .insert(sessionActivities)
+    .values([
+      {
+        sessionId: session.id,
+        idx: 0,
+        kind: 'learn',
+        conceptId: 'supervised-learning',
+        exerciseIds: [],
+        plannedMinutes: 40,
+        status: 'completed',
+        completedAt: new Date('2026-01-07T10:50:00.000Z'),
+      },
+      {
+        sessionId: session.id,
+        idx: 1,
+        kind: 'review',
+        conceptId: 'vectors',
+        exerciseIds: [],
+        plannedMinutes: 4,
+        status: 'completed',
+        completedAt: new Date('2026-01-07T11:00:00.000Z'),
+      },
+    ])
+    .returning();
+  if (!lessonActivity || !reviewActivity) {
+    throw new Error('Could not create passed-quiz activities');
+  }
+  const [run] = await db
+    .insert(lessonRuns)
+    .values({
+      userId,
+      conceptId: 'supervised-learning',
+      status: 'completed',
+      startedAt: new Date('2026-01-07T10:00:00.000Z'),
+      completedAt: new Date('2026-01-07T10:50:00.000Z'),
+      quizPassedAt: new Date('2026-01-07T10:50:00.000Z'),
+    })
+    .returning();
+  if (!run) throw new Error('Could not create passed lesson run');
+  await db.insert(xpEvents).values([
+    {
+      userId,
+      kind: 'knowledge_point',
+      sourceKey: `kp:${run.id}:sl-inputs-targets`,
+      conceptId: 'supervised-learning',
+      amount: 40,
+      earnedAt: new Date('2026-01-07T10:40:00.000Z'),
+      localDate: '2026-01-07',
+    },
+    {
+      userId,
+      kind: 'quiz',
+      sourceKey: `quiz:${run.id}`,
+      conceptId: 'supervised-learning',
+      amount: 8,
+      earnedAt: new Date('2026-01-07T10:50:00.000Z'),
+      localDate: '2026-01-07',
+    },
+    {
+      userId,
+      kind: 'activity',
+      sourceKey: `activity:${reviewActivity.id}`,
+      conceptId: 'vectors',
+      amount: 4,
+      earnedAt: new Date('2026-01-07T11:00:00.000Z'),
+      localDate: '2026-01-07',
+    },
+  ]);
+
+  const response = await get('/learn');
+  expect(response.status).toBe(200);
+  const learn = await response.json();
+  expect(learn.xp.today).toBe(52);
+  expect(learn.doneToday).toMatchObject([
+    { activityId: lessonActivity.id, xp: 48 },
+    { activityId: reviewActivity.id, xp: 4 },
+  ]);
+  expect(learn.doneToday.reduce((total: number, item: { xp: number }) => total + item.xp, 0)).toBe(
+    learn.xp.today,
+  );
 });
 
 test('learn XP goal follows the learner daily study time', async () => {
