@@ -573,14 +573,28 @@ export function LessonRunner({
               ✓ Quiz
             </Badge>
           ) : state.status === 'quiz' ? (
-            <Badge
-              variant="outline"
-              data-testid="lesson-quiz-chip"
-              aria-label="Lesson quiz, current"
-              className="border-primary bg-muted text-foreground"
-            >
-              Quiz
-            </Badge>
+            viewingPastStep ? (
+              <Badge
+                asChild
+                variant="outline"
+                data-testid="lesson-quiz-chip"
+                aria-label="Lesson quiz, current"
+                className="cursor-pointer border-primary bg-muted text-foreground hover:brightness-95"
+              >
+                <button type="button" onClick={returnToCurrentStep}>
+                  Quiz
+                </button>
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                data-testid="lesson-quiz-chip"
+                aria-label="Lesson quiz, current"
+                className="border-primary bg-muted text-foreground"
+              >
+                Quiz
+              </Badge>
+            )
           ) : (
             <Badge
               variant="outline"
@@ -597,7 +611,7 @@ export function LessonRunner({
       {viewingPastStep ? (
         <>
           <Button type="button" onClick={returnToCurrentStep}>
-            {backButtonLabel}
+            {state.status === 'quiz' ? 'Back to quiz results' : backButtonLabel}
           </Button>
           {stepContent}
           {practiceMode && shownProblem ? (
@@ -882,41 +896,40 @@ export function LessonRunner({
               You need {Math.ceil(state.quiz.passMark * state.quiz.last.total)}. Here&apos;s how
               each step went:
             </p>
-            <div className="space-y-2">
-              {state.quiz.last.perStep.map((step, index) => (
-                <Button
-                  key={step.pointId}
-                  type="button"
-                  variant="link"
-                  className="h-auto whitespace-normal p-0 text-left text-amber-950"
-                  onClick={() => viewStep(step.pointId)}
-                >
-                  Step {index + 1} · {step.title}: {step.correct} of {step.total} right
-                </Button>
-              ))}
-            </div>
             {state.quiz.reviewRequired.length > 0 ? (
-              <div className="space-y-2">
-                <p>Before you retake it, answer 3 more questions on each step you missed.</p>
-                {state.quiz.reviewRequired.map((step) => {
-                  const stepNumber =
-                    state.points.findIndex((point) => point.id === step.pointId) + 1;
-                  return step.answered >= step.needed ? (
-                    <p key={step.pointId}>✓ Step {stepNumber} reviewed</p>
-                  ) : (
-                    <Button
-                      key={step.pointId}
-                      type="button"
-                      variant="link"
-                      className="flex h-auto w-fit whitespace-normal p-0 text-left text-amber-950"
-                      onClick={() => viewStep(step.pointId)}
-                    >
-                      Review Step {stepNumber} · {step.answered}/{step.needed}
-                    </Button>
-                  );
-                })}
-              </div>
+              <p>Before you retake it, answer 3 more questions on each step you missed.</p>
             ) : null}
+            <div className="space-y-2">
+              {state.quiz.last.perStep.map((step, index) => {
+                const review = state.quiz.reviewRequired.find(
+                  (item) => item.pointId === step.pointId,
+                );
+                return (
+                  <div
+                    key={step.pointId}
+                    className="flex flex-wrap items-center justify-between gap-2"
+                  >
+                    <p className="min-w-0 flex-1">
+                      Step {index + 1} · {step.title}: {step.correct} of {step.total} right
+                    </p>
+                    {review ? (
+                      review.answered >= review.needed ? (
+                        <span className="text-sm text-muted-foreground">✓ Reviewed</span>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => viewStep(step.pointId)}
+                        >
+                          Review · {review.answered}/{review.needed}
+                        </Button>
+                      )
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div />
               <div className="ml-auto flex flex-wrap gap-2">

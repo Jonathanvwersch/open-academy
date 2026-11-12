@@ -1870,6 +1870,7 @@ export function createApiRoutes(deps: {
     const index = await content();
     const now = requestNow(context);
     const timeZone = context.get('timeZone');
+    const localToday = localDateKey(now, timeZone);
     const cards = await db
       .select()
       .from(reviewCards)
@@ -1884,6 +1885,8 @@ export function createApiRoutes(deps: {
           title: concept.title,
           dimension: card.dimension,
           dueAt: card.dueAt.toISOString(),
+          due: card.dueAt <= now,
+          dueInDays: localDateDifference(localToday, localDateKey(card.dueAt, timeZone)),
           lastReviewAt: card.lastReviewAt?.toISOString() ?? null,
           reps: card.reps,
           lapses: card.lapses,
@@ -1891,7 +1894,6 @@ export function createApiRoutes(deps: {
         },
       ];
     });
-    const localToday = localDateKey(now, timeZone);
     const upcomingDates = Array.from({ length: 7 }, (_, index) =>
       shiftLocalDate(localToday, index + 1),
     );
@@ -1901,7 +1903,7 @@ export function createApiRoutes(deps: {
       if (upcomingCounts.has(date)) upcomingCounts.set(date, (upcomingCounts.get(date) ?? 0) + 1);
     }
     return context.json({
-      dueNow: topics.filter((topic) => Date.parse(topic.dueAt) <= now.getTime()).length,
+      dueNow: topics.filter((topic) => topic.due).length,
       upcoming: upcomingDates.map((date) => ({ date, count: upcomingCounts.get(date) ?? 0 })),
       topics,
     });
@@ -2026,6 +2028,18 @@ function shiftLocalDate(localDate: string, days: number): string {
   const date = new Date(`${localDate}T00:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
+}
+
+function localDateDifference(from: string, to: string): number {
+  if (from === to) return 0;
+  const direction = from < to ? 1 : -1;
+  let days = 0;
+  let current = from;
+  while (current !== to && Math.abs(days) < 36_600) {
+    current = shiftLocalDate(current, direction);
+    days += direction;
+  }
+  return days;
 }
 
 function isValidTimeZone(value: string | undefined): value is string {

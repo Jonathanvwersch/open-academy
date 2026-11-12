@@ -274,6 +274,8 @@ export interface ReviewsPayload {
     title: string;
     dimension: string;
     dueAt: string;
+    due: boolean;
+    dueInDays: number;
     lastReviewAt: string | null;
     reps: number;
     lapses: number;

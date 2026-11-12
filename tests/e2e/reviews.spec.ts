@@ -50,7 +50,9 @@ test.afterAll(async () => {
 async function insertReviewCards() {
   for (const card of [
     { dimension: 'conceptual', dueAt: '2026-01-01T00:00:00.000Z', reps: 0, lapses: 0 },
+    { dimension: 'implementation', dueAt: '2026-01-01T20:00:00.000Z', reps: 1, lapses: 0 },
     { dimension: 'math', dueAt: '2026-01-03T12:00:00.000Z', reps: 2, lapses: 1 },
+    { dimension: 'transfer', dueAt: '2026-01-04T12:00:00.000Z', reps: 1, lapses: 0 },
   ]) {
     const fsrs = newReviewCard(new Date('2026-01-01T12:00:00.000Z'));
     await db.insert(reviewCards).values({
@@ -75,6 +77,12 @@ test('Reviews page shows due and upcoming topics at desktop and mobile widths', 
   await expect(page.getByText('1 due now')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Topics' })).toBeVisible();
   await expect(page.getByText('Supervised learning').first()).toBeVisible();
+  await expect(page.getByText(/Due now ·/)).toBeVisible();
+  await expect(page.getByText('Due later today')).toBeVisible();
+  await expect(page.getByText('Due in 2 days')).toBeVisible();
+  await expect(page.getByText('Transfer')).toBeVisible();
+  await expect(page.getByText('Not reviewed yet')).toBeVisible();
+  await expect(page.getByText(/Reviewed once/).first()).toBeVisible();
   await expect(page.getByText('Due reviews come up in your next session.')).toBeVisible();
   await page.screenshot({ path: `${screenshotDir}/reviews-desktop.png`, fullPage: true });
 

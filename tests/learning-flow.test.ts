@@ -479,6 +479,16 @@ test('/api/reviews returns the local upcoming schedule and skips stub topics', a
     reps: 2,
     lapses: 1,
   });
+  const laterTodayCard = newReviewCard(new Date(now));
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: otherConcept.id,
+    dimension: 'implementation',
+    fsrs: laterTodayCard,
+    dueAt: new Date('2026-01-01T20:00:00.000Z'),
+    reps: 1,
+    lapses: 0,
+  });
   const stub = content.concepts.find((concept) => concept.status === 'stub');
   if (stub) {
     const stubCard = newReviewCard(new Date(now));
@@ -508,17 +518,21 @@ test('/api/reviews returns the local upcoming schedule and skips stub topics', a
     '2026-01-08',
   ]);
   expect(body.upcoming[1]).toEqual({ date: '2026-01-03', count: 1 });
-  expect(body.topics).toHaveLength(2);
+  expect(body.topics).toHaveLength(3);
   expect(body.topics[0]).toMatchObject({
     conceptId: 'vectors',
     title: expect.any(String),
     dimension: 'math',
     dueAt: '2026-01-01T00:00:00.000Z',
+    due: true,
+    dueInDays: 0,
     lastReviewAt: null,
     reps: 0,
     lapses: 0,
     recall: expect.any(Number),
   });
+  expect(body.topics[1]).toMatchObject({ due: false, dueInDays: 0 });
+  expect(body.topics[2]).toMatchObject({ due: false, dueInDays: 2 });
 });
 
 test('debug answer option ids identify the selected and correct line and fix', () => {

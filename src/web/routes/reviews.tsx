@@ -17,29 +17,14 @@ const dimensionLabels: Record<string, string> = {
   conceptual: 'Concept',
   math: 'Maths',
   implementation: 'Code',
-  transfer: 'Concept',
+  transfer: 'Transfer',
 };
 
-function localDateKey(date: Date): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date);
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
-
-function dueLabel(dueAt: string): string {
-  const today = localDateKey(new Date());
-  const due = localDateKey(new Date(dueAt));
-  const days = Math.round(
-    (Date.parse(`${due}T00:00:00.000Z`) - Date.parse(`${today}T00:00:00.000Z`)) / 86_400_000,
-  );
-  if (days < 0) return 'Overdue';
-  if (days === 0) return 'Due today';
-  if (days === 1) return 'Due tomorrow';
-  return `Due in ${days} days`;
+function dueLabel(topic: { due: boolean; dueInDays: number }): string {
+  if (topic.due) return 'Due now';
+  if (topic.dueInDays === 0) return 'Due later today';
+  if (topic.dueInDays === 1) return 'Due tomorrow';
+  return `Due in ${topic.dueInDays} days`;
 }
 
 function dayLabel(date: string): string {
@@ -69,7 +54,11 @@ function ReviewsPage() {
             className="flex min-h-20 flex-col items-center justify-center gap-1 rounded-lg border bg-card px-1 py-3 text-center"
           >
             <span className="text-xs text-muted-foreground">{dayLabel(day.date)}</span>
-            <span className="text-sm font-medium">{day.count}</span>
+            <span
+              className={`text-sm font-medium ${day.count === 0 ? 'text-muted-foreground' : ''}`}
+            >
+              {day.count}
+            </span>
           </div>
         ))}
       </fieldset>
@@ -89,8 +78,12 @@ function ReviewsPage() {
                     </Badge>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {dueLabel(topic.dueAt)} · ~{Math.round(topic.recall * 100)}% recall · Reviewed{' '}
-                    {topic.reps} times
+                    {dueLabel(topic)} · ~{Math.round(topic.recall * 100)}% recall ·{' '}
+                    {topic.reps === 0
+                      ? 'Not reviewed yet'
+                      : topic.reps === 1
+                        ? 'Reviewed once'
+                        : `Reviewed ${topic.reps} times`}
                   </p>
                 </li>
               ))}
