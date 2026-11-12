@@ -121,26 +121,18 @@ export function buildProgress(input: {
     const concepts = content.concepts.filter(
       (concept) => concept.domain === domain.id && concept.status === 'authored',
     );
-    const conceptIds = new Set(concepts.map((concept) => concept.id));
-    const domainRecords = records.filter(
-      (record) => conceptIds.has(record.conceptId) && states.includes(record.state),
+    const masteryByKey = new Map(
+      records.map((record) => [`${record.conceptId}:${record.dimension}`, record.state]),
+    );
+    const authoredStates = concepts.flatMap((concept) =>
+      concept.dimensions.map(
+        (dimension) => masteryByKey.get(`${concept.id}:${dimension}`) ?? ('not_assessed' as const),
+      ),
     );
     const counts = Object.fromEntries(
       states.map((state) => [
         state,
-        state === 'not_assessed'
-          ? concepts.reduce(
-              (total, concept) =>
-                total +
-                concept.dimensions.filter(
-                  (dimension) =>
-                    !domainRecords.some(
-                      (record) => record.conceptId === concept.id && record.dimension === dimension,
-                    ),
-                ).length,
-              0,
-            )
-          : domainRecords.filter((record) => record.state === state).length,
+        authoredStates.filter((masteryState) => masteryState === state).length,
       ]),
     ) as Record<MasteryState, number>;
     return { id: domain.id, title: domain.title, counts };
