@@ -54,6 +54,7 @@ import {
   scheduleReview,
 } from '../learning/fsrs.js';
 import { countHintsSincePreviousAttempt } from '../learning/hints.js';
+import { initialLearnProgress } from '../learning/initial-learn-progress.js';
 import {
   calculateCredit,
   DefaultMasteryModel,
@@ -401,8 +402,14 @@ export function createApiRoutes(deps: {
       })
       .returning();
     const createdActivities = await Promise.all(
-      plan.activities.map((activity, idx) =>
-        db
+      plan.activities.map(async (activity, idx) => {
+        const progress = await initialLearnProgress(
+          db,
+          context.get('userId'),
+          activity,
+          activity.conceptId ? index.lessonsByConcept.get(activity.conceptId) : undefined,
+        );
+        return db
           .insert(sessionActivities)
           .values({
             sessionId: session.id,
@@ -414,9 +421,10 @@ export function createApiRoutes(deps: {
             plannedMinutes: activity.plannedMinutes,
             status: idx === 0 ? 'in_progress' : 'planned',
             reason: activity.reason,
+            ...(progress ? { progress } : {}),
           })
-          .returning(),
-      ),
+          .returning();
+      }),
     );
     return context.json({ ...session, activities: createdActivities.flat() }, 201);
   });
@@ -643,7 +651,8 @@ export function createApiRoutes(deps: {
     const remaining = body.success
       ? (body.data.remainingBudgetMinutes ?? Math.max(0, session.plannedMinutes - existingMinutes))
       : Math.max(0, session.plannedMinutes - existingMinutes);
-    const plan = replan(state, await content(), now, remaining, activities, session.kind);
+    const index = await content();
+    const plan = replan(state, index, now, remaining, activities, session.kind);
     const planned = session.activities.filter((activity) => activity.status === 'planned');
     await Promise.all(
       planned.map((activity) =>
@@ -654,8 +663,14 @@ export function createApiRoutes(deps: {
     const created = await Promise.all(
       plan.activities
         .filter((activity) => activity.status !== 'in_progress')
-        .map((activity, idx) =>
-          db
+        .map(async (activity, idx) => {
+          const progress = await initialLearnProgress(
+            db,
+            context.get('userId'),
+            activity,
+            activity.conceptId ? index.lessonsByConcept.get(activity.conceptId) : undefined,
+          );
+          return db
             .insert(sessionActivities)
             .values({
               sessionId: session.id,
@@ -667,9 +682,10 @@ export function createApiRoutes(deps: {
               plannedMinutes: activity.plannedMinutes,
               status: 'planned',
               reason: activity.reason,
+              ...(progress ? { progress } : {}),
             })
-            .returning(),
-        ),
+            .returning();
+        }),
     );
     return context.json({ activities: [...preserved, ...created.flat()] });
   });

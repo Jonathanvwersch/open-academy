@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useQueries, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
@@ -18,7 +18,6 @@ import {
 import { LessonRunner } from '../lesson/LessonRunner.js';
 import {
   exerciseQueryOptions,
-  type LessonRunPayload,
   lessonQueryOptions,
   lessonRunQueryOptions,
   paperStatusLabel,
@@ -155,6 +154,20 @@ function SessionPage() {
   const activeActivity =
     activities.find((item) => item.status === 'in_progress') ??
     activities.find((item) => item.status === 'planned');
+  const lessonRunConceptIds = [
+    ...new Set(
+      activities.flatMap((item) =>
+        item.kind === 'learn' && item.conceptId ? [item.conceptId] : [],
+      ),
+    ),
+  ];
+  const lessonRunQueries = useQueries({
+    queries: lessonRunConceptIds.map((conceptId) => lessonRunQueryOptions(conceptId)),
+  });
+  const lessonRunsByConcept = new Map(
+    lessonRunConceptIds.map((conceptId, index) => [conceptId, lessonRunQueries[index]?.data?.run]),
+  );
+  const lessonRunsPending = lessonRunQueries.some((query) => query.isPending);
   const completedLesson = activities.find((item) => {
     if (
       item.kind !== 'learn' ||
@@ -164,7 +177,7 @@ function SessionPage() {
     ) {
       return false;
     }
-    const run = queryClient.getQueryData<LessonRunPayload>(['lesson-run', item.conceptId])?.run;
+    const run = lessonRunsByConcept.get(item.conceptId);
     return (
       run?.status === 'completed' ||
       (run?.status === 'quiz' &&
@@ -468,6 +481,8 @@ function SessionPage() {
     }
   };
 
+  if (lessonRunsPending) return <SessionSkeleton />;
+
   if (!activity) {
     return (
       <SessionCompletion
@@ -582,9 +597,6 @@ function SessionPage() {
     }
     return 'upcoming';
   });
-  const lessonRun = activity?.conceptId
-    ? queryClient.getQueryData<LessonRunPayload>(['lesson-run', activity.conceptId])?.run
-    : null;
   const finalAnswered =
     !lesson?.final || (activity?.progress?.completedExerciseIds ?? []).includes(lesson.final);
   if (
@@ -592,9 +604,9 @@ function SessionPage() {
     activity.conceptId &&
     lesson?.knowledge_points?.length &&
     (!activity.progress?.lessonRunnerContinued ||
-      (!activity.progress?.quizContinued &&
+      (activity.progress?.lessonRunnerContinued &&
         activity.progress?.finalQuestionContinued &&
-        (lessonRun?.status === 'quiz' || lessonRun?.status === 'completed')))
+        !activity.progress?.quizContinued))
   ) {
     return (
       <LessonRunner
@@ -630,6 +642,9 @@ function SessionPage() {
         />
       </section>
     );
+  }
+  if (activity.kind === 'learn' && lesson?.knowledge_points?.length && !exerciseQuery.data) {
+    return <SessionSkeleton />;
   }
   if (
     activity.kind === 'learn' &&
