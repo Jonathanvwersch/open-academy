@@ -1,0 +1,524 @@
+concept: sgd-minibatch
+exercises:
+  - id: sgm-average-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What supplies the gradient for one minibatch update?
+    options:
+      - {
+          id: a,
+          text: "The average loss value of the chosen examples.",
+          correct: false,
+          feedback: "Loss measures error; the update needs its slopes with respect to the parameters.",
+        }
+      - {
+          id: b,
+          text: "The average of the chosen examples' gradients.",
+          correct: true,
+          feedback: "Compute all gradients at the current parameters, then average them before updating.",
+        }
+      - {
+          id: c,
+          text: "The gradient of whichever example has the largest loss.",
+          correct: false,
+          feedback: "A minibatch combines its examples, rather than selecting only the worst one.",
+        }
+      - {
+          id: d,
+          text: "The gradient left over from the previous update.",
+          correct: false,
+          feedback: "The parameters have moved, so calculate fresh gradients for the new batch.",
+        }
+    solution: "A minibatch uses the average of its examples' gradients, all calculated at the same current parameter setting. That average estimates the full-data gradient."
+  - id: sgm-average-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, why do we divide the sum of the slopes, $4+0$, by two before updating $w$?"
+    options:
+      - {
+          id: a,
+          text: "The loss is an average, so its slope is an average too.",
+          correct: true,
+          feedback: "Differentiating an average loss gives the average of the individual loss slopes.",
+        }
+      - {
+          id: b,
+          text: "There are two parameters, so each gets half the slope.",
+          correct: false,
+          feedback: "There is only one parameter here, w. Two is the number of examples, not parameters.",
+        }
+      - {
+          id: c,
+          text: "A slope must be divided until it becomes positive.",
+          correct: false,
+          feedback: "Averages can be negative; the divisor counts examples and does not set the sign.",
+        }
+      - {
+          id: d,
+          text: "Every gradient update must halve its learning rate.",
+          correct: false,
+          feedback: "The learning rate stays at 0.1; averaging slopes is separate from changing that rate.",
+        }
+    solution: "We are lowering an average loss, so we use $(4+0)/2=2$. Summing without dividing would make this update twice as large at the same learning rate."
+  - id: sgm-average-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A batch has two loss slopes, ${{= a }}$ and ${{= b }}$, calculated at the same parameter value. What is their average slope?"
+    params:
+      a: { min: -8, max: 8, step: 2 }
+      b: { min: -8, max: 8, step: 2 }
+    answer_expr: "(a+b)/2"
+    tolerance: { abs: 0.001 }
+    solution: "Add the two slopes and divide by the two examples: $({{= a }}+({{= b }}))/2={{= (a+b)/2 }}$. This is the slope used for one batch update."
+  - id: sgm-sum-trap
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A batch has loss slopes $2$ and $6$. Starting at $w=5$ with $\\eta=0.1$, what is the new $w$ when we lower the average loss?"
+    options:
+      - {
+          id: a,
+          text: "$4.2$, from subtracting $0.1$ times the sum.",
+          correct: false,
+          feedback: "The sum is 8, but the average slope is 4. Divide by the two examples first.",
+        }
+      - {
+          id: b,
+          text: "$5.4$, from adding $0.1$ times the average.",
+          correct: false,
+          feedback: "Gradient descent subtracts the average gradient; adding it goes uphill locally.",
+        }
+      - {
+          id: c,
+          text: "$4.6$, from subtracting $0.1$ times the average.",
+          correct: true,
+          feedback: "The average slope is 4, so the update is 5 minus 0.4.",
+        }
+      - {
+          id: d,
+          text: "$4.8$, from subtracting $0.1$ times the first slope.",
+          correct: false,
+          feedback: "Using only the first slope ignores the second example in this batch.",
+        }
+    solution: "The batch slope is $(2+6)/2=4$, so $w_{\\text{new}}=5-0.1\\times4=4.6$. Using the sum would incorrectly double this average-loss update."
+  - id: sgm-update-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "Our model predicts $w={{= w }}$ for every example. A batch contains targets ${{= a }}$ and ${{= b }}$ and uses squared error, with slope $2(w-y)$ for target $y$. With $\\eta=0.1$, what is $w$ after one batch update?"
+    params:
+      w: { min: 1, max: 6 }
+      a: { min: 1, max: 7, step: 2 }
+      b: { min: 1, max: 7, step: 2 }
+    answer_expr: "w-0.1*(2*w-a-b)"
+    tolerance: { abs: 0.001 }
+    solution: "The average slope is $[2({{= w }}-{{= a }})+2({{= w }}-{{= b }})]/2={{= 2*w-a-b }}$. Subtract $0.1$ times this slope from ${{= w }}$ to get ${{= w-0.1*(2*w-a-b) }}$."
+  - id: sgm-two-parameters
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot's prediction model has two adjustable weights, currently $(2,3)$. At these weights, two examples give gradients $(4,-2)$ and $(0,6)$, listing slopes in the same weight order. With $\\eta=0.1$, what are the weights after one average-loss batch update?"
+    options:
+      - {
+          id: a,
+          text: "$(1.6,2.6)$, using the summed gradient.",
+          correct: false,
+          feedback: "The sum is (4,4), but averaging two examples gives (2,2).",
+        }
+      - {
+          id: b,
+          text: "$(2.2,3.2)$, adding the average gradient.",
+          correct: false,
+          feedback: "Adding goes with the gradient; descent subtracts it from each weight.",
+        }
+      - {
+          id: c,
+          text: "$(1.6,3.2)$, using only the first gradient.",
+          correct: false,
+          feedback: "A batch update includes both examples before changing either weight.",
+        }
+      - {
+          id: d,
+          text: "$(1.8,2.8)$, subtracting the average gradient.",
+          correct: true,
+          feedback: "Each coordinate averages to 2, so subtract 0.2 from each weight.",
+        }
+    solution: "Average corresponding entries: $((4+0)/2,(-2+6)/2)=(2,2)$. Subtracting $0.1(2,2)$ from $(2,3)$ gives $(1.8,2.8)$."
+  - id: sgm-epoch-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does one epoch mean in the training process taught here?
+    options:
+      - {
+          id: a,
+          text: "One parameter update using any chosen batch.",
+          correct: false,
+          feedback: "That is an update; an epoch covers every example in the dataset.",
+        }
+      - {
+          id: b,
+          text: "One complete pass through all training examples.",
+          correct: true,
+          feedback: "Each example is used once before the next shuffled pass begins.",
+        }
+      - {
+          id: c,
+          text: "One restart from the original parameter values.",
+          correct: false,
+          feedback: "We keep the learned parameters between epochs rather than resetting them.",
+        }
+      - {
+          id: d,
+          text: "One pass through just the final short batch.",
+          correct: false,
+          feedback: "The final batch finishes an epoch only after the earlier batches have been used.",
+        }
+    solution: "An epoch is one complete pass through the training dataset. With minibatches it usually includes several parameter updates."
+  - id: sgm-epoch-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Why does the second batch in the worked example calculate its slopes at $w=2.8$, rather than at $w=3$?"
+    options:
+      - {
+          id: a,
+          text: "The targets change automatically after the first batch.",
+          correct: false,
+          feedback: "The targets stay fixed; training changes the model parameter.",
+        }
+      - {
+          id: b,
+          text: "Each batch must use a smaller learning rate than the last.",
+          correct: false,
+          feedback: "The learning rate remains 0.1. It is the parameter setting that changed.",
+        }
+      - {
+          id: c,
+          text: "The first update moved the parameter, so its slopes changed.",
+          correct: true,
+          feedback: "A gradient belongs to the current parameter setting; recompute it after an update.",
+        }
+      - {
+          id: d,
+          text: "The start of each batch resets the parameter to its target.",
+          correct: false,
+          feedback: "A batch starts from the last update's parameter, not from a target.",
+        }
+    solution: "The first batch changed $w$ from $3$ to $2.8$. Since each squared-error slope is $2(w-y)$, the next batch must use $2.8$ to describe the model's current loss."
+  - id: sgm-epoch-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A training dataset contains ${{= batches*size }}$ examples. Use batches of size ${{= size }}$, covering every example once per epoch. How many parameter updates are made over ${{= epochs }}$ epochs?"
+    params:
+      batches: { min: 2, max: 8 }
+      size: { min: 2, max: 8, step: 2 }
+      epochs: { min: 2, max: 5 }
+    answer_expr: "batches*epochs"
+    tolerance: { abs: 0.001 }
+    solution: "There are ${{= batches*size }}/{{= size }}={{= batches }}$ batches per epoch and one update per batch. Over ${{= epochs }}$ epochs, that makes ${{= batches }}\\times{{= epochs }}={{= batches*epochs }}$ updates."
+  - id: sgm-short-batch
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "Ten examples are split into batches of at most four, keeping the short final batch. Its two slopes are $2$ and $6$. Which pair gives the updates per epoch and that final batch's average slope?"
+    options:
+      - {
+          id: a,
+          text: "Two updates and a final average slope of four.",
+          correct: false,
+          feedback: "Two full batches cover only eight examples; keep the last two for a third update.",
+        }
+      - {
+          id: b,
+          text: "Three updates and a final average slope of two.",
+          correct: false,
+          feedback: "The last batch has two examples, so divide its slope sum by two, not four.",
+        }
+      - {
+          id: c,
+          text: "Ten updates and a final average slope of eight.",
+          correct: false,
+          feedback: "An update follows each batch, not each example; eight is a sum rather than an average.",
+        }
+      - {
+          id: d,
+          text: "Three updates and a final average slope of four.",
+          correct: true,
+          feedback: "The batch sizes are 4, 4, 2, and the last average is (2+6)/2=4.",
+        }
+    solution: "The batches have sizes $4,4,2$, so one epoch makes three updates. The final batch's average is $(2+6)/2=4$, using its actual size."
+  - id: sgm-fresh-slope
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A model predicts the constant $w$ and uses squared error with slope $2(w-y)$. A previous batch left $w=2$. The next batch has targets $4$ and $6$. Using $\\eta=0.1$, what is $w$ after this next update?"
+    answer: 2.6
+    tolerance: { abs: 0.001 }
+    solution: "At the current $w=2$, the slopes are $2(2-4)=-4$ and $2(2-6)=-8$. Their average is $-6$, so the new parameter is $2-0.1\\times(-6)=2.6$."
+  - id: sgm-shuffle-application
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot's training examples are sorted from low to high targets. Every epoch uses the same neighbouring groups. Why shuffle the examples before each epoch?"
+    options:
+      - {
+          id: a,
+          text: "To vary which examples share a batch and the order of updates.",
+          correct: true,
+          feedback: "Reshuffling avoids always presenting the same sorted groups in the same sequence.",
+        }
+      - {
+          id: b,
+          text: "To make each batch exactly match the full-data gradient.",
+          correct: false,
+          feedback: "Random grouping can still produce batches that disagree with the full gradient.",
+        }
+      - {
+          id: c,
+          text: "To change the target attached to each training example.",
+          correct: false,
+          feedback: "Shuffle examples with their own targets intact; changing the pairing would corrupt the data.",
+        }
+      - {
+          id: d,
+          text: "To reset the model before it sees the examples again.",
+          correct: false,
+          feedback: "Keep the learned parameters between epochs; shuffle only the example order.",
+        }
+    solution: "Shuffling changes the groups and their update order without changing any example's target. This avoids repeating the same sorted sequence, but does not guarantee a better gradient."
+  - id: sgm-noise-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does gradient noise mean in minibatch training?
+    options:
+      - {
+          id: a,
+          text: "The difference between the predicted value and the target.",
+          correct: false,
+          feedback: "That is a prediction error, rather than a comparison between gradients.",
+        }
+      - {
+          id: b,
+          text: "An arithmetic error caused by averaging negative slopes.",
+          correct: false,
+          feedback: "Negative slopes can be averaged correctly; noise remains even with exact arithmetic.",
+        }
+      - {
+          id: c,
+          text: "A difference between batch and full gradients at the same parameters.",
+          correct: true,
+          feedback: "Different selected examples can ask for a different move from the full dataset.",
+        }
+      - {
+          id: d,
+          text: "A change to the targets after every parameter update.",
+          correct: false,
+          feedback: "Training changes parameters, not targets. The noise comes from choosing a subset.",
+        }
+    solution: "Gradient noise is the difference between a batch gradient and the full-data gradient at the same parameter setting. The selected examples need not represent the whole dataset exactly."
+  - id: sgm-noise-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example at $w=4$, why can a correct batch update raise the full-data loss from $5$ to $5.16$?"
+    options:
+      - {
+          id: a,
+          text: "The batch gradient describes its examples, which can disagree with the rest.",
+          correct: true,
+          feedback: "The lower targets ask for a smaller prediction even though 4 is best for all four targets.",
+        }
+      - {
+          id: b,
+          text: "Predicting below a target always means the learning rate is wrong.",
+          correct: false,
+          feedback: "Prediction error signs say which side of a target we are on, not whether the rate is wrong.",
+        }
+      - {
+          id: c,
+          text: "The update changes every target, so the old loss cannot be compared.",
+          correct: false,
+          feedback: "The targets do not change; the before and after losses use the same dataset.",
+        }
+      - {
+          id: d,
+          text: "Gradient descent must add the slope whenever the full gradient is zero.",
+          correct: false,
+          feedback: "There is no sign-switch rule; the batch uses its own gradient in the usual subtraction.",
+        }
+    solution: "The batch of targets $1,3$ has average slope $4$ and moves $w$ to $3.6$, while the full-data slope at $4$ is zero. Helping the selected pair can hurt the average across all four examples."
+  - id: sgm-noise-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "At $w={{= w }}$, the full-data gradient is zero, but a selected batch has average slope ${{= g }}$. With $\\eta=0.1$, what is $w$ after this batch update?"
+    params:
+      w: { min: 2, max: 6 }
+      g: { min: -6, max: 6, step: 2 }
+    constraints: ["g != 0"]
+    answer_expr: "w-0.1*g"
+    tolerance: { abs: 0.001 }
+    solution: "The update uses the batch slope, not the zero full-data slope: $w_{\\text{new}}={{= w }}-0.1\\times({{= g }})={{= w-0.1*g }}$. A batch can therefore move even when the full gradient is zero."
+  - id: sgm-large-batch-trap
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Which is a reasonable general expectation when increasing the size of randomly chosen batches?
+    options:
+      - {
+          id: a,
+          text: "Less sampling noise, so every update must now lower full-data loss.",
+          correct: false,
+          feedback: "A more reliable estimate is not a guarantee; batch noise or a large learning rate can still raise loss.",
+        }
+      - {
+          id: b,
+          text: "Less sampling noise, but more examples and usually more memory per update.",
+          correct: true,
+          feedback: "A larger group generally estimates the full gradient more reliably, at increased per-update resource cost.",
+        }
+      - {
+          id: c,
+          text: "More sampling noise, because extra examples make the average less reliable.",
+          correct: false,
+          feedback: "Random examples generally make the average more representative as the batch grows.",
+        }
+      - {
+          id: d,
+          text: "No sampling noise at any size, provided every slope is calculated correctly.",
+          correct: false,
+          feedback: "Correct arithmetic cannot remove disagreement between a subset and the whole dataset.",
+        }
+    solution: "Larger random batches generally estimate the full gradient more reliably, but process more examples and usually use more working memory per update. They do not guarantee that every update lowers the full-data loss."
+  - id: sgm-exact-pair
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "At $w=4$, our targets $1,3,5,7$ give slopes $6,2,-2,-6$, so the full gradient is zero. Which statement about a batch containing targets $1$ and $7$ is correct?"
+    options:
+      - {
+          id: a,
+          text: "Its average is zero here, so it always matches the full gradient in any dataset.",
+          correct: false,
+          feedback: "This pair matches here because its slopes cancel. That does not make arbitrary pairs representative.",
+        }
+      - {
+          id: b,
+          text: "Its average is four here, so it moves just like the pair of targets 1 and 3.",
+          correct: false,
+          feedback: "Target 7 supplies slope -6, not the slope 2 supplied by target 3.",
+        }
+      - {
+          id: c,
+          text: "Its average is six here, because one must ignore the negative slope.",
+          correct: false,
+          feedback: "Negative slopes count too; averaging 6 and -6 gives zero.",
+        }
+      - {
+          id: d,
+          text: "Its average is zero here, though a small batch need not match in general.",
+          correct: true,
+          feedback: "The two slopes cancel exactly in this pair, showing that not every small batch is noisy.",
+        }
+    solution: "Targets $1,7$ give $(6+(-6))/2=0$, exactly the full gradient at this setting. Larger batches are generally more reliable, not necessarily closer on every particular draw."
+  - id: sgm-timing-application
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot's model fits batches of size 8 or 32 in memory. Size 8 takes less time per update, while size 32 has steadier gradients. How should you compare which trains faster overall?"
+    options:
+      - {
+          id: a,
+          text: "Compare loss improvement over the same elapsed training time.",
+          correct: true,
+          feedback: "This includes both the speed and usefulness of updates, including hardware efficiency.",
+        }
+      - {
+          id: b,
+          text: "Choose size 8 solely because each update takes less time.",
+          correct: false,
+          feedback: "A faster update may give less useful progress; update time alone is insufficient.",
+        }
+      - {
+          id: c,
+          text: "Choose size 32 solely because its gradients are steadier.",
+          correct: false,
+          feedback: "Steadier gradients can cost more time; check the actual progress per elapsed time.",
+        }
+      - {
+          id: d,
+          text: "Compare only update counts, ignoring elapsed time and loss.",
+          correct: false,
+          feedback: "Update counts measure neither computation time nor progress toward a lower loss.",
+        }
+    solution: "Compare the loss reduction over the same elapsed time, while keeping other choices such as the starting model comparable. Update speed and gradient reliability both affect useful training progress."
+  - id: sgm-explain-training
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Explain to a friend how minibatch gradient descent changes full-batch gradient descent. Include what happens in one update, how an epoch differs from an update, and why a correct update can still raise the full-data loss."
+    rubric:
+      - {
+          id: average,
+          criterion: "Average the chosen examples' gradients at the current parameters and subtract the learning rate times that average.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: epoch,
+          criterion: "An epoch covers the dataset once; each batch gives an update, so an epoch can contain multiple updates.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: tradeoff,
+          criterion: "Smaller batches use fewer examples per update but can disagree with the full gradient, so the full loss can rise; larger batches generally reduce this noise at greater per-update cost.",
+          weight: 1,
+          required: true,
+        }
+    exemplar: "Full-batch descent checks every training example before moving. Minibatch descent averages only a chosen group's gradients, all at the current parameters, then subtracts the learning rate times that average. Each batch produces one update; using all the examples once completes an epoch, after which we shuffle and continue from the learned parameters. Small batches need fewer examples before moving but can point against the full gradient, so even correct arithmetic can raise full-data loss. Bigger batches generally give steadier directions but need more examples and usually more memory per update."
+    solution: "The parameter update is unchanged; the examples supplying its gradient change. One epoch can contain many batch updates, and sampling noise trades cheaper updates against less reliable directions."

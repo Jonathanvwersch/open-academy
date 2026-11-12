@@ -118,7 +118,7 @@ concepts:
     prereqs: [{ id: gradient-descent }]
     objectives:
       - { text: "Explain the tradeoffs of batch size", dimension: conceptual }
-    status: stub
+    status: authored
   - id: momentum-adam
     title: Momentum and Adam
     description: Momentum, adaptive learning rates and the Adam update.

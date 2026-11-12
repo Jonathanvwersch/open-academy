@@ -1,0 +1,210 @@
+concept: sgd-minibatch
+version: 1
+objective: |
+  **Goal:** update a model from a batch's average gradient, count updates and epochs, and explain how batch size trades cheaper updates for noisier directions.
+recap:
+  - concept: gradient-descent
+    text: "Subtract the learning rate $\\eta$ times each parameter's loss slope, then recompute the slopes after moving. When the loss averages several examples, its slope averages their slopes too."
+where_this_fits: |
+  ### What are stochastic and minibatch gradient descent?
+
+  Stochastic and minibatch gradient descent train a model by using one example or a small group of examples to choose each update, rather than using the whole training dataset every time.
+
+  “Stochastic” means random, referring to how we choose examples. With a million training examples, a group of a hundred lets us update after checking a hundred instead of waiting for a million. The tradeoff is that those examples may disagree with the rest, so their direction is less reliable. We'll keep the gradient-descent update and change which examples supply its slope.
+knowledge_points:
+  - id: sgm-average-slopes
+    title: "Average a few examples' slopes"
+    explain: |
+      ### Choosing the examples for one update
+
+      Imagine a robot rolling between nearby shelves. Each trip record tells us how long it actually took. Our deliberately simple model predicts one adjustable time $w$ for every trip. Four trips took $1,3,5,7$ seconds; these known answers are the **targets**. Start at $w=3$ seconds.
+
+      As in gradient descent, squared error $(w-y)^2$ has slope $2(w-y)$ for target $y$. With one parameter, this slope is the **gradient**. Substituting $w=3$ and each target gives slopes $4,0,-4,-8$. Target $3$ matches our prediction, giving slope zero.
+
+      For this demonstration, choose targets $1,3$ and learning rate $\eta=0.1$. Calculate both slopes using the same prediction $w=3$, then average them before changing it. The picture shows the result; we'll work through the update below.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" aria-label="At w equals 3, targets 1 and 3 give slopes 4 and 0. Average those two slopes to get 2, then make one update from w equals 3 to 2.8 with learning rate 0.1.">
+      <defs><marker id="sgm-one-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717" text-anchor="middle">
+      <rect x="10" y="10" width="180" height="64" rx="8" fill="#d4d4d4" fill-opacity="0" stroke="#3b82f6"/><text x="100" y="36">target = 1</text><text x="100" y="60" fill="#3b82f6">slope 4</text>
+      <rect x="210" y="10" width="180" height="64" rx="8" fill="#d4d4d4" fill-opacity="0" stroke="#3b82f6"/><text x="300" y="36">target = 3</text><text x="300" y="60" fill="#3b82f6">slope 0</text>
+      <path d="M100 74 L170 110" stroke="#737373" marker-end="url(#sgm-one-arrow)"/><path d="M300 74 L230 110" stroke="#737373" marker-end="url(#sgm-one-arrow)"/>
+      <rect x="80" y="115" width="240" height="44" rx="8" fill="#d4d4d4" fill-opacity="0" stroke="#3b82f6"/><text x="200" y="143" fill="#3b82f6">average slope 2</text>
+      <path d="M200 159 V194" stroke="#737373" marker-end="url(#sgm-one-arrow)"/>
+      <rect x="45" y="200" width="310" height="48" rx="8" fill="#d4d4d4" fill-opacity="0" stroke="#f59e0b"/><text x="200" y="230">one update: 3 → 2.8</text>
+      </g></svg>
+      ```
+
+      ### Averaging, then moving
+
+      A **batch** is the group of examples used for one update; its **batch size** is the number of examples. We want to lower loss across all examples, but use the batch's average loss as a cheaper stand-in. We'll call its average slope $g_{\text{batch}}$. For $m$ examples with slopes $g_1$ through $g_m$, divide their sum by $m$:
+
+      $$g_{\text{batch}}=\frac{g_1+\cdots+g_m}{m}.$$
+
+      The dots mean to add every slope in the batch. Subtract that average times the learning rate $\eta$:
+
+      $$w_{\text{new}}=w-\eta g_{\text{batch}}.$$
+
+      For a different model with two parameters, suppose two examples give gradients $(4,-2)$ and $(0,6)$. Average the first entries, $4$ and $0$, then the second entries, $-2$ and $6$. This gives $(2,2)$, one average slope per parameter.
+
+      ### Three sizes of batch
+
+      Starting from $3$ with $\eta=0.1$, compare these alternative updates:
+
+      - **Full-batch gradient descent** uses all four examples. Their average slope is $-2$, giving $3-0.1(-2)=3.2$.
+      - **Stochastic gradient descent (SGD)** uses one random example. If we draw target $7$, its slope is $-8$, giving $3.8$.
+      - **Minibatch gradient descent** uses more than one example but fewer than all. Our pair gives $2.8$.
+
+      You may also see “SGD” used for minibatches. The stated batch size tells you whether one or several examples supply each update.
+    worked: |
+      Let's update our trip-time model from $w=3$, using targets $1$ and $3$ together and learning rate $\eta=0.1$.
+
+      1. **Find both slopes.** We use the same starting prediction for both examples because this is one batch update.
+         $$g_1=2(3-1)=4,\qquad g_2=2(3-3)=0.$$
+
+      2. **Average them.** We're lowering the batch's average squared error, so we average its slopes rather than adding them without dividing.
+         $$g_{\text{batch}}=\frac{4+0}{2}=2.$$
+
+      3. **Move once.** We subtract the scaled average slope from the old parameter.
+         $$w_{\text{new}}=3-0.1\times2=2.8.$$
+
+      Lowering the prediction reduces this pair's average loss. The other two examples did not contribute to this update; we'll use them in the next batch.
+    problems:
+      - sgm-average-basics
+      - sgm-average-why
+      - sgm-average-template
+      - sgm-sum-trap
+      - sgm-update-template
+      - sgm-two-parameters
+  - id: sgm-count-passes
+    title: "Repeat updates across the whole dataset"
+    explain: |
+      ### Moving through all four examples
+
+      Our first batch moved $w$ from $3$ to $2.8$. Now use targets $5,7$, calculating fresh slopes at $2.8$. A batch update changes the starting point for the next batch.
+
+      An **epoch** is one complete pass through the training dataset. The picture previews our first epoch's two updates, with the second calculation worked out below. Each left-hand box is one batch; each orange box is one parameter update.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" aria-label="One epoch covers targets 1, 3, 5 and 7 in two batches of two. The first batch updates w from 3 to 2.8. At the new w, the second batch updates it from 2.8 to 3.44. Two updates complete one epoch.">
+      <defs><marker id="sgm-two-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717" text-anchor="middle">
+      <rect x="10" y="15" width="175" height="50" rx="8" fill="#d4d4d4" fill-opacity="0" stroke="#d4d4d4"/><text x="97.5" y="46">targets 1, 3</text>
+      <path d="M185 40 H213" stroke="#737373" marker-end="url(#sgm-two-arrow)"/>
+      <rect x="220" y="15" width="170" height="50" rx="8" fill="#d4d4d4" fill-opacity="0" stroke="#f59e0b"/><text x="305" y="46">3 → 2.8</text>
+      <path d="M305 65 V90 H97.5 V113" stroke="#737373" fill="#d4d4d4" fill-opacity="0" marker-end="url(#sgm-two-arrow)"/>
+      <rect x="10" y="120" width="175" height="50" rx="8" fill="#d4d4d4" fill-opacity="0" stroke="#d4d4d4"/><text x="97.5" y="151">targets 5, 7</text>
+      <path d="M185 145 H213" stroke="#737373" marker-end="url(#sgm-two-arrow)"/>
+      <rect x="220" y="120" width="170" height="50" rx="8" fill="#d4d4d4" fill-opacity="0" stroke="#f59e0b"/><text x="305" y="151">2.8 → 3.44</text>
+      <text x="200" y="216">4 examples · 2 updates · 1 epoch</text>
+      </g></svg>
+      ```
+
+      ### Count the parameter changes
+
+      An **update** is one change to the parameters after a batch, not a complete pass through the data. Count updates to plan how many parameter changes training will run. Three epochs with our two batches mean six updates, not three. Batch size one would instead give four updates per epoch.
+
+      For a dataset of $N$ examples divided into full batches of size $m$, the count is:
+
+      $$\text{updates per epoch}=N/m.$$
+
+      Here $N$ is the total number of examples, and $m$ is our chosen batch size. If they don't divide evenly, keep a shorter final batch and round the update count up. For ten examples and size four, $10/4=2.5$ rounds up to three updates, with batch sizes four, four and two. The last batch has two examples, so divide its slope sum by two.
+
+      Be careful not to reuse an earlier batch's slopes. Each new batch needs slopes calculated at the current prediction.
+
+      ### Changing the order next time
+
+      We chose the order by hand to make our first epoch easy to follow. Repeating these sorted groups keeps pushing toward one part of the data at a time. Our low-target pair first pulled $w$ down, although the full-data gradient at $3$ calls for moving up.
+
+      To avoid repeating such groupings, **shuffle** the examples into a new random order before each epoch, then split them into batches. An order of $1,7,3,5$ instead mixes low and high targets within each pair. Shuffling changes the groups and their update order; it does not guarantee a better update. Each trip keeps its recorded duration.
+    worked: |
+      Let's finish the epoch that began with targets $1,3$, using the remaining targets $5,7$. Our first update left $w=2.8$, and we keep $\eta=0.1$.
+
+      1. **Calculate fresh slopes.** The second batch sees the new prediction, so the old slopes $-4,-8$ no longer apply.
+         $$g_1=2(2.8-5)=-4.4,\qquad g_2=2(2.8-7)=-8.4.$$
+
+      2. **Average this batch.** We combine the two slopes before making any change to the parameter.
+         $$g_{\text{batch}}=\frac{-4.4-8.4}{2}=-6.4.$$
+
+      3. **Make the second update.** A negative average slope increases the prediction.
+         $$w_{\text{new}}=2.8-0.1\times(-6.4)=3.44.$$
+
+      We've now used all four examples once, making two updates in one epoch. For another epoch, shuffle all four examples and continue from $3.44$, rather than resetting $w$ to $3$.
+    problems:
+      - sgm-epoch-basics
+      - sgm-epoch-why
+      - sgm-epoch-template
+      - sgm-short-batch
+      - sgm-fresh-slope
+      - sgm-shuffle-application
+  - id: sgm-choose-size
+    title: "Choose how many examples to use"
+    explain: |
+      ### When two batches disagree
+
+      We can update sooner with a small batch, but how much should we trust its direction? Keep our four targets $1,3,5,7$, and imagine the model has reached $w=4$. The **full-data gradient**, averaging all four slopes $6,2,-2,-6$, is zero. As in gradient descent, our squared-error loss is a bowl, so this flat point is its minimum.
+
+      Look at the two possible batches below. Blue labels give their average slopes; the orange arrows are their updates with $\eta=0.1$. Both start from $4$. The lower-target batch moves left; the higher-target batch moves right.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" aria-label="Two alternative batch updates from w equals 4 with learning rate 0.1. Targets 1 and 3 have average slope plus 4 and move left to 3.6. Targets 5 and 7 have average slope minus 4 and move right to 4.4. A separate full-data case has gradient zero and stays at 4. Both arrows have equal length.">
+      <defs><marker id="sgm-three-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717" text-anchor="middle">
+      <text x="200" y="25" fill="#3b82f6">targets 1, 3: average slope +4</text>
+      <path d="M60 70 H348 M108 64 V76 M204 64 V76 M300 64 V76" stroke="#d4d4d4"/>
+      <path d="M204 70 H108" stroke="#f59e0b" stroke-width="3" marker-end="url(#sgm-three-arrow)"/><circle cx="204" cy="70" r="4" fill="#171717"/>
+      <text x="108" y="101">3.6</text><text x="204" y="101">4</text><text x="300" y="101">4.4</text>
+      <text x="200" y="145" fill="#3b82f6">targets 5, 7: average slope −4</text>
+      <path d="M60 190 H348 M108 184 V196 M204 184 V196 M300 184 V196" stroke="#d4d4d4"/>
+      <path d="M204 190 H300" stroke="#f59e0b" stroke-width="3" marker-end="url(#sgm-three-arrow)"/><circle cx="204" cy="190" r="4" fill="#171717"/>
+      <text x="108" y="221">3.6</text><text x="204" y="221">4</text><text x="300" y="221">4.4</text>
+      <path d="M30 243 H370" stroke="#d4d4d4"/><text x="200" y="268">all four: full-data gradient 0</text><text x="200" y="292">no update: stay at 4</text>
+      </g></svg>
+      ```
+
+      A batch gradient **estimates** the full-data gradient using fewer examples. **Gradient noise** is the batch gradient minus the full-data gradient, both at the same parameter setting. It comes from the examples we choose, not arithmetic mistakes.
+
+      ### Less work, less reliable directions
+
+      Compare three choices for our dataset:
+
+      - Size one needs only one example's slope per update, but at $w=4$ that slope could be $6,2,-2$ or $-6$.
+      - Size two combines two slopes. Different pairs can point opposite ways, but targets $1,7$ give slopes $6,-6$ and average to zero, matching the full-data gradient exactly.
+      - Size four uses all four slopes per update, so it has no gradient noise from choosing a subset.
+
+      Here the one-example slopes range from $-6$ to $6$, while pair averages range from $-4$ to $4$. Averaging can cancel opposing slopes. Larger random batches usually give steadier estimates, though our exact pair shows that small batches can match too. Larger batches usually need more computer memory for examples and calculations.
+
+      Smaller batches do less work per update. But computers may calculate many slopes at once, so larger batches need not take proportionally longer. Neither size always trains faster. Compare loss reduction over the same elapsed time, not update count. If two choices both reduce loss by $1$, taking $2$ seconds beats taking $5$ seconds.
+
+      ### Limitations
+
+      Be careful not to treat every loss rise as a failed calculation. Both pictured updates raise the full-data loss; we'll check the leftward update below. Check whole-dataset loss after each epoch to judge progress, rather than relying on one batch. If noisy moves prevent improvement, a larger batch can reduce that noise.
+    worked: |
+      Let's check what the lower-target batch does at $w=4$ with $\eta=0.1$, and compare the average loss over all four targets before and after.
+
+      1. **Measure the starting loss.** Each example uses the prediction $4$, so we average four squared errors.
+         $$L_{\text{before}}=\frac{(4-1)^2+(4-3)^2+(4-5)^2+(4-7)^2}{4}=5.$$
+
+      2. **Use only the chosen batch's slopes.** Targets $1,3$ give slopes $6,2$, so their average is $4$.
+         $$w_{\text{new}}=4-0.1\times\frac{6+2}{2}=3.6.$$
+
+      3. **Check all four examples again.** We evaluate the new prediction on the whole dataset, not just the chosen pair.
+         $$L_{\text{after}}=\frac{(3.6-1)^2+(3.6-3)^2+(3.6-5)^2+(3.6-7)^2}{4}=5.16.$$
+
+      The full-data loss rose from $5$ to $5.16$. Yet the chosen pair's average loss fell from $(9+1)/2=5$ to $(6.76+0.36)/2=3.56$. The update helped that pair while moving away from the best prediction for all four examples.
+    problems:
+      - sgm-noise-basics
+      - sgm-noise-why
+      - sgm-noise-template
+      - sgm-large-batch-trap
+      - sgm-exact-pair
+      - sgm-timing-application
+final: sgm-explain-training
+summary: |
+  - A batch supplies one update: calculate its examples' gradients at the same parameter setting, average them, then subtract the learning rate times that average, $w_{\text{new}}=w-\eta g_{\text{batch}}$.
+  - Full-batch gradient descent uses every example, one-example SGD uses one, and minibatch gradient descent uses a smaller group than the whole dataset.
+  - An epoch is one complete pass through the data, usually containing several updates; shuffle before the next pass, and average any shorter final batch using its actual size.
+  - Smaller batches need fewer examples per update but usually give noisier directions, so even a correct update can raise the full-data loss; compare batch sizes by progress over time, not just by update count.
+
+  **Next:** The Momentum and Adam lesson shows how using information from earlier batch updates can make training less erratic.
