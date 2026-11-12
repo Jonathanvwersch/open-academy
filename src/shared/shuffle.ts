@@ -28,3 +28,7 @@ export function seededOrder<T>(items: readonly T[], seed: string): T[] {
   }
   return result;
 }
+
+export function onScreenOptions<T>(options: readonly T[], exerciseId: string): T[] {
+  return seededOrder(options, exerciseId);
+}

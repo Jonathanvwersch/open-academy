@@ -5,9 +5,15 @@ import type { Card } from 'ts-fsrs';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
 import { emptyAnswerMessage } from '../../shared/answer-validation.js';
+import { onScreenOptions } from '../../shared/shuffle.js';
 import { getLessonPrerequisites } from '../content/index.js';
 import { loadContent } from '../content/load.js';
-import { serializeConcept, serializeExercise, serializeLesson } from '../content/serialize.js';
+import {
+  serializeConcept,
+  serializedOptionOrder,
+  serializeExercise,
+  serializeLesson,
+} from '../content/serialize.js';
 import { isTemplate } from '../content/templates.js';
 import type { ContentIndex, IndexedExercise } from '../content/types.js';
 import type { Database } from '../db/client.js';
@@ -855,9 +861,12 @@ export function createApiRoutes(deps: {
       }
       const optionTexts =
         exercise.type === 'mc'
-          ? exercise.options
+          ? onScreenOptions(
+              serializedOptionOrder(exercise.options, context.get('userId'), exercise.id),
+              exercise.id,
+            )
           : exercise.type === 'debug'
-            ? exercise.fix_options
+            ? onScreenOptions(exercise.fix_options, exercise.id)
             : [];
       const generatedHint = await tutorService.respond(
         {

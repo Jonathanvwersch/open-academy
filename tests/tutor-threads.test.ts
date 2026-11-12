@@ -22,6 +22,7 @@ import { tutorThreadBodySchema } from '../src/server/routes/tutor-threads.js';
 import { sanitizePageContent } from '../src/server/tutor/page-context.js';
 import type { TutorProvider, TutorResult } from '../src/server/tutor/provider.js';
 import type { ExplanationContext, TutorContext, TutorReply } from '../src/server/tutor/schemas.js';
+import { onScreenOptions } from '../src/shared/shuffle.js';
 import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '../src/shared/tutor.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
@@ -295,17 +296,22 @@ test('unanswered and answered lesson problems pass the right solution privacy co
   expect(captured.at(-1)?.solution).not.toBe('');
 });
 
-test('unanswered multiple-choice lesson problems pass only lettered option text to the tutor', async () => {
+test('unanswered multiple-choice lesson problems pass screen-ordered options to the tutor', async () => {
   const start = await app.request('/api/lessons/chain-rule/run', {
     method: 'POST',
     headers,
     body: JSON.stringify({}),
   });
   const run = (await start.json()).run;
-  const pending = run.pending;
-  if (!pending) throw new Error('Expected a pending Chain rule lesson problem');
+  const pending = run.pendingProblem;
+  if (!pending?.exercise) throw new Error('Expected a pending Chain rule lesson problem');
   const exercise = concreteExercise(pending.exerciseId, pending.seed);
   if (exercise.type !== 'mc') throw new Error('Expected a multiple-choice Chain rule problem');
+  const serializedOptions = pending.exercise.options as Array<{ id: string; text: string }>;
+  const displayedOptions = onScreenOptions(serializedOptions, pending.exercise.id);
+  expect(displayedOptions.map(({ id }: { id: string }) => id)).not.toEqual(
+    exercise.options.map((option) => option.id),
+  );
 
   const response = await send('Help with this question', undefined, {
     lessonProblemId: pending.id,
@@ -316,7 +322,7 @@ test('unanswered multiple-choice lesson problems pass only lettered option text 
   const optionInput = tutorInput?.exerciseOptions ?? [];
   expect(tutorInput).toMatchObject({
     problem_status: 'unanswered',
-    exerciseOptions: exercise.options.map(
+    exerciseOptions: displayedOptions.map(
       ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
     ),
   });

@@ -146,6 +146,34 @@ async function createLessonActivitySession(
   return session.id;
 }
 
+async function createPracticeActivitySession() {
+  const db = createDb(env.TEST_DATABASE_URL);
+  const [learner] = await db.select({ id: users.id }).from(users).limit(1);
+  if (!learner) throw new Error('Missing E2E learner');
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId: learner.id,
+      kind: 'weekday',
+      plannedMinutes: 20,
+      status: 'active',
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create practice session');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind: 'practice',
+    conceptId: 'supervised-learning',
+    exerciseIds: ['sl-explain-setup'],
+    plannedMinutes: 5,
+    status: 'in_progress',
+  });
+  await db.$client.end();
+  return session.id;
+}
+
 async function currentRun(page: Page, runConceptId = conceptId) {
   return page.evaluate(async (concept) => {
     const response = await fetch(`/api/lessons/${concept}/run`);
@@ -884,6 +912,12 @@ test('LessonRunner advances after MC feedback when the selected label focuses it
   const run = await currentRun(page, 'derivatives');
   const problem = run.pendingProblem;
   expect(problem.exercise.type).toBe('mc');
+  await expect(page.getByRole('radiogroup').locator('label')).toHaveText([
+    /^A\./,
+    /^B\./,
+    /^C\./,
+    /^D\./,
+  ]);
   await expect(page.getByTestId('lesson-problem')).toHaveAttribute('data-problem-id', problem.id);
   const answer = await page.evaluate(async (problemId: string) => {
     const response = await fetch(`/api/test/lesson-problems/${problemId}/answer`);
@@ -905,6 +939,21 @@ test('LessonRunner advances after MC feedback when the selected label focuses it
   const radioGroup = page.getByRole('radiogroup');
   await expect(radioGroup).toBeFocused();
   await expectEnterToAdvance(page, 'derivatives', problem.id);
+});
+
+test('typing a question mark in the tutor composer does not show shortcut help', async ({
+  page,
+}) => {
+  const sessionId = await createPracticeActivitySession();
+  await page.goto(`/session/${sessionId}`);
+  const exercise = page.getByTestId('session-exercise');
+  await expect(exercise).toBeVisible();
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const textarea = tutor.getByLabel('Ask the tutor');
+  await textarea.pressSequentially('?');
+  await expect(textarea).toHaveValue('?');
+  await expect(exercise.getByText(/Enter submits/)).toHaveCount(0);
 });
 
 test('a legacy v1 learn activity resumes through the KP runner and final question', async ({

@@ -128,7 +128,6 @@ function SessionPage() {
     }[]
   >([]);
   const [tutorUnavailable, setTutorUnavailable] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [completedLessonChecks, setCompletedLessonChecks] = useState<Set<string>>(new Set());
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
   const [continuing, setContinuing] = useState(false);
@@ -255,7 +254,6 @@ function SessionPage() {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target;
       if (
-        event.key !== '?' &&
         target instanceof HTMLElement &&
         (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
           ['radio', 'checkbox', 'combobox'].includes(target.getAttribute('role') ?? ''))
@@ -270,8 +268,6 @@ function SessionPage() {
           event.preventDefault();
           void queryClient.invalidateQueries({ queryKey: ['session', id] });
         }
-      } else if (event.key === '?') {
-        setShortcutsOpen((open) => !open);
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -715,12 +711,6 @@ function SessionPage() {
             <div data-testid="exercise-prompt">
               <Markdown>{exerciseQuery.data.prompt}</Markdown>
             </div>
-            {shortcutsOpen ? (
-              <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-                Enter submits · h requests a hint · n or → continues · 1–9 selects an option · ?
-                hides shortcuts
-              </div>
-            ) : null}
             <ExerciseForm
               key={`${activity.id}:${exerciseId}`}
               exercise={exerciseQuery.data}
