@@ -1224,3 +1224,36 @@ test('Sunday creates its cumulative assessment and leaves remediation minutes un
   expect(assessment?.exerciseIds.length).toBeGreaterThan(0);
   expect(plan.activities.reduce((sum, activity) => sum + activity.plannedMinutes, 0)).toBe(40);
 });
+
+test('Sunday omits recap activities when the learner has not learned any concepts', () => {
+  const plan = planSession(emptyState(), content, now, 60, 'sunday');
+  expect(plan.activities.some((activity) => activity.kind === 'teachback')).toBe(false);
+  expect(plan.activities.some((activity) => activity.kind === 'quick_check')).toBe(false);
+});
+
+test('Sunday recap and quick check use learned concepts and prioritize low recall', () => {
+  const state = emptyState();
+  state.lessonRuns = [
+    { conceptId: 'vectors', status: 'completed' },
+    { conceptId: 'derivatives', status: 'completed' },
+  ];
+  state.cards = [
+    { conceptId: 'vectors', dimension: 'math', dueAt: now.toISOString(), retrievability: 0.2 },
+    {
+      conceptId: 'derivatives',
+      dimension: 'math',
+      dueAt: now.toISOString(),
+      retrievability: 0.8,
+    },
+  ];
+
+  const plan = planSession(state, content, now, 90, 'sunday');
+  const teachback = plan.activities.find((activity) => activity.kind === 'teachback');
+  const quickCheck = plan.activities.find((activity) => activity.kind === 'quick_check');
+  expect(teachback?.conceptId).toBe('vectors');
+  expect(
+    quickCheck?.exerciseIds.every((id) =>
+      ['vectors', 'derivatives'].includes(content.exercisesById.get(id)?.concept ?? ''),
+    ),
+  ).toBe(true);
+});
