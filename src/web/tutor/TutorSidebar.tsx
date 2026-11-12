@@ -228,6 +228,7 @@ export function TutorContextProvider({
     queryFn: () => getJson<{ tutorEnabled: boolean }>('/api/today'),
   });
   const enabled = context.enabled || tutorFlag.data?.tutorEnabled === true;
+  const loadingTutor = !context.enabled && tutorFlag.isPending && context.allowed;
   const threads = useQuery({
     ...tutorThreadsQueryOptions(),
     enabled: open && enabled && context.allowed && routeAllowed,
@@ -882,7 +883,18 @@ export function TutorContextProvider({
                   </div>
                 </SidebarHeader>
                 <SidebarContent className="p-4 text-sm text-muted-foreground">
-                  Tutor is unavailable.
+                  {loadingTutor ? (
+                    <div
+                      role="status"
+                      aria-label="Loading tutor"
+                      className="flex items-center justify-center gap-2 p-6 text-sm text-muted-foreground"
+                    >
+                      <Loader size={16} aria-hidden="true" />
+                      Loading tutor…
+                    </div>
+                  ) : (
+                    'Tutor is unavailable.'
+                  )}
                 </SidebarContent>
               </>
             )}
