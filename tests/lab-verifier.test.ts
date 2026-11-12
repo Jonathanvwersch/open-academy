@@ -7,6 +7,8 @@ import { expect, test } from 'vitest';
 const verifier = resolve('labs/linreg-numpy/verify.py');
 const solution = resolve('labs/linreg-numpy/_solution/linreg.py');
 const buggy = resolve('labs/linreg-numpy/_solution/buggy.py');
+const nnVerifier = resolve('labs/verify.py');
+const nnSolution = resolve('labs/nn-from-scratch/_solution/nn.py');
 
 test('reference linear regression solution passes deterministic verifier checks', () => {
   const directory = mkdtempSync(join(tmpdir(), 'academy-lab-'));
@@ -44,6 +46,37 @@ test('verifier rejects an implementation missing the 2/n gradient factor', () =>
     expect(
       result.tests.find((check) => check.id === 'test_gradients_match_finite_differences')?.passed,
     ).toBe(false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('reference two-layer neural network solution passes deterministic verifier checks', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'academy-lab-nn-'));
+  try {
+    const output = join(directory, 'results.json');
+    execFileSync(
+      'python3',
+      [nnVerifier, 'nn-from-scratch', '--implementation', nnSolution, '--output', output],
+      { encoding: 'utf8' },
+    );
+    const result = JSON.parse(readFileSync(output, 'utf8')) as {
+      tests: Array<{ id: string; passed: boolean }>;
+      metrics: {
+        final_train_loss: number;
+        validation_accuracy: number;
+        max_gradient_check_relative_error: number;
+      };
+    };
+    expect(result.tests).toHaveLength(8);
+    expect(result.tests.every((check) => check.passed)).toBe(true);
+    expect(
+      result.tests.find((check) => check.id === 'test_gradients_match_numerical_differences')
+        ?.passed,
+    ).toBe(true);
+    expect(result.metrics.final_train_loss).toBeLessThan(0.1);
+    expect(result.metrics.validation_accuracy).toBeGreaterThanOrEqual(0.9);
+    expect(result.metrics.max_gradient_check_relative_error).toBeLessThan(1e-5);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

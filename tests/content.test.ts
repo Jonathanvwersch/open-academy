@@ -66,6 +66,56 @@ test('real authored paper content loads and indexes by ID and week', async () =>
   expect([...content.papersByWeek.values()].flat()).toHaveLength(content.papers.length);
 });
 
+test('authored week-two neural-network project loads with its reflection exercises', async () => {
+  const content = await loadContent('content');
+  const project = required(content.projectsById.get('nn-from-scratch'), 'week-two project');
+
+  expect(project.status).toBe('authored');
+  expect(project.prereqs).toEqual(['mlp-forward-pass', 'backpropagation']);
+  expect(project.reflection).toEqual([
+    'lab-nn-gradient-check-eps',
+    'lab-nn-linear-baseline',
+    'lab-nn-zero-initialization',
+  ]);
+  expect(project.tests).toHaveLength(8);
+
+  const gradientCheck = required(
+    content.exercisesById.get('lab-nn-gradient-check-eps'),
+    'gradient-check reflection',
+  );
+  if (gradientCheck.type !== 'mc') {
+    throw new Error('Gradient-check reflection must be multiple choice');
+  }
+  expect(
+    gradientCheck.options.filter((option) => option.correct).map((option) => option.id),
+  ).toEqual(['a']);
+
+  const linearBaseline = required(
+    content.exercisesById.get('lab-nn-linear-baseline'),
+    'linear-baseline reflection',
+  );
+  if (linearBaseline.type !== 'mc') {
+    throw new Error('Linear-baseline reflection must be multiple choice');
+  }
+  expect(
+    linearBaseline.options.filter((option) => option.correct).map((option) => option.id),
+  ).toEqual(['a']);
+
+  const zeroInitialization = required(
+    content.exercisesById.get('lab-nn-zero-initialization'),
+    'zero-initialization reflection',
+  );
+  if (zeroInitialization.type !== 'explain') {
+    throw new Error('Zero-initialization reflection must be explain type');
+  }
+  expect(zeroInitialization.rubric.map((criterion) => criterion.id)).toEqual([
+    'inactive-relu',
+    'symmetry',
+    'output-bias',
+  ]);
+  expect(zeroInitialization.exemplar).toContain('identical gradients');
+});
+
 test('every real lesson knowledge point has non-basics problems at difficulties one through three', async () => {
   const content = await loadContent('content');
   const missingDifficulties: string[] = [];

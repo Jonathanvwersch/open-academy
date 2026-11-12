@@ -691,3 +691,66 @@ exercises:
         },
       ]
     exemplar: "Save intermediate values during the forward pass so local derivatives can be evaluated at those values. Work backwards from the loss, multiplying by local derivatives and adding contributions where routes or examples share a parameter; array products perform these sums and loss averaging is included once. For selected parameters, hold everything else fixed and compare the backward slope with the loss difference between equal positive and negative nudges divided by twice the nudge size."
+  - id: lab-nn-gradient-check-eps
+    dimension: implementation
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt: "The verifier compares a backward-pass gradient with central finite differences using a small, nonzero $\\epsilon$. Why use this two-sided estimate instead of making $\\epsilon$ as small as possible?"
+    options:
+      - {
+          id: a,
+          text: "The two-sided estimate cancels first-order error, while a moderate step limits both curvature error and rounding noise.",
+          correct: true,
+          feedback: "The central difference is more accurate than a one-sided difference for a smooth function, but an extremely small step can be lost to floating-point rounding.",
+        }
+      - {
+          id: b,
+          text: "A central difference makes the estimate exact, so the size of the step no longer matters.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Finite differences are approximations. Large steps include curvature effects, and tiny steps can be dominated by rounding.",
+        }
+      - {
+          id: c,
+          text: "The step must be tiny because a one-sided difference cannot check a neural network.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "One-sided differences can estimate derivatives, but central differences use changes on both sides and cancel more of the leading approximation error.",
+        }
+      - {
+          id: d,
+          text: "The step should be large enough to average the loss over every training example.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The step changes one parameter for the numerical estimate; the loss function itself already averages over the batch.",
+        }
+    solution: "For a smooth loss, comparing equal positive and negative nudges cancels the leading one-sided error. The step must still be moderate: a large step measures curvature over a wider interval, while a tiny step can make the loss change indistinguishable from floating-point rounding."
+  - id: lab-nn-zero-initialization
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: "Suppose you initialize every hidden weight and hidden bias in this ReLU network to zero. What happens to training, and how does the symmetry between hidden neurons explain it?"
+    rubric:
+      - {
+          id: inactive-relu,
+          criterion: "Explains that zero hidden pre-activations produce zero ReLU outputs and, with the derivative convention used here, zero gradients for the hidden layer.",
+          weight: 0.4,
+          required: true,
+        }
+      - {
+          id: symmetry,
+          criterion: "Explains that identical hidden neurons receive identical updates and cannot learn distinct features.",
+          weight: 0.4,
+          required: true,
+        }
+      - {
+          id: output-bias,
+          criterion: "Notes that the output bias can still move even though the hidden layer is inactive.",
+          weight: 0.2,
+          required: false,
+        }
+    exemplar: "With zero hidden weights and biases, every hidden pre-activation is zero, so ReLU outputs zero. The ReLU derivative is zero at those values in this implementation, so the hidden weights receive no gradient and stay inactive; the output bias can still adjust. More generally, identical hidden units get identical gradients and remain copies of one another instead of learning different features."

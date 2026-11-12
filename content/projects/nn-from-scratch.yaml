@@ -1,8 +1,102 @@
 id: nn-from-scratch
 title: "Neural network and backprop from scratch"
 week: 2
-status: stub
+status: authored
 est_hours: 5
 objective: "Implement a 2-layer MLP with a hand-written backward pass in NumPy, verify gradients numerically, and train it on a toy classification task."
-background: ""
+background: |
+  This project gives you a small classification dataset made of two interleaved moons. A single straight line cannot separate the two curved bands well. You will build a network with one ReLU hidden layer and one sigmoid output, train it with binary cross-entropy, and check its hand-written gradients against central differences.
+
+  Examples are rows of `X`; each row of `W1` and `W2` stores one neuron's weights. The starter includes a seeded data generator and an 80/20 train-validation split. Work locally in NumPy; the Academy server records your results but never runs your code.
+
+  **Setup**
+  ```bash
+  python3 -m pip install -r labs/nn-from-scratch/requirements.txt
+  python3 labs/nn-from-scratch/setup.py
+  # edit labs/nn-from-scratch/work/nn.py
+  python3 labs/verify.py nn-from-scratch
+  ```
+  Upload `labs/nn-from-scratch/work/results.json` on this page when you are done.
 prereqs: [mlp-forward-pass, backpropagation]
+tasks:
+  - id: t-init
+    title: Initialize the network
+    md: |
+      Implement `init_params(n_in, n_hidden, n_out, seed)` and return `W1`, `b1`, `W2`, and `b2`. Start with `rng = np.random.default_rng(seed)`. Draw `W1` first with shape `(n_hidden, n_in)` from a normal distribution with variance `2/n_in`, using `rng.normal(0, np.sqrt(2/n_in), size=(n_hidden, n_in))`. Then draw `W2` with shape `(n_out, n_hidden)` from variance `1/n_hidden`, using `rng.normal(0, np.sqrt(1/n_hidden), size=(n_out, n_hidden))`. Set both biases to zero.
+  - id: t-forward
+    title: Calculate predictions
+    md: |
+      Implement `forward(params, X)` for examples stored as rows:
+      `Z1 = X @ W1.T + b1`, `H = ReLU(Z1)`, `Z2 = H @ W2.T + b2`, and `y_hat = sigmoid(Z2)`. Return the predictions and a cache of values needed by backpropagation.
+  - id: t-loss
+    title: Measure binary cross-entropy
+    md: |
+      Implement mean binary cross-entropy and clip probabilities before taking logarithms: `L = -mean(y * log(y_hat) + (1 - y) * log(1 - y_hat))`.
+  - id: t-backward
+    title: Derive the backward pass
+    md: |
+      With `m` examples, start with `dZ2 = (y_hat - y) / m`. Then calculate `dW2 = dZ2.T @ H`, `db2 = sum(dZ2, axis=0)`, `dH = dZ2 @ W2`, `dZ1 = dH * (Z1 > 0)`, `dW1 = dZ1.T @ X`, and `db1 = sum(dZ1, axis=0)`. Return gradients with the same keys and shapes as the parameters.
+  - id: t-gradient-check
+    title: Check the gradients numerically
+    md: |
+      Implement `numerical_grad(f, params, eps)` with central differences, changing one parameter at a time: `(f(params + eps) - f(params - eps)) / (2 * eps)`. Compare every analytic parameter gradient with its numerical estimate.
+  - id: t-train
+    title: Train and evaluate
+    md: |
+      Implement full-batch gradient descent and binary `accuracy`. Update parameters with `parameter -= lr * gradient`; return the loss history. Train on the training split, then report accuracy on the held-out validation split.
+  - id: t-baseline
+    title: Compare with a linear classifier
+    md: |
+      Compare the trained network with logistic regression on the two input features, without a hidden layer. The two curved moons are not well separated by a single straight decision boundary.
+acceptance:
+  - "All deterministic public verifier checks pass."
+  - "The forward pass returns one probability per example and the gradients match the parameter shapes."
+  - "The maximum relative error between analytic and numerical gradients is below 1e-5."
+  - "One full-batch gradient-descent step lowers the loss."
+  - "Validation accuracy is at least 0.9, and the hidden-layer model beats the linear baseline by at least 0.10."
+tests:
+  - { id: test_data_is_seeded_and_split, concepts: [mlp-forward-pass], dimension: implementation }
+  - {
+      id: test_parameter_forward_and_gradient_shapes,
+      concepts: [mlp-forward-pass, backpropagation],
+      dimension: implementation,
+    }
+  - { id: test_forward_matches_reference, concepts: [mlp-forward-pass], dimension: implementation }
+  - {
+      id: test_loss_matches_mean_binary_cross_entropy,
+      concepts: [backpropagation],
+      dimension: implementation,
+    }
+  - {
+      id: test_gradients_match_numerical_differences,
+      concepts: [backpropagation],
+      dimension: implementation,
+    }
+  - { id: test_training_step_lowers_loss, concepts: [backpropagation], dimension: implementation }
+  - {
+      id: test_training_reaches_validation_accuracy,
+      concepts: [mlp-forward-pass, backpropagation],
+      dimension: implementation,
+    }
+  - {
+      id: test_hidden_layer_beats_linear_baseline,
+      concepts: [mlp-forward-pass],
+      dimension: implementation,
+    }
+metrics:
+  - { id: final_train_loss, label: "Final training loss", threshold: 0.1, direction: below }
+  - { id: validation_accuracy, label: "Validation accuracy", threshold: 0.9, direction: above }
+  - {
+      id: max_gradient_check_relative_error,
+      label: "Maximum gradient-check relative error",
+      threshold: 0.00001,
+      direction: below,
+    }
+reflection:
+  - lab-nn-gradient-check-eps
+  - lab-nn-linear-baseline
+  - lab-nn-zero-initialization
+follow_up:
+  - "Try a tanh hidden layer and compare its training curve with ReLU."
+  - "Replace full-batch updates with mini-batches and compare how the loss changes from step to step."
+  - "Change the hidden width and initialization seed; record how much validation accuracy varies."

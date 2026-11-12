@@ -853,3 +853,39 @@ exercises:
           feedback: "$X$ is $3\\times2$. The product keeps the rows of $H$ and takes the columns of $W_2^\\top$.",
         }
     solution: "$(3\\times2)(2\\times1)=3\\times1$: the 3 rows are the 3 examples, carried through from $X$, and the 1 column is the single output neuron."
+  - id: lab-nn-linear-baseline
+    dimension: conceptual
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Why does a linear classifier on the two input features score lower than the network with a ReLU hidden layer?"
+    options:
+      - {
+          id: a,
+          text: "A single straight boundary cannot separate the two curved, interleaved moons.",
+          correct: true,
+          feedback: "The moons wrap around one another. Hidden ReLU units let the network combine several linear pieces into a curved decision boundary.",
+        }
+      - {
+          id: b,
+          text: "A linear classifier cannot learn probabilities for two classes.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A linear classifier can learn two-class probabilities; its limitation here is the straight decision boundary.",
+        }
+      - {
+          id: c,
+          text: "A linear classifier has no parameters that gradient descent can update.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The baseline has weights and a bias that can be trained. It still cannot bend its single separating line around the moons.",
+        }
+      - {
+          id: d,
+          text: "The baseline sees only validation examples, while the network sees training examples.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Both models train on the same training split and are measured on the same validation split.",
+        }
+    solution: "The two classes form interleaved curved bands, so one straight line cannot separate them well. A hidden layer combines several ReLU regions and can form a more flexible boundary."
