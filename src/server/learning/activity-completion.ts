@@ -41,7 +41,7 @@ export async function updateActivityAndAdvance(
       .select({ correct: attempts.correct })
       .from(attempts)
       .where(and(eq(attempts.activityId, input.activityId), eq(attempts.userId, input.userId)));
-    if (activity && activityAttempts.length > 0) {
+    if (activity && activity.kind !== 'lab' && activityAttempts.length > 0) {
       const meanCorrectness =
         activityAttempts.reduce((total, attempt) => total + attempt.correct, 0) /
         activityAttempts.length;

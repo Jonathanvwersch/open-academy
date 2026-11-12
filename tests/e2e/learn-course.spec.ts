@@ -10,6 +10,7 @@ import {
   lessonRuns,
   mastery,
   projectProgress,
+  projectSubmissions,
   sessionActivities,
   studySessions,
   users,
@@ -261,6 +262,65 @@ test('project evidence and reflection survive reloading the project page', async
   await expect(page.getByText('No verifier tests were reported')).toBeVisible();
   await expect(page.getByText(/Validation MSE \(999\) must be below 0\.3/)).toBeVisible();
   await expect(page.getByText('Complete a gradient update.')).toBeVisible();
+});
+
+test('lab activities show project progress and finish without awarding XP', async ({ page }) => {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 20,
+      status: 'active',
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create lab session');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind: 'lab',
+    projectId: 'linreg-numpy',
+    exerciseIds: [],
+    plannedMinutes: 20,
+    status: 'in_progress',
+  });
+
+  await page.goto(`/session/${session.id}`);
+  await expect(
+    page.getByRole('heading', { name: 'Linear regression in NumPy' }).last(),
+  ).toBeVisible();
+  await expect(page.getByText('Not started', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open project' })).toHaveAttribute(
+    'href',
+    '/projects/linreg-numpy',
+  );
+
+  await db.insert(projectSubmissions).values({
+    userId,
+    projectId: 'linreg-numpy',
+    results: {
+      project: 'linreg-numpy',
+      version: 1,
+      tests: [{ id: 'test-predict', passed: true, message: 'passed' }],
+      metrics: { 'validation-mse': 0.2 },
+      generated_at: '2026-01-01T12:00:00.000Z',
+    },
+    passed: 1,
+    total: 1,
+    metrics: { 'validation-mse': 0.2 },
+  });
+  await page.reload();
+  await expect(page.getByText('1 of 1 checks passed', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Done for today' }).click();
+  await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+  const sessionData = await page.evaluate(async (sessionId) => {
+    const response = await fetch(`/api/sessions/${sessionId}`);
+    return response.json() as Promise<{ xp: { session: number } }>;
+  }, session.id);
+  expect(sessionData.xp.session).toBe(0);
+  expect(await db.select().from(xpEvents).where(eq(xpEvents.userId, userId))).toHaveLength(0);
 });
 
 test('navigation has four destinations and Lab redirects to Course', async ({ page }) => {
