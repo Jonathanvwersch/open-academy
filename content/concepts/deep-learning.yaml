@@ -169,7 +169,7 @@ concepts:
     prereqs: [{ id: logistic-regression }, { id: information-theory }]
     objectives:
       - { text: "Compute softmax and cross-entropy for a logit vector", dimension: math }
-    status: stub
+    status: authored
   - {
       id: autoencoders,
       title: "Autoencoders and latent representations",
