@@ -142,11 +142,13 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
   expect(learn.activeSessionId).toBeNull();
   expect(learn.tasks.length).toBeGreaterThan(0);
   expect(learn.tasks[0]).toMatchObject({
+    id: expect.any(String),
     label: expect.stringMatching(/^(Lesson|Review|Practice|Project|Quiz)$/),
     title: expect.any(String),
     xp: expect.any(Number),
     prerequisites: expect.any(Array),
   });
+  expect(new Set(learn.tasks.map((task: { id: string }) => task.id)).size).toBe(learn.tasks.length);
   expect(learn.course).toMatchObject({
     percentComplete: expect.any(Number),
     topicsDone: expect.any(Number),
@@ -606,6 +608,7 @@ test('active-session tasks, done-today activity, and local-date KP XP are return
   });
   expect(learn.tasks).toHaveLength(1);
   expect(learn.tasks[0]).toMatchObject({
+    id: remaining.id,
     activityKind: 'learn',
     label: 'Lesson',
     conceptId: 'supervised-learning',

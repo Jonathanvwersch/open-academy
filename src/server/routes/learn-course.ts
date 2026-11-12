@@ -107,7 +107,7 @@ export function registerLearnCourseRoutes(
         )
       : plannedActivities(state, index, prefs, timeZone, now);
 
-    const tasks = activities.map((activity) => {
+    const tasks = activities.map((activity, taskIndex) => {
       const conceptId = activity.conceptId;
       const concept = conceptId ? index.conceptsById.get(conceptId) : undefined;
       const lesson = conceptId ? index.lessonsByConcept.get(conceptId) : undefined;
@@ -128,6 +128,7 @@ export function registerLearnCourseRoutes(
       const projectId = 'projectId' in activity ? activity.projectId : undefined;
       const project = projectId ? index.projectsById.get(projectId) : undefined;
       return {
+        id: 'id' in activity ? activity.id : `planned-${taskIndex}`,
         activityKind: activity.kind,
         label: activityLabel(activity.kind),
         ...(conceptId ? { conceptId } : {}),

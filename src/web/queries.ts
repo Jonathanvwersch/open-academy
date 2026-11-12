@@ -40,6 +40,7 @@ export interface LearnPayload {
     estimatedFinishAtGoal: string | null;
   };
   tasks: Array<{
+    id: string;
     activityKind: string;
     label: 'Lesson' | 'Review' | 'Practice' | 'Project' | 'Quiz';
     conceptId?: string;

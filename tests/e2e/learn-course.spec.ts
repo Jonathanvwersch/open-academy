@@ -512,6 +512,26 @@ test('navigation cleanup pages render at desktop and mobile widths', async ({ pa
       headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
     });
     const payload = await response.json();
+    payload.tasks = [
+      {
+        id: 'next-up-vectors-practice-first',
+        activityKind: 'practice',
+        label: 'Practice',
+        conceptId: 'vectors',
+        title: 'Vectors practice',
+        xp: 10,
+        prerequisites: [],
+      },
+      {
+        id: 'next-up-vectors-practice-second',
+        activityKind: 'practice',
+        label: 'Practice',
+        conceptId: 'vectors',
+        title: 'Vectors practice',
+        xp: 10,
+        prerequisites: [],
+      },
+    ];
     payload.doneToday = [
       {
         activityId: 'activity-first-session',
@@ -541,6 +561,10 @@ test('navigation cleanup pages render at desktop and mobile widths', async ({ pa
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
   await hideTutorLauncher(page);
+  const nextUpCard = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByRole('heading', { name: 'Next up' }) });
+  await expect(nextUpCard.getByRole('heading', { name: 'Vectors practice' })).toHaveCount(2);
   await expect(page.getByRole('heading', { name: 'Done today' })).toBeVisible();
   const doneTodayCard = page
     .locator('[data-slot="card"]')

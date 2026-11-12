@@ -123,10 +123,7 @@ function LearnPage() {
               {data.tasks.length ? (
                 <ul className="divide-y">
                   {data.tasks.map((task) => (
-                    <li
-                      key={`${task.activityKind}-${task.conceptId ?? task.title}-${task.title}`}
-                      className="space-y-2 py-4 first:pt-0 last:pb-0"
-                    >
+                    <li key={task.id} className="space-y-2 py-4 first:pt-0 last:pb-0">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 space-y-1">
                           <Badge variant="secondary">{task.label}</Badge>
