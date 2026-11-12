@@ -1,0 +1,488 @@
+concept: images-as-tensors
+exercises:
+  - id: iat-grid-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: What does a grayscale image array store?
+    options:
+      - id: a
+        text: One brightness value per pixel
+        correct: true
+        feedback: Each grayscale pixel holds one brightness, so the image is a matrix.
+      - id: b
+        text: Three values per pixel
+        correct: false
+        feedback: That describes an RGB image, not grayscale.
+      - id: c
+        text: One value per whole row
+        correct: false
+        feedback: Each row contains many separate pixels.
+    solution: A grayscale image is a matrix with one brightness number at each pixel.
+  - id: iat-grid-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why does img[1, 3] select 153 in the worked example?
+    options:
+      - id: a
+        text: Indices start at zero, so it selects row two, column four
+        correct: true
+      - id: b
+        text: Indices start at one, so it selects row one, column three
+        correct: false
+        feedback: NumPy starts both indices at zero.
+      - id: c
+        text: The first index selects a column, so it selects column two
+        correct: false
+        feedback: The row index comes first.
+    solution: Counting from zero makes index 1 the second row and index 3 the fourth column.
+  - id: iat-pixel-count
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A grayscale image has height {{= h }} and width {{= w }}. How many pixels does it contain?
+    params:
+      h:
+        min: 2
+        max: 20
+        step: 1
+      w:
+        min: 3
+        max: 24
+        step: 1
+    answer_expr: h*w
+    tolerance: { abs: 0.000001 }
+    solution: There are {{= h }} rows of {{= w }} pixels, so the total is {{= h*w }}.
+  - id: iat-grid-index
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Which expression selects the top-left pixel?
+    options:
+      - id: a
+        text: img[0, 0]
+        correct: true
+      - id: b
+        text: img[1, 1]
+        correct: false
+        feedback: That selects the second row and second column.
+      - id: c
+        text: img[0, 1]
+        correct: false
+        feedback: That selects the second column of the first row.
+    solution: The first row and first column both have index zero.
+  - id: iat-grid-size
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A grayscale image is advertised as 800×600 (width × height). What is its array shape?
+    options:
+      - id: a
+        text: (600, 800)
+        correct: true
+      - id: b
+        text: (800, 600)
+        correct: false
+        feedback: Array shape lists height before width.
+      - id: c
+        text: (600, 800, 3)
+        correct: false
+        feedback: Grayscale needs no three-channel axis.
+    solution: Rows count height and columns count width, so the shape is (600, 800).
+  - id: iat-grid-code
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: What does this print?
+    code: |-
+      import numpy as np
+      img = np.array([[0, 51, 102], [153, 204, 255]], dtype=np.uint8)
+      print(img.shape, img[1, 0])
+    accept:
+      - (2, 3) 153
+    solution: There are two rows and three columns; row index 1, column index 0 holds 153.
+  - id: iat-grid-bytes
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A uint8 grayscale image has height {{= h }} and width {{= w }}. How many bytes do its pixel values take up?
+    params:
+      h:
+        min: 3
+        max: 25
+        step: 1
+      w:
+        min: 4
+        max: 30
+        step: 1
+    answer_expr: h*w
+    tolerance: { abs: 0.000001 }
+    solution: Each pixel occupies one byte, so {{= h }} times {{= w }} gives {{= h*w }} bytes.
+  - id: iat-depth-grid
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot's depth camera stores one distance number per pixel, with 12 rows and 20 columns. Without an explicit channel axis, what shape does it have?
+    options:
+      - id: a
+        text: (12, 20)
+        correct: true
+      - id: b
+        text: (20, 12)
+        correct: false
+        feedback: The row count comes first.
+      - id: c
+        text: (12, 20, 3)
+        correct: false
+        feedback: One distance per pixel does not require three colour channels.
+    solution: One measurement per pixel fits a matrix, with height 12 and width 20.
+  - id: iat-layout-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: What does CHW mean?
+    options:
+      - id: a
+        text: Channels, height, width
+        correct: true
+        feedback: CHW names the axes in their stored order, with channels first.
+      - id: b
+        text: Columns, height, width
+        correct: false
+        feedback: C counts channels, not columns.
+      - id: c
+        text: Channels, width, height
+        correct: false
+        feedback: H comes before W.
+    solution: CHW lists the channel axis first, followed by height and width.
+  - id: iat-layout-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why is the worked example's red plane [[10, 40], [70, 100]]?
+    options:
+      - id: a
+        text: It takes the first channel of each pixel without moving its row or column
+        correct: true
+      - id: b
+        text: It takes the first four numbers in memory order
+        correct: false
+        feedback: That would produce [[10, 20], [30, 40]], which mixes channels.
+      - id: c
+        text: It averages the three numbers of every pixel
+        correct: false
+        feedback: Transposing preserves values rather than averaging them.
+    solution: Red is the first number of each RGB triple; transpose preserves its spatial position.
+  - id: iat-values-count
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An HWC colour image has height {{= h }}, width {{= w }} and 3 channels. How many scalar values does it store?
+    params:
+      h:
+        min: 2
+        max: 16
+        step: 1
+      w:
+        min: 2
+        max: 20
+        step: 1
+    answer_expr: h*w*3
+    tolerance: { abs: 0.000001 }
+    solution: Each of {{= h*w }} pixels has three values, giving {{= h*w*3 }} values.
+  - id: iat-chw-height
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An HWC image has shape ({{= h }}, {{= w }}, 3). After transpose with (2, 0, 1), what is the size of axis 1 (the second axis)?
+    params:
+      h:
+        min: 2
+        max: 20
+        step: 1
+      w:
+        min: 21
+        max: 40
+        step: 1
+    answer_expr: h
+    tolerance: { abs: 0.000001 }
+    solution: CHW has shape (3, {{= h }}, {{= w }}), so axis 1 is height, {{= h }}.
+  - id: iat-reshape-trap
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Why is reshape(3, H, W) not a safe HWC-to-CHW conversion?
+    options:
+      - id: a
+        text: It regroups memory-order values instead of moving channel axes
+        correct: true
+      - id: b
+        text: It always changes the number of values
+        correct: false
+        feedback: Reshape preserves the number of values.
+      - id: c
+        text: It always raises an error for colour images
+        correct: false
+        feedback: The sizes can match, so it may run with wrong pixel groupings.
+    solution: A matching shape does not ensure that each number stays with its own pixel; transpose is the operation that moves axes.
+  - id: iat-layout-code
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: What does this print?
+    code: |-
+      import numpy as np
+      img = np.array([[[1, 2, 3], [4, 5, 6]]])
+      x = np.transpose(img, (2, 0, 1))
+      print(x.shape, x.ndim)
+    accept:
+      - (3, 1, 2) 3
+    solution: The channel axis moves first, giving three planes of one row and two columns, still three axes.
+  - id: iat-batch-count
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot stores {{= n }} RGB images in NCHW, each height {{= h }} and width {{= w }}. How many scalar values are in the batch?
+    params:
+      n:
+        min: 2
+        max: 8
+        step: 1
+      h:
+        min: 2
+        max: 12
+        step: 1
+      w:
+        min: 3
+        max: 15
+        step: 1
+    answer_expr: n*3*h*w
+    tolerance: { abs: 0.000001 }
+    solution: "Multiply images, channels, height and width: {{= n }} × 3 × {{= h }} × {{= w }} = {{= n*3*h*w }}."
+  - id: iat-depth-layout
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A depth image has HWC shape (6, 9, 1), with one distance channel. What is its CHW shape?
+    options:
+      - id: a
+        text: (1, 6, 9)
+        correct: true
+      - id: b
+        text: (3, 6, 9)
+        correct: false
+        feedback: Depth has one channel; transpose does not create two more.
+      - id: c
+        text: (1, 9, 6)
+        correct: false
+        feedback: Height stays before width.
+    solution: Move the last axis first while keeping height before width, yielding (1, 6, 9).
+  - id: iat-scale-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: What does dividing uint8 pixel values by 255 achieve?
+    options:
+      - id: a
+        text: It puts brightness values on a 0-to-1 scale
+        correct: true
+        feedback: Dividing by 255 maps the endpoints 0 and 255 to 0 and 1.
+      - id: b
+        text: It moves channels to the first axis
+        correct: false
+        feedback: Division changes values, not axes.
+      - id: c
+        text: It guarantees a mean of zero in every image
+        correct: false
+        feedback: Rescaling alone does not centre the values.
+    solution: Values from 0 through 255 become values from 0 through 1.
+  - id: iat-scale-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why does the worked example's blue channel become zero?
+    options:
+      - id: a
+        text: Its rescaled value equals its channel mean
+        correct: true
+      - id: b
+        text: Every channel's smallest value must become zero
+        correct: false
+        feedback: Standardisation depends on the supplied mean, not the pixel's rank.
+      - id: c
+        text: Its standard deviation is zero
+        correct: false
+        feedback: Its standard deviation is 0.1; division by zero would be invalid.
+    solution: The blue value is 0.2 and its mean is 0.2, so subtraction gives zero.
+  - id: iat-rescale-value
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A pixel's whole-number value is {{= k*51 }}. What is its value after division by 255?
+    params:
+      k:
+        min: 0
+        max: 5
+        step: 1
+    answer_expr: k/5
+    tolerance: { abs: 0.000001 }
+    solution: Divide {{= k*51 }} by 255 to get {{= k/5 }}.
+  - id: iat-standard-value
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A channel has already been rescaled to {{= q/10 }}. Its mean is 0.5 and its standard deviation is 0.25. What is the standardised value?
+    params:
+      q:
+        min: 0
+        max: 10
+        step: 1
+    answer_expr: (q/10-0.5)/0.25
+    tolerance: { abs: 0.000001 }
+    solution: "Subtract 0.5, then divide by 0.25: the result is {{= (q/10-0.5)/0.25 }}."
+  - id: iat-mean-axis
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A CHW image has shape (3, 4, 3). Why is subtracting means of shape (3,) dangerous?
+    options:
+      - id: a
+        text: NumPy aligns them with width, so it silently uses one mean per column
+        correct: true
+      - id: b
+        text: NumPy always rejects arrays with three axes
+        correct: false
+        feedback: Broadcasting supports arrays with three axes.
+      - id: c
+        text: NumPy automatically recognises the channel axis
+        correct: false
+        feedback: NumPy uses axis sizes and positions, not their meanings.
+    solution: Trailing axes line up, so (3,) matches width; reshape means to (3, 1, 1) for channels.
+  - id: iat-scale-code
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: What does this print?
+    code: |-
+      import numpy as np
+      mean = np.array([0.5, 0.3, 0.2])
+      print(mean.reshape(3, 1, 1).shape)
+    accept:
+      - (3, 1, 1)
+    solution: The three numbers remain in order, with two size-one axes added for height and width.
+  - id: iat-pretrained
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A pretrained model specifies channel means and standard deviations different from the ImageNet example. Which should you use?
+    options:
+      - id: a
+        text: The model's specified statistics and preparation
+        correct: true
+      - id: b
+        text: The ImageNet example for every model
+        correct: false
+        feedback: Those values are common, not universal.
+      - id: c
+        text: New statistics computed from each individual pixel
+        correct: false
+        feedback: That changes the preparation from what the model expects.
+    solution: A pretrained model expects the same input preparation used during its training.
+  - id: iat-robot-scale
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot camera channel rescales to {{= q/5 }}. The model expects mean 0.4 and standard deviation 0.2. What value should be fed for that channel?
+    params:
+      q:
+        min: 0
+        max: 5
+        step: 1
+    answer_expr: (q/5-0.4)/0.2
+    tolerance: { abs: 0.000001 }
+    solution: "Use the model's statistics: ({{= q/5 }} − 0.4) / 0.2 = {{= (q/5-0.4)/0.2 }}."
+  - id: iat-explain-pipeline
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: You load an RGB photo with height 480 and width 640 as a uint8 HWC array. A PyTorch model expects normalised NCHW input. What shapes do you start and end with, what operations do you apply in which order, and why not reshape to move the channels?
+    rubric:
+      - id: shapes
+        criterion: Identify (480, 640, 3) initially and (1, 3, 480, 640) for the single-image batch.
+        weight: 1
+        required: true
+      - id: scale
+        criterion: Convert to float, divide by 255, and apply the model's own channel means and standard deviations with matching broadcasting axes.
+        weight: 1
+        required: true
+      - id: axes
+        criterion: Use transpose to move channels; explain why reshape cannot substitute and why adding a size-one batch axis is safe.
+        weight: 1
+        required: true
+    exemplar: I start with (480, 640, 3). I convert to float and divide by 255, then subtract the model's RGB means and divide by its standard deviations in HWC, where (3,) statistics align with channels. I transpose with (2, 0, 1) to get (3, 480, 640), then add a first axis of size one for (1, 3, 480, 640). Reshape cannot move the channels because it regroups memory-order numbers instead of keeping each number with its own pixel; adding a size-one batch axis is safe because it does not regroup the existing axes.
+    solution: The pipeline must preserve each pixel's channel values while matching both the model's axis order and its expected scale.
+  - id: iat-check-layout
+    dimension: implementation
+    type: code_complete
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: An RGB image img has shape (8, 11, 3). Complete the HWC-to-CHW conversion.
+    code: |-
+      import numpy as np
+      chw = ____
+    accept:
+      - np.transpose(img, (2, 0, 1))
+      - img.transpose(2, 0, 1)
+    solution: Transpose moves the last axis first, giving (3, 8, 11) while keeping each number with its own pixel.

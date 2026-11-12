@@ -11,7 +11,7 @@ concepts:
       dimensions: [conceptual, implementation],
       prereqs: [{ id: matrices }],
       objectives: [{ text: "Convert between image layouts and shapes", dimension: implementation }],
-      status: stub,
+      status: authored,
     }
   - {
       id: convolutions,
