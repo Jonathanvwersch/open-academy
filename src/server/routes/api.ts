@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import type { Card } from 'ts-fsrs';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
+import { emptyAnswerMessage } from '../../shared/answer-validation.js';
 import { getLessonPrerequisites } from '../content/index.js';
 import { loadContent } from '../content/load.js';
 import { serializeConcept, serializeExercise, serializeLesson } from '../content/serialize.js';
@@ -935,6 +936,8 @@ export function createApiRoutes(deps: {
     if (!exercise) {
       return context.json({ error: 'Exercise not found' }, 404);
     }
+    const emptyMessage = emptyAnswerMessage(exercise.type, body.data.answer);
+    if (emptyMessage) return context.json({ error: emptyMessage }, 422);
     if (isTemplate(exercise)) {
       return context.json(
         { error: 'Template exercises must be answered through a lesson run.' },
@@ -1466,6 +1469,8 @@ export function createApiRoutes(deps: {
     if (!run || !exercise) {
       return context.json({ error: 'Diagnostic or exercise not found' }, 404);
     }
+    const emptyMessage = emptyAnswerMessage(exercise.type, body.data.answer);
+    if (emptyMessage) return context.json({ error: emptyMessage }, 422);
     const nextExercise = nextDiagnosticExercise(run.state as never, index);
     if (nextExercise?.id !== exercise.id) {
       return context.json({ error: 'This is not the current diagnostic item.' }, 409);

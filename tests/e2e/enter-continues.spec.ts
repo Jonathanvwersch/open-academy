@@ -132,6 +132,26 @@ test('Enter outside a textarea continues after multiple-choice feedback', async 
   expect(answerPosts).toBe(1);
 });
 
+test('empty text and multiple-choice answers show inline validation without posting', async ({
+  page,
+}) => {
+  let answerPosts = 0;
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/attempts') && request.method() === 'POST') {
+      answerPosts += 1;
+    }
+  });
+
+  await page.goto(`/session/${await createReviewSession()}`);
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Write an answer first.');
+
+  await page.goto(`/session/${await createReviewSession(['vectors-fixture-1-basics'])}`);
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByRole('alert')).toHaveText('Choose an answer first.');
+  expect(answerPosts).toBe(0);
+});
+
 test('a refused answer refreshes the session without showing wrong feedback', async ({ page }) => {
   const sessionId = await createReviewSession();
   let answerPosts = 0;

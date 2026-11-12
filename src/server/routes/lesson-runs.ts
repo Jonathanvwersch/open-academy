@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, like } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
+import { emptyAnswerMessage } from '../../shared/answer-validation.js';
 import { getLessonPrerequisites } from '../content/index.js';
 import { serializeExercise } from '../content/serialize.js';
 import { formatTemplateNumber, instantiateExercise, isTemplate } from '../content/templates.js';
@@ -622,6 +623,9 @@ export function registerLessonRunRoutes(
       if (isTemplate(indexed) && joined.problem.seed === null) {
         return { kind: 'invalid' as const };
       }
+      if (emptyAnswerMessage(exercise.type, body.data.answer)) {
+        return { kind: 'invalid' as const };
+      }
       const graded = await gradeExercise(exercise, body.data.answer);
       if (graded.status !== 'graded') return { kind: 'invalid' as const, graded };
       const attemptId = crypto.randomUUID();
@@ -960,6 +964,9 @@ export function registerLessonRunRoutes(
       const indexed = resolved.index.exercisesById.get(joined.item.exerciseId);
       const exercise = indexed ? resolvedIndexedExercise(indexed, joined.item.seed) : undefined;
       if (!exercise) return { kind: 'invalid' as const };
+      if (emptyAnswerMessage(exercise.type, body.data.answer)) {
+        return { kind: 'invalid' as const };
+      }
       const graded = await gradeExercise(exercise, body.data.answer);
       if (graded.status !== 'graded') return { kind: 'invalid' as const };
       const attemptId = crypto.randomUUID();

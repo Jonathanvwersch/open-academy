@@ -8,6 +8,7 @@ import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import type { LessonPrerequisite } from '../server/content/schemas.js';
+import { emptyAnswerMessage } from '../shared/answer-validation.js';
 import { normalizeDisplayMath } from '../shared/markdown';
 import { seededOrder } from '../shared/shuffle.js';
 import { apiFetch } from './authenticated-fetch.js';
@@ -464,6 +465,7 @@ export function ExerciseForm({
   const [line, setLine] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [criteria, setCriteria] = useState<string[]>([]);
+  const [answerError, setAnswerError] = useState('');
   const options = exercise.options;
   const orderedOptions = useMemo(
     () => seededOrder(options ?? [], exercise.id),
@@ -560,24 +562,31 @@ export function ExerciseForm({
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (inputsLocked) return;
+    let answer: unknown;
     if (exercise.type === 'debug') {
-      onSubmit({ line: Number(line), fixId: value });
+      answer = { line: Number(line), fixId: value };
     } else if (exercise.type === 'mc') {
-      onSubmit(selected.length === 1 ? selected[0] : selected);
+      answer = selected.length === 1 ? selected[0] : selected;
     } else if (exercise.type === 'explain') {
-      onSubmit({
+      answer = {
         text: explainStep === 'self-check' ? (readOnlyAnswer ?? value) : value,
         ...(explainStep === 'self-check' ? { metCriteria: criteria } : {}),
-      });
+      };
     } else if (exercise.type === 'numeric') {
-      onSubmit(value.trim());
+      answer = value.trim();
     } else if (exercise.type === 'code_read') {
-      onSubmit(
-        value.trim() === '' || !Number.isFinite(Number(value)) ? value.trim() : Number(value),
-      );
+      answer =
+        value.trim() === '' || !Number.isFinite(Number(value)) ? value.trim() : Number(value);
     } else {
-      onSubmit(value);
+      answer = value;
     }
+    const emptyMessage = emptyAnswerMessage(exercise.type, answer);
+    if (emptyMessage) {
+      setAnswerError(emptyMessage);
+      return;
+    }
+    setAnswerError('');
+    onSubmit(answer);
   };
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLFormElement>) => {
     if (
@@ -614,6 +623,11 @@ export function ExerciseForm({
   };
   return (
     <form onSubmit={submit} onKeyDown={handleKeyDown} className="space-y-4">
+      {answerError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {answerError}
+        </p>
+      ) : null}
       <div
         data-testid="exercise-inputs"
         style={{ minHeight: inputAreaMinHeight }}
