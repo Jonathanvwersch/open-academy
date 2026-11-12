@@ -26,6 +26,8 @@ import { Textarea } from './ui/textarea.js';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/github.css';
 
+const EXERCISE_CONTAINER_SELECTOR = '[data-exercise-container]';
+
 export interface ClientExercise {
   id: string;
   type: string;
@@ -488,7 +490,7 @@ export function ExerciseForm({
         (targetElement instanceof HTMLInputElement ||
           targetElement instanceof HTMLTextAreaElement) &&
         (targetElement.readOnly || targetElement.disabled) &&
-        Boolean(targetElement.closest('[data-testid="session-exercise"]'));
+        Boolean(targetElement.closest(EXERCISE_CONTAINER_SELECTOR));
       if (
         event.key !== 'Enter' ||
         event.shiftKey ||
@@ -502,18 +504,24 @@ export function ExerciseForm({
       const nonTextInput =
         targetElement instanceof HTMLInputElement &&
         ['checkbox', 'color', 'radio', 'range'].includes(targetElement.type);
-      const inExerciseCard = Boolean(targetElement?.closest('[data-testid="session-exercise"]'));
+      const inExerciseCard = Boolean(targetElement?.closest(EXERCISE_CONTAINER_SELECTOR));
       const isPageTarget = target === document || target === document.body;
       if (!isPageTarget && !inExerciseCard && !nonTextInput) return;
       const interactiveTarget = targetElement?.closest(
         'button, a, area, select, textarea, input, label, summary, [contenteditable]:not([contenteditable="false"]), [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"], [role="menuitem"], [role="option"], [role="combobox"], [role="slider"], [role="spinbutton"], [role="listbox"], [role="menu"], [role="treeitem"], [role="gridcell"], [tabindex]:not([tabindex="-1"])',
       );
-      const isExerciseCard = targetElement?.matches('[data-testid="session-exercise"]') === true;
+      const isExerciseCard = targetElement?.matches(EXERCISE_CONTAINER_SELECTOR) === true;
+      const isRadioGroup = targetElement?.matches('[role="radiogroup"]') === true;
+      const disabledRadio = targetElement?.closest(
+        '[role="radio"]:disabled, [role="radio"][aria-disabled="true"], input[type="radio"]:disabled',
+      );
       if (
         interactiveTarget &&
         !isPageTarget &&
         !(nonTextInput && interactiveTarget === targetElement) &&
         !(isExerciseCard && interactiveTarget === targetElement) &&
+        !(isRadioGroup && inExerciseCard && interactiveTarget === targetElement) &&
+        !(disabledRadio && inExerciseCard && interactiveTarget === disabledRadio) &&
         !lockedAnswerField
       ) {
         return;

@@ -620,7 +620,11 @@ export function LessonRunner({
           </Button>
           {stepContent}
           {practiceMode && shownProblem ? (
-            <Card data-testid="lesson-problem" data-problem-id={shownProblem.id}>
+            <Card
+              data-testid="lesson-problem"
+              data-exercise-container=""
+              data-problem-id={shownProblem.id}
+            >
               <CardContent className="space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="text-sm font-medium">{problemLabel(shownProblem)}</h3>
@@ -998,6 +1002,7 @@ export function LessonRunner({
               <Card
                 className="space-y-5"
                 data-testid="lesson-problem"
+                data-exercise-container=""
                 data-problem-id={shownProblem.id}
               >
                 <CardContent className="space-y-5">

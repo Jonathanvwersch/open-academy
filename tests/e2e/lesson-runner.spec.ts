@@ -3,6 +3,8 @@ import { expect, type Page, test } from '@playwright/test';
 import { createDb } from '../../src/server/db/client.js';
 import {
   diagnosticRuns,
+  lessonProblems,
+  lessonRuns,
   sessionActivities,
   studySessions,
   users,
@@ -83,6 +85,67 @@ async function createSession(page: Page, focusConcept = true, waitForRun = true)
   return session.session.id as string;
 }
 
+async function createLessonActivitySession(
+  runConceptId: string,
+  pointId: string,
+  pendingExerciseId: string,
+  answeredProblems: Array<{ pointId: string; exerciseId: string }> = [],
+) {
+  const db = createDb(env.TEST_DATABASE_URL);
+  const [learner] = await db.select({ id: users.id }).from(users).limit(1);
+  if (!learner) throw new Error('Missing E2E learner');
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId: learner.id,
+      kind: 'weekday',
+      plannedMinutes: 20,
+      status: 'active',
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create lesson session');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind: 'learn',
+    conceptId: runConceptId,
+    exerciseIds: [],
+    plannedMinutes: 5,
+    status: 'in_progress',
+  });
+  const [run] = await db
+    .insert(lessonRuns)
+    .values({
+      userId: learner.id,
+      conceptId: runConceptId,
+      status: 'in_progress',
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+    })
+    .returning();
+  if (!run) throw new Error('Could not create lesson run');
+  await db.insert(lessonProblems).values([
+    ...answeredProblems.map((problem, position) => ({
+      runId: run.id,
+      knowledgePointId: problem.pointId,
+      round: 1,
+      position,
+      exerciseId: problem.exerciseId,
+      answeredAt: new Date(`2026-01-01T12:00:0${position}Z`),
+      correct: 1,
+    })),
+    {
+      runId: run.id,
+      knowledgePointId: pointId,
+      round: 1,
+      position: 0,
+      exerciseId: pendingExerciseId,
+    },
+  ]);
+  await db.$client.end();
+  return session.id;
+}
+
 async function currentRun(page: Page, runConceptId = conceptId) {
   return page.evaluate(async (concept) => {
     const response = await fetch(`/api/lessons/${concept}/run`);
@@ -107,6 +170,33 @@ async function expectToastInViewport(page: Page, text: string) {
       );
     })
     .toBe(true);
+}
+
+async function expectEnterToAdvance(page: Page, runConceptId: string, problemId: string) {
+  let nextPostCount = 0;
+  const onRequest = (request: import('@playwright/test').Request) => {
+    if (
+      request.url().endsWith(`/api/lessons/${runConceptId}/run`) &&
+      request.method() === 'POST'
+    ) {
+      nextPostCount += 1;
+    }
+  };
+  page.on('request', onRequest);
+  const nextResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/lessons/${runConceptId}/run`) &&
+      response.request().method() === 'POST',
+    { timeout: 5000 },
+  );
+  await page.keyboard.press('Enter');
+  expect((await nextResponse).status()).toBe(200);
+  await expect(page.getByTestId('lesson-problem')).not.toHaveAttribute(
+    'data-problem-id',
+    problemId,
+  );
+  expect(nextPostCount).toBe(1);
+  page.off('request', onRequest);
 }
 
 async function answerAndReload(page: Page, correct: boolean, runConceptId = conceptId) {
@@ -722,21 +812,105 @@ test('Enter advances a correct knowledge-point answer without another answer POS
   expect((await answerResponse).status()).toBe(200);
   await expect(page.getByText(/^Correct(?: · \+\d+ XP)?$/)).toHaveCount(1);
   await expect(answerField).toBeFocused();
-  await answerField.blur();
-
-  const nextResponse = page.waitForResponse(
-    (response) =>
-      response.url().endsWith('/api/lessons/loss-functions/run') &&
-      response.request().method() === 'POST',
-  );
-  await page.keyboard.press('Enter');
-  await nextResponse;
+  await expect(answerField).toHaveAttribute('readonly', '');
+  await expectEnterToAdvance(page, 'loss-functions', problemId);
   await expect(page.getByTestId('lesson-problem')).not.toHaveAttribute(
     'data-problem-id',
     problemId,
   );
   await expect(page.getByText('Not quite', { exact: true })).toHaveCount(0);
   expect(answerPostCount).toBe(1);
+});
+
+test('LessonRunner advances from a locked expression textarea with Enter', async ({ page }) => {
+  const sessionId = await createLessonActivitySession(
+    'derivatives',
+    'derivatives-fixture-1',
+    'dx-derivatives',
+  );
+  await page.goto(`/session/${sessionId}`);
+  await expect
+    .poll(async () => (await currentRun(page, 'derivatives'))?.pendingProblem?.id)
+    .toBeTruthy();
+  const run = await currentRun(page, 'derivatives');
+  expect(run.currentPointId).toBe('derivatives-fixture-1');
+  expect(run.pendingProblem.exercise).toMatchObject({
+    id: 'dx-derivatives',
+    type: 'expression',
+  });
+  await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
+    'data-problem-id',
+    run.pendingProblem.id,
+  );
+  const answer = await page.evaluate(async (problemId: string) => {
+    const response = await fetch(`/api/test/lesson-problems/${problemId}/answer`);
+    return (await response.json()).answer;
+  }, run.pendingProblem.id);
+  const problemId = run.pendingProblem.id as string;
+  let answerPostCount = 0;
+  page.on('request', (request) => {
+    if (
+      request.url().endsWith('/api/lessons/derivatives/run/answer') &&
+      request.method() === 'POST'
+    ) {
+      answerPostCount += 1;
+    }
+  });
+  const answerField = page.getByLabel('Your answer');
+  await answerField.fill(String(answer));
+  const answerResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/lessons/derivatives/run/answer') &&
+      response.request().method() === 'POST',
+  );
+  await answerField.press('Enter');
+  expect((await answerResponse).status()).toBe(200);
+  await expect(page.getByText(/^Correct(?: · \+\d+ XP)?$/)).toHaveCount(1);
+  await expect(answerField).toBeFocused();
+  await expect(answerField).toHaveAttribute('readonly', '');
+  await expectEnterToAdvance(page, 'derivatives', problemId);
+  expect(answerPostCount).toBe(1);
+});
+
+test('LessonRunner advances after MC feedback when the selected label focuses its radio group', async ({
+  page,
+}) => {
+  const sessionId = await createLessonActivitySession(
+    'derivatives',
+    'derivatives-fixture-1',
+    'derivatives-fixture-1-basics',
+  );
+  await page.goto(`/session/${sessionId}`);
+  await expect
+    .poll(async () => (await currentRun(page, 'derivatives'))?.pendingProblem?.id)
+    .toBeTruthy();
+  const run = await currentRun(page, 'derivatives');
+  const problem = run.pendingProblem;
+  expect(problem.exercise.type).toBe('mc');
+  await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
+    'data-problem-id',
+    problem.id,
+  );
+  const answer = await page.evaluate(async (problemId: string) => {
+    const response = await fetch(`/api/test/lesson-problems/${problemId}/answer`);
+    return (await response.json()).answer;
+  }, problem.id);
+  const answerId = Array.isArray(answer) ? answer[0] : answer;
+  const radio = page.locator(`[id="${problem.exercise.id}-${answerId}"]`);
+  await radio.click();
+  const answerResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/lessons/derivatives/run/answer') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  expect((await answerResponse).status()).toBe(200);
+  await expect(page.getByText(/^Correct(?: · \+\d+ XP)?$/)).toHaveCount(1);
+  const selectedLabel = page.locator('[data-option-state="correct"]');
+  await selectedLabel.click({ force: true });
+  const radioGroup = page.getByRole('radiogroup');
+  await expect(radioGroup).toBeFocused();
+  await expectEnterToAdvance(page, 'derivatives', problem.id);
 });
 
 test('a legacy v1 learn activity resumes through the KP runner and final question', async ({

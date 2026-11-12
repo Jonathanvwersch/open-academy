@@ -709,7 +709,7 @@ function SessionPage() {
         }
       />
       {exerciseQuery.data ? (
-        <Card data-testid="session-exercise">
+        <Card data-testid="session-exercise" data-exercise-container="">
           <CardContent className="space-y-5">
             <QuestionProgress states={questionStates} />
             <div data-testid="exercise-prompt">
