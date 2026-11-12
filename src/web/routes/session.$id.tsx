@@ -157,12 +157,15 @@ function SessionPage() {
   const lessonRunConceptIds = [
     ...new Set(
       activities.flatMap((item) =>
-        item.kind === 'learn' && item.conceptId ? [item.conceptId] : [],
+        item.kind === 'learn' && item.conceptId && item.lessonAvailable ? [item.conceptId] : [],
       ),
     ),
   ];
   const lessonRunQueries = useQueries({
-    queries: lessonRunConceptIds.map((conceptId) => lessonRunQueryOptions(conceptId)),
+    queries: lessonRunConceptIds.map((conceptId) => ({
+      ...lessonRunQueryOptions(conceptId),
+      retry: false,
+    })),
   });
   const lessonRunsByConcept = new Map(
     lessonRunConceptIds.map((conceptId, index) => [conceptId, lessonRunQueries[index]?.data?.run]),
