@@ -41,3 +41,791 @@ exercises:
           feedback: "With zero gradients at step time the learning rate is irrelevant: the update is lr × 0.",
         }
     solution: "`optimizer.step()` reads `.grad`. Because `zero_grad()` ran first and `backward()` runs after the step, `.grad` is always zero at step time, so parameters never change. Order must be: zero_grad → forward → loss → backward → step."
+  - id: dbt-curve-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: A run starts with poor predictions and its loss is exactly the same after every update.
+      What should you check first?
+    options:
+      - id: a
+        text: Whether the update actually changes the parameters.
+        correct: true
+        feedback: If the parameters never change, predictions and loss stay unchanged too.
+      - id: b
+        text: Whether validation examples should be used for updates.
+        correct: false
+        feedback: Validation examples are for evaluation, not for repairing an update.
+        category: incorrect_reasoning
+      - id: c
+        text: Whether to keep training without checking the code.
+        correct: false
+        feedback: Repeating an update that changes nothing will not help.
+        category: incorrect_reasoning
+    solution: If the parameters never change, predictions and loss stay unchanged too.
+  - id: dbt-floor-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why does the green run in the worked example approach loss 5 rather than zero?
+    options:
+      - id: a
+        text: One constant time cannot match all four recorded times.
+        correct: true
+        feedback: The best constant is 4, but the remaining squared errors average to 5.
+      - id: b
+        text: A learning rate of 0.25 always leaves loss 5.
+        correct: false
+        feedback: The floor comes from these data and this model, not a universal rate rule.
+        category: incorrect_reasoning
+      - id: c
+        text: The update code stops before the best prediction.
+        correct: false
+        feedback: The green run approaches the best constant prediction.
+        category: incorrect_reasoning
+    solution: The best constant is 4, but the remaining squared errors average to 5.
+  - id: dbt-update-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt:
+      For the four trips, use $g=2(w-4)$. Starting at $w={{= w }}$ with $\eta={{= eta }}$, what is
+      the new $w$?
+    params:
+      w:
+        min: 0
+        max: 8
+        step: 2
+      eta:
+        min: 0.1
+        max: 0.3
+        step: 0.1
+    answer_expr: w-eta*2*(w-4)
+    tolerance:
+      abs: 0.001
+    solution:
+      Use the stated formula with the sampled values. This gives ${{= w-eta*2*(w-4) }}$, because
+      the calculation keeps the same examples and settings throughout.
+    common_wrong:
+      - answer_expr: w+eta*2*(w-4)
+        category: math_error
+        feedback: Check the sign and every factor in the stated formula before applying it.
+    constraints:
+      - w != 4
+  - id: dbt-rising
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Full-batch losses are 21, 41, 86. What is a sensible first trial?
+    options:
+      - id: a
+        text: Lower the learning rate and measure the losses again.
+        correct: true
+        feedback:
+          These rising losses are consistent with steps that are too large, so reducing the rate tests
+          that possibility.
+      - id: b
+        text: Train longer at the same rate and ignore the rise.
+        correct: false
+        feedback: These steps are making the training fit worse, not merely slow.
+        category: incorrect_reasoning
+      - id: c
+        text: Increase the learning rate to reach the minimum sooner.
+        correct: false
+        feedback: Bigger steps can worsen the overshoot.
+        category: incorrect_reasoning
+    solution:
+      These rising losses are consistent with steps that are too large, so reducing the rate tests
+      that possibility.
+  - id: dbt-slow
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      The full-data loss falls smoothly by a tiny sliver each epoch and remains far above other runs.
+      What would you try?
+    options:
+      - id: a
+        text: Raise the learning rate and check progress again.
+        correct: true
+        feedback: A very small rate can make useful updates too small, so a cautious increase is worth testing.
+      - id: b
+        text: Lower the learning rate to make progress faster.
+        correct: false
+        feedback: Smaller steps usually make this slow-progress pattern worse.
+        category: incorrect_reasoning
+      - id: c
+        text: Assume the model already reached its best fit.
+        correct: false
+        feedback: Loss is still falling and other runs reach lower values.
+        category: incorrect_reasoning
+    solution: A very small rate can make useful updates too small, so a cautious increase is worth testing.
+  - id: dbt-noise
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A delivery-time model has some minibatch loss bumps, but whole-dataset loss falls after each
+      epoch. What follows?
+    options:
+      - id: a
+        text: The bumps alone do not show a bug.
+        correct: true
+        feedback:
+          Batch gradients are noisy estimates, so the falling whole-dataset trend is more informative
+          than one bump.
+      - id: b
+        text: Every bump proves the update sign is wrong.
+        correct: false
+        feedback: A correct batch update can raise full-data loss.
+        category: incorrect_reasoning
+      - id: c
+        text: Every batch must have identical examples to be valid.
+        correct: false
+        feedback: Different batches can be valid while giving different slopes.
+        category: incorrect_reasoning
+    solution:
+      Batch gradients are noisy estimates, so the falling whole-dataset trend is more informative
+      than one bump.
+  - id: dbt-floor-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      A constant model predicts one time for trips lasting $a={{= a }}$ and $b={{= b }}$ seconds.
+      Its best prediction is their average. What is the lowest average squared-error loss?
+    params:
+      a:
+        min: 1
+        max: 3
+        step: 1
+      b:
+        min: 5
+        max: 9
+        step: 2
+    answer_expr: ((b-a)/2)^2
+    tolerance:
+      abs: 0.001
+    solution:
+      Use the stated formula with the sampled values. This gives ${{= ((b-a)/2)^2 }}$, because the
+      calculation keeps the same examples and settings throughout.
+    common_wrong:
+      - answer_expr: (b-a)^2
+        category: math_error
+        feedback: Check the sign and every factor in the stated formula before applying it.
+  - id: dbt-tiny-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why repeatedly train on one tiny batch with a known zero-loss fit?
+    options:
+      - id: a
+        text: To test whether the model and updates can fit those examples.
+        correct: true
+        feedback: A known achievable loss makes a failure on this small test informative.
+      - id: b
+        text: To prove the model predicts all new examples correctly.
+        correct: false
+        feedback: Fitting chosen examples does not test new examples.
+        category: incorrect_reasoning
+      - id: c
+        text: To replace validation evaluation permanently.
+        correct: false
+        feedback: Validation still measures performance away from the fitted batch.
+        category: incorrect_reasoning
+    solution: A known achievable loss makes a failure on this small test informative.
+  - id: dbt-tiny-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: The buggy run's weight slope is zero at w=2.6. Why does its loss still stay at 0.1?
+    options:
+      - id: a
+        text: The weight contributions cancel and the bias never changes.
+        correct: true
+        feedback: The weight cannot improve by its current slope, while the nonzero bias slope is ignored.
+      - id: b
+        text: Zero weight slope proves both examples have zero error.
+        correct: false
+        feedback: The errors are -0.4 and 0.2, which are not zero.
+        category: incorrect_reasoning
+      - id: c
+        text: The remaining loss must be caused by batch noise.
+        correct: false
+        feedback: Both examples are used every time, so no subset is being sampled.
+        category: incorrect_reasoning
+    solution: The weight cannot improve by its current slope, while the nonzero bias slope is ignored.
+  - id: dbt-tiny-update
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt:
+      For trips at $x=1,2$ with times $y_1={{= y1 }},y_2={{= y2 }}$, start at $w=b=0$ and use rate
+      $0.1$. What is $w$ after one update?
+    params:
+      y1:
+        min: 2
+        max: 4
+        step: 1
+      y2:
+        min: 5
+        max: 7
+        step: 1
+    answer_expr: .1*(y1+2*y2)
+    tolerance:
+      abs: 0.001
+    solution:
+      Use the stated formula with the sampled values. This gives ${{= .1*(y1+2*y2) }}$, because
+      the calculation keeps the same examples and settings throughout.
+    common_wrong:
+      - answer_expr: .1*(y1+y2)
+        category: math_error
+        feedback: Check the sign and every factor in the stated formula before applying it.
+  - id: dbt-tiny-loss
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt:
+      For trips $(x,y)=(1,3),(2,5)$, use $w={{= w }}$, $b={{= b }}$. What is their average squared-error
+      loss?
+    params:
+      w:
+        min: 1
+        max: 3
+        step: 1
+      b:
+        min: 0
+        max: 2
+        step: 1
+    answer_expr: ((w+b-3)^2+(2*w+b-5)^2)/2
+    tolerance:
+      abs: 0.001
+    solution:
+      Use the stated formula with the sampled values. This gives ${{= ((w+b-3)^2+(2*w+b-5)^2)/2
+      }}$, because the calculation keeps the same examples and settings throughout.
+    common_wrong:
+      - answer_expr: (w+b-3)^2+(2*w+b-5)^2
+        category: math_error
+        feedback: Check the sign and every factor in the stated formula before applying it.
+    constraints:
+      - w != 2 or b != 1
+  - id: dbt-tiny-flat
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      The two-trip test levels off at 0.1 although a zero-loss line exists. Is that enough to declare
+      success?
+    options:
+      - id: a
+        text: No; inspect the parameter updates and slopes.
+        correct: true
+        feedback: The known zero-loss fit shows that this plateau is not the best this model can do.
+      - id: b
+        text: Yes; every plateau means the model is fully trained.
+        correct: false
+        feedback: A bug can also cause a plateau above an achievable loss.
+        category: incorrect_reasoning
+      - id: c
+        text: Yes; a small loss always proves correct code.
+        correct: false
+        feedback: The scale alone does not test whether an achievable fit was reached.
+        category: incorrect_reasoning
+    solution: The known zero-loss fit shows that this plateau is not the best this model can do.
+  - id: dbt-tiny-drone
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A drone model has enough adjustable weights to fit eight chosen examples, but repeated training
+      stays at high loss. What next?
+    options:
+      - id: a
+        text: Inspect its updates, slopes and learning rate on that batch.
+        correct: true
+        feedback:
+          Failure on a deliberately easy fitting test points toward code or settings before a full-data
+          run.
+      - id: b
+        text: Collect more examples before checking any update code.
+        correct: false
+        feedback: More examples do not repair an update that fails the easy fitting test.
+        category: incorrect_reasoning
+      - id: c
+        text: Conclude that all high losses mean overfitting.
+        correct: false
+        feedback: Overfitting means fitting training examples too closely, not failing to fit them.
+        category: incorrect_reasoning
+    solution:
+      Failure on a deliberately easy fitting test points toward code or settings before a full-data
+      run.
+  - id: dbt-tiny-generalise
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A tiny-batch test reaches nearly zero loss. What has it established?
+    options:
+      - id: a
+        text: The updates can fit this batch, but new-example performance is unknown.
+        correct: true
+        feedback: The test uses training examples repeatedly, so validation is still needed.
+      - id: b
+        text: The model must also have nearly zero validation loss.
+        correct: false
+        feedback: The test has not measured validation predictions.
+        category: incorrect_reasoning
+      - id: c
+        text: Every individual slope formula is necessarily correct.
+        correct: false
+        feedback: Even a wrong slope can sometimes keep moving downhill.
+        category: incorrect_reasoning
+    solution: The test uses training examples repeatedly, so validation is still needed.
+  - id: dbt-check-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: What does a gradient check compare?
+    options:
+      - id: a
+        text: A code slope and a slope estimated by nudging one parameter.
+        correct: true
+        feedback: Both describe how the same loss changes with that parameter, which makes disagreement useful.
+      - id: b
+        text: Training loss and validation loss on different examples.
+        correct: false
+        feedback: That comparison diagnoses generalisation, not a slope calculation.
+        category: incorrect_reasoning
+      - id: c
+        text: Two learning rates with all weights changed at once.
+        correct: false
+        feedback: A gradient check holds other parameters fixed and tests one slope.
+        category: incorrect_reasoning
+    solution: Both describe how the same loss changes with that parameter, which makes disagreement useful.
+  - id: dbt-check-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why does the worked example divide the loss difference by 2h rather than h?
+    options:
+      - id: a
+        text: The two tested weights are w-h and w+h, separated by 2h.
+        correct: true
+        feedback: A slope divides output change by the distance between the two input values.
+      - id: b
+        text: There are two examples in the batch.
+        correct: false
+        feedback: The example checks one trip, and the denominator is a weight distance.
+        category: incorrect_reasoning
+      - id: c
+        text: Squared error always requires doubling the denominator.
+        correct: false
+        feedback: The denominator comes from the two nudges, not the choice of squared error.
+        category: incorrect_reasoning
+    solution: A slope divides output change by the distance between the two input values.
+  - id: dbt-slope-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt:
+      For one trip, $\hat y=wx$, loss is $(wx-y)^2$. With $x={{= x }},y={{= y }},w={{= w }}$, what
+      is the weight slope $2(wx-y)x$?
+    params:
+      x:
+        min: 2
+        max: 4
+        step: 1
+      y:
+        min: 5
+        max: 7
+        step: 1
+      w:
+        min: 0
+        max: 1
+        step: 1
+    answer_expr: 2*(w*x-y)*x
+    tolerance:
+      abs: 0.001
+    solution:
+      Use the stated formula with the sampled values. This gives ${{= 2*(w*x-y)*x }}$, because the
+      calculation keeps the same examples and settings throughout.
+    common_wrong:
+      - answer_expr: 2*(w*x-y)
+        category: math_error
+        feedback: Check the sign and every factor in the stated formula before applying it.
+  - id: dbt-numerical
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A check uses h=0.01, L(w+h)=8.8804 and L(w-h)=9.1204. What is the numerical slope?
+    answer: -12
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: -24
+        category: math_error
+        feedback: Divide by the full separation 2h=0.02, not by h.
+    solution:
+      The weights are separated by 0.02, so the slope is (8.8804-9.1204)/0.02=-12. Keeping everything
+      else fixed makes this a check of the weight slope.
+  - id: dbt-relative-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: The code slope is $a={{= a }}$ and the numerical slope is $n={{= n }}$. What is $|a-n|/\max(|a|,|n|)$? Give 3 decimal places.
+    params:
+      a:
+        min: -8
+        max: -2
+        step: 2
+      n:
+        min: -12
+        max: -10
+        step: 2
+    answer_expr: abs(a-n)/max(abs(a),abs(n))
+    tolerance:
+      abs: 0.001
+    solution:
+      Use the stated formula with the sampled values. This gives ${{= abs(a-n)/max(abs(a),abs(n))
+      }}$, because the calculation keeps the same examples and settings throughout.
+    common_wrong:
+      - answer_expr: abs(a-n)
+        category: math_error
+        feedback: Check the sign and every factor in the stated formula before applying it.
+  - id: dbt-falling-trap
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Loss falls at every update. Does that prove the slope formula is correct?
+    options:
+      - id: a
+        text: No; a missing factor can leave the slope pointing downhill.
+        correct: true
+        feedback: For positive x, forgetting x changes the slope size without changing its sign.
+      - id: b
+        text: Yes; only the exact slope can ever reduce loss.
+        correct: false
+        feedback: Many downhill steps can reduce loss without using the exact slope.
+        category: incorrect_reasoning
+      - id: c
+        text: Yes; gradient checks only matter when programs crash.
+        correct: false
+        feedback: Wrong slope code can run and print plausible losses.
+        category: incorrect_reasoning
+    solution: For positive x, forgetting x changes the slope size without changing its sign.
+  - id: dbt-check-cost
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A model has 1,000,000 weights. Why check only a few on a small batch?
+    options:
+      - id: a
+        text: Checking all of them needs 2,000,000 loss computations.
+        correct: true
+        feedback: Each weight needs two separately nudged loss evaluations, so checking all weights is expensive.
+      - id: b
+        text: Checking all of them needs only two loss computations.
+        correct: false
+        feedback: Each weight must be nudged separately while the others stay fixed.
+        category: incorrect_reasoning
+      - id: c
+        text: A small batch eliminates the need to compare slopes.
+        correct: false
+        feedback: A small batch reduces cost but does not itself verify a slope.
+        category: incorrect_reasoning
+    solution: Each weight needs two separately nudged loss evaluations, so checking all weights is expensive.
+  - id: dbt-bias-debug
+    dimension: implementation
+    type: debug
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      This one-trip squared-error loop uses separate slopes for w and b. Which line computes the wrong
+      slope, and how should it change?
+    code: |-
+      for _ in range(20):
+          e = w * x + b - y
+          dw = 2 * e * x
+          db = 2 * e * x
+          w = w - lr * dw
+          b = b - lr * db
+    buggy_line: 4
+    fix_options:
+      - id: a
+        text: Use db = 2 * e.
+        correct: true
+        feedback:
+          The bias adds directly to the prediction, so its slope is twice the error without x. Line
+          4 should be db = 2 * e.
+      - id: b
+        text: Use dw = 2 * e.
+        correct: false
+        feedback: The weight slope needs x because the weight multiplies the input.
+      - id: c
+        text: Use b = b + lr * db.
+        correct: false
+        feedback: Adding the slope would move the bias uphill, not repair its formula.
+    solution:
+      The bias adds directly to the prediction, so its slope is twice the error without x. Line
+      4 should be db = 2 * e.
+  - id: dbt-symptom-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: Training loss keeps falling while validation loss clearly rises. What does this suggest?
+    options:
+      - id: a
+        text: Overfitting rather than necessarily a broken update.
+        correct: true
+        feedback:
+          The model is fitting training examples more closely while predicting held-out examples less
+          well.
+      - id: b
+        text: A parameter that has never changed since training began.
+        correct: false
+        feedback: Falling training loss shows that predictions are changing.
+        category: incorrect_reasoning
+      - id: c
+        text: Proof that every computed slope has the wrong sign.
+        correct: false
+        feedback: An uphill update would not explain the sustained improvement on training examples.
+        category: incorrect_reasoning
+    solution:
+      The model is fitting training examples more closely while predicting held-out examples less
+      well.
+  - id: dbt-halve-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why does halving the rates distinguish the two runs in the worked example?
+    options:
+      - id: a
+        text: Correct steps become small enough, but flipped steps still go uphill.
+        correct: true
+        feedback: The correct distance multiplier has magnitude 0.25, while the flipped multiplier is 1.25.
+      - id: b
+        text: Halving any rate automatically fixes a wrong update sign.
+        correct: false
+        feedback: Smaller positive rates do not turn addition into subtraction.
+        category: incorrect_reasoning
+      - id: c
+        text: The runs must keep identical losses at every smaller rate.
+        correct: false
+        feedback: Their original matching losses hid different distance multipliers.
+        category: incorrect_reasoning
+    solution: The correct distance multiplier has magnitude 0.25, while the flipped multiplier is 1.25.
+  - id: dbt-flipped-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt:
+      The constant model has slope $2(w-4)$, but code adds the update. From $w={{= w }}$ with $\eta={{=
+      eta }}$, what new $w$ does this buggy code produce?
+    params:
+      w:
+        min: 0
+        max: 2
+        step: 1
+      eta:
+        min: 0.1
+        max: 0.3
+        step: 0.1
+    answer_expr: w+2*eta*(w-4)
+    tolerance:
+      abs: 0.001
+    solution:
+      Use the stated formula with the sampled values. This gives ${{= w+2*eta*(w-4) }}$, because
+      the calculation keeps the same examples and settings throughout.
+    common_wrong:
+      - answer_expr: w-2*eta*(w-4)
+        category: math_error
+        feedback: Check the sign and every factor in the stated formula before applying it.
+  - id: dbt-nan
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Loss grows rapidly and eventually prints nan. What is a reasonable first trial?
+    options:
+      - id: a
+        text: Lower the learning rate, then check whether the rise stops.
+        correct: true
+        feedback: Oversized steps can blow up calculations, so reducing the rate tests a common cause.
+      - id: b
+        text: Raise the learning rate because nan means zero loss.
+        correct: false
+        feedback: nan means not a number, not a successful zero loss.
+        category: incorrect_reasoning
+      - id: c
+        text: Use the test set for gradient updates instead.
+        correct: false
+        feedback: Changing to held-out test examples does not fix unstable updates.
+        category: incorrect_reasoning
+    solution: Oversized steps can blow up calculations, so reducing the rate tests a common cause.
+  - id: dbt-check-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Which order avoids spending a full run tuning potentially broken code?
+    options:
+      - id: a
+        text: Read the curve, test a tiny batch, check suspicious slopes, then tune.
+        correct: true
+        feedback: Cheap checks can expose code failures before expensive tuning runs.
+      - id: b
+        text: Tune many full runs, then inspect whether any parameter changes.
+        correct: false
+        feedback: A missing update can invalidate every tuning run.
+        category: incorrect_reasoning
+      - id: c
+        text: Choose from test losses first, then inspect training code.
+        correct: false
+        feedback: The test set is reserved for evaluation after choosing the model.
+        category: incorrect_reasoning
+    solution: Cheap checks can expose code failures before expensive tuning runs.
+  - id: dbt-arm
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A robot-arm model improves training loss, but validation loss has clearly risen since epoch
+      12. A teammate wants a gradient check first. What would you recommend?
+    options:
+      - id: a
+        text: Keep the best validation copy and investigate overfitting first.
+        correct: true
+        feedback:
+          This split between training and validation is the taught overfitting pattern, not by itself
+          evidence of a broken slope.
+      - id: b
+        text: Always keep the final copy because its training loss is lowest.
+        correct: false
+        feedback: Lower training loss does not outweigh worse validation predictions.
+        category: incorrect_reasoning
+      - id: c
+        text: Add validation examples to every update to remove the gap.
+        correct: false
+        feedback: That would stop validation from being held out for model selection.
+        category: incorrect_reasoning
+    solution:
+      This split between training and validation is the taught overfitting pattern, not by itself
+      evidence of a broken slope.
+  - id: dbt-assign-debug
+    dimension: implementation
+    type: debug
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      This constant-model loop prints unchanged loss. Which line fails to update the parameter used
+      in the next iteration?
+    code: |-
+      for _ in range(20):
+          e = w - y
+          dw = 2 * e
+          w_new = w - lr * dw
+          print((w - y)**2)
+    buggy_line: 4
+    fix_options:
+      - id: a
+        text: Assign w = w - lr * dw.
+        correct: true
+        feedback:
+          Line 4 stores the result in w_new but later iterations still use unchanged w. Assigning
+          the result to w makes the next prediction use the update.
+      - id: b
+        text: Use dw = -2 * e.
+        correct: false
+        feedback: Changing a sign does not assign the new value to w.
+      - id: c
+        text: Increase lr without changing any assignment.
+        correct: false
+        feedback: The computed value is still stored in w_new rather than w.
+    solution:
+      Line 4 stores the result in w_new but later iterations still use unchanged w. Assigning the
+      result to w makes the next prediction use the update.
+  - id: dbt-explain-diagnosis
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt:
+      A friend says their training loss levels off high. Explain how you would distinguish a bug from
+      a setting or model limitation using a loss curve, a tiny-batch test and a gradient check.
+    rubric:
+      - id: curve
+        criterion: Uses the curve and validation trend as clues rather than proof of a single cause.
+        weight: 1
+        required: true
+      - id: tiny
+        criterion: Tests a tiny batch with a known achievable loss and checks updates if it fails.
+        weight: 1
+        required: true
+      - id: slope
+        criterion: Compares code slopes with numerical nudges before deciding what to tune.
+        weight: 1
+        required: true
+    exemplar:
+      I would first see whether loss was flat from the start, fell slowly or fell before levelling
+      off, and compare the validation trend. I would repeatedly fit a tiny batch whose achievable loss I
+      know, checking whether every parameter changes if the test fails. I would compare suspicious code
+      slopes with two-nudge numerical slopes, keeping other parameters fixed. If those checks support the
+      code, I would try a suitable rate or model change; a plateau alone is not proof of a bug because the
+      model may have reached its best fit.
+    solution:
+      The tests narrow down different explanations rather than naming a cause from a plateau alone.
+      A known tiny-batch answer tests fitting, while numerical nudges test the slope itself.

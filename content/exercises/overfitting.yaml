@@ -1,0 +1,587 @@
+concept: overfitting
+exercises:
+  - id: ovf-fit-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What distinguishes overfitting from underfitting?
+    options:
+      - {
+          id: a,
+          text: "Overfitting follows training quirks; underfitting misses useful training patterns.",
+          correct: true,
+          feedback: "Overfitting fails to carry training success to new examples; underfitting misses useful patterns even in training.",
+        }
+      - {
+          id: b,
+          text: "Overfitting misses training patterns; underfitting follows training quirks.",
+          correct: false,
+          feedback: "Those descriptions are reversed: underfitting fails even on the training examples.",
+        }
+      - {
+          id: c,
+          text: "Overfitting means any curved model; underfitting means any straight model.",
+          correct: false,
+          feedback: "The appropriate shape depends on the pattern; a straight model can be suitable.",
+        }
+      - {
+          id: d,
+          text: "Overfitting predicts validation houses well; underfitting predicts them perfectly.",
+          correct: false,
+          feedback: "Neither term describes successful prediction on validation houses.",
+        }
+    solution: Underfitting misses useful patterns even in training data. Overfitting follows training details that do not carry over to new examples.
+  - id: ovf-zero-reason
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked table, why reject the wiggly curve with rounded training error 0 and validation error 93?"
+    options:
+      - {
+          id: a,
+          text: "Its zero error proves it cannot predict any house price.",
+          correct: false,
+          feedback: "It predicts the training prices exactly; the problem is its validation predictions.",
+        }
+      - {
+          id: b,
+          text: "Its validation predictions are worse despite perfect training predictions.",
+          correct: true,
+        }
+      - {
+          id: c,
+          text: "Its validation predictions must improve whenever training error reaches zero.",
+          correct: false,
+          feedback: "The validation score is 93, worse than the smooth model's 28.",
+        }
+      - {
+          id: d,
+          text: "Its validation houses should have been added before comparing models.",
+          correct: false,
+          feedback: "Validation houses must stay out of training so we can compare validation predictions fairly.",
+        }
+    solution: Zero training error only describes the training houses. Validation error 93 is much worse than the smooth curve's 28, so perfect training fit is not a win here.
+  - id: ovf-line-diagnosis
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: The straight line cannot follow a bend in prices and makes large mistakes on its training houses. What does this suggest?
+    options:
+      - {
+          id: a,
+          text: "A good fit, because the straight line is always reliable.",
+          correct: false,
+          feedback: "Reliability must be checked against errors, not the shape's simplicity.",
+        }
+      - {
+          id: b,
+          text: "Overfitting, because every wrong prediction means excessive flexibility.",
+          correct: false,
+          feedback: "The straight line is missing a pattern, not following training quirks too closely.",
+        }
+      - {
+          id: c,
+          text: "Underfitting, because the straight line misses a useful training pattern.",
+          correct: true,
+        }
+    solution: The straight line underfits because its shape cannot follow the useful bend even in its training examples.
+  - id: ovfp-average-miss
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      a: { min: 4, max: 12, step: 2 }
+      b: { min: 14, max: 22, step: 2 }
+    prompt: "A house-price model's two validation predictions miss the true prices by {{= a }} and {{= b }} thousand dollars. Both numbers are distances, ignoring above or below. What is its mean absolute error in thousands of dollars?"
+    answer_expr: "(a + b) / 2"
+    tolerance: { abs: 0.01 }
+    solution: "Add the two absolute misses and divide by two houses: ({{= a }} + {{= b }}) / 2 = {{= (a + b) / 2 }} thousand dollars. Squaring is not part of mean absolute error."
+  - id: ovf-choose-fit
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "The straight line, the smooth curve and the wiggly curve have rounded training/validation errors 50/62, 25/28 and 0/93, respectively, in thousands of dollars. Which should we choose?"
+    options:
+      - {
+          id: a,
+          text: "The straight line, because simplicity outweighs its validation error of 62.",
+          correct: false,
+          feedback: "The aim is accurate validation predictions. The smooth curve scores much better on validation.",
+        }
+      - {
+          id: b,
+          text: "The smooth curve, because its validation error of 28 is lowest.",
+          correct: true,
+        }
+      - {
+          id: c,
+          text: "The wiggly curve, because its training error of zero is lowest.",
+          correct: false,
+          feedback: "Training error does not measure validation predictions. The wiggly curve's validation error is worst.",
+        }
+    solution: Choose the smooth curve because 28 is the lowest validation error. The wiggly curve's perfect training predictions do not carry over to validation houses.
+  - id: ovf-perfect-not-proof
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A model matches every training house exactly. No validation predictions have been checked yet. What can we conclude?
+    options:
+      - {
+          id: a,
+          text: "It certainly overfits because exact training fit is always harmful.",
+          correct: false,
+          feedback: "Exact fit alone is not proof. We need to check validation predictions too.",
+        }
+      - {
+          id: b,
+          text: "It certainly predicts validation houses well because training prices were predicted exactly.",
+          correct: false,
+          feedback: "Training success alone does not tell us how validation houses will be predicted.",
+        }
+      - {
+          id: c,
+          text: "Its training fit is perfect, but validation predictions still need checking.",
+          correct: true,
+        }
+    solution: Perfect training fit does not by itself prove either success or overfitting. Compare validation predictions before making that diagnosis.
+  - id: ovf-robot-fit
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot predicts travel time from distance. One model memorises all training trips but misses held-out trips badly; another follows the broad pattern and predicts held-out trips well. What is the first model doing?
+    options:
+      - {
+          id: a,
+          text: "Underfitting, because it cannot match the training trips.",
+          correct: false,
+          feedback: "It matches training trips exactly; the failure is on held-out trips.",
+        }
+      - {
+          id: b,
+          text: "Overfitting, because its exact training fit does not carry over.",
+          correct: true,
+        }
+      - {
+          id: c,
+          text: "Fitting well, because memorised trips are the final goal.",
+          correct: false,
+          feedback: "The robot needs to predict trips it has not already taken.",
+        }
+    solution: "The first model overfits: it follows training trips so closely that its predictions fail on held-out trips."
+  - id: ovfp-validation-choice
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    params:
+      v: { min: 10, max: 20, step: 2 }
+      d: { min: 3, max: 9, step: 3 }
+    prompt: "Three house models have validation errors {{= v + d }}, {{= v }}, and {{= v + 2 * d }} thousand dollars. Their training errors are 8, 6 and 0. What is the validation error of the model we should choose, in thousands of dollars?"
+    answer_expr: v
+    tolerance: { abs: 0.01 }
+    solution: "Choose the lowest validation error, {{= v }}, from the second model. The third model's zero training error is not a reason to prefer its higher validation error."
+  - id: ovf-gap-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which pair of errors most strongly suggests overfitting when both errors are measured in the same way and units?
+    options:
+      - {
+          id: a,
+          text: "Low training error and much higher validation error.",
+          correct: true,
+          feedback: "The model fits training examples well, but that success does not carry over to validation examples.",
+        }
+      - {
+          id: b,
+          text: "High training error and similarly high validation error.",
+          correct: false,
+          feedback: "Being wrong even on training examples suggests underfitting instead.",
+        }
+      - {
+          id: c,
+          text: "Low training error and similarly low validation error.",
+          correct: false,
+          feedback: "Low errors on both sets suggest a good fit, not overfitting.",
+        }
+    solution: Low training error with much higher validation error suggests the model learned training details that do not carry over.
+  - id: ovf-gap-reason
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "The simpler model has training/validation errors 60/62. Why still prefer the smooth curve, whose rounded gap is 3 rather than 2?"
+    options:
+      - {
+          id: a,
+          text: "A larger gap means that validation predictions must be better.",
+          correct: false,
+          feedback: "A larger gap is not a goal; compare the validation errors themselves.",
+        }
+      - {
+          id: b,
+          text: "Its validation error is lower. A small gap can join two poor scores.",
+          correct: true,
+        }
+      - {
+          id: c,
+          text: "Training error alone determines which model should win.",
+          correct: false,
+          feedback: "Training error measures predictions on training houses, not validation houses.",
+        }
+    solution: The smooth curve's validation error is 28 rather than 62. The simpler model's smaller gap only says its two high errors are close together.
+  - id: ovfp-gap
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      t: { min: 2, max: 10, step: 2 }
+      g: { min: 5, max: 25, step: 5 }
+    prompt: "A house model has training error {{= t }} and validation error {{= t + g }}, both mean absolute errors in thousands of dollars. What is validation error minus training error, in those units?"
+    answer_expr: g
+    tolerance: { abs: 0.01 }
+    solution: "Subtract training error from validation error: {{= t + g }} - {{= t }} = {{= g }} thousand dollars. Reversing the subtraction would give the wrong sign."
+  - id: ovf-small-gap
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "The simpler model has training/validation errors of 60/62 thousand dollars. Errors below 30 would be useful for this task. What is the best reading?"
+    options:
+      - {
+          id: a,
+          text: "It fits well because the two scores differ by only 2.",
+          correct: false,
+          feedback: "A small gap is not enough when both errors are too high to be useful.",
+        }
+      - {
+          id: b,
+          text: "It likely underfits because even training predictions are poor.",
+          correct: true,
+        }
+      - {
+          id: c,
+          text: "It likely overfits because a small gap proves excess flexibility.",
+          correct: false,
+          feedback: "Overfitting is suggested by low training error and much worse validation error.",
+        }
+    solution: Both errors are high relative to the useful level of 30, even though their gap is only 2. This suggests underfitting, not a good fit.
+  - id: ovf-variance
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The wiggly curve changes shape dramatically when we pick a different six training houses from all the sales we know about. Which idea describes that sensitivity?
+    options:
+      - {
+          id: a,
+          text: "High bias, meaning the model refuses to change its predictions.",
+          correct: false,
+          feedback: "High bias means repeating mistakes because the shape cannot follow the pattern. Here the shape changes when the training houses change.",
+        }
+      - {
+          id: b,
+          text: "Low error, meaning both training sets must be predicted accurately.",
+          correct: false,
+          feedback: "A big shape change does not tell us whether either set is predicted accurately.",
+        }
+      - {
+          id: c,
+          text: "High variance, meaning the fitted model depends strongly on the training set.",
+          correct: true,
+        }
+    solution: Variance describes how much the fitted model changes when we pick different training houses. Large changes suggest high variance.
+  - id: ovfp-gap-choice
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    params:
+      t: { min: 4, max: 10, step: 2 }
+      g: { min: 2, max: 6, step: 2 }
+    prompt: "A model using size and location has training/validation errors {{= t }}/{{= t + g }}. A model using only size has errors {{= t + 20 }}/{{= t + 21 }}. All errors are in thousands of dollars. Choose by validation error. What is the gap of the chosen model?"
+    answer_expr: g
+    tolerance: { abs: 0.01 }
+    solution: "The model using size and location has lower validation error ({{= t + g }} rather than {{= t + 21 }}), even though the model using only size has the smaller gap. The chosen gap is {{= t + g }} - {{= t }} = {{= g }}."
+  - id: ovf-delivery-diagnosis
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A delivery-time model has mean absolute error 1 minute on training trips and 18 minutes on validation trips. Errors of 2 minutes would be useful. Which diagnosis and next comparison make sense?"
+    options:
+      - {
+          id: a,
+          text: "Underfitting; compare a model that follows training trips more closely.",
+          correct: false,
+          feedback: "Training error is already low; unseen trips are the problem.",
+        }
+      - {
+          id: b,
+          text: "Good fit; report only the training error as future performance.",
+          correct: false,
+          feedback: "Validation error is much larger and is the evidence about unseen trips.",
+        }
+      - {
+          id: c,
+          text: "Overfitting; compare a simpler model on the same validation trips.",
+          correct: true,
+        }
+    solution: Low training error with much higher validation error suggests overfitting. A simpler model is worth comparing, but validation predictions must decide whether it helps.
+  - id: ovf-bias
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: The straight line cannot follow the bend in prices. Its mistakes keep following a similar pattern even if we pick different training houses from all the sales we know about. Which description fits?
+    options:
+      - { id: a, text: "High bias because its shape cannot follow the pattern.", correct: true }
+      - {
+          id: b,
+          text: "High variance because it changes wildly between training sets.",
+          correct: false,
+          feedback: "The mistake persists across training sets. The model does not change wildly.",
+        }
+      - {
+          id: c,
+          text: "A good fit because a repeated mistake is a stable prediction.",
+          correct: false,
+          feedback: "Consistently wrong predictions are still wrong; stability alone is not accuracy.",
+        }
+    solution: The straight line repeats the same kind of mistake because it cannot bend, illustrating high bias. Its poor training fit suggests underfitting.
+  - id: ovf-curve-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What pattern on a learning curve suggests that continued training is starting to overfit?
+    options:
+      - {
+          id: a,
+          text: "Training and validation errors both fall toward useful levels.",
+          correct: false,
+          feedback: "Both sets are improving; this does not show growing harm on unseen examples.",
+        }
+      - {
+          id: b,
+          text: "Training error falls while validation error rises after its minimum.",
+          correct: true,
+          feedback: "Continued training improves the seen examples while harming predictions on unseen examples.",
+        }
+      - {
+          id: c,
+          text: "Training and validation errors flatten at similarly high levels.",
+          correct: false,
+          feedback: "Both being high and flat suggests underfitting rather than growing overfitting.",
+        }
+    solution: After the validation minimum, falling training error with rising validation error suggests the model is increasingly fitting training-specific details.
+  - id: ovf-epoch-reason
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why does the worked example keep epoch 5 (training 7, validation 16) instead of epoch 10 (training 1.2, validation 31)?"
+    options:
+      - {
+          id: a,
+          text: "Epoch 5 predicts validation houses better, despite worse training error.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Epoch 5 must always be best for every house-price model.",
+          correct: false,
+          feedback: "The chosen epoch depends on the observed validation curve, not a universal epoch number.",
+        }
+      - {
+          id: c,
+          text: "Epoch 10 has not yet fitted the training houses closely enough.",
+          correct: false,
+          feedback: "Its training error is already lower, while validation predictions are worse.",
+        }
+    solution: Epoch 5 has the lowest observed validation error, 16. The later version improves training fit but worsens validation predictions to 31.
+  - id: ovfp-best-epoch
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      e: { min: 2, max: 6, step: 1 }
+      v: { min: 10, max: 18, step: 2 }
+    prompt: "Saved house models at epochs {{= e - 1 }}, {{= e }}, and {{= e + 1 }} have validation errors {{= v + 3 }}, {{= v }}, and {{= v + 5 }}. Their training errors keep falling. Which epoch has the lowest validation error? Give its epoch number."
+    answer_expr: e
+    tolerance: { abs: 0.01 }
+    solution: "Keep epoch {{= e }}, whose validation error {{= v }} is the lowest of the three. Falling training errors do not make the last version the best choice."
+  - id: ovfp-late-gap
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      t: { min: 1, max: 5, step: 1 }
+      g: { min: 18, max: 30, step: 3 }
+    prompt: "Late in house-model training, training error is {{= t }} and validation error is {{= t + g }}, in thousands of dollars. What is the gap at this epoch?"
+    answer_expr: g
+    tolerance: { abs: 0.01 }
+    solution: "The gap is validation minus training error: {{= t + g }} - {{= t }} = {{= g }} thousand dollars. A wide gap alongside low training error suggests overfitting."
+  - id: ovf-flat-high
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "The straight line's training and validation errors have flattened near 50 and 62 thousand dollars. Errors below 30 would be useful. Extra epochs no longer help. What should we compare next?"
+    options:
+      - {
+          id: a,
+          text: "A simpler model, because the small gap proves overfitting.",
+          correct: false,
+          feedback: "Both errors are high, which suggests underfitting, not overfitting.",
+        }
+      - {
+          id: b,
+          text: "The unchanged model forever, because all flat curves are good.",
+          correct: false,
+          feedback: "Flat curves can still describe poor predictions on both sets.",
+        }
+      - {
+          id: c,
+          text: "A more flexible model, because even the training fit is poor.",
+          correct: true,
+        }
+    solution: High, close errors that no longer improve suggest underfitting. Compare a more flexible model using validation error to see whether it helps.
+  - id: ovf-still-falling
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A house model's training and validation errors are both still high but falling each epoch. What is a reasonable next experiment?
+    options:
+      - {
+          id: a,
+          text: "Train longer while monitoring validation error for continued improvement.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Stop because any high validation error proves further training harms it.",
+          correct: false,
+          feedback: "The validation error is improving, so more training may help.",
+        }
+      - {
+          id: c,
+          text: "Ignore validation from now on and keep the final epoch regardless.",
+          correct: false,
+          feedback: "Validation can later worsen; keep monitoring and save the best version.",
+        }
+    solution: Further training may help while both errors keep falling. Monitor validation and keep the best observed version rather than assuming the final epoch will win.
+  - id: ovf-speech-curves
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A speech model's training errors at epochs 2, 4 and 6 are 20, 10 and 5. Validation errors are 24, 16 and 22, measured in the same way and units. Which saved version should we keep?"
+    options:
+      - {
+          id: a,
+          text: "Epoch 2, because the earliest version always avoids underfitting.",
+          correct: false,
+          feedback: "Its validation error is 24, higher than the score at epoch 4.",
+        }
+      - {
+          id: b,
+          text: "Epoch 4, because it has the lowest observed validation error.",
+          correct: true,
+        }
+      - {
+          id: c,
+          text: "Epoch 6, because it has the lowest observed training error.",
+          correct: false,
+          feedback: "Training error falls to 5 but validation error worsens to 22.",
+        }
+    solution: Keep epoch 4 because validation error 16 is lowest. Between epochs 4 and 6, training improves but validation worsens, suggesting overfitting.
+  - id: ovf-test-once
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: You saved a house model after choosing the epoch with lowest validation error. How should the test set be used?
+    options:
+      - {
+          id: a,
+          text: "Score every epoch on test and replace the validation choice with the test winner.",
+          correct: false,
+          feedback: "That uses test data to make a choice and loses its final independent scoring role.",
+        }
+      - {
+          id: b,
+          text: "Add test houses to training before scoring the selected model on those same houses.",
+          correct: false,
+          feedback: "The final test score must measure predictions on houses that did not train the model.",
+        }
+      - {
+          id: c,
+          text: "Score the chosen model once on test after all training choices are finished.",
+          correct: true,
+        }
+    solution: Keep test data out of fitting and model selection, then score the final choice once. Validation, not test, chooses the stopping epoch.
+  - id: ovf-explain-diagnosis
+    dimension: transfer
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "On the six-house fit, the straight line has rounded training/validation errors of 50/62 and the wiggly curve has 0/93. Errors are in thousands of dollars, and errors below 30 would be useful. In the illustrated training run on more houses, the wiggly curve had its lowest validation error at epoch 5. After that, training error fell but validation error rose. Explain the likely problems with the straight line and the wiggly curve, which saved copy to keep, and one change you could compare for each problem. Say how to use validation houses and the test houses we set aside at the start."
+    rubric:
+      - {
+          id: diagnoses,
+          criterion: "Identifies the straight line as likely underfitting because even its training error is high and the wiggly curve as likely overfitting despite zero training error, with reasons based on both scores.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: curves,
+          criterion: "Explains that worsening validation with falling training error suggests overfitting, and keeps epoch 5 by its validation minimum.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: choices,
+          criterion: "Suggests suitable comparisons for both problems, uses validation to choose, and reserves test for one final score.",
+          weight: 1,
+          required: true,
+        }
+    exemplar: "The straight line likely underfits because even its training error of 50 is too high to be useful. The wiggly curve likely overfits because zero training error comes with validation error 93. I would compare a more flexible model instead of the straight line, and a simpler model or more training data instead of the wiggly curve. The wiggly curve starts fitting training details too closely after epoch 5, so I would keep that saved copy. I would compare changes on validation houses and score the final choice once on the test houses we set aside at the start."
+    solution: "The straight line's high errors suggest underfitting. The wiggly curve's low training error and high validation error suggest overfitting. Keep the wiggly curve's copy from epoch 5, compare changes using validation error, and use the test houses we set aside at the start for the final score."

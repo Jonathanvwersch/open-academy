@@ -1,0 +1,253 @@
+concept: gaussian-distribution
+version: 1
+objective: "**Goal:** relate the mean and variance to the centre, width and height of a normal
+  density, use it to describe measurement noise, and recognise when it is a poor model."
+recap:
+  - concept: probability-basics
+    text: A distribution describes a random variable's chances. Its expected value $E[X]$ is its
+      long-run average. Probabilities add to 1; independent events give no information about each
+      other.
+where_this_fits: |
+  ### What is a Gaussian distribution?
+
+  A Gaussian distribution, also called a normal distribution, is a model of chance with values clustered around a centre in a symmetric bell shape. Values farther away are less likely on either side.
+
+  It helps describe measurement noise, the difference between a reading and the true distance. A table lists a die's chances, but measurements can fall anywhere along a number line. A smooth curve describes their chances using a centre and spread, helping us estimate how often readings will be unusually far away.
+knowledge_points:
+  - id: gauss-centre-spread
+    title: Find the centre and spread
+    explain: |
+      ### Readings around a centre
+
+      A Gaussian is completely fixed by its mean and standard deviation, so let's learn those two numbers. A sensor aimed at a wall 100 cm away gives readings of 97, 99, 100, 101 and 103 cm. A robot uses such readings to judge its distance from obstacles.
+
+      The **mean** is the average value. For a distribution, it is the expected value $E[X]$. For a list, add the readings and divide by how many there are. We write it as $\mu$, the Greek letter mu. Our mean is 100 cm.
+
+      ### Why we square the distances
+
+      Subtract the mean to get each reading's **deviation**, its signed distance from the centre. Signed means it can be negative, for readings below the mean. Our deviations are $-3,-1,0,1,3$ cm. Their average is zero despite the variation.
+
+      Absolute distances, with minus signs dropped, would stop that cancellation too. We use squared distances because they give the **variance**, the spread measure that the Gaussian formula uses. In step 3 we will see how the bell formula is built from squared distance.
+
+      Let $x$ stand for a reading. Then
+
+      $$\text{variance}=\text{average of }(x-\mu)^2$$
+
+      We count each reading equally here. For a distribution, each squared distance counts in proportion to its probability. Squaring gives squared units, and the next section puts spread back in centimetres.
+
+      ### Taking the square root
+
+      The **standard deviation** is the positive square root of variance, written $\sigma$, the Greek letter sigma.
+
+      $$\sigma=\sqrt{\text{variance}}$$
+
+      Our variance is 4 square centimetres, so $\sigma=2$ cm because $2^2=4$. Think of it as roughly the typical distance from the mean, not a limit. Our readings are 0, 1 or 3 cm away. Step 2 gives a more precise meaning for a Gaussian using its 68% rule.
+    worked: |
+      Let's find the centre and spread of our five sensor readings.
+
+      1. **Find the mean.** We add the readings and divide by five.
+         $$\mu=\frac{97+99+100+101+103}{5}=100\text{ cm}$$
+
+      2. **Average squared distances.** We square each deviation to find variance.
+         $$\text{variance}=\frac{(-3)^2+(-1)^2+0^2+1^2+3^2}{5}=4\text{ cm}^2$$
+
+      3. **Take the square root.** This returns spread to centimetres.
+         $$\sigma=\sqrt4=2\text{ cm}$$
+
+      We assume Gaussian noise. Step 4 explains why that is plausible and when to check it.
+    problems:
+      - gauss-spread-basics
+      - gauss-spread-why
+      - gauss-variance-template
+      - gauss-sd-template
+      - gauss-shift
+      - gauss-scale
+  - id: gauss-bell-area
+    title: Read chances from a bell
+    explain: |
+      ### From bars to a curve
+
+      A **histogram** groups readings into intervals. Each bar's area is its fraction of readings. From 100 to 101 cm, the fraction is about 0.1915, so the height is $0.1915\div1=0.1915$ per cm.
+
+      $$\text{bar height}=\frac{\text{fraction in interval}}{\text{interval width}}$$
+
+      More Gaussian readings and narrower bars trace a bell. Five readings cannot establish that. These fractions come from the model itself, as if we had very many readings.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 280" aria-label="Sensor model with mean 100 cm and standard deviation 2 cm. Grey bars are exact Gaussian bin probabilities divided by their 1 cm width. The blue density traces the bar tops. The shaded 98 to 102 cm area is about 68 percent. Tails are the thin ends.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+      <text x="50" y="22">Density per cm</text><text x="50" y="45" fill="#737373">Grey bars: fraction / 1 cm</text><text x="310" y="45" fill="#3b82f6">Blue: smooth model</text><rect x="50" y="209.9196" width="27.5" height="0.0804" fill="#d4d4d4" stroke="#737373"/><rect x="77.5" y="209.5531" width="27.5" height="0.4469" fill="#d4d4d4" stroke="#737373"/><rect x="105" y="208.0561" width="27.5" height="1.9439" fill="#d4d4d4" stroke="#737373"/><rect x="132.5" y="203.3838" width="27.5" height="6.6162" fill="#d4d4d4" stroke="#737373"/><rect x="160" y="192.3772" width="27.5" height="17.6228" fill="#d4d4d4" stroke="#737373"/><rect x="187.5" y="173.2608" width="27.5" height="36.7392" fill="#d4d4d4" stroke="#737373"/><rect x="215" y="150.0471" width="27.5" height="59.9529" fill="#d4d4d4" stroke="#737373"/><rect x="242.5" y="133.4150" width="27.5" height="76.5850" fill="#d4d4d4" stroke="#737373"/><rect x="270" y="133.4150" width="27.5" height="76.5850" fill="#d4d4d4" stroke="#737373"/><rect x="297.5" y="150.0471" width="27.5" height="59.9529" fill="#d4d4d4" stroke="#737373"/><rect x="325" y="173.2608" width="27.5" height="36.7392" fill="#d4d4d4" stroke="#737373"/><rect x="352.5" y="192.3772" width="27.5" height="17.6228" fill="#d4d4d4" stroke="#737373"/><rect x="380" y="203.3838" width="27.5" height="6.6162" fill="#d4d4d4" stroke="#737373"/><rect x="407.5" y="208.0561" width="27.5" height="1.9439" fill="#d4d4d4" stroke="#737373"/><rect x="435" y="209.5531" width="27.5" height="0.4469" fill="#d4d4d4" stroke="#737373"/><rect x="462.5" y="209.9196" width="27.5" height="0.0804" fill="#d4d4d4" stroke="#737373"/><path d="M215 210 L215.00 161.61 L217.75 159.19 L220.50 156.78 L223.25 154.40 L226.00 152.06 L228.75 149.77 L231.50 147.55 L234.25 145.41 L237.00 143.36 L239.75 141.41 L242.50 139.59 L245.25 137.89 L248.00 136.35 L250.75 134.95 L253.50 133.72 L256.25 132.67 L259.00 131.79 L261.75 131.10 L264.50 130.61 L267.25 130.31 L270.00 130.21 L272.75 130.31 L275.50 130.61 L278.25 131.10 L281.00 131.79 L283.75 132.67 L286.50 133.72 L289.25 134.95 L292.00 136.35 L294.75 137.89 L297.50 139.59 L300.25 141.41 L303.00 143.36 L305.75 145.41 L308.50 147.55 L311.25 149.77 L314.00 152.06 L316.75 154.40 L319.50 156.78 L322.25 159.19 L325.00 161.61 L325 210 Z" fill="#3b82f6" fill-opacity="0.2"/><path d="M50.00 209.97 L55.50 209.96 L61.00 209.94 L66.50 209.92 L72.00 209.88 L77.50 209.83 L83.00 209.75 L88.50 209.66 L94.00 209.52 L99.50 209.35 L105.00 209.11 L110.50 208.81 L116.00 208.42 L121.50 207.92 L127.00 207.28 L132.50 206.49 L138.00 205.52 L143.50 204.33 L149.00 202.91 L154.50 201.20 L160.00 199.20 L165.50 196.88 L171.00 194.21 L176.50 191.19 L182.00 187.82 L187.50 184.10 L193.00 180.05 L198.50 175.73 L204.00 171.16 L209.50 166.43 L215.00 161.61 L220.50 156.78 L226.00 152.06 L231.50 147.55 L237.00 143.36 L242.50 139.59 L248.00 136.35 L253.50 133.72 L259.00 131.79 L264.50 130.61 L270.00 130.21 L275.50 130.61 L281.00 131.79 L286.50 133.72 L292.00 136.35 L297.50 139.59 L303.00 143.36 L308.50 147.55 L314.00 152.06 L319.50 156.78 L325.00 161.61 L330.50 166.43 L336.00 171.16 L341.50 175.73 L347.00 180.05 L352.50 184.10 L358.00 187.82 L363.50 191.19 L369.00 194.21 L374.50 196.88 L380.00 199.20 L385.50 201.20 L391.00 202.91 L396.50 204.33 L402.00 205.52 L407.50 206.49 L413.00 207.28 L418.50 207.92 L424.00 208.42 L429.50 208.81 L435.00 209.11 L440.50 209.35 L446.00 209.52 L451.50 209.66 L457.00 209.75 L462.50 209.83 L468.00 209.88 L473.50 209.92 L479.00 209.94 L484.50 209.96 L490.00 209.97" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="3"/><path d="M50 65 V210 H500" fill="#171717" fill-opacity="0" stroke="#737373"/><text x="43" y="134" text-anchor="end">0.20</text><text x="270" y="185" text-anchor="middle">68%</text><text x="90" y="192">tail</text><text x="425" y="192">tail</text><text x="50" y="233" text-anchor="middle">92</text><text x="160" y="233" text-anchor="middle">96</text><text x="215" y="233" text-anchor="middle">98</text><text x="270" y="233" text-anchor="middle">100</text><text x="325" y="233" text-anchor="middle">102</text><text x="380" y="233" text-anchor="middle">104</text><text x="490" y="233" text-anchor="middle">108</text><text x="270" y="266" text-anchor="middle">Reading (cm)</text>
+      </g>
+      </svg>
+      ```
+
+      ### Height times width gives area
+
+      A **Gaussian distribution** has a symmetric bell-shaped curve. Its mean $\mu$ sets the centre and standard deviation $\sigma$ sets the spread. Near the peak, a narrow 0.1 cm interval has probability about $0.20\times0.1=0.02$. That 0.20 is the **density**, or probability per centimetre.
+
+      Narrower rectangles each get their own curve height. Their areas add to an interval's probability. The shaded area from 98 to 102 cm is about 68%. The thin ends far from the centre are called **tails**.
+
+      Total area is 1. Chances belong to intervals, and every real reading lands in some interval. An exact value has zero probability because it has zero width. A displayed 100 cm, rounded to the nearest centimetre, means a reading between 99.5 and 100.5 cm.
+
+      ### Areas we can reuse
+
+      For a Gaussian, about 68%, 95% and 99.7% of the area lies within one, two and three standard deviations of the mean. A computer measures these areas once. Measuring in standard deviations makes the percentages the same for every centre and spread. Our sensor's ranges are 98–102, 96–104 and 94–106 cm.
+
+      Be careful not to apply this rule to every distribution. The mean gives the centre and $\sigma$ gives spread, but only a Gaussian shape gives these percentages.
+    worked: |
+      Let's estimate how often our Gaussian sensor model falls outside 96–104 cm. Let $X$ be a reading before rounding.
+
+      1. **Measure the distance.** Each endpoint is two standard deviations from 100 cm.
+         $$\frac{104-100}{2}=2,\qquad\frac{96-100}{2}=-2$$
+
+      2. **Use the bell rule.** About 95% lies inside this range.
+         $$P(96\le X\le104)\approx0.95$$
+
+      3. **Take the complement.** The rest is outside.
+         $$P(X<96\text{ or }X>104)\approx1-0.95=0.05$$
+
+      Symmetry splits that 5% equally, so each tail has about 2.5%.
+    problems:
+      - gauss-area-basics
+      - gauss-area-why
+      - gauss-interval-template
+      - gauss-exact
+      - gauss-tail
+      - gauss-range-transfer
+  - id: gauss-density-formula
+    title: Calculate the bell's height
+    explain: |
+      ### Why calculate a height?
+
+      Equal small intervals near 100 and 102 cm have chances in a ratio of about 1.65 to 1. The shape factors give $1/e^{-1/2}\approx1/0.607\approx1.65$. Both readings share the front factor, so it cancels. Height times width estimates the chance. In the next lesson we'll use heights to choose the mean and spread that best match readings.
+
+      Keeping the centre at 100 cm, greater spread makes the bell wider and lower.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 270" aria-label="Two Gaussian densities with mean 100 cm. Standard deviation 1 cm gives peak 0.40 per cm in blue. Standard deviation 2 cm gives peak 0.20 per cm in orange, twice the width and half the height.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M50 30 V210 H500" fill="#171717" fill-opacity="0" stroke="#737373"/><text x="50" y="20">Density per cm</text><text x="275" y="260" text-anchor="middle">Reading (cm)</text><text x="50" y="233" text-anchor="middle">92</text><text x="160" y="233" text-anchor="middle">96</text><text x="270" y="233" text-anchor="middle">100</text><text x="380" y="233" text-anchor="middle">104</text><text x="490" y="233" text-anchor="middle">108</text><path d="M50.00 210.00 L55.50 210.00 L61.00 210.00 L66.50 210.00 L72.00 210.00 L77.50 210.00 L83.00 210.00 L88.50 210.00 L94.00 210.00 L99.50 210.00 L105.00 210.00 L110.50 210.00 L116.00 210.00 L121.50 210.00 L127.00 210.00 L132.50 210.00 L138.00 210.00 L143.50 210.00 L149.00 209.99 L154.50 209.98 L160.00 209.95 L165.50 209.88 L171.00 209.76 L176.50 209.51 L182.00 209.05 L187.50 208.23 L193.00 206.83 L198.50 204.57 L204.00 201.04 L209.50 195.81 L215.00 188.40 L220.50 178.42 L226.00 165.63 L231.50 150.11 L237.00 132.33 L242.50 113.21 L248.00 94.12 L253.50 76.71 L259.00 62.69 L264.50 53.58 L270.00 50.42 L275.50 53.58 L281.00 62.69 L286.50 76.71 L292.00 94.12 L297.50 113.21 L303.00 132.33 L308.50 150.11 L314.00 165.63 L319.50 178.42 L325.00 188.40 L330.50 195.81 L336.00 201.04 L341.50 204.57 L347.00 206.83 L352.50 208.23 L358.00 209.05 L363.50 209.51 L369.00 209.76 L374.50 209.88 L380.00 209.95 L385.50 209.98 L391.00 209.99 L396.50 210.00 L402.00 210.00 L407.50 210.00 L413.00 210.00 L418.50 210.00 L424.00 210.00 L429.50 210.00 L435.00 210.00 L440.50 210.00 L446.00 210.00 L451.50 210.00 L457.00 210.00 L462.50 210.00 L468.00 210.00 L473.50 210.00 L479.00 210.00 L484.50 210.00 L490.00 210.00" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="3"/><path d="M50.00 209.97 L55.50 209.96 L61.00 209.94 L66.50 209.92 L72.00 209.88 L77.50 209.83 L83.00 209.75 L88.50 209.66 L94.00 209.52 L99.50 209.35 L105.00 209.11 L110.50 208.81 L116.00 208.42 L121.50 207.92 L127.00 207.28 L132.50 206.49 L138.00 205.52 L143.50 204.33 L149.00 202.91 L154.50 201.20 L160.00 199.20 L165.50 196.88 L171.00 194.21 L176.50 191.19 L182.00 187.82 L187.50 184.10 L193.00 180.05 L198.50 175.73 L204.00 171.16 L209.50 166.43 L215.00 161.61 L220.50 156.78 L226.00 152.06 L231.50 147.55 L237.00 143.36 L242.50 139.59 L248.00 136.35 L253.50 133.72 L259.00 131.79 L264.50 130.61 L270.00 130.21 L275.50 130.61 L281.00 131.79 L286.50 133.72 L292.00 136.35 L297.50 139.59 L303.00 143.36 L308.50 147.55 L314.00 152.06 L319.50 156.78 L325.00 161.61 L330.50 166.43 L336.00 171.16 L341.50 175.73 L347.00 180.05 L352.50 184.10 L358.00 187.82 L363.50 191.19 L369.00 194.21 L374.50 196.88 L380.00 199.20 L385.50 201.20 L391.00 202.91 L396.50 204.33 L402.00 205.52 L407.50 206.49 L413.00 207.28 L418.50 207.92 L424.00 208.42 L429.50 208.81 L435.00 209.11 L440.50 209.35 L446.00 209.52 L451.50 209.66 L457.00 209.75 L462.50 209.83 L468.00 209.88 L473.50 209.92 L479.00 209.94 L484.50 209.96 L490.00 209.97" fill="#171717" fill-opacity="0" stroke="#f59e0b" stroke-width="3"/><text x="330" y="50" fill="#3b82f6">spread 1 cm; peak 0.40</text><text x="330" y="76" fill="#f59e0b">spread 2 cm; peak 0.20</text><text x="43" y="55" text-anchor="end">0.40</text><text x="43" y="134" text-anchor="end">0.20</text>
+      </g>
+      </svg>
+      ```
+
+      To **standardise** a reading, subtract the mean and divide by the standard deviation. This gives $z$, the signed distance in standard deviations, without units.
+
+      $$z=\frac{x-\mu}{\sigma}$$
+
+      ### Turning distances into heights
+
+      Like $\pi\approx3.14$, $e\approx2.718$ is fixed. Negative powers mean reciprocals, so $e^{-1}=1/e$, $e^{-2}=1/e^2$, and $e^{-0.5}=1/\sqrt e$. A calculator handles these powers for us. Bigger squared distances give smaller values, which is all we need here.
+
+      We square the distance so left and right match.
+
+      $$z^2=\frac{(x-\mu)^2}{\sigma^2}$$
+
+      The shape factor is
+
+      $$e^{-z^2/2}=e^{-(x-\mu)^2/(2\sigma^2)}$$
+
+      We use $e$ as the conventional base. Dividing by 2 makes $\sigma$ equal the curve's standard deviation. We will take that fact on trust. The factor is 1 at the centre, about 0.61 one standard deviation away, and 0.14 two away.
+
+      ### Keeping area equal to one
+
+      The **normal density** $f(x)$, read "f of x", is the curve's height above reading $x$. So $f(102)$ is the height above 102.
+
+      $$f(x)=\frac{1}{\sigma\sqrt{2\pi}}e^{-(x-\mu)^2/(2\sigma^2)}$$
+
+      The standard deviation $\sigma$ must be positive, and variance is $\sigma^2$. The bars' areas add up to 1, including bars beyond the picture. The curve needs total area 1 too.
+
+      The exact front factor needs maths beyond this lesson. Numerically, the shape-factor curve's area along the $z$ axis is $\sqrt{2\pi}\approx2.507$. Stretching width by $\sigma$ multiplies area by $\sigma$, so dividing by both gives area 1. Doubling the width makes the peak half as high.
+
+      Height is not probability. With $\sigma=0.1$ cm the peak is about 3.99 per cm. A narrow curve can be that tall while its area stays 1.
+    worked: |
+      Let's find the height at 102 cm for mean 100 cm and standard deviation 2 cm. Use a calculator for powers and square roots.
+
+      1. **Standardise the reading.** We measure distance in standard deviations.
+         $$z=\frac{102-100}{2}=1$$
+
+      2. **Find the shape factor.** We square that distance and divide by 2 in the negative exponent.
+         $$e^{-z^2/2}=e^{-1/2}=1/\sqrt e\approx0.61$$
+
+      3. **Scale the height.** We keep the unrounded factor until the end.
+         $$f(102)=\frac{e^{-1/2}}{2\sqrt{2\pi}}\approx0.12\text{ per cm}$$
+
+      The peak is about 0.20 per cm. Equal narrow intervals near 102 and 100 therefore have chances in roughly the ratio $0.61$ to 1.
+    problems:
+      - gauss-formula-basics
+      - gauss-formula-why
+      - gauss-z-template
+      - gauss-density-template
+      - gauss-tall
+      - gauss-width-transfer
+  - id: gauss-small-effects
+    title: See why sums form a bell
+    explain: |
+      ### Adding independent changes
+
+      Each die stands for one small effect, like electrical noise or vibration, inside a reading. We count sums to see why they cluster in the middle. Our fair dice are independent, so one result tells us nothing about another.
+
+      An **ordered pair** records each die separately. The pair $(1,6)$ means first die 1, second die 6, so it differs from $(6,1)$ even though both sum to 7.
+
+      Two dice make a pointed mound, but five make a rounder outline. Counting all ordered results gives the bars' probabilities. Five-dice bars have width 1, so area equals height, directly comparable with density. The worked example finds the matching Gaussian's mean and variance.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 270" aria-label="Exact probabilities for the sum of two fair independent dice. Sums 2 through 12 have counts 1,2,3,4,5,6,5,4,3,2,1 out of 36.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="35" y="24">Probability = pairs / 36</text><path d="M35 40 V210 H510" fill="#171717" fill-opacity="0" stroke="#737373"/><rect x="47" y="186" width="28" height="24" fill="#3b82f6"/><text x="61" y="232" text-anchor="middle">2</text><text x="61" y="178" text-anchor="middle">1/36</text><rect x="88" y="162" width="28" height="48" fill="#3b82f6"/><text x="102" y="232" text-anchor="middle">3</text><text x="102" y="154" text-anchor="middle">2/36</text><rect x="129" y="138" width="28" height="72" fill="#3b82f6"/><text x="143" y="232" text-anchor="middle">4</text><text x="143" y="130" text-anchor="middle">3/36</text><rect x="170" y="114" width="28" height="96" fill="#3b82f6"/><text x="184" y="232" text-anchor="middle">5</text><text x="184" y="106" text-anchor="middle">4/36</text><rect x="211" y="90" width="28" height="120" fill="#3b82f6"/><text x="225" y="232" text-anchor="middle">6</text><text x="225" y="82" text-anchor="middle">5/36</text><rect x="252" y="66" width="28" height="144" fill="#3b82f6"/><text x="266" y="232" text-anchor="middle">7</text><text x="266" y="58" text-anchor="middle">6/36</text><rect x="293" y="90" width="28" height="120" fill="#3b82f6"/><text x="307" y="232" text-anchor="middle">8</text><text x="307" y="82" text-anchor="middle">5/36</text><rect x="334" y="114" width="28" height="96" fill="#3b82f6"/><text x="348" y="232" text-anchor="middle">9</text><text x="348" y="106" text-anchor="middle">4/36</text><rect x="375" y="138" width="28" height="72" fill="#3b82f6"/><text x="389" y="232" text-anchor="middle">10</text><text x="389" y="130" text-anchor="middle">3/36</text><rect x="416" y="162" width="28" height="48" fill="#3b82f6"/><text x="430" y="232" text-anchor="middle">11</text><text x="430" y="154" text-anchor="middle">2/36</text><rect x="457" y="186" width="28" height="24" fill="#3b82f6"/><text x="471" y="232" text-anchor="middle">12</text><text x="471" y="178" text-anchor="middle">1/36</text><text x="275" y="260" text-anchor="middle">Sum of two dice</text>
+      </g>
+      </svg>
+      ```
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 280" aria-label="Five fair independent dice have 7776 equally likely ordered results. Grey bars show their exact sum probabilities, with a rounded bell outline. Blue is a Gaussian with the same mean 17.5 and variance 175/12, about 14.58. Bar width is one sum unit.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+      <text x="45" y="24">Five dice: exact probabilities</text><text x="45" y="48" fill="#3b82f6">Blue: matching Gaussian density</text><rect x="45" y="209.8200" width="17.5" height="0.1800" fill="#d4d4d4" stroke="#737373"/><rect x="62.5" y="209.0998" width="17.5" height="0.9002" fill="#d4d4d4" stroke="#737373"/><rect x="80" y="207.2994" width="17.5" height="2.7006" fill="#d4d4d4" stroke="#737373"/><rect x="97.5" y="203.6986" width="17.5" height="6.3014" fill="#d4d4d4" stroke="#737373"/><rect x="115" y="197.3971" width="17.5" height="12.6029" fill="#d4d4d4" stroke="#737373"/><rect x="132.5" y="187.3148" width="17.5" height="22.6852" fill="#d4d4d4" stroke="#737373"/><rect x="150" y="173.0916" width="17.5" height="36.9084" fill="#d4d4d4" stroke="#737373"/><rect x="167.5" y="155.0874" width="17.5" height="54.9126" fill="#d4d4d4" stroke="#737373"/><rect x="185" y="134.3827" width="17.5" height="75.6173" fill="#d4d4d4" stroke="#737373"/><rect x="202.5" y="112.7778" width="17.5" height="97.2222" fill="#d4d4d4" stroke="#737373"/><rect x="220" y="92.7932" width="17.5" height="117.2068" fill="#d4d4d4" stroke="#737373"/><rect x="237.5" y="77.6698" width="17.5" height="132.3302" fill="#d4d4d4" stroke="#737373"/><rect x="255" y="69.5679" width="17.5" height="140.4321" fill="#d4d4d4" stroke="#737373"/><rect x="272.5" y="69.5679" width="17.5" height="140.4321" fill="#d4d4d4" stroke="#737373"/><rect x="290" y="77.6698" width="17.5" height="132.3302" fill="#d4d4d4" stroke="#737373"/><rect x="307.5" y="92.7932" width="17.5" height="117.2068" fill="#d4d4d4" stroke="#737373"/><rect x="325" y="112.7778" width="17.5" height="97.2222" fill="#d4d4d4" stroke="#737373"/><rect x="342.5" y="134.3827" width="17.5" height="75.6173" fill="#d4d4d4" stroke="#737373"/><rect x="360" y="155.0874" width="17.5" height="54.9126" fill="#d4d4d4" stroke="#737373"/><rect x="377.5" y="173.0916" width="17.5" height="36.9084" fill="#d4d4d4" stroke="#737373"/><rect x="395" y="187.3148" width="17.5" height="22.6852" fill="#d4d4d4" stroke="#737373"/><rect x="412.5" y="197.3971" width="17.5" height="12.6029" fill="#d4d4d4" stroke="#737373"/><rect x="430" y="203.6986" width="17.5" height="6.3014" fill="#d4d4d4" stroke="#737373"/><rect x="447.5" y="207.2994" width="17.5" height="2.7006" fill="#d4d4d4" stroke="#737373"/><rect x="465" y="209.0998" width="17.5" height="0.9002" fill="#d4d4d4" stroke="#737373"/><rect x="482.5" y="209.8200" width="17.5" height="0.1800" fill="#d4d4d4" stroke="#737373"/><path d="M45.000 209.555 L49.550 209.440 L54.100 209.299 L58.650 209.126 L63.200 208.916 L67.750 208.661 L72.300 208.354 L76.850 207.986 L81.400 207.548 L85.950 207.028 L90.500 206.414 L95.050 205.694 L99.600 204.852 L104.150 203.875 L108.700 202.746 L113.250 201.448 L117.800 199.965 L122.350 198.279 L126.900 196.374 L131.450 194.231 L136.000 191.837 L140.550 189.175 L145.100 186.234 L149.650 183.003 L154.200 179.474 L158.750 175.644 L163.300 171.512 L167.850 167.083 L172.400 162.365 L176.950 157.373 L181.500 152.126 L186.050 146.651 L190.600 140.979 L195.150 135.147 L199.700 129.197 L204.250 123.178 L208.800 117.141 L213.350 111.145 L217.900 105.248 L222.450 99.512 L227.000 94.001 L231.550 88.779 L236.100 83.908 L240.650 79.447 L245.200 75.453 L249.750 71.979 L254.300 69.070 L258.850 66.765 L263.400 65.095 L267.950 64.084 L272.500 63.745 L277.050 64.084 L281.600 65.095 L286.150 66.765 L290.700 69.070 L295.250 71.979 L299.800 75.453 L304.350 79.447 L308.900 83.908 L313.450 88.779 L318.000 94.001 L322.550 99.512 L327.100 105.248 L331.650 111.145 L336.200 117.141 L340.750 123.178 L345.300 129.197 L349.850 135.147 L354.400 140.979 L358.950 146.651 L363.500 152.126 L368.050 157.373 L372.600 162.365 L377.150 167.083 L381.700 171.512 L386.250 175.644 L390.800 179.474 L395.350 183.003 L399.900 186.234 L404.450 189.175 L409.000 191.837 L413.550 194.231 L418.100 196.374 L422.650 198.279 L427.200 199.965 L431.750 201.448 L436.300 202.746 L440.850 203.875 L445.400 204.852 L449.950 205.694 L454.500 206.414 L459.050 207.028 L463.600 207.548 L468.150 207.986 L472.700 208.354 L477.250 208.661 L481.800 208.916 L486.350 209.126 L490.900 209.299 L495.450 209.440 L500.000 209.555" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="3"/><path d="M45 65 V210 H510" fill="#171717" fill-opacity="0" stroke="#737373"/><text x="53.75" y="234" text-anchor="middle">5</text><text x="141.25" y="234" text-anchor="middle">10</text><text x="228.75" y="234" text-anchor="middle">15</text><text x="316.25" y="234" text-anchor="middle">20</text><text x="403.75" y="234" text-anchor="middle">25</text><text x="491.25" y="234" text-anchor="middle">30</text><text x="270" y="265" text-anchor="middle">Sum of five dice (bars have width 1)</text>
+      </g>
+      </svg>
+      ```
+
+      ### When a bell becomes useful
+
+      The **central limit theorem** explains why sums or averages can become approximately Gaussian. One simple version uses many independent effects with the same distribution and a limited range of possible sizes, as dice have. As we add dice, their total becomes more bell-shaped even though each die still has six equally likely faces.
+
+      Sensor effects need not all have the same distribution. Other versions allow different small effects, provided no single effect accounts for most of the variation. This makes a Gaussian plausible, not guaranteed.
+
+      ### Limitations
+
+      Be careful if stray reflections sometimes make our sensor report 150 cm. That is 25 standard deviations above 100 cm when $\sigma=2$, so our Gaussian gives nearby readings essentially no probability. Frequent readings there would contradict the model.
+
+      The bell argument needs independent effects within a reading. A motor driving both noise and vibration breaks that independence. Counts are whole numbers, never negative. A Gaussian can approximate large counts far from zero, but fits small counts poorly.
+
+      Compare the model with real readings. Other distributions handle counts or frequent large errors, so we need not force a Gaussian to fit.
+    worked: |
+      Let's count the two-dice picture, then find the centre and spread for five dice.
+
+      1. **Count pairs.** Two dice have $6\times6=36$ equally likely results. The six pairs for 7 are $(1,6),(2,5),(3,4),(4,3),(5,2),(6,1)$, but only $(1,1)$ gives 2.
+         $$P(\text{sum is }7)=\frac6{36}=\frac16,\qquad P(\text{sum is }2)=\frac1{36}$$
+
+      2. **Find one die's mean.** We average its six equally likely faces.
+         $$\mu=\frac{1+2+3+4+5+6}{6}=3.5$$
+
+      3. **Find one die's variance.** We average squared distances from 3.5, just as in step 1 of the lesson.
+         $$\text{variance}=\frac{2.5^2+1.5^2+0.5^2+0.5^2+1.5^2+2.5^2}{6}=\frac{35}{12}$$
+
+      4. **Add five independent dice.** Means add, and for independent effects variances add too. Five dice have $6^5=7776$ equally likely ordered results.
+         $$\mu=5\times3.5=17.5,\qquad\text{variance}=5\times\frac{35}{12}=\frac{175}{12}$$
+
+      The overlaid Gaussian uses this mean and variance, with standard deviation equal to the square root of variance.
+    problems:
+      - gauss-sums-basics
+      - gauss-sums-why
+      - gauss-dice-template
+      - gauss-independence
+      - gauss-count-limit
+      - gauss-outliers
+final: gauss-explain
+summary: |
+  - The mean $\mu$ gives the centre, variance averages squared distances, and $\sigma=\sqrt{\text{variance}}$ gives spread in the original units.
+  - A Gaussian has total area 1. Interval areas give probabilities, with about 68%, 95% and 99.7% within one, two and three standard deviations.
+  - Its density is $f(x)=\frac{1}{\sigma\sqrt{2\pi}}e^{-(x-\mu)^2/(2\sigma^2)}$, where $z=(x-\mu)/\sigma$ counts standard deviations from the centre. Greater spread makes the bell wider and lower.
+  - Independent small effects can give Gaussian-like totals, but counts and frequent large errors may need other distributions.
+
+  **Next:** Maximum likelihood uses density heights to choose the mean and standard deviation best fitting our readings.

@@ -11,7 +11,7 @@ concepts:
       dimensions: [conceptual, implementation],
       prereqs: [{ id: matrices }],
       objectives: [{ text: "Convert between image layouts and shapes", dimension: implementation }],
-      status: stub,
+      status: authored,
     }
   - {
       id: convolutions,
@@ -25,7 +25,7 @@ concepts:
       prereqs: [{ id: images-as-tensors }, { id: mlp-forward-pass }],
       objectives: [{ text: "Compute output shapes of conv layers", dimension: math }],
       projects: [image-classifier],
-      status: stub,
+      status: authored,
     }
   - {
       id: camera-geometry,

@@ -1,0 +1,479 @@
+concept: classification-softmax
+exercises:
+  - id: sm-softmax-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does softmax output for the robot's cup, ball and box scores?
+    options:
+      - {
+          id: a,
+          text: "Positive probabilities with a total of one.",
+          correct: true,
+          feedback: "Each class gets a share of the same total.",
+        }
+      - {
+          id: b,
+          text: "Positive scores with no fixed total.",
+          correct: false,
+          feedback: "Raising e to each score is only the first move; division fixes the total.",
+        }
+      - {
+          id: c,
+          text: "One certain class and two impossible classes.",
+          correct: false,
+          feedback: "Softmax gives probabilities, not a one-hot decision.",
+        }
+    solution: Softmax divides positive e-powers by their shared total, so all probabilities are positive and add up to one.
+  - id: sm-softmax-reason
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does step 3 of the worked example divide 7.39, 2.72 and 1 by their total 11.11?
+    options:
+      - {
+          id: a,
+          text: "To make the largest probability exactly one.",
+          correct: false,
+          feedback: "The largest numerator is smaller than the total, so its probability stays below one.",
+        }
+      - {
+          id: b,
+          text: "To make the three probabilities sum to one.",
+          correct: true,
+          feedback: "The numerators add to the denominator, giving a total of one.",
+        }
+      - {
+          id: c,
+          text: "To make the three probabilities all equal.",
+          correct: false,
+          feedback: "Dividing by a shared total preserves their different sizes.",
+        }
+    solution: The sum becomes $(7.39+2.72+1)/11.11=1$, so the positive numbers become a probability distribution.
+  - id: sm-softmax-faded
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "The robot's cup, ball and box scores are 2, 1 and 0. Using the given e-powers 7.39, 2.72 and 1, the total is 11.11. Finish the ball probability, $2.72/11.11$, to 2 decimal places."
+    answer: 0.2448244824482448
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 2.72,
+          category: incomplete_explanation,
+          feedback: "This is the e-power; divide it by the total to get a probability.",
+        }
+    solution: The ball gets its share of the total, $2.72/11.11\approx0.24$.
+  - id: sm-softmax-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "The robot has cup score {{=z1}}, ball score {{=z2}} and box score 0. Use a calculator to find the cup probability with softmax, to 2 decimal places."
+    params:
+      z1: { min: 0, max: 3 }
+      z2: { min: 0, max: 2 }
+    answer_expr: exp(z1)/(exp(z1)+exp(z2)+1)
+    tolerance: { abs: 0.005 }
+    solution: "Raise e to each score and divide by the total: $p_{\\text{cup}}=e^{{=z1}}/(e^{{=z1}}+e^{{=z2}}+1)={{=exp(z1)/(exp(z1)+exp(z2)+1)}}$."
+  - id: sm-softmax-confusion
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The robot's cup score is 2 and its ball score is 1. How do their softmax probabilities compare in this same prediction?
+    options:
+      - {
+          id: a,
+          text: "Cup is twice as likely as ball, from the score ratio.",
+          correct: false,
+          feedback: "Softmax uses e-powers, not the raw ratio 2/1.",
+        }
+      - {
+          id: b,
+          text: "Cup is one unit likelier than ball, from the score gap.",
+          correct: false,
+          feedback: "A score difference is not an additive probability difference.",
+        }
+      - {
+          id: c,
+          text: "Cup is e times as likely as ball, from the score gap.",
+          correct: true,
+          feedback: "Their common denominator cancels, leaving e squared divided by e.",
+        }
+    solution: Within one prediction, $p_{\text{cup}}/p_{\text{ball}}=e^2/e^1=e\approx2.72$, not 2.
+  - id: sm-softmax-shift
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: What happens to the robot's probabilities if scores (2, 1, 0) become (7, 6, 5)?
+    options:
+      - {
+          id: a,
+          text: "They stay unchanged because a shared factor cancels.",
+          correct: true,
+          feedback: "Every e-power and their total are multiplied by e to the fifth power.",
+        }
+      - {
+          id: b,
+          text: "They become more equal because all scores are positive.",
+          correct: false,
+          feedback: "The original e-powers were already positive; the score gaps did not change.",
+        }
+      - {
+          id: c,
+          text: "They favour cup more because its score is now larger.",
+          correct: false,
+          feedback: "All scores rose equally, so cup gained no relative advantage.",
+        }
+    solution: Adding 5 multiplies every numerator and the denominator by $e^5$, which cancels and leaves all probabilities unchanged.
+  - id: sm-softmax-transfer
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A sorter chooses between paper, glass, metal and plastic with scores (2, 0, 0, 0). Use a calculator to find the paper probability to 2 decimal places."
+    answer: 0.7112345942275938
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 0.8807970779778823,
+          category: misunderstood_definition,
+          feedback: "That uses only one rival; include all three other classes in the total.",
+        }
+    solution: All four classes contribute to the total, so $p_{\text{paper}}=e^2/(e^2+1+1+1)\approx0.71$.
+  - id: sm-ce-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: If the object is really a ball, which probability goes inside the negative natural log for this example's cross-entropy loss?
+    options:
+      - {
+          id: a,
+          text: "The probability of whichever class has the highest score.",
+          correct: false,
+          feedback: "Loss checks the actual label, not just the model's favourite.",
+        }
+      - {
+          id: b,
+          text: "The probability of the ball, which is the true class.",
+          correct: true,
+          feedback: "The loss measures the surprise of the class that actually happened.",
+        }
+      - {
+          id: c,
+          text: "The probability of whichever class has the lowest score.",
+          correct: false,
+          feedback: "The least likely class matters directly only if it is the true class.",
+        }
+    solution: For one labelled example, cross-entropy is $-\ln p_{\text{true}}$, so a ball label selects the ball probability.
+  - id: sm-ce-reason
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does step 2 of the ball worked example put a minus sign before the natural log of 0.245?
+    options:
+      - {
+          id: a,
+          text: "Because the ball probability is a negative number.",
+          correct: false,
+          feedback: "The probability is positive; it is its natural log that is negative.",
+        }
+      - {
+          id: b,
+          text: "Because training must always have a negative loss.",
+          correct: false,
+          feedback: "This loss is nonnegative; gradient descent subtracts slopes, not the loss itself.",
+        }
+      - {
+          id: c,
+          text: "Because its log is negative, making the loss positive.",
+          correct: true,
+          feedback: "The natural log of a probability strictly between zero and one is negative.",
+        }
+    solution: Since $0<0.245<1$, its natural log is negative; negating it gives a positive surprise that falls as the true-class probability rises.
+  - id: sm-ce-faded
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "The robot gives the true class, ball, probability 0.25. The loss is $-\\ln(0.25)$. Use a calculator and finish to 2 decimal places."
+    answer: 1.3862943611198906
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: -1.3862943611198906,
+          category: math_error,
+          feedback: "The log is negative; the loss includes an extra minus sign.",
+        }
+    solution: Taking the negative natural log gives $-\ln(0.25)=\ln4\approx1.39$, a positive loss.
+  - id: sm-ce-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "The robot assigns the true class probability ${{=k}}/10$. Use a calculator to compute the natural-log cross-entropy loss to 2 decimal places."
+    params:
+      k: { min: 1, max: 9 }
+    answer_expr: -log(k/10)
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer_expr: log(k/10),
+          category: math_error,
+          feedback: "Negate the natural log so that a probability below one gives positive loss.",
+        }
+    solution: "Use the true class's probability: $L=-\\ln({{=k}}/10)={{=-log(k/10)}}$, because loss measures how surprising that label was."
+  - id: sm-ce-confusion
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The true class is ball. If only the cup score rises while ball and box scores stay fixed, what happens to the loss?
+    options:
+      - {
+          id: a,
+          text: "It rises because cup takes probability away from ball.",
+          correct: true,
+          feedback: "The shared softmax denominator grows while the ball numerator stays fixed.",
+        }
+      - {
+          id: b,
+          text: "It stays fixed because the ball score did not change.",
+          correct: false,
+          feedback: "The ball probability depends on other scores through the shared total.",
+        }
+      - {
+          id: c,
+          text: "It falls because the model has a higher leading score.",
+          correct: false,
+          feedback: "More confidence in a wrong class reduces the true-class probability and raises loss.",
+        }
+    solution: A larger cup score increases the denominator but not the ball numerator, so the ball probability falls and $-\ln p_{\text{ball}}$ rises.
+  - id: sm-ce-bits
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A true-class probability of 1/4 gives 2 bits of surprise. Convert to natural-log loss using $\\ln2\\approx0.693147$, so each bit contributes 0.693147. Give 2 decimal places."
+    answer: 1.386294
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 2,
+          category: misapplied_technique,
+          feedback: "That is the value in bits; multiply by ln 2 to change units.",
+        }
+    solution: >-
+      Multiply by the natural-log value of one bit: $L=2\times0.693147\approx1.39$, which also equals $-\ln(1/4)$.
+  - id: sm-ce-transfer
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A four-class digit reader gives digits 0, 1, 2 and 3 scores (2, 0, 1, 0). The true digit is 2. Use a calculator and the shortcut $L=\\ln(\\text{sum of e-powers})-z_{\\text{true}}$ to find the loss to 2 decimal places."
+    answer: 1.4938117090722385
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 0.4938117090722385,
+          category: misunderstood_definition,
+          feedback: "Subtract the true digit's score 1, not the largest score 2.",
+        }
+    solution: Digit 2 has score 1, so $L=\ln(e^2+1+e^1+1)-1\approx1.49$; the total includes all four classes.
+  - id: sm-grad-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is the loss slope against class k's score for softmax with cross-entropy?
+    options:
+      - {
+          id: a,
+          text: "Its label minus its predicted probability, y_k-p_k.",
+          correct: false,
+          feedback: "That reverses the slope's sign and hence the descent direction.",
+        }
+      - {
+          id: b,
+          text: "Its probability minus its one-hot label, p_k-y_k.",
+          correct: true,
+          feedback: "Use label one for the true class and zero for each other class.",
+        }
+      - {
+          id: c,
+          text: "Its score minus its predicted probability, z_k-p_k.",
+          correct: false,
+          feedback: "The subtraction uses the label, not the score.",
+        }
+    solution: The slope is $p_k-y_k$, negative for the true class and positive for every other class with finite scores.
+  - id: sm-grad-reason
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In step 2 of the worked example, only the biases change. Why does each score change by exactly as much as its bias?
+    options:
+      - {
+          id: a,
+          text: "Because the same slope is used for all three classes.",
+          correct: false,
+          feedback: "Each class has its own slope; the three bias changes differ.",
+        }
+      - {
+          id: b,
+          text: "Because a bias change multiplies $w_kx$.",
+          correct: false,
+          feedback: "A bias is added to $w_kx$, not multiplied into it.",
+        }
+      - {
+          id: c,
+          text: "Because the bias is added to $w_kx$, which stays fixed.",
+          correct: true,
+          feedback: "With weights and input fixed, changing b_k changes z_k by exactly that amount.",
+        }
+    solution: In $z_k=w_kx+b_k$, holding $w_kx$ fixed means $\Delta z_k=\Delta b_k$ for each class separately, not one shared change for all classes.
+  - id: sm-grad-faded
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Use the robot's rounded probabilities (0.67, 0.24, 0.09) for cup, ball and box. The true object is ball, so the one-hot label is (0, 1, 0). Finish the ball slope, $0.24-1$, to 2 decimal places."
+    answer: -0.76
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 0.24,
+          category: misunderstood_definition,
+          feedback: "For the true class, subtract its label 1 rather than 0.",
+        }
+    solution: The ball label is 1, so its slope is $0.24-1=-0.76$; subtracting this negative slope raises its score.
+  - id: sm-grad-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "The true object is ball and its probability is ${{=k}}/10$. Its bias is {{=b}} and the learning rate is 0.1. Update only this bias using $b_{\\text{new}}=b-0.1(p-1)$. Give 2 decimal places."
+    params:
+      k: { min: 2, max: 8 }
+      b: { min: -1, max: 2 }
+    answer_expr: b-0.1*(k/10-1)
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer_expr: b+0.1*(k/10-1),
+          category: math_error,
+          feedback: "Gradient descent subtracts the scaled slope; adding it lowers the true-class bias.",
+        }
+    solution: "The true-class slope is ${{=k/10}}-1={{=k/10-1}}$, so subtract it times 0.1: ${{=b}}-0.1({{=k/10-1}})={{=b-0.1*(k/10-1)}}$."
+  - id: sm-grad-confusion
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: With true class ball and probabilities (0.67, 0.24, 0.09), what does a positive-learning-rate update of only the biases do?
+    options:
+      - {
+          id: a,
+          text: "It raises ball and leaves cup and box unchanged.",
+          correct: false,
+          feedback: "Wrong classes also have nonzero slopes, equal to their probabilities.",
+        }
+      - {
+          id: b,
+          text: "It lowers all three scores to reduce the loss.",
+          correct: false,
+          feedback: "The true class has a negative slope, so subtracting it raises its score.",
+        }
+      - {
+          id: c,
+          text: "It raises ball and lowers both cup and box.",
+          correct: true,
+          feedback: "Ball has negative slope; cup and box have positive slopes.",
+        }
+    solution: The slopes are $(0.67,-0.76,0.09)$, so subtracting their positive-learning-rate multiples raises ball and lowers the two wrong-class scores.
+  - id: sm-grad-sum
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For a three-class prediction, two score slopes are 0.50 and -0.70. Since the score slopes sum to zero, find the missing slope to 2 decimal places."
+    answer: 0.2
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: -0.2,
+          category: math_error,
+          feedback: "The known slopes sum to -0.20, so the missing one must cancel that sum.",
+        }
+    solution: Both probabilities and the one-hot label sum to one, so the slopes sum to zero; the missing slope is $-(0.50-0.70)=0.20$.
+  - id: sm-grad-transfer
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A digit reader uses feature $x=3$ and score $z_7=w_7x+b_7$ for digit 7. Its probability for 7 is 0.20, but the true digit is 7. Find the loss slope against $w_7$, not the bias, to 2 decimal places."
+    answer: -2.4
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: -0.8,
+          category: misapplied_technique,
+          feedback: "That is the score or bias slope; multiply by input 3 for the weight slope.",
+        }
+    solution: The score slope is $0.20-1=-0.80$, and the weight slope multiplies by the feature, giving $(-0.80)\times3=-2.40$.
+  - id: sm-explain-softmax
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: "On a fresh image the robot gives cup, ball and box scores (3, 1, 1), but the object is really a box. Explain how softmax turns these into probabilities, how cross-entropy scores this prediction, and how the score slopes determine a gradient descent update of only the biases. Use a calculator, give probabilities, loss and slopes to 2 decimal places, and explain why a wrong class changes too."
+    solution: Softmax shares the total of the e-powers to give about (0.79, 0.11, 0.11); the box probability gives loss 2.24. Subtracting the one-hot box label gives slopes about (0.79, 0.11, -0.89), so updating only biases raises box and lowers both wrong-class scores.
+    rubric:
+      - {
+          id: probabilities,
+          criterion: "Divides each e-power by their shared total and obtains probabilities approximately (0.79, 0.11, 0.11), allowing rounded entries not to sum exactly to one",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: loss,
+          criterion: "Selects the true box probability and computes its negative natural log, approximately 2.24",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: slopes,
+          criterion: "Subtracts label (0, 0, 1) to obtain slopes approximately (0.79, 0.11, -0.89), and explains that subtracting scaled slopes raises box and lowers both wrong classes in a bias-only update",
+          weight: 1,
+          required: true,
+        }
+    exemplar: "Raise e to each score and divide by $e^3+e+e\\approx25.52$, giving probabilities about (0.79, 0.11, 0.11); the displayed probabilities sum to 1.01 only because of rounding. Box is true, so the loss is $-\\ln(e/(e^3+2e))\\approx2.24$. Subtract label (0, 0, 1) from the unrounded probabilities to get slopes about (0.79, 0.11, -0.89). With only biases changing, subtracting learning-rate-scaled slopes raises the box score and lowers the cup and ball scores; wrong classes change because their positive probabilities also give positive slopes."

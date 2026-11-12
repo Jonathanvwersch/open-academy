@@ -1,0 +1,580 @@
+concept: gaussian-distribution
+exercises:
+  - id: gauss-spread-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: What does the standard deviation describe?
+    options:
+      - id: a
+        text: Spread around the mean, in the original units.
+        correct: true
+        feedback: It is the square root of the average squared distance.
+      - id: b
+        text: The signed average distance from the mean.
+        correct: false
+        feedback: Signed deviations cancel, even when values vary.
+      - id: c
+        text: The location of the largest possible reading.
+        correct: false
+        feedback: Standard deviation measures spread, not a maximum.
+    solution: Standard deviation measures spread in the same units as the readings; variance uses
+      squared units.
+  - id: gauss-spread-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why did we square the distances before averaging in the five-reading worked example?
+    options:
+      - id: a
+        text: To stop opposite signed distances cancelling.
+        correct: true
+        feedback: Both positive and negative deviations become nonnegative.
+      - id: b
+        text: To move the mean closer to the largest reading.
+        correct: false
+        feedback: We already found the mean; squaring deviations measures spread.
+      - id: c
+        text: To return the spread to centimetres immediately.
+        correct: false
+        feedback: Squaring gives squared centimetres; the square root returns centimetres.
+    solution:
+      Deviations sum to zero around the mean. Squaring makes distances on either side contribute
+      to spread.
+  - id: gauss-variance-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: Three readings are {{= m-d}}, {{= m}} and {{= m+d}} cm, with mean {{= m}} cm. Find their
+      variance in square centimetres by averaging the three squared distances from the mean.
+    params:
+      m:
+        min: 20
+        max: 100
+        step: 10
+      d:
+        min: 3
+        max: 9
+        step: 3
+    answer_expr: 2*d^2/3
+    tolerance:
+      abs: 0.005
+    solution:
+      The deviations are $-{{= d}},0,{{= d}}$. Their squared average is $2\times{{= d}}^2/3={{=
+      2*d^2/3}}$ square centimetres.
+  - id: gauss-sd-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: A distribution has variance {{= s*s}} square centimetres. What is its standard deviation in cm?
+    params:
+      s:
+        min: 1
+        max: 8
+        step: 1
+    answer_expr: s
+    tolerance:
+      abs: 0.005
+    solution: Standard deviation is the positive square root of variance, so it is $\sqrt{ {{= s*s}}
+      }={{= s}}$ cm.
+  - id: gauss-shift
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Add 10 cm to every sensor reading. What happens to the mean and standard deviation?
+    options:
+      - id: a
+        text: The mean rises by 10 cm; the standard deviation stays the same.
+        correct: true
+        feedback: Each reading and the mean move together, preserving deviations.
+      - id: b
+        text: Both the mean and standard deviation rise by 10 cm.
+        correct: false
+        feedback: Shifting changes location but not distances from the mean.
+      - id: c
+        text: The mean stays fixed; the standard deviation rises by 10 cm.
+        correct: false
+        feedback: The mean shifts with all the readings; spread does not.
+    solution: Adding a constant shifts the mean by that constant. Deviations from the new mean are unchanged.
+  - id: gauss-scale
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A factory doubles every measured length. Originally the standard deviation was 2 cm and
+      variance was 4 square centimetres. What are they now?
+    options:
+      - id: a
+        text: Standard deviation 4 cm; variance 16 square centimetres.
+        correct: true
+        feedback: Deviations double, so their squares quadruple.
+      - id: b
+        text: Standard deviation 4 cm; variance 8 square centimetres.
+        correct: false
+        feedback: Variance scales with the square of the scale factor.
+      - id: c
+        text: Standard deviation 2 cm; variance 4 square centimetres.
+        correct: false
+        feedback: Multiplying lengths changes distances, unlike adding a constant.
+    solution:
+      Every deviation doubles, so variance becomes $4\times4=16$ and standard deviation becomes
+      $\sqrt{16}=4$ cm.
+  - id: gauss-area-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: How does a continuous Gaussian model assign probability to an interval?
+    options:
+      - id: a
+        text: By the area under its density curve across that interval.
+        correct: true
+        feedback: Area combines height and width.
+      - id: b
+        text: By the density at the interval's midpoint alone.
+        correct: false
+        feedback: Height alone ignores the interval's width.
+      - id: c
+        text: By the number of endpoints in the interval alone.
+        correct: false
+        feedback: Endpoints do not measure the probability within a range.
+    solution: Interval probability is area under the density; height is probability per unit of reading.
+  - id: gauss-area-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why did the worked example subtract 0.95 from 1 to find the chance outside 96–104 cm?
+    options:
+      - id: a
+        text: Inside and outside split the total area into complements.
+        correct: true
+        feedback: All probability lies either inside or outside.
+      - id: b
+        text: The height of every density curve is exactly 1.
+        correct: false
+        feedback: The total area is 1; the height need not be.
+      - id: c
+        text: Outside always has the same chance as inside.
+        correct: false
+        feedback: A central interval and its complement need not have equal areas.
+    solution: The total area is 1. About 0.95 is inside, so about $1-0.95=0.05$ is outside.
+  - id: gauss-interval-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt:
+      A Gaussian has mean {{= m}} and standard deviation {{= s}}. What is the upper endpoint of
+      the central range containing about 95% of its values? Use the lesson's 68–95–99.7 rule.
+    params:
+      m:
+        min: 30
+        max: 90
+        step: 10
+      s:
+        min: 2
+        max: 6
+        step: 1
+    answer_expr: m+2*s
+    tolerance:
+      abs: 0.005
+    solution: The central 95% range extends about two standard deviations each way, so the upper
+      endpoint is ${{= m}}+2\times{{= s}}={{= m+2*s}}$.
+  - id: gauss-exact
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A continuous Gaussian model has density 0.20 per cm at exactly 100 cm. What is the
+      probability of exactly 100 cm before rounding?
+    options:
+      - id: a
+        text: Zero, because an exact value has no interval width.
+        correct: true
+        feedback: A zero-width strip has zero area.
+      - id: b
+        text: 0.20, because density and probability are identical.
+        correct: false
+        feedback: Density must be combined with width to give area.
+      - id: c
+        text: One, because 100 cm is the peak of the curve.
+        correct: false
+        feedback: The peak is a location of high density, not certainty.
+    solution:
+      A single exact value has zero width and thus zero area in a continuous model. A rounded
+      reading represents an interval instead.
+  - id: gauss-tail
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      For a Gaussian with mean 100 cm and standard deviation 2 cm, about what fraction of readings
+      exceed 104 cm?
+    options:
+      - id: a
+        text: "0.025"
+        correct: true
+        feedback: About 5% lies outside two standard deviations, split equally between tails.
+      - id: b
+        text: "0.05"
+        correct: false
+        feedback: That counts both tails, not just the upper one.
+      - id: c
+        text: "0.475"
+        correct: false
+        feedback: That is roughly the area from the mean to two standard deviations above it.
+    solution:
+      About 95% lies from 96 to 104 cm. The remaining 5% splits equally, giving about 2.5% above
+      104 cm.
+  - id: gauss-range-transfer
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A Gaussian model for package masses has mean 500 g and standard deviation 10 g.
+      Approximately what percentage lies from 490 to 520 g?
+    options:
+      - id: a
+        text: 81.5%
+        correct: true
+        feedback:
+          From minus one to plus one standard deviation is 68%; the next upper band adds (95-68)/2
+          percent.
+      - id: b
+        text: 95%
+        correct: false
+        feedback: 95% requires the full range 480–520 g.
+      - id: c
+        text: 68%
+        correct: false
+        feedback: 68% describes 490–510 g, not the extra upper band.
+    solution:
+      The range covers minus one through plus two standard deviations. Add $68+(95-68)/2=81.5$
+      percent, using the approximate bell rule.
+  - id: gauss-formula-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt:
+      Keep the mean fixed and double a Gaussian's standard deviation. What happens to its density
+      curve?
+    options:
+      - id: a
+        text: It becomes twice as wide and half as tall at the peak.
+        correct: true
+        feedback: The area stays 1 while width doubles.
+      - id: b
+        text: It becomes twice as wide and twice as tall at the peak.
+        correct: false
+        feedback: Increasing both would increase the total area.
+      - id: c
+        text: It shifts right and keeps its width and peak height.
+        correct: false
+        feedback: Changing the mean shifts the curve; changing spread does not.
+    solution: The front factor is inversely proportional to standard deviation, so doubling spread
+      halves peak height.
+  - id: gauss-formula-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why did the worked example divide 102−100 by 2 before using the shape factor?
+    options:
+      - id: a
+        text: To express distance in standard deviations.
+        correct: true
+        feedback: A 2 cm distance is one standard deviation when spread is 2 cm.
+      - id: b
+        text: To turn a density into an interval probability.
+        correct: false
+        feedback: Standardising changes the distance scale, not height into area.
+      - id: c
+        text: To replace the mean by a larger sensor reading.
+        correct: false
+        feedback: The mean stays 100 cm; we measure a distance from it.
+    solution: The shape depends on relative distance $z=(x-\mu)/\sigma$, so the worked example uses $z=1$.
+  - id: gauss-z-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt:
+      A Gaussian has mean {{= m}} and standard deviation {{= s}}. A reading is {{= m+k*s}}. Find
+      its signed standardised value $z$.
+    params:
+      m:
+        min: 20
+        max: 80
+        step: 10
+      s:
+        min: 1
+        max: 5
+        step: 1
+      k:
+        min: -3
+        max: 3
+        step: 1
+    answer_expr: k
+    tolerance:
+      abs: 0.005
+    solution:
+      "Subtract the mean and divide by spread: $z=({{= m+k*s}}-{{= m}})/{{= s}}={{= k}}$. The
+      sign says which side of the mean the reading lies on."
+  - id: gauss-density-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      A Gaussian has mean {{= m}} cm and standard deviation {{= s}} cm. Use a calculator to find
+      the density at the mean, in per cm. Round to two decimal places; use $\pi\approx3.14159$.
+    params:
+      m:
+        min: 30
+        max: 90
+        step: 10
+      s:
+        min: 1
+        max: 5
+        step: 1
+    answer_expr: 1/(s*sqrt(2*3.141592653589793))
+    tolerance:
+      abs: 0.005
+    solution:
+      At the mean the exponent is zero, so the shape factor is 1. The peak density is $1/({{=
+      s}}\sqrt{2\pi})\approx{{= round(1/(s*sqrt(2*3.141592653589793)),2)}}$ per cm.
+  - id: gauss-tall
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A Gaussian density peaks at 3.99 per cm. Is that necessarily an invalid distribution?
+    options:
+      - id: a
+        text: No; a narrow curve can have height above 1 while its area is 1.
+        correct: true
+        feedback: Height has units per cm; probability is area.
+      - id: b
+        text: Yes; every density height must lie between 0 and 1.
+        correct: false
+        feedback: That restriction applies to probability, not density.
+      - id: c
+        text: No; it means an exact reading has probability 3.99.
+        correct: false
+        feedback: An exact reading has zero probability in a continuous model.
+    solution: A density height above 1 is allowed. Only areas representing probabilities must lie
+      between 0 and 1.
+  - id: gauss-width-transfer
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      Two Gaussian models for battery life both have mean 10 hours. Model A has variance 1 hour
+      squared and model B variance 4 hours squared. How do their peak heights compare?
+    options:
+      - id: a
+        text: A's peak is twice B's peak.
+        correct: true
+        feedback: Standard deviations are 1 and 2 hours, so peak heights have ratio 2.
+      - id: b
+        text: A's peak is four times B's peak.
+        correct: false
+        feedback: The front factor uses standard deviation, not variance.
+      - id: c
+        text: The peaks are equal because the means match.
+        correct: false
+        feedback: Equal means give equal peak locations, not equal heights.
+    solution: Take square roots of the variances to get standard deviations 1 and 2. Peak density is
+      inversely proportional to standard deviation, making A twice as tall.
+  - id: gauss-sums-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: Which situation supports an approximately Gaussian total under the central limit theorem?
+    options:
+      - id: a
+        text: Adding many independent effects with the same distribution and a limited range of sizes.
+        correct: true
+        feedback: These are the simple conditions taught for the bell-shaped approximation.
+      - id: b
+        text: Repeating one shared disturbance many times in a sum.
+        correct: false
+        feedback: The repeated disturbance creates dependence, not independent contributions.
+      - id: c
+        text: Choosing one measurement from any distribution at all.
+        correct: false
+        feedback: One arbitrary measurement need not have a bell-shaped distribution.
+    solution: The theorem concerns sums or averages of many independent contributions under stated
+      conditions; it is not a claim that every individual variable is Gaussian.
+  - id: gauss-sums-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why was a sum of 7 six times as likely as a sum of 2 for two fair independent dice?
+    options:
+      - id: a
+        text: Six ordered pairs give 7, while only one gives 2.
+        correct: true
+        feedback: Each of the 36 ordered pairs is equally likely.
+      - id: b
+        text: Each die favours middle faces over extreme faces.
+        correct: false
+        feedback: A fair die assigns the same chance to every face.
+      - id: c
+        text: The second die changes its result to balance the first.
+        correct: false
+        feedback: Independent dice do not adjust to each other.
+    solution:
+      "The counts of equally likely ordered pairs differ: six give 7 and one gives 2, so their
+      probabilities have ratio six."
+  - id: gauss-dice-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: Two fair independent dice are rolled. For a target sum of {{= t}} (between 2 and 7), how
+      many of the 36 ordered pairs produce that sum?
+    params:
+      t:
+        min: 2
+        max: 7
+        step: 1
+    answer_expr: t-1
+    tolerance:
+      abs: 0.005
+    solution: For sums up to 7, list pairs from $(1,{{= t-1}})$ to $({{= t-1}},1)$. There are ${{=
+      t-1}}$ pairs.
+  - id: gauss-independence
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      One electrical fault raises every sensor reading in a batch by the same unknown amount. Can
+      we justify a Gaussian model by treating that fault as many independent effects?
+    options:
+      - id: a
+        text: No; the shared cause links the changes across readings.
+        correct: true
+        feedback: A shared disturbance does not become independent by appearing repeatedly.
+      - id: b
+        text: Yes; every repeated effect is automatically independent.
+        correct: false
+        feedback: Repetition does not imply independence.
+      - id: c
+        text: Yes; adding readings always produces an exact Gaussian.
+        correct: false
+        feedback: The theorem is approximate and needs conditions.
+    solution:
+      The same fault affects all readings together, so those contributions are dependent. The
+      simple independent-effects justification does not apply.
+  - id: gauss-count-limit
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A model predicts the number of customers arriving in a minute, usually 0 or 1. Why might a
+      Gaussian with mean 0.5 and standard deviation 1 be a poor choice?
+    options:
+      - id: a
+        text: It assigns area to negative and noninteger counts.
+        correct: true
+        feedback: Customers are counted in nonnegative integers, so use a discrete count model.
+      - id: b
+        text: It cannot put its mean between two possible counts.
+        correct: false
+        feedback: An expected value need not be a possible individual value.
+      - id: c
+        text: It has no defined standard deviation for small means.
+        correct: false
+        feedback: A Gaussian can have this mean and spread, but its support is inappropriate.
+    solution: A Gaussian is continuous and extends below zero. Those predictions are unsuitable for
+      small nonnegative counts; use a count distribution.
+  - id: gauss-outliers
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A Gaussian noise model predicts that about 0.3% of errors lie beyond three standard
+      deviations. A large dataset has 8% there. What should you do?
+    options:
+      - id: a
+        text: Investigate the extreme errors and consider a model with more tail probability.
+        correct: true
+        feedback: The observed extreme-error rate is much larger than the Gaussian rule predicts.
+      - id: b
+        text: Keep the Gaussian because matching mean and spread proves its shape.
+        correct: false
+        feedback: The same mean and spread can occur with different shapes.
+      - id: c
+        text: Delete the extreme errors because Gaussian models forbid them.
+        correct: false
+        feedback: Gaussian models allow extreme errors, but predict them to be rare.
+    solution: The data has many more extreme errors than the Gaussian predicts. Check the cause and
+      choose a model that represents these tails rather than discarding inconvenient data.
+  - id: gauss-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt:
+      Explain how the mean and variance determine a Gaussian sensor model, how the curve gives an
+      interval probability, and why the model may or may not fit real noise.
+    rubric:
+      - id: shape
+        criterion: Connects mean to centre, square root of variance to width, and greater width to lower peak.
+        weight: 1
+      - id: area
+        criterion: Distinguishes density height from interval probability and states that total area is 1.
+        weight: 1
+      - id: limits
+        criterion:
+          Explains the many-independent-effects justification and one reason to question a Gaussian
+          model.
+        weight: 1
+    exemplar:
+      The mean sets the centre; standard deviation is the square root of variance and sets the
+      width. A larger standard deviation makes the bell wider and lower so its area stays 1.
+      Probability between two readings is area under the curve, not its height. Many small
+      independent effects can make Gaussian noise plausible, but frequent extreme errors or
+      nonnegative small counts call for another model.
+    solution: A Gaussian is specified by its mean and positive standard deviation. These control
+      location and spread, while interval areas give probabilities; the model's shape still needs
+      checking against data.

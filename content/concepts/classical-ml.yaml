@@ -121,7 +121,7 @@ concepts:
     prereqs: [{ id: train-test-split }]
     objectives:
       - { text: "Diagnose over/underfitting from learning curves", dimension: transfer }
-    status: stub
+    status: authored
   - id: regularization
     title: Regularization
     description: L2/L1 penalties, weight decay, dropout, early stopping.
@@ -133,7 +133,7 @@ concepts:
     prereqs: [{ id: overfitting }, { id: loss-functions }]
     objectives:
       - { text: "Explain how weight decay changes the update", dimension: math }
-    status: stub
+    status: authored
   - id: generalization
     title: Generalization
     description: What it means for a model to work on unseen data; distribution assumptions.
@@ -145,7 +145,7 @@ concepts:
     prereqs: [{ id: overfitting }]
     objectives:
       - { text: "Explain i.i.d. assumptions and when they break", dimension: conceptual }
-    status: stub
+    status: authored
   - id: evaluation-metrics
     title: Evaluation metrics
     description: Accuracy, precision/recall, confusion matrices, regression metrics.
@@ -157,4 +157,4 @@ concepts:
     prereqs: [{ id: train-test-split }]
     objectives:
       - { text: "Compute precision and recall from a confusion matrix", dimension: math }
-    status: stub
+    status: authored

@@ -1,0 +1,594 @@
+concept: convolutions
+version: 1
+objective: "**Goal:** compute convolutional layer output shapes and explain shared filters, pooling and receptive fields."
+recap:
+  - concept: images-as-tensors
+    text: "A grayscale image is an $H\\times W$ grid of brightnesses indexed `img[r, c]` from zero. A colour image in CHW layout has shape $(3, H, W)$, with separate grids for red, green and blue."
+  - concept: mlp-forward-pass
+    text: "A fully connected neuron takes a weighted sum of every input plus a bias, then applies ReLU. A layer with $d_\\text{in}$ inputs and $d_\\text{out}$ neurons has $d_\\text{out}d_\\text{in}+d_\\text{out}$ parameters."
+where_this_fits: |
+  ### What is a convolution?
+
+  A convolution slides a small grid of weights across an image and takes a weighted sum at each position. This can locate a pattern such as an edge, where dark pixels meet bright ones.
+
+  A 224 by 224 RGB photo contains 3 times 224 times 224 numbers, or 150,528. One fully connected neuron needs that many weights, so many neurons need millions. Its weights can respond to an edge at one place but give no response when it moves. It needs separate weights for every position, while convolution reuses one grid.
+
+  We'll calculate output shapes, handle colour channels and count parameters. Then we'll shrink grids by keeping the largest nearby values, called pooling, and trace how much of the image each output depends on.
+knowledge_points:
+  - id: conv-slide
+    title: Slide a small grid of weights
+    explain: |
+      ### Find a dark-to-bright edge
+
+      A fully connected neuron reads every input. Instead, we'll read a small square of pixels, called a **patch** or window. A **filter**, also called a **kernel**, is a small grid of weights that we reuse across patches.
+
+      Let's use a five-by-five image where every row is $(0,0,1,1,1)$. The boundary between dark and bright columns is a vertical edge.
+
+      Every filter row is $(-1,0,1)$. The left column subtracts brightness, the middle ignores it, and the right adds it. This gives a positive sum where brightness rises left-to-right, compared with zero for a flat patch. Real networks find weights during training, which we won't cover here. We choose them by hand to see what they do.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 280" aria-label="Every row of the 5 by 5 image is 0 0 1 1 1. The orange 3 by 3 patch at row 0 column 0 gives the green output cell 3. Every filter row is minus 1, 0, 1. Every output row is 3 3 0." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="20" y="22">image x (5 × 5)</text>
+      <rect id="image-0-0" x="20" y="40" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="34" y="59" text-anchor="middle">0</text>
+      <rect id="image-0-1" x="48" y="40" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="62" y="59" text-anchor="middle">0</text>
+      <rect id="image-0-2" x="76" y="40" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="90" y="59" text-anchor="middle">1</text>
+      <rect id="image-0-3" x="104" y="40" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="118" y="59" text-anchor="middle">1</text>
+      <rect id="image-0-4" x="132" y="40" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="146" y="59" text-anchor="middle">1</text>
+      <rect id="image-1-0" x="20" y="68" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="34" y="87" text-anchor="middle">0</text>
+      <rect id="image-1-1" x="48" y="68" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="62" y="87" text-anchor="middle">0</text>
+      <rect id="image-1-2" x="76" y="68" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="90" y="87" text-anchor="middle">1</text>
+      <rect id="image-1-3" x="104" y="68" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="118" y="87" text-anchor="middle">1</text>
+      <rect id="image-1-4" x="132" y="68" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="146" y="87" text-anchor="middle">1</text>
+      <rect id="image-2-0" x="20" y="96" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="34" y="115" text-anchor="middle">0</text>
+      <rect id="image-2-1" x="48" y="96" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="62" y="115" text-anchor="middle">0</text>
+      <rect id="image-2-2" x="76" y="96" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="90" y="115" text-anchor="middle">1</text>
+      <rect id="image-2-3" x="104" y="96" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="118" y="115" text-anchor="middle">1</text>
+      <rect id="image-2-4" x="132" y="96" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="146" y="115" text-anchor="middle">1</text>
+      <rect id="image-3-0" x="20" y="124" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="34" y="143" text-anchor="middle">0</text>
+      <rect id="image-3-1" x="48" y="124" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="62" y="143" text-anchor="middle">0</text>
+      <rect id="image-3-2" x="76" y="124" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="90" y="143" text-anchor="middle">1</text>
+      <rect id="image-3-3" x="104" y="124" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="118" y="143" text-anchor="middle">1</text>
+      <rect id="image-3-4" x="132" y="124" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="146" y="143" text-anchor="middle">1</text>
+      <rect id="image-4-0" x="20" y="152" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="34" y="171" text-anchor="middle">0</text>
+      <rect id="image-4-1" x="48" y="152" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="62" y="171" text-anchor="middle">0</text>
+      <rect id="image-4-2" x="76" y="152" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="90" y="171" text-anchor="middle">1</text>
+      <rect id="image-4-3" x="104" y="152" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="118" y="171" text-anchor="middle">1</text>
+      <rect id="image-4-4" x="132" y="152" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="146" y="171" text-anchor="middle">1</text>
+      <rect id="window" x="20" y="40" width="84" height="84" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="3"/>
+      <text x="205" y="22">filter w (3 × 3)</text>
+      <rect id="filter-0-0" x="205" y="40" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="219" y="59" text-anchor="middle">−1</text>
+      <rect id="filter-0-1" x="233" y="40" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="247" y="59" text-anchor="middle">0</text>
+      <rect id="filter-0-2" x="261" y="40" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="275" y="59" text-anchor="middle">1</text>
+      <rect id="filter-1-0" x="205" y="68" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="219" y="87" text-anchor="middle">−1</text>
+      <rect id="filter-1-1" x="233" y="68" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="247" y="87" text-anchor="middle">0</text>
+      <rect id="filter-1-2" x="261" y="68" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="275" y="87" text-anchor="middle">1</text>
+      <rect id="filter-2-0" x="205" y="96" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="219" y="115" text-anchor="middle">−1</text>
+      <rect id="filter-2-1" x="233" y="96" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="247" y="115" text-anchor="middle">0</text>
+      <rect id="filter-2-2" x="261" y="96" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="275" y="115" text-anchor="middle">1</text>
+      <text x="205" y="155">output y (3 × 3)</text>
+      <rect id="output-0-0" x="205" y="170" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="219" y="189" text-anchor="middle">3</text>
+      <rect id="output-0-1" x="233" y="170" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="247" y="189" text-anchor="middle">3</text>
+      <rect id="output-0-2" x="261" y="170" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="275" y="189" text-anchor="middle">0</text>
+      <rect id="output-1-0" x="205" y="198" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="219" y="217" text-anchor="middle">3</text>
+      <rect id="output-1-1" x="233" y="198" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="247" y="217" text-anchor="middle">3</text>
+      <rect id="output-1-2" x="261" y="198" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="275" y="217" text-anchor="middle">0</text>
+      <rect id="output-2-0" x="205" y="226" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="219" y="245" text-anchor="middle">3</text>
+      <rect id="output-2-1" x="233" y="226" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="247" y="245" text-anchor="middle">3</text>
+      <rect id="output-2-2" x="261" y="226" width="28" height="28" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="275" y="245" text-anchor="middle">0</text>
+      <rect id="chosen-output" x="205" y="170" width="28" height="28" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="3"/>
+      <path id="patch-connector" d="M62 40 V30 H180 V184 H205" stroke="#f59e0b" fill="#171717" fill-opacity="0"/>
+      <text x="20" y="220">This orange patch</text><text x="20" y="240">gives the green cell.</text>
+      </svg>
+      ```
+
+      ### Add weighted pixels and a bias
+
+      In “Layers and the forward pass”, a neuron's **score** is its weighted sum plus bias. **Convolution** repeats that calculation across patches. The resulting grid is a **feature map**.
+
+      For a grayscale image and square filter of side $k$, we write
+
+      $$y_{i,j}=\sum_{u=0}^{k-1}\sum_{v=0}^{k-1}w_{u,v}x_{i+u,j+v}+b.$$
+
+      We write $x$ for the image called img in the recap, $w$ for weights and $b$ for one shared bias. Output cell $(i,j)$ comes from the patch whose top-left pixel is at $(i,j)$. Within that patch, $u,v$ select a row and column, so $x_{i+u,j+v}$ selects that pixel. All indices start at zero.
+
+      The inner sum adds weighted pixels across one row, and the outer sum adds those row totals. We can apply ReLU afterwards to keep positive scores and replace negative ones with zero.
+
+      ### Count the output rows and columns
+
+      Keeping each patch inside the image, a height-$H$ image allows row starts from $0$ through $H-k$. Including zero gives $H-k+1$ starts. For image width $W$, moving one pixel at a time along rows and columns gives output shape
+
+      $$(H-k+1,\ W-k+1).$$
+    worked: |
+      Let's compute the diagram's $3\times3$ feature map with bias $b=0$.
+
+      1. **Read the first patch.** At $(0,0)$, each patch row is $(0,0,1)$. All three rows give the same total, so we multiply one row's contribution by three.
+         $$y_{0,0}=3\big((-1)\cdot0+0\cdot0+1\cdot1\big)+0=3.$$
+      2. **Move one column right.** At $(0,1)$, each row is $(0,1,1)$. The middle pixel has weight zero, so the score is still three.
+         $$y_{0,1}=3\big((-1)\cdot0+0\cdot1+1\cdot1\big)+0=3.$$
+      3. **Reach an all-bright patch.** At $(0,2)$, equal brightness on the left and right cancels.
+         $$y_{0,2}=3\big((-1)\cdot1+0\cdot1+1\cdot1\big)+0=0.$$
+
+      Every image row is the same, so every output row is $(3,3,0)$. The first two cells score 3 because their patches contain the dark-to-bright boundary, while the all-bright patch scores 0. The 3s mark the patches containing the edge, not a single exact edge column.
+
+      Multiplying a Python list by 5 repeats its row five times, while multiplying by 3 makes the filter and output rows. The slice x[i:i+3, j:j+3] selects one patch, and max(0, …) applies ReLU to its weighted sum plus bias.
+
+      ```python
+      import numpy as np
+      x = np.array([[0, 0, 1, 1, 1]] * 5)
+      w = np.array([[-1, 0, 1]] * 3)
+      b = 0
+      y = np.array([[0, 0, 0]] * 3)
+      for i in range(3):
+          for j in range(3):
+              y[i, j] = max(0, (x[i:i+3, j:j+3] * w).sum() + b)
+      print(y.tolist())
+      # [[3, 3, 0], [3, 3, 0], [3, 3, 0]]
+      ```
+    problems:
+      [
+        conv-slide-basics,
+        conv-slide-why-zero,
+        conv-score,
+        conv-slide-template,
+        conv-bias-trap,
+        conv-edge-robot,
+        conv-code-patch,
+      ]
+  - id: conv-size
+    title: Work out the output size
+    explain: |
+      ### Add zeros around the image
+
+      Our five-by-five image produces only a three-by-three map. Border pixels appear in fewer patches, so there are fewer chances to detect an edge near the border. We can add a border to keep more positions in the output.
+
+      **Padding** adds a border so patches can extend past the original image without shrinking the output as much. We use zeros because they add no pixel contribution to the weighted sum. Padding $p$ adds $p$ rows above and below and $p$ columns on each side.
+
+      ### Move more than one pixel
+
+      **Stride** $s$ is the distance between neighbouring patch starts. If nearby patches give similar responses, a larger stride can keep a coarser view with fewer cells to calculate, though it may miss details.
+
+      Padding and stride are separate settings. Below, we add zeros to the edge image and separately move two columns between patches on an unpadded row.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 450" aria-label="The same 5 by 5 edge image is padded with one row or column of zeros on every side to give 7 by 7. Below it, orange patches start at columns 0 and 2 in separate copies of a length 5 row, showing stride 2." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="20" y="22">Padding adds zeros on every side.</text>
+      <rect id="pad-0-0" x="20" y="40" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="33" y="58" text-anchor="middle">0</text>
+      <rect id="pad-0-1" x="46" y="40" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="59" y="58" text-anchor="middle">0</text>
+      <rect id="pad-0-2" x="72" y="40" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="85" y="58" text-anchor="middle">0</text>
+      <rect id="pad-0-3" x="98" y="40" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="111" y="58" text-anchor="middle">0</text>
+      <rect id="pad-0-4" x="124" y="40" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="137" y="58" text-anchor="middle">0</text>
+      <rect id="pad-0-5" x="150" y="40" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="163" y="58" text-anchor="middle">0</text>
+      <rect id="pad-0-6" x="176" y="40" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="189" y="58" text-anchor="middle">0</text>
+      <rect id="pad-1-0" x="20" y="66" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="33" y="84" text-anchor="middle">0</text>
+      <rect id="pad-1-1" x="46" y="66" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="59" y="84" text-anchor="middle">0</text>
+      <rect id="pad-1-2" x="72" y="66" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="85" y="84" text-anchor="middle">0</text>
+      <rect id="pad-1-3" x="98" y="66" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="111" y="84" text-anchor="middle">1</text>
+      <rect id="pad-1-4" x="124" y="66" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="137" y="84" text-anchor="middle">1</text>
+      <rect id="pad-1-5" x="150" y="66" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="163" y="84" text-anchor="middle">1</text>
+      <rect id="pad-1-6" x="176" y="66" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="189" y="84" text-anchor="middle">0</text>
+      <rect id="pad-2-0" x="20" y="92" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="33" y="110" text-anchor="middle">0</text>
+      <rect id="pad-2-1" x="46" y="92" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="59" y="110" text-anchor="middle">0</text>
+      <rect id="pad-2-2" x="72" y="92" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="85" y="110" text-anchor="middle">0</text>
+      <rect id="pad-2-3" x="98" y="92" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="111" y="110" text-anchor="middle">1</text>
+      <rect id="pad-2-4" x="124" y="92" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="137" y="110" text-anchor="middle">1</text>
+      <rect id="pad-2-5" x="150" y="92" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="163" y="110" text-anchor="middle">1</text>
+      <rect id="pad-2-6" x="176" y="92" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="189" y="110" text-anchor="middle">0</text>
+      <rect id="pad-3-0" x="20" y="118" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="33" y="136" text-anchor="middle">0</text>
+      <rect id="pad-3-1" x="46" y="118" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="59" y="136" text-anchor="middle">0</text>
+      <rect id="pad-3-2" x="72" y="118" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="85" y="136" text-anchor="middle">0</text>
+      <rect id="pad-3-3" x="98" y="118" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="111" y="136" text-anchor="middle">1</text>
+      <rect id="pad-3-4" x="124" y="118" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="137" y="136" text-anchor="middle">1</text>
+      <rect id="pad-3-5" x="150" y="118" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="163" y="136" text-anchor="middle">1</text>
+      <rect id="pad-3-6" x="176" y="118" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="189" y="136" text-anchor="middle">0</text>
+      <rect id="pad-4-0" x="20" y="144" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="33" y="162" text-anchor="middle">0</text>
+      <rect id="pad-4-1" x="46" y="144" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="59" y="162" text-anchor="middle">0</text>
+      <rect id="pad-4-2" x="72" y="144" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="85" y="162" text-anchor="middle">0</text>
+      <rect id="pad-4-3" x="98" y="144" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="111" y="162" text-anchor="middle">1</text>
+      <rect id="pad-4-4" x="124" y="144" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="137" y="162" text-anchor="middle">1</text>
+      <rect id="pad-4-5" x="150" y="144" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="163" y="162" text-anchor="middle">1</text>
+      <rect id="pad-4-6" x="176" y="144" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="189" y="162" text-anchor="middle">0</text>
+      <rect id="pad-5-0" x="20" y="170" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="33" y="188" text-anchor="middle">0</text>
+      <rect id="pad-5-1" x="46" y="170" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="59" y="188" text-anchor="middle">0</text>
+      <rect id="pad-5-2" x="72" y="170" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="85" y="188" text-anchor="middle">0</text>
+      <rect id="pad-5-3" x="98" y="170" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="111" y="188" text-anchor="middle">1</text>
+      <rect id="pad-5-4" x="124" y="170" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="137" y="188" text-anchor="middle">1</text>
+      <rect id="pad-5-5" x="150" y="170" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="163" y="188" text-anchor="middle">1</text>
+      <rect id="pad-5-6" x="176" y="170" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="189" y="188" text-anchor="middle">0</text>
+      <rect id="pad-6-0" x="20" y="196" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="33" y="214" text-anchor="middle">0</text>
+      <rect id="pad-6-1" x="46" y="196" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="59" y="214" text-anchor="middle">0</text>
+      <rect id="pad-6-2" x="72" y="196" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="85" y="214" text-anchor="middle">0</text>
+      <rect id="pad-6-3" x="98" y="196" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="111" y="214" text-anchor="middle">0</text>
+      <rect id="pad-6-4" x="124" y="196" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="137" y="214" text-anchor="middle">0</text>
+      <rect id="pad-6-5" x="150" y="196" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="163" y="214" text-anchor="middle">0</text>
+      <rect id="pad-6-6" x="176" y="196" width="26" height="26" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="189" y="214" text-anchor="middle">0</text>
+      <rect id="original" x="46" y="66" width="130" height="130" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="3"/>
+      <text x="20" y="247">The first patch starts at column 0.</text>
+      <rect id="stride-first-0-0" x="20" y="260" width="52" height="52" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="46" y="291" text-anchor="middle">0</text>
+      <rect id="stride-first-0-1" x="72" y="260" width="52" height="52" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="98" y="291" text-anchor="middle">0</text>
+      <rect id="stride-first-0-2" x="124" y="260" width="52" height="52" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="150" y="291" text-anchor="middle">1</text>
+      <rect id="stride-first-0-3" x="176" y="260" width="52" height="52" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="202" y="291" text-anchor="middle">1</text>
+      <rect id="stride-first-0-4" x="228" y="260" width="52" height="52" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="254" y="291" text-anchor="middle">1</text>
+      <rect id="start-0" x="20" y="260" width="156" height="52" fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="3"/>
+      <text x="20" y="342">The next patch starts at column 2.</text>
+      <rect id="stride-next-0-0" x="20" y="355" width="52" height="52" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="46" y="386" text-anchor="middle">0</text>
+      <rect id="stride-next-0-1" x="72" y="355" width="52" height="52" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="98" y="386" text-anchor="middle">0</text>
+      <rect id="stride-next-0-2" x="124" y="355" width="52" height="52" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="150" y="386" text-anchor="middle">1</text>
+      <rect id="stride-next-0-3" x="176" y="355" width="52" height="52" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="202" y="386" text-anchor="middle">1</text>
+      <rect id="stride-next-0-4" x="228" y="355" width="52" height="52" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="254" y="386" text-anchor="middle">1</text>
+      <rect id="start-2" x="124" y="355" width="156" height="52" fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="3"/>
+      <text x="20" y="435">Each cell contains a brightness value.</text>
+      </svg>
+      ```
+
+      ### Count the starts that fit
+
+      With stride 1, the padded $7\times7$ image gives side $7-3+1=5$. Its $5\times5$ output has the same size as the original image.
+
+      Rows and columns work the same way. Padding makes the height $H+2p$. A patch of side $k$ can start no later than $H+2p-k$. To count how many full moves of $s$ pixels fit before that limit, we divide by $s$ and round down. Then we add one for the patch starting at zero.
+
+      $$H_{\text{out}}=\left\lfloor\frac{H+2p-k}{s}\right\rfloor+1.$$
+
+      The brackets $\lfloor\ \rfloor$ mean “round down”. For output width, replace image height $H$ with image width $W$. We use the same square filter, padding and stride in both directions.
+
+      For our $5\times5$ image and $k=3$:
+
+      - With $p=0,s=1$, the side is $(5-3)/1+1=3$.
+      - With $p=1,s=1$, it is $(5+2-3)/1+1=5$, so padding preserves the side.
+      - With $p=0,s=2$, it is $\lfloor(5-3)/2\rfloor+1=2$, so stride reduces the work.
+
+      Be careful not to round up. With height 6, $k=3,p=0,s=2$, the side is $\lfloor3/2\rfloor+1=2$, not 3. Starts 0 and 2 fit, but start 4 would extend beyond the image.
+    worked: |
+      Let's use a larger image of $32\times32$ grayscale pixels. We choose $k=5$ to read a larger area and $p=2$ to include patches centred on border pixels. With stride 1, this would preserve the side because $(32+2\cdot2-5)+1=32$. We'll use $s=2$ instead to reduce the number of calculations.
+
+      1. **Include both borders.** Padding adds two pixels at each end.
+         $$32+2\cdot2=36.$$
+      2. **Find the last possible start.** A five-pixel patch must fit inside the padded side.
+         $$36-5=31.$$
+      3. **Count reachable starts.** Stride two reaches the even starts from 0 to 30, but not 31.
+         $$H_{\text{out}}=\lfloor31/2\rfloor+1=\lfloor15.5\rfloor+1=16.$$
+      4. **Count columns the same way.** The width uses identical settings.
+         $$(H_{\text{out}},W_{\text{out}})=(16,16).$$
+
+      Rounding up would invent a seventeenth start at 32, where the patch would not fit.
+    problems:
+      [
+        conv-size-basics,
+        conv-size-why-floor,
+        conv-size-template,
+        conv-size-fixed,
+        conv-padding-trap,
+        conv-stride-robot,
+        conv-width-template,
+      ]
+  - id: conv-channels
+    title: Use filters on a colour image
+    explain: |
+      ### Read all the colour channels
+
+      Each colour grid is called a **channel**. Let's start with a five-by-five RGB image. Every row is $(0,0,1,1,1)$ in red, $(0,0,2,2,2)$ in green and $(0,0,3,3,3)$ in blue.
+
+      We'll return to $k=3$ so each patch is the same size as in step 1. One filter has a separate weight grid for each input channel. We multiply each patch pixel by its matching weight, add the products across all channels and add one bias.
+
+      This time, choose every weight as 1 to make each channel's contribution easy to add, rather than detect an edge. Bias 1 makes it easy to see that one bias joins all three contributions in a single score. The top-left patch contributes 3 from red, 6 from green and 9 from blue.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 495" aria-label="A 5 by 5 RGB image has every row 0 0 1 1 1 in red, 0 0 2 2 2 in green, and 0 0 3 3 3 in blue. Its top-left 3 by 3 patches have matching weight grids filled with ones. Their sums are 3, 6 and 9. Adding bias 1 gives the green output score 19." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="20" y="22">Each channel has its own weights.</text>
+      <text x="20" y="48">Red pixels</text><text x="140" y="48">Red weights</text>
+      <rect id="rgb-patch-0-0-0" x="20" y="60" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="31.5" y="76.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-0-0-1" x="43" y="60" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="54.5" y="76.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-0-0-2" x="66" y="60" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="77.5" y="76.5" text-anchor="middle">1</text>
+      <rect id="rgb-patch-0-1-0" x="20" y="83" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="31.5" y="99.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-0-1-1" x="43" y="83" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="54.5" y="99.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-0-1-2" x="66" y="83" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="77.5" y="99.5" text-anchor="middle">1</text>
+      <rect id="rgb-patch-0-2-0" x="20" y="106" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="31.5" y="122.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-0-2-1" x="43" y="106" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="54.5" y="122.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-0-2-2" x="66" y="106" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="77.5" y="122.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-0-0-0" x="140" y="60" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="151.5" y="76.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-0-0-1" x="163" y="60" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="174.5" y="76.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-0-0-2" x="186" y="60" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="197.5" y="76.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-0-1-0" x="140" y="83" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="151.5" y="99.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-0-1-1" x="163" y="83" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="174.5" y="99.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-0-1-2" x="186" y="83" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="197.5" y="99.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-0-2-0" x="140" y="106" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="151.5" y="122.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-0-2-1" x="163" y="106" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="174.5" y="122.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-0-2-2" x="186" y="106" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="197.5" y="122.5" text-anchor="middle">1</text>
+      <rect id="rgb-window-0" x="20" y="60" width="69" height="69" fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="3"/>
+      <text x="232" y="100">sum = 3</text>
+      <text x="20" y="163">Green pixels</text><text x="140" y="163">Green weights</text>
+      <rect id="rgb-patch-1-0-0" x="20" y="175" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="31.5" y="191.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-1-0-1" x="43" y="175" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="54.5" y="191.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-1-0-2" x="66" y="175" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="77.5" y="191.5" text-anchor="middle">2</text>
+      <rect id="rgb-patch-1-1-0" x="20" y="198" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="31.5" y="214.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-1-1-1" x="43" y="198" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="54.5" y="214.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-1-1-2" x="66" y="198" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="77.5" y="214.5" text-anchor="middle">2</text>
+      <rect id="rgb-patch-1-2-0" x="20" y="221" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="31.5" y="237.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-1-2-1" x="43" y="221" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="54.5" y="237.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-1-2-2" x="66" y="221" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="77.5" y="237.5" text-anchor="middle">2</text>
+      <rect id="rgb-weights-1-0-0" x="140" y="175" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="151.5" y="191.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-1-0-1" x="163" y="175" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="174.5" y="191.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-1-0-2" x="186" y="175" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="197.5" y="191.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-1-1-0" x="140" y="198" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="151.5" y="214.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-1-1-1" x="163" y="198" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="174.5" y="214.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-1-1-2" x="186" y="198" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="197.5" y="214.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-1-2-0" x="140" y="221" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="151.5" y="237.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-1-2-1" x="163" y="221" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="174.5" y="237.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-1-2-2" x="186" y="221" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="197.5" y="237.5" text-anchor="middle">1</text>
+      <rect id="rgb-window-1" x="20" y="175" width="69" height="69" fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="3"/>
+      <text x="232" y="215">sum = 6</text>
+      <text x="20" y="278">Blue pixels</text><text x="140" y="278">Blue weights</text>
+      <rect id="rgb-patch-2-0-0" x="20" y="290" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="31.5" y="306.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-2-0-1" x="43" y="290" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="54.5" y="306.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-2-0-2" x="66" y="290" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="77.5" y="306.5" text-anchor="middle">3</text>
+      <rect id="rgb-patch-2-1-0" x="20" y="313" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="31.5" y="329.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-2-1-1" x="43" y="313" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="54.5" y="329.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-2-1-2" x="66" y="313" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="77.5" y="329.5" text-anchor="middle">3</text>
+      <rect id="rgb-patch-2-2-0" x="20" y="336" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="31.5" y="352.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-2-2-1" x="43" y="336" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="54.5" y="352.5" text-anchor="middle">0</text>
+      <rect id="rgb-patch-2-2-2" x="66" y="336" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="77.5" y="352.5" text-anchor="middle">3</text>
+      <rect id="rgb-weights-2-0-0" x="140" y="290" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="151.5" y="306.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-2-0-1" x="163" y="290" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="174.5" y="306.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-2-0-2" x="186" y="290" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="197.5" y="306.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-2-1-0" x="140" y="313" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="151.5" y="329.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-2-1-1" x="163" y="313" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="174.5" y="329.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-2-1-2" x="186" y="313" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="197.5" y="329.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-2-2-0" x="140" y="336" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="151.5" y="352.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-2-2-1" x="163" y="336" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="174.5" y="352.5" text-anchor="middle">1</text>
+      <rect id="rgb-weights-2-2-2" x="186" y="336" width="23" height="23" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="197.5" y="352.5" text-anchor="middle">1</text>
+      <rect id="rgb-window-2" x="20" y="290" width="69" height="69" fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="3"/>
+      <text x="232" y="330">sum = 9</text>
+      <text x="20" y="392">Add the channel sums and bias 1.</text>
+      <text x="20" y="434">3 + 6 + 9 + 1 =</text>
+      <rect id="rgb-score-0-0" x="200" y="412" width="32" height="32" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="216" y="433" text-anchor="middle">19</text>
+      <rect id="rgb-result" x="200" y="412" width="32" height="32" fill="#10b981" fill-opacity="0.08" stroke="#10b981" stroke-width="3"/>
+      <text x="20" y="477">The green cell is one output score.</text>
+      </svg>
+      ```
+
+      Each filter produces one feature map, which we call an **output channel**. With $C_{\text{in}}$ input channels, a square filter has shape $(C_{\text{in}},k,k)$. Using $C_{\text{out}}$ filters gives CHW output shape
+
+      $$(C_{\text{out}},H_{\text{out}},W_{\text{out}}).$$
+
+      Each output row corresponds to one allowed starting row, and each output column corresponds to one allowed starting column. Adding filters adds channels without changing those spatial counts.
+
+      ### Count the shared parameters
+
+      **Weight sharing** means reusing a filter's weights and bias at every position. An edge can move across the image, and the same weights can still respond when a patch covers it.
+
+      Each filter has $C_{\text{in}}k^2$ weights and one bias. The layer has
+
+      $$C_{\text{out}}(C_{\text{in}}k^2+1)$$
+
+      parameters. Let's apply both the shape and parameter rules to a $32\times32$ RGB image. Suppose we choose 16 filters for patterns such as edges at different angles. With $k=3,p=1,s=1$, the output is $(16,32,32)$, and the parameter count is $16(3\cdot3^2+1)=448$.
+
+    worked: |
+      Let's compare 16 convolutional filters with a fully connected layer producing the same number of outputs from the $32\times32$ colour image.
+
+      1. **Find the output shape.** Padding one preserves each spatial side when $k=3,s=1$.
+         $$H_{\text{out}}=W_{\text{out}}=(32+2-3)+1=32.$$
+      2. **Count shared parameters.** Each filter reads three channels and has one bias.
+         $$16(3\cdot3\cdot3+1)=16\cdot28=448.$$
+      3. **Count inputs and outputs.** Multiplying the CHW sizes gives the number of values in each tensor.
+         $$\text{inputs}=3\cdot32\cdot32=3072,\qquad \text{outputs}=16\cdot32\cdot32=16384.$$
+      4. **Count fully connected parameters.** Each output has a separate weight for every input and its own bias.
+         $$16384\cdot3072+16384=50{,}348{,}032.$$
+
+      That's about 50 million parameters, compared with 448 for convolution. The convolution produces the same number of values with far fewer parameters because it uses small patches and shared weights.
+    problems:
+      [
+        conv-channels-basics,
+        conv-channels-why-small,
+        conv-params-template,
+        conv-shape-template,
+        conv-channels-trap,
+        conv-channels-robot,
+        conv-shape-fixed,
+      ]
+  - id: conv-pool
+    title: Stack layers and shrink their maps
+    explain: |
+      ### Stack one layer after another
+
+      Like fully connected layers, convolutional layers can run in sequence. A second convolution reads the first one's feature map, not the original image. Let's trace which image pixels reach its output.
+
+      A **receptive field** is the input region that can affect one output cell. To recognise a whole object, an output must see all of it. We'll run two $3\times3$ convolutions on a $5\times5$ image, both with stride 1 and no padding.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 310" aria-label="Two stride 1 convolutions with no padding turn a 5 by 5 input into a 3 by 3 first map, then one green output cell. Both arrows are labelled 3 by 3 filter. Only the final output cell is highlighted. The blank grids show sizes." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="20" y="22">Two convolutions run in sequence.</text>
+      <text x="20" y="49">5 × 5 image</text><text x="208" y="49">3 × 3 first map</text>
+      <rect id="rf-0-0" x="20" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-0-1" x="44" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-0-2" x="68" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-0-3" x="92" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-0-4" x="116" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-1-0" x="20" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-1-1" x="44" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-1-2" x="68" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-1-3" x="92" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-1-4" x="116" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-2-0" x="20" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-2-1" x="44" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-2-2" x="68" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-2-3" x="92" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-2-4" x="116" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-3-0" x="20" y="137" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-3-1" x="44" y="137" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-3-2" x="68" y="137" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-3-3" x="92" y="137" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-3-4" x="116" y="137" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-4-0" x="20" y="161" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-4-1" x="44" y="161" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-4-2" x="68" y="161" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-4-3" x="92" y="161" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-4-4" x="116" y="161" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rfmap-0-0" x="208" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rfmap-0-1" x="232" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rfmap-0-2" x="256" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rfmap-1-0" x="208" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rfmap-1-1" x="232" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rfmap-1-2" x="256" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rfmap-2-0" x="208" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rfmap-2-1" x="232" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rfmap-2-2" x="256" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <path d="M145 101 H196 M190 95 L196 101 L190 107 M244 145 V201 M238 195 L244 201 L250 195" stroke="#737373" fill="#171717" fill-opacity="0"/>
+      <text x="146" y="76">3 × 3</text><text x="146" y="94">filter</text>
+      <text x="265" y="163">3 × 3</text><text x="265" y="181">filter</text>
+      <rect id="rf-final-0-0" x="232" y="208" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="rf-result" x="232" y="208" width="24" height="24" fill="#10b981" fill-opacity="0.08" stroke="#10b981" stroke-width="3"/>
+      <text x="20" y="268">One final cell depends on</text><text x="20" y="290">the whole 5 × 5 input patch.</text>
+      </svg>
+      ```
+
+      The final cell reads a $3\times3$ patch of the first map. Across a row, those map cells read image patches starting at columns 0, 1 and 2. Each spans three pixels, so together they cover columns 0 through 4, giving $3+(3-1)=5$ pixels. The same count applies down a column.
+
+      After one layer, the first start covers $k$ pixels. To combine $k$ neighbouring map cells, the last start is $k-1$ pixels further along. So each further stride-1 layer grows the region by $k-1$. Before any layers, each pixel depends on itself, giving side 1. After $L$ layers, the side is
+
+      $$1+L(k-1).$$
+
+      For the picture, $L=2,k=3$ gives $1+2(3-1)=5$. This rule assumes stride 1 without pooling between convolutions.
+
+      ### Keep the strongest nearby response
+
+      We can shrink maps to reduce work for the next layer. **Max pooling** takes the largest value in each patch, separately in each channel, with no weights or biases.
+
+      The pooling patch's side plays the role of $k$ in the size formula. With input map height $H$ and $k=2,s=2,p=0$, we get
+
+      $$H_{\text{out}}=\lfloor(H-2)/2\rfloor+1.$$
+
+      This halves even-sized sides without changing channels, while odd sides lose the last incomplete patch.
+
+      Pooling combines neighbouring map cells, so its output covers more of the image, helping it see larger objects. Let's trace a $2\times2$ pooling patch after one stride-1 $3\times3$ convolution.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 620" aria-label="Four copies of the same 4 by 4 image region show the overlapping 3 by 3 patches for convolution map cells A, B, C and D. Their starts are respectively (0,0), (0,1), (1,0), (1,1). Orange outlines mark the patch in each copy. Pooling map cells A, B, C and D produces one green cell depending on their combined 4 by 4 region." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="20" y="22">Four map cells read overlapping patches.</text>
+      <text x="20" y="50">A starts at (0,0).</text>
+      <rect id="pool-region-0-0-0-0" x="20" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-0-1" x="44" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-0-2" x="68" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-0-3" x="92" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-1-0" x="20" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-1-1" x="44" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-1-2" x="68" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-1-3" x="92" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-2-0" x="20" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-2-1" x="44" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-2-2" x="68" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-2-3" x="92" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-3-0" x="20" y="137" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-3-1" x="44" y="137" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-3-2" x="68" y="137" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-0-3-3" x="92" y="137" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-patch-0-0" x="20" y="65" width="72" height="72" fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="3"/>
+      <text x="205" y="50">B starts at (0,1).</text>
+      <rect id="pool-region-0-1-0-0" x="205" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-0-1" x="229" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-0-2" x="253" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-0-3" x="277" y="65" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-1-0" x="205" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-1-1" x="229" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-1-2" x="253" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-1-3" x="277" y="89" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-2-0" x="205" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-2-1" x="229" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-2-2" x="253" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-2-3" x="277" y="113" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-3-0" x="205" y="137" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-3-1" x="229" y="137" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-3-2" x="253" y="137" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-0-1-3-3" x="277" y="137" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-patch-0-1" x="229" y="65" width="72" height="72" fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="3"/>
+      <text x="20" y="200">C starts at (1,0).</text>
+      <rect id="pool-region-1-0-0-0" x="20" y="215" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-0-1" x="44" y="215" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-0-2" x="68" y="215" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-0-3" x="92" y="215" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-1-0" x="20" y="239" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-1-1" x="44" y="239" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-1-2" x="68" y="239" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-1-3" x="92" y="239" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-2-0" x="20" y="263" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-2-1" x="44" y="263" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-2-2" x="68" y="263" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-2-3" x="92" y="263" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-3-0" x="20" y="287" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-3-1" x="44" y="287" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-3-2" x="68" y="287" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-0-3-3" x="92" y="287" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-patch-1-0" x="20" y="239" width="72" height="72" fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="3"/>
+      <text x="205" y="200">D starts at (1,1).</text>
+      <rect id="pool-region-1-1-0-0" x="205" y="215" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-0-1" x="229" y="215" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-0-2" x="253" y="215" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-0-3" x="277" y="215" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-1-0" x="205" y="239" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-1-1" x="229" y="239" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-1-2" x="253" y="239" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-1-3" x="277" y="239" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-2-0" x="205" y="263" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-2-1" x="229" y="263" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-2-2" x="253" y="263" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-2-3" x="277" y="263" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-3-0" x="205" y="287" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-3-1" x="229" y="287" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-3-2" x="253" y="287" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-region-1-1-3-3" x="277" y="287" width="24" height="24" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-patch-1-1" x="229" y="239" width="72" height="72" fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="3"/>
+      <text x="20" y="348">Each grid is the same 4 × 4 image region.</text>
+      <text x="20" y="380">Pool map cells A, B, C and D.</text>
+      <rect id="pool-map-0-0" x="135" y="400" width="30" height="30" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="150" y="420" text-anchor="middle">A</text>
+      <rect id="pool-map-0-1" x="165" y="400" width="30" height="30" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="180" y="420" text-anchor="middle">B</text>
+      <rect id="pool-map-1-0" x="135" y="430" width="30" height="30" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="150" y="450" text-anchor="middle">C</text>
+      <rect id="pool-map-1-1" x="165" y="430" width="30" height="30" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/><text x="180" y="450" text-anchor="middle">D</text>
+      <rect id="pool-map-all" x="135" y="400" width="60" height="60" fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-width="3"/>
+      <path d="M165 472 V505 M159 499 L165 505 L171 499" stroke="#737373" fill="#171717" fill-opacity="0"/>
+      <text x="190" y="493">max</text>
+      <rect id="pool-final-0-0" x="150" y="515" width="30" height="30" fill="#d4d4d4" fill-opacity="0.25" stroke="#737373"/>
+      <rect id="pool-result" x="150" y="515" width="30" height="30" fill="#10b981" fill-opacity="0.08" stroke="#10b981" stroke-width="3"/>
+      <text x="20" y="578">One pooled cell depends on</text>
+      <text x="20" y="600">all four overlapping image patches.</text>
+      </svg>
+      ```
+
+      Across a row, the overlapping patches start at columns 0 and 1 and cover columns 0 through 3. The same holds down a column, giving this pooled cell a $4\times4$ image region.
+
+      ### Limitations
+
+      Pooling discards the maximum's position within its patch. If we need to know exactly which column an edge is in, we can skip pooling.
+    worked: |
+      Let's shrink a $4\times4$ feature map using $2\times2$ max pooling with stride 2 and no padding. The row and column labels are indices.
+
+      | Row / column | 0 | 1 | 2 | 3 |
+      | --- | --- | --- | --- | --- |
+      | 0 | 1 | 3 | 2 | 0 |
+      | 1 | 4 | 2 | 1 | 5 |
+      | 2 | 0 | 1 | 6 | 2 |
+      | 3 | 2 | 3 | 1 | 4 |
+
+      1. **Take the first maximum.** The top-left block is $\begin{pmatrix}1&3\\4&2\end{pmatrix}$, so we keep its largest value.
+         $$\max(1,3,4,2)=4.$$
+      2. **Move to the other patches.** The top-right block is $\begin{pmatrix}2&0\\1&5\end{pmatrix}$, whose largest value is 5. The bottom-left block is $\begin{pmatrix}0&1\\2&3\end{pmatrix}$, whose largest value is 3. The bottom-right block is $\begin{pmatrix}6&2\\1&4\end{pmatrix}$, whose largest value is 6.
+         $$\text{pooled map}=\begin{pmatrix}4&5\\3&6\end{pmatrix}.$$
+      3. **Check the size.** The patch-counting formula gives two starts on each side.
+         $$\lfloor(4-2)/2\rfloor+1=2.$$
+
+      We have reduced sixteen map cells to four by keeping one maximum from each block.
+    problems:
+      [
+        conv-pool-basics,
+        conv-pool-why-four,
+        conv-pool-value,
+        conv-pool-template,
+        conv-field-template,
+        conv-field-trap,
+        conv-pool-robot,
+      ]
+final: conv-explain
+summary: |
+  - A convolutional layer's feature maps form CHW output $(C_{\text{out}},H_{\text{out}},W_{\text{out}})$, with $H_{\text{out}}=\lfloor(H+2p-k)/s\rfloor+1$ for image height $H$ and $W_{\text{out}}=\lfloor(W+2p-k)/s\rfloor+1$ for image width $W$.
+  - Weight sharing reuses each filter's weights and bias across positions, so the layer needs $C_{\text{out}}(C_{\text{in}}k^2+1)$ parameters.
+  - Max pooling keeps the largest value in each patch without weights or biases.
+  - Stacking $L$ stride-1 convolutions of side $k$, without pooling, gives receptive-field side $1+L(k-1)$.
+
+  **Next:** In the image-classifier project, you'll build a network that labels whole images by putting these layers together.

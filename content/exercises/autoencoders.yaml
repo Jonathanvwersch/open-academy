@@ -1,0 +1,657 @@
+concept: autoencoders
+exercises:
+  - id: ae-encode-decode-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the encoder of an autoencoder do?
+    options:
+      - id: a
+        text: It turns the input into a shorter list of numbers, the latent vector
+        correct: true
+        feedback: The encoder squeezes $n$ input numbers into $k$ latent numbers, with $k$ smaller than $n$.
+      - id: b
+        text: It turns the latent vector back into a full-size input
+        correct: false
+        feedback: That's the decoder, the second half of the network.
+      - id: c
+        text: It sorts the input into a category, such as cat or dog
+        correct: false
+        feedback: An autoencoder doesn't sort inputs into categories; its encoder produces a short summary of the input.
+    solution: The encoder turns an input of $n$ numbers into a latent vector of $k$ numbers, with $k$ smaller than $n$. The decoder then rebuilds the input from it.
+  - id: aep-encode-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, the image $x=(0.8,0.8,0.2,0.2)$ gave the latent vector $z=(0.8,0.2)$. Why is the first latent number $0.8$?
+    options:
+      - id: a
+        text: The first row of $W_e$ averages the two top-row pixels, and both are $0.8$
+        correct: true
+      - id: b
+        text: The encoder copies the first pixel and drops the rest
+        correct: false
+        feedback: The first row of $W_e$ is $(0.5,0.5,0,0)$, so it uses both top-row pixels, not just the first.
+      - id: c
+        text: It adds the two top-row pixels
+        correct: false
+        feedback: Adding would give $0.8+0.8=1.6$; each weight is $0.5$, so the row takes their average.
+    solution: The first row of $W_e$ is $(0.5,0.5,0,0)$, so $z_1=0.5\cdot0.8+0.5\cdot0.8=0.8$, the average of the top row.
+  - id: aep-flatten-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A $2\times2$ grayscale image has top row $0.1,\ 0.2$ and bottom row $0.3,\ 0.4$. Which vector does flattening it, row by row, give?
+    options:
+      - id: a
+        text: $(0.1,0.2,0.3,0.4)$
+        correct: true
+      - id: b
+        text: $(0.1,0.3,0.2,0.4)$
+        correct: false
+        feedback: That reads down the columns; flattening lays the rows end to end.
+      - id: c
+        text: $(0.25)$, the average brightness
+        correct: false
+        feedback: Flattening keeps every pixel; it only changes the grid into one list.
+    solution: Laying the rows end to end gives the top row then the bottom row, $(0.1,0.2,0.3,0.4)$.
+  - id: aep-encode-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The lesson's encoder has first row $(0.5,0.5,0,0)$ and bias $0$. What is the first latent number $z_1$ for the image $x=({{= p/10 }},{{= q/10 }},0.2,0.2)$?
+    params:
+      p:
+        min: 1
+        max: 9
+        step: 1
+      q:
+        min: 1
+        max: 9
+        step: 1
+    answer_expr: (p + q) / 20
+    tolerance: { abs: 0.0001 }
+    common_wrong:
+      - answer_expr: (p + q) / 10
+        category: math_error
+        feedback: That adds the two top-row pixels; each weight is $0.5$, so $z_1$ is their average.
+    solution: $z_1=0.5\cdot{{= p/10 }}+0.5\cdot{{= q/10 }}={{= (p+q)/20 }}$, the average of the two top-row pixels.
+  - id: aep-decode-value
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The lesson's decoder has rows $(1,0)$, $(1,0)$, $(0,1)$ and $(0,1)$, and bias $0$. It reads the latent vector $z=(0.3,0.9)$. What is the third rebuilt pixel, $\hat x_3$?
+    answer: 0.9
+    tolerance: { abs: 0.0001 }
+    common_wrong:
+      - answer: 0.3
+        category: math_error
+        feedback: That's the first latent number; the third row, $(0,1)$, picks out the second one.
+      - answer: 1.2
+        category: math_error
+        feedback: That adds both latent numbers; the row $(0,1)$ multiplies the first by $0$.
+    solution: The third row of $W_d$ is $(0,1)$, so $\hat x_3=0\cdot0.3+1\cdot0.9=0.9$. The bottom-row pixels copy the second latent number.
+  - id: aep-decoder-shape
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An encoder turns $6$ numbers into a latent vector of $3$. The decoder's weight matrix $W_d$ has one row per neuron and one column per input it reads. What is its shape?
+    options:
+      - id: a
+        text: $6\times3$
+        correct: true
+      - id: b
+        text: $3\times6$
+        correct: false
+        feedback: That's the encoder's shape; the decoder reads $3$ numbers and outputs $6$.
+      - id: c
+        text: $6\times6$
+        correct: false
+        feedback: The decoder reads only the $3$ latent numbers, not the $6$ inputs.
+    solution: The decoder has $6$ neurons, one per rebuilt number, each reading the $3$ latent numbers, so $W_d$ is $6\times3$.
+  - id: aep-column-stripes
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: Suppose all our $2\times2$ images are vertical stripes instead, where both pixels in a column match, such as $(0.8,0.2,0.8,0.2)$ after flattening row by row. Which encoder row makes a latent number equal to the left column's brightness?
+    options:
+      - id: a
+        text: $(0.5,0,0.5,0)$
+        correct: true
+      - id: b
+        text: $(0.5,0.5,0,0)$
+        correct: false
+        feedback: That averages the top row, which mixes the left and right columns, giving $0.5$ here.
+      - id: c
+        text: $(1,0,1,0)$
+        correct: false
+        feedback: That adds the two left pixels, giving $1.6$; weights of $0.5$ make it an average.
+    solution: Flattened row by row, the left column is pixels 1 and 3, so the row $(0.5,0,0.5,0)$ averages them, giving $0.5\cdot0.8+0.5\cdot0.8=0.8$.
+  - id: ae-reconstruction-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is an autoencoder trained to output?
+    options:
+      - id: a
+        text: A copy of its own input
+        correct: true
+        feedback: The input is also the target, and training makes the reconstruction error small.
+      - id: b
+        text: A label chosen by a person for each input
+        correct: false
+        feedback: An autoencoder needs no labels; its target is the input itself.
+      - id: c
+        text: The latent vector, as long as possible
+        correct: false
+        feedback: The latent vector is the short middle, and the output is the rebuilt input.
+    solution: An autoencoder is trained to rebuild its input, so the input is its own target and no labels are needed.
+  - id: aep-recon-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, the differences were $-0.2$, $0.2$, $0$ and $0$. Why do we square them before adding?
+    options:
+      - id: a
+        text: Otherwise $-0.2$ and $0.2$ cancel to $0$, as if the copy were perfect
+        correct: true
+      - id: b
+        text: Squaring makes small differences bigger, so training notices them
+        correct: false
+        feedback: Squaring makes $0.2$ smaller, $0.04$; the point is that every miss counts as positive.
+      - id: c
+        text: Squaring turns the differences back into pixel values
+        correct: false
+        feedback: The squares measure how big each miss is; they aren't pixels.
+    solution: Adding the raw differences gives $0$ because the misses cancel. Squares are never negative, so $E=0.04+0.04=0.08$ counts both misses.
+  - id: aep-no-labels
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A team has a million robot camera frames and no labels. Why can they still train an autoencoder on them?
+    options:
+      - id: a
+        text: Each frame is its own target, so the reconstruction error needs only the frame
+        correct: true
+      - id: b
+        text: The encoder makes up labels for the frames as it trains
+        correct: false
+        feedback: No labels are made; the error compares the rebuilt frame with the frame itself.
+      - id: c
+        text: They can't; every network needs labelled examples
+        correct: false
+        feedback: An autoencoder's target is its input, so unlabelled frames are enough.
+    solution: The reconstruction error compares $\hat x$ with $x$, and both come from the frame itself, so no labels are needed.
+  - id: aep-error-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: Using the lesson's weights, the image $x=({{= a/10 }},{{= b/10 }},0.2,0.2)$ is rebuilt as $\hat x=({{= (a+b)/20 }},{{= (a+b)/20 }},0.2,0.2)$. What is its reconstruction error $E$?
+    params:
+      a:
+        min: 5
+        max: 9
+        step: 1
+      b:
+        min: 1
+        max: 4
+        step: 1
+    answer_expr: (a - b)^2 / 200
+    tolerance: { abs: 0.00001 }
+    common_wrong:
+      - answer_expr: "0 * a"
+        category: math_error
+        feedback: The two differences cancel when added; square each one first.
+      - answer_expr: (a - b) / 10
+        category: math_error
+        feedback: That adds the sizes of the differences without squaring them; square each before adding.
+    solution: The differences are ${{= (a+b)/20 }}-{{= a/10 }}={{= (b-a)/20 }}$ and ${{= (a+b)/20 }}-{{= b/10 }}={{= (a-b)/20 }}$, then $0$ and $0$. So $E=2\times{{= (a-b)/20 }}^2={{= (a-b)^2/200 }}$.
+  - id: aep-flat-grey-error
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An autoencoder with a latent vector of $1$ number keeps the average of all four pixels and rebuilds every pixel as that average. What is $E$ for the stripe image $x=(0.9,0.9,0.1,0.1)$?
+    answer: 0.64
+    tolerance: { abs: 0.0001 }
+    common_wrong:
+      - answer: 0
+        category: math_error
+        feedback: The differences $0.4$ and $-0.4$ cancel when added; square each before adding.
+      - answer: 0.32
+        category: math_error
+        feedback: That counts only two pixels; all four are $0.4$ away from the average.
+    solution: The average is $(0.9+0.9+0.1+0.1)/4=0.5$, so every pixel is rebuilt as $0.5$. Each is $0.4$ away, so $E=4\times0.4^2=0.64$.
+  - id: aep-wide-latent
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An autoencoder for $4$-pixel images has a latent vector of $4$ numbers, and it reaches $E=0$ on every image, stripes or not. Why is that latent vector not useful?
+    options:
+      - id: a
+        text: It can pass each pixel straight through, so it hasn't had to find any pattern
+        correct: true
+      - id: b
+        text: An error of $0$ means the training went wrong
+        correct: false
+        feedback: $E=0$ is fine on its own; the problem is that nothing forced it to learn a pattern.
+      - id: c
+        text: A latent vector must have exactly half as many numbers as the input
+        correct: false
+        feedback: There's no fixed ratio; it only has to be narrow enough to force a summary.
+    solution: With as many latent numbers as pixels, copying every pixel through gives a perfect copy, so the latent vector is no shorter and no more useful than the image.
+  - id: aep-vertical-stripes
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: The lesson's network, built for horizontal stripes, is given the vertical-stripe image $x=(0.8,0.2,0.8,0.2)$. What is its reconstruction error $E$?
+    answer: 0.36
+    tolerance: { abs: 0.0001 }
+    common_wrong:
+      - answer: 0
+        category: math_error
+        feedback: The rebuilt image is flat grey, not a copy; add the squared differences.
+      - answer: 0.18
+        category: math_error
+        feedback: That counts only two pixels; all four miss by $0.3$.
+    solution: Each row averages to $0.5$, so $z=(0.5,0.5)$ and $\hat x=(0.5,0.5,0.5,0.5)$. Every pixel misses by $0.3$, so $E=4\times0.3^2=0.36$.
+  - id: aep-robot-unusual
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: An autoencoder trained on a warehouse robot's ordinary camera frames usually gets a small $E$. One frame suddenly gets a large $E$. What's the best reading?
+    options:
+      - id: a
+        text: The frame is unlike the training frames, so something unusual may be in view
+        correct: true
+      - id: b
+        text: The frame is especially clear, so it has more detail to rebuild
+        correct: false
+        feedback: A large error means the network couldn't rebuild the frame well, which happens when it doesn't fit the learned patterns.
+      - id: c
+        text: The latent vector must have become longer for that frame
+        correct: false
+        feedback: The latent length is fixed by the network's layers; it's the same for every frame.
+    solution: The network learned to rebuild frames like its training frames, so a large $E$ flags a frame that doesn't fit those patterns, such as an obstacle in an aisle.
+  - id: ae-sizes-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does an autoencoder's compression factor $n/k$ tell us?
+    options:
+      - id: a
+        text: How many input numbers there are for each latent number
+        correct: true
+        feedback: It divides the input length $n$ by the latent length $k$.
+      - id: b
+        text: How many parameters the network has
+        correct: false
+        feedback: Parameters are counted separately, as $kn+k$ and $nk+n$.
+      - id: c
+        text: How close the reconstruction is to the input
+        correct: false
+        feedback: That's the reconstruction error $E$; the factor only compares lengths.
+    solution: $n/k$ divides the input length by the latent length, so it says how many input numbers each latent number stands for.
+  - id: aep-sizes-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, the decoder had $25{,}872$ parameters and the encoder $25{,}120$. Why does the decoder have more?
+    options:
+      - id: a
+        text: It has $784$ neurons, each with a bias, while the encoder has $32$
+        correct: true
+      - id: b
+        text: It has more weights than the encoder
+        correct: false
+        feedback: Both halves have $784\times32=25{,}088$ weights; the difference is in the biases.
+      - id: c
+        text: It has to remember every training image
+        correct: false
+        feedback: The parameters are shared by all images; none of them stores a particular image.
+    solution: Both halves have $nk=25{,}088$ weights. The decoder adds $784$ biases and the encoder $32$, a difference of $752$.
+  - id: aep-flat-length-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A grayscale image has height {{= h }} and width {{= w }}. How many numbers are in its flattened input vector?
+    params:
+      h:
+        min: 8
+        max: 40
+        step: 4
+      w:
+        min: 8
+        max: 40
+        step: 4
+    answer_expr: h * w
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer_expr: h + w
+        category: math_error
+        feedback: That adds the sides; flattening keeps every pixel, so multiply them.
+    solution: Flattening lays {{= h }} rows of {{= w }} pixels end to end, giving ${{= h }}\times{{= w }}={{= h*w }}$ numbers.
+  - id: aep-ratio-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An autoencoder squeezes RGB images of {{= s }} by {{= s }} pixels into a latent vector of {{= k }} numbers. What is its compression factor?
+    params:
+      s:
+        min: 8
+        max: 32
+        step: 8
+      k:
+        min: 16
+        max: 64
+        step: 16
+    answer_expr: 3 * s * s / k
+    tolerance: { abs: 0.0001 }
+    common_wrong:
+      - answer_expr: s * s / k
+        category: math_error
+        feedback: That forgets the three colour channels; the input has $3$ numbers per pixel.
+    solution: The input has ${{= s }}\times{{= s }}\times3={{= 3*s*s }}$ numbers, so the factor is ${{= 3*s*s }}/{{= k }}={{= 3*s*s/k }}$.
+  - id: aep-encoder-params-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A one-layer encoder turns {{= n }} input numbers into a latent vector of {{= k }}. How many parameters does it have?
+    params:
+      n:
+        min: 50
+        max: 200
+        step: 50
+      k:
+        min: 4
+        max: 16
+        step: 4
+    answer_expr: k * n + k
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - answer_expr: k * n
+        category: math_error
+        feedback: That counts the weights only; add one bias for each of the {{= k }} neurons.
+      - answer_expr: k * n + n
+        category: math_error
+        feedback: That adds a bias per input; the biases belong to the {{= k }} encoder neurons.
+    solution: The encoder has {{= k }} neurons, each with {{= n }} weights and one bias, so it has ${{= k }}\times{{= n }}+{{= k }}={{= k*n+k }}$ parameters.
+  - id: aep-batch-latent-shape
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A batch of $16$ digit images, each flattened to $784$ numbers, goes through an encoder with a latent vector of $32$. What shape is the batch of latent vectors?
+    options:
+      - id: a
+        text: $16\times32$
+        correct: true
+      - id: b
+        text: $32\times16$
+        correct: false
+        feedback: Each image keeps its own row, so the $16$ images are the rows.
+      - id: c
+        text: $16\times784$
+        correct: false
+        feedback: That's the input batch; the encoder shrinks each row to $32$ numbers.
+    solution: Each of the $16$ rows is one image, and the encoder turns each row's $784$ numbers into $32$, giving $16\times32$.
+  - id: aep-params-vs-pixels
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A classmate says the digit autoencoder, with $50{,}992$ parameters, can't be compressing anything, because that's more than the $784$ pixels in a digit. What's wrong with this?
+    options:
+      - id: a
+        text: The parameters are stored once and shared by every image, while each image shrinks to $32$ numbers
+        correct: true
+      - id: b
+        text: Nothing; the autoencoder makes each image take more space
+        correct: false
+        feedback: Each image is stored as $32$ latent numbers instead of $784$ pixels.
+      - id: c
+        text: Most of the parameters are zero, so they don't count
+        correct: false
+        feedback: Trained weights are generally not zero; the point is that they're shared.
+    solution: "Compression is about each image: $784$ pixels become $32$ latent numbers. The network's parameters are a one-off cost shared across all images."
+  - id: aep-robot-camera-ratio
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot's camera gives $96\times96$ RGB frames, and its autoencoder has a latent vector of $64$ numbers. What is the compression factor?
+    answer: 432
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 144
+        category: math_error
+        feedback: That forgets the three colour channels; each pixel has $3$ numbers.
+      - answer: 4.5
+        category: math_error
+        feedback: That divides one side, $288/64$; flatten the whole image first.
+    solution: The frame has $96\times96\times3=27{,}648$ numbers, and $27{,}648/64=432$.
+  - id: ae-latent-space-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is an autoencoder's latent space?
+    options:
+      - id: a
+        text: The space of all latent vectors, with one axis for each latent number
+        correct: true
+        feedback: Each image's latent vector is one point in it.
+      - id: b
+        text: The empty space left over after the image is compressed
+        correct: false
+        feedback: It's a space of points, one for each latent vector, not leftover room.
+      - id: c
+        text: The grid of pixels in the rebuilt image
+        correct: false
+        feedback: Those are the decoder's outputs; latent space holds the short vectors in the middle.
+    solution: Latent space has one axis per latent number, so each image's latent vector is a point in it, and similar images usually land close together.
+  - id: aep-space-self-explain
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is the distance from $z_A=(0.8,0.2)$ to $z_C=(0.5,0.6)$ equal to $0.5$?
+    options:
+      - id: a
+        text: The differences are $-0.3$ and $0.4$, and $\sqrt{0.09+0.16}=0.5$
+        correct: true
+      - id: b
+        text: The differences $0.3$ and $0.4$ add up to roughly $0.5$
+        correct: false
+        feedback: They add to $0.7$; distance squares them, adds and takes the square root.
+      - id: c
+        text: C's numbers add to $1.1$ and A's to $1$, and it rounds to $0.5$
+        correct: false
+        feedback: Distance compares the matching numbers one by one, not the totals.
+    solution: $0.5-0.8=-0.3$ and $0.6-0.2=0.4$, so the distance is $\sqrt{0.09+0.16}=\sqrt{0.25}=0.5$.
+  - id: aep-distance-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Two images have latent vectors $({{= p/10 }},0.1)$ and $({{= p/10 + 3*m/10 }},{{= 0.1 + 4*m/10 }})$. How far apart are they in latent space?
+    params:
+      p:
+        min: 0
+        max: 4
+        step: 1
+      m:
+        min: 1
+        max: 3
+        step: 1
+    answer_expr: m / 2
+    tolerance: { abs: 0.0001 }
+    common_wrong:
+      - answer_expr: 7 * m / 10
+        category: math_error
+        feedback: That adds the differences; square them, add and take the square root.
+    solution: The differences are ${{= 3*m/10 }}$ and ${{= 4*m/10 }}$, so the distance is $\sqrt{ {{= 9*m*m/100 }}+{{= 16*m*m/100 }} }=\sqrt{ {{= m*m/4 }} }={{= m/2 }}$.
+  - id: aep-closest-image
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: A query image has the latent vector $(0.6,0.6)$. Which stored image is closest to it in latent space?
+    options:
+      - id: a
+        text: Image P, at $(0.7,0.4)$
+        correct: true
+      - id: b
+        text: Image Q, at $(0.3,0.6)$
+        correct: false
+        feedback: Q is $0.3$ away; P is $\sqrt{0.01+0.04}\approx0.22$ away.
+      - id: c
+        text: Image R, at $(0.9,0.8)$
+        correct: false
+        feedback: R is $\sqrt{0.09+0.04}\approx0.36$ away; P is about $0.22$ away.
+    solution: The distances are $\sqrt{0.1^2+0.2^2}\approx0.22$ for P, $0.3$ for Q and $\sqrt{0.3^2+0.2^2}\approx0.36$ for R, so P is closest.
+  - id: aep-world-model-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Why does a world model often predict the robot's next latent vector rather than its next camera image?
+    options:
+      - id: a
+        text: The latent vector is far shorter and keeps what's needed to rebuild the image
+        correct: true
+      - id: b
+        text: Latent vectors are always exactly right, while images are noisy
+        correct: false
+        feedback: Latent vectors can lose details; they're used because they're short summaries.
+      - id: c
+        text: The camera image can't be stored as numbers
+        correct: false
+        feedback: An image is a tensor of numbers; there are just a lot of them.
+    solution: Predicting, say, $256$ latent numbers is far easier than all $12{,}288$ numbers of the frame, and the latent vector still keeps what the decoder needs to rebuild the image.
+  - id: aep-latent-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: After training a stripe autoencoder on many images, you find its latent vectors look like $(a+b,\ a-b)$, where $a$ and $b$ are the row brightnesses. What does this show?
+    options:
+      - id: a
+        text: Training found a different but equally good code, since the decoder can recover $a$ and $b$
+        correct: true
+      - id: b
+        text: Training failed, because $z_1$ should be the top row's brightness
+        correct: false
+        feedback: Nothing forces that meaning; any code the decoder can rebuild from is equally good.
+      - id: c
+        text: The latent vector has lost the bottom row's brightness
+        correct: false
+        feedback: $b=(z_1-z_2)/2$, so nothing is lost.
+    solution: Training only rewards good copies. From $(a+b,\ a-b)$ the decoder gets $a=(z_1+z_2)/2$ and $b=(z_1-z_2)/2$, so this code rebuilds stripes perfectly too.
+  - id: aep-small-detail
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot's autoencoder rebuilds table scenes well, but a small screw covering a few pixels often vanishes from the rebuilt image. Why?
+    options:
+      - id: a
+        text: The few pixels barely change $E$, so the short latent vector spends its numbers on bigger patterns
+        correct: true
+      - id: b
+        text: The decoder deletes objects it doesn't recognise
+        correct: false
+        feedback: The decoder rebuilds whatever the latent vector holds; the screw was never kept in it.
+      - id: c
+        text: Flattening the image removes small objects
+        correct: false
+        feedback: Flattening keeps every pixel; the loss happens in the narrow middle.
+    solution: $E$ counts every pixel equally, so a few wrong pixels add little error, and training uses the few latent numbers on patterns that cover many pixels.
+  - id: aep-sum-difference
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A stripe autoencoder's latent vector is $z=(a+b,\ a-b)$, where $a$ is the top row's brightness and $b$ is the bottom row's. An image has $z=(1.0,\ 0.6)$. What is the top row's brightness $a$?
+    answer: 0.8
+    tolerance: { abs: 0.0001 }
+    common_wrong:
+      - answer: 0.2
+        category: math_error
+        feedback: That's $b=(z_1-z_2)/2$, the bottom row; the top row is $(z_1+z_2)/2$.
+      - answer: 1.6
+        category: math_error
+        feedback: That's $z_1+z_2=2a$; halve it.
+    solution: Adding the two latent numbers gives $(a+b)+(a-b)=2a=1.6$, so $a=0.8$ (and $b=0.2$).
+  - id: ae-explain-latent
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: A robot team wants a short summary of each $64\times64$ RGB camera frame, but nobody has labelled the frames. Explain how an autoencoder can learn such a summary from the frames alone, compare the input length with a latent vector of $256$ numbers, and say why the latent vector has to be shorter than the input.
+    rubric:
+      - id: mechanism
+        criterion: Describe the encoder squeezing the frame into a latent vector and the decoder rebuilding the frame from it, trained to make the reconstruction error small with the frame itself as the target, so no labels are needed.
+        weight: 1
+        required: true
+      - id: sizes
+        criterion: Give the input length $64\times64\times3=12{,}288$ and the compression factor $12{,}288/256=48$.
+        weight: 1
+        required: true
+      - id: bottleneck
+        criterion: Explain that a latent vector as long as the input could pass every pixel straight through, while a short one forces the network to keep the patterns that matter for rebuilding the frame.
+        weight: 1
+        required: true
+    exemplar: The encoder turns each frame into a latent vector of $256$ numbers, and the decoder rebuilds the frame from that vector. Training compares the rebuilt frame with the frame itself, squaring and adding the pixel differences, and nudges the weights to make that error small, so the frames are their own targets and need no labels. A frame flattens to $64\times64\times3=12{,}288$ numbers, so the compression factor is $12{,}288/256=48$. The latent vector must be shorter than the input, because otherwise the network could copy each pixel straight through and learn nothing; squeezing through $256$ numbers forces it to keep the patterns that matter most for rebuilding the frame.
+    solution: An autoencoder learns a summary because rebuilding the frame through a narrow latent vector forces it to capture the frame's main patterns.

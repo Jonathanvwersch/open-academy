@@ -118,7 +118,7 @@ concepts:
     prereqs: [{ id: probability-basics }]
     objectives:
       - { text: "Relate mean and variance to the normal density", dimension: math }
-    status: stub
+    status: authored
   - id: maximum-likelihood
     title: Maximum likelihood
     description: Choosing parameters that make observed data most probable; link to MSE and cross-entropy.
@@ -135,7 +135,7 @@ concepts:
       ]
     objectives:
       - { text: "Derive MSE as Gaussian maximum likelihood", dimension: math }
-    status: stub
+    status: authored
   - id: information-theory
     title: Entropy, cross-entropy and KL divergence
     description: Surprise and entropy, cross-entropy as the classification loss, KL divergence as the gap between two distributions.
@@ -148,7 +148,7 @@ concepts:
     objectives:
       - { text: "Compute entropy and cross-entropy for a small distribution", dimension: math }
       - { text: "Explain why cross-entropy is the loss for classification", dimension: conceptual }
-    status: stub
+    status: authored
   - id: descriptive-statistics
     title: Mean, variance and confidence intervals
     description: Mean, variance, standard deviation, standard error and confidence intervals for averages and success rates.
@@ -164,7 +164,7 @@ concepts:
           text: "Judge whether two small-sample success rates really differ",
           dimension: conceptual,
         }
-    status: stub
+    status: authored
   - id: rotation-matrices
     title: Rotation matrices
     description: 2D/3D rotations as orthonormal matrices; composition.

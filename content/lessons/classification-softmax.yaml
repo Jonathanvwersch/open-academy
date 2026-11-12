@@ -1,0 +1,244 @@
+concept: classification-softmax
+version: 1
+objective: |
+  **Goal:** turn a list of class scores into probabilities with softmax, compute the cross-entropy loss for the true class, and say which way training moves each score.
+recap:
+  - concept: logistic-regression
+    text: "Logistic regression turns a score $z=wx+b$ into the probability of label 1 with the sigmoid $\\sigma(z)=1/(1+e^{-z})$, where $e\\approx2.72$. Its loss, binary cross-entropy, is $-\\ln$ of the true label's probability, and its slope against the score is $p-y$."
+  - concept: information-theory
+    text: "A labelled example's classification loss is the surprise of the class that actually happened, $\\log_2(1/q_{\\text{actual}})$ bits, where $q_{\\text{actual}}$ is the probability the forecast gave that class. Averaging it over many examples gives cross-entropy, which punishes confident mistakes most."
+where_this_fits: |
+  ### What is softmax?
+
+  Softmax is a function that turns a list of scores, one for each class, into probabilities that are all positive and add up to 1. Cross-entropy then measures how wrong those probabilities are, so together they train a model to choose between any number of classes.
+
+  Why? Logistic regression answers yes-or-no questions, but many questions have more answers, such as whether the object in a robot's gripper is a cup, a ball or a box. The information theory lesson scored probabilities with cross-entropy but never said where they come from. A model's scores can be any numbers, so we need a way to turn several scores into one set of probabilities, and then a loss and a training step that work with them.
+knowledge_points:
+  - id: sm-softmax
+    title: Turn scores into probabilities
+    explain: |
+      ### One score for each class
+
+      The robot's model must say whether the object in its gripper is a cup, a ball or a box. These three answers are the **classes**. Logistic regression made one score, $z=wx+b$. This model makes one score for each class, each with its own weights and bias, where $x$ stands for numbers read from the image, and a higher score means the model thinks that class is more likely. Such scores are called **logits**.
+
+      Suppose the scores are 2 for cup, 1 for ball and 0 for box. They can't be probabilities yet. No probability can exceed 1, and these add up to 3.
+
+      ### Make them positive, then divide by the total
+
+      Softmax fixes this in two moves. First it raises $e\approx2.72$ to the power of each score, which makes every number positive and keeps the biggest score biggest. Squaring would also make numbers positive, but it would wrongly rank a score of $-3$ above a score of 2. Then it divides each result by their total, so the results add up to 1.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" aria-label="Softmax in two moves for a cup, a ball and a box. Left, the blue scores are 2, 1 and 0. Middle, raising e to the power of each score gives 7.39, 2.72 and 1, which add up to 11.11. Right, dividing each by 11.11 gives the green probabilities 0.67, 0.24 and 0.09, which add up to 1">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="20" y="30" fill="#171717" text-anchor="start">Scores</text>
+      <path d="M20 250 H190" stroke="#737373"/>
+      <rect x="30" y="100.0" width="40" height="150.0" fill="#3b82f6"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="50" y="92.0" fill="#171717" text-anchor="middle">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="50" y="272" fill="#737373" text-anchor="middle">cup</text>
+      <rect x="85" y="175.0" width="40" height="75.0" fill="#3b82f6"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="105" y="167.0" fill="#171717" text-anchor="middle">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="105" y="272" fill="#737373" text-anchor="middle">ball</text>
+      <rect x="140" y="250.0" width="40" height="0.0" fill="#3b82f6"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="160" y="242.0" fill="#171717" text-anchor="middle">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="160" y="272" fill="#737373" text-anchor="middle">box</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="230" y="30" fill="#171717" text-anchor="start">e to the power of</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="230" y="50" fill="#171717" text-anchor="start">each score</text>
+      <path d="M230 250 H400" stroke="#737373"/>
+      <rect x="240" y="100.0" width="40" height="150.0" fill="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="260" y="92.0" fill="#171717" text-anchor="middle">7.39</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="260" y="272" fill="#737373" text-anchor="middle">cup</text>
+      <rect x="295" y="194.82" width="40" height="55.18" fill="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="315" y="186.82" fill="#171717" text-anchor="middle">2.72</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="315" y="272" fill="#737373" text-anchor="middle">ball</text>
+      <rect x="350" y="229.7" width="40" height="20.3" fill="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="370" y="221.7" fill="#171717" text-anchor="middle">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="370" y="272" fill="#737373" text-anchor="middle">box</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="440" y="30" fill="#171717" text-anchor="start">Probabilities</text>
+      <path d="M440 250 H610" stroke="#737373"/>
+      <rect x="450" y="150.21" width="40" height="99.79" fill="#10b981"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="470" y="142.21" fill="#171717" text-anchor="middle">0.67</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="470" y="272" fill="#737373" text-anchor="middle">cup</text>
+      <rect x="505" y="213.29" width="40" height="36.71" fill="#10b981"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="525" y="205.29" fill="#171717" text-anchor="middle">0.24</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="525" y="272" fill="#737373" text-anchor="middle">ball</text>
+      <rect x="560" y="236.5" width="40" height="13.5" fill="#10b981"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="580" y="228.5" fill="#171717" text-anchor="middle">0.09</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="580" y="272" fill="#737373" text-anchor="middle">box</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="230" y="302" fill="#737373" text-anchor="start">total 11.11</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="440" y="302" fill="#737373" text-anchor="start">total 1</text>
+      <path d="M196 150 H222 M216 144 L222 150 L216 156 M406 150 H432 M426 144 L432 150 L426 156" stroke="#171717" stroke-width="2" fill="#ffffff" fill-opacity="0"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="209" y="138" fill="#171717" text-anchor="middle" font-size="13">raise e</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="419" y="138" fill="#171717" text-anchor="middle" font-size="13">÷ total</text>
+      </g></svg>
+      ```
+
+      **Softmax** does both moves in one formula:
+
+      $$p_k=\frac{e^{z_k}}{e^{z_1}+e^{z_2}+\dots+e^{z_K}}$$
+
+      We number the classes cup 1, ball 2 and box 3. $z_k$ is the score of class $k$, $p_k$ is its probability and $K$ is the number of classes. Our scores give cup $0.67$, ball $0.24$ and box $0.09$, so the model predicts cup.
+
+      ### Only the differences between scores matter
+
+      - Adding 1 to every score, giving 3, 2 and 1, keeps the probabilities at $0.67$, $0.24$ and $0.09$. Each $e^{z_k}$ and the total all get multiplied by $e$, which cancels.
+      - Doubling the differences, giving 4, 2 and 0, makes the model more sure of cup, at about $0.87$, $0.12$ and $0.02$ after rounding.
+      - With three equal scores, each class gets $1/3$.
+
+      Be careful not to read a score of 2 as "twice as likely" as a score of 1. Each extra point of difference between two scores multiplies the ratio of their probabilities by $e$. With two classes and scores $z$ and 0 (only differences matter), softmax gives $e^z/(e^z+1)$. Dividing top and bottom by $e^z$ gives the sigmoid, $1/(1+e^{-z})$, so logistic regression is the two-class case.
+    worked: |
+      Let's work out the softmax probabilities for the scores 2, 1 and 0, for cup, ball and box.
+
+      1. **Raise $e$ to each score.** This makes every number positive and keeps them in the same order.
+         $$e^2\approx7.39,\qquad e^1\approx2.72,\qquad e^0=1$$
+
+      2. **Add them up.** The total is what we'll share out.
+         $$7.39+2.72+1=11.11$$
+
+      3. **Divide each by the total.** Dividing by the total makes the three add up to 1.
+         $$p_{\text{cup}}=\frac{7.39}{11.11}\approx0.67,\qquad p_{\text{ball}}=\frac{2.72}{11.11}\approx0.24,\qquad p_{\text{box}}=\frac{1}{11.11}\approx0.09$$
+
+      The probabilities add up to 1, and cup, with the highest score, gets the biggest share.
+    problems:
+      [
+        sm-softmax-basics,
+        sm-softmax-reason,
+        sm-softmax-faded,
+        sm-softmax-template,
+        sm-softmax-confusion,
+        sm-softmax-shift,
+        sm-softmax-transfer,
+      ]
+  - id: sm-cross-entropy
+    title: Measure how wrong the probabilities are
+    explain: |
+      ### The loss looks at the true class
+
+      Now that the model gives probabilities, we need to score them against what the object really was. In the information theory lesson, a labelled example's loss was the surprise of the class that actually happened, which we wrote as $\log_2(1/q_{\text{actual}})$. We'll use the same idea with the natural log, $\ln$, as logistic regression did. That only changes the unit. One bit equals $\ln2\approx0.69$ natural-log units, so every loss is about $0.69$ times its value in bits. Flipping a fraction flips the sign of its log, $\ln(1/p)=-\ln p$, so we write the loss with a minus sign, using $p$ for the probability.
+
+      **Multiclass cross-entropy**, often called categorical cross-entropy, is the loss we get by taking the natural log of the probability the model gave to the true class and putting a minus sign in front:
+
+      $$L=-\ln p_{\text{true}}$$
+
+      Here $p_{\text{true}}$ is the softmax probability of the class the object really is. Averaging $L$ over many labelled examples gives the cross-entropy from the information theory lesson, measured with $\ln$. With two classes, it's the binary cross-entropy from logistic regression.
+
+      ### Three possible answers for the same scores
+
+      The red curve shows the loss against the probability given to the true class. With our scores 2, 1 and 0, the loss depends on what the object really was:
+
+      - a cup, with probability $0.665$, gives a loss of $0.41$;
+      - a ball, with probability $0.245$, gives $1.41$;
+      - a box, with probability $0.090$, gives $2.41$. The model was fairly sure it wasn't a box, and a confident mistake costs the most.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" aria-label="The red curve is the loss, minus the natural log of the probability given to the true class, drawn against that probability from 0.05 to 1. It falls to 0 at probability 1 and climbs steeply near 0. Three points mark our scores: cup, probability 0.665, loss 0.41; ball, probability 0.245, loss 1.41; box, probability 0.090, loss 2.41">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M80 300 H560 M80 300 V50" stroke="#d4d4d4"/>
+      <path d="M104.0 60.34 L108.8 74.93 L113.6 87.26 L118.4 97.94 L123.2 107.36 L128.0 115.79 L132.8 123.42 L137.6 130.38 L142.4 136.78 L147.2 142.71 L152.0 148.23 L156.8 153.39 L161.6 158.24 L166.4 162.82 L171.2 167.14 L176.0 171.24 L180.8 175.15 L185.6 178.87 L190.4 182.43 L195.2 185.83 L200.0 189.1 L204.8 192.23 L209.6 195.25 L214.4 198.16 L219.2 200.97 L224.0 203.68 L228.8 206.31 L233.6 208.85 L238.4 211.31 L243.2 213.7 L248.0 216.01 L252.8 218.27 L257.6 220.46 L262.4 222.59 L267.2 224.67 L272.0 226.7 L276.8 228.67 L281.6 230.6 L286.4 232.48 L291.2 234.32 L296.0 236.12 L300.8 237.88 L305.6 239.6 L310.4 241.28 L315.2 242.93 L320.0 244.55 L324.8 246.13 L329.6 247.69 L334.4 249.21 L339.2 250.71 L344.0 252.17 L348.8 253.61 L353.6 255.03 L358.4 256.42 L363.2 257.79 L368.0 259.13 L372.8 260.46 L377.6 261.76 L382.4 263.04 L387.2 264.3 L392.0 265.54 L396.8 266.76 L401.6 267.96 L406.4 269.15 L411.2 270.31 L416.0 271.47 L420.8 272.6 L425.6 273.72 L430.4 274.82 L435.2 275.91 L440.0 276.99 L444.8 278.05 L449.6 279.09 L454.4 280.12 L459.2 281.14 L464.0 282.15 L468.8 283.14 L473.6 284.12 L478.4 285.09 L483.2 286.05 L488.0 287.0 L492.8 287.93 L497.6 288.86 L502.4 289.77 L507.2 290.68 L512.0 291.57 L516.8 292.46 L521.6 293.33 L526.4 294.19 L531.2 295.05 L536.0 295.9 L540.8 296.73 L545.6 297.56 L550.4 298.38 L555.2 299.2 L560.0 300.0" stroke="#ef4444" stroke-width="3" fill="#ffffff" fill-opacity="0"/>
+      <circle cx="399.32" cy="267.39" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="411.32" y="257.39" fill="#171717" text-anchor="start">cup: 0.665, loss 0.41</text>
+      <circle cx="197.47" cy="187.39" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="209.47" y="177.39" fill="#171717" text-anchor="start">ball: 0.245, loss 1.41</text>
+      <circle cx="123.21" cy="107.39" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="135.21" y="97.39" fill="#171717" text-anchor="start">box: 0.090, loss 2.41</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="305" fill="#737373" text-anchor="end">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="225" fill="#737373" text-anchor="end">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="145" fill="#737373" text-anchor="end">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="65" fill="#737373" text-anchor="end">3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="322" fill="#737373" text-anchor="middle">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320.0" y="322" fill="#737373" text-anchor="middle">0.5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560" y="322" fill="#737373" text-anchor="middle">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="345" fill="#737373" text-anchor="middle">probability given to the true class</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="90" y="45" fill="#ef4444" text-anchor="start">loss = minus ln of that probability</text>
+      </g></svg>
+      ```
+
+      Before rounding, each loss in the list is exactly 1 more than the one before, because each score is 1 lower. The worked example shows why.
+
+      Be careful not to think the other classes don't matter because the loss reads only $p_{\text{true}}$. All the probabilities share a total of 1. If the object is a ball and the cup's score rises, cup takes a bigger share, so the ball's probability falls and the loss rises.
+    worked: |
+      Let's work out the loss if the object was really a ball, using the scores 2, 1 and 0 from the last step.
+
+      1. **Find the true class's probability.** Softmax gave the ball $2.72$ out of a total of $11.11$.
+         $$p_{\text{ball}}=\frac{2.72}{11.11}\approx0.245$$
+
+      2. **Take minus the natural log.** The log of a probability below 1 is negative, so the minus sign makes the loss positive.
+         $$L=-\ln0.245\approx1.41$$
+
+      3. **See why the losses are 1 apart.** The ball's probability is $e^1/11.11$. We use two log rules: minus the log of a fraction is the log of the fraction flipped over, and the log of a division is the difference of the logs. And since $\ln$ undoes raising $e$ to a power, $\ln e^1=1$. A calculator gives $\ln11.11\approx2.41$.
+         $$L=\ln\frac{11.11}{e^1}=\ln11.11-1\approx2.41-1=1.41$$
+
+      Every class shares the same $\ln11.11$, so a score 1 lower always means a loss 1 higher. The ball's loss of $1.41$ is much bigger than a cup's $0.41$, because the model gave the ball only about a quarter of its probability.
+    problems:
+      [
+        sm-ce-basics,
+        sm-ce-reason,
+        sm-ce-faded,
+        sm-ce-template,
+        sm-ce-confusion,
+        sm-ce-bits,
+        sm-ce-transfer,
+      ]
+  - id: sm-gradient
+    title: Adjust the scores to lower the loss
+    explain: |
+      ### Which way should each score move?
+
+      Now that we can measure how wrong the probabilities are, training can lower that loss with gradient descent, which subtracts each slope times a small learning rate $\eta$. In logistic regression, the slope of the loss against the score was $p-y$, the probability minus the label. With softmax, each class's slope is just as simple.
+
+      To use it, we write the label as one number per class: $y_k=1$ for the true class and $y_k=0$ for every other class. For a ball, the label is $(0,1,0)$ for cup, ball and box. This way of writing a label is called **one-hot**, because exactly one entry is 1.
+
+      The slope of the loss against each class's score is that class's probability minus its label:
+
+      $$\frac{\partial L}{\partial z_k}=p_k-y_k$$
+
+      The curly $\partial$ reads "the slope of $L$ against $z_k$, with the other scores held still".
+
+      Working out this slope takes calculus, which we'll skip here, but the result holds for every class, true or not.
+
+      ### Every score moves
+
+      For the ball, the slopes are $0.67$ for cup, $0.24-1=-0.76$ for ball and $0.09$ for box. Subtracting these slopes has three effects.
+
+      - the ball's score has a negative slope, so it goes up;
+      - the cup's score goes down the most, because the cup took the most probability;
+      - the box's score goes down a little.
+
+      Be careful not to think training touches only the true class. Every wrong class is pushed down in proportion to the probability it took, and the slopes always add up to 0, because the probabilities add up to 1 and so does the label.
+
+      ### From scores to weights
+
+      Each score comes from its own weights and bias, $z_k=w_kx+b_k$. So, just as in logistic regression, the slope for the bias $b_k$ is $p_k-y_k$, and the slope for the weight $w_k$ is $(p_k-y_k)\,x$, because a change in $w_k$ moves $z_k$ by $x$ times as much.
+    worked: |
+      Let's take one gradient descent step for the ball, with scores 2, 1 and 0 and a learning rate of $\eta=1$, chosen so the change is easy to see. Real training changes the weights too, but to keep the arithmetic short, we'll change only the three biases. Each score still moves in the same direction as in full training. A bias adds straight onto its score, so each score changes by exactly as much as its bias.
+
+      1. **Find the slopes.** Each slope is the class's probability minus its label, with label $(0,1,0)$.
+         $$0.67-0=0.67,\qquad0.24-1=-0.76,\qquad0.09-0=0.09$$
+
+      2. **Update the biases.** Each bias moves by minus its slope, so the ball's goes up and the other two go down. Each score moves by the same amount.
+         $$z_{\text{cup}}=2-0.67=1.33,\qquad z_{\text{ball}}=1+0.76=1.76,\qquad z_{\text{box}}=0-0.09=-0.09$$
+
+      3. **Recompute the ball's probability.** We raise $e$ to each new score and divide by the new total.
+         $$p_{\text{ball}}=\frac{e^{1.76}}{e^{1.33}+e^{1.76}+e^{-0.09}}\approx\frac{5.81}{3.78+5.81+0.91}\approx0.553$$
+
+      4. **Find the new loss.** Minus the natural log of the new probability.
+         $$L=-\ln0.553\approx0.59$$
+
+      In one step the loss fell from $1.41$ to $0.59$, and the ball's $5.81$ now beats the cup's $3.78$, so the model would predict ball.
+    problems:
+      [
+        sm-grad-basics,
+        sm-grad-reason,
+        sm-grad-faded,
+        sm-grad-template,
+        sm-grad-confusion,
+        sm-grad-sum,
+        sm-grad-transfer,
+      ]
+final: sm-explain-softmax
+summary: |
+  - Softmax turns one score per class into probabilities that are positive and add up to 1, $p_k=e^{z_k}/(e^{z_1}+e^{z_2}+\dots+e^{z_K})$. Only the differences between the scores matter.
+  - Multiclass cross-entropy is minus the natural log of the probability given to the true class, $L=-\ln p_{\text{true}}$, so a confident mistake costs the most.
+  - The slope of the loss against each score is $p_k-y_k$, where the one-hot label $y_k$ is 1 for the true class and 0 for the others. Training raises the true class's score and lowers every other score.
+  - With two classes, softmax is the sigmoid and this loss is binary cross-entropy.
+
+  **Next:** Later lessons use softmax wherever a model picks one option from many, such as a text model choosing the next word from all the words it knows.

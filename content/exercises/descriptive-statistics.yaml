@@ -1,0 +1,668 @@
+concept: descriptive-statistics
+exercises:
+  - id: ds-spread-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the sample standard deviation describe?
+    options:
+      - {
+          id: a,
+          text: The spread of individual observations around their mean.,
+          correct: true,
+          feedback: It measures spread in the same units as the observations.,
+        }
+      - {
+          id: b,
+          text: The sum of all observations before taking their average.,
+          correct: false,
+          feedback: A sum measures total size rather than spread.,
+          category: misunderstood_definition,
+        }
+      - {
+          id: c,
+          text: The chance that the next observation equals the mean.,
+          correct: false,
+          feedback: Standard deviation is a distance scale rather than a probability.,
+          category: misunderstood_definition,
+        }
+    solution: Standard deviation is the square root of sample variance. It measures how spread out individual observations are, in their original units.
+  - id: ds-squares-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example with times 2, 4 and 6 seconds, why do we square the deviations before adding them?
+    options:
+      - {
+          id: a,
+          text: To make the average time larger than every recorded time.,
+          correct: false,
+          feedback: Squaring deviations measures spread; it does not change the mean.,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: b,
+          text: To stop negative and positive distances from cancelling out.,
+          correct: true,
+          feedback: The deviations sum to zero but their squares retain the spread.,
+        }
+      - {
+          id: c,
+          text: To keep the variance in seconds rather than squared seconds.,
+          correct: false,
+          feedback: Squaring creates squared seconds; taking the square root restores seconds.,
+          category: misunderstood_definition,
+        }
+    solution: The deviations are $-2$, $0$ and $2$, whose sum is zero. Their squared values add to 8, so the spread does not disappear through cancellation.
+  - id: ds-mean-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Three grasp times are ${{=m-d}}$, ${{=m}}$ and ${{=m+d}}$ seconds. What is their sample mean in seconds?"
+    params:
+      m: { min: 5, max: 9, step: 1 }
+      d: { min: 1, max: 3, step: 1 }
+    answer_expr: m
+    tolerance: { abs: 0.001 }
+    solution: "Add the three times and divide by 3. The equal distances on either side cancel, giving $({{=m-d}}+{{=m}}+{{=m+d}})/3={{=m}}$ seconds."
+  - id: ds-variance-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "Three grasp times are ${{=m-d}}$, ${{=m}}$ and ${{=m+d}}$ seconds, with mean ${{=m}}$ seconds. What is the sample variance in squared seconds? Use division by $n-1$."
+    params:
+      m: { min: 5, max: 9, step: 1 }
+      d: { min: 1, max: 3, step: 1 }
+    answer_expr: d^2
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: 2*d^2/3
+        category: misapplied_technique
+        feedback: Divide the squared-deviation total by 2, not 3, when estimating sample variance.
+    solution: "The deviations are $-{{=d}}$, $0$ and ${{=d}}$, so the squared-deviation total is ${{=2*d^2}}$. Dividing by $3-1=2$ gives $s^2={{=d^2}}$ squared seconds."
+  - id: ds-shift-spread
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Every grasp takes exactly 3 seconds longer after a fixed safety pause is added. What happens to the mean and standard deviation of the times?
+    options:
+      - {
+          id: a,
+          text: Both the mean and standard deviation increase by 3 seconds.,
+          correct: false,
+          feedback: Every deviation from the new mean stays the same.,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: b,
+          text: The mean is unchanged and standard deviation increases by 3 seconds.,
+          correct: false,
+          feedback: "The centre shifts with every observation, while their distances stay unchanged.",
+          category: misunderstood_definition,
+        }
+      - {
+          id: c,
+          text: The mean increases by 3 seconds and standard deviation is unchanged.,
+          correct: true,
+          feedback: Adding a constant moves the centre but does not change the spread.,
+        }
+    solution: The new mean is the old mean plus 3. Subtracting it from each new time cancels the added 3, leaving every deviation and therefore the standard deviation unchanged.
+  - id: ds-latency-spread
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A camera processes three frames in 8, 10 and 12 milliseconds. Find the sample standard deviation in milliseconds, using division by $n-1$ for the variance.
+    answer: 2
+    tolerance: { abs: 0.001 }
+    solution: The mean is 10, so the squared deviations add to $4+0+4=8$. The sample variance is $8/(3-1)=4$, and its square root is 2 milliseconds.
+  - id: ds-se-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the standard error of a sample mean measure?
+    options:
+      - {
+          id: a,
+          text: How spread out individual observations are within one experiment.,
+          correct: false,
+          feedback: That is what standard deviation describes.,
+          category: misunderstood_definition,
+        }
+      - {
+          id: b,
+          text: How much the estimated mean varies across repeated experiments.,
+          correct: true,
+          feedback: Each repeat uses a new sample of the same size.,
+        }
+      - {
+          id: c,
+          text: How far every observation must lie from the long-run average.,
+          correct: false,
+          feedback: Standard error is not a bound on individual results.,
+          category: misunderstood_definition,
+        }
+    solution: Standard error measures the spread of an estimate across repeated samples of the same size. It describes uncertainty in the mean, not the spread of individual observations.
+  - id: ds-se-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is the standard error of average grasp time 0.2 seconds rather than the standard deviation of 2 seconds?
+    options:
+      - {
+          id: a,
+          text: Averaging 100 independent times reduces the uncertainty by a factor of 10.,
+          correct: true,
+          feedback: The formula divides the individual spread by the square root of 100.,
+        }
+      - {
+          id: b,
+          text: Averaging 100 times divides every individual grasp time by 10.,
+          correct: false,
+          feedback: Individual grasp times stay unchanged; the averages vary less.,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: c,
+          text: Averaging makes all later grasp times stay within 0.2 seconds of the mean.,
+          correct: false,
+          feedback: Uncertainty in an average does not constrain individual future times.,
+          category: misunderstood_definition,
+        }
+    solution: The standard error is $2/\sqrt{100}=2/10=0.2$ seconds. Independent fluctuations partly cancel when we average, while individual times retain their spread.
+  - id: ds-mean-se-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For ${{=k^2}}$ independent grasp times under unchanged conditions, the sample standard deviation is ${{=s}}$ seconds. Estimate the standard error of the mean in seconds."
+    params:
+      k: { min: 5, max: 10, step: 5 }
+      s: { min: 1, max: 4, step: 1 }
+    answer_expr: s/k
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: s/k^2
+        category: math_error
+        feedback: Divide by the square root of the number of trials, not by the trial count itself.
+    solution: 'Divide the individual spread by the square root of the count. Here ${{=s}}/\sqrt{{{=k^2}}}={{=s}}/{{=k}}={{=s/k}}$ seconds.'
+  - id: ds-rate-se-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A robot succeeds in ${{=0.8*(10*k)^2}}$ of ${{=(10*k)^2}}$ independent trials under unchanged conditions. Estimate the standard error of its success rate as a decimal, not a percentage."
+    params:
+      k: { min: 1, max: 4, step: 1 }
+    constraints: ["k != 3"]
+    answer_expr: 0.04/k
+    tolerance: { abs: 0.0001 }
+    solution: 'The observed success rate is 0.8, so its standard error is $\sqrt{0.8(0.2)/{{=(10*k)^2}}}=0.4/{{=10*k}}={{=0.04/k}}$. More trials reduce uncertainty even though the observed rate stays the same.'
+  - id: ds-fourfold
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Independent trials have the same individual spread before and after an experiment grows from 100 to 400 observations. What happens to the standard error of the mean?
+    options:
+      - {
+          id: a,
+          text: It becomes one quarter as large.,
+          correct: false,
+          feedback: "Standard error scales with the square root of the count, not directly with the count.",
+          category: math_error,
+        }
+      - {
+          id: b,
+          text: It becomes twice as large.,
+          correct: false,
+          feedback: More independent observations reduce uncertainty rather than increase it.,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: c,
+          text: It becomes half as large.,
+          correct: true,
+          feedback: The square root of the count doubles from 10 to 20.,
+        }
+    solution: The individual spread is unchanged, but the denominator grows from $\sqrt{100}=10$ to $\sqrt{400}=20$. Therefore the standard error halves.
+  - id: ds-camera-independence
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A vision model is tested on 100 copies of one camera frame. An engineer treats the copies as 100 independent observations when estimating standard error. What is wrong?
+    options:
+      - {
+          id: a,
+          text: "Copies provide no new independent evidence, so the uncertainty estimate can be misleading.",
+          correct: true,
+          feedback: Repetition of the same observation does not create a new sample.,
+        }
+      - {
+          id: b,
+          text: The formula requires the trial count to be larger than 100 in every setting.,
+          correct: false,
+          feedback: "Independence is the problem here, not a universal minimum sample size.",
+          category: misapplied_technique,
+        }
+      - {
+          id: c,
+          text: "Standard error measures individual frame brightness, so it cannot describe model performance.",
+          correct: false,
+          feedback: Standard error can describe uncertainty in average performance when the data justify it.,
+          category: misunderstood_definition,
+        }
+    solution: Copies share the same information and do not behave like separate trials. Dividing by the square root of 100 as though they were independent can make uncertainty look much smaller than it is.
+  - id: ds-interval-basics
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is a confidence interval for a success chance intended to describe?
+    options:
+      - {
+          id: a,
+          text: A range of possible values of the unknown long-run success chance.,
+          correct: true,
+          feedback: Its purpose is to express uncertainty about that fixed chance.,
+        }
+      - {
+          id: b,
+          text: A range containing the outcomes of almost all individual trials.,
+          correct: false,
+          feedback: "Individual outcomes are success or failure, not values of the unknown chance.",
+          category: misunderstood_definition,
+        }
+      - {
+          id: c,
+          text: A range that guarantees the next experiment will get the same success rate.,
+          correct: false,
+          feedback: Future observed rates can vary; the interval is not a guarantee.,
+          category: misunderstood_definition,
+        }
+    solution: A confidence interval expresses uncertainty about a long-run average or success chance. It is not a range for individual outcomes or a promise about the next sample.
+  - id: ds-interval-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why do we extend the success rate of 0.8 by 0.08 on each side?
+    options:
+      - {
+          id: a,
+          text: Because 0.08 is the fraction of trials that failed.,
+          correct: false,
+          feedback: The failure fraction is 0.2; it is not the interval margin.,
+          category: misunderstood_definition,
+        }
+      - {
+          id: b,
+          text: Because the approximate 95% rule uses twice the standard error of 0.04.,
+          correct: true,
+          feedback: "The margin is 2 times 0.04, giving endpoints 0.72 and 0.88.",
+        }
+      - {
+          id: c,
+          text: Because exactly 8 of the 100 trials must change on a repeat.,
+          correct: false,
+          feedback: The interval does not prescribe a change in any repeated experiment.,
+          category: incorrect_reasoning,
+        }
+    solution: The approximate rule is estimate plus or minus two standard errors. Here the margin is $2(0.04)=0.08$, giving $[0.72,0.88]$.
+  - id: ds-interval-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "An experiment has enough independent trials for the approximate 95% interval rule to apply. Its mean grasp time is ${{=m}}$ seconds and its estimated standard error is ${{=e/10}}$ seconds. What is the upper endpoint in seconds, using twice the standard error?"
+    params:
+      m: { min: 3, max: 7, step: 1 }
+      e: { min: 1, max: 4, step: 1 }
+    answer_expr: m+2*e/10
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: m+e/10
+        category: misapplied_technique
+        feedback: One standard error is not the margin used by the approximate 95% rule.
+    solution: "The upper endpoint adds two standard errors to the estimate. That gives ${{=m}}+2({{=e/10}})={{=m+2*e/10}}$ seconds."
+  - id: ds-coverage
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A camera has a fixed long-run average processing time. When the approximation works well, what happens to its approximate 95% intervals across many independent experiments?
+    options:
+      - {
+          id: a,
+          text: About 95% of individual observations equal the long-run average.,
+          correct: false,
+          feedback: "The procedure describes intervals covering a value, not observations equalling it.",
+          category: misunderstood_definition,
+        }
+      - {
+          id: b,
+          text: About 95% of intervals contain the estimate but not the long-run average.,
+          correct: false,
+          feedback: The aim is to include the unknown long-run average rather than exclude it.,
+          category: misunderstood_definition,
+        }
+      - {
+          id: c,
+          text: About 95% of the constructed intervals contain the long-run average.,
+          correct: true,
+          feedback: Each new experiment produces a new interval around its own estimate.,
+        }
+    solution: The long-run average stays fixed while fresh experiments produce different averages and intervals. About 95% of these intervals contain the long-run average when the approximation works well.
+  - id: ds-small-comparison
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: Two robot versions achieve 7 successes in 10 independent trials and 9 successes in 10 other independent trials. What is justified by these observed rates alone?
+    options:
+      - {
+          id: a,
+          text: The second version certainly has a higher long-run success chance.,
+          correct: false,
+          feedback: A larger observed rate in a tiny sample can arise from chance.,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: b,
+          text: "The second version scored higher, but more independent trials are needed before deciding.",
+          correct: true,
+          feedback: Neither sample has the 10 successes and 10 failures needed for our interval rule.,
+        }
+      - {
+          id: c,
+          text: The two versions certainly have exactly the same long-run success chance.,
+          correct: false,
+          feedback: Insufficient evidence of a difference is not proof of equality.,
+          category: incorrect_reasoning,
+        }
+    solution: The observed rates differ by $0.9-0.7=0.2$, or 20 percentage points, but both samples are too small for our approximation. Even the rough difference interval includes zero, so collect more independent trials rather than declaring improvement or equality.
+  - id: ds-new-setting
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A medical screening model succeeds on all 20 independent test cases. An analyst uses the observed rate of 1 to get a standard error of 0 and an interval from 1 to 1. What should they conclude?
+    options:
+      - {
+          id: a,
+          text: The model is guaranteed to succeed on every future case.,
+          correct: false,
+          feedback: A finite run of successes cannot guarantee perfect future performance.,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: b,
+          text: The interval is valid because the test cases were independent.,
+          correct: false,
+          feedback: Independence is necessary but the success and failure counts must also support the approximation.,
+          category: misapplied_technique,
+        }
+      - {
+          id: c,
+          text: "The approximation fails with no failures, so another method or more data is needed.",
+          correct: true,
+          feedback: Zero observed failures is far below the count rule of at least 10 failures.,
+        }
+    solution: Substitution gives $\sqrt{1(1-1)/20}=0$, but the approximation is not reliable near the boundary. With no failures the count rule fails, so use a method suited to small counts or collect more representative cases rather than claiming certainty.
+  - id: ds-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: Explain how spread, standard error and confidence intervals help us compare robot versions. Include how to estimate uncertainty in a mean and a success rate, and how an interval for the rate difference lets us judge an improvement. Contrast the 160/200 versus 180/200 experiment with 7/10 versus 9/10.
+    rubric:
+      - {
+          id: spread-versus-uncertainty,
+          criterion: Distinguishes individual-result spread from the uncertainty of an estimate across repeated samples.,
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: errors-and-interval,
+          criterion: Gives both standard-error formulas and explains the approximate interval as estimate plus or minus two standard errors.,
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: small-counts,
+          criterion: Combines independent rate uncertainties and uses exclusion of zero to judge the larger experiment while recognising that the smaller one includes zero and fails the count rule.,
+          weight: 1,
+          required: true,
+        }
+    exemplar: |
+      Standard deviation describes spread among individual results, while standard error describes variation in an estimate across fresh experiments. For independent trials, the estimated standard errors are $s/\sqrt n$ for a mean and $\sqrt{\hat p(1-\hat p)/n}$ for a success rate. We extend an estimate by two standard errors each way for an approximate 95% interval. For the difference of independently tested rates, combine the errors as $\sqrt{\mathrm{SE}_1^2+\mathrm{SE}_2^2}$. The 160/200 versus 180/200 experiment gives an improvement interval of about 0.03 to 0.17, excluding zero and supporting a real improvement under the assumptions. The 7/10 versus 9/10 experiment gives a rough interval including zero and also fails the success/failure count rule. We need more trials before judging that smaller experiment, rather than claiming either improvement or equality.
+  - id: ds-rate-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why can we treat a success rate as an average?
+    options:
+      - {
+          id: a,
+          text: Coding success as 1 and failure as 0 makes their mean the successful fraction.,
+          correct: true,
+          feedback: The sum counts successes and division by the count gives the rate.,
+        }
+      - {
+          id: b,
+          text: Coding success as 1 and failure as 0 makes every trial equal to the rate.,
+          correct: false,
+          feedback: Each trial is 0 or 1 while their mean can lie between them.,
+          category: misunderstood_definition,
+        }
+      - {
+          id: c,
+          text: Coding success as 1 and failure as 0 removes all uncertainty from the rate.,
+          correct: false,
+          feedback: A fresh set of trials can have a different successful fraction.,
+          category: incorrect_reasoning,
+        }
+    solution: Adding the zeros and ones counts the successes. Dividing by the total trial count therefore gives both their mean and the observed success rate.
+  - id: ds-rate-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the 80-successes-out-of-100 example, why does the standard error use the product of the success and failure fractions?
+    options:
+      - {
+          id: a,
+          text: Multiplying the fractions gives the chance of success and failure on one trial.,
+          correct: false,
+          feedback: A single trial cannot be both a success and a failure.,
+          category: misunderstood_definition,
+        }
+      - {
+          id: b,
+          text: Weighting the squared distances of ones and zeros simplifies to that product.,
+          correct: true,
+          feedback: The fractions tell us how often each squared distance contributes.,
+        }
+      - {
+          id: c,
+          text: Multiplying the fractions gives the number of unsuccessful trials to discard.,
+          correct: false,
+          feedback: Failures remain in the data and are needed to measure uncertainty.,
+          category: incorrect_reasoning,
+        }
+    solution: Successes are $1-\hat p$ above the average and failures are $\hat p$ below it. Their squared distances weighted by their fractions simplify to $\hat p(1-\hat p)$, whose square root supplies the approximate individual spread.
+  - id: ds-difference-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: An approximate 95% interval for updated minus original success chance is entirely positive, and the independent tests have enough successes and failures. What does this support?
+    options:
+      - {
+          id: a,
+          text: The update probably improves the long-run success chance under the tested conditions.,
+          correct: true,
+          feedback: The plausible difference range excludes zero and favours the update.,
+        }
+      - {
+          id: b,
+          text: The update must succeed on every future grasp under the tested conditions.,
+          correct: false,
+          feedback: Evidence of a higher chance is not certainty of success on each trial.,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: c,
+          text: The original and update have equal long-run success chances under the tested conditions.,
+          correct: false,
+          feedback: Equality means zero difference and zero is outside this range.,
+          category: misunderstood_definition,
+        }
+    solution: A positive interval excludes no improvement while pointing toward a higher success chance. This supports a real improvement when the assumptions hold, but it is not a guarantee.
+  - id: ds-difference-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the 160/200 versus 180/200 worked example, why do we combine both standard errors instead of using only the updated version's error?
+    options:
+      - {
+          id: a,
+          text: The original rate is known exactly because it was measured first.,
+          correct: false,
+          feedback: Measuring a rate first does not remove its uncertainty.,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: b,
+          text: The difference is uncertain because either independently estimated rate can change.,
+          correct: true,
+          feedback: Each estimate contributes uncertainty to their difference.,
+        }
+      - {
+          id: c,
+          text: The difference has the same uncertainty as one trial because both trials are binary.,
+          correct: false,
+          feedback: We compare two estimated rates rather than two single outcomes.,
+          category: misunderstood_definition,
+        }
+    solution: Either rate could be different in a fresh experiment. For independent tests their squared standard errors add, so ignoring either one would understate uncertainty in the difference.
+  - id: ds-difference-se-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Two independently tested robot versions have estimated rate standard errors ${{=0.03*k}}$ and ${{=0.04*k}}$. What is the standard error of their difference? Give a decimal, not a percentage."
+    params:
+      k: { min: 1, max: 3, step: 1 }
+    answer_expr: 0.05*k
+    tolerance: { abs: 0.0001 }
+    common_wrong:
+      - answer_expr: 0.07*k
+        category: misapplied_technique
+        feedback: Add the squared standard errors and take the square root rather than adding the errors directly.
+    solution: 'Combine independent uncertainties using the square root of the squared-error sum. Here $\sqrt{ {{=0.03*k}}^2+{{=0.04*k}}^2 }={{=0.05*k}}$.'
+  - id: ds-difference-upper-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "Independent tests with enough successes and failures give an estimated updated-minus-original rate difference of ${{=d/10}}$. Their rate standard errors are ${{=0.03*k}}$ and ${{=0.04*k}}$. Find the upper endpoint of the approximate 95% difference interval using two combined standard errors."
+    params:
+      k: { min: 1, max: 2, step: 1 }
+      d: { min: 2, max: 4, step: 1 }
+    answer_expr: d/10+0.1*k
+    tolerance: { abs: 0.0001 }
+    solution: 'The combined standard error is $\sqrt{ {{=0.03*k}}^2+{{=0.04*k}}^2 }={{=0.05*k}}$. Add twice that to the difference to get ${{=d/10}}+2({{=0.05*k}})={{=d/10+0.1*k}}$.'
+  - id: ds-overlap
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: Two robot versions have overlapping individual confidence intervals, but the valid approximate interval for updated minus original is 0.02 to 0.14. How should we judge improvement?
+    options:
+      - {
+          id: a,
+          text: Declare equal chances because individual intervals overlap.,
+          correct: false,
+          feedback: Overlap of individual intervals does not establish equality.,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: b,
+          text: Use the difference interval and find evidence of improvement.,
+          correct: true,
+          feedback: It directly measures the difference and excludes zero.,
+        }
+      - {
+          id: c,
+          text: Ignore the original rate because the updated rate is higher.,
+          correct: false,
+          feedback: Both rates contribute uncertainty and both must enter the comparison.,
+          category: misapplied_technique,
+        }
+    solution: The interval for the difference answers the comparison question directly. Its lower endpoint is positive, so it supports improvement under the assumptions even though the individual intervals overlap.
+  - id: ds-warehouse-comparison
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: Independent tests of two warehouse sorting systems have enough successes and failures for the approximation. The updated-minus-original success-rate difference is 0.04 and its combined standard error is 0.03. What follows from the two-standard-error interval?
+    options:
+      - {
+          id: a,
+          text: The interval includes zero so we cannot yet judge a real difference.,
+          correct: true,
+          feedback: The interval runs from minus 0.02 to 0.10.,
+        }
+      - {
+          id: b,
+          text: The positive observed difference proves the updated system is better.,
+          correct: false,
+          feedback: The estimated uncertainty is large enough to include no difference.,
+          category: incorrect_reasoning,
+        }
+      - {
+          id: c,
+          text: The interval proves both systems have exactly equal success chances.,
+          correct: false,
+          feedback: Including zero leaves equality plausible but does not prove it.,
+          category: misunderstood_definition,
+        }
+    solution: Two standard errors give a margin of $2(0.03)=0.06$. The difference interval is $[0.04-0.06,0.04+0.06]=[-0.02,0.10]$, which includes zero and leaves us unsure.

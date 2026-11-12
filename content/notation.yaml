@@ -35,7 +35,13 @@ terms:
       introduced_by: [linear-regression],
     }
   - { id: limit, label: "limit notation", match: ['\\lim'], introduced_by: [derivatives] }
-  - { id: exp-log, label: "e and ln", match: ['\\ln\b', '\be\^'], introduced_by: [derivatives] }
+  - {
+      id: exp,
+      label: "e powers",
+      match: ['\be\^'],
+      introduced_by: [derivatives, gaussian-distribution],
+    }
+  - { id: ln, label: "ln", match: ['\\ln\b'], introduced_by: [derivatives] }
   - {
       id: partial,
       label: "∂ partial derivative",
@@ -54,7 +60,7 @@ terms:
       id: mse,
       label: "MSE",
       match: ['\bMSE\b', "mean squared error"],
-      introduced_by: [supervised-learning, loss-functions],
+      introduced_by: [supervised-learning, loss-functions, maximum-likelihood],
     }
   - {
       id: mae,
@@ -73,10 +79,17 @@ terms:
   - {
       id: sigmoid,
       label: "sigmoid σ",
-      match: ['\\sigma', "sigmoid"],
+      match: ["sigmoid"],
       introduced_by: [activation-functions, logistic-regression],
     }
   - { id: relu, label: "ReLU", match: ["ReLU"], introduced_by: [activation-functions] }
+  - {
+      id: sigma,
+      label: "σ (sigmoid or standard deviation)",
+      match: ['\\sigma'],
+      introduced_by:
+        [activation-functions, logistic-regression, gaussian-distribution, maximum-likelihood],
+    }
   - {
       id: hadamard,
       label: "⊙ elementwise product",
@@ -107,7 +120,7 @@ terms:
       id: cross-entropy,
       label: "cross-entropy",
       match: ["cross-entropy"],
-      introduced_by: [logistic-regression],
+      introduced_by: [logistic-regression, information-theory],
     }
   - {
       id: cnn,

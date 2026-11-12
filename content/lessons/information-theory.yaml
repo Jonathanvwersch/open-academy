@@ -1,0 +1,256 @@
+concept: information-theory
+version: 1
+objective: |
+  **Goal:** compute entropy and cross-entropy for small distributions and explain why cross-entropy is the loss for classification.
+recap:
+  - concept: probability-basics
+    text: A distribution lists outcome probabilities between 0 and 1, adding to 1. An expected value is a probability-weighted average. Independent events are events where knowing one happened does not change the chance of the other.
+where_this_fits: |
+  ### What does information theory measure?
+
+  Information theory measures surprise, meaning how unexpected an outcome is given its probability.
+
+  A weather app uses a model to calculate probabilities for sunny, cloudy and rainy. We call these answers classes and the model a classifier. But are its probabilities good? Accuracy is the fraction of correct picks but ignores confidence, how strongly a pick is favoured.
+
+  We'll compare forecasts with actual probabilities describing how often each weather happens over many days. We'll compute entropy, the average surprise from actual probabilities, and cross-entropy, which weights forecast surprises by actual probabilities. Cross-entropy scores errors as a loss. We train the model by changing its calculation to lower this loss. The difference from entropy, KL divergence, measures the extra surprise from wrong forecasts.
+knowledge_points:
+  - id: it-surprise
+    title: Measure how surprising an outcome is
+    explain: |
+      ### Rare outcomes tell us more
+
+      To judge forecasts, we first need a number for how unexpected an outcome is. Over many days, suppose sun happens half the time, cloud a quarter and rain a quarter. Their actual distribution is $p=(1/2,1/4,1/4)$.
+
+      Rain is less likely than sun, so it should give more surprise. An outcome sure to happen should give none. A **bit** measures the surprise of finding out which of two equally likely outcomes happened, such as a fair coin's heads or tails.
+
+      The curve shows surprise falling as probability rises. Each point label gives probability first and surprise second.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Surprise in bits versus probability: 1/8 gives 3 bits, 1/4 gives 2, 1/2 gives 1 and 1 gives 0">
+      <g transform="translate(60 0)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <path d="M45 40 V240 H475" stroke="#737373" fill="#d4d4d4" fill-opacity="0"/>
+      <text x="15" y="22">Surprise (bits)</text><text x="390" y="285">Probability</text>
+      <path d="M95.00 60.00 L100.00 68.25 L105.00 75.78 L110.00 82.71 L115.00 89.13 L120.00 95.10 L125.00 100.68 L130.00 105.93 L135.00 110.88 L140.00 115.56 L145.00 120.00 L150.00 124.22 L155.00 128.25 L160.00 132.10 L165.00 135.78 L170.00 139.32 L175.00 142.71 L180.00 145.98 L185.00 149.13 L190.00 152.16 L195.00 155.10 L200.00 157.94 L205.00 160.68 L210.00 163.35 L215.00 165.93 L220.00 168.44 L225.00 170.88 L230.00 173.25 L235.00 175.56 L240.00 177.81 L245.00 180.00 L250.00 182.14 L255.00 184.22 L260.00 186.26 L265.00 188.25 L270.00 190.20 L275.00 192.10 L280.00 193.96 L285.00 195.78 L290.00 197.57 L295.00 199.32 L300.00 201.03 L305.00 202.71 L310.00 204.36 L315.00 205.98 L320.00 207.57 L325.00 209.13 L330.00 210.66 L335.00 212.16 L340.00 213.64 L345.00 215.10 L350.00 216.53 L355.00 217.94 L360.00 219.32 L365.00 220.68 L370.00 222.03 L375.00 223.35 L380.00 224.65 L385.00 225.93 L390.00 227.20 L395.00 228.44 L400.00 229.67 L405.00 230.88 L410.00 232.07 L415.00 233.25 L420.00 234.41 L425.00 235.56 L430.00 236.69 L435.00 237.81 L440.00 238.91 L445.00 240.00" stroke="#3b82f6" fill="#d4d4d4" fill-opacity="0" stroke-width="2"/>
+      <circle cx="95" cy="60" r="4" fill="#3b82f6"/><text x="107" y="48">(1/8, 3)</text>
+      <circle cx="145" cy="120" r="4" fill="#3b82f6"/><text x="157" y="108">(1/4, 2)</text>
+      <circle cx="245" cy="180" r="4" fill="#3b82f6"/><text x="257" y="168">(1/2, 1)</text>
+      <circle cx="445" cy="240" r="4" fill="#3b82f6"/><text x="457" y="228">(1, 0)</text>
+      <path d="M95 240 v5 M145 240 v5 M245 240 v5 M445 240 v5 M40 60 h5 M40 120 h5 M40 180 h5 M40 240 h5" stroke="#737373"/>
+      <text x="95" y="265" text-anchor="middle">1/8</text><text x="145" y="265" text-anchor="middle">1/4</text><text x="245" y="265" text-anchor="middle">1/2</text><text x="445" y="265" text-anchor="middle">1</text>
+      <text x="35" y="65" text-anchor="end">3</text><text x="35" y="125" text-anchor="end">2</text><text x="35" y="185" text-anchor="end">1</text><text x="35" y="245" text-anchor="end">0</text>
+      </g></svg>
+      ```
+
+      ### Doubling from 1
+
+      A base-two logarithm, written $\log_2 x$, counts doublings from 1 to $x$. Three doublings give 2, then 4, then 8, so $\log_2 8=3$. For numbers between 2 and 4, the logarithm lies between 1 and 2. A calculator can evaluate these fractional logarithms.
+
+      To calculate **surprise**, write $r$ for whichever single outcome probability we are scoring. This differs from $p$, which names the whole distribution.
+
+      $$\text{surprise}=\log_2\frac{1}{r}\text{ bits}$$
+
+      Rarer outcomes have larger reciprocals $1/r$, so they get larger surprises. Halving probability doubles its reciprocal, adding one doubling and thus one bit. The curve stops at $1/8$ because surprise grows without bound as probability approaches zero.
+
+      ### Why a logarithm?
+
+      If we report two coin results together instead of one at a time, their total surprise should not change.
+
+      Independent tosses both landing heads have probability $1/2\times1/2=1/4$. Their 2 bits equal the sum of the two 1-bit scores. Logarithms turn products into sums because multiplying numbers combines their doublings. Using $1/r$ alone would multiply scores instead of adding them, and would give a certain outcome 1 rather than 0.
+    worked: |
+      Let's find sun's and rain's surprises.
+
+      1. **Find the reciprocals.** We divide 1 by each probability.
+         $$1/(1/2)=2,\qquad 1/(1/4)=4$$
+
+      2. **Count the doublings.** One doubling reaches 2, while two reach 4.
+         $$\text{sun: }\log_2 2=1,\qquad\text{rain: }\log_2 4=2$$
+
+      Cloud has the same probability and surprise as rain. Both give more surprise than sun.
+    problems:
+      [
+        it-surprise-basics,
+        it-surprise-why,
+        it-surprise-fixed,
+        it-surprise-template,
+        it-surprise-product,
+        it-surprise-robot,
+      ]
+  - id: it-entropy
+    title: Find the average surprise
+    explain: |
+      ### From one day to many
+
+      We can score one outcome now. To summarise many days, we need an average that accounts for how often each weather happens.
+
+      **Entropy** is the expected surprise of a distribution, written $H(p)$. Here $p$ gives the actual outcome probabilities.
+
+      $$H(p)=p_1\log_2\frac{1}{p_1}+p_2\log_2\frac{1}{p_2}+\dots$$
+
+      The entries $p_1,p_2$ are the probabilities of the first and second outcomes. The dots include the rest. Each term weights a surprise by its actual probability.
+
+      ### Outcomes that never happen
+
+      An outcome with probability zero contributes no observations to our total surprise. Its weighted contribution to the average is therefore zero. We use that value without evaluating the undefined $1/0$.
+
+      ### Compare different distributions
+
+      To compare probabilities on four outcomes, imagine a device that lights exactly one of red, blue, green and yellow. If red is certain, its zero surprise gives entropy zero. If all four are equally likely, each gives $\log_2 4=2$ bits, so the average is 2 bits. A fair coin's heads and tails each give 1 bit, so their average is 1 bit.
+
+      The bars compare these cases with weather, whose 1.5-bit entropy we'll calculate below. R, B, G and Y mean red, blue, green and yellow. H and T mean heads and tails.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 460" aria-label="Probability bars for red certain, a fair coin, weather and four equal lights, with entropies 0, 1, 1.5 and 2 bits. Light bars are red, blue, green and yellow. Coin bars are heads and tails. Weather bars are sun, cloud and rain">
+      <g transform="translate(60 0)" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <text x="20" y="25">Bar height = probability (full height = 1)</text>
+      <text x="20" y="50">Red certain</text><path d="M20 185 h195" stroke="#737373"/><rect x="20" y="65" width="32" height="120" fill="#3b82f6"/><text x="36" y="205" text-anchor="middle">1</text>
+      <rect x="64" y="185" width="32" height="0" fill="#3b82f6"/><text x="80" y="205" text-anchor="middle">0</text>
+      <rect x="108" y="185" width="32" height="0" fill="#3b82f6"/><text x="124" y="205" text-anchor="middle">0</text>
+      <rect x="152" y="185" width="32" height="0" fill="#3b82f6"/><text x="168" y="205" text-anchor="middle">0</text>
+      <text x="36" y="228" text-anchor="middle">R</text><text x="80" y="228" text-anchor="middle">B</text><text x="124" y="228" text-anchor="middle">G</text><text x="168" y="228" text-anchor="middle">Y</text><text x="20" y="252">0 bits</text>
+      <text x="285" y="110">Fair coin</text><path d="M285 185 h195" stroke="#737373"/><rect x="285" y="125" width="32" height="60" fill="#3b82f6"/><text x="301" y="205" text-anchor="middle">1/2</text>
+      <rect x="329" y="125" width="32" height="60" fill="#3b82f6"/><text x="345" y="205" text-anchor="middle">1/2</text><text x="301" y="228" text-anchor="middle">H</text><text x="345" y="228" text-anchor="middle">T</text><text x="285" y="252">1 bit</text>
+      <text x="20" y="295">Weather</text><path d="M20 370 h195" stroke="#737373"/><rect x="20" y="310" width="32" height="60" fill="#3b82f6"/><text x="36" y="390" text-anchor="middle">1/2</text>
+      <rect x="64" y="340" width="32" height="30" fill="#3b82f6"/><text x="80" y="390" text-anchor="middle">1/4</text>
+      <rect x="108" y="340" width="32" height="30" fill="#3b82f6"/><text x="124" y="390" text-anchor="middle">1/4</text><text x="36" y="413" text-anchor="middle">Sun</text><text x="80" y="413" text-anchor="middle">Cloud</text><text x="124" y="413" text-anchor="middle">Rain</text><text x="20" y="439">1.5 bits</text>
+      <text x="285" y="325">Four equal lights</text><path d="M285 370 h195" stroke="#737373"/><rect x="285" y="340" width="32" height="30" fill="#3b82f6"/><text x="301" y="390" text-anchor="middle">1/4</text>
+      <rect x="329" y="340" width="32" height="30" fill="#3b82f6"/><text x="345" y="390" text-anchor="middle">1/4</text>
+      <rect x="373" y="340" width="32" height="30" fill="#3b82f6"/><text x="389" y="390" text-anchor="middle">1/4</text>
+      <rect x="417" y="340" width="32" height="30" fill="#3b82f6"/><text x="433" y="390" text-anchor="middle">1/4</text><text x="301" y="413" text-anchor="middle">R</text><text x="345" y="413" text-anchor="middle">B</text><text x="389" y="413" text-anchor="middle">G</text><text x="433" y="413" text-anchor="middle">Y</text><text x="285" y="439">2 bits</text>
+      </g></svg>
+      ```
+
+      Now make red light on half the trials, blue on a quarter, and green and yellow on an eighth each. Their surprises are 1, 2, 3 and 3 bits, giving
+
+      $$\frac12\times1+\frac14\times2+\frac18\times3+\frac18\times3=1.75\text{ bits}.$$
+
+      This lies below the equal-probability result. Equal probabilities give the largest entropy for any fixed number of outcomes, though we won't prove that here. Zero is the minimum because surprises cannot be negative.
+    worked: |
+      Let's compute the weather's entropy.
+
+      1. **Find each weather outcome's surprise.** For sun, cloud and rain, take logarithms of the reciprocals of $1/2,1/4,1/4$.
+         $$\text{surprises: }1,\ 2,\ 2\text{ bits}$$
+
+      2. **Weight and add.** To average across days, each surprise must count in proportion to how often it occurs.
+         $$H(p)=\frac12\times1+\frac14\times2+\frac14\times2=1.5\text{ bits}$$
+
+      Be careful not to average the three surprises equally. That would give $(1+2+2)/3=5/3\approx1.667$ bits, incorrectly treating rainy and sunny days as equally common.
+    problems:
+      [
+        it-entropy-basics,
+        it-entropy-why,
+        it-entropy-fixed,
+        it-entropy-template,
+        it-entropy-zero,
+        it-entropy-sensor,
+      ]
+  - id: it-cross-entropy
+    title: Score the app's forecasts
+    explain: |
+      ### Score one day's forecast
+
+      To keep the arithmetic simple, suppose the app gives the same forecast $q=(1/4,1/4,1/2)$ for sun, cloud and rain every day.
+
+      For each recorded day, we know the weather that happened. We call this answer its label and pair it with the forecast to make a labelled example. To score the forecast, use the label's surprise under the forecast probabilities. This is the **classification loss**.
+
+      $$\text{loss}=\log_2\frac{1}{q_{\text{actual}}}$$
+
+      Here $q_{\text{actual}}$ is the forecast probability of the class that occurred. If sun occurs, the loss is $\log_2 4=2$ bits. The app would pick rain because it has the highest forecast probability, but that pick adds no separate penalty.
+
+      Let's vary the forecast probability assigned to the class that actually occurs.
+
+      - A probability of $1/2$ gives $\log_2 2=1$ bit.
+      - A probability of $1/8$ gives $\log_2 8=3$ bits.
+      - A probability of 1 gives $\log_2 1=0$ bits.
+
+      When a forecast strongly favours the wrong answer, it gives the observed class a tiny probability. Its loss is then larger than a less confident mistake's, whereas accuracy records both as simply wrong.
+
+      ### Average the daily losses
+
+      Weather still follows $p=(1/2,1/4,1/4)$. Sun occurs on half the days, so its loss gets weight $1/2$. **Cross-entropy** averages these daily losses, calculating surprise from forecast probabilities but weighting it by actual probabilities.
+
+      $$H(p,q)=p_1\log_2\frac{1}{q_1}+p_2\log_2\frac{1}{q_2}+\dots$$
+
+      Here $p_1,q_1$ are the actual and forecast probabilities of sun. The subscript 2 refers to cloud, and the dots include the remaining outcomes. Each term is one possible daily loss times its chance of occurring, so the formula averages classification loss.
+
+      ### Zero predictions
+
+      A zero forecast probability for the observed class gives infinite mathematical loss. To keep calculations finite, training software may replace zero with a tiny positive probability. That approximates the loss rather than changing this mathematical rule.
+    worked: |
+      Let's average this app's losses over 100 days.
+
+      1. **Score each possible observed day.** The forecast gives sun and cloud $1/4$ each and rain $1/2$, giving these losses.
+         $$\text{sun: }\log_2 4=2,\quad\text{cloud: }\log_2 4=2,\quad\text{rain: }\log_2 2=1$$
+
+      2. **Average across days.** Imagine 100 days with 50 sunny, 25 cloudy and 25 rainy days. Weight each daily loss by its fraction of those days.
+         $$H(p,q)=\frac{50\times2+25\times2+25\times1}{100}=1.75\text{ bits}$$
+
+      This average classification loss is cross-entropy. Its 1.75 bits exceed the 1.5-bit entropy baseline.
+    problems:
+      [
+        it-cross-basics,
+        it-cross-why,
+        it-cross-fixed,
+        it-cross-template,
+        it-cross-zero,
+        it-cross-robot,
+        it-cross-confidence,
+      ]
+  - id: it-kl
+    title: Measure the cost of wrong forecasts
+    explain: |
+      ### Compare with the baseline
+
+      The app's excess loss, beyond weather's entropy, measures how much its wrong probabilities cost.
+
+      **Kullback–Leibler divergence**, or **KL divergence**, measures the extra average surprise from predicting $q$ when outcomes follow $p$. In $\mathrm{KL}(p\Vert q)$, the double bar separates actual $p$ on the left from forecast $q$ on the right.
+
+      $$\mathrm{KL}(p\Vert q)=H(p,q)-H(p)$$
+
+      When $q=p$, the two averages match, so KL is zero. Cross-entropy cannot go lower, and only a match reaches that minimum. We won't prove this general result here, but it means KL cannot be negative.
+
+      For one illustration, take a fair coin with actual heads/tails probabilities $(1/2,1/2)$ and forecast $(1/4,3/4)$. Heads gives $\log_2 4=2$ bits. For tails, a calculator gives $\log_2(4/3)\approx0.415$. Their average is $(2+0.415)/2\approx1.208$ bits, above the 1-bit entropy.
+
+      ### Swap actual and forecast probabilities
+
+      Compare a coin that always lands heads, $a=(1,0)$, with a fair coin, $b=(1/2,1/2)$. We can use either as the actual distribution and the other as the forecast.
+
+      | Actual | Forecast | Cross-entropy |
+      | --- | --- | --- |
+      | $a$ | $b$ | $H(a,b)$ |
+      | $b$ | $a$ | $H(b,a)$ |
+
+      We'll calculate both below. Reversing the order can change KL, so it is not a distance that stays the same whichever way we compare.
+
+      ### Why lowering cross-entropy helps
+
+      During training, we change the model's calculation and score its new forecasts on the same recorded days. The weather answers stay fixed, so entropy stays fixed. Lowering cross-entropy therefore lowers KL by the same amount. A perfect match gives zero KL, though training need not reach it.
+    worked: |
+      Let's compare the original and matching forecasts.
+
+      1. **Subtract entropy from cross-entropy.** Remove the unavoidable surprise.
+         $$\mathrm{KL}(p\Vert q)=1.75-1.5=0.25\text{ bits}$$
+
+      2. **Score matching probabilities.** Match the actual probabilities with $q_{\text{new}}=p=(1/2,1/4,1/4)$.
+         $$H(p,q_{\text{new}})=\frac12\times1+\frac14\times2+\frac14\times2=1.5\text{ bits}$$
+
+      3. **Subtract the unchanged entropy.** Entropy is still 1.5 bits.
+         $$\mathrm{KL}(p\Vert q_{\text{new}})=1.5-1.5=0\text{ bits}$$
+
+      Now let's calculate both orders in the coin table.
+
+      4. **Use the always-heads coin as actual.** Only heads occurs, giving $H(a)=0$, so
+         $$\mathrm{KL}(a\Vert b)=H(a,b)-H(a)=1\times\log_2 2-0=1\text{ bit}.$$
+
+      5. **Use the fair coin as actual.** Now tails occurs half the time but is forecast probability zero.
+         $$H(b,a)=\frac12\log_2 1+\frac12\log_2(1/0).$$
+
+      At zero the tails term is infinite. Think of forecasts getting arbitrarily close to zero, giving ever larger surprises. Subtracting $H(b)=1$ still leaves infinite KL. Positive forecasts avoid this problem.
+    problems: [it-kl-basics, it-kl-why, it-kl-fixed, it-kl-template, it-kl-direction, it-kl-robot]
+final: it-explain-classification
+summary: |
+  - Surprise is $\log_2(1/r)$ bits. Entropy averages it using actual probabilities, $H(p)=p_1\log_2(1/p_1)+p_2\log_2(1/p_2)+\dots$.
+  - Cross-entropy averages forecast surprises using actual probabilities, $H(p,q)=p_1\log_2(1/q_1)+p_2\log_2(1/q_2)+\dots$.
+  - A labelled example has loss $\log_2(1/q_{\text{actual}})$. Averaging gives cross-entropy, which scores confidence as well as correctness.
+  - KL is $\mathrm{KL}(p\Vert q)=H(p,q)-H(p)$. Swapping actual and forecast probabilities can change it. With fixed actual probabilities, lower cross-entropy lowers KL.
+
+  **Next:** A later lesson calculates class probabilities for classification.

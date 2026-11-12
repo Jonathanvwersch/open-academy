@@ -1,0 +1,280 @@
+concept: images-as-tensors
+version: 1
+objective: |
+  **Goal:** read an image's shape, convert it between the height-width-channels and channels-height-width layouts, and scale its pixel values the way a model expects.
+recap:
+  - concept: matrices
+    text: "A matrix is a grid with shape (rows, columns). NumPy's .shape gives that shape, .T swaps rows and columns, and broadcasting reuses a smaller array across each row."
+where_this_fits: |
+  ### What is an image tensor?
+
+  To a computer, an image is a grid of numbers, one for each tiny square of colour, called a pixel. A grayscale image needs one grid, which is just a matrix. An RGB colour image needs three same-sized grids stacked on top of each other, one for red, one for green and one for blue, and a stack of grids like that is called a tensor.
+
+  A model can only read numbers, so every photo has to become a tensor before the model sees it. But different tools stack the grids in different orders, and models expect pixel values on a particular scale. If we get the order wrong, the code often runs without any error, and the model just sees scrambled pixels.
+knowledge_points:
+  - id: iat-pixels-grid
+    title: Turn a picture into numbers
+    explain: |
+      ### Brightness in a grid
+
+      In the matrices lesson, each row of a matrix held one house's measurements. A grayscale (black-and-white) image is also a matrix, but each entry is the brightness of one pixel. In the picture below, each square is a pixel, and the number in it says how bright it is. A value of 0 is black, 255 is white, and the values in between are shades of grey.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 282" role="img" aria-label="Four rows and five columns of grayscale pixels, indexed from zero. Row 1 column 3 has value 153." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14">
+      <text x="300" y="22" text-anchor="middle" fill="#171717">Grayscale: 4 rows × 5 columns; shape (4, 5)</text>
+      <text x="325" y="48" text-anchor="middle" fill="#171717">column index</text>
+      <text x="185" y="70" text-anchor="middle" fill="#171717">0</text>
+      <text x="255" y="70" text-anchor="middle" fill="#171717">1</text>
+      <text x="325" y="70" text-anchor="middle" fill="#171717">2</text>
+      <text x="395" y="70" text-anchor="middle" fill="#171717">3</text>
+      <text x="465" y="70" text-anchor="middle" fill="#171717">4</text>
+      <text x="110" y="107" text-anchor="middle" fill="#171717">row 0</text>
+      <rect x="150" y="80" width="70" height="48" fill="#171717" fill-opacity="1.000" stroke="#737373"/>
+      <text x="185" y="107" text-anchor="middle" fill="#d4d4d4">0</text>
+      <rect x="220" y="80" width="70" height="48" fill="#171717" fill-opacity="0.800" stroke="#737373"/>
+      <text x="255" y="107" text-anchor="middle" fill="#d4d4d4">51</text>
+      <rect x="290" y="80" width="70" height="48" fill="#171717" fill-opacity="0.600" stroke="#737373"/>
+      <text x="325" y="107" text-anchor="middle" fill="#171717">102</text>
+      <rect x="360" y="80" width="70" height="48" fill="#171717" fill-opacity="0.400" stroke="#737373"/>
+      <text x="395" y="107" text-anchor="middle" fill="#171717">153</text>
+      <rect x="430" y="80" width="70" height="48" fill="#171717" fill-opacity="0.000" stroke="#737373"/>
+      <text x="465" y="107" text-anchor="middle" fill="#171717">255</text>
+      <text x="110" y="155" text-anchor="middle" fill="#171717">row 1</text>
+      <rect x="150" y="128" width="70" height="48" fill="#171717" fill-opacity="0.000" stroke="#737373"/>
+      <text x="185" y="155" text-anchor="middle" fill="#171717">255</text>
+      <rect x="220" y="128" width="70" height="48" fill="#171717" fill-opacity="0.200" stroke="#737373"/>
+      <text x="255" y="155" text-anchor="middle" fill="#171717">204</text>
+      <rect x="290" y="128" width="70" height="48" fill="#171717" fill-opacity="0.600" stroke="#737373"/>
+      <text x="325" y="155" text-anchor="middle" fill="#171717">102</text>
+      <rect x="360" y="128" width="70" height="48" fill="#171717" fill-opacity="0.400" stroke="#737373"/>
+      <text x="395" y="155" text-anchor="middle" fill="#171717">153</text>
+      <rect x="430" y="128" width="70" height="48" fill="#171717" fill-opacity="0.800" stroke="#737373"/>
+      <text x="465" y="155" text-anchor="middle" fill="#d4d4d4">51</text>
+      <text x="110" y="203" text-anchor="middle" fill="#171717">row 2</text>
+      <rect x="150" y="176" width="70" height="48" fill="#171717" fill-opacity="0.800" stroke="#737373"/>
+      <text x="185" y="203" text-anchor="middle" fill="#d4d4d4">51</text>
+      <rect x="220" y="176" width="70" height="48" fill="#171717" fill-opacity="0.600" stroke="#737373"/>
+      <text x="255" y="203" text-anchor="middle" fill="#171717">102</text>
+      <rect x="290" y="176" width="70" height="48" fill="#171717" fill-opacity="0.400" stroke="#737373"/>
+      <text x="325" y="203" text-anchor="middle" fill="#171717">153</text>
+      <rect x="360" y="176" width="70" height="48" fill="#171717" fill-opacity="0.200" stroke="#737373"/>
+      <text x="395" y="203" text-anchor="middle" fill="#171717">204</text>
+      <rect x="430" y="176" width="70" height="48" fill="#171717" fill-opacity="0.000" stroke="#737373"/>
+      <text x="465" y="203" text-anchor="middle" fill="#171717">255</text>
+      <text x="110" y="251" text-anchor="middle" fill="#171717">row 3</text>
+      <rect x="150" y="224" width="70" height="48" fill="#171717" fill-opacity="1.000" stroke="#737373"/>
+      <text x="185" y="251" text-anchor="middle" fill="#d4d4d4">0</text>
+      <rect x="220" y="224" width="70" height="48" fill="#171717" fill-opacity="1.000" stroke="#737373"/>
+      <text x="255" y="251" text-anchor="middle" fill="#d4d4d4">0</text>
+      <rect x="290" y="224" width="70" height="48" fill="#171717" fill-opacity="0.800" stroke="#737373"/>
+      <text x="325" y="251" text-anchor="middle" fill="#d4d4d4">51</text>
+      <rect x="360" y="224" width="70" height="48" fill="#171717" fill-opacity="0.600" stroke="#737373"/>
+      <text x="395" y="251" text-anchor="middle" fill="#171717">102</text>
+      <rect x="430" y="224" width="70" height="48" fill="#171717" fill-opacity="0.400" stroke="#737373"/>
+      <text x="465" y="251" text-anchor="middle" fill="#171717">153</text>
+      </svg>
+      ```
+
+      We use 8-bit images here, whose decoded brightnesses are whole numbers from 0 to 255. Other images can use higher bit depths or floats. NumPy calls this one-byte representation **uint8**, short for "unsigned 8-bit integer". Unsigned means it has no negative values, and 8 bits make one byte, which can hold exactly 256 different values.
+
+      ### Height comes first
+
+      NumPy stores a grid of numbers like this as an **array**, its general name for a grid with any number of directions. An **axis** is one direction along which we count an array's entries. A matrix has two. The first axis counts rows from top to bottom, so its size is the image's height. The second counts columns from left to right, so its size is the width. So for an image with height $H$ and width $W$,
+
+      $$\text{shape}=(H,W),\qquad\text{pixels}=H\times W.$$
+
+      NumPy's `.shape` gives these two sizes, height first, because an array lists its rows first, just like a matrix. To read one pixel, we write `img[r, c]`, where `r` is the pixel's row and `c` is its column. NumPy counts from zero, so the top-left pixel is `img[0, 0]` and the row labels in the picture run from 0 to 3.
+
+      Be careful with the way image sizes are usually written. A "640×480" photo means 640 pixels wide and 480 pixels tall, so the width comes first. But the array puts the height first, so its shape is `(480, 640)`. If we mix the two up, NumPy cuts the same numbers into rows of the wrong length, and the picture comes out scrambled.
+    worked: |
+      Let's read the grayscale image above.
+
+      1. **Read the shape.** There are four rows and five columns, with height first.
+         $$\text{shape}=(4,5).$$
+      2. **Count the pixels.** Every row has five pixels.
+         $$4\times5=20\text{ pixels}.$$
+      3. **Read one entry.** Row 1 is the second row and column 3 is the fourth column.
+         $$\texttt{img[1, 3]}=153.$$
+
+      So this small image is 20 brightness values in a $4\times5$ grid, and the pixel at `img[1, 3]` is a light grey.
+    problems:
+      [
+        iat-grid-basics,
+        iat-grid-self-explain,
+        iat-pixel-count,
+        iat-grid-index,
+        iat-grid-size,
+        iat-grid-code,
+        iat-grid-bytes,
+        iat-depth-grid,
+      ]
+  - id: iat-channels-layout
+    title: Stack the colour channels
+    explain: |
+      ### Three numbers per pixel
+
+      Our grayscale image had one brightness for each pixel. An RGB colour image has three, saying how much red, green and blue light the pixel has, and each of these is called a **channel**.
+
+      There are two common ways to arrange those numbers. On the left of the picture, each pixel of a tiny $2\times2$ image keeps its three numbers together. On the right, the same twelve numbers are sorted into three separate grids, or planes, one per channel. No number changes; only the order does.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 195" role="img" aria-label="The same 2 by 2 RGB image in HWC and CHW: RGB triples 10,20,30; 40,50,60; 70,80,90; 100,110,120 become red, green and blue planes." font-family="ui-sans-serif, system-ui, sans-serif" font-size="14">
+      <text x="140" y="22" text-anchor="middle" fill="#171717">HWC (2, 2, 3)</text>
+      <text x="440" y="22" text-anchor="middle" fill="#171717">CHW (3, 2, 2)</text>
+      <rect x="30" y="48" width="110" height="48" fill="#d4d4d4" fill-opacity="0.3" stroke="#737373"/>
+      <text x="85" y="76" text-anchor="middle" fill="#171717">10,20,30</text>
+      <rect x="140" y="48" width="110" height="48" fill="#d4d4d4" fill-opacity="0.3" stroke="#737373"/>
+      <text x="195" y="76" text-anchor="middle" fill="#171717">40,50,60</text>
+      <rect x="30" y="96" width="110" height="48" fill="#d4d4d4" fill-opacity="0.3" stroke="#737373"/>
+      <text x="85" y="124" text-anchor="middle" fill="#171717">70,80,90</text>
+      <rect x="140" y="96" width="110" height="48" fill="#d4d4d4" fill-opacity="0.3" stroke="#737373"/>
+      <text x="195" y="124" text-anchor="middle" fill="#171717">100,110,120</text>
+      <text x="340" y="42" text-anchor="middle" fill="#ef4444">R</text>
+      <rect x="300" y="48" width="40" height="48" fill="#ef4444" fill-opacity="0.15" stroke="#ef4444"/>
+      <text x="320" y="76" text-anchor="middle" fill="#171717">10</text>
+      <rect x="340" y="48" width="40" height="48" fill="#ef4444" fill-opacity="0.15" stroke="#ef4444"/>
+      <text x="360" y="76" text-anchor="middle" fill="#171717">40</text>
+      <rect x="300" y="96" width="40" height="48" fill="#ef4444" fill-opacity="0.15" stroke="#ef4444"/>
+      <text x="320" y="124" text-anchor="middle" fill="#171717">70</text>
+      <rect x="340" y="96" width="40" height="48" fill="#ef4444" fill-opacity="0.15" stroke="#ef4444"/>
+      <text x="360" y="124" text-anchor="middle" fill="#171717">100</text>
+      <text x="445" y="42" text-anchor="middle" fill="#10b981">G</text>
+      <rect x="405" y="48" width="40" height="48" fill="#10b981" fill-opacity="0.15" stroke="#10b981"/>
+      <text x="425" y="76" text-anchor="middle" fill="#171717">20</text>
+      <rect x="445" y="48" width="40" height="48" fill="#10b981" fill-opacity="0.15" stroke="#10b981"/>
+      <text x="465" y="76" text-anchor="middle" fill="#171717">50</text>
+      <rect x="405" y="96" width="40" height="48" fill="#10b981" fill-opacity="0.15" stroke="#10b981"/>
+      <text x="425" y="124" text-anchor="middle" fill="#171717">80</text>
+      <rect x="445" y="96" width="40" height="48" fill="#10b981" fill-opacity="0.15" stroke="#10b981"/>
+      <text x="465" y="124" text-anchor="middle" fill="#171717">110</text>
+      <text x="550" y="42" text-anchor="middle" fill="#3b82f6">B</text>
+      <rect x="510" y="48" width="40" height="48" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <text x="530" y="76" text-anchor="middle" fill="#171717">30</text>
+      <rect x="550" y="48" width="40" height="48" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <text x="570" y="76" text-anchor="middle" fill="#171717">60</text>
+      <rect x="510" y="96" width="40" height="48" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <text x="530" y="124" text-anchor="middle" fill="#171717">90</text>
+      <rect x="550" y="96" width="40" height="48" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6"/>
+      <text x="570" y="124" text-anchor="middle" fill="#171717">120</text>
+      <text x="320" y="175" text-anchor="middle" fill="#171717">Each RGB triple supplies one number to each plane.</text>
+      </svg>
+      ```
+
+      Either way, the image now has three axes: height, width and channels. In general, a **tensor** is an array with any number of axes, so a vector, a single list of numbers, and a matrix are tensors too. NumPy's `.ndim` tells us how many axes an array has.
+
+      ### Put the channels first
+
+      The left-hand order is called **HWC**, for height, width, channels, and its shape is `(H, W, 3)` for RGB. It's a common layout for NumPy arrays converted from PIL RGB images, or images loaded with matplotlib or OpenCV. (OpenCV defaults to blue, green, red, so check the colour order too.)
+
+      The right-hand order is **CHW**, with shape `(3, H, W)`, and it's the one PyTorch vision models usually expect. Models also work on several images at once, called a **batch**, which adds one more axis at the front for the number of images $N$. That gives `(N, H, W, 3)`, called NHWC, or `(N, 3, H, W)`, called NCHW. For a model expecting NCHW, a single RGB image is passed as a batch of one, with shape `(1, 3, H, W)`.
+
+      To turn HWC into CHW, we use `np.transpose(img, (2, 0, 1))`. Each number in the tuple is an old axis number, and the tuple lists them in their new order. So old axis 2, the channels, moves to the front, followed by axis 0, the height, and axis 1, the width.
+
+      Be careful not to use `img.reshape(3, H, W)` instead. **Reshape** reads the numbers in NumPy's default row-by-row index order and cuts them into pieces of the new shape, so the shape can be right while the pixels are wrong. A transpose moves the axes and keeps each number with its own pixel.
+    worked: |
+      Let's move the diagram's 2×2 RGB image into CHW.
+
+      1. **Collect red values.** Take the first number from each pixel, keeping its row and column.
+         $$R=\begin{bmatrix}10&40\\70&100\end{bmatrix}.$$
+      2. **Collect green and blue.** Take the second and third numbers in the same positions.
+         $$G=\begin{bmatrix}20&50\\80&110\end{bmatrix},\qquad B=\begin{bmatrix}30&60\\90&120\end{bmatrix}.$$
+      3. **Stack the planes.** There are three planes, each two rows by two columns.
+         $$\text{CHW shape}=(3,2,2).$$
+
+      The top-left pixel is still (10, 20, 30), but now its three numbers are in the top-left corners of the red, green and blue planes. The code below does the same in NumPy. There, `.tolist()` turns an array into nested Python lists so it prints on one line, and `chw[0]` picks out the first plane, the red one. The last line shows the reshape mistake. In this array, the default index order reads pixel by pixel: 10, 20, 30, 40, 50 and so on. Reshape just cuts that line into new pieces, so its "red plane" `[[10, 20], [30, 40]]` mixes the red, green and blue of the first pixel with the red of the second.
+
+      ```python
+      import numpy as np
+      img = np.array([[[10, 20, 30], [40, 50, 60]],
+                      [[70, 80, 90], [100, 110, 120]]])
+      chw = np.transpose(img, (2, 0, 1))
+      print(chw.shape)  # (3, 2, 2)
+      print(chw[0].tolist())  # [[10, 40], [70, 100]]
+      print(img.reshape(3, 2, 2)[0].tolist())  # [[10, 20], [30, 40]]
+      ```
+
+      Why not use `.T`, the transpose from the matrices lesson? On three axes it reverses all of them, so it would give shape `(3, W, H)` and swap the height and width.
+
+      We used RGB here. Other formats can have more channels, such as a fourth for transparency.
+    problems:
+      [
+        iat-layout-basics,
+        iat-layout-self-explain,
+        iat-values-count,
+        iat-chw-height,
+        iat-reshape-trap,
+        iat-layout-code,
+        iat-batch-count,
+        iat-depth-layout,
+      ]
+  - id: iat-normalization
+    title: Rescale pixels for a model
+    explain: |
+      ### From whole numbers to small numbers
+
+      The channels are now in order, but our uint8 values still run from 0 to 255. A model multiplies each input by a weight and adds the results, so thousands of inputs in the hundreds can add up to huge sums, and models often learn more reliably from small inputs centred near zero.
+
+      So the first change for our uint8 images is **rescaling**: we divide every pixel value by 255, so it lies between 0 and 1. For example, 153 becomes $153/255=0.6$. The result has decimals, so NumPy stores it as a **float** rather than uint8.
+
+      ### Centre each channel
+
+      Many models also centre each channel, which is called **per-channel standardisation**. For each channel, two numbers are measured over a large set of photos: its **mean**, the average value, and its **standard deviation**, the typical distance of a value from that mean. For example, if half a channel's values are 0.3 and half are 0.7, the mean is 0.5 and every value is 0.2 away, so the standard deviation is 0.2. We subtract the mean, so an average value becomes 0, and divide by the standard deviation, so a typical value lands between about $-1$ and $1$:
+
+      $$x' = \frac{x-m_c}{s_c}.$$
+
+      Here $x$ is a rescaled value in channel $c$. That channel's mean is $m_c$ and its standard deviation is $s_c$, which must be positive to avoid division by zero, and $x'$ is the result.
+
+      ### Line the means up with the channels
+
+      In the matrices lesson, the bias row had one entry per column, so NumPy could reuse it for every house. In general, broadcasting matches the small array's axes with the *last* axes of the big one, and repeats it along the rest. In HWC, the last axis is channels, so `img - mean` with a mean of shape `(3,)` subtracts the right mean from every pixel. In CHW, the last axis is the width, so we give the means shape `(3, 1, 1)` with `mean.reshape(3, 1, 1)`. Now the axis of size 3 lines up with the channels, and each mean is repeated along the two size-1 axes, over its whole grid. Here reshape is safe, because adding size-1 axes doesn't reorder the three numbers.
+    worked: |
+      Let's prepare one RGB pixel (153, 102, 51), using means (0.5, 0.3, 0.2) and standard deviations (0.25, 0.2, 0.1).
+
+      1. **Rescale.** Divide every channel by 255 before subtracting means.
+         $$(153,102,51)/255=(0.6,0.4,0.2).$$
+      2. **Standardise.** Each channel uses its own pair of statistics.
+         $$((0.6-0.5)/0.25,\ (0.4-0.3)/0.2,\ (0.2-0.2)/0.1)=(0.4,0.5,0).$$
+
+      The red value was above its mean, so it came out positive, and the blue value was exactly at its mean, so it became zero. A value below its mean would come out negative.
+
+      We used round numbers here, but in practice you follow the model's documentation, because not every model expects this standardisation. A pretrained model, one that someone has already trained, expects the same means and standard deviations it was trained with. Many use means (0.485, 0.456, 0.406) and standard deviations (0.229, 0.224, 0.225), measured on ImageNet, a collection of over a million labelled photos.
+
+      Check the loaded values first: matplotlib loads PNGs as floats already between 0 and 1, so dividing those by 255 again would be wrong.
+
+      The code below does the same for a one-pixel image, first in HWC and then in CHW. There, `dtype=np.uint8` stores the values as uint8, one byte each, like a loaded 8-bit photo, `.astype(float)` switches to floats before we divide, and `np.round(..., 2)` rounds the printed results to two decimal places.
+
+      ```python
+      import numpy as np
+      img = np.array([[[153, 102, 51]]], dtype=np.uint8)
+      mean = np.array([0.5, 0.3, 0.2])
+      std = np.array([0.25, 0.2, 0.1])
+      x = img.astype(float) / 255
+      hwc = (x - mean) / std
+      chw = np.transpose(x, (2, 0, 1))
+      out = (chw - mean.reshape(3, 1, 1)) / std.reshape(3, 1, 1)
+      print(np.round(hwc, 2).tolist())  # [[[0.4, 0.5, 0.0]]]
+      print(np.round(out, 2).tolist())  # [[[0.4]], [[0.5]], [[0.0]]]
+      ```
+
+      Both orders give the same three numbers, 0.4, 0.5 and 0, each in its own channel.
+
+      Be careful not to subtract a mean of shape `(3,)` from a CHW image. It lines up with the width, so NumPy stops with an error, unless the image happens to be 3 pixels or 1 pixel wide. Then there is no error, and it quietly subtracts the wrong means.
+    problems:
+      [
+        iat-scale-basics,
+        iat-scale-self-explain,
+        iat-rescale-value,
+        iat-standard-value,
+        iat-mean-axis,
+        iat-scale-code,
+        iat-pretrained,
+        iat-robot-scale,
+      ]
+final: iat-explain-pipeline
+summary: |
+  - An 8-bit grayscale image is a matrix of brightnesses from 0 to 255, with shape (height, width), height first, and `img[r, c]` reads the pixel in row `r` and column `c`, counting from zero.
+  - An RGB colour image is a tensor with three channels, red, green and blue. HWC stores it as `(H, W, 3)`, CHW as `(3, H, W)`, and a batch of $N$ images adds an axis at the front.
+  - `np.transpose(img, (2, 0, 1))` turns HWC into CHW. Reshape can give the right shape but scramble the pixels, because it only cuts the default index-order sequence into new pieces.
+  - For a model expecting this preparation, we divide uint8 values by 255 and then standardise each channel with $x'=(x-m_c)/s_c$, using the model's own means and positive standard deviations, with shape `(3, 1, 1)` for a CHW image. Don't rescale values already in the expected range.
+
+  **Next:** The next vision lesson slides a small grid of weights across these channels to find patterns such as edges.

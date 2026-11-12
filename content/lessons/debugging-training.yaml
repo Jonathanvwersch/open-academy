@@ -1,0 +1,284 @@
+concept: debugging-training
+version: 1
+objective:
+  "**Goal:** diagnose a failing training run using its loss curve, a tiny-batch test and a gradient
+  check."
+recap:
+  - concept: sgd-minibatch
+    text:
+      A batch gradient is a noisy estimate, so even a correct update can raise full-data loss. Judge
+      progress using whole-dataset loss after each epoch.
+  - concept: overfitting
+    text:
+      Low training error with much higher or rising validation error suggests overfitting. A flexible
+      model can follow its training examples so closely that it copies them.
+where_this_fits: |-
+  ### What is debugging a training run?
+
+  Debugging a training run means finding out why a model is not learning the way it should, and fixing the cause. Training bugs often do not crash the program. Even with a wrong sign, a forgotten factor or a parameter that never changes, the program can keep running and printing losses.
+
+  Bad settings, such as a learning rate that is too large, can look just like bugs, so changing things at random is hard to learn from. We will read the loss curve, then run two quick tests: train on a tiny batch where we know zero loss is possible, and check slopes by nudging a weight.
+knowledge_points:
+  - id: dbt-loss-curves
+    title: Read what the loss curve shows
+    explain: |-
+      ### Compare runs on the same trips
+
+      Imagine a robot making deliveries. Four trips lasted $1,3,5,7$ seconds. As in the minibatch lesson, the model predicts one time $w$, in seconds, for every trip. Here $w$ is a prediction, not a weight multiplying an input. We start at $w=0$ and use all trips per update, so there is no batch noise.
+
+      A **loss curve** records loss during training. Below, green, blue and red use three learning rates. Green approaches the lowest possible loss, $5$, at prediction $4$; we will see why below. Blue falls slowly, while red rises. Grey is buggy code that never changes $w$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 375" aria-label="Full-batch loss for four robot trips. Green rate 0.25 approaches 5, blue rate 0.05 falls slowly, red rate 1.25 rises off the chart, and grey stays at 21 because w never changes."><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717"><text x="15" y="25">Loss</text><path d="M55 50 V245 H350" fill="#171717" fill-opacity="0" stroke="#737373"/><text x="48" y="250.00" text-anchor="end">0</text><text x="48" y="207.78" text-anchor="end">10</text><text x="48" y="165.56" text-anchor="end">20</text><text x="48" y="123.33" text-anchor="end">30</text><text x="48" y="81.11" text-anchor="end">40</text><circle cx="55" cy="156.33" r="3" fill="#171717"/><text x="62" y="149.33">21</text><text x="55.00" y="267" text-anchor="middle">0</text><text x="200.00" y="267" text-anchor="middle">3</text><text x="345.00" y="267" text-anchor="middle">6</text><text x="200" y="291" text-anchor="middle">Updates</text><path d="M55 223.89 H345" stroke="#737373" stroke-dasharray="4 4"/><text x="90" y="244">lowest possible loss 5</text><polyline points="55.00,156.33 103.33,207.00 151.67,219.67 200.00,222.83 248.33,223.62 296.67,223.82 345.00,223.87" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2.5"/><text x="25" y="315" fill="#10b981">— rate 0.25</text><polyline points="55.00,156.33 103.33,169.17 151.67,179.57 200.00,187.99 248.33,194.81 296.67,200.33 345.00,204.81" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2.5"/><text x="25" y="333" fill="#3b82f6">— rate 0.05</text><text x="210" y="45" fill="#ef4444">off the chart</text><polyline points="55.00,156.33 103.33,71.89 107.63,55.00" fill="#171717" fill-opacity="0" stroke="#ef4444" stroke-width="2.5"/><text x="25" y="351" fill="#ef4444">— rate 1.25</text><polyline points="55.00,156.33 103.33,156.33 151.67,156.33 200.00,156.33 248.33,156.33 296.67,156.33 345.00,156.33" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2.5"/><text x="25" y="369" fill="#737373">— w never changes (bug)</text></g></svg>
+      ```
+
+      ### How far the prediction is from 4
+
+      For a trip lasting $t$, squared-error loss is $(w-t)^2$, with slope $2(w-t)$. Averaging the four slopes gives:
+
+      $$g=\frac{2(w-1)+2(w-3)+2(w-5)+2(w-7)}{4}=2(w-4).$$
+
+      The average time, $4$, gives the lowest loss, as the loss formula below will show. Call $w-4$ the **gap**; it is negative when $w$ is below $4$. After subtracting learning rate $\eta$ times the slope, the new gap is:
+
+      $$[w-\eta\,2(w-4)]-4=w-4-2\eta(w-4)=(1-2\eta)(w-4).$$
+
+      So every update multiplies the gap by $1-2\eta$:
+
+      - Green uses $\eta=0.25$, giving multiplier $0.5$, so the gap halves.
+      - Blue uses $\eta=0.05$, giving $0.9$, so the gap shrinks slowly.
+      - Red uses $\eta=1.25$, giving $-1.5$. Its size exceeds $1$, so the gap grows while changing sign.
+      - Grey stays at $21$ because its code never changes $w$.
+
+      If you expand each square and average, the loss becomes:
+
+      $$L(w)=w^2-8w+21=(w-4)^2+5.$$
+
+      Here $5$ is the loss at $w=4$, namely $(9+1+1+9)/4$. We watch the gap because loss depends only on its size.
+
+      ### Levelling off is not always a bug
+
+      Green reaches the limit of a model that predicts one time for every trip. More information, such as how far each trip went, could help a richer model do better.
+
+      Be careful with minibatches. Unlike this all-trip run, their curves can wiggle up and down because batches differ. A short rise need not mean a bug, so judge whole-dataset loss after each epoch.
+    worked: |-
+      Our trips lasted $1,3,5,7$ seconds, and we start with the constant prediction $w=0$. Let's calculate the first green update, then compare it with the red one.
+
+      1. **Measure the starting loss.** Predicting zero makes every error the negative of a trip time.
+         $$L(0)=\frac{1+9+25+49}{4}=21.$$
+      2. **Average the slopes.** We use all four examples before changing $w$.
+         $$g=\frac{-2-6-10-14}{4}=-8.$$
+      3. **Take the green step.** Subtracting a negative slope raises our prediction.
+         $$w_{\text{new}}=0-0.25(-8)=2.$$
+      4. **Measure again.** The prediction is closer to the trips overall.
+         $$L(2)=\frac{1+1+9+25}{4}=9.$$
+      5. **Compare the red step.** Its larger rate jumps beyond the best prediction.
+         $$w_{\text{new}}=0-1.25(-8)=10.$$
+
+      At $10$, the loss is $(81+49+25+9)/4=41$. The green run eventually approaches $w=4$, where $(9+1+1+9)/4=5$, but the red run moves farther away.
+    problems:
+      - dbt-curve-basics
+      - dbt-floor-why
+      - dbt-update-template
+      - dbt-rising
+      - dbt-slow
+      - dbt-noise
+      - dbt-floor-template
+  - id: dbt-tiny-batch
+    title: Train on two examples first
+    explain: |-
+      ### Make a test with a known answer
+
+      The curve suggests a problem, but not which line of code to fix. Before another full run, pick two or a handful of training examples. A model with enough parameters can usually fit so few examples almost exactly, giving a target loss close to zero.
+
+      Our robot now records distance too. A $1$ metre trip took $3$ seconds and a $2$ metre trip took $5$ seconds. The model predicts:
+
+      $$\hat y=wx+b.$$
+
+      Here $x$ is distance, $w$ is seconds per metre and $b$ is a bias in seconds. The line $2x+1$ fits both trips exactly, so zero loss is possible.
+
+      ### Training on the two trips again and again
+
+      As in the minibatch lesson, a **batch** is the small set of examples used for an update; here it is these two trips. Start at $w=b=0$ with rate $0.1$. The starting errors are $-3,-5$, giving loss $(9+25)/2=17$.
+
+      These charts show the first $20$ updates. Green is correct code updating both parameters; red is buggy code never updating $b$. Both fall quickly in the upper chart; the lower chart magnifies where each run's loss stops falling.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 375" aria-label="Two-example loss over updates 0 to 20. Both runs fall from 17. The green correct run passes below 0.1, while the red run with b frozen approaches 0.1. The second plot magnifies losses below 0.2 from update 4 onward."><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717"><text x="15" y="25">Loss</text><path d="M55 50 V245 H350" fill="#171717" fill-opacity="0" stroke="#737373"/><text x="48" y="250.00" text-anchor="end">0</text><text x="48" y="155.00" text-anchor="end">9</text><text x="48" y="60.00" text-anchor="end">18</text><text x="55.00" y="267" text-anchor="middle">0</text><text x="200.00" y="267" text-anchor="middle">10</text><text x="345.00" y="267" text-anchor="middle">20</text><text x="200" y="291" text-anchor="middle">Updates</text><polyline points="55.00,65.56 69.50,227.21 84.00,243.21 98.50,244.80 113.00,244.96 127.50,244.97 142.00,244.97 156.50,244.97 171.00,244.98 185.50,244.98 200.00,244.98 214.50,244.98 229.00,244.98 243.50,244.98 258.00,244.98 272.50,244.98 287.00,244.98 301.50,244.98 316.00,244.98 330.50,244.98 345.00,244.98" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2.5"/><text x="25" y="315" fill="#10b981">— both parameters updated</text><polyline points="55.00,65.56 69.50,199.35 84.00,232.80 98.50,241.16 113.00,243.25 127.50,243.77 142.00,243.90 156.50,243.93 171.00,243.94 185.50,243.94 200.00,243.94 214.50,243.94 229.00,243.94 243.50,243.94 258.00,243.94 272.50,243.94 287.00,243.94 301.50,243.94 316.00,243.94 330.50,243.94 345.00,243.94" fill="#171717" fill-opacity="0" stroke="#ef4444" stroke-width="2.5"/><text x="25" y="333" fill="#ef4444">— b never updated</text></g></svg>
+      ```
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 375" aria-label="Magnified two-example loss from update 4 to 20, with loss axis 0 to 0.2. Green approaches zero while red approaches 0.1."><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717"><text x="15" y="25">Loss</text><path d="M55 50 V245 H350" fill="#171717" fill-opacity="0" stroke="#737373"/><text x="48" y="250.00" text-anchor="end">0</text><text x="48" y="155.00" text-anchor="end">0.1</text><text x="48" y="60.00" text-anchor="end">0.2</text><text x="55.00" y="267" text-anchor="middle">4</text><text x="200.00" y="267" text-anchor="middle">12</text><text x="345.00" y="267" text-anchor="middle">20</text><text x="200" y="291" text-anchor="middle">Updates</text><polyline points="55.00,240.97 73.12,242.43 91.25,242.64 109.38,242.72 127.50,242.79 145.62,242.85 163.75,242.92 181.88,242.98 200.00,243.04 218.12,243.09 236.25,243.15 254.38,243.20 272.50,243.25 290.62,243.30 308.75,243.35 326.88,243.40 345.00,243.45" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2.5"/><text x="25" y="315" fill="#10b981">— both parameters updated</text><polyline points="55.00,87.29 73.12,134.32 91.25,146.08 109.38,149.02 127.50,149.76 145.62,149.94 163.75,149.98 181.88,150.00 200.00,150.00 218.12,150.00 236.25,150.00 254.38,150.00 272.50,150.00 290.62,150.00 308.75,150.00 326.88,150.00 345.00,150.00" fill="#171717" fill-opacity="0" stroke="#ef4444" stroke-width="2.5"/><text x="25" y="333" fill="#ef4444">— b never updated</text></g></svg>
+      ```
+
+      **Overfitting a single batch** means repeatedly training on one small batch until loss is nearly zero. Usually we want predictions that work beyond the training examples. Here we deliberately ask the model to copy a few examples to test its code. If the model is flexible enough to fit these examples exactly, correct update code with a suitable rate should drive their loss close to zero.
+
+      By update $20$, the red run's parameters have settled near $w=2.6$, $b=0$, and loss $0.1$. The worked example checks why. The red run's falling curve looks healthy, but the known zero-loss fit tells us to investigate.
+
+      ### What passing does not show
+
+      If the test fails, inspect the update and slope code, and the learning rate, before a full run. Passing shows that updates can fit these examples, not that every slope is correct. Step 3 shows how a wrong slope can still pass.
+
+      Be careful not to conclude that tiny-batch success means good predictions on new trips. This test checks fitting, not generalisation.
+    worked: |-
+      Let's find why the red run stops near $w=2.6$, $b=0$. For each trip, let $e$ be prediction minus target. Call the batch slopes for $w$ and $b$ $g_w$ and $g_b$. In gradient descent, we learned that the slopes of $e^2$ are $2ex$ for $w$ and $2e$ for $b$, so we average those contributions.
+
+      1. **Find the two errors.** Subtract each recorded time from its prediction.
+         $$e_1=2.6(1)-3=-0.4,\qquad e_2=2.6(2)-5=0.2.$$
+      2. **Measure the remaining loss.** We square each error and average the results.
+         $$L=\frac{(-0.4)^2+0.2^2}{2}=0.1.$$
+      3. **Find the best weight with the bias frozen.** With $b=0$, the line must pass through the origin. Setting its average weight slope to zero gives:
+         $$\begin{aligned}
+      \frac{2(w-3)(1)+2(2w-5)(2)}{2}&=0\\
+      (w-3)+2(2w-5)&=0\\
+      5w&=13\\
+      w&=13/5=2.6.
+      \end{aligned}$$
+      4. **Check the weight slope there.** The contributions cancel, so the weight stops moving.
+         $$g_w=\frac{2(-0.4)(1)+2(0.2)(2)}{2}=0.$$
+      5. **Check the bias slope.** Its contributions do not cancel, so changing the bias could help.
+         $$g_b=\frac{2(-0.4)+2(0.2)}{2}=-0.2.$$
+
+      The ignored bias update prevents this run from reaching the known zero-loss fit.
+    problems:
+      - dbt-tiny-basics
+      - dbt-tiny-why
+      - dbt-tiny-update
+      - dbt-tiny-loss
+      - dbt-tiny-flat
+      - dbt-tiny-drone
+      - dbt-tiny-generalise
+  - id: dbt-grad-check
+    title: Check a slope by nudging a weight
+    explain: |-
+      ### A falling loss can hide a mistake
+
+      A tiny-batch success does not prove every slope correct. Take a trip with distance $x=2$ metres and recorded time (target) $y=5$ seconds. Use $w=1$, $b=0$. The prediction is $2$, error $e=\hat y-y$ is $-3$, and loss is $9$.
+
+      Suppose the code uses $2e$, forgetting $x$. Since $x$ is positive, multiplying by it does not change the sign. The buggy slope therefore has the correct direction but the wrong size, so a small step can still go downhill.
+
+      Below, blue shows loss plotted against $w$. Dashed green is its **tangent** at $w=1$, a line that touches the curve and has the same slope there. Red shows the buggy slope, which is too shallow.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 375" aria-label="Loss (2w minus 5) squared near w equals 1. The blue curve passes through loss 9. The green tangent has slope minus 12; the red claimed slope minus 6 is too shallow."><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717"><text x="15" y="25">Loss</text><path d="M55 50 V245 H350" fill="#171717" fill-opacity="0" stroke="#737373"/><text x="48" y="250.00" text-anchor="end">0</text><text x="48" y="155.00" text-anchor="end">9</text><text x="48" y="60.00" text-anchor="end">18</text><text x="55.00" y="267" text-anchor="middle">0.5</text><text x="200.00" y="267" text-anchor="middle">1</text><text x="345.00" y="267" text-anchor="middle">1.5</text><text x="200" y="291" text-anchor="middle">Weight w</text><polyline points="55.00,76.11 59.83,78.91 64.67,81.69 69.50,84.45 74.33,87.18 79.17,89.89 84.00,92.58 88.83,95.24 93.67,97.88 98.50,100.49 103.33,103.09 108.17,105.65 113.00,108.20 117.83,110.72 122.67,113.22 127.50,115.69 132.33,118.15 137.17,120.57 142.00,122.98 146.83,125.36 151.67,127.72 156.50,130.05 161.33,132.36 166.17,134.65 171.00,136.91 175.83,139.15 180.67,141.37 185.50,143.56 190.33,145.73 195.17,147.88 200.00,150.00 204.83,152.10 209.67,154.18 214.50,156.23 219.33,158.26 224.17,160.26 229.00,162.24 233.83,164.20 238.67,166.14 243.50,168.05 248.33,169.94 253.17,171.80 258.00,173.64 262.83,175.46 267.67,177.26 272.50,179.03 277.33,180.78 282.17,182.50 287.00,184.20 291.83,185.88 296.67,187.53 301.50,189.16 306.33,190.77 311.17,192.35 316.00,193.91 320.83,195.45 325.67,196.96 330.50,198.45 335.33,199.92 340.17,201.36 345.00,202.78" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="3.5"/><text x="25" y="315" fill="#3b82f6">— actual loss</text><polyline points="55.00,86.67 345.00,213.33" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2.5" stroke-dasharray="6 4"/><text x="25" y="333" fill="#10b981">— tangent, slope −12</text><polyline points="55.00,118.33 345.00,181.67" fill="#171717" fill-opacity="0" stroke="#ef4444" stroke-width="2.5"/><text x="25" y="351" fill="#ef4444">— buggy slope −6</text></g></svg>
+      ```
+
+      ### Compare the code with two nudges
+
+      In the derivatives lesson, we nudged a function's input. Here loss is a function of $w$, so we nudge $w$ by $h$ both ways, keeping everything else fixed:
+
+      $$n=\frac{L(w+h)-L(w-h)}{2h}.$$
+
+      We divide by $2h$ because that is the distance between $w-h$ and $w+h$. A **gradient check** compares this numerical slope with the code slope, one parameter at a time.
+
+      Choose $h$ small enough that the curve is almost straight between nudges; the two nudged points then give the slope at $w$. Computers store numbers with limited digits, so subtracting nearly equal losses loses precision when $h$ is tiny. Libraries often use about $0.000001$; we use $0.01$ for readable arithmetic, giving $-12$; correct code agrees, buggy code gives $-6$.
+
+      The **relative difference** compares disagreement with slope size:
+
+      $$\frac{|a-n|}{\max(|a|,|n|)}.$$
+
+      Here $a$ is the code slope, $n$ the numerical slope, and bars mean absolute value. We divide the disagreement by the larger slope's magnitude. A result of $0.5$ means they disagree by half that magnitude. Same-sign values lie between $0$ and $1$; opposite signs can exceed $1$, signalling a bug.
+
+      ### Limitations
+
+      As a rough guide, a relative difference below about $0.001$ is usually fine. Between $0.001$ and $0.01$, check more carefully; well above $0.01$ usually means a bug. Each check costs two loss computations, so check a few parameters, not all of a large model's millions of parameters. Be careful not to trust a formula just because loss falls.
+    worked: |-
+      Let's check the weight slope for the trip just introduced.
+
+      1. **Nudge upward.** Keep the input, target and bias fixed.
+         $$L(1.01)=(2.02-5)^2=8.8804.$$
+      2. **Nudge downward.** Change only the weight again.
+         $$L(0.99)=(1.98-5)^2=9.1204.$$
+      3. **Divide by the separation.** This estimates the slope around $1$.
+         $$n=\frac{8.8804-9.1204}{0.02}=-12.$$
+      4. **Compare the code.** Forgetting $x$ gives $a=2(2-5)=-6$ instead of $2(2-5)(2)=-12$.
+         $$\frac{|-6-(-12)|}{\max(6,12)}=0.5.$$
+
+      The large disagreement reveals the missing factor. You can run this check yourself; here it is in Python with the same numbers. The function begins with `def` and supplies its output with `return`, while `**2` raises the error to the second power, squaring it.
+
+      Assignments such as `x, y = 2.0, 5.0` set two variables at once, and `*` multiplies numbers. At the end, `print` displays the results, while text after `#` is a comment that Python ignores.
+
+      To compare the slopes, `abs` takes their absolute values and `max` chooses the larger one; `round` then rounds the printed results to the requested decimal places.
+
+      ```python
+      x, y = 2.0, 5.0
+      b, h = 0.0, 0.01
+      def loss(w):
+          return (w*x+b-y)**2
+      w = 1.0
+      n = (loss(w+h)-loss(w-h))/(2*h)
+      a = 2*(w*x+b-y)  # the bug: no * x
+      rel = abs(a-n)/max(abs(a), abs(n))
+      print(round(n, 4), a, round(rel, 4))
+      # Prints: -12.0 -6.0 0.5
+      ```
+    problems:
+      - dbt-check-basics
+      - dbt-check-why
+      - dbt-slope-template
+      - dbt-numerical
+      - dbt-relative-template
+      - dbt-falling-trap
+      - dbt-check-cost
+      - dbt-bias-debug
+  - id: dbt-symptoms
+    title: Match a symptom to its cause
+    explain: |-
+      ### Start with checks that cost little
+
+      Read the loss curve, then try fitting a tiny batch with a known answer. Run a gradient check whenever you write or change slope code, especially if the tiny batch fails or the curve looks odd. Once these checks support the code, tune the rate, batch size or model.
+
+      These symptoms suggest causes, rather than proving them:
+
+      - If loss blows up, the rate may be too large; lower it, perhaps tenfold. Python may print `nan`, meaning "not a number", when calculations blow up.
+      - If loss still rises at a smaller rate, check for a flipped sign. That means adding the slope times the rate instead of subtracting it, so the step goes uphill.
+      - If loss is flat from the first update, parameters may never change; check that updates reach every parameter.
+      - If loss falls by a sliver, the rate may be too small; try raising it.
+      - If tiny-batch loss stops above its known minimum, a parameter or slope may be wrong; check updates and slopes.
+      - If training falls while validation rises, suspect overfitting; use the parameters saved at the epoch with the lowest validation loss, as in the overfitting lesson.
+
+      ### Too big a step, or the wrong direction?
+
+      For our constant model starting at $w=0$, correct subtraction at rate $1.25$ multiplies the gap by $-1.5$. The flipped code adds the slope, so its new gap is:
+
+      $$w-4+2\eta(w-4)=(1+2\eta)(w-4).$$
+
+      We compare rate $1.25$ in correct code with $0.25$ in flipped code because their multipliers, $-1.5$ and $+1.5$, have the same size. Both gaps start at $-4$ and grow to sizes $6$, then $9$. Squaring removes the sign. Both runs therefore start at loss $5+16=21$, reach $5+36=41$, then $5+81=86$.
+
+      For correct code, every positive rate below $1$ makes the multiplier's size less than $1$, shrinking the gap. Flipped addition grows the gap at every positive rate. Halving here keeps the numbers clean; people often cut by ten in practice.
+
+      Below, halving makes green fall but leaves red rising. The worked example follows their gaps. Several causes can mix, so change one thing and test again.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 375" aria-label="After halving each learning rate, correct subtraction with rate 0.625 falls from 21 to 6 to 5.0625. Flipped addition with rate 0.125 still rises from 21 to 30 to 44.0625."><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717"><text x="15" y="25">Loss</text><path d="M55 50 V245 H350" fill="#171717" fill-opacity="0" stroke="#737373"/><text x="48" y="250.00" text-anchor="end">0</text><text x="48" y="207.78" text-anchor="end">10</text><text x="48" y="165.56" text-anchor="end">20</text><text x="48" y="123.33" text-anchor="end">30</text><text x="48" y="81.11" text-anchor="end">40</text><circle cx="55" cy="156.33" r="3" fill="#171717"/><text x="62" y="149.33">21</text><text x="55.00" y="267" text-anchor="middle">0</text><text x="200.00" y="267" text-anchor="middle">1</text><text x="345.00" y="267" text-anchor="middle">2</text><text x="200" y="291" text-anchor="middle">Updates</text><path d="M55 223.89 H345" stroke="#737373" stroke-dasharray="4 4"/><text x="90" y="244">lowest possible loss 5</text><polyline points="55.00,156.33 200.00,219.67 345.00,223.62" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2.5"/><text x="25" y="315" fill="#10b981">— correct, rate 0.625</text><polyline points="55.00,156.33 200.00,118.33 345.00,58.96" fill="#171717" fill-opacity="0" stroke="#ef4444" stroke-width="2.5"/><text x="25" y="333" fill="#ef4444">— flipped, rate 0.125</text></g></svg>
+      ```
+    worked: |-
+      Let's compare the two rising runs after halving their rates. Let $k$ count updates so far, and let $m$ be the multiplier applied to the signed gap $w-4$ each update.
+
+      1. **Write loss using the gap.** The gap starts at $-4$, whose square is $16$. Each update multiplies the gap by $m$, so it multiplies the squared gap by $m^2$. After $k$ updates:
+         $$L_k=5+16m^{2k}.$$
+      2. **Check correct subtraction.** At the halved rate $0.625$, the gap multiplier is:
+         $$m=1-2(0.625)=-0.25.$$
+      3. **Measure its losses.** Substitute this multiplier. The signed gap changes sides, but its size shrinks.
+         $$L_1=5+16(0.0625)=6,\qquad L_2=5+16(0.00390625)=5.0625.$$
+      4. **Check flipped addition.** Adding the slope gives multiplier $1+2\eta$. At the halved rate $0.125$:
+         $$m=1+2(0.125)=1.25.$$
+      5. **Measure its losses.** This multiplier grows the gap, so the loss still rises.
+         $$L_1=5+16(1.5625)=30,\qquad L_2=5+16(2.44140625)=44.0625.$$
+
+      The original identical losses did not identify the cause, but reducing the rates separated these possibilities. A still-rising curve is a reason to inspect the update sign, not proof by itself.
+    problems:
+      - dbt-symptom-basics
+      - dbt-halve-why
+      - dbt-flipped-template
+      - dbt-nan
+      - dbt-check-order
+      - dbt-arm
+      - dbt-assign-debug
+final: dbt-explain-diagnosis
+summary: |-
+  - Read loss curves as clues, and judge noisy minibatch training by whole-dataset loss after each epoch.
+  - Repeatedly fitting a tiny batch with a known answer can reveal broken updates, but passing does not guarantee good predictions on new examples.
+  - A gradient check compares a code slope with a numerical slope from two nudged loss values, keeping everything else fixed.
+  - Use these checks to distinguish bugs from settings before tuning, and use validation loss to recognise overfitting.
+
+  **Next:** We start working with images, turning each picture into an array of numbers a model can train on. These debugging checks apply there too.

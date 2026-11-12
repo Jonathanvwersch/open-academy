@@ -118,7 +118,7 @@ concepts:
     prereqs: [{ id: gradient-descent }]
     objectives:
       - { text: "Explain the tradeoffs of batch size", dimension: conceptual }
-    status: stub
+    status: authored
   - id: momentum-adam
     title: Momentum and Adam
     description: Momentum, adaptive learning rates and the Adam update.
@@ -130,7 +130,7 @@ concepts:
     prereqs: [{ id: sgd-minibatch }]
     objectives:
       - { text: "Write the Adam update rule", dimension: math }
-    status: stub
+    status: authored
   - id: weight-init-normalization
     title: Initialization and normalization
     description: Why init scale matters; batch norm and layer norm.
@@ -145,7 +145,7 @@ concepts:
           text: "Explain vanishing/exploding activations and what LayerNorm does",
           dimension: conceptual,
         }
-    status: stub
+    status: authored
   - id: debugging-training
     title: Debugging training runs
     description: Reading loss curves, overfitting a single batch, gradient checks, common bugs.
@@ -157,7 +157,7 @@ concepts:
     prereqs: [{ id: sgd-minibatch }, { id: overfitting }]
     objectives:
       - { text: "Diagnose a failing training run from its symptoms", dimension: transfer }
-    status: stub
+    status: authored
   - id: classification-softmax
     title: Softmax and multiclass cross-entropy
     description: Turning logits into probabilities; categorical cross-entropy.
@@ -169,7 +169,7 @@ concepts:
     prereqs: [{ id: logistic-regression }, { id: information-theory }]
     objectives:
       - { text: "Compute softmax and cross-entropy for a logit vector", dimension: math }
-    status: stub
+    status: authored
   - {
       id: autoencoders,
       title: "Autoencoders and latent representations",
@@ -191,7 +191,7 @@ concepts:
             dimension: math,
           },
         ],
-      status: stub,
+      status: authored,
     }
   - id: gpu-inference-basics
     title: GPUs and fast inference

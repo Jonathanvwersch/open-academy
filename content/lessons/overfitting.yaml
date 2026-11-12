@@ -1,0 +1,301 @@
+concept: overfitting
+version: 1
+objective: "**Goal:** diagnose overfitting, underfitting and a good fit from training and validation errors and learning curves."
+recap:
+  - concept: train-test-split
+    text: "Models are judged on data they did not train on. The training set fits weights, the validation set compares choices, and the test set is used once at the end."
+where_this_fits: |
+  ### What are overfitting and underfitting?
+
+  Overfitting means copying the training examples' quirks instead of learning a pattern that works on new examples. Underfitting means missing useful patterns even in the training examples. Telling them apart helps us decide whether to change the model's shape or how long we train it.
+
+  We'll use a model that predicts a house's price from its size. From all the sales we know about, we put six houses in training and two in validation. We also set aside test houses for one final score. Comparing training and validation errors helps us see whether the model misses the pattern or follows individual houses too closely.
+knowledge_points:
+  - id: ovf-flexibility
+    title: "Straight lines, smooth curves and wiggly curves"
+    explain: |
+      ### Three shapes for predicting prices
+
+      We fit three models to the six training houses only. The two validation houses stay separate so we can check predictions that did not help train any model.
+
+      A model's **flexibility** is how far it can bend to follow the data. The straight line can only tilt, the smooth curve can bend once, and the wiggly curve can bend many times.
+
+      In the picture, size increases to the right and price upwards. Blue circles are training houses and green diamonds are validation houses. The straight line is grey and misses the bend. The smooth curve is orange and follows it, while the wiggly curve is red and passes through every blue circle. At both diamonds, the straight line and the wiggly curve predict further from the real price than the smooth curve does.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 445" aria-label="Six blue training houses and two green validation houses at sizes 87 and 173 square metres. The straight line, shown in grey, misses the bend and misses the validation prices by about 70 and 54 thousand dollars. The smooth curve, shown in orange, misses them by 36.15 and 19.85. The wiggly curve, shown in red, passes through every training house but misses the validation prices by about 121 and 65. Rounded training and validation mean absolute errors are 50 and 62 for the straight line, 25 and 28 for the smooth curve, and 0 and 93 for the wiggly curve.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="50" y="23">Price ($1000s)</text>
+      <path d="M50 50 V290 H340" fill="#171717" fill-opacity="0" stroke="#737373"/>
+      <text x="43" y="261.0" text-anchor="end">150</text>
+      <text x="43" y="159.0" text-anchor="end">300</text>
+      <text x="43" y="56.99999999999997" text-anchor="end">450</text>
+      <text x="50" y="310" text-anchor="middle">80</text>
+      <text x="190.0" y="310" text-anchor="middle">130</text>
+      <text x="330" y="310" text-anchor="middle">180</text>
+      <text x="190" y="332" text-anchor="middle">House size (m²)</text>
+      <polyline id="ovf-fit-1" points="50.00,203.87 51.12,203.38 52.24,202.89 53.36,202.40 54.48,201.91 55.60,201.42 56.72,200.93 57.84,200.44 58.96,199.95 60.08,199.46 61.20,198.97 62.32,198.48 63.44,197.99 64.56,197.50 65.68,197.01 66.80,196.52 67.92,196.03 69.04,195.54 70.16,195.05 71.28,194.56 72.40,194.07 73.52,193.59 74.64,193.10 75.76,192.61 76.88,192.12 78.00,191.63 79.12,191.14 80.24,190.65 81.36,190.16 82.48,189.67 83.60,189.18 84.72,188.69 85.84,188.20 86.96,187.71 88.08,187.22 89.20,186.73 90.32,186.24 91.44,185.75 92.56,185.26 93.68,184.77 94.80,184.28 95.92,183.79 97.04,183.30 98.16,182.81 99.28,182.32 100.40,181.83 101.52,181.35 102.64,180.86 103.76,180.37 104.88,179.88 106.00,179.39 107.12,178.90 108.24,178.41 109.36,177.92 110.48,177.43 111.60,176.94 112.72,176.45 113.84,175.96 114.96,175.47 116.08,174.98 117.20,174.49 118.32,174.00 119.44,173.51 120.56,173.02 121.68,172.53 122.80,172.04 123.92,171.55 125.04,171.06 126.16,170.57 127.28,170.08 128.40,169.59 129.52,169.11 130.64,168.62 131.76,168.13 132.88,167.64 134.00,167.15 135.12,166.66 136.24,166.17 137.36,165.68 138.48,165.19 139.60,164.70 140.72,164.21 141.84,163.72 142.96,163.23 144.08,162.74 145.20,162.25 146.32,161.76 147.44,161.27 148.56,160.78 149.68,160.29 150.80,159.80 151.92,159.31 153.04,158.82 154.16,158.33 155.28,157.84 156.40,157.35 157.52,156.87 158.64,156.38 159.76,155.89 160.88,155.40 162.00,154.91 163.12,154.42 164.24,153.93 165.36,153.44 166.48,152.95 167.60,152.46 168.72,151.97 169.84,151.48 170.96,150.99 172.08,150.50 173.20,150.01 174.32,149.52 175.44,149.03 176.56,148.54 177.68,148.05 178.80,147.56 179.92,147.07 181.04,146.58 182.16,146.09 183.28,145.60 184.40,145.11 185.52,144.63 186.64,144.14 187.76,143.65 188.88,143.16 190.00,142.67 191.12,142.18 192.24,141.69 193.36,141.20 194.48,140.71 195.60,140.22 196.72,139.73 197.84,139.24 198.96,138.75 200.08,138.26 201.20,137.77 202.32,137.28 203.44,136.79 204.56,136.30 205.68,135.81 206.80,135.32 207.92,134.83 209.04,134.34 210.16,133.85 211.28,133.36 212.40,132.87 213.52,132.39 214.64,131.90 215.76,131.41 216.88,130.92 218.00,130.43 219.12,129.94 220.24,129.45 221.36,128.96 222.48,128.47 223.60,127.98 224.72,127.49 225.84,127.00 226.96,126.51 228.08,126.02 229.20,125.53 230.32,125.04 231.44,124.55 232.56,124.06 233.68,123.57 234.80,123.08 235.92,122.59 237.04,122.10 238.16,121.61 239.28,121.12 240.40,120.63 241.52,120.15 242.64,119.66 243.76,119.17 244.88,118.68 246.00,118.19 247.12,117.70 248.24,117.21 249.36,116.72 250.48,116.23 251.60,115.74 252.72,115.25 253.84,114.76 254.96,114.27 256.08,113.78 257.20,113.29 258.32,112.80 259.44,112.31 260.56,111.82 261.68,111.33 262.80,110.84 263.92,110.35 265.04,109.86 266.16,109.37 267.28,108.88 268.40,108.39 269.52,107.91 270.64,107.42 271.76,106.93 272.88,106.44 274.00,105.95 275.12,105.46 276.24,104.97 277.36,104.48 278.48,103.99 279.60,103.50 280.72,103.01 281.84,102.52 282.96,102.03 284.08,101.54 285.20,101.05 286.32,100.56 287.44,100.07 288.56,99.58 289.68,99.09 290.80,98.60 291.92,98.11 293.04,97.62 294.16,97.13 295.28,96.64 296.40,96.15 297.52,95.67 298.64,95.18 299.76,94.69 300.88,94.20 302.00,93.71 303.12,93.22 304.24,92.73 305.36,92.24 306.48,91.75 307.60,91.26 308.72,90.77 309.84,90.28 310.96,89.79 312.08,89.30 313.20,88.81 314.32,88.32 315.44,87.83 316.56,87.34 317.68,86.85 318.80,86.36 319.92,85.87 321.04,85.38 322.16,84.89 323.28,84.40 324.40,83.91 325.52,83.43 326.64,82.94 327.76,82.45 328.88,81.96 330.00,81.47" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+      <polyline id="ovf-fit-2" points="50.00,249.20 51.12,247.36 52.24,245.52 53.36,243.70 54.48,241.89 55.60,240.09 56.72,238.30 57.84,236.52 58.96,234.75 60.08,232.99 61.20,231.25 62.32,229.51 63.44,227.79 64.56,226.07 65.68,224.37 66.80,222.68 67.92,221.00 69.04,219.33 70.16,217.67 71.28,216.02 72.40,214.38 73.52,212.76 74.64,211.14 75.76,209.54 76.88,207.94 78.00,206.36 79.12,204.79 80.24,203.23 81.36,201.68 82.48,200.14 83.60,198.61 84.72,197.09 85.84,195.58 86.96,194.09 88.08,192.60 89.20,191.13 90.32,189.66 91.44,188.21 92.56,186.77 93.68,185.34 94.80,183.92 95.92,182.51 97.04,181.11 98.16,179.73 99.28,178.35 100.40,176.98 101.52,175.63 102.64,174.29 103.76,172.95 104.88,171.63 106.00,170.32 107.12,169.02 108.24,167.73 109.36,166.45 110.48,165.18 111.60,163.93 112.72,162.68 113.84,161.45 114.96,160.22 116.08,159.01 117.20,157.81 118.32,156.62 119.44,155.44 120.56,154.27 121.68,153.11 122.80,151.96 123.92,150.82 125.04,149.70 126.16,148.58 127.28,147.48 128.40,146.38 129.52,145.30 130.64,144.23 131.76,143.17 132.88,142.12 134.00,141.08 135.12,140.05 136.24,139.03 137.36,138.03 138.48,137.03 139.60,136.05 140.72,135.07 141.84,134.11 142.96,133.16 144.08,132.22 145.20,131.29 146.32,130.37 147.44,129.46 148.56,128.56 149.68,127.68 150.80,126.80 151.92,125.94 153.04,125.08 154.16,124.24 155.28,123.41 156.40,122.58 157.52,121.77 158.64,120.97 159.76,120.18 160.88,119.41 162.00,118.64 163.12,117.88 164.24,117.14 165.36,116.40 166.48,115.68 167.60,114.97 168.72,114.27 169.84,113.58 170.96,112.90 172.08,112.23 173.20,111.57 174.32,110.92 175.44,110.28 176.56,109.66 177.68,109.04 178.80,108.44 179.92,107.85 181.04,107.26 182.16,106.69 183.28,106.13 184.40,105.58 185.52,105.05 186.64,104.52 187.76,104.00 188.88,103.50 190.00,103.00 191.12,102.52 192.24,102.04 193.36,101.58 194.48,101.13 195.60,100.69 196.72,100.26 197.84,99.84 198.96,99.43 200.08,99.03 201.20,98.65 202.32,98.27 203.44,97.91 204.56,97.55 205.68,97.21 206.80,96.88 207.92,96.56 209.04,96.25 210.16,95.95 211.28,95.66 212.40,95.38 213.52,95.12 214.64,94.86 215.76,94.62 216.88,94.38 218.00,94.16 219.12,93.95 220.24,93.75 221.36,93.56 222.48,93.38 223.60,93.21 224.72,93.05 225.84,92.90 226.96,92.77 228.08,92.64 229.20,92.53 230.32,92.42 231.44,92.33 232.56,92.25 233.68,92.18 234.80,92.12 235.92,92.07 237.04,92.03 238.16,92.01 239.28,91.99 240.40,91.98 241.52,91.99 242.64,92.01 243.76,92.03 244.88,92.07 246.00,92.12 247.12,92.18 248.24,92.25 249.36,92.33 250.48,92.42 251.60,92.53 252.72,92.64 253.84,92.77 254.96,92.90 256.08,93.05 257.20,93.21 258.32,93.38 259.44,93.56 260.56,93.75 261.68,93.95 262.80,94.16 263.92,94.38 265.04,94.62 266.16,94.86 267.28,95.12 268.40,95.38 269.52,95.66 270.64,95.95 271.76,96.25 272.88,96.56 274.00,96.88 275.12,97.21 276.24,97.55 277.36,97.91 278.48,98.27 279.60,98.65 280.72,99.03 281.84,99.43 282.96,99.84 284.08,100.26 285.20,100.69 286.32,101.13 287.44,101.58 288.56,102.04 289.68,102.52 290.80,103.00 291.92,103.50 293.04,104.00 294.16,104.52 295.28,105.05 296.40,105.58 297.52,106.13 298.64,106.69 299.76,107.26 300.88,107.85 302.00,108.44 303.12,109.04 304.24,109.66 305.36,110.28 306.48,110.92 307.60,111.57 308.72,112.23 309.84,112.90 310.96,113.58 312.08,114.27 313.20,114.97 314.32,115.68 315.44,116.40 316.56,117.14 317.68,117.88 318.80,118.64 319.92,119.41 321.04,120.18 322.16,120.97 323.28,121.77 324.40,122.58 325.52,123.41 326.64,124.24 327.76,125.08 328.88,125.94 330.00,126.80" fill="#171717" fill-opacity="0" stroke="#f59e0b" stroke-width="2"/>
+      <polyline id="ovf-fit-5" points="50.00,256.00 51.12,247.39 52.24,239.24 53.36,231.53 54.48,224.25 55.60,217.39 56.72,210.93 57.84,204.85 58.96,199.15 60.08,193.81 61.20,188.81 62.32,184.14 63.44,179.80 64.56,175.76 65.68,172.02 66.80,168.56 67.92,165.37 69.04,162.44 70.16,159.76 71.28,157.32 72.40,155.11 73.52,153.11 74.64,151.32 75.76,149.73 76.88,148.32 78.00,147.09 79.12,146.03 80.24,145.13 81.36,144.38 82.48,143.77 83.60,143.29 84.72,142.94 85.84,142.70 86.96,142.57 88.08,142.55 89.20,142.62 90.32,142.77 91.44,143.01 92.56,143.32 93.68,143.70 94.80,144.14 95.92,144.63 97.04,145.17 98.16,145.75 99.28,146.37 100.40,147.03 101.52,147.71 102.64,148.41 103.76,149.13 104.88,149.86 106.00,150.60 107.12,151.34 108.24,152.09 109.36,152.83 110.48,153.56 111.60,154.28 112.72,154.98 113.84,155.67 114.96,156.33 116.08,156.97 117.20,157.58 118.32,158.16 119.44,158.71 120.56,159.23 121.68,159.71 122.80,160.15 123.92,160.54 125.04,160.90 126.16,161.21 127.28,161.47 128.40,161.69 129.52,161.86 130.64,161.98 131.76,162.04 132.88,162.06 134.00,162.02 135.12,161.93 136.24,161.79 137.36,161.59 138.48,161.33 139.60,161.02 140.72,160.66 141.84,160.24 142.96,159.77 144.08,159.24 145.20,158.65 146.32,158.02 147.44,157.33 148.56,156.58 149.68,155.78 150.80,154.93 151.92,154.03 153.04,153.08 154.16,152.08 155.28,151.03 156.40,149.94 157.52,148.80 158.64,147.61 159.76,146.38 160.88,145.11 162.00,143.80 163.12,142.45 164.24,141.06 165.36,139.64 166.48,138.18 167.60,136.69 168.72,135.16 169.84,133.61 170.96,132.03 172.08,130.43 173.20,128.80 174.32,127.16 175.44,125.49 176.56,123.80 177.68,122.10 178.80,120.39 179.92,118.66 181.04,116.93 182.16,115.19 183.28,113.45 184.40,111.70 185.52,109.95 186.64,108.20 187.76,106.46 188.88,104.73 190.00,103.00 191.12,101.28 192.24,99.58 193.36,97.89 194.48,96.22 195.60,94.57 196.72,92.95 197.84,91.34 198.96,89.77 200.08,88.22 201.20,86.70 202.32,85.21 203.44,83.76 204.56,82.35 205.68,80.98 206.80,79.64 207.92,78.35 209.04,77.11 210.16,75.91 211.28,74.76 212.40,73.67 213.52,72.62 214.64,71.63 215.76,70.69 216.88,69.82 218.00,69.00 219.12,68.24 220.24,67.55 221.36,66.92 222.48,66.35 223.60,65.85 224.72,65.42 225.84,65.06 226.96,64.77 228.08,64.54 229.20,64.39 230.32,64.32 231.44,64.31 232.56,64.39 233.68,64.53 234.80,64.75 235.92,65.05 237.04,65.43 238.16,65.88 239.28,66.40 240.40,67.01 241.52,67.69 242.64,68.45 243.76,69.28 244.88,70.19 246.00,71.18 247.12,72.24 248.24,73.38 249.36,74.58 250.48,75.87 251.60,77.22 252.72,78.65 253.84,80.14 254.96,81.70 256.08,83.33 257.20,85.02 258.32,86.78 259.44,88.59 260.56,90.47 261.68,92.40 262.80,94.39 263.92,96.42 265.04,98.51 266.16,100.64 267.28,102.82 268.40,105.04 269.52,107.29 270.64,109.58 271.76,111.89 272.88,114.24 274.00,116.60 275.12,118.98 276.24,121.38 277.36,123.78 278.48,126.19 279.60,128.61 280.72,131.01 281.84,133.40 282.96,135.78 284.08,138.14 285.20,140.47 286.32,142.77 287.44,145.03 288.56,147.24 289.68,149.41 290.80,151.51 291.92,153.55 293.04,155.51 294.16,157.40 295.28,159.20 296.40,160.90 297.52,162.50 298.64,163.99 299.76,165.36 300.88,166.60 302.00,167.71 303.12,168.66 304.24,169.47 305.36,170.10 306.48,170.57 307.60,170.84 308.72,170.93 309.84,170.80 310.96,170.46 312.08,169.90 313.20,169.09 314.32,168.04 315.44,166.72 316.56,165.13 317.68,163.25 318.80,161.08 319.92,158.60 321.04,155.79 322.16,152.64 323.28,149.14 324.40,145.28 325.52,141.04 326.64,136.41 327.76,131.37 328.88,125.90 330.00,120.00" fill="#171717" fill-opacity="0" stroke="#ef4444" stroke-width="2"/>
+      <circle id="ovf-house-0" cx="50.00" cy="256.00" r="4" fill="#3b82f6"/>
+      <circle id="ovf-house-1" cx="106.00" cy="150.60" r="4" fill="#3b82f6"/>
+      <circle id="ovf-house-2" cx="162.00" cy="143.80" r="4" fill="#3b82f6"/>
+      <circle id="ovf-house-3" cx="218.00" cy="69.00" r="4" fill="#3b82f6"/>
+      <circle id="ovf-house-4" cx="274.00" cy="116.60" r="4" fill="#3b82f6"/>
+      <circle id="ovf-house-5" cx="330.00" cy="120.00" r="4" fill="#3b82f6"/>
+      <polygon id="ovf-validation-0" points="69.60,238.08 74.60,243.08 69.60,248.08 64.60,243.08" fill="#10b981"/>
+      <polygon id="ovf-validation-1" points="310.40,121.73 315.40,126.73 310.40,131.73 305.40,126.73" fill="#10b981"/>
+      <text x="18" y="356" fill="#3b82f6">● Training</text><text x="185" y="356" fill="#10b981">◆ Validation</text>
+      <text x="18" y="379" fill="#737373">— The straight line</text>
+      <text x="18" y="402" fill="#f59e0b">— The smooth curve</text>
+      <text x="18" y="425" fill="#ef4444">— The wiggly curve</text>
+      </g>
+      </svg>
+      ```
+
+      ### Why an exact training fit can fail
+
+      Location and condition also affect price, but these models cannot see them. That is why prices scatter around the size-price trend instead of all landing on one smooth curve.
+
+      **Underfitting** means missing useful patterns even in training data. The straight line's mistakes follow a repeated pattern because it cannot bend. We call a repeated pattern of errors a **systematic mistake**. **Overfitting** means following training details that do not carry over to new examples. The wiggly curve follows the scatter as though every training price must be reproduced exactly.
+
+      ### Measure how far predicted prices are from real prices
+
+      **Mean absolute error** is the average distance between predictions and true prices. A prediction 20 too high and one 20 too low are equally bad. We ignore direction so those mistakes do not cancel each other out. Throughout this step, prices and errors are in thousands of dollars, so an error of 28 means $28,000.
+    worked: |
+      Let's calculate each model's errors on the plotted houses. The computer reads predictions from each fitted model's formula more precisely than we can read the picture, which is why they have decimals. The tables show the predicted price and the distance it misses by, rounded to two decimal places.
+
+      **87 m² house, real price 169**
+
+      | Model | Price | Miss |
+      | --- | ---: | ---: |
+      | The straight line | 239.27 | 70.27 |
+      | The smooth curve | 205.15 | 36.15 |
+      | The wiggly curve | 289.60 | 120.60 |
+
+      **173 m² house, real price 340.10**
+
+      | Model | Price | Miss |
+      | --- | ---: | ---: |
+      | The straight line | 394.07 | 53.97 |
+      | The smooth curve | 359.95 | 19.85 |
+      | The wiggly curve | 275.50 | 64.60 |
+
+      1. **Average the smooth curve's distances.** Add the two distances and divide by the number of validation houses. This gives its validation error.
+         $$\frac{36.15+19.85}{2}=28$$
+
+      2. **Average the straight line's distances.** Using the displayed distances gives its validation error to two decimal places.
+         $$\frac{70.27+53.97}{2}=62.12$$
+
+      3. **Average the wiggly curve's distances.** One prediction is too high and the other too low. Adding distances makes both mistakes count.
+         $$\frac{120.60+64.60}{2}=92.60$$
+
+      Training error averages the distances from predicted prices to real prices for the six training houses. The fractions below show the exact distances used, not rounded decimals. For example, 230/3 means 230 divided by 3. Rows follow the training houses from smallest to largest. The wiggly curve's six distances are all 0.
+
+      | The straight line | The smooth curve |
+      | ---: | ---: |
+      | 230/3 | 10 |
+      | 127/3 | 29 |
+      | 49/3 | 37 |
+      | 271/3 | 37 |
+      | 47/3 | 29 |
+      | 170/3 | 10 |
+
+      The final scores below use unrounded distances for both sets, then round the averages to whole numbers. Train and Valid. mean training and validation error.
+
+      | Model | Train | Valid. |
+      | --- | ---: | ---: |
+      | The straight line | 50 | 62 |
+      | The smooth curve | 25 | 28 |
+      | The wiggly curve | 0 | 93 |
+
+      4. **Compare the validation predictions.** Be careful about trusting a perfect training score. The wiggly curve has the worst validation error despite getting every training price right. We choose the smooth curve because its validation error is lowest.
+    problems:
+      [
+        ovf-fit-basics,
+        ovf-zero-reason,
+        ovf-line-diagnosis,
+        ovfp-average-miss,
+        ovf-choose-fit,
+        ovf-perfect-not-proof,
+        ovf-robot-fit,
+        ovfp-validation-choice,
+      ]
+  - id: ovf-error-gap
+    title: "Compare training and validation errors"
+    explain: |
+      ### Compare mistakes on training and validation houses
+
+      Suppose the people using this tool can tolerate an average price error below $30,000 when planning their budgets. That is the target they have given us, not a rule for every task. Throughout this step, errors are in thousands of dollars, so the target is below 30.
+
+      - High training error suggests **underfitting**. A model whose shape cannot follow the pattern makes the same kind of mistake again and again. We call this **high bias**, as when the straight line cannot follow bending prices.
+      - Low training error with much higher validation error suggests **overfitting**. This often goes with **high variance**, meaning the model would change a lot if we had picked a different six training houses from all the sales we know about.
+      - If both errors meet the users' target and are close together, the model seems to fit well.
+
+      Picking six houses from a larger collection could give us five of the same houses and one different house. We imitate that by swapping one sale for another at the same size but a higher price. The old sale is a hollow blue circle and the replacement is a blue square. Refitting the wiggly curve changes predictions most near 80–120 m², but also near 170 m². Following individual sales so closely makes predictions between training houses unreliable. Validation houses can fall in those spaces, so exact training predictions can go with poor validation predictions.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 395" aria-label="Picking six training houses could give us five of the same houses and one different house. We imitate that by replacing the 100-square-metre sale priced at 305 thousand dollars, shown as a hollow blue circle, with another priced at 375, shown as a blue square. The solid red version of the wiggly curve fits the original houses. The dashed version fits the replacement set. Predictions change most between 80 and 120 square metres, but also near 170 square metres. Validation houses can fall between training houses, where following individual sales closely makes predictions unreliable.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="50" y="23">Price ($1000s)</text>
+      <path d="M50 50 V290 H340" fill="#171717" fill-opacity="0" stroke="#737373"/>
+      <text x="43" y="261.00" text-anchor="end">150</text>
+      <text x="43" y="159.00" text-anchor="end">300</text>
+      <text x="43" y="57.00" text-anchor="end">450</text>
+      <text x="50" y="310" text-anchor="middle">80</text>
+      <text x="190.0" y="310" text-anchor="middle">130</text>
+      <text x="330" y="310" text-anchor="middle">180</text>
+      <text x="190" y="332" text-anchor="middle">House size (m²)</text>
+      <polyline id="ovf-refit-original" points="50.00,256.00 51.12,247.39 52.24,239.24 53.36,231.53 54.48,224.25 55.60,217.39 56.72,210.93 57.84,204.85 58.96,199.15 60.08,193.81 61.20,188.81 62.32,184.14 63.44,179.80 64.56,175.76 65.68,172.02 66.80,168.56 67.92,165.37 69.04,162.44 70.16,159.76 71.28,157.32 72.40,155.11 73.52,153.11 74.64,151.32 75.76,149.73 76.88,148.32 78.00,147.09 79.12,146.03 80.24,145.13 81.36,144.38 82.48,143.77 83.60,143.29 84.72,142.94 85.84,142.70 86.96,142.57 88.08,142.55 89.20,142.62 90.32,142.77 91.44,143.01 92.56,143.32 93.68,143.70 94.80,144.14 95.92,144.63 97.04,145.17 98.16,145.75 99.28,146.37 100.40,147.03 101.52,147.71 102.64,148.41 103.76,149.13 104.88,149.86 106.00,150.60 107.12,151.34 108.24,152.09 109.36,152.83 110.48,153.56 111.60,154.28 112.72,154.98 113.84,155.67 114.96,156.33 116.08,156.97 117.20,157.58 118.32,158.16 119.44,158.71 120.56,159.23 121.68,159.71 122.80,160.15 123.92,160.54 125.04,160.90 126.16,161.21 127.28,161.47 128.40,161.69 129.52,161.86 130.64,161.98 131.76,162.04 132.88,162.06 134.00,162.02 135.12,161.93 136.24,161.79 137.36,161.59 138.48,161.33 139.60,161.02 140.72,160.66 141.84,160.24 142.96,159.77 144.08,159.24 145.20,158.65 146.32,158.02 147.44,157.33 148.56,156.58 149.68,155.78 150.80,154.93 151.92,154.03 153.04,153.08 154.16,152.08 155.28,151.03 156.40,149.94 157.52,148.80 158.64,147.61 159.76,146.38 160.88,145.11 162.00,143.80 163.12,142.45 164.24,141.06 165.36,139.64 166.48,138.18 167.60,136.69 168.72,135.16 169.84,133.61 170.96,132.03 172.08,130.43 173.20,128.80 174.32,127.16 175.44,125.49 176.56,123.80 177.68,122.10 178.80,120.39 179.92,118.66 181.04,116.93 182.16,115.19 183.28,113.45 184.40,111.70 185.52,109.95 186.64,108.20 187.76,106.46 188.88,104.73 190.00,103.00 191.12,101.28 192.24,99.58 193.36,97.89 194.48,96.22 195.60,94.57 196.72,92.95 197.84,91.34 198.96,89.77 200.08,88.22 201.20,86.70 202.32,85.21 203.44,83.76 204.56,82.35 205.68,80.98 206.80,79.64 207.92,78.35 209.04,77.11 210.16,75.91 211.28,74.76 212.40,73.67 213.52,72.62 214.64,71.63 215.76,70.69 216.88,69.82 218.00,69.00 219.12,68.24 220.24,67.55 221.36,66.92 222.48,66.35 223.60,65.85 224.72,65.42 225.84,65.06 226.96,64.77 228.08,64.54 229.20,64.39 230.32,64.32 231.44,64.31 232.56,64.39 233.68,64.53 234.80,64.75 235.92,65.05 237.04,65.43 238.16,65.88 239.28,66.40 240.40,67.01 241.52,67.69 242.64,68.45 243.76,69.28 244.88,70.19 246.00,71.18 247.12,72.24 248.24,73.38 249.36,74.58 250.48,75.87 251.60,77.22 252.72,78.65 253.84,80.14 254.96,81.70 256.08,83.33 257.20,85.02 258.32,86.78 259.44,88.59 260.56,90.47 261.68,92.40 262.80,94.39 263.92,96.42 265.04,98.51 266.16,100.64 267.28,102.82 268.40,105.04 269.52,107.29 270.64,109.58 271.76,111.89 272.88,114.24 274.00,116.60 275.12,118.98 276.24,121.38 277.36,123.78 278.48,126.19 279.60,128.61 280.72,131.01 281.84,133.40 282.96,135.78 284.08,138.14 285.20,140.47 286.32,142.77 287.44,145.03 288.56,147.24 289.68,149.41 290.80,151.51 291.92,153.55 293.04,155.51 294.16,157.40 295.28,159.20 296.40,160.90 297.52,162.50 298.64,163.99 299.76,165.36 300.88,166.60 302.00,167.71 303.12,168.66 304.24,169.47 305.36,170.10 306.48,170.57 307.60,170.84 308.72,170.93 309.84,170.80 310.96,170.46 312.08,169.90 313.20,169.09 314.32,168.04 315.44,166.72 316.56,165.13 317.68,163.25 318.80,161.08 319.92,158.60 321.04,155.79 322.16,152.64 323.28,149.14 324.40,145.28 325.52,141.04 326.64,136.41 327.76,131.37 328.88,125.90 330.00,120.00" fill="#171717" fill-opacity="0" stroke="#ef4444" stroke-width="2"/>
+      <polyline id="ovf-refit-replacement" points="50.00,256.00 51.12,242.75 52.24,230.20 53.36,218.32 54.48,207.10 55.60,196.51 56.72,186.53 57.84,177.14 58.96,168.33 60.08,160.07 61.20,152.34 62.32,145.13 63.44,138.41 64.56,132.17 65.68,126.40 66.80,121.06 67.92,116.15 69.04,111.66 70.16,107.55 71.28,103.82 72.40,100.46 73.52,97.44 74.64,94.75 75.76,92.37 76.88,90.30 78.00,88.52 79.12,87.02 80.24,85.77 81.36,84.77 82.48,84.01 83.60,83.47 84.72,83.15 85.84,83.02 86.96,83.08 88.08,83.31 89.20,83.71 90.32,84.27 91.44,84.97 92.56,85.80 93.68,86.76 94.80,87.84 95.92,89.02 97.04,90.29 98.16,91.66 99.28,93.10 100.40,94.62 101.52,96.20 102.64,97.83 103.76,99.52 104.88,101.24 106.00,103.00 107.12,104.79 108.24,106.59 109.36,108.42 110.48,110.25 111.60,112.08 112.72,113.91 113.84,115.74 114.96,117.55 116.08,119.34 117.20,121.12 118.32,122.86 119.44,124.58 120.56,126.26 121.68,127.90 122.80,129.50 123.92,131.05 125.04,132.55 126.16,134.00 127.28,135.40 128.40,136.74 129.52,138.02 130.64,139.24 131.76,140.39 132.88,141.48 134.00,142.50 135.12,143.45 136.24,144.33 137.36,145.13 138.48,145.87 139.60,146.52 140.72,147.11 141.84,147.61 142.96,148.04 144.08,148.40 145.20,148.67 146.32,148.87 147.44,149.00 148.56,149.04 149.68,149.01 150.80,148.90 151.92,148.72 153.04,148.46 154.16,148.13 155.28,147.72 156.40,147.24 157.52,146.69 158.64,146.07 159.76,145.38 160.88,144.62 162.00,143.80 163.12,142.91 164.24,141.96 165.36,140.95 166.48,139.88 167.60,138.75 168.72,137.57 169.84,136.33 170.96,135.04 172.08,133.71 173.20,132.32 174.32,130.89 175.44,129.42 176.56,127.91 177.68,126.37 178.80,124.79 179.92,123.17 181.04,121.53 182.16,119.86 183.28,118.17 184.40,116.45 185.52,114.72 186.64,112.97 187.76,111.20 188.88,109.43 190.00,107.65 191.12,105.86 192.24,104.08 193.36,102.29 194.48,100.51 195.60,98.73 196.72,96.97 197.84,95.21 198.96,93.48 200.08,91.76 201.20,90.06 202.32,88.39 203.44,86.74 204.56,85.12 205.68,83.54 206.80,81.99 207.92,80.48 209.04,79.01 210.16,77.58 211.28,76.20 212.40,74.86 213.52,73.58 214.64,72.35 215.76,71.17 216.88,70.06 218.00,69.00 219.12,68.01 220.24,67.08 221.36,66.21 222.48,65.42 223.60,64.70 224.72,64.05 225.84,63.47 226.96,62.97 228.08,62.54 229.20,62.20 230.32,61.94 231.44,61.76 232.56,61.66 233.68,61.64 234.80,61.72 235.92,61.87 237.04,62.12 238.16,62.45 239.28,62.87 240.40,63.38 241.52,63.98 242.64,64.67 243.76,65.45 244.88,66.32 246.00,67.27 247.12,68.32 248.24,69.45 249.36,70.68 250.48,71.99 251.60,73.38 252.72,74.86 253.84,76.43 254.96,78.08 256.08,79.81 257.20,81.62 258.32,83.50 259.44,85.46 260.56,87.50 261.68,89.61 262.80,91.78 263.92,94.02 265.04,96.33 266.16,98.69 267.28,101.11 268.40,103.58 269.52,106.10 270.64,108.67 271.76,111.28 272.88,113.92 274.00,116.60 275.12,119.30 276.24,122.03 277.36,124.78 278.48,127.53 279.60,130.30 280.72,133.06 281.84,135.82 282.96,138.56 284.08,141.29 285.20,143.99 286.32,146.66 287.44,149.29 288.56,151.87 289.68,154.40 290.80,156.87 291.92,159.26 293.04,161.57 294.16,163.79 295.28,165.92 296.40,167.94 297.52,169.84 298.64,171.62 299.76,173.25 300.88,174.74 302.00,176.07 303.12,177.23 304.24,178.22 305.36,179.00 306.48,179.59 307.60,179.95 308.72,180.09 309.84,179.98 310.96,179.62 312.08,178.99 313.20,178.08 314.32,176.87 315.44,175.34 316.56,173.50 317.68,171.30 318.80,168.76 319.92,165.84 321.04,162.53 322.16,158.81 323.28,154.68 324.40,150.10 325.52,145.07 326.64,139.56 327.76,133.56 328.88,127.04 330.00,120.00" fill="#171717" fill-opacity="0" stroke="#ef4444" stroke-width="2" stroke-dasharray="5 4"/>
+      <circle cx="50.00" cy="256.00" r="4" fill="#3b82f6"/>
+      <circle cx="106.00" cy="150.60" r="5" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2"/>
+      <circle cx="162.00" cy="143.80" r="4" fill="#3b82f6"/>
+      <circle cx="218.00" cy="69.00" r="4" fill="#3b82f6"/>
+      <circle cx="274.00" cy="116.60" r="4" fill="#3b82f6"/>
+      <circle cx="330.00" cy="120.00" r="4" fill="#3b82f6"/>
+      <polygon points="101,98.0 111,98.0 111,108.0 101,108.0" fill="#3b82f6"/>
+      <text x="18" y="356" fill="#3b82f6">○ Old sale: 305</text><text x="175" y="356" fill="#3b82f6">■ New sale: 375</text>
+      <text x="18" y="379" fill="#ef4444">— Original fit</text><text x="175" y="379" fill="#ef4444">- - Refit</text>
+      </g>
+      </svg>
+      ```
+
+      ### Measure how much worse validation predictions are
+
+      The **error gap** measures how much worse validation predictions are than training predictions. Calculate both errors the same way so we can compare them fairly.
+
+      $$\text{gap}=\text{validation error}-\text{training error}$$
+
+      Be careful not to judge a fit by the gap alone. Two high errors can be close together even though neither meets the users' target.
+    worked: |
+      Let's compare two further trials, called the simpler model and the more flexible model, with the smooth curve. We want to know whether a small gap is enough to make a model useful.
+
+      The simpler model has training error 60 and validation error 62. The more flexible model has training error 6 and validation error 38.
+
+      1. **Check the simpler model.** Its training predictions are already poor, and its validation predictions are only a little worse.
+         $$62-60=2$$
+         Both errors exceed the target despite the small gap, so the simpler model likely underfits. Its lack of flexibility suggests high bias.
+
+      2. **Check the more flexible model.** Its training error is low, but its validation error is much higher.
+         $$38-6=32$$
+         The more flexible model likely overfits. If its fitted shape also changes a lot when we swap training houses, that would show high variance.
+
+      3. **Compare with the smooth curve.** Its rounded gap is slightly larger than the simpler model's gap, but both its errors meet the target.
+         $$28-25=3$$
+
+      The smooth curve has the lowest validation error of these choices. The smaller gap did not make the simpler model better.
+
+      ### Limitations of judging from only a few houses
+
+      With only two validation houses, a model might score well by luck. Also, scatter in prices can keep errors high even when a model follows the trend. These diagnoses are more dependable when the same pattern appears across many validation houses.
+    problems:
+      [
+        ovf-gap-basics,
+        ovf-gap-reason,
+        ovfp-gap,
+        ovf-small-gap,
+        ovf-variance,
+        ovfp-gap-choice,
+        ovf-delivery-diagnosis,
+        ovf-bias,
+      ]
+  - id: ovf-learning-curves
+    title: "Choose when to stop training"
+    explain: |
+      ### Watch predictions change during training
+
+      The finished fits showed that following training prices too closely can hurt validation predictions. Now we'll watch a model get to that point so we can stop before it happens. The upper plot illustrates training the wiggly curve on more houses from our sales collection, rather than continuing the six-house fit. Training adjusts its weights a little during each pass through the training houses. These adjustable numbers control its predictions. Early adjustments can produce a smooth shape. Later adjustments can pull different parts towards individual training prices. One full pass is an **epoch**, and we can save a copy after each epoch.
+
+      A **learning curve** shows how error changes during training. In both plots, the horizontal axis counts completed epochs and zero means before training. Throughout this step, errors are in thousands of dollars. Blue is training error and green is validation error.
+
+      In the upper plot, both errors fall at first. After epoch 5, training error keeps falling but validation error rises. The wiggly curve is following training houses more closely while predicting validation houses less well, which suggests overfitting.
+
+      ### Compare with the straight line
+
+      The lower plot trains the straight line from step 1 in repeated passes too. Its errors settle at the same rounded scores of 50 and 62. Both stay above the dashed target of 30, suggesting underfitting. A more flexible model may help when extra passes no longer improve the training fit.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 595" aria-label="Two house-price models trained in repeated passes over epochs 0 through 10, with error in thousands of dollars. Both learning-curve plots have their own blue training and green validation legend and a dashed useful-error line at 30. The upper plot illustrates training the wiggly curve on more houses from the sales collection, not continuing the six-house fit. Training error falls from 50 to 1.2, but validation reaches its minimum 16 at epoch 5 and then rises to 31. The lower plot trains the straight line from step 1. Its errors settle at the same rounded scores of 50 training and 62 validation, both above 30. The lower error axis extends to 100 to fit the higher starting errors.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="15" y="25">Overfitting after epoch 5</text>
+      <text x="50" y="46">Error ($1000s)</text>
+      <path d="M50 55 V215 H335" fill="#171717" fill-opacity="0" stroke="#737373"/>
+      <text x="43" y="220.00" text-anchor="end">0</text>
+      <text x="43" y="166.67" text-anchor="end">20</text>
+      <text x="43" y="113.33" text-anchor="end">40</text>
+      <text x="50" y="235" text-anchor="middle">0</text>
+      <text x="190" y="235" text-anchor="middle">5</text>
+      <text x="330" y="235" text-anchor="middle">10</text>
+      <text x="190" y="258" text-anchor="middle">Completed epochs</text>
+      <path id="ovf-useful-error-0" d="M50 135.00 H330" fill="#171717" fill-opacity="0" stroke="#737373" stroke-dasharray="5 4"/>
+      <text x="105" y="127.00" fill="#737373">useful error: 30</text>
+      <polyline id="ovf-curve-0-train" points="50.00,81.67 78.00,135.00 106.00,161.67 134.00,177.67 162.00,188.33 190.00,196.33 218.00,201.67 246.00,205.67 274.00,208.33 302.00,210.20 330.00,211.80" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2"/>
+      <polyline id="ovf-curve-0-valid" points="50.00,76.33 78.00,127.00 106.00,151.00 134.00,164.33 162.00,169.67 190.00,172.33 218.00,169.67 246.00,164.33 274.00,156.33 302.00,145.67 330.00,132.33" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2"/>
+      <circle cx="190" cy="172.33" r="4" fill="#10b981"/>
+      <text x="220" y="192.33" fill="#10b981">minimum: 16</text>
+      <text x="30" y="285" fill="#3b82f6">— Training</text><text x="190" y="285" fill="#10b981">— Validation</text>
+      <text x="15" y="315">Underfitting stays high</text>
+      <text x="50" y="336">Error ($1000s)</text>
+      <path d="M50 345 V505 H335" fill="#171717" fill-opacity="0" stroke="#737373"/>
+      <text x="43" y="510.00" text-anchor="end">0</text>
+      <text x="43" y="462.00" text-anchor="end">30</text>
+      <text x="43" y="414.00" text-anchor="end">60</text>
+      <text x="43" y="366.00" text-anchor="end">90</text>
+      <text x="50" y="525" text-anchor="middle">0</text>
+      <text x="190" y="525" text-anchor="middle">5</text>
+      <text x="330" y="525" text-anchor="middle">10</text>
+      <text x="190" y="548" text-anchor="middle">Completed epochs</text>
+      <path id="ovf-useful-error-1" d="M50 457.00 H330" fill="#171717" fill-opacity="0" stroke="#737373" stroke-dasharray="5 4"/>
+      <text x="105" y="479.00" fill="#737373">useful error: 30</text>
+      <polyline id="ovf-curve-1-train" points="50.00,385.53 78.00,401.53 106.00,412.73 134.00,420.73 162.00,425.53 190.00,425.53 218.00,425.53 246.00,425.53 274.00,425.53 302.00,425.53 330.00,425.53" fill="#171717" fill-opacity="0" stroke="#3b82f6" stroke-width="2"/>
+      <polyline id="ovf-curve-1-valid" points="50.00,365.61 78.00,381.61 106.00,392.81 134.00,400.81 162.00,405.61 190.00,405.61 218.00,405.61 246.00,405.61 274.00,405.61 302.00,405.61 330.00,405.61" fill="#171717" fill-opacity="0" stroke="#10b981" stroke-width="2"/>
+      <text x="30" y="575" fill="#3b82f6">— Training</text><text x="190" y="575" fill="#10b981">— Validation</text>
+      </g>
+      </svg>
+      ```
+
+      ### Save the useful model before predictions get worse
+
+      We compare saved copies using validation error. Only after choosing do we score predictions on the test houses we set aside at the start.
+
+      ### Try a change that addresses the failure
+
+      More training data can help overfitting because more houses make individual quirks matter less. A simpler model or stopping earlier can also help. If a model's errors are both high but still falling each pass, extra training may help instead. Keep checking whether validation predictions improve.
+
+      Be careful not to react to every tiny rise in validation error. Checking only a few validation houses can make the learning curve wobble, so look for a clear trend before deciding what to change.
+    worked: |
+      Let's use the wiggly curve's saved scores to decide which copy to keep.
+
+      | Epoch | Training | Validation |
+      | ---: | ---: | ---: |
+      | 0 | 50 | 52 |
+      | 5 | 7 | 16 |
+      | 10 | 1.2 | 31 |
+
+      1. **Find copies that meet the target.** Of these saved scores, only epoch 5 has validation error below 30.
+
+      2. **Check that no other epoch did better.** The green learning curve reaches its minimum at epoch 5. That makes this copy the best validation choice across the whole run, not just the three rows above.
+
+      3. **Keep that saved copy.** The last copy's lower training error is not a reason to prefer it. We need the copy that predicts validation houses best.
+
+      We stop at epoch 5 because continuing made validation predictions worse. The test houses we set aside at the start have not been used to make that decision.
+    problems:
+      [
+        ovf-curve-basics,
+        ovf-epoch-reason,
+        ovfp-best-epoch,
+        ovfp-late-gap,
+        ovf-flat-high,
+        ovf-still-falling,
+        ovf-speech-curves,
+        ovf-test-once,
+      ]
+final: ovf-explain-diagnosis
+summary: |
+  - Underfitting misses useful patterns even in training data and can indicate high bias, while overfitting follows training quirks and often goes with high variance across different sets of training houses.
+  - High training error suggests underfitting, low training error with much higher validation error suggests overfitting, and low, close errors suggest a good fit.
+  - The error gap is validation error minus training error, but a small gap alone does not make either error useful.
+  - Keep the model or saved epoch with the lowest validation error, and use the test set once after choosing.
+
+  **Next:** We'll explore ways to discourage an overly flexible model from fitting the training examples too closely.

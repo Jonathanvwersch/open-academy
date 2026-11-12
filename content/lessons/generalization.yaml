@@ -1,0 +1,173 @@
+concept: generalization
+version: 1
+objective: "**Goal:** explain when independent examples from the same distribution make held-out scores useful, and recognise when either assumption breaks."
+recap:
+  - concept: overfitting
+    text: "Overfitting means learning training quirks that do not help with unseen examples. We compare models using validation error. We leave test data untouched until the final check so it can judge our choice without having helped us make it."
+where_this_fits: |
+  ### What is generalization?
+
+  Generalization is a model's ability to make useful predictions on examples it did not learn from. We want a house-price model to price new houses, not just remember past sales.
+
+  Comparing training and validation error helps us spot overfitting, but even a low validation error can mislead us if the validation houses are unlike the ones we'll really price. **Held-out** examples are kept out of training and used for validation or testing. These held-out houses should look like the houses we'll really price. This lesson explains two assumptions that make their scores useful.
+knowledge_points:
+  - id: gen-unseen-houses
+    title: Judge predictions on new houses
+    explain: |
+      ### Where test houses come from
+
+      In the overfitting lesson, validation error checked whether training success carried over. Now we ask when that check tells us about future predictions. Imagine we fit a house-price model using past sales in one city. We compare candidate models on separate validation houses, then score the chosen model once on untouched test houses.
+
+      The picture shows blue training houses for learning, green validation and test houses for checking, and orange future houses for predictions. All should come from the same city sales source, without repeating houses across the groups.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 185" aria-label="One city sales source supplies four separate groups. Blue training houses teach the model. Green validation houses help choose a model and green test houses check it once. Orange future houses receive predictions.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="180" y="23" text-anchor="middle">One city sales source</text>
+      <path d="M180 35 V60 M45 60 H315 M45 60 V85 M135 60 V85 M225 60 V85 M315 60 V85" fill="#171717" fill-opacity="0" stroke="#737373" stroke-width="2"/>
+      <rect x="5" y="85" width="80" height="65" rx="5" fill="#171717" fill-opacity="0" stroke="#3b82f6"/>
+      <rect x="95" y="85" width="80" height="65" rx="5" fill="#171717" fill-opacity="0" stroke="#10b981"/>
+      <rect x="185" y="85" width="80" height="65" rx="5" fill="#171717" fill-opacity="0" stroke="#10b981"/>
+      <rect x="275" y="85" width="80" height="65" rx="5" fill="#171717" fill-opacity="0" stroke="#f59e0b"/>
+      <text x="45" y="111" text-anchor="middle">Training</text><text x="45" y="133" text-anchor="middle">Learn</text>
+      <text x="135" y="111" text-anchor="middle">Validation</text><text x="135" y="133" text-anchor="middle">Choose</text>
+      <text x="225" y="111" text-anchor="middle">Test</text><text x="225" y="133" text-anchor="middle">Check once</text>
+      <text x="315" y="111" text-anchor="middle">Future</text><text x="315" y="133" text-anchor="middle">Predict</text>
+      <text x="180" y="176" text-anchor="middle">Different houses, same source</text>
+      </g></svg>
+      ```
+
+      ### Two assumptions behind the check
+
+      Suppose most sales in our city are mid-sized houses at moderate prices, while very large, expensive houses are rare. Which sizes and prices turn up, and how often, describe the **distribution** of sales.
+
+      We assume that knowing one sale tells us nothing about another, and that sales keep coming from the same unchanged city market. These assumptions are called **independent and identically distributed**, or **i.i.d.**
+
+      **Independent** means one example gives no information about another. If two agencies list the same sale, we might record one house twice with the same price. Those copies are not independent. **Identically distributed** means every example, including future ones, comes from that same distribution. It does not mean the houses have identical sizes or prices.
+
+      ### What a test score can't promise
+
+      If these assumptions hold, an untouched test set gives evidence about average future error, not a guarantee for every house. With only a few houses, chance can make the average much lower or higher than the model's typical error on future houses. More houses make it steadier.
+
+      Training error cannot give us a fair check of future performance because those houses helped shape the model's predictions.
+    worked: |
+      Let's measure mean absolute error, the average distance between predictions and real prices, as in the overfitting lesson. Four untouched test houses from our city have distances of 10, 20, 10 and 20 thousand dollars.
+
+      1. **Add the distances.** We need the total before we can find the average.
+         $$10+20+10+20=60$$
+      2. **Average across houses.** Divide by the number of houses so the score is an error per house.
+         $$60/4=15$$
+      3. **State what the score supports.** These four houses show the arithmetic, but a real test set needs many more houses for a steady estimate of average future error. Those houses must be independent and come from the same distribution as future sales.
+
+      The average distance on these four houses is 15 thousand dollars, not a promise about each future house.
+    problems:
+      [gen-basics, gen-average-reason, gen-average-template, gen-identical, gen-robot-evidence]
+  - id: gen-changed-source
+    title: Notice when new houses differ
+    explain: |
+      ### A new city can change the task
+
+      We have a test score for houses from one city. What if we use the model in another city? Call our original city A and the new city B. Suppose both have small and large houses, but B has much higher prices for each size. The model can fail in B even though those sizes were familiar during training.
+
+      The picture compares real sale prices at two sizes. Here blue means city A and green means city B, rather than training and checking. Each green point is above the blue point at the same size. Size is familiar, but what it tells us about price has changed.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 270" aria-label="At house sizes 80 and 160 square metres, city A prices are 100 and 200 thousand dollars, while city B prices are 200 and 300 thousand dollars. Both city B prices are 100 thousand higher.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="50" y="20">Price ($1000s)</text>
+      <path d="M50 40 V200 H330" fill="#171717" fill-opacity="0" stroke="#737373"/>
+      <text x="43" y="205" text-anchor="end">0</text><text x="43" y="155" text-anchor="end">100</text><text x="43" y="105" text-anchor="end">200</text><text x="43" y="55" text-anchor="end">300</text>
+      <circle cx="165" cy="150" r="5" fill="#3b82f6"/><circle cx="280" cy="100" r="5" fill="#3b82f6"/>
+      <circle cx="165" cy="100" r="5" fill="#10b981"/><circle cx="280" cy="50" r="5" fill="#10b981"/>
+      <text x="165" y="221" text-anchor="middle">80</text><text x="280" y="221" text-anchor="middle">160</text>
+      <text x="190" y="243" text-anchor="middle">House size (m²)</text>
+      <text x="65" y="265" fill="#3b82f6">● City A</text><text x="225" y="265" fill="#10b981">● City B</text>
+      </g></svg>
+      ```
+
+      ### What changed in the distribution?
+
+      **Distribution shift** means the examples we now want to predict come from a different distribution than the examples we tested on. The **inputs** are the measurements we give the model, such as size. We might see different sizes, or the same sizes might sell for different prices. Both can change together too.
+
+      Here are three ways we might use our house model.
+
+      - New, independent sales from the same unchanged city source make the old test score relevant.
+      - Mostly large houses change how often each input occurs, so the old average error may no longer reflect the new mix.
+      - City B's higher prices at familiar sizes change the relationship between inputs and prices.
+
+      ### When an old score stops applying
+
+      Dividing city A sales into training and test groups cannot tell us how well the model prices city B houses. Collect B house measurements with their real sale prices and evaluate there. If we train the model further using B sales, keep separate B validation and test houses too.
+
+      Be careful not to treat a different distribution as proof that the model must fail. It means the old score alone is not enough; measuring in the new setting tells us whether predictions remain useful.
+    worked: |
+      Suppose our model predicts city A's prices exactly at these two sizes. Its predictions are 100 and 200 thousand dollars. In B the actual prices are 200 and 300.
+
+      1. **Keep the predictions fixed.** Using the model in city B does not train it again, so it still predicts the same price at each size.
+      2. **Find the new errors.** At each size the real B price is higher than the prediction.
+         $$200-100=100,\qquad 300-200=100$$
+      3. **Average the B errors.** Both houses contribute the same distance.
+         $$(100+100)/2=100$$
+
+      Zero error on these A houses became 100 thousand dollars on these B houses. Familiar sizes can have different prices. To estimate typical error in B, we would need many sales covering the kinds of houses people there will ask us to price.
+    problems:
+      [gen-shift-basics, gen-fixed-reason, gen-shift-template, gen-large-houses, gen-lighting]
+  - id: gen-related-records
+    title: Keep related examples together
+    explain: |
+      ### One sale can appear twice
+
+      Even houses from the same city can give a misleading score if the examples are related. Remember the two agencies listing the same sale. Suppose we merge their tables, leaving two copies of each sale. Our **split** is our division of examples into training, validation and test groups. Dividing rows without keeping copies together can put one copy in training and another in validation. The model may appear to predict a new house while recognising one it already saw.
+
+      In the upper row of the diagram, house H appears on both sides. In the lower row, all copies of H stay in training and all copies of another house, J, stay in validation.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 225" aria-label="A row split puts a copy of house H in both training and validation. A house split keeps both H copies in training and both J copies in validation.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="85" y="22" text-anchor="middle" fill="#3b82f6">Training</text><text x="270" y="22" text-anchor="middle" fill="#10b981">Validation</text>
+      <path d="M180 35 V220" stroke="#d4d4d4"/>
+      <text x="10" y="53">Split rows</text>
+      <rect x="30" y="65" width="110" height="40" fill="#171717" fill-opacity="0" stroke="#3b82f6"/><rect x="215" y="65" width="110" height="40" fill="#171717" fill-opacity="0" stroke="#10b981"/>
+      <text x="85" y="90" text-anchor="middle">H copy 1</text><text x="270" y="90" text-anchor="middle">H copy 2</text>
+      <text x="10" y="143">Split houses</text>
+      <rect x="30" y="155" width="110" height="55" fill="#171717" fill-opacity="0" stroke="#3b82f6"/><rect x="215" y="155" width="110" height="55" fill="#171717" fill-opacity="0" stroke="#10b981"/>
+      <text x="85" y="177" text-anchor="middle">H copy 1</text><text x="85" y="198" text-anchor="middle">H copy 2</text>
+      <text x="270" y="177" text-anchor="middle">J copy 1</text><text x="270" y="198" text-anchor="middle">J copy 2</text>
+      </g></svg>
+      ```
+
+      ### Choose the split for the intended use
+
+      A copy of a validation house's price in training gives the model information it should not have for a new-house prediction. This is **data leakage**, when information that should be unavailable for a prediction influences training or model selection. A **group split** keeps related records together. For new-house predictions, assign houses to training, validation and test before assigning their rows.
+
+      Examples can also be linked by time. Predicting future sales is called **forecasting**. Training on 2024 sales to "predict" 2023 sales after prices rose lets future information help predict the past. Instead, a **time split** trains on earlier records and checks later ones. Inputs must also be available at prediction time, so next month's final sale price cannot help us predict today.
+
+      ### What a better split still misses
+
+      Grouping houses removes the duplicate-house shortcut, but other links can remain. A new train station might raise prices for many nearby houses at once, so those houses are still linked. A time split rehearses forecasting, but cannot prevent future market changes. We still need to ask how these held-out houses are linked and whether they resemble the houses we'll really price.
+
+      After we remove leakage, the error may rise because the model can no longer recognise copied sales. That does not make the evaluation worse. It gives us a more honest check of how well the model predicts new houses.
+    worked: |
+      Let's split four sale records to evaluate predictions for new houses. H1 and H2 are identical copies of house H's sale; J1 and J2 are identical copies of house J's sale.
+
+      1. **Inspect the row split.** Training on H1 and J1 while validating on H2 and J2 puts a copy of every validation sale in training. A model could succeed by remembering the prices.
+      2. **Split by house instead.** Put H1 and H2 in training, and J1 and J2 in validation, as in the lower diagram. The H copies are harmless for this check because H is not being evaluated. The model must predict J without having learned from its sale.
+      3. **Count independent evidence honestly.** Both J copies have the same inputs and price, so the model makes the same prediction and error on each. Counting both repeats one house's result as if it were two houses. Score J once, so its error counts for one house, not two. Gather many more distinct validation houses, plus separate test houses for the final check.
+
+      The split now asks the right question, but one unseen house is still too little evidence for a dependable average.
+    problems:
+      [
+        gen-independent-basics,
+        gen-group-reason,
+        gen-count-template,
+        gen-time-split,
+        gen-patient-split,
+      ]
+final: gen-explain-evidence
+summary: |
+  - Generalization means making useful predictions on unseen examples, not merely fitting training examples.
+  - Independent examples from the same distribution make an untouched test set useful evidence about average future error, and using more houses makes that average steadier rather than guaranteeing every prediction.
+  - Distribution shift can change house measurements or the prices associated with them, so evaluate on examples from the setting where the model will be used.
+  - Keep related records together and respect time order when forecasting, so held-out scores do not benefit from information unavailable in real use.
+
+  **Next:** A later lesson explains how a system that learns to choose actions from examples can make mistakes that lead it into unfamiliar situations, where further mistakes become more likely.

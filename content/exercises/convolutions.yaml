@@ -1,0 +1,672 @@
+concept: convolutions
+exercises:
+  - id: conv-slide-basics
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What does one convolutional filter do?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "It reuses a small grid of weights across image patches.",
+          "correct": true,
+          "feedback": "Each position uses the same weights.",
+        },
+        {
+          "id": "b",
+          "text": "It gives each image position its own new weights.",
+          "correct": false,
+          "feedback": "The same weights are shared, not recreated at each position.",
+        },
+        {
+          "id": "c",
+          "text": "It takes the largest pixel from each image patch.",
+          "correct": false,
+          "feedback": "That selects one value instead of taking a weighted sum.",
+        },
+      ]
+    solution: "A filter multiplies matching pixels and weights, adds them and a bias, then repeats at another position."
+  - id: conv-slide-why-zero
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Why is the worked example's score at (0,2) zero even though the patch is bright?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "Equal left and right brightness contributions cancel.",
+          "correct": true,
+          "feedback": "Each row contributes minus one plus one.",
+        },
+        {
+          "id": "b",
+          "text": "ReLU changes every positive score into zero.",
+          "correct": false,
+          "feedback": "ReLU keeps positive scores. This score was already zero before ReLU.",
+        },
+        {
+          "id": "c",
+          "text": "The filter skips patches containing bright pixels.",
+          "correct": false,
+          "feedback": "It evaluates this patch just like any other.",
+        },
+      ]
+    solution: "Each all-bright row contributes −1 + 0 + 1 = 0, so all three rows sum to zero."
+  - id: conv-score
+    dimension: "math"
+    type: "numeric"
+    tolerance: { abs: 0.000001 }
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A patch has three identical rows (0,1,1). The filter has three identical rows (−1,0,1), with bias −1. What is the output after ReLU?"
+    answer: 2
+    solution: "Each row contributes 1, so the score is 3 − 1 = 2. ReLU keeps it."
+  - id: conv-slide-template
+    dimension: "math"
+    type: "numeric"
+    tolerance: { abs: 0.000001 }
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A patch has three identical rows (0,0,{{= a }}). Its filter has three identical rows (−1,0,1), and bias {{= b }}. What is the output after ReLU?"
+    params: { "a": { "min": 0, "max": 3 }, "b": { "min": -3, "max": 2 } }
+    answer_expr: "max(0,3*a+b)"
+    solution: "The three rows contribute {{= 3*a }} and the bias gives {{= 3*a+b }}. ReLU returns {{= max(0,3*a+b) }}."
+  - id: conv-bias-trap
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A 3×3 filter uses bias 2. How is that bias used for one output score?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "Add 2 once after summing the nine products.",
+          "correct": true,
+          "feedback": "There is one bias per filter.",
+        },
+        {
+          "id": "b",
+          "text": "Add 2 to each of the nine products.",
+          "correct": false,
+          "feedback": "That would count the bias nine times.",
+        },
+        {
+          "id": "c",
+          "text": "Add 2 only at the first image position.",
+          "correct": false,
+          "feedback": "The shared bias is used at every output position.",
+        },
+      ]
+    solution: "The bias belongs to the reused neuron, so each output score adds it exactly once."
+  - id: conv-edge-robot
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot moves a camera past a dark-to-bright vertical boundary. What can the example's filter detect?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The same local boundary at different patch positions.",
+          "correct": true,
+          "feedback": "Shared weights test each patch for the same brightness change.",
+        },
+        {
+          "id": "b",
+          "text": "Only the boundary at its original image position.",
+          "correct": false,
+          "feedback": "The filter uses the same weights wherever its patch starts.",
+        },
+        {
+          "id": "c",
+          "text": "Every bright uniform patch as a strong boundary.",
+          "correct": false,
+          "feedback": "Equal left and right brightness cancels in a uniform patch.",
+        },
+      ]
+    solution: "The shared filter responds when a patch has greater right-hand brightness than left-hand brightness."
+  - id: conv-code-patch
+    dimension: "implementation"
+    type: "mc"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "In the NumPy loop, what patch is selected when i=1 and j=2?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "Rows 1–3 and columns 2–4.",
+          "correct": true,
+          "feedback": "Slices include their start but exclude their end.",
+        },
+        {
+          "id": "b",
+          "text": "Rows 1–4 and columns 2–5.",
+          "correct": false,
+          "feedback": "The upper slice endpoints are excluded.",
+        },
+        {
+          "id": "c",
+          "text": "Rows 0–2 and columns 0–2.",
+          "correct": false,
+          "feedback": "Those would be the patch at i=0, j=0.",
+        },
+      ]
+    solution: "The slices 1:4 and 2:5 each select three entries, starting at the requested row and column."
+  - id: conv-size-basics
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What does stride specify?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The distance between neighbouring patch starts.",
+          "correct": true,
+          "feedback": "A stride of two advances two input pixels.",
+        },
+        {
+          "id": "b",
+          "text": "The number of zeros added on each border.",
+          "correct": false,
+          "feedback": "That is padding, not stride.",
+        },
+        {
+          "id": "c",
+          "text": "The number of weights inside each filter.",
+          "correct": false,
+          "feedback": "Filter size determines the number of weights.",
+        },
+      ]
+    solution: "Stride controls how far the patch moves before computing the next output."
+  - id: conv-size-why-floor
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Why does the 32×32 worked example give 16 output rows rather than 17?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "Start 32 would extend the patch beyond the padded height 36.",
+          "correct": true,
+          "feedback": "A size-five patch at 32 would need indices up to 36.",
+        },
+        {
+          "id": "b",
+          "text": "The bias removes the last output row.",
+          "correct": false,
+          "feedback": "Bias changes values, never the number of positions.",
+        },
+        {
+          "id": "c",
+          "text": "Padding always removes one row at the end.",
+          "correct": false,
+          "feedback": "Padding enlarges the available grid, while stride determines which starts we reach.",
+        },
+      ]
+    solution: "Allowed stride-two starts are 0 through 30. A start at 32 would need an extra pixel beyond the padded grid."
+  - id: conv-size-template
+    dimension: "math"
+    type: "numeric"
+    tolerance: { abs: 0.000001 }
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "An image has height {{= h }}. With square filter side {{= k }}, padding {{= p }} and stride {{= s }}, how many output rows fit?"
+    params:
+      {
+        "h": { "min": 6, "max": 14 },
+        "k": { "min": 3, "max": 5, "step": 2 },
+        "p": { "min": 0, "max": 2 },
+        "s": { "min": 1, "max": 3 },
+      }
+    answer_expr: "floor((h+2*p-k)/s)+1"
+    solution: "The padded height is {{= h+2*p }}. Counting starts gives floor(({{= h+2*p-k }})/{{= s }}) + 1 = {{= floor((h+2*p-k)/s)+1 }}."
+  - id: conv-size-fixed
+    dimension: "math"
+    type: "numeric"
+    tolerance: { abs: 0.000001 }
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For a 9×9 image, k=3, p=0 and s=2, how many rows are in the output?"
+    answer: 4
+    solution: "Starts 0, 2, 4 and 6 fit, giving four output rows."
+  - id: conv-padding-trap
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "With padding p=2, what height does an image of height H have before convolution?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "H + 4, because two rows are added at each end.",
+          "correct": true,
+          "feedback": "Padding applies on both sides.",
+        },
+        {
+          "id": "b",
+          "text": "H + 2, because padding is added only once.",
+          "correct": false,
+          "feedback": "That counts only one of the two borders.",
+        },
+        {
+          "id": "c",
+          "text": "2H, because padding doubles the whole image.",
+          "correct": false,
+          "feedback": "Padding adds fixed borders rather than scaling the image.",
+        },
+      ]
+    solution: "Two rows above and two below add four rows in total."
+  - id: conv-stride-robot
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot's camera pipeline needs fewer output positions without changing filter weights. Which change does that?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "Increase stride from one to two.",
+          "correct": true,
+          "feedback": "More distant starts give fewer output cells.",
+        },
+        {
+          "id": "b",
+          "text": "Increase the bias at every position.",
+          "correct": false,
+          "feedback": "The bias changes scores, not the count of positions.",
+        },
+        {
+          "id": "c",
+          "text": "Increase zero padding with stride unchanged.",
+          "correct": false,
+          "feedback": "More padding can add positions rather than remove them.",
+        },
+      ]
+    solution: "Larger stride skips intermediate starts, reducing spatial output size without changing the filter weights."
+  - id: conv-width-template
+    dimension: "math"
+    type: "numeric"
+    tolerance: { abs: 0.000001 }
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "An image is {{= h }} rows by {{= w }} columns. With k=3, p=1 and s=2, what is the output width?"
+    params: { "h": { "min": 8, "max": 12 }, "w": { "min": 13, "max": 19 } }
+    answer_expr: "floor((w-1)/2)+1"
+    solution: "Use width {{= w }}, not height {{= h }}. There are {{= floor((w-1)/2)+1 }} allowed column starts."
+  - id: conv-channels-basics
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What does one filter do on an RGB image?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "It sums contributions from all three channels into one map.",
+          "correct": true,
+          "feedback": "One filter produces one output channel.",
+        },
+        {
+          "id": "b",
+          "text": "It makes three independent maps, one per colour.",
+          "correct": false,
+          "feedback": "The channel contributions are summed before the bias is added.",
+        },
+        {
+          "id": "c",
+          "text": "It reads only one channel and ignores the others.",
+          "correct": false,
+          "feedback": "A filter spans all input channels.",
+        },
+      ]
+    solution: "One filter has weights for all input channels and produces one score at each position."
+  - id: conv-channels-why-small
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Why does the worked convolution use only 448 parameters despite producing 16,384 numbers?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "It reads local patches and reuses weights across positions.",
+          "correct": true,
+          "feedback": "Many output values can use the same weights and bias.",
+        },
+        {
+          "id": "b",
+          "text": "It uses a new weight for every output-input pair.",
+          "correct": false,
+          "feedback": "That describes the much larger fully connected layer.",
+        },
+        {
+          "id": "c",
+          "text": "It stores only one parameter per output number.",
+          "correct": false,
+          "feedback": "A filter has weights and a bias, shared across many outputs.",
+        },
+      ]
+    solution: "Each of 16 filters needs only 27 weights and one bias, independent of the number of positions."
+  - id: conv-params-template
+    dimension: "math"
+    type: "numeric"
+    tolerance: { abs: 0.000001 }
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A convolution has {{= c }} input channels and {{= f }} filters of side {{= k }}. Include one bias per filter. How many parameters does it have?"
+    params:
+      {
+        "c": { "min": 1, "max": 4 },
+        "f": { "min": 2, "max": 8, "step": 2 },
+        "k": { "min": 1, "max": 5, "step": 2 },
+      }
+    answer_expr: "f*(c*k*k+1)"
+    solution: "Each filter has {{= c*k*k }} weights plus one bias, so the total is {{= f*(c*k*k+1) }}."
+  - id: conv-shape-template
+    dimension: "math"
+    type: "numeric"
+    tolerance: { abs: 0.000001 }
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Input CHW shape is (3,{{= h }},{{= h }}). There are {{= f }} filters with k=3, p=1, s=2. How many numbers are in the whole output tensor?"
+    params: { "h": { "min": 8, "max": 16, "step": 2 }, "f": { "min": 2, "max": 6, "step": 2 } }
+    answer_expr: "f*(floor((h-1)/2)+1)^2"
+    solution: "The output shape is ({{= f }},{{= floor((h-1)/2)+1 }},{{= floor((h-1)/2)+1 }}). Multiplying its three sizes gives {{= f*(floor((h-1)/2)+1)^2 }}."
+  - id: conv-channels-trap
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "If image height and width double but channels and filters stay fixed, what happens to convolutional parameter count?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "It stays the same because each filter is reused.",
+          "correct": true,
+          "feedback": "Spatial extent is absent from the parameter-count formula.",
+        },
+        {
+          "id": "b",
+          "text": "It doubles because there are twice as many rows.",
+          "correct": false,
+          "feedback": "Rows add uses of weights, not new weights.",
+        },
+        {
+          "id": "c",
+          "text": "It quadruples because there are four times as many pixels.",
+          "correct": false,
+          "feedback": "More pixels require more calculations, not more filter parameters.",
+        },
+      ]
+    solution: "Only input channels, filter side and number of filters determine this layer's weights and biases."
+  - id: conv-channels-robot
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot receives CHW input (3,12,18). It uses 4 filters with k=3, p=1, s=2. What is the output shape?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "(4,6,9)",
+          "correct": true,
+          "feedback": "Four filters give four channels, and the spatial counts are six and nine.",
+        },
+        {
+          "id": "b",
+          "text": "(3,6,9)",
+          "correct": false,
+          "feedback": "Input channel count is not output channel count.",
+        },
+        {
+          "id": "c",
+          "text": "(4,12,18)",
+          "correct": false,
+          "feedback": "Stride two reduces the spatial counts even with padding one.",
+        },
+      ]
+    solution: "Height is floor(11/2)+1=6 and width is floor(17/2)+1=9. Four filters give the leading size four."
+  - id: conv-shape-fixed
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "An RGB input has shape (3,10,14). Six filters use k=3, p=0, s=1. Which output shape is correct?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "(6,8,12)",
+          "correct": true,
+          "feedback": "Six filters give six maps, each eight rows by twelve columns.",
+        },
+        {
+          "id": "b",
+          "text": "(3,8,12)",
+          "correct": false,
+          "feedback": "The output has one channel per filter, not per input channel.",
+        },
+        {
+          "id": "c",
+          "text": "(6,10,14)",
+          "correct": false,
+          "feedback": "Without padding, the spatial sides shrink by two.",
+        },
+      ]
+    solution: "Subtracting three and adding one gives sides eight and twelve. The six filters give six output channels."
+  - id: conv-pool-basics
+    dimension: "conceptual"
+    type: "mc"
+    role: "basics"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "What does max pooling return for each patch?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "Its largest value, with no weights or biases.",
+          "correct": true,
+          "feedback": "Pooling selects an existing value.",
+        },
+        {
+          "id": "b",
+          "text": "A weighted sum plus a bias.",
+          "correct": false,
+          "feedback": "That describes a convolutional score.",
+        },
+        {
+          "id": "c",
+          "text": "Its average value, with one bias.",
+          "correct": false,
+          "feedback": "Max pooling takes the largest value and has no bias.",
+        },
+      ]
+    solution: "Max pooling selects the maximum independently in each channel. It has no weights or biases."
+  - id: conv-pool-why-four
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Why is the worked example's top-left pooled value 4?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The largest value in that patch is 4.",
+          "correct": true,
+          "feedback": "The patch contains 1, 3, 4 and 2, so max pooling keeps 4.",
+        },
+        {
+          "id": "b",
+          "text": "The top-left entry is copied unchanged.",
+          "correct": false,
+          "feedback": "The top-left entry is 1, but pooling compares all four values.",
+        },
+        {
+          "id": "c",
+          "text": "Four weights produce a score of 4.",
+          "correct": false,
+          "feedback": "Max pooling selects an existing value and has no weights.",
+        },
+      ]
+    solution: "The top-left patch contains 1, 3, 4 and 2. Its maximum is 4, so that value becomes one output cell."
+  - id: conv-pool-value
+    dimension: "math"
+    type: "numeric"
+    tolerance: { abs: 0.000001 }
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Apply 2×2 max pooling with stride 2 to rows (2,7,1,3), (4,5,8,0), (6,1,2,4), (0,3,5,9). What is the bottom-left output value?"
+    answer: 6
+    solution: "The bottom-left patch contains 6, 1, 0 and 3, whose maximum is 6."
+  - id: conv-pool-template
+    dimension: "math"
+    type: "numeric"
+    tolerance: { abs: 0.000001 }
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A feature map has CHW shape ({{= c }},{{= h }},{{= h }}). Apply 2×2 max pooling with stride 2, no padding. How many numbers are in the output?"
+    params: { "c": { "min": 1, "max": 4 }, "h": { "min": 4, "max": 11 } }
+    answer_expr: "c*floor(h/2)^2"
+    solution: "The channel count stays {{= c }} and each side becomes {{= floor(h/2) }}. The output contains {{= c*floor(h/2)^2 }} numbers."
+  - id: conv-field-template
+    dimension: "math"
+    type: "numeric"
+    tolerance: { abs: 0.000001 }
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "Stack {{= l }} square convolutions with filter side {{= k }}, all stride 1 and no pooling. For an interior output cell, what is its receptive-field side in the original input?"
+    params: { "l": { "min": 1, "max": 4 }, "k": { "min": 3, "max": 5, "step": 2 } }
+    answer_expr: "1+l*(k-1)"
+    solution: "Start with one input cell and add {{= k-1 }} per layer. The side is {{= 1+l*(k-1) }}."
+  - id: conv-field-trap
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Two 3×3 convolutions both have stride 1. What is the receptive-field side of an interior output cell?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "5, because neighbouring patches overlap.",
+          "correct": true,
+          "feedback": "Each extra layer adds two to the side.",
+        },
+        {
+          "id": "b",
+          "text": "6, because the two side lengths add.",
+          "correct": false,
+          "feedback": "This ignores the overlap between the patches.",
+        },
+        {
+          "id": "c",
+          "text": "9, because the two side lengths multiply.",
+          "correct": false,
+          "feedback": "Multiplying treats overlapping patches as disjoint.",
+        },
+      ]
+    solution: "The side starts at one and grows by two per layer, so it is 1 + 2·2 = 5."
+  - id: conv-pool-robot
+    dimension: "conceptual"
+    type: "mc"
+    role: "practice"
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A robot must report an edge's exact location within a 2×2 area. Why might it skip max pooling there?"
+    options:
+      [
+        {
+          "id": "a",
+          "text": "The maximum alone does not retain which pixel supplied it.",
+          "correct": true,
+          "feedback": "Different within-patch positions can give the same pooled value.",
+        },
+        {
+          "id": "b",
+          "text": "Pooling adds too many filter weights.",
+          "correct": false,
+          "feedback": "Pooling has no weights or biases.",
+        },
+        {
+          "id": "c",
+          "text": "Pooling always removes every positive response.",
+          "correct": false,
+          "feedback": "It keeps the largest response, including positive ones.",
+        },
+      ]
+    solution: "Max pooling loses within-patch position, so keeping the map without pooling can preserve information needed for precise location."
+  - id: conv-explain
+    dimension: "conceptual"
+    type: "explain"
+    role: "core"
+    difficulty: 3
+    est_minutes: 4
+    prompt: "Explain why a convolution usually needs far fewer parameters than a fully connected layer producing the same number of outputs. Then describe how to compute its CHW output shape from input channels, height, width, filter count, filter side, padding and stride, and what 2×2 stride-2 max pooling changes."
+    rubric:
+      [
+        {
+          "id": "local-shared",
+          "criterion": "Explains local patches and shared weights and counts C_out(C_in k²+1) parameters including biases",
+          "weight": 1,
+          "required": true,
+        },
+        {
+          "id": "shape",
+          "criterion": "Uses floor((input side+2p−k)/s)+1 for each spatial side and one output channel per filter",
+          "weight": 1,
+          "required": true,
+        },
+        {
+          "id": "pool",
+          "criterion": "Pooling keeps channel count, halves even spatial sides and adds no parameters",
+          "weight": 1,
+          "required": true,
+        },
+      ]
+    exemplar: "A convolution reads local patches and reuses each filter's weights at every position, unlike a fully connected layer with separate connections from every input to every output. With C_in input channels and C_out filters of side k, it has C_out(C_in k²+1) parameters. Its output is (C_out,H_out,W_out), where each spatial side is floor((input side+2p−k)/s)+1. Max pooling takes the largest value in each patch. With 2×2 patches, stride-2 pooling with no padding halves even spatial sides, preserves channels and has no weights or biases."
+    solution: "Local patches limit the weights per filter, and sharing prevents positions from multiplying that count. Count patch starts separately for height and width, put the filter count first, and apply the same patch-counting rule for pooling."
