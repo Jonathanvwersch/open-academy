@@ -28,8 +28,6 @@ export function LessonRunner({
   sessionId,
   title,
   activityLabel,
-  activityPosition,
-  activityCount,
   lessonHref,
   tutorEnabled,
   finalAnswered,
@@ -40,8 +38,6 @@ export function LessonRunner({
   sessionId: string;
   title: string;
   activityLabel: string;
-  activityPosition: number;
-  activityCount: number;
   lessonHref?: string;
   tutorEnabled: boolean;
   finalAnswered: boolean;
@@ -450,8 +446,6 @@ export function LessonRunner({
         <SessionActivityHeader
           title={title}
           label={activityLabel}
-          position={activityPosition}
-          total={activityCount}
           lessonHref={lessonHref}
           subtitleSkeleton
         />
@@ -515,8 +509,6 @@ export function LessonRunner({
       <SessionActivityHeader
         title={title}
         label={activityLabel}
-        position={activityPosition}
-        total={activityCount}
         lessonHref={lessonHref}
         subtitle={sessionSubtitle}
       />
@@ -903,13 +895,37 @@ export function LessonRunner({
                 </Button>
               ))}
             </div>
+            {state.quiz.reviewRequired.length > 0 ? (
+              <div className="space-y-2">
+                <p>Before you retake it, answer 3 more questions on each step you missed.</p>
+                {state.quiz.reviewRequired.map((step) => {
+                  const stepNumber =
+                    state.points.findIndex((point) => point.id === step.pointId) + 1;
+                  return step.answered >= step.needed ? (
+                    <p key={step.pointId}>✓ Step {stepNumber} reviewed</p>
+                  ) : (
+                    <Button
+                      key={step.pointId}
+                      type="button"
+                      variant="link"
+                      className="flex h-auto w-fit whitespace-normal p-0 text-left text-amber-950"
+                      onClick={() => viewStep(step.pointId)}
+                    >
+                      Review Step {stepNumber} · {step.answered}/{step.needed}
+                    </Button>
+                  );
+                })}
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div />
               <div className="ml-auto flex flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={busy}
+                  disabled={
+                    busy || state.quiz.reviewRequired.some((step) => step.answered < step.needed)
+                  }
                   onClick={() => void startQuiz()}
                 >
                   Retake quiz

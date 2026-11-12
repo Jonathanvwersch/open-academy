@@ -304,17 +304,6 @@ function packWeekday(
     if (selected.length < SCHEDULER_CONFIG.weekday.maxActivities - 1) add(candidate);
   }
 
-  const practice = buildPracticeBlock(state, content, selected, budget - usedMinutes);
-  if (practice) {
-    selected.push({
-      activity: practice,
-      score: 0,
-      adjustedMinutes: practice.plannedMinutes,
-      newConcept: false,
-    });
-    usedMinutes += practice.plannedMinutes;
-  }
-
   const otherCandidates = candidates
     .filter(
       (candidate) =>
@@ -324,89 +313,6 @@ function packWeekday(
   for (const candidate of otherCandidates) add(candidate);
 
   return toPlan(selected);
-}
-
-function buildPracticeBlock(
-  state: SchedulerState,
-  content: ContentIndex,
-  selected: Candidate[],
-  remainingMinutes: number,
-): PlannedActivity | undefined {
-  if (remainingMinutes <= 0 || selected.length >= SCHEDULER_CONFIG.weekday.maxActivities) {
-    return undefined;
-  }
-  const learned = selected
-    .filter((candidate) => candidate.activity.kind === 'learn')
-    .map((candidate) => candidate.activity.conceptId)
-    .filter((id): id is string => Boolean(id));
-  const learnedSet = new Set(learned);
-  const earlier = [
-    ...new Set(
-      state.mastery
-        .filter((record) => record.provisional || record.state === 'assisted' || record.inferred)
-        .map((record) => record.conceptId)
-        .filter((id) => !learnedSet.has(id) && content.conceptsById.get(id)?.status !== 'stub'),
-    ),
-  ];
-  const orderedConceptIds: string[] = [];
-  for (let index = 0; index < Math.max(learned.length, earlier.length); index += 1) {
-    if (learned[index]) orderedConceptIds.push(learned[index]);
-    if (earlier[index]) orderedConceptIds.push(earlier[index]);
-  }
-  if (orderedConceptIds.length === 0) return undefined;
-  const excluded = new Set([
-    ...(state.usedExerciseIds ?? []),
-    ...state.recentAttempts.map((attempt) => attempt.exerciseId),
-    ...selected.flatMap((candidate) => candidate.activity.exerciseIds),
-  ]);
-  const exerciseIds: string[] = [];
-  const ratio = Math.min(2, Math.max(0.5, state.actualEstimateRatio ?? 1));
-  let minutes = 0;
-  const pools = new Map(
-    orderedConceptIds.map((conceptId) => [
-      conceptId,
-      (content.exercisesByConcept.get(conceptId) ?? [])
-        .filter(
-          (item) =>
-            (item.role === 'core' || item.role === 'review' || item.role === 'basics') &&
-            !excluded.has(item.id),
-        )
-        .sort((left, right) => left.est_minutes - right.est_minutes),
-    ]),
-  );
-  const poolCursors = new Map<string, number>();
-  let conceptCursor = 0;
-  while (minutes < remainingMinutes) {
-    let added = false;
-    for (let scanned = 0; scanned < orderedConceptIds.length; scanned += 1) {
-      const conceptId = orderedConceptIds[conceptCursor % orderedConceptIds.length];
-      conceptCursor = (conceptCursor + 1) % orderedConceptIds.length;
-      if (!conceptId) continue;
-      const pool = pools.get(conceptId) ?? [];
-      const cursor = poolCursors.get(conceptId) ?? 0;
-      const exercise = pool[cursor];
-      if (!exercise) continue;
-      poolCursors.set(conceptId, cursor + 1);
-      const itemMinutes = Math.max(1, Math.ceil(exercise.est_minutes * ratio));
-      if (minutes + itemMinutes > remainingMinutes) continue;
-      exerciseIds.push(exercise.id);
-      excluded.add(exercise.id);
-      minutes += itemMinutes;
-      added = true;
-      break;
-    }
-    if (!added) break;
-  }
-  if (exerciseIds.length === 0) return undefined;
-  return {
-    kind: 'practice',
-    exerciseIds,
-    plannedMinutes: minutes,
-    reason: {
-      terms: { ...noTerms(), cost: -minutes / 10 },
-      summary: `Practice unseen core and review items from today's learning and earlier known concepts.`,
-    },
-  };
 }
 
 function generateCandidates(state: SchedulerState, content: ContentIndex, now: Date): Candidate[] {
@@ -638,16 +544,23 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     const reviewRoles = isIndependent
       ? ['transfer', 'review', 'core', 'practice', 'basics']
       : ['review', 'core', 'practice', 'transfer', 'basics'];
-    const exercise = chooseExercise(
-      state,
-      content,
-      concept,
-      card.dimension,
-      reviewRoles,
-      now,
-      recentIds,
-    );
-    if (!exercise) {
+    const usedExerciseIds = new Set(state.usedExerciseIds ?? []);
+    const exercises: IndexedExercise[] = [];
+    while (exercises.length < 3) {
+      const exercise = chooseExercise(
+        { ...state, usedExerciseIds: [...usedExerciseIds] },
+        content,
+        concept,
+        card.dimension,
+        reviewRoles,
+        now,
+        recentIds,
+      );
+      if (!exercise) break;
+      usedExerciseIds.add(exercise.id);
+      exercises.push(exercise);
+    }
+    if (exercises.length === 0) {
       continue;
     }
     const dueAt = Date.parse(card.dueAt);
@@ -672,7 +585,7 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     if (plannedNewConceptNeedsPrerequisite) {
       terms.review += 2;
     }
-    const candidate = makeCandidate(state, content, concept, 'review', [exercise], week, project);
+    const candidate = makeCandidate(state, content, concept, 'review', exercises, week, project);
     candidate.activity.reason.terms.review = terms.review;
     candidate.score = scoreTerms(candidate.activity.reason.terms, candidate.adjustedMinutes);
     const dueDate = new Intl.DateTimeFormat('en-GB', {

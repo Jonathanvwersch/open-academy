@@ -1,4 +1,5 @@
 import { and, eq, inArray } from 'drizzle-orm';
+import { Rating } from 'ts-fsrs';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../src/server/app.js';
 import { loadContent } from '../src/server/content/load.js';
@@ -11,6 +12,8 @@ import {
   lessonQuizAttempts,
   lessonQuizItems,
   lessonRuns,
+  reviewCards,
+  reviewLogs,
   sessionActivities,
   studySessions,
   users,
@@ -101,10 +104,15 @@ function wrongAnswer(exerciseId: string, seed: number | null): unknown {
   throw new Error(`No test wrong answer for ${exercise.id}`);
 }
 
-async function answerProblem(problemId: string, answer: unknown, activityId?: string) {
+async function answerProblem(
+  problemId: string,
+  answer: unknown,
+  activityId?: string,
+  requestHeaders = headers,
+) {
   return app.request(`/api/lessons/${conceptId}/run/answer`, {
     method: 'POST',
-    headers,
+    headers: requestHeaders,
     body: JSON.stringify({ problemId, answer, ...(activityId ? { activityId } : {}) }),
   });
 }
@@ -538,6 +546,53 @@ test('quiz start is idempotent and unsubmitted answers disclose no correctness',
     bestPassed: false,
     last: { passed: false },
   });
+  expect(failedRun.quiz.reviewRequired.length).toBeGreaterThan(0);
+  expect(
+    failedRun.quiz.reviewRequired.every(
+      (step: { answered: number; needed: number }) => step.answered === 0 && step.needed === 3,
+    ),
+  ).toBe(true);
+  const blockedRetake = await startQuiz();
+  expect(blockedRetake.status).toBe(409);
+  expect(await blockedRetake.json()).toEqual({
+    error: 'Review the steps you missed before retaking the quiz',
+  });
+  let practiceTime = Date.parse(headers['X-Now']);
+  for (const step of failedRun.quiz.reviewRequired as Array<{ pointId: string; needed: number }>) {
+    for (let count = 0; count < step.needed; count += 1) {
+      practiceTime += 1_000;
+      const practiceHeaders = {
+        ...headers,
+        'X-Now': new Date(practiceTime).toISOString(),
+      };
+      const practiceResponse = await app.request(`/api/lessons/${conceptId}/run/practice`, {
+        method: 'POST',
+        headers: practiceHeaders,
+        body: JSON.stringify({ pointId: step.pointId }),
+      });
+      expect(practiceResponse.status).toBe(200);
+      const practiceRun = (await practiceResponse.json()).run;
+      const practiceProblem = practiceRun.pendingPracticeProblem;
+      expect(practiceProblem.practiceOnly).toBe(true);
+      practiceTime += 1_000;
+      const answerHeaders = {
+        ...headers,
+        'X-Now': new Date(practiceTime).toISOString(),
+      };
+      const answerResponse = await answerProblem(
+        practiceProblem.id,
+        correctAnswer(practiceProblem.exerciseId, practiceProblem.seed),
+        undefined,
+        answerHeaders,
+      );
+      expect(answerResponse.status).toBe(200);
+    }
+  }
+  const reviewed = await getCurrentRun();
+  expect(
+    reviewed.quiz.reviewRequired.every((step: { answered: number }) => step.answered === 3),
+  ).toBe(true);
+  expect((await startQuiz()).status).toBe(200);
   const failedReview = await app.request(
     `/api/lessons/${conceptId}/quiz/${firstRun.quiz.current.attemptId}/review`,
     { headers },
@@ -547,8 +602,31 @@ test('quiz start is idempotent and unsubmitted answers disclose no correctness',
 
 test('passing and retaking a quiz awards quiz XP only once and enables review', async () => {
   await finishLessonSteps();
+  expect(await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))).toHaveLength(0);
   const started = (await (await startQuiz()).json()).run;
-  const firstItems = await answerQuizAttempt(started.quiz);
+  const quizRows = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, started.quiz.current.attemptId))
+    .orderBy(lessonQuizItems.position);
+  const dimensions = new Set(
+    quizRows.map((item) => content.exercisesById.get(item.exerciseId)?.dimension),
+  );
+  expect(dimensions.size).toBeGreaterThan(1);
+  expect(quizRows.length).toBeGreaterThanOrEqual(5);
+  const hardDimension = [...dimensions][0];
+  const hardItem = quizRows.find(
+    (item) => content.exercisesById.get(item.exerciseId)?.dimension === hardDimension,
+  );
+  if (!hardItem) throw new Error('Expected an item for the dimension rated Hard');
+  for (const item of quizRows) {
+    const answer =
+      item.id === hardItem.id
+        ? wrongAnswer(item.exerciseId, item.seed)
+        : correctAnswer(item.exerciseId, item.seed);
+    expect((await answerQuizItem(item.id, answer)).status).toBe(200);
+  }
+  const firstItems = quizRows;
   const passedResponse = await submitQuiz();
   expect(passedResponse.status).toBe(200);
   let result = await passedResponse.json();
@@ -564,6 +642,13 @@ test('passing and retaking a quiz awards quiz XP only once and enables review', 
     .where(and(eq(xpEvents.userId, userId), eq(xpEvents.kind, 'quiz')));
   expect(quizXp).toHaveLength(1);
   expect(quizXp[0]?.amount).toBe(firstItems.length);
+  const firstPassCards = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
+  expect(firstPassCards.map((card) => card.dimension).sort()).toEqual([...dimensions].sort());
+  for (const card of firstPassCards) {
+    const [log] = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id));
+    expect(log?.rating).toBe(String(card.dimension === hardDimension ? Rating.Hard : Rating.Good));
+  }
+  const firstPassLogCount = (await db.select().from(reviewLogs)).length;
   const review = await app.request(
     `/api/lessons/${conceptId}/quiz/${result.run.quiz.last.attemptId}/review`,
     { headers },
@@ -576,8 +661,9 @@ test('passing and retaking a quiz awards quiz XP only once and enables review', 
     yourAnswer: expect.any(String),
     correctAnswer: expect.any(String),
     solution: expect.any(String),
-    correct: 1,
   });
+  expect(reviewBody.items.some((item: { correct: number }) => item.correct === 0)).toBe(true);
+  expect(reviewBody.items.some((item: { correct: number }) => item.correct === 1)).toBe(true);
 
   const retake = (await (await startQuiz()).json()).run;
   await answerQuizAttempt(retake.quiz);
@@ -586,6 +672,10 @@ test('passing and retaking a quiz awards quiz XP only once and enables review', 
   result = await secondPass.json();
   expect(result.xpAwarded).toBe(0);
   expect(result.run.quiz.bestPassed).toBe(true);
+  expect(await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))).toHaveLength(
+    firstPassCards.length,
+  );
+  expect(await db.select().from(reviewLogs)).toHaveLength(firstPassLogCount);
   expect(
     await db
       .select()

@@ -40,6 +40,8 @@ import {
 import {
   mapReviewRating,
   newReviewCard,
+  retrievability,
+  reviewActivityRating,
   scheduleInitialReview,
   scheduleReview,
 } from '../learning/fsrs.js';
@@ -1105,31 +1107,91 @@ export function createApiRoutes(deps: {
         )
         .limit(1);
       if (card) {
-        const rating = mapReviewRating({ correct: result.correct, hintsUsed, attemptNo });
-        const scheduled = scheduleReview(
-          card.fsrs as never,
-          now,
-          rating,
-          context.get('timeZone'),
-          process.env.NODE_ENV !== 'test',
-        );
-        await db
-          .update(reviewCards)
-          .set({
-            fsrs: scheduled.card,
-            dueAt: scheduled.card.due,
-            lastReviewAt: now,
-            reps: scheduled.card.reps,
-            lapses: scheduled.card.lapses,
-          })
-          .where(eq(reviewCards.id, card.id));
-        await db.insert(reviewLogs).values({
-          cardId: card.id,
-          attemptId,
-          rating: String(rating),
-          fsrsLog: scheduled.log,
-          createdAt: now,
-        });
+        if (
+          activity?.kind === 'review' &&
+          body.data.activityId &&
+          activity.exerciseIds.length > 0
+        ) {
+          const activityAttempts = await db
+            .select()
+            .from(attempts)
+            .where(
+              and(
+                eq(attempts.activityId, body.data.activityId),
+                inArray(attempts.exerciseId, activity.exerciseIds),
+              ),
+            )
+            .orderBy(asc(attempts.createdAt), asc(attempts.attemptNo));
+          const exerciseAttempts = activity.exerciseIds.map((exerciseId) =>
+            activityAttempts.filter((attempt) => attempt.exerciseId === exerciseId),
+          );
+          if (exerciseAttempts.every((items) => items.length > 0)) {
+            const [existingLog] = await db
+              .select({ id: reviewLogs.id })
+              .from(reviewLogs)
+              .innerJoin(attempts, eq(reviewLogs.attemptId, attempts.id))
+              .where(eq(attempts.activityId, body.data.activityId))
+              .limit(1);
+            if (!existingLog) {
+              const rating = reviewActivityRating(
+                exerciseAttempts.map((items) => ({
+                  correct: items[0]?.correct ?? 0,
+                  hintsUsed: items.reduce((total, attempt) => total + attempt.hintsUsed, 0),
+                })),
+              );
+              const scheduled = scheduleReview(
+                card.fsrs as never,
+                now,
+                rating,
+                context.get('timeZone'),
+                process.env.NODE_ENV !== 'test',
+              );
+              await db
+                .update(reviewCards)
+                .set({
+                  fsrs: scheduled.card,
+                  dueAt: scheduled.card.due,
+                  lastReviewAt: now,
+                  reps: scheduled.card.reps,
+                  lapses: scheduled.card.lapses,
+                })
+                .where(eq(reviewCards.id, card.id));
+              await db.insert(reviewLogs).values({
+                cardId: card.id,
+                attemptId,
+                rating: String(rating),
+                fsrsLog: scheduled.log,
+                createdAt: now,
+              });
+            }
+          }
+        } else {
+          const rating = mapReviewRating({ correct: result.correct, hintsUsed, attemptNo });
+          const scheduled = scheduleReview(
+            card.fsrs as never,
+            now,
+            rating,
+            context.get('timeZone'),
+            process.env.NODE_ENV !== 'test',
+          );
+          await db
+            .update(reviewCards)
+            .set({
+              fsrs: scheduled.card,
+              dueAt: scheduled.card.due,
+              lastReviewAt: now,
+              reps: scheduled.card.reps,
+              lapses: scheduled.card.lapses,
+            })
+            .where(eq(reviewCards.id, card.id));
+          await db.insert(reviewLogs).values({
+            cardId: card.id,
+            attemptId,
+            rating: String(rating),
+            fsrsLog: scheduled.log,
+            createdAt: now,
+          });
+        }
       }
     }
     const retryAllowed =
@@ -1804,6 +1866,47 @@ export function createApiRoutes(deps: {
     );
   });
 
+  api.get('/reviews', async (context) => {
+    const index = await content();
+    const now = requestNow(context);
+    const timeZone = context.get('timeZone');
+    const cards = await db
+      .select()
+      .from(reviewCards)
+      .where(eq(reviewCards.userId, context.get('userId')))
+      .orderBy(asc(reviewCards.dueAt));
+    const topics = cards.flatMap((card) => {
+      const concept = index.conceptsById.get(card.conceptId);
+      if (!concept || concept.status === 'stub') return [];
+      return [
+        {
+          conceptId: card.conceptId,
+          title: concept.title,
+          dimension: card.dimension,
+          dueAt: card.dueAt.toISOString(),
+          lastReviewAt: card.lastReviewAt?.toISOString() ?? null,
+          reps: card.reps,
+          lapses: card.lapses,
+          recall: retrievability(card.fsrs as never, now, process.env.NODE_ENV !== 'test'),
+        },
+      ];
+    });
+    const localToday = localDateKey(now, timeZone);
+    const upcomingDates = Array.from({ length: 7 }, (_, index) =>
+      shiftLocalDate(localToday, index + 1),
+    );
+    const upcomingCounts = new Map(upcomingDates.map((date) => [date, 0]));
+    for (const topic of topics) {
+      const date = localDateKey(new Date(topic.dueAt), timeZone);
+      if (upcomingCounts.has(date)) upcomingCounts.set(date, (upcomingCounts.get(date) ?? 0) + 1);
+    }
+    return context.json({
+      dueNow: topics.filter((topic) => Date.parse(topic.dueAt) <= now.getTime()).length,
+      upcoming: upcomingDates.map((date) => ({ date, count: upcomingCounts.get(date) ?? 0 })),
+      topics,
+    });
+  });
+
   api.get('/plan/week', async (context) => {
     const index = await content();
     const state = await withRepo(context).schedulerState(requestNow(context));
@@ -1825,6 +1928,7 @@ async function applyMastery(input: {
   mode: LearningMode;
   gradedBy: 'deterministic' | 'llm' | 'self';
   followUp?: boolean;
+  createReviewCard?: boolean;
   now: Date;
   timeZone: string;
 }) {
@@ -1874,7 +1978,10 @@ async function applyMastery(input: {
       createdAt: input.now,
     });
   }
-  if (masteryRank(result.mastery.state) >= masteryRank('assisted')) {
+  if (
+    input.createReviewCard !== false &&
+    masteryRank(result.mastery.state) >= masteryRank('assisted')
+  ) {
     const existingCard = await input.repo.db
       .select()
       .from(reviewCards)
@@ -1913,6 +2020,12 @@ async function applyMastery(input: {
     }
   }
   return { mastery: result.mastery, event: result.event, credit: result.credit };
+}
+
+function shiftLocalDate(localDate: string, days: number): string {
+  const date = new Date(`${localDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 function isValidTimeZone(value: string | undefined): value is string {

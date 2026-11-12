@@ -83,7 +83,7 @@ test('Enter after a correct Review answer continues without resubmitting', async
   });
 
   await page.goto(`/session/${sessionId}`);
-  await expect(page.getByText('Review · Activity 1 of 2 today')).toBeVisible();
+  await expect(page.getByText(/Activity \d+ of \d+ today/)).toHaveCount(0);
   const answer = page.getByLabel('Your answer');
   await answer.fill('5');
   const firstAnswer = page.waitForResponse(
@@ -101,7 +101,7 @@ test('Enter after a correct Review answer continues without resubmitting', async
     .evaluate((form) => (form as HTMLFormElement).requestSubmit());
   await answer.press('Enter');
 
-  await expect(page.getByText('Practice · Activity 2 of 2 today')).toBeVisible();
+  await expect(page.getByText(/Activity \d+ of \d+ today/)).toHaveCount(0);
   await expect(page.getByTestId('exercise-prompt')).toContainText('sum of the coordinates');
   await expect(page.getByText('Not quite', { exact: true })).toHaveCount(0);
   expect(answerPosts).toBe(1);
@@ -130,7 +130,7 @@ test('a refused answer refreshes the session without showing wrong feedback', as
   });
 
   await page.goto(`/session/${sessionId}`);
-  await expect(page.getByText('Review · Activity 1 of 2 today')).toBeVisible();
+  await expect(page.getByText(/Activity \d+ of \d+ today/)).toHaveCount(0);
   const initialSessionReads = sessionReads;
   const answer = page.getByLabel('Your answer');
   await answer.fill('5');

@@ -475,7 +475,6 @@ function SessionPage() {
       : activity.kind === 'quick_check' || activity.kind === 'diagnostic'
         ? 'assessment'
         : 'practice';
-  const activityPosition = Math.max(1, activities.findIndex((item) => item.id === activity.id) + 1);
   const activityLabel = sessionActivityLabel(activity.kind);
   const activityTitle =
     activity.conceptTitle ??
@@ -578,8 +577,6 @@ function SessionPage() {
         sessionId={id}
         title={activity.conceptTitle ?? activity.conceptId}
         activityLabel={activityLabel}
-        activityPosition={activityPosition}
-        activityCount={activities.length}
         lessonHref={lessonHref}
         tutorEnabled={sessionQuery.data.tutorEnabled}
         finalAnswered={Boolean(finalAnswered)}
@@ -590,12 +587,7 @@ function SessionPage() {
   if (activity.kind === 'paper') {
     return (
       <section className="space-y-6">
-        <SessionActivityHeader
-          title="Paper reading"
-          label="Paper"
-          position={activityPosition}
-          total={activities.length}
-        />
+        <SessionActivityHeader title="Paper reading" label="Paper" />
         <PaperActivity
           sessionId={id}
           activityId={activity.id}
@@ -635,8 +627,6 @@ function SessionPage() {
         <SessionActivityHeader
           title={activityTitle}
           label={activityLabel}
-          position={activityPosition}
-          total={activities.length}
           lessonHref={lessonHref}
         />
         <div className="space-y-5">
@@ -683,8 +673,6 @@ function SessionPage() {
       <SessionActivityHeader
         title={activityTitle}
         label={activityLabel}
-        position={activityPosition}
-        total={activities.length}
         lessonHref={lessonHref}
         subtitle={
           activity.kind === 'learn' && lesson?.final === exerciseId ? 'Final question' : undefined

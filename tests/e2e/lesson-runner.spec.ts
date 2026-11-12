@@ -20,6 +20,7 @@ const finalContinueScreenshotDir = '/home/ubuntu/screenshots/final-continue';
 const stepToastScreenshotDir = '/home/ubuntu/screenshots/step-toast';
 const lessonQuizScreenshotDir = '/home/ubuntu/shots/lesson-quiz';
 const quizUiScreenshotDir = '/home/ubuntu/screenshots/quiz-ui';
+const spacedReviewScreenshotDir = '/home/ubuntu/screenshots/spaced-review';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
@@ -30,6 +31,7 @@ mkdirSync(finalContinueScreenshotDir, { recursive: true });
 mkdirSync(quizUiScreenshotDir, { recursive: true });
 mkdirSync(stepToastScreenshotDir, { recursive: true });
 mkdirSync(lessonQuizScreenshotDir, { recursive: true });
+mkdirSync(spacedReviewScreenshotDir, { recursive: true });
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -1067,6 +1069,84 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await expect(failed).toContainText('Not passed yet');
   await expect(failed.getByText(/^Step \d+ · /).first()).toBeVisible();
   await expect(failed.getByText(/Your answer:|Correct answer:|Question \d+/)).toHaveCount(0);
+  await expect(failed).toContainText(
+    'Before you retake it, answer 3 more questions on each step you missed.',
+  );
+  const requiredReviews = (await currentRun(page)).quiz.reviewRequired as Array<{
+    pointId: string;
+    answered: number;
+    needed: number;
+  }>;
+  expect(requiredReviews.length).toBeGreaterThan(0);
+  const reviewStepButton = failed.getByRole('button', { name: /Review Step \d+ · 0\/3/ }).first();
+  await expect(reviewStepButton).toBeVisible();
+  await expect(failed.getByRole('button', { name: 'Retake quiz' })).toBeDisabled();
+  await page.screenshot({
+    path: `${spacedReviewScreenshotDir}/failed-quiz-pending-desktop.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({
+    path: `${spacedReviewScreenshotDir}/failed-quiz-pending-mobile.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await reviewStepButton.click();
+  await expect(page.getByRole('button', { name: 'Practise this step' })).toBeVisible();
+  await page.getByRole('button', { name: 'Practise this step' }).click();
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
+  const practiceStatus = await page.evaluate(
+    async ({ concept, activityId, requiredReviews }) => {
+      let practiceTime = Date.parse('2026-01-01T12:00:00.000Z');
+      for (const step of requiredReviews) {
+        for (let count = 0; count < step.needed; count += 1) {
+          let run = (await (await fetch(`/api/lessons/${concept}/run`)).json()).run;
+          let pending = run.pendingPracticeProblem;
+          if (!pending) {
+            practiceTime += 1_000;
+            const response = await fetch(`/api/lessons/${concept}/run/practice`, {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                'x-now': new Date(practiceTime).toISOString(),
+              },
+              body: JSON.stringify({ pointId: step.pointId, activityId }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error ?? 'Could not start step practice');
+            run = data.run;
+            pending = run.pendingPracticeProblem;
+          }
+          const expected = await (
+            await fetch(`/api/test/lesson-problems/${pending.id}/answer`)
+          ).json();
+          practiceTime += 1_000;
+          const response = await fetch(`/api/lessons/${concept}/run/answer`, {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-now': new Date(practiceTime).toISOString(),
+            },
+            body: JSON.stringify({
+              problemId: pending.id,
+              answer: expected.answer,
+              activityId,
+            }),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error ?? 'Could not answer step practice');
+        }
+      }
+      return (await (await fetch(`/api/lessons/${concept}/run`)).json()).run.quiz.reviewRequired;
+    },
+    { concept: conceptId, activityId: prepared.activityId, requiredReviews },
+  );
+  expect(practiceStatus.every((step: { answered: number }) => step.answered === 3)).toBe(true);
+  await page.reload();
+  const reviewedFailure = page.getByTestId('lesson-quiz-results');
+  await expect(reviewedFailure.getByText(/✓ Step \d+ reviewed/).first()).toBeVisible();
+  await expect(reviewedFailure.getByRole('button', { name: 'Retake quiz' })).toBeEnabled();
   await page.screenshot({ path: `${lessonQuizScreenshotDir}/failed-results.png`, fullPage: true });
   await page.getByRole('button', { name: 'Retake quiz' }).click();
   await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();

@@ -81,7 +81,7 @@ test('legacy session header links to a read-only lesson and returns with the res
   const sessionId = await createActivity('vectors', 'vectors-magnitude');
   await page.goto(`/session/${sessionId}`);
   await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
-  await expect(page.getByText('Practice · Activity 1 of 1 today')).toBeVisible();
+  await expect(page.getByText(/Activity \d+ of \d+ today/)).toHaveCount(0);
   await expect(page.getByRole('list', { name: 'Session timeline' })).toHaveCount(0);
   await expect(page.getByText(/About \d+ minutes remaining/)).toHaveCount(0);
   await expect(page.getByText('Review', { exact: true })).toHaveCount(0);
@@ -225,7 +225,7 @@ test('practice question progress shows outcomes, current question, and wraps on 
   ]);
   await page.goto(`/session/${sessionId}`);
 
-  await expect(page.getByText('Practice · Activity 1 of 1 today')).toBeVisible();
+  await expect(page.getByText(/Activity \d+ of \d+ today/)).toHaveCount(0);
   const progress = page.getByTestId('question-progress');
   const dots = progress.getByRole('list', { name: 'Questions' }).locator('li');
   await expect(progress).toContainText('Question 1 of 3');

@@ -228,6 +228,12 @@ export interface LessonRunPayload {
       status: 'not_started' | 'in_progress' | 'failed' | 'passed';
       passMark: number;
       questionCount: number;
+      reviewRequired: Array<{
+        pointId: string;
+        title: string;
+        answered: number;
+        needed: 3;
+      }>;
       current?: {
         attemptId: string;
         items: Array<{
@@ -258,6 +264,21 @@ export interface ProgressPayload {
   hours: number;
   planHours: number;
   streakDays: number;
+}
+
+export interface ReviewsPayload {
+  dueNow: number;
+  upcoming: Array<{ date: string; count: number }>;
+  topics: Array<{
+    conceptId: string;
+    title: string;
+    dimension: string;
+    dueAt: string;
+    lastReviewAt: string | null;
+    reps: number;
+    lapses: number;
+    recall: number;
+  }>;
 }
 
 export interface ProjectPayload {
@@ -464,6 +485,12 @@ export const progressQueryOptions = () =>
   queryOptions({
     queryKey: ['progress'] as const,
     queryFn: () => getJson<ProgressPayload>('/api/progress', 'Progress unavailable'),
+  });
+
+export const reviewsQueryOptions = () =>
+  queryOptions({
+    queryKey: ['reviews'] as const,
+    queryFn: () => getJson<ReviewsPayload>('/api/reviews', 'Reviews unavailable'),
   });
 
 export const conceptQueryOptions = (conceptId: string) =>

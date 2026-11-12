@@ -15,6 +15,7 @@ import { Route as DiagnosticRouteImport } from './routes/diagnostic'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProgressRouteImport } from './routes/progress'
+import { Route as ReviewsRouteImport } from './routes/reviews'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as DiagnosticResultsRouteImport } from './routes/diagnostic.results'
 import { Route as LessonsConceptIdRouteImport } from './routes/lessons.$conceptId'
@@ -50,6 +51,11 @@ const LoginRoute = LoginRouteImport.update({
 const ProgressRoute = ProgressRouteImport.update({
   id: '/progress',
   path: '/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewsRoute = ReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/progress': typeof ProgressRoute
+  '/reviews': typeof ReviewsRoute
   '/settings': typeof SettingsRoute
   '/diagnostic/results': typeof DiagnosticResultsRoute
   '/lessons/$conceptId': typeof LessonsConceptIdRoute
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/progress': typeof ProgressRoute
+  '/reviews': typeof ReviewsRoute
   '/settings': typeof SettingsRoute
   '/diagnostic/results': typeof DiagnosticResultsRoute
   '/lessons/$conceptId': typeof LessonsConceptIdRoute
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/progress': typeof ProgressRoute
+  '/reviews': typeof ReviewsRoute
   '/settings': typeof SettingsRoute
   '/diagnostic/results': typeof DiagnosticResultsRoute
   '/lessons/$conceptId': typeof LessonsConceptIdRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/lab'
     | '/login'
     | '/progress'
+    | '/reviews'
     | '/settings'
     | '/diagnostic/results'
     | '/lessons/$conceptId'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/lab'
     | '/login'
     | '/progress'
+    | '/reviews'
     | '/settings'
     | '/diagnostic/results'
     | '/lessons/$conceptId'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/lab'
     | '/login'
     | '/progress'
+    | '/reviews'
     | '/settings'
     | '/diagnostic/results'
     | '/lessons/$conceptId'
@@ -178,6 +190,7 @@ export interface RootRouteChildren {
   LabRoute: typeof LabRoute
   LoginRoute: typeof LoginRoute
   ProgressRoute: typeof ProgressRoute
+  ReviewsRoute: typeof ReviewsRoute
   SettingsRoute: typeof SettingsRoute
   LessonsConceptIdRoute: typeof LessonsConceptIdRoute
   PapersPaperIdRoute: typeof PapersPaperIdRoute
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/progress'
       fullPath: '/progress'
       preLoaderRoute: typeof ProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reviews': {
+      id: '/reviews'
+      path: '/reviews'
+      fullPath: '/reviews'
+      preLoaderRoute: typeof ReviewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -293,6 +313,7 @@ const rootRouteChildren: RootRouteChildren = {
   LabRoute: LabRoute,
   LoginRoute: LoginRoute,
   ProgressRoute: ProgressRoute,
+  ReviewsRoute: ReviewsRoute,
   SettingsRoute: SettingsRoute,
   LessonsConceptIdRoute: LessonsConceptIdRoute,
   PapersPaperIdRoute: PapersPaperIdRoute,
