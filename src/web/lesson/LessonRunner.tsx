@@ -461,9 +461,14 @@ export function LessonRunner({
   const showingAnswer = practiceMode
     ? Boolean(
         state.lastAnsweredProblem?.practiceOnly &&
+          state.lastAnsweredProblem.id === shownProblem?.id &&
           state.lastAnsweredProblem.knowledgePointId === practicePointId,
       )
-    : Boolean(state.lastAnsweredProblem && !state.pendingProblem);
+    : Boolean(
+        state.lastAnsweredProblem &&
+          !state.pendingProblem &&
+          state.lastAnsweredProblem.id === shownProblem?.id,
+      );
   const quizItems = state.quiz.current?.items ?? [];
   const unansweredQuizIndex = quizItems.findIndex((item) => !item.answered);
   const quizQuestionIndex =

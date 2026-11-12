@@ -1154,6 +1154,35 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await expect(
     page.getByTestId('lesson-quiz-results').getByRole('button', { name: 'Review · 1/3' }),
   ).toBeVisible();
+  await page
+    .getByTestId('lesson-quiz-results')
+    .getByRole('button', { name: 'Review · 1/3' })
+    .click();
+  await page.getByRole('button', { name: 'Practise this step' }).click();
+  await expect.poll(async () => (await currentRun(page)).pendingPracticeProblem?.id).toBeTruthy();
+  const nextPractice = (await currentRun(page)).pendingPracticeProblem;
+  if (!nextPractice) throw new Error('Expected a fresh practice question');
+  expect(nextPractice.id).not.toBe(firstPractice.id);
+  await page.reload();
+  const reloadedRun = await currentRun(page);
+  expect(reloadedRun.pendingPracticeProblem?.id).toBe(nextPractice.id);
+  expect(reloadedRun.pendingPracticeProblem?.answeredAt).toBeNull();
+  await expect(page.getByRole('button', { name: 'Back to quiz results' })).toBeVisible();
+  await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
+    'data-problem-id',
+    nextPractice.id,
+  );
+  if (nextPractice.exercise.type === 'mc') {
+    const choice = page.getByTestId('lesson-problem').getByRole('radio').first();
+    await expect(choice).toBeEnabled();
+    await expect(choice).not.toBeChecked();
+  } else {
+    const answer = page.getByTestId('lesson-problem').getByLabel('Your answer');
+    await expect(answer).toBeEnabled();
+    await expect(answer).toHaveValue('');
+  }
+  await expect(page.getByTestId('lesson-problem').getByRole('status')).toHaveCount(0);
+  await page.getByTestId('lesson-quiz-chip').click();
   const practiceStatus = await page.evaluate(
     async ({ concept, activityId, requiredReviews }) => {
       let practiceTime = Date.parse('2026-01-01T12:00:00.000Z');
