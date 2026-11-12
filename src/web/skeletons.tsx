@@ -166,6 +166,34 @@ export function ProgressSkeleton() {
   );
 }
 
+export function ReviewsSkeleton() {
+  return (
+    <SkeletonShell>
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+        <div className="grid grid-cols-7 gap-2">
+          {[0, 1, 2, 3, 4, 5, 6].map((day) => (
+            <Skeleton key={day} className="h-20 rounded-lg" />
+          ))}
+        </div>
+        <Card>
+          <CardContent className="divide-y p-0">
+            {[0, 1, 2].map((topic) => (
+              <div key={topic} className="space-y-2 p-4">
+                <Skeleton className="h-5 w-48" />
+                <Skeleton className="h-4 w-64 max-w-full" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </SkeletonShell>
+  );
+}
+
 export function CourseSkeleton() {
   return (
     <SkeletonShell>

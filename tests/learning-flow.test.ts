@@ -1,4 +1,5 @@
 import { and, eq } from 'drizzle-orm';
+import { Rating } from 'ts-fsrs';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { createApp } from '../src/server/app.js';
 import { loadContent } from '../src/server/content/load.js';
@@ -357,6 +358,181 @@ test('a correct diagnostic answer returns the solution', async () => {
     correct: 1,
     solution: exercise.solution,
   });
+  expect(
+    await db.select().from(reviewCards).where(eq(reviewCards.userId, userId)),
+  ).not.toHaveLength(0);
+});
+
+test('a review activity schedules its card once after all three answers', async () => {
+  await resetLearner();
+  const exercises = (content.exercisesByConcept.get('vectors') ?? [])
+    .filter(
+      (exercise) =>
+        exercise.dimension === 'math' &&
+        ['review', 'core', 'practice', 'transfer', 'basics'].includes(exercise.role) &&
+        !isTemplate(exercise),
+    )
+    .slice(0, 3);
+  expect(exercises).toHaveLength(3);
+  const card = newReviewCard(new Date(now));
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 15,
+      startedAt: new Date(now),
+      status: 'active',
+    })
+    .returning();
+  if (!session) throw new Error('Could not create a review session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'review',
+      conceptId: 'vectors',
+      exerciseIds: exercises.map((exercise) => exercise.id),
+      plannedMinutes: 9,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Could not create a review activity');
+  const [storedCard] = await db
+    .insert(reviewCards)
+    .values({
+      userId,
+      conceptId: 'vectors',
+      dimension: 'math',
+      fsrs: card,
+      dueAt: new Date('2026-01-01T00:00:00.000Z'),
+      reps: card.reps,
+      lapses: card.lapses,
+    })
+    .returning();
+  if (!storedCard) throw new Error('Could not create a review card');
+
+  let finalAttemptId = '';
+  for (let index = 0; index < exercises.length; index += 1) {
+    const exercise = exercises[index];
+    if (!exercise) throw new Error('Missing review exercise');
+    const response = await app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer: correctAnswer(exercise.id, null),
+        mode: 'review',
+      }),
+    });
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    finalAttemptId = result.attemptId;
+    expect(
+      await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, storedCard.id)),
+    ).toHaveLength(index === exercises.length - 1 ? 1 : 0);
+  }
+  const finalAttempt = exercises[exercises.length - 1];
+  if (!finalAttempt) throw new Error('Missing final review exercise');
+  const replay = await app.request('/api/attempts', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({
+      exerciseId: finalAttempt.id,
+      activityId: activity.id,
+      answer: correctAnswer(finalAttempt.id, null),
+      mode: 'review',
+    }),
+  });
+  expect(replay.status).toBe(409);
+  const logs = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, storedCard.id));
+  expect(logs).toHaveLength(1);
+  expect(logs[0]?.rating).toBe(String(Rating.Good));
+  expect(logs[0]?.attemptId).toBe(finalAttemptId);
+});
+
+test('/api/reviews returns the local upcoming schedule and skips stub topics', async () => {
+  await resetLearner();
+  const dueCard = newReviewCard(new Date(now));
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: 'vectors',
+    dimension: 'math',
+    fsrs: dueCard,
+    dueAt: new Date('2026-01-01T00:00:00.000Z'),
+    reps: dueCard.reps,
+    lapses: dueCard.lapses,
+  });
+  const otherConcept = content.concepts.find(
+    (concept) => concept.id !== 'vectors' && concept.status !== 'stub',
+  );
+  if (!otherConcept) throw new Error('Expected another authored concept for review topics');
+  const futureCard = newReviewCard(new Date(now));
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: otherConcept.id,
+    dimension: 'conceptual',
+    fsrs: futureCard,
+    dueAt: new Date('2026-01-03T12:00:00.000Z'),
+    reps: 2,
+    lapses: 1,
+  });
+  const laterTodayCard = newReviewCard(new Date(now));
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: otherConcept.id,
+    dimension: 'implementation',
+    fsrs: laterTodayCard,
+    dueAt: new Date('2026-01-01T20:00:00.000Z'),
+    reps: 1,
+    lapses: 0,
+  });
+  const stub = content.concepts.find((concept) => concept.status === 'stub');
+  if (stub) {
+    const stubCard = newReviewCard(new Date(now));
+    await db.insert(reviewCards).values({
+      userId,
+      conceptId: stub.id,
+      dimension: 'conceptual',
+      fsrs: stubCard,
+      dueAt: new Date('2026-01-01T00:00:00.000Z'),
+      reps: 0,
+      lapses: 0,
+    });
+  }
+
+  const response = await app.request('/api/reviews', { headers: headersAt(now) });
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(body.dueNow).toBe(1);
+  expect(body.upcoming).toHaveLength(7);
+  expect(body.upcoming.map((day: { date: string }) => day.date)).toEqual([
+    '2026-01-02',
+    '2026-01-03',
+    '2026-01-04',
+    '2026-01-05',
+    '2026-01-06',
+    '2026-01-07',
+    '2026-01-08',
+  ]);
+  expect(body.upcoming[1]).toEqual({ date: '2026-01-03', count: 1 });
+  expect(body.topics).toHaveLength(3);
+  expect(body.topics[0]).toMatchObject({
+    conceptId: 'vectors',
+    title: expect.any(String),
+    dimension: 'math',
+    dueAt: '2026-01-01T00:00:00.000Z',
+    due: true,
+    dueInDays: 0,
+    lastReviewAt: null,
+    reps: 0,
+    lapses: 0,
+    recall: expect.any(Number),
+  });
+  expect(body.topics[1]).toMatchObject({ due: false, dueInDays: 0 });
+  expect(body.topics[2]).toMatchObject({ due: false, dueInDays: 2 });
 });
 
 test('debug answer option ids identify the selected and correct line and fix', () => {
@@ -834,7 +1010,7 @@ test('lesson-runner schedules one due review per concept, then reschedules it', 
   const [rescheduled] = await db.select().from(reviewCards).where(eq(reviewCards.id, card.id));
   expect(rescheduled?.dueAt.getTime()).toBeGreaterThanOrEqual(reviewNow.getTime() + 86_400_000);
   const logs = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, card.id));
-  expect(logs).toHaveLength(1);
+  expect(logs).toHaveLength(2);
 
   const laterToday = new Date(reviewNow.getTime() + 2 * 60 * 60_000);
   const laterResponse = await app.request('/api/today', {

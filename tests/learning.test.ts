@@ -1009,7 +1009,7 @@ test('Project prerequisites receive a priority term', () => {
   }
 });
 
-test('weekday plan fills at least 80 percent with unseen practice when exercises are eligible', () => {
+test('weekday plan omits the practice filler and leaves unused budget', () => {
   const state = emptyState();
   state.mastery = ['vectors', 'linear-algebra'].flatMap((conceptId) => {
     const concept = content.conceptsById.get(conceptId);
@@ -1020,20 +1020,87 @@ test('weekday plan fills at least 80 percent with unseen practice when exercises
     }));
   });
   const plan = planSession(state, content, now, 60);
-  const plannedMinutes = plan.activities.reduce(
-    (sum, activity) => sum + activity.plannedMinutes,
-    0,
-  );
-
   expect(
     plan.activities.filter((activity) => activity.kind === 'learn').length,
   ).toBeLessThanOrEqual(2);
   expect(plan.activities.some((activity) => activity.kind === 'learn')).toBe(true);
-  expect(plan.activities.some((activity) => activity.kind === 'practice')).toBe(true);
-  expect(plannedMinutes).toBeGreaterThanOrEqual(48);
-  const practice = plan.activities.find((activity) => activity.kind === 'practice');
-  expect(practice?.exerciseIds.length).toBeGreaterThan(0);
-  expect(practice?.plannedMinutes).toBeGreaterThan(0);
+  expect(plan.activities.some((activity) => activity.kind === 'practice')).toBe(false);
+  expect(
+    plan.activities.some((activity) =>
+      activity.reason.summary.startsWith('Practice unseen core and review items'),
+    ),
+  ).toBe(false);
+  expect(
+    plan.activities.reduce((sum, activity) => sum + activity.plannedMinutes, 0),
+  ).toBeLessThanOrEqual(60);
+});
+
+test('a due review selects up to three distinct exercises for its concept and dimension', () => {
+  const eligible = (content.exercisesByConcept.get('vectors') ?? [])
+    .filter(
+      (exercise) =>
+        exercise.dimension === 'math' &&
+        ['review', 'core', 'practice', 'transfer', 'basics'].includes(exercise.role) &&
+        !isTemplate(exercise),
+    )
+    .slice(0, 3);
+  if (eligible.length < 3) throw new Error('Expected at least three vector math exercises');
+  const reviewContent: ContentIndex = {
+    ...content,
+    exercisesByConcept: new Map(content.exercisesByConcept).set('vectors', eligible),
+  };
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+
+  const plan = planSession(state, reviewContent, now, 60);
+  expect(plan.activities.filter((activity) => activity.kind === 'review')).toHaveLength(1);
+  const review = plan.activities.find((activity) => activity.kind === 'review');
+  expect(review?.exerciseIds).toHaveLength(3);
+  expect(new Set(review?.exerciseIds).size).toBe(3);
+  for (const exerciseId of review?.exerciseIds ?? []) {
+    const exercise = reviewContent.exercisesById.get(exerciseId);
+    expect(exercise).toMatchObject({ concept: 'vectors', dimension: 'math' });
+  }
+  expect(review?.plannedMinutes).toBe(
+    Math.ceil(eligible.reduce((sum, exercise) => sum + exercise.est_minutes, 0)),
+  );
+});
+
+test('a due review uses fewer than three exercises when fewer are available', () => {
+  const onlyExercise = required(
+    (content.exercisesByConcept.get('vectors') ?? []).find(
+      (exercise) =>
+        exercise.dimension === 'math' &&
+        ['review', 'core', 'practice', 'transfer', 'basics'].includes(exercise.role) &&
+        !isTemplate(exercise),
+    ),
+    'eligible vector math review exercise',
+  );
+  const reviewContent: ContentIndex = {
+    ...content,
+    exercisesByConcept: new Map(content.exercisesByConcept).set('vectors', [onlyExercise]),
+  };
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+
+  const review = planSession(state, reviewContent, now, 60).activities.find(
+    (activity) => activity.kind === 'review',
+  );
+  expect(review?.exerciseIds).toEqual([onlyExercise.id]);
 });
 
 test('Time budget is respected', () => {

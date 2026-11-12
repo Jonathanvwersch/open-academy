@@ -22,6 +22,7 @@ import {
   PaperSkeleton,
   ProgressSkeleton,
   ProjectSkeleton,
+  ReviewsSkeleton,
   SessionSkeleton,
   SettingsSkeleton,
 } from '../skeletons.js';
@@ -34,6 +35,7 @@ interface RouterContext {
 const navigation = [
   { label: 'Home', to: '/' },
   { label: 'Course', to: '/course' },
+  { label: 'Reviews', to: '/reviews' },
   { label: 'Progress', to: '/progress' },
   { label: 'Settings', to: '/settings' },
 ] as const;
@@ -49,6 +51,7 @@ function AppShellSkeleton() {
   else if (pathname === '/diagnostic/results') pageSkeleton = <DiagnosticResultsSkeleton />;
   else if (pathname === '/diagnostic') pageSkeleton = <DiagnosticSkeleton />;
   else if (pathname === '/settings') pageSkeleton = <SettingsSkeleton />;
+  else if (pathname === '/reviews') pageSkeleton = <ReviewsSkeleton />;
   else if (pathname === '/progress') pageSkeleton = <ProgressSkeleton />;
   else if (pathname === '/course') pageSkeleton = <CourseSkeleton />;
   else if (pathname === '/') pageSkeleton = <LearnSkeleton />;

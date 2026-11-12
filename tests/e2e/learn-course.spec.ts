@@ -166,8 +166,8 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
 test('navigation has four destinations and Lab redirects to Course', async ({ page }) => {
   await page.goto('/');
   const navigationLinks = page.locator('nav a');
-  await expect(navigationLinks).toHaveCount(4);
-  await expect(navigationLinks).toHaveText(['Home', 'Course', 'Progress', 'Settings']);
+  await expect(navigationLinks).toHaveCount(5);
+  await expect(navigationLinks).toHaveText(['Home', 'Course', 'Reviews', 'Progress', 'Settings']);
 
   await page.goto('/lab');
   await expect(page).toHaveURL(/\/course$/);

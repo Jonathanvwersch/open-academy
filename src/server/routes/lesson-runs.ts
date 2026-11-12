@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNull, like } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
+import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
 import { getLessonPrerequisites } from '../content/index.js';
 import { serializeExercise } from '../content/serialize.js';
@@ -13,6 +14,8 @@ import {
   lessonQuizAttempts,
   lessonQuizItems,
   lessonRuns,
+  reviewCards,
+  reviewLogs,
   sessionActivities,
   xpEvents,
 } from '../db/schema.js';
@@ -21,6 +24,7 @@ import { MULTIPLE_CHOICE_FALLBACK_FEEDBACK } from '../grading/multiple-choice.js
 import { updateActivityAndAdvance } from '../learning/activity-completion.js';
 import { answerDisplay, answerText } from '../learning/answer-display.js';
 import { answerOptionsFor } from '../learning/answer-options.js';
+import { newReviewCard, scheduleReview } from '../learning/fsrs.js';
 import { QUIZ_PASS_MARK, scoreLessonQuiz, selectQuizItems } from '../learning/lesson-quiz.js';
 import {
   deriveLessonState,
@@ -65,6 +69,7 @@ type MasteryApplier = (input: {
   attemptNo: number;
   mode: 'practice' | 'assessment';
   gradedBy: 'deterministic' | 'llm' | 'self';
+  createReviewCard?: boolean;
   now: Date;
   timeZone: string;
 }) => Promise<unknown>;
@@ -211,6 +216,32 @@ export function registerLessonRunRoutes(
             }),
           }
         : undefined;
+    const latestQuizSubmittedAt = latestQuizAttempt?.submittedAt;
+    const reviewRequired =
+      !run.quizPassedAt && latestQuizAttempt?.passed === false && latestQuizSubmittedAt
+        ? (lesson.knowledge_points ?? []).flatMap((knowledgePoint) => {
+            const missed = lastItems.some(
+              (item) =>
+                item.knowledgePointId === knowledgePoint.id &&
+                item.correct !== null &&
+                item.correct < 1,
+            );
+            if (!missed) return [];
+            const answered = Math.min(
+              3,
+              rows.filter(
+                (row) =>
+                  row.practiceOnly &&
+                  row.knowledgePointId === knowledgePoint.id &&
+                  row.answeredAt !== null &&
+                  row.answeredAt > latestQuizSubmittedAt,
+              ).length,
+            );
+            return [
+              { pointId: knowledgePoint.id, title: knowledgePoint.title, answered, needed: 3 },
+            ];
+          })
+        : [];
     const quizXpAwarded =
       latestQuizAttempt?.passed && firstPassedAttempt?.id === latestQuizAttempt.id
         ? lastItems.length
@@ -237,6 +268,7 @@ export function registerLessonRunRoutes(
           }
         : {}),
       ...(quizLast ? { last: quizLast } : {}),
+      reviewRequired,
       bestPassed: Boolean(run.quizPassedAt || quizAttempts.some((attempt) => attempt.passed)),
       xpAwarded: quizXpAwarded,
     };
@@ -632,6 +664,7 @@ export function registerLessonRunRoutes(
         attemptNo: 1,
         mode: 'practice',
         gradedBy: graded.graded_by ?? 'deterministic',
+        createReviewCard: false,
         now,
         timeZone: context.get('timeZone'),
       });
@@ -761,6 +794,37 @@ export function registerLessonRunRoutes(
         run.quizPassedAt,
       );
       if (state.status === 'in_progress') return { kind: 'steps_incomplete' as const, run };
+      const previousAttempts = await tx
+        .select()
+        .from(lessonQuizAttempts)
+        .where(eq(lessonQuizAttempts.runId, run.id))
+        .orderBy(lessonQuizAttempts.attemptNo);
+      const lastSubmittedAttempt = [...previousAttempts]
+        .reverse()
+        .find((attempt) => attempt.submittedAt !== null);
+      const lastSubmittedAt = lastSubmittedAttempt?.submittedAt;
+      if (!run.quizPassedAt && lastSubmittedAttempt?.passed === false && lastSubmittedAt) {
+        const failedItems = await tx
+          .select()
+          .from(lessonQuizItems)
+          .where(eq(lessonQuizItems.quizAttemptId, lastSubmittedAttempt.id));
+        const missedPointIds = new Set(
+          failedItems
+            .filter((item) => item.correct !== null && item.correct < 1)
+            .map((item) => item.knowledgePointId),
+        );
+        const reviewIncomplete = [...missedPointIds].some(
+          (pointId) =>
+            problems.filter(
+              (problem) =>
+                problem.practiceOnly &&
+                problem.knowledgePointId === pointId &&
+                problem.answeredAt !== null &&
+                problem.answeredAt > lastSubmittedAt,
+            ).length < 3,
+        );
+        if (reviewIncomplete) return { kind: 'review_required' as const, run };
+      }
       if (run.status !== state.status) {
         await tx
           .update(lessonRuns)
@@ -778,11 +842,6 @@ export function registerLessonRunRoutes(
         .orderBy(lessonQuizAttempts.attemptNo)
         .limit(1);
       if (openAttempt) return { kind: 'ready' as const, runId: run.id };
-      const previousAttempts = await tx
-        .select()
-        .from(lessonQuizAttempts)
-        .where(eq(lessonQuizAttempts.runId, run.id))
-        .orderBy(lessonQuizAttempts.attemptNo);
       const previousAttempt = previousAttempts.at(-1);
       const allQuizItems = previousAttempts.length
         ? await tx
@@ -833,6 +892,9 @@ export function registerLessonRunRoutes(
     if (result.kind === 'not_found') return context.json({ error: 'Lesson run not found' }, 404);
     if (result.kind === 'steps_incomplete') {
       return context.json({ error: 'Finish every lesson step before starting the quiz' }, 409);
+    }
+    if (result.kind === 'review_required') {
+      return context.json({ error: 'Review the steps you missed before retaking the quiz' }, 409);
     }
     if (result.kind === 'no_questions') {
       return context.json({ error: 'No lesson quiz questions are available' }, 409);
@@ -939,6 +1001,7 @@ export function registerLessonRunRoutes(
         attemptNo: 1,
         mode: 'assessment',
         gradedBy: graded.graded_by ?? 'deterministic',
+        createReviewCard: false,
         now,
         timeZone: context.get('timeZone'),
       });
@@ -1033,6 +1096,74 @@ export function registerLessonRunRoutes(
             .onConflictDoNothing()
             .returning({ id: xpEvents.id });
           if (inserted.length > 0) xpAwarded = items.length;
+          const itemsByDimension = new Map<string, (typeof items)[number][]>();
+          for (const item of items) {
+            const exercise = resolved.index.exercisesById.get(item.exerciseId);
+            if (!exercise) continue;
+            const dimensionItems = itemsByDimension.get(exercise.dimension) ?? [];
+            dimensionItems.push(item);
+            itemsByDimension.set(exercise.dimension, dimensionItems);
+          }
+          for (const [dimension, dimensionItems] of itemsByDimension) {
+            const [existingCard] = await tx
+              .select()
+              .from(reviewCards)
+              .where(
+                and(
+                  eq(reviewCards.userId, userId),
+                  eq(reviewCards.conceptId, conceptId),
+                  eq(reviewCards.dimension, dimension),
+                ),
+              )
+              .for('update')
+              .limit(1);
+            const rating = dimensionItems.every(
+              (item) => item.correct !== null && item.correct >= 1,
+            )
+              ? Rating.Good
+              : Rating.Hard;
+            const scheduled = scheduleReview(
+              existingCard ? (existingCard.fsrs as never) : newReviewCard(now),
+              now,
+              rating,
+              context.get('timeZone'),
+              process.env.NODE_ENV !== 'test',
+            );
+            let cardId = existingCard?.id;
+            const cardValues = {
+              fsrs: scheduled.card,
+              dueAt: scheduled.card.due,
+              lastReviewAt: now,
+              reps: scheduled.card.reps,
+              lapses: scheduled.card.lapses,
+            };
+            if (existingCard) {
+              await tx
+                .update(reviewCards)
+                .set(cardValues)
+                .where(eq(reviewCards.id, existingCard.id));
+            } else {
+              const [createdCard] = await tx
+                .insert(reviewCards)
+                .values({
+                  userId,
+                  conceptId,
+                  dimension,
+                  ...cardValues,
+                })
+                .returning({ id: reviewCards.id });
+              cardId = createdCard?.id;
+            }
+            if (cardId) {
+              await tx.insert(reviewLogs).values({
+                cardId,
+                attemptId: dimensionItems.find((item) => item.attemptId)?.attemptId ?? null,
+                rating: String(rating),
+                fsrsLog: scheduled.log,
+                createdAt: now,
+              });
+            }
+          }
         }
       } else if (!run.quizPassedAt) {
         await tx
