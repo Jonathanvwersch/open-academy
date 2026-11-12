@@ -1130,7 +1130,6 @@ export function createApiRoutes(deps: {
     }
     const retryAllowed =
       body.data.mode === 'practice' && attemptNo < 2 && (result.correct === 0 || followUp);
-    const revealSolution = result.correct === 0 && !retryAllowed;
     const answerOptions = answerOptionsFor(exercise, body.data.answer, !retryAllowed);
     if (activityRow && activity && !retryAllowed) {
       const progress = activity.progress as {
@@ -1203,10 +1202,8 @@ export function createApiRoutes(deps: {
       retryAllowed,
       ...(followUp ? { followUp: true } : {}),
       ...(answerOptions ? { answerOptions } : {}),
-      ...(result.correct === 0 && (body.data.mode !== 'practice' || revealSolution)
-        ? exercise.type === 'explain'
-          ? {}
-          : { solution: exercise.solution }
+      ...(!retryAllowed && !followUp && exercise.type !== 'explain' && exercise.solution
+        ? { solution: exercise.solution }
         : {}),
       ...(exercise.type === 'explain'
         ? {
@@ -1398,7 +1395,7 @@ export function createApiRoutes(deps: {
     }
     return context.json({
       ...result,
-      ...(result.correct === 0 ? { solution: exercise.solution } : {}),
+      ...(exercise.solution ? { solution: exercise.solution } : {}),
       evidence: answer.evidence,
       complete: diagnosticComplete(nextState),
       attemptId: attempt.id,

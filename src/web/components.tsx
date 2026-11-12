@@ -307,7 +307,7 @@ export function FeedbackPanel({
   const title =
     xp !== undefined && Number(result.correct) >= 1 ? `${baseTitle} · +${xp} XP` : baseTitle;
   const feedback = typeof result.feedback === 'string' ? result.feedback.trim() : '';
-  const repeatsTitle = feedback.replace(/\.$/, '') === title;
+  const repeatsTitle = feedback.replace(/\.$/, '').toLowerCase() === baseTitle.toLowerCase();
   const rubric = Array.isArray(result.rubric)
     ? (result.rubric as Array<{ id?: string; criterion?: string; judgement?: string }>)
     : [];
