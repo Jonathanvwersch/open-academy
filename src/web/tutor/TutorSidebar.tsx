@@ -11,6 +11,7 @@ import {
 } from 'react';
 import type { StickToBottomContext } from 'use-stick-to-bottom';
 import { useIsMobile } from '@/hooks/use-mobile.js';
+import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '../../shared/tutor.js';
 import { apiFetch } from '../authenticated-fetch.js';
 import { Markdown } from '../components.js';
 import {
@@ -458,8 +459,14 @@ export function TutorContextProvider({
     setSelectedId(threadId);
     setView('conversation');
   };
+  const draftLength = draft.trim().length;
+  const draftTooLong = draftLength > TUTOR_QUESTION_MAX_LENGTH;
   const send = () => {
     if (!draft.trim() || mutation.isPending) return;
+    if (draftTooLong) {
+      setError(tutorQuestionTooLongMessage());
+      return;
+    }
     const question = draft.trim();
     const optimisticId = crypto.randomUUID();
     setDraft('');
@@ -819,13 +826,25 @@ export function TutorContextProvider({
                           }
                         }}
                       />
-                      <PromptInputSubmit
-                        aria-label={mutation.isPending ? undefined : 'Send'}
-                        loading={mutation.isPending}
-                        disabled={!draft.trim()}
-                      >
-                        Send
-                      </PromptInputSubmit>
+                      <div className="flex items-center justify-between gap-2">
+                        <PromptInputSubmit
+                          aria-label={mutation.isPending ? undefined : 'Send'}
+                          loading={mutation.isPending}
+                          disabled={!draft.trim() || draftTooLong}
+                        >
+                          Send
+                        </PromptInputSubmit>
+                        {draftLength > TUTOR_QUESTION_MAX_LENGTH - 500 ? (
+                          <span
+                            data-testid="tutor-draft-length"
+                            className={`text-xs ${draftTooLong ? 'text-destructive' : 'text-muted-foreground'}`}
+                          >
+                            {draftTooLong
+                              ? `Too long by ${(draftLength - TUTOR_QUESTION_MAX_LENGTH).toLocaleString('en-US')} characters`
+                              : `${draftLength.toLocaleString('en-US')} / ${TUTOR_QUESTION_MAX_LENGTH.toLocaleString('en-US')}`}
+                          </span>
+                        ) : null}
+                      </div>
                     </PromptInput>
                     <ContextLine pageLabel={context.pageLabel} />
                   </SidebarFooter>
