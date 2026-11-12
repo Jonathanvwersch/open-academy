@@ -37,6 +37,7 @@ test.beforeEach(async () => {
 async function createReviewSession(
   exerciseIds = ['vectors-magnitude'],
   nextExerciseId = 'vectors-component-sum',
+  firstActivityKind: 'review' | 'practice' = 'review',
 ) {
   const db = createDb(env.TEST_DATABASE_URL);
   const [user] = await db.select({ id: users.id }).from(users).limit(1);
@@ -56,7 +57,7 @@ async function createReviewSession(
     {
       sessionId: session.id,
       idx: 0,
-      kind: 'review',
+      kind: firstActivityKind,
       conceptId: 'vectors',
       exerciseIds,
       plannedMinutes: 10,
@@ -102,12 +103,38 @@ test('Enter after a correct Review answer continues without resubmitting', async
     .getByTestId('session-exercise')
     .locator('form')
     .evaluate((form) => (form as HTMLFormElement).requestSubmit());
-  await answer.press('Enter');
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await page.keyboard.press('Enter');
 
   await expect(page.getByText(/Activity \d+ of \d+ today/)).toHaveCount(0);
   await expect(page.getByTestId('exercise-prompt')).toContainText('sum of the coordinates');
   await expect(page.getByText('Not quite', { exact: true })).toHaveCount(0);
   expect(answerPosts).toBe(1);
+});
+
+test('Tab and Enter on Hint reveals it instead of continuing', async ({ page }) => {
+  const sessionId = await createReviewSession(
+    ['vectors-magnitude'],
+    'vectors-component-sum',
+    'practice',
+  );
+  await page.goto(`/session/${sessionId}`);
+  await page.getByLabel('Your answer').fill('5');
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByRole('status')).toBeVisible();
+
+  const continueButton = page.getByRole('button', { name: 'Continue', exact: true });
+  await continueButton.focus();
+  await page.keyboard.press('Tab');
+  const hintButton = page.getByRole('button', { name: 'Hint', exact: true });
+  await expect(hintButton).toBeFocused();
+  await page.keyboard.press('Enter');
+
+  await expect(page.getByText('Hint 1', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('exercise-prompt')).toContainText('Find the magnitude');
+  await expect(continueButton).toBeVisible();
 });
 
 test('Enter outside a textarea continues after multiple-choice feedback', async ({ page }) => {

@@ -492,6 +492,26 @@ export function ExerciseForm({
       ) {
         return;
       }
+      const target = event.target;
+      const targetElement = target instanceof Element ? target : null;
+      const nonTextInput =
+        targetElement instanceof HTMLInputElement &&
+        ['checkbox', 'color', 'radio', 'range'].includes(targetElement.type);
+      const inExerciseCard = Boolean(targetElement?.closest('[data-testid="session-exercise"]'));
+      const isPageTarget = target === document || target === document.body;
+      if (!isPageTarget && !inExerciseCard && !nonTextInput) return;
+      const interactiveTarget = targetElement?.closest(
+        'button, a, area, select, textarea, input, label, summary, [contenteditable]:not([contenteditable="false"]), [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"], [role="menuitem"], [role="option"], [role="combobox"], [role="slider"], [role="spinbutton"], [role="listbox"], [role="menu"], [role="treeitem"], [role="gridcell"], [tabindex]:not([tabindex="-1"])',
+      );
+      const isExerciseCard = targetElement?.matches('[data-testid="session-exercise"]') === true;
+      if (
+        interactiveTarget &&
+        !isPageTarget &&
+        !(nonTextInput && interactiveTarget === targetElement) &&
+        !(isExerciseCard && interactiveTarget === targetElement)
+      ) {
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       if (!primaryAction.loading && !primaryAction.disabled) primaryAction.onClick();
@@ -594,11 +614,9 @@ export function ExerciseForm({
       !event.shiftKey &&
       (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
     ) {
-      if (primaryAction && event.target instanceof HTMLTextAreaElement) return;
+      if (primaryAction) return;
       event.preventDefault();
-      if (primaryAction) {
-        if (!primaryAction.loading && !primaryAction.disabled) primaryAction.onClick();
-      } else if (inputsLocked) {
+      if (inputsLocked) {
         return;
       } else {
         event.currentTarget.requestSubmit();
