@@ -35,6 +35,7 @@ export const tutorThreadBodySchema = z.object({
   conceptId: optionalNullable(z.string()),
   activityId: optionalNullable(z.string().uuid()),
   exerciseId: optionalNullable(z.string()),
+  questionLabel: z.string().trim().max(60).optional(),
   lessonProblemId: optionalNullable(z.string().uuid()),
   page: optionalNullable(z.enum(['session', 'lesson', 'course', 'map', 'paper'])),
   knowledgePointId: optionalNullable(z.string().max(200)),
@@ -352,6 +353,7 @@ export function registerTutorThreadRoutes(
             .map((b) => b.md)
             .join('\n') ?? '',
         exercisePrompt: exercise?.prompt ?? '',
+        exerciseLabel: exercise ? input.questionLabel || 'Current question' : '',
         exerciseOptions: optionTexts.map(
           ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
         ),

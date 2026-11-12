@@ -292,16 +292,27 @@ function SessionPage() {
       conceptId: activity.conceptId ?? undefined,
       conceptTitle: activity.conceptTitle ?? undefined,
       activityId: activity.id,
-      exerciseId: activity.exerciseIds.find(
-        (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
-      ),
+      exerciseId,
+      questionLabel:
+        activity.kind === 'learn' && lesson?.final === exerciseId
+          ? 'Final question'
+          : exerciseId && activity.exerciseIds.length > 1
+            ? `Question ${activity.exerciseIds.indexOf(exerciseId) + 1} of ${activity.exerciseIds.length}`
+            : undefined,
       page: 'session',
       pageLabel: activity.conceptTitle ?? undefined,
       allowed,
       enabled: sessionQuery.data.tutorEnabled,
     });
     return () => tutorSidebar.clearContext();
-  }, [activity, lesson?.knowledge_points?.length, sessionQuery.data.tutorEnabled, tutorSidebar]);
+  }, [
+    activity,
+    exerciseId,
+    lesson?.final,
+    lesson?.knowledge_points?.length,
+    sessionQuery.data.tutorEnabled,
+    tutorSidebar,
+  ]);
 
   const markLessonViewed = async () => {
     if (!activity) return;

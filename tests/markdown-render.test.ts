@@ -1,8 +1,9 @@
-import { createElement } from 'react';
+import { type ComponentProps, createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
 import { loadContent } from '../src/server/content/load.js';
 import { instantiateExercise, isTemplate } from '../src/server/content/templates.js';
+import { repairTutorMarkdown } from '../src/shared/tutor.js';
 import { Markdown } from '../src/web/components';
 
 test('lesson Markdown renders GFM tables', () => {
@@ -12,6 +13,21 @@ test('lesson Markdown renders GFM tables', () => {
   expect(html).toContain('<table>');
   expect(html).toContain('<td>1</td>');
   expect(html).toContain('katex');
+});
+
+test('repaired tutor Markdown renders malformed inline math without KaTeX errors', () => {
+  const broken = 'slope is $$\\sigma(z)(1-\\sigma(z))$, so near $0$ or $1$.';
+  const html = renderToStaticMarkup(
+    createElement(
+      Markdown,
+      { wrapDisplayMath: true } as ComponentProps<typeof Markdown>,
+      repairTutorMarkdown(broken),
+    ),
+  );
+  const visibleHtml = html.replace(/<annotation\b[^>]*>[\s\S]*?<\/annotation>/g, '');
+
+  expect(visibleHtml).not.toContain('katex-error');
+  expect(visibleHtml).not.toContain('\\sigma');
 });
 
 test('all authored lesson Markdown and exercise prompts render without errors', async () => {

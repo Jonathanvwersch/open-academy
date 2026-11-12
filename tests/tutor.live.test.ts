@@ -14,6 +14,7 @@ describe('live OpenAI tutor smoke', () => {
           objectives: ['Interpret a slope.'],
           lessonSummary: 'A line predicts a continuous value.',
           exercisePrompt: 'What does the slope mean?',
+          exerciseLabel: 'Question 1',
           exerciseOptions: [],
           learnerAnswer: 'The intercept.',
           graderVerdict: 'Incorrect.',

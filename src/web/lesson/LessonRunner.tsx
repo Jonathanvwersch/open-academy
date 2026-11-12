@@ -17,6 +17,10 @@ import { Badge } from '../ui/badge.js';
 import { Button } from '../ui/button.js';
 import { Card, CardContent } from '../ui/card.js';
 
+function problemLabel(problem: { position: number }) {
+  return `Question ${problem.position}`;
+}
+
 export function LessonRunner({
   conceptId,
   activityId,
@@ -120,6 +124,9 @@ export function LessonRunner({
     : viewingPastStep
       ? undefined
       : contextProblem;
+  const tutorContextQuestionLabel = tutorContextProblem
+    ? problemLabel(tutorContextProblem)
+    : undefined;
   const tutorContextPointId = viewingPastStep ? viewingPointId : state?.currentPointId;
   const tutorContextPageLabel =
     viewingPastStep && state && viewingPointIndex >= 0
@@ -157,6 +164,7 @@ export function LessonRunner({
       conceptTitle: title,
       activityId,
       exerciseId: tutorContextProblem?.exerciseId,
+      questionLabel: tutorContextQuestionLabel,
       lessonProblemId: tutorContextProblem?.id,
       page: 'session',
       knowledgePointId: tutorContextPointId ?? undefined,
@@ -172,6 +180,7 @@ export function LessonRunner({
     tutorContextProblem?.id,
     tutorContextPageLabel,
     tutorContextPointId,
+    tutorContextQuestionLabel,
     state?.quiz.current,
     title,
     tutorEnabled,
@@ -471,7 +480,6 @@ export function LessonRunner({
   const quizAllAnswered = quizItems.length > 0 && quizItems.every((item) => item.answered);
   const stableHeightForCurrentPoint =
     stableCardHeights?.pointId === state.currentPointId ? stableCardHeights : null;
-  const problemLabel = (problem: { position: number }) => `Question ${problem.position}`;
   const backButtonLabel = 'Back';
   const stepContent = displayedPoint ? (
     <section data-testid="lesson-step-content" className="space-y-4">

@@ -107,6 +107,24 @@ test('tutor request body normalizes null optional context fields', () => {
   ] as const) {
     expect(parsed[key]).toBeUndefined();
   }
+  expect(
+    tutorThreadBodySchema.parse({
+      question: 'Help me with this question.',
+      questionLabel: '  Question 4  ',
+    }).questionLabel,
+  ).toBe('Question 4');
+  expect(
+    tutorThreadBodySchema.safeParse({
+      question: 'Help me with this question.',
+      questionLabel: 'q'.repeat(61),
+    }).success,
+  ).toBe(false);
+  expect(
+    tutorThreadBodySchema.safeParse({
+      question: 'Help me with this question.',
+      questionLabel: null,
+    }).success,
+  ).toBe(false);
 });
 
 function concreteExercise(exerciseId: string, seed: number | null) {
@@ -250,12 +268,23 @@ test('unanswered and answered lesson problems pass the right solution privacy co
     body: JSON.stringify({}),
   });
   const run = (await start.json()).run;
-  const pending = run.pending.id;
-  expect((await send('help', undefined, { lessonProblemId: pending })).status).toBe(200);
+  const problem = run.pending;
+  const pending = problem.id;
+  const exercise = concreteExercise(problem.exerciseId, problem.seed);
+  expect(
+    (
+      await send('help', undefined, {
+        lessonProblemId: pending,
+        questionLabel: 'Question 4',
+      })
+    ).status,
+  ).toBe(200);
   expect(captured.at(-1)).toMatchObject({
     solution: '',
     authoredHints: expect.any(Array),
     problem_status: 'unanswered',
+    exerciseLabel: 'Question 4',
+    exercisePrompt: exercise.prompt,
   });
   await db
     .update(lessonProblems)
@@ -357,6 +386,7 @@ test('legacy exercise context is unanswered until an attempt exists for that act
     ).status,
   ).toBe(200);
   expect(captured.at(-1)).toMatchObject({ solution: '', problem_status: 'unanswered' });
+  expect(captured.at(-1)?.exerciseLabel).toBe('Current question');
 
   await db.insert(attempts).values({
     userId,
@@ -567,6 +597,53 @@ test('requests without a page have empty page context', async () => {
   ).toBe(200);
   expect(captured.at(-1)?.page).toBe('none');
   expect(captured.at(-1)?.page_content).toBe('');
+  expect(captured.at(-1)?.exerciseLabel).toBe('');
+});
+
+test('activation-functions final exercise receives its visible question label', async () => {
+  const lesson = content.lessonsByConcept.get('activation-functions');
+  const exercise = content.exercisesById.get('act-explain-layers');
+  if (lesson?.final !== 'act-explain-layers' || exercise?.type !== 'explain') {
+    throw new Error('Missing activation-functions final explain exercise');
+  }
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      plannedMinutes: 10,
+      startedAt: new Date(headers['X-Now']),
+      status: 'active',
+    })
+    .returning();
+  if (!session) throw new Error('Expected a study session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: 'activation-functions',
+      exerciseIds: [exercise.id],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Expected a learn activity');
+
+  expect(
+    (
+      await send('Help with the final question', undefined, {
+        activityId: activity.id,
+        exerciseId: exercise.id,
+        questionLabel: 'Final question',
+      })
+    ).status,
+  ).toBe(200);
+  expect(captured.at(-1)).toMatchObject({
+    exercisePrompt: exercise.prompt,
+    exerciseLabel: 'Final question',
+    problem_status: 'unanswered',
+  });
 });
 
 test('explain tutor context accepts an omitted solution', async () => {

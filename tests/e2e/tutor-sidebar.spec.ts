@@ -78,6 +78,7 @@ test.beforeEach(async () => {
 
 async function openMockedTutorReply(page: Page, threadId: string, question: string, reply: string) {
   const updatedAt = '2026-01-01T12:00:00.002Z';
+  let requestBody: Record<string, unknown> | undefined;
   const messages = [
     {
       id: `${threadId}-user`,
@@ -101,6 +102,7 @@ async function openMockedTutorReply(page: Page, threadId: string, question: stri
 
   await page.route('**/api/tutor/threads**', async (route) => {
     if (route.request().method() === 'POST') {
+      requestBody = route.request().postDataJSON() as Record<string, unknown>;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -129,6 +131,9 @@ async function openMockedTutorReply(page: Page, threadId: string, question: stri
 
   await page.goto(`/session/${sessionId}`);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  const visibleQuestion = page.getByTestId('lesson-problem').locator('h3');
+  await expect(visibleQuestion).toHaveText(/^Question \d+$/);
+  const visibleQuestionLabel = (await visibleQuestion.textContent()) ?? '';
   await page.getByRole('button', { name: 'Ask the tutor' }).click();
   const tutor = page.getByRole('complementary', { name: 'Tutor' });
   const textarea = tutor.getByLabel('Ask the tutor');
@@ -137,7 +142,7 @@ async function openMockedTutorReply(page: Page, threadId: string, question: stri
   const assistantMessage = tutor.getByTestId('tutor-assistant-message');
   await expect(assistantMessage.locator('.katex').first()).toBeVisible();
   await waitForTutorSidebarToSettle(page, '[data-slot="sidebar-container"]');
-  return { tutor, assistantMessage };
+  return { tutor, assistantMessage, requestBody, visibleQuestionLabel };
 }
 
 type MockedTutorMessage = {
@@ -813,6 +818,18 @@ test('tutor reply renders TeX inline and display delimiters', async ({ page }) =
   expect(renderedMathText).not.toContain('\\(');
   expect(renderedMathText).not.toContain('\\[');
   await page.screenshot({ path: `${latexScreenshotDir}/reply.png`, fullPage: true });
+});
+
+test('lesson step tutor request includes the visible question label', async ({ page }) => {
+  const { requestBody, visibleQuestionLabel } = await openMockedTutorReply(
+    page,
+    '00000000-0000-4000-8000-000000000007',
+    'Can you help with this question?',
+    'Compare $z$ and $\\sigma(z)$.',
+  );
+
+  expect(visibleQuestionLabel).toMatch(/^Question \d+$/);
+  expect(requestBody).toMatchObject({ questionLabel: visibleQuestionLabel });
 });
 
 test('sending a tutor message scrolls back to the latest message', async ({ page }) => {
