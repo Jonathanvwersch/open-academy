@@ -12,6 +12,7 @@ import {
   lessonQuizItems,
   lessonRuns,
   masteryEvents,
+  remediationFlags,
   reviewCards,
   reviewLogs,
   sessionActivities,
@@ -21,7 +22,11 @@ import {
 } from '../src/server/db/schema.js';
 import { env } from '../src/server/env.js';
 import { answerOptionsFor } from '../src/server/learning/answer-options.js';
-import { newReviewCard, scheduleInitialReview } from '../src/server/learning/fsrs.js';
+import {
+  newReviewCard,
+  scheduleInitialReview,
+  scheduleReview,
+} from '../src/server/learning/fsrs.js';
 import { calculateCredit } from '../src/server/learning/mastery.js';
 import { FakeProvider } from '../src/server/tutor/provider.js';
 
@@ -66,6 +71,99 @@ async function resetLearner(timezone = 'UTC') {
     startDate: '2026-01-01',
     prefs: { scheduleMinutes: 60 },
   });
+}
+
+async function createReviewActivity(conceptId: string, exerciseId: string) {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 15,
+      startedAt: new Date(now),
+      status: 'active',
+    })
+    .returning();
+  if (!session) throw new Error('Could not create a review session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'review',
+      conceptId,
+      exerciseIds: [exerciseId],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Could not create a review activity');
+  return activity;
+}
+
+async function answerReviewIncorrectly(exerciseId: string, activityId: string) {
+  return app.request('/api/attempts', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({
+      exerciseId,
+      activityId,
+      answer: 'w+eta*g',
+      mode: 'review',
+    }),
+  });
+}
+
+async function createReviewCard(
+  conceptId: string,
+  dimension: string,
+  dueAt: Date,
+  fsrs = newReviewCard(new Date(now)),
+) {
+  const [card] = await db
+    .insert(reviewCards)
+    .values({
+      userId,
+      conceptId,
+      dimension,
+      fsrs,
+      dueAt,
+      reps: fsrs.reps,
+      lapses: fsrs.lapses,
+    })
+    .returning();
+  if (!card) throw new Error(`Could not create a review card for ${conceptId}/${dimension}`);
+  return card;
+}
+
+async function createPrerequisiteReviewCards(weakDueAt: Date) {
+  const future = new Date('2026-02-01T12:00:00.000Z');
+  const oldReview = new Date('2025-12-01T12:00:00.000Z');
+  const recentReview = new Date('2025-12-31T12:00:00.000Z');
+  const reviewFsrs = (lastReview: Date, stability: number) => ({
+    ...scheduleReview(newReviewCard(lastReview), lastReview, Rating.Good, 'UTC', false).card,
+    stability,
+    due: future,
+  });
+  const current = await createReviewCard(
+    'gradient-descent',
+    'math',
+    new Date('2025-12-31T00:00:00.000Z'),
+  );
+  const weakest = await createReviewCard('gradients', 'math', weakDueAt, reviewFsrs(oldReview, 1));
+  const stronger = await createReviewCard(
+    'loss-functions',
+    'math',
+    future,
+    reviewFsrs(recentReview, 10),
+  );
+  return { current, weakest, stronger, future };
+}
+
+async function submitReviewActivityAgain(activityId: string) {
+  const response = await answerReviewIncorrectly('gradient-descent-step', activityId);
+  expect(response.status).toBe(200);
+  expect((await response.json()).correct).toBe(0);
 }
 
 function headersAt(now: string) {
@@ -363,6 +461,22 @@ test('a correct diagnostic answer returns the solution', async () => {
   ).not.toHaveLength(0);
 });
 
+test('repeated failures no longer insert remediation flags', async () => {
+  await resetLearner();
+  for (const exerciseId of ['vectors-magnitude', 'vectors-component-sum']) {
+    const response = await app.request('/api/attempts', {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({ exerciseId, answer: 0, mode: 'practice' }),
+    });
+    expect(response.status).toBe(200);
+    expect((await response.json()).correct).toBe(0);
+  }
+  expect(
+    await db.select().from(remediationFlags).where(eq(remediationFlags.userId, userId)),
+  ).toHaveLength(0);
+});
+
 test('a review activity schedules its card once after all three answers', async () => {
   await resetLearner();
   const exercises = (content.exercisesByConcept.get('vectors') ?? [])
@@ -451,6 +565,70 @@ test('a review activity schedules its card once after all three answers', async 
   expect(logs).toHaveLength(1);
   expect(logs[0]?.rating).toBe(String(Rating.Good));
   expect(logs[0]?.attemptId).toBe(finalAttemptId);
+});
+
+test('two consecutive Again review activities pull the weakest hard-prerequisite card due now', async () => {
+  await resetLearner();
+  const { current, weakest, stronger, future } = await createPrerequisiteReviewCards(
+    new Date('2026-02-01T12:00:00.000Z'),
+  );
+  const firstActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+  const secondActivity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+
+  await submitReviewActivityAgain(firstActivity.id);
+  await submitReviewActivityAgain(secondActivity.id);
+
+  const logs = await db.select().from(reviewLogs).where(eq(reviewLogs.cardId, current.id));
+  expect(logs).toHaveLength(2);
+  expect(logs.map((log) => log.rating)).toEqual([String(Rating.Again), String(Rating.Again)]);
+  const [rescheduled] = await db.select().from(reviewCards).where(eq(reviewCards.id, weakest.id));
+  const [unchanged] = await db.select().from(reviewCards).where(eq(reviewCards.id, stronger.id));
+  if (!rescheduled || !unchanged) throw new Error('Expected prerequisite review cards');
+  expect(rescheduled.dueAt.toISOString()).toBe(now);
+  expect(new Date((rescheduled.fsrs as { due: string }).due).toISOString()).toBe(now);
+  expect(unchanged.dueAt).toEqual(future);
+  expect(new Date((unchanged.fsrs as { due: string }).due)).toEqual(future);
+});
+
+test('one Again review activity does not pull a prerequisite card due', async () => {
+  await resetLearner();
+  const { weakest, stronger, future } = await createPrerequisiteReviewCards(
+    new Date('2026-02-01T12:00:00.000Z'),
+  );
+  const activity = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+
+  await submitReviewActivityAgain(activity.id);
+
+  const [weakestAfter] = await db.select().from(reviewCards).where(eq(reviewCards.id, weakest.id));
+  const [strongerAfter] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, stronger.id));
+  if (!weakestAfter || !strongerAfter) throw new Error('Expected prerequisite review cards');
+  expect(weakestAfter.dueAt).toEqual(future);
+  expect(new Date((weakestAfter.fsrs as { due: string }).due)).toEqual(future);
+  expect(strongerAfter.dueAt).toEqual(future);
+});
+
+test('a weakest prerequisite card that is already due remains unchanged', async () => {
+  await resetLearner();
+  const dueAt = new Date('2025-12-31T12:00:00.000Z');
+  const { weakest, stronger, future } = await createPrerequisiteReviewCards(dueAt);
+  const activity1 = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+  const activity2 = await createReviewActivity('gradient-descent', 'gradient-descent-step');
+
+  await submitReviewActivityAgain(activity1.id);
+  await submitReviewActivityAgain(activity2.id);
+
+  const [weakestAfter] = await db.select().from(reviewCards).where(eq(reviewCards.id, weakest.id));
+  const [strongerAfter] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, stronger.id));
+  if (!weakestAfter || !strongerAfter) throw new Error('Expected prerequisite review cards');
+  expect(weakestAfter.dueAt).toEqual(dueAt);
+  expect(new Date((weakestAfter.fsrs as { due: string }).due)).toEqual(future);
+  expect(strongerAfter.dueAt).toEqual(future);
 });
 
 test('/api/reviews returns the local upcoming schedule and skips stub topics', async () => {

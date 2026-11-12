@@ -26,7 +26,6 @@ export const SCHEDULER_CONFIG = {
   weights: { goal: 1, week_fit: 1, project: 1, unlock: 1, gap: 1, review: 1, cost: 1 },
   weekday: {
     reviewBudgetRatio: 0.25,
-    remediationBudgetRatio: 0.3,
     maxNewConcepts: 2,
     maxActivities: 6,
   },
@@ -35,7 +34,6 @@ export const SCHEDULER_CONFIG = {
   saturdayReviewMinutes: 10,
   saturdayReflectionMinutes: 10,
   sundayCheckMinutes: 20,
-  sundayRemediationMinutes: 20,
   sundayTeachbackMinutes: 10,
 } as const;
 
@@ -252,17 +250,6 @@ function packWeekday(
     const first = reviewCandidates.find((candidate) => canAdd(candidate));
     if (first) add(first);
   }
-  const remediationCandidates = candidates
-    .filter((candidate) => candidate.activity.kind === 'remediate')
-    .sort((left, right) => right.score - left.score);
-  const remediationCap = Math.floor(budget * SCHEDULER_CONFIG.weekday.remediationBudgetRatio);
-  let remediationMinutes = 0;
-  for (const candidate of remediationCandidates) {
-    if (remediationMinutes + candidate.adjustedMinutes <= remediationCap && canAdd(candidate)) {
-      if (add(candidate)) remediationMinutes += candidate.adjustedMinutes;
-    }
-  }
-
   const learnCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'learn')
     .sort(compareLearnCandidates);
@@ -305,10 +292,7 @@ function packWeekday(
   }
 
   const otherCandidates = candidates
-    .filter(
-      (candidate) =>
-        !['review', 'remediate', 'learn', 'quick_check'].includes(candidate.activity.kind),
-    )
+    .filter((candidate) => !['review', 'learn', 'quick_check'].includes(candidate.activity.kind))
     .sort((left, right) => right.score - left.score);
   for (const candidate of otherCandidates) add(candidate);
 
@@ -459,64 +443,6 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
           makeCandidate(state, content, concept, 'transfer', [exercise], week, project, false, 3),
         );
       }
-    }
-  }
-
-  for (const flag of state.remediationFlags.filter(
-    (entry) => (entry.status ?? 'open') === 'open',
-  )) {
-    const original = content.conceptsById.get(flag.conceptId);
-    const prerequisite = flag.targetPrereqId
-      ? content.conceptsById.get(flag.targetPrereqId)
-      : original?.prereqs
-          .filter((entry) => entry.strength === 'hard')
-          .map((entry) => content.conceptsById.get(entry.id))
-          .filter((entry): entry is IndexedConcept => Boolean(entry))
-          .sort(
-            (left, right) =>
-              conceptStateRank(left, masteryByKey) - conceptStateRank(right, masteryByKey),
-          )[0];
-    const target =
-      prerequisite ??
-      (flag.targetPrereqId ? content.conceptsById.get(flag.targetPrereqId) : original);
-    if (!target || target.status === 'stub') {
-      continue;
-    }
-    const eligibleDimensions = target.dimensions.filter((dimension) =>
-      (content.exercisesByConcept.get(target.id) ?? []).some(
-        (exercise) => exercise.dimension === dimension && ['core', 'check'].includes(exercise.role),
-      ),
-    );
-    const dimension =
-      eligibleDimensions.sort(
-        (left, right) =>
-          masteryRank(masteryByKey.get(masteryKey(target.id, left))?.state ?? 'not_assessed') -
-          masteryRank(masteryByKey.get(masteryKey(target.id, right))?.state ?? 'not_assessed'),
-      )[0] ?? weakestDimension(target, masteryByKey);
-    const exercise = chooseExercise(
-      state,
-      content,
-      target,
-      dimension,
-      ['core', 'check'],
-      now,
-      recentIds,
-    );
-    if (exercise) {
-      candidates.push(
-        makeCandidate(
-          state,
-          content,
-          target,
-          'remediate',
-          [exercise],
-          week,
-          project,
-          false,
-          2,
-          `Remediate ${target.title} before continuing ${original?.title ?? flag.conceptId}.`,
-        ),
-      );
     }
   }
 
@@ -797,16 +723,6 @@ function planSaturday(
           'Extend the completed lab with a fresh implementation item.',
         ),
       );
-    } else {
-      plan.push(
-        staticCandidate(
-          'remediate',
-          extensionConceptId,
-          [],
-          projectMinutes,
-          'Review an open project prerequisite.',
-        ),
-      );
     }
   }
   if (reflectionMinutes > 0) {
@@ -860,19 +776,6 @@ function planSunday(
     );
     for (const exercise of uniqueCheckExercises.slice(0, 6)) usedExerciseIds.add(exercise.id);
   }
-  if (budget > 20) {
-    const remedial = planSession(
-      { ...state, usedExerciseIds: [...usedExerciseIds] },
-      content,
-      now,
-      Math.min(20, budget - 20),
-      'custom',
-    ).activities.filter((activity) => activity.kind === 'remediate');
-    plan.push(...remedial);
-    for (const activity of remedial) {
-      for (const exerciseId of activity.exerciseIds) usedExerciseIds.add(exerciseId);
-    }
-  }
   if (budget > 40) {
     const teachback = content.exercises.find(
       (exercise) => exercise.type === 'explain' && !usedExerciseIds.has(exercise.id),
@@ -907,35 +810,6 @@ function planSunday(
         'Review progress and plan the next week.',
       ),
     );
-  }
-  const plannedMinutes = plan.reduce((sum, activity) => sum + activity.plannedMinutes, 0);
-  const remaining = budget - plannedMinutes;
-  if (remaining > 0) {
-    const exercise = known
-      .map((record) => content.conceptsById.get(record.conceptId))
-      .filter((item): item is IndexedConcept => Boolean(item))
-      .map((concept) =>
-        chooseExercise(
-          { ...state, usedExerciseIds: [...usedExerciseIds] },
-          content,
-          concept,
-          undefined,
-          ['core', 'transfer', 'review', 'basics'],
-          now,
-        ),
-      )
-      .find((candidate): candidate is IndexedExercise => Boolean(candidate));
-    if (exercise && !usedExerciseIds.has(exercise.id)) {
-      plan.push(
-        staticCandidate(
-          'remediate',
-          exercise.concept,
-          [exercise.id],
-          remaining,
-          'Consolidate the cumulative assessment and revisit any uncertain steps.',
-        ),
-      );
-    }
   }
   return toPlan(plan.filter((activity) => activity.plannedMinutes > 0));
 }
@@ -1028,25 +902,6 @@ function goalWeightedUnlocks(conceptId: string, content: ContentIndex): number {
     }
   }
   return [...unlocked].filter((id) => (content.conceptsById.get(id)?.goal_weight ?? 0) > 0).length;
-}
-
-function conceptStateRank(concept: IndexedConcept, records: Map<string, MasteryRecord>): number {
-  return Math.min(
-    ...concept.dimensions.map((dimension) =>
-      masteryRank(records.get(masteryKey(concept.id, dimension))?.state ?? 'not_assessed'),
-    ),
-  );
-}
-
-function weakestDimension(
-  concept: IndexedConcept,
-  records: Map<string, MasteryRecord>,
-): string | undefined {
-  return [...concept.dimensions].sort(
-    (left, right) =>
-      masteryRank(records.get(masteryKey(concept.id, left))?.state ?? 'not_assessed') -
-      masteryRank(records.get(masteryKey(concept.id, right))?.state ?? 'not_assessed'),
-  )[0];
 }
 
 function lastSeen(exerciseId: string, state: SchedulerState): number {
