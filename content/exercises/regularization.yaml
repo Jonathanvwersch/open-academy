@@ -1,0 +1,764 @@
+concept: regularization
+exercises:
+  - id: rg-penalty-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does an L2 penalty add to a model's loss?
+    options:
+      - id: a
+        text: $\lambda$ times the sum of the squared errors on the training examples.
+        correct: false
+        feedback: The squared errors are the data loss itself; the penalty depends on the weights, not the errors.
+      - id: b
+        text: $\lambda$ times the sum of the squared weights.
+        correct: true
+        feedback: The L2 penalty is $\lambda\sum_j w_j^2$, so larger weights cost more.
+      - id: c
+        text: A fixed amount that is the same whatever the weights are.
+        correct: false
+        feedback: A fixed amount wouldn't change which weights are best; the penalty grows with the weights.
+      - id: d
+        text: $\lambda$ times the sum of the squared inputs.
+        correct: false
+        feedback: The inputs are data that training can't change; the penalty charges the weights.
+    solution: The L2 penalty adds $\lambda\sum_j w_j^2$, so training only makes a weight large when that lowers the data loss by more than the extra charge.
+  - id: rgp-penalty-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why is the lowest point of the total loss $(w-3)^2+0.5w^2$ at $w=2$ rather than at $w=3$?
+    options:
+      - id: a
+        text: The data loss $(w-3)^2$ is lowest at $w=2$.
+        correct: false
+        feedback: The data loss is lowest at $w=3$, where the prediction matches the target.
+      - id: b
+        text: The penalty $0.5w^2$ is lowest at $w=2$.
+        correct: false
+        feedback: The penalty is lowest at $w=0$; it keeps falling all the way down to $0$.
+      - id: c
+        text: At $w=2$ the slopes of the two parts, $-2$ and $+2$, cancel.
+        correct: true
+        feedback: The total's slope $2(w-3)+w$ is zero at $w=2$, so the two pulls balance there.
+      - id: d
+        text: Halving the target $3$ and adding $0.5$ gives $2$.
+        correct: false
+        feedback: That only matches by chance; the weight comes from setting the slope of the total to zero.
+    solution: The data loss pulls the weight towards $3$ and the penalty pulls it towards $0$. Their slopes, $2(w-3)$ and $w$, add to zero at $w=2$.
+  - id: rgp-penalty-value-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A model has two weights, $w_1={{=a}}$ and $w_2={{=b}}$, and the penalty strength is $\lambda={{=l}}$. What is the L2 penalty $\lambda(w_1^2+w_2^2)$?
+    params:
+      a: { min: 1, max: 4, step: 1 }
+      b: { min: -3, max: -1, step: 1 }
+      l: { min: 0.1, max: 0.5, step: 0.1 }
+    constraints: ["a + b != 0"]
+    answer_expr: l * (a^2 + b^2)
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: l * (a + b)
+        category: math_error
+        feedback: The penalty squares each weight before adding them.
+      - answer_expr: l * (a^2 - b^2)
+        category: math_error
+        feedback: Squaring a negative weight gives a positive number, so $w_2^2$ adds to the penalty.
+    solution: Squaring makes both weights count positively, so $w_1^2+w_2^2={{=a^2}}+{{=b^2}}={{=a^2+b^2}}$. Multiplying by $\lambda$ gives ${{=l}}\times{{=a^2+b^2}}={{=l*(a^2+b^2)}}$.
+  - id: rgp-total-loss
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A model's data loss is $4$ and its weights are $w_1=2$ and $w_2=-1$. With an L2 penalty and $\lambda=0.3$, what is its total loss?
+    answer: 5.5
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 4.3
+        category: math_error
+        feedback: That adds $0.3\times(2-1)$; the penalty squares each weight first, giving $2^2+(-1)^2=5$.
+      - answer: 1.5
+        category: math_error
+        feedback: That is only the penalty; the total also includes the data loss $4$.
+      - answer: 9
+        category: math_error
+        feedback: That forgets to multiply the squared weights by $\lambda=0.3$.
+    solution: The penalty is $0.3\times(2^2+(-1)^2)=0.3\times5=1.5$, so the total loss is $4+1.5=5.5$.
+  - id: rgp-best-w-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A model $\hat y=wx$ is trained on one example with $x=1$ and $y={{=c}}$, using squared error plus an L2 penalty with $\lambda={{=l}}$. Which weight gives the lowest total loss?
+    params:
+      c: { min: 3, max: 9, step: 3 }
+      l: { min: 0.5, max: 2, step: 0.5 }
+    answer_expr: c / (1 + l)
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - answer_expr: c
+        category: misapplied_technique
+        feedback: That is the best weight without the penalty; the penalty pulls it towards $0$.
+      - answer_expr: c / (1 + 2 * l)
+        category: math_error
+        feedback: The slope of $(w-{{=c}})^2$ is $2(w-{{=c}})$; keep the factor $2$ on the data part too.
+    solution: The total is $(w-{{=c}})^2+{{=l}}w^2$, whose slope is $2(w-{{=c}})+2\times{{=l}}w$. Setting it to zero gives $w={{=c}}/(1+{{=l}})={{=c/(1+l)}}$.
+  - id: rgp-which-lower
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Setting A of a model's two weights is $(3,4)$ with data loss $2$. Setting B is $(1,1)$ with data loss $3$. With an L2 penalty and $\\lambda=0.2$, which setting has the lower total loss?"
+    options:
+      - id: a
+        text: A, because its data loss is lower.
+        correct: false
+        feedback: The total also includes the penalty, $0.2\times(9+16)=5$ for A, which makes A's total $7$.
+      - id: b
+        text: B, because its total is $3.4$ against A's $7$.
+        correct: true
+        feedback: A costs $2+0.2\times25=7$ and B costs $3+0.2\times2=3.4$.
+      - id: c
+        text: Neither, because both totals come to $3.4$.
+        correct: false
+        feedback: That adds the weights without squaring them; A's penalty is $0.2\times(3^2+4^2)=5$.
+      - id: d
+        text: B, because smaller weights always win, whatever the data losses.
+        correct: false
+        feedback: Both parts count; a big enough data loss could outweigh B's smaller penalty.
+    solution: A's total is $2+0.2\times(3^2+4^2)=7$ and B's is $3+0.2\times(1^2+1^2)=3.4$, so B is lower even though its data loss is higher.
+  - id: rgp-lambda-back
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A model $\hat y=wx$ is trained on one example with $x=1$ and $y=3$, using squared error plus an L2 penalty. The best weight turns out to be $w=1.5$. What penalty strength $\lambda$ was used?
+    answer: 1
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 0.5
+        category: math_error
+        feedback: That comes from dropping the factor $2$ in the data slope; the best weight is $3/(1+\lambda)$.
+      - answer: 2
+        category: math_error
+        feedback: That solves $3/\lambda=1.5$; the best weight is $3/(1+\lambda)$.
+    solution: The best weight is $w=3/(1+\lambda)$. Setting $3/(1+\lambda)=1.5$ gives $1+\lambda=2$, so $\lambda=1$.
+  - id: rgp-robot-huge
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot arm learns how far to turn its gripper from camera readings, trained with squared error plus an L2 penalty. The data loss is only a few units, but an engineer sets $\lambda=1000$. What will training most likely produce?
+    options:
+      - id: a
+        text: Weights very close to $0$, so the turns barely respond to the readings.
+        correct: true
+        feedback: Any sizeable weight costs far more in penalty than it saves in data loss, so the model underfits.
+      - id: b
+        text: The same weights as with $\lambda=0$, because the penalty is added after training.
+        correct: false
+        feedback: The penalty is part of the loss that training minimises, so it changes the weights.
+      - id: c
+        text: Very large weights, because a large $\lambda$ multiplies the weights.
+        correct: false
+        feedback: $\lambda$ multiplies the penalty on the weights, so a large $\lambda$ makes large weights more costly.
+      - id: d
+        text: The best turns on new readings, because a stronger penalty always helps.
+        correct: false
+        feedback: Too strong a penalty underfits; $\lambda$ is chosen by validation error.
+    solution: With $\lambda=1000$, the penalty dominates the total loss, so training keeps every weight near $0$ and the arm's turns hardly depend on what the camera sees, which is underfitting.
+  - id: rg-weight-decay-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does weight decay do on each gradient-descent step?
+    options:
+      - id: a
+        text: It lowers the learning rate a little on every step.
+        correct: false
+        feedback: The learning rate stays the same; weight decay acts on the weights themselves.
+      - id: b
+        text: It multiplies the data slope by a number a little below $1$.
+        correct: false
+        feedback: The data step is unchanged; it is the weight that gets multiplied by $1-2\eta\lambda$.
+      - id: c
+        text: It multiplies each weight by a number a little below $1$, then adds the data step.
+        correct: true
+        feedback: The update is $(1-2\eta\lambda)\,w-\eta\,\partial L_{\text{data}}/\partial w$.
+      - id: d
+        text: It takes a fixed amount off the loss on every step.
+        correct: false
+        feedback: Weight decay changes the weights, not the loss value; it comes from the slope of the penalty.
+    solution: Weight decay is what the L2 penalty does to the update. Each step multiplies every weight by $1-2\eta\lambda$, then adds the usual data step.
+  - id: rgp-decay-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the picture, why does the first update from $w=3$ move the weight to $2.7$, even though the prediction matches the target there?
+    options:
+      - id: a
+        text: The data slope at $w=3$ is negative, so the data step lowers the weight.
+        correct: false
+        feedback: At $w=3$ the error is $0$, so the data slope $2(w-3)$ is $0$. A negative slope would raise the weight.
+      - id: b
+        text: The data slope is $0$, but the decay still multiplies $3$ by $0.9$.
+        correct: true
+        feedback: With no data pull, the step is pure decay, $0.9\times3=2.7$.
+      - id: c
+        text: The update sets the weight to $90\%$ of the target $y=3$.
+        correct: false
+        feedback: The decay multiplies the current weight, not the target; they agree here only because $w$ equals the target.
+      - id: d
+        text: The learning rate $0.1$ is taken off once for each unit of the weight.
+        correct: false
+        feedback: The $0.3$ taken off is $\eta\times2\lambda w=0.1\times3$, the penalty's slope scaled by the learning rate.
+    solution: At $w=3$ the data slope $2(w-3)$ is $0$, so only the decay acts and the weight becomes $0.9\times3=2.7$.
+  - id: rgp-factor-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: With learning rate $\eta={{=e}}$ and penalty strength $\lambda={{=l}}$, weight decay multiplies each weight by what number on every step?
+    params:
+      e: { min: 0.05, max: 0.2, step: 0.05 }
+      l: { min: 0.1, max: 1, step: 0.1 }
+    answer_expr: 1 - 2 * e * l
+    tolerance: { abs: 0.0001 }
+    common_wrong:
+      - answer_expr: 1 - e * l
+        category: math_error
+        feedback: The penalty $\lambda w^2$ has slope $2\lambda w$, so the factor is $1-2\eta\lambda$.
+      - answer_expr: 2 * e * l
+        category: math_error
+        feedback: That is the fraction taken away; the weight is multiplied by $1$ minus it.
+    solution: The factor is $1-2\eta\lambda=1-2\times{{=e}}\times{{=l}}={{=1-2*e*l}}$.
+  - id: rgp-one-step-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: With $\eta=0.1$ and $\lambda=0.5$, a weight is $w={{=w}}$ and the data loss has slope $\partial L_{\text{data}}/\partial w={{=g}}$ there. What is the weight after one update with weight decay?
+    params:
+      w: { min: 1, max: 5, step: 0.5 }
+      g: { min: -4, max: 4, step: 1 }
+    constraints: ["g != 0", "w != 2 * g"]
+    answer_expr: 0.9 * w - 0.1 * g
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: w - 0.1 * g
+        category: misapplied_technique
+        feedback: That is the update without the penalty; weight decay first multiplies the weight by $0.9$.
+      - answer_expr: 0.9 * w + 0.1 * g
+        category: math_error
+        feedback: The data step subtracts $\eta$ times the slope, so a positive slope lowers the weight.
+    solution: The decay factor is $1-2\times0.1\times0.5=0.9$, so the new weight is $0.9\times{{=w}}-0.1\times({{=g}})={{=0.9*w-0.1*g}}$.
+  - id: rgp-pure-decay
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A weight is $5$, and the data doesn't pull on it at all, so its data slope stays $0$. With $\eta=0.1$ and $\lambda=0.5$, what is the weight after three updates with weight decay?
+    answer: 3.645
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 3.5
+        category: math_error
+        feedback: That takes $10\%$ of the starting weight each time; each step takes $10\%$ of the current weight.
+      - answer: 4.5
+        category: math_error
+        feedback: That is after one update; multiply by $0.9$ three times.
+    solution: Each update multiplies the weight by $1-2\times0.1\times0.5=0.9$, so after three updates it is $5\times0.9^3=3.645$.
+  - id: rgp-decay-vs-lr
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Someone says weight decay is just a smaller learning rate. Why is that wrong?
+    options:
+      - id: a
+        text: It isn't wrong, because both multiply the update by a number below $1$.
+        correct: false
+        feedback: Decay multiplies the weight, not the step, so it acts even when the data step is $0$.
+      - id: b
+        text: A smaller $\eta$ makes the weights grow, while weight decay shrinks them.
+        correct: false
+        feedback: A smaller $\eta$ only makes the data steps shorter; it doesn't push weights up.
+      - id: c
+        text: Weight decay changes the data loss, while $\eta$ changes only the penalty.
+        correct: false
+        feedback: Decay comes from the penalty's slope, and $\eta$ scales both parts of the step.
+      - id: d
+        text: A smaller $\eta$ only shortens the data step, but decay pulls weights towards $0$ even with no data slope.
+        correct: true
+        feedback: With a data slope of $0$, a smaller $\eta$ leaves $w$ alone, but decay still multiplies it by $1-2\eta\lambda$.
+    solution: A smaller learning rate only shortens steps along the data slope. Weight decay adds a pull towards $0$ on every weight, which acts even where the data slope is $0$.
+  - id: rgp-settle
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A model $\hat y=wx$ is trained on one example with $x=1$ and $y=6$, using squared error and weight decay with $\eta=0.1$ and $\lambda=1$. At what weight does an update leave $w$ unchanged?
+    answer: 3
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 6
+        category: misapplied_technique
+        feedback: At $w=6$ the data slope is $0$, but the decay still shrinks the weight.
+      - answer: 2
+        category: math_error
+        feedback: The data slope of $(w-6)^2$ is $2(w-6)$, not $w-6$.
+      - answer: 4
+        category: math_error
+        feedback: The penalty $\lambda w^2$ has slope $2\lambda w$, not $\lambda w$.
+    solution: The weight stops changing where the slope of the total is zero, $2(w-6)+2\times1\times w=0$, which gives $4w=12$, so $w=3$.
+  - id: rgp-decay-setting
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A training library writes its update as $w_{\text{new}}=(1-\eta d)\,w-\eta\,\partial L_{\text{data}}/\partial w$, and you set $d=0.01$. Which penalty strength $\lambda$, in $L_{\text{data}}+\lambda\sum_j w_j^2$, does that match?
+    options:
+      - id: a
+        text: $\lambda=0.01$
+        correct: false
+        feedback: Our update multiplies by $1-2\eta\lambda$, so $d$ plays the part of $2\lambda$, not $\lambda$.
+      - id: b
+        text: $\lambda=0.02$
+        correct: false
+        feedback: That doubles $d$; since $d=2\lambda$, we halve it instead.
+      - id: c
+        text: $\lambda=0.005$
+        correct: true
+        feedback: Matching $1-\eta d$ with $1-2\eta\lambda$ gives $\lambda=d/2=0.005$.
+      - id: d
+        text: $\lambda=0.001$
+        correct: false
+        feedback: That multiplies $d$ by a learning rate of $0.1$, but $\eta$ appears in both updates and cancels.
+    solution: Our update multiplies the weight by $1-2\eta\lambda$ and the library's by $1-\eta d$, so $d=2\lambda$ and $\lambda=0.01/2=0.005$.
+  - id: rg-strength-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: How should we choose the penalty strength $\lambda$?
+    options:
+      - id: a
+        text: Keep the value that gives the lowest training error.
+        correct: false
+        feedback: Training error is always lowest at $\lambda=0$, because the penalty only makes the training fit worse.
+      - id: b
+        text: Make it as large as possible, since a penalty reduces overfitting.
+        correct: false
+        feedback: Too large a $\lambda$ pushes every weight towards $0$, and the model underfits.
+      - id: c
+        text: Train with several values and keep the one with the lowest validation error.
+        correct: true
+        feedback: Validation error shows which value works best on examples that didn't train the weights.
+      - id: d
+        text: Try several values on the test examples and keep the best one.
+        correct: false
+        feedback: The test examples are kept for one final score; choosing with them makes that score too hopeful.
+    solution: $\lambda$ is a hyperparameter, so we train once for each of several values and keep the one with the lowest validation error, saving the test examples for the end.
+  - id: rgp-strength-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why do we keep $\lambda=0.5$ rather than $\lambda=0$, which has the lower training loss?
+    options:
+      - id: a
+        text: Its training loss is the closest to its validation loss.
+        correct: false
+        feedback: At $\lambda=2$ the two losses are equal, but both are high; we compare validation losses.
+      - id: b
+        text: Its validation loss, $0$, is the lowest in the table.
+        correct: true
+        feedback: We choose $\lambda$ by validation loss, and $\lambda=0.5$ has the lowest.
+      - id: c
+        text: Smaller penalties always give lower validation loss.
+        correct: false
+        feedback: $\lambda=0$ is smaller still, yet its validation loss is $4$.
+      - id: d
+        text: It gives the largest weight in the table.
+        correct: false
+        feedback: $\lambda=0$ gives the largest weight, $w=3$; a larger weight isn't the aim.
+    solution: Training loss always favours $\lambda=0$, so we compare validation losses instead, and $\lambda=0.5$ has the lowest, $0$.
+  - id: rgp-diagnose-large
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: With a very large $\lambda$, a model's training error and validation error are both high and close together. What is most likely going on?
+    options:
+      - id: a
+        text: It overfits, because it has copied quirks of its training examples.
+        correct: false
+        feedback: An overfit model has low training error; here even the training error is high.
+      - id: b
+        text: It underfits, because the penalty keeps the weights too small.
+        correct: true
+        feedback: A huge penalty keeps the weights near $0$, so the model misses even the training pattern.
+      - id: c
+        text: It fits well, because the two errors are close together.
+        correct: false
+        feedback: Close errors are only good when they are both low; here both are high.
+      - id: d
+        text: The validation examples have wrong targets.
+        correct: false
+        feedback: The training error is high too, so the problem is the model, not the validation examples.
+    solution: High training error means the model misses the pattern even on its own examples. With a very large $\lambda$, that is underfitting caused by the penalty.
+  - id: rgp-val-loss-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The model $\hat y=wx$ is trained on one example with $x=1$ and $y=3$, using an L2 penalty with $\lambda={{=l}}$, so its weight is $w=3/(1+\lambda)$. What is its squared error on a validation example with $x=2$ and $y=4$?
+    params:
+      l: { min: 1, max: 4, step: 1 }
+    answer_expr: (2 * 3 / (1 + l) - 4)^2
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - answer_expr: (3 / (1 + l) - 4)^2
+        category: math_error
+        feedback: The validation input is $x=2$, so the prediction is $2w$, not $w$.
+      - answer_expr: 2 * 3 / (1 + l) - 4
+        category: math_error
+        feedback: That is the error itself; the squared error squares it.
+    solution: The weight is $3/(1+{{=l}})={{=3/(1+l)}}$, so the prediction is $2\times{{=3/(1+l)}}={{=6/(1+l)}}$ and the squared error is $({{=6/(1+l)}}-4)^2={{=(6/(1+l)-4)^2}}$.
+  - id: rgp-bias
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Why do we usually leave the bias out of the penalty?
+    options:
+      - id: a
+        text: The bias is always $0$, so penalising it does nothing.
+        correct: false
+        feedback: Training gives the bias whatever value fits; it is usually not $0$.
+      - id: b
+        text: Gradient descent can't update the bias, so it has no slope.
+        correct: false
+        feedback: The bias is updated like the weights; under squared error its slope is $2e$.
+      - id: c
+        text: The bias shifts every prediction equally, so it can't make predictions swing.
+        correct: true
+        feedback: Only the weights make predictions change between examples, so only they need charging.
+      - id: d
+        text: Penalising the bias would make the model overfit more.
+        correct: false
+        feedback: Pulling the bias towards $0$ would only add error, which pushes towards underfitting, not overfitting.
+    solution: The bias moves every prediction by the same amount, so it can't make predictions swing between examples. Shrinking it only adds error.
+  - id: rgp-early-stop
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Why does stopping training at the epoch with the lowest validation error count as regularization?
+    options:
+      - id: a
+        text: It adds $\lambda\sum_j w_j^2$ to the loss at the last epoch.
+        correct: false
+        feedback: Early stopping adds nothing to the loss; it only chooses when to stop.
+      - id: b
+        text: It reaches a lower training error than training for longer.
+        correct: false
+        feedback: Training error usually keeps falling, so stopping early leaves it higher.
+      - id: c
+        text: It uses the validation examples to update the weights.
+        correct: false
+        feedback: The validation examples only decide when to stop; they never update the weights.
+      - id: d
+        text: It stops the weights before they move far enough to copy training quirks.
+        correct: true
+        feedback: Like a penalty, it keeps the model from fitting its training examples too closely.
+    solution: Early stopping keeps the weights from the epoch before they had moved far enough to copy the training examples' quirks, which is the same aim as a penalty.
+  - id: rgp-dropout
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: During training, dropout sets each hidden unit's output to $0$ with probability $0.5$ on every step. Why does this help the network do better on new examples?
+    options:
+      - id: a
+        text: It shrinks every weight by a fixed fraction on each step.
+        correct: false
+        feedback: That is weight decay; dropout leaves the weights alone and switches off unit outputs.
+      - id: b
+        text: The network can't rely on any one unit, so it spreads what it learns across many.
+        correct: true
+        feedback: Any unit may vanish on a step, so no single unit can carry a quirk of the training examples on its own.
+      - id: c
+        text: It throws away half of the training examples on each step.
+        correct: false
+        feedback: Every training example is still used; dropout switches off unit outputs, not examples.
+      - id: d
+        text: It stays on when the trained network makes predictions.
+        correct: false
+        feedback: Dropout is switched off when the trained network makes predictions; it only acts during training.
+    solution: With units switched off at random, the network can't depend on any one of them, so it spreads what it learns across many units instead of letting a few copy the training examples' quirks.
+  - id: rgp-still-falling
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: You try $\lambda=0.01$, $0.1$, $1$ and $10$, and the validation error keeps falling all the way to $\lambda=10$, the largest value you tried. What should you do next?
+    options:
+      - id: a
+        text: Keep $\lambda=10$, because it was the best value tried.
+        correct: false
+        feedback: The error was still falling at the edge of the range, so a larger value may be better still.
+      - id: b
+        text: Try larger values, such as $100$, because the lowest point may lie beyond $10$.
+        correct: true
+        feedback: Validation error eventually rises again as the model underfits, so we look for where it turns.
+      - id: c
+        text: Go back to $\lambda=0$, because falling error means the penalty isn't working.
+        correct: false
+        feedback: Falling validation error means the penalty is helping; $\lambda=0$ had the highest error.
+      - id: d
+        text: Compare the values on the test examples instead.
+        correct: false
+        feedback: The test examples stay untouched until one final score.
+    solution: The best $\lambda$ is where validation error stops falling and starts rising. It hadn't turned by $10$, so we try larger values to find that point.
+  - id: rgp-robot-strength
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot learns to predict whether a grasp will succeed from $20$ practice grasps. With $\lambda=0$, its training error is $1\%$ but its validation error is $30\%$. What should you try?
+    options:
+      - id: a
+        text: Train with several larger values of $\lambda$ and compare their validation errors.
+        correct: true
+        feedback: The gap says it overfits, so a stronger penalty may help, and validation picks how strong.
+      - id: b
+        text: Lower $\lambda$ below $0$ so the model can fit even more closely.
+        correct: false
+        feedback: $\lambda$ is $0$ or more, and $\lambda=0$ already means no penalty at all.
+      - id: c
+        text: Keep $\lambda=0$, because a $1\%$ training error shows the model works.
+        correct: false
+        feedback: Low training error with high validation error is the sign of overfitting.
+      - id: d
+        text: Choose $\lambda$ on the test grasps, because $20$ grasps is too few to validate.
+        correct: false
+        feedback: Test grasps stay untouched until one final score, however few examples there are.
+    solution: Training error $1\%$ with validation error $30\%$ means the model overfits its $20$ grasps. Trying larger $\lambda$ values and keeping the one with the lowest validation error is the fix to test.
+  - id: rg-l1-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the L1 penalty add to the loss?
+    options:
+      - id: a
+        text: $\lambda$ times the sum of the squared weights.
+        correct: false
+        feedback: That is the L2 penalty; L1 uses absolute values instead of squares.
+      - id: b
+        text: $\lambda$ times the absolute error of each prediction.
+        correct: false
+        feedback: The absolute error is a data loss; the penalty depends only on the weights.
+      - id: c
+        text: $\lambda$ times the number of weights that aren't $0$.
+        correct: false
+        feedback: L1 charges the size of each weight, $|w_j|$, not just whether it is nonzero.
+      - id: d
+        text: $\lambda$ times the sum of the weights' absolute values.
+        correct: true
+        feedback: The L1 penalty is $\lambda\sum_j|w_j|$.
+    solution: The L1 penalty is $\lambda\sum_j|w_j|$, so each weight is charged by its absolute size.
+  - id: rgp-l1-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why is the best L1 weight for the second problem, with target $0.5$, exactly $0$?
+    options:
+      - id: a
+        text: Setting $2(w-0.5)+2$ to zero gives $w=0$.
+        correct: false
+        feedback: It gives $w=-0.5$, which isn't positive, so that slope doesn't apply there.
+      - id: b
+        text: The L1 penalty multiplies the weight by $0$ on every step.
+        correct: false
+        feedback: L1 moves a weight a fixed distance per step; it doesn't multiply it.
+      - id: c
+        text: The total falls towards $0$ from both sides, so its lowest point is the corner.
+        correct: true
+        feedback: The slope is positive for every positive $w$ and negative for every negative $w$, so the lowest point is at $0$.
+      - id: d
+        text: An L1 penalty always sets every weight to $0$.
+        correct: false
+        feedback: On our first example the L1 weight was $2$; only weights that don't help enough go to $0$.
+    solution: For $w>0$ the slope $2w+1$ is positive and for $w<0$ the slope $2w-3$ is negative, so the total falls towards $0$ from both sides and is lowest at the corner $w=0$.
+  - id: rgp-l1-steps-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A weight starts at $w={{=s}}$, and the data doesn't pull on it. With an L1 penalty, $\lambda=2$ and $\eta=0.1$, what is the weight after step ${{=k}}$?
+    params:
+      s: { min: 2, max: 4, step: 1 }
+      k: { min: 1, max: 5, step: 1 }
+    answer_expr: s - 0.2 * k
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: s - 0.1 * k
+        category: math_error
+        feedback: Each step moves the weight $\eta\lambda=0.1\times2=0.2$, not $0.1$.
+      - answer_expr: s * 0.6^k
+        category: misapplied_technique
+        feedback: Multiplying by $1-2\eta\lambda$ is the L2 rule; L1 moves the weight a fixed distance each step.
+    solution: Each step moves the weight $\eta\lambda=0.2$ towards $0$, so after step ${{=k}}$ it is ${{=s}}-{{=k}}\times0.2={{=s-0.2*k}}$.
+  - id: rgp-which-penalty
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A model has $50$ inputs, and you expect only a few of them to matter. Which penalty suits it best, and why?
+    options:
+      - id: a
+        text: L1, because it sets weights that don't help to exactly $0$.
+        correct: true
+        feedback: L1 switches off the unhelpful inputs and keeps the few that pay for their penalty.
+      - id: b
+        text: L2, because it sets weights that don't help to exactly $0$.
+        correct: false
+        feedback: L2 makes weights small but leaves almost all of them nonzero.
+      - id: c
+        text: L2, because its pull stays strong on small weights.
+        correct: false
+        feedback: L2's pull $2\lambda w$ weakens as a weight shrinks; it is L1's pull that stays the same size.
+      - id: d
+        text: Neither, because a penalty can't tell useful inputs from useless ones.
+        correct: false
+        feedback: A useful input's weight lowers the data loss enough to pay its penalty, so it survives.
+    solution: L1 moves every weight a fixed distance towards $0$ each step, so weights that don't lower the data loss enough reach exactly $0$, leaving the few inputs that matter.
+  - id: rgp-l1-best-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A model $\hat y=wx$ is trained on one example with $x=1$ and $y={{=c}}$, using squared error plus an L1 penalty with $\lambda={{=l}}$. The best weight is positive. What is it?
+    params:
+      c: { min: 2, max: 6, step: 1 }
+      l: { min: 1, max: 3, step: 1 }
+    constraints: ["c != (1 + l) / 2", "c != 1 + l"]
+    answer_expr: c - l / 2
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: c - l
+        category: math_error
+        feedback: The data slope is $2(w-{{=c}})$; with the factor $2$, the weight moves only $\lambda/2$ from the target.
+      - answer_expr: c / (1 + l)
+        category: misapplied_technique
+        feedback: That is the L2 answer; L1's slope for a positive weight is the constant $\lambda$.
+    solution: For a positive weight, the slope of $(w-{{=c}})^2+{{=l}}|w|$ is $2(w-{{=c}})+{{=l}}$. Setting it to zero gives $w={{=c}}-{{=l}}/2={{=c-l/2}}$.
+  - id: rgp-l1-zero
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A model $\hat y=wx$ is trained on one example with $x=1$ and $y=0.4$, using squared error plus an L1 penalty with $\lambda=1$. Which weight gives the lowest total loss?
+    answer: 0
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: -0.1
+        category: math_error
+        feedback: That uses the positive-weight slope, but $-0.1$ isn't positive, so that slope doesn't apply.
+      - answer: 0.2
+        category: misapplied_technique
+        feedback: That is the L2 answer $0.4/(1+1)$; with L1, check the slope on each side of $0$.
+    solution: For $w>0$ the slope is $2(w-0.4)+1=2w+0.2>0$, and for $w<0$ it is $2(w-0.4)-1=2w-1.8<0$. The total falls towards $0$ from both sides, so the best weight is exactly $0$.
+  - id: rgp-l1-sensor
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot predicts its battery use from $30$ sensor readings, trained with an L1 penalty. Afterwards, the weights for $8$ of the sensors are exactly $0$. What does that tell you?
+    options:
+      - id: a
+        text: Those $8$ sensors are broken and always read $0$.
+        correct: false
+        feedback: A weight of $0$ says the model ignores a reading, not that the reading is $0$.
+      - id: b
+        text: Training failed, because every weight should be nonzero.
+        correct: false
+        feedback: Setting unhelpful weights to exactly $0$ is what L1 is meant to do.
+      - id: c
+        text: The model ignores those $8$ readings, since they didn't help enough to pay their penalty.
+        correct: true
+        feedback: Their weights couldn't lower the data loss by more than the penalty costs, so L1 switched them off.
+      - id: d
+        text: Those $8$ sensors matter most, because L1 pulls hardest on important weights.
+        correct: false
+        feedback: L1 pulls every weight equally hard; useful ones resist because the data pulls back.
+    solution: L1 sets a weight to exactly $0$ when its input doesn't lower the data loss enough to pay the penalty, so the model makes its predictions without those $8$ readings.
+  - id: rg-explain-decay
+    dimension: math
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: A model is trained by gradient descent with squared error plus an L2 penalty $\lambda\sum_j w_j^2$. Explain how the penalty changes each update, why that can reduce overfitting, and how you would choose $\lambda$.
+    rubric:
+      - {
+          id: update,
+          criterion: "States that the penalty adds a slope of $2\\lambda w$ to each weight, so the update becomes $(1-2\\eta\\lambda)\\,w-\\eta\\,\\partial L_{\\text{data}}/\\partial w$: each step shrinks every weight by a fixed fraction (weight decay) as well as taking the data step.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: why,
+          criterion: "Explains that a weight then grows only as far as the drop in data loss pays for it, so weights stay smaller and the model is less able to copy quirks of its training examples.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: choose,
+          criterion: "Chooses $\\lambda$ by training with several values and keeping the lowest validation error, noting that too small still overfits and too large underfits, and keeps the test examples for one final score.",
+          weight: 1,
+          required: true,
+        }
+    exemplar: "The penalty $\\lambda w^2$ has slope $2\\lambda w$, so the update becomes $w_{\\text{new}}=(1-2\\eta\\lambda)\\,w-\\eta\\,\\partial L_{\\text{data}}/\\partial w$. Every step multiplies each weight by a number just below $1$, which is why it's called weight decay, and then takes the usual data step. A weight settles where the data's pull balances the decay, so it only stays large if that clearly lowers the training error. Smaller weights make predictions change more gently, so the model is less able to copy noise in its training examples. I would train with several values of $\\lambda$, such as $0.01$, $0.1$, $1$ and $10$, and keep the one with the lowest validation error: too small still overfits and too large underfits. The test examples stay untouched until one final score."
+    solution: "The penalty adds $2\\lambda w$ to each weight's slope, so each update multiplies the weight by $1-2\\eta\\lambda$ before the data step. Weights only stay large where that lowers the data loss enough, which makes copying training quirks costly. Choose $\\lambda$ by validation error and keep the test examples for the final score."

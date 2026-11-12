@@ -1,0 +1,349 @@
+concept: regularization
+version: 1
+objective: "**Goal:** explain how an L2 penalty changes the loss and how weight decay changes each gradient-descent update, choose the penalty strength with validation error, and tell when an L1 penalty fits better."
+recap:
+  - concept: overfitting
+    text: "Overfitting means a model follows quirks of its training examples that don't carry over, so its training error is low but its validation error is much higher. We compare models by validation error and can stop training once it rises."
+  - concept: loss-functions
+    text: "The squared error $e^2$ has slope $2e$, so its pull weakens as the error gets small. The absolute error $|e|$ has slope $+1$ or $-1$ whatever the size of $e$, with a sharp corner at $0$."
+where_this_fits: |
+  ### What is regularization?
+
+  Regularization is any change to training that stops a model from fitting its training examples too closely, so that it does better on new examples. A model's **weights** are the numbers it learns that say how strongly each input affects its prediction. The most common kind of regularization adds a **penalty** to the loss, an amount that grows with the weights.
+
+  The overfitting lesson fixed overfitting by switching to a less flexible model. Regularization keeps the flexible model and holds its weights back instead, by an amount we choose.
+
+  Our running example has one weight, $\hat y=wx$, and one training example, $x=1$ with target $y=3$. Noise pushed that target too high, so in step 3 a smaller weight will do better on new examples.
+knowledge_points:
+  - id: rg-penalty
+    title: "Add a penalty for large weights"
+    explain: |
+      ### Why large weights are a warning sign
+
+      A weight says how much the prediction changes when its input rises by one. To copy a quirk, a model's prediction has to jump between examples that look almost the same, and only large weights turn a small change in the inputs into a big change in the prediction. Say a model has two inputs that almost always rise and fall together, with weights $+50$ and $-49$. When the two inputs are equal, the weights nearly cancel. If the first input is $0.1$ higher than the second, the prediction rises by an extra $50\times0.1=5$. A model with small weights changes its predictions more gently, and gentle changes are more likely to hold up on new examples.
+
+      So instead of the loss alone, we train the model to make the loss plus a penalty as small as possible.
+
+      ### The L2 penalty
+
+      The **L2 penalty** adds $\lambda$ times the sum of the squared weights to the loss:
+
+      $$L_{\text{total}}=L_{\text{data}}+\lambda\sum_j w_j^2.$$
+
+      Here $L_{\text{data}}$ is the usual loss on the training examples, such as the squared error. The symbol $\sum_j$ means we add up over every weight, where $w_j$ is the $j$-th weight. The Greek letter $\lambda$ (lambda) is the **penalty strength**, a number we choose that is $0$ or more. With $\lambda=0$ we're back to plain training.
+
+      ### One weight, one example
+
+      For our model $\hat y=wx$ and the example $x=1$, $y=3$, the prediction is $w$ and the squared error is $(w-3)^2$. Without a penalty, the best weight is $w=3$, which copies the target exactly. With $\lambda=0.5$, we add $0.5w^2$.
+
+      In the picture, the blue curve is the data loss, the dashed orange curve is the penalty and the green curve is their total. The total is lowest at $w=2$, and the worked example below finds that point. Moving from $3$ to $2$ costs $1$ in data loss but saves $2.5$ in penalty, because the penalty falls from $4.5$ to $2$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Loss against the weight w from 0 to 4. The blue data-loss curve (w − 3)² is lowest, at 0, when w = 3. The dashed orange penalty 0.5w² rises from 0 at w = 0. The green total of the two is 4.5 at w = 3 and lowest at w = 2, where it equals 3.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M70 330 H580 M70 330 V40" stroke="#737373"/>
+      <path d="M70 326 V334" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="352" text-anchor="middle">0</text>
+      <path d="M195 326 V334" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="195" y="352" text-anchor="middle">1</text>
+      <path d="M320 326 V334" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="352" text-anchor="middle">2</text>
+      <path d="M445 326 V334" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="445" y="352" text-anchor="middle">3</text>
+      <path d="M570 326 V334" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="570" y="352" text-anchor="middle">4</text>
+      <path d="M66 330 H74" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="60" y="335" text-anchor="end">0</text>
+      <path d="M66 244.74 H74" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="60" y="249.737" text-anchor="end">3</text>
+      <path d="M66 159.47 H74" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="60" y="164.474" text-anchor="end">6</text>
+      <path d="M66 74.21 H74" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="60" y="79.2105" text-anchor="end">9</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="586" y="335">w</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="32">loss</text>
+      <polyline points="70 74.21 76.25 82.67 82.5 90.98 88.75 99.15 95 107.18 101.25 115.07 107.5 122.81 113.75 130.41 120 137.87 126.25 145.19 132.5 152.37 138.75 159.4 145 166.29 151.25 173.04 157.5 179.65 163.75 186.12 170 192.44 176.25 198.62 182.5 204.66 188.75 210.56 195 216.32 201.25 221.93 207.5 227.4 213.75 232.73 220 237.92 226.25 242.96 232.5 247.86 238.75 252.62 245 257.24 251.25 261.72 257.5 266.05 263.75 270.24 270 274.29 276.25 278.2 282.5 281.97 288.75 285.59 295 289.07 301.25 292.41 307.5 295.61 313.75 298.67 320 301.58 326.25 304.35 332.5 306.98 338.75 309.47 345 311.81 351.25 314.01 357.5 316.07 363.75 317.99 370 319.77 376.25 321.4 382.5 322.89 388.75 324.24 395 325.45 401.25 326.52 407.5 327.44 413.75 328.22 420 328.86 426.25 329.36 432.5 329.72 438.75 329.93 445 330 451.25 329.93 457.5 329.72 463.75 329.36 470 328.86 476.25 328.22 482.5 327.44 488.75 326.52 495 325.45 501.25 324.24 507.5 322.89 513.75 321.4 520 319.77 526.25 317.99 532.5 316.07 538.75 314.01 545 311.81 551.25 309.47 557.5 306.98 563.75 304.35 570 301.58" fill="#ffffff" fill-opacity="0" stroke="#3b82f6" stroke-width="2.5"/>
+      <polyline points="70 330 76.25 329.96 82.5 329.86 88.75 329.68 95 329.43 101.25 329.11 107.5 328.72 113.75 328.26 120 327.73 126.25 327.12 132.5 326.45 138.75 325.7 145 324.88 151.25 324 157.5 323.04 163.75 322.01 170 320.91 176.25 319.73 182.5 318.49 188.75 317.18 195 315.79 201.25 314.33 207.5 312.81 213.75 311.21 220 309.54 226.25 307.8 232.5 305.98 238.75 304.1 245 302.15 251.25 300.12 257.5 298.03 263.75 295.86 270 293.62 276.25 291.31 282.5 288.93 288.75 286.48 295 283.96 301.25 281.36 307.5 278.7 313.75 275.96 320 273.16 326.25 270.28 332.5 267.33 338.75 264.31 345 261.22 351.25 258.06 357.5 254.83 363.75 251.52 370 248.15 376.25 244.7 382.5 241.18 388.75 237.6 395 233.94 401.25 230.21 407.5 226.41 413.75 222.53 420 218.59 426.25 214.57 432.5 210.49 438.75 206.33 445 202.11 451.25 197.81 457.5 193.44 463.75 189 470 184.48 476.25 179.9 482.5 175.25 488.75 170.52 495 165.73 501.25 160.86 507.5 155.92 513.75 150.91 520 145.83 526.25 140.68 532.5 135.46 538.75 130.16 545 124.8 551.25 119.36 557.5 113.86 563.75 108.28 570 102.63" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="6 5"/>
+      <polyline points="70 74.21 76.25 82.63 82.5 90.84 88.75 98.83 95 106.61 101.25 114.18 107.5 121.53 113.75 128.67 120 135.6 126.25 142.31 132.5 148.82 138.75 155.1 145 161.18 151.25 167.04 157.5 172.69 163.75 178.12 170 183.35 176.25 188.36 182.5 193.15 188.75 197.74 195 202.11 201.25 206.26 207.5 210.21 213.75 213.94 220 217.45 226.25 220.76 232.5 223.85 238.75 226.72 245 229.39 251.25 231.84 257.5 234.08 263.75 236.1 270 237.92 276.25 239.51 282.5 240.9 288.75 242.07 295 243.03 301.25 243.78 307.5 244.31 313.75 244.63 320 244.74 326.25 244.63 332.5 244.31 338.75 243.78 345 243.03 351.25 242.07 357.5 240.9 363.75 239.51 370 237.92 376.25 236.1 382.5 234.08 388.75 231.84 395 229.39 401.25 226.72 407.5 223.85 413.75 220.76 420 217.45 426.25 213.94 432.5 210.21 438.75 206.26 445 202.11 451.25 197.74 457.5 193.15 463.75 188.36 470 183.35 476.25 178.12 482.5 172.69 488.75 167.04 495 161.18 501.25 155.1 507.5 148.82 513.75 142.31 520 135.6 526.25 128.67 532.5 121.53 538.75 114.18 545 106.61 551.25 98.83 557.5 90.84 563.75 82.63 570 74.21" fill="#ffffff" fill-opacity="0" stroke="#10b981" stroke-width="2.5"/>
+      <path d="M320 244.74 V330" stroke="#10b981" stroke-dasharray="4 4"/>
+      <circle cx="445" cy="330" r="5" fill="#3b82f6"/>
+      <circle cx="320" cy="244.74" r="5" fill="#10b981"/>
+      <circle cx="445" cy="202.11" r="4" fill="#10b981"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="445" y="290.211" fill="#3b82f6" text-anchor="middle">data loss lowest at w = 3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="230.737" fill="#10b981" text-anchor="middle">lowest total: 3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="457.5" y="220.105" fill="#10b981">total at w = 3 is 4.5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="101.25" y="64.5263" fill="#3b82f6">data loss (w − 3)²</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="463.75" y="162.316" fill="#f59e0b" text-anchor="end">penalty 0.5w²</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="513.75" y="85.5789" fill="#10b981" text-anchor="end">total</text>
+      </g></svg>
+      ```
+
+      It's tempting to think the penalty pushes the weight all the way to $0$, but it doesn't. The lowest point is where shrinking the weight further would add more data loss than it saves in penalty, which here is at $w=2$.
+    worked: |
+      Let's find the lowest point of the total loss $(w-3)^2+0.5w^2$ for our one-weight model, and check that the total there is lower than at $w=3$.
+
+      1. **Find the slope of the total.** The lowest point of a smooth curve is where its slope is zero. From the recap, the squared error $e^2$ has slope $2e$. Here $e=w-3$ rises exactly as fast as $w$, so the data loss has slope $2(w-3)$, and the penalty $0.5w^2$ has slope $0.5\times2w=w$. So the total has slope
+         $$2(w-3)+w.$$
+
+      2. **Set the slope to zero.** At the lowest point, the data loss's slope and the penalty's slope cancel. Collecting terms in $2(w-3)+w=0$ gives
+         $$3w-6=0,\ \text{so}\ w=2.$$
+
+      3. **Work out the total at $w=2$.** We add the data loss and the penalty.
+         $$(2-3)^2+0.5\times2^2=1+2=3.$$
+
+      4. **Compare with $w=3$.** At the old best weight, the data loss is $0$ but the penalty is not.
+         $$(3-3)^2+0.5\times3^2=0+4.5=4.5.$$
+
+      So the penalty moves the best weight from $3$ to $2$, where the total is $3$ instead of $4.5$. There, the data loss's slope $2(2-3)=-2$ and the penalty's slope $+2$ cancel. With any $\lambda$ in place of $0.5$, the slope is $2(w-3)+2\lambda w$. Setting it to zero gives $2w-6+2\lambda w=0$, so $2(1+\lambda)w=6$ and $w=3/(1+\lambda)$. So a larger $\lambda$ pulls the weight further towards $0$.
+    problems:
+      - rg-penalty-basics
+      - rgp-penalty-self-explain
+      - rgp-penalty-value-template
+      - rgp-total-loss
+      - rgp-best-w-template
+      - rgp-which-lower
+      - rgp-lambda-back
+      - rgp-robot-huge
+  - id: rg-weight-decay
+    title: "Shrink every weight on each update"
+    explain: |
+      ### What the penalty does to one update
+
+      Most models have too many weights to solve for the lowest point directly, as step 1 did. Instead, they're trained by gradient descent, which improves the weights in small updates. Each update moves a weight against the slope of the loss, scaled by a small number we choose called the learning rate $\eta$ (eta):
+
+      $$w_{\text{new}}=w-\eta\,\frac{\partial L}{\partial w}.$$
+
+      Here $\partial L/\partial w$ is the slope of $L$ as $w$ alone changes. The curly $\partial$ reminds us that the other weights are held still.
+
+      With a penalty, $L$ is the total loss, so its slope has two parts. The data part is the slope of the data loss. For one weight, the penalty is $\lambda w^2$, with slope $2\lambda w$. That slope has the same sign as $w$, so stepping against it always moves the weight towards $0$. The update becomes
+
+      $$w_{\text{new}}=w-\eta\Big(\frac{\partial L_{\text{data}}}{\partial w}+2\lambda w\Big).$$
+
+      Collecting the terms in $w$ gives
+
+      $$w_{\text{new}}=(1-2\eta\lambda)\,w-\eta\,\frac{\partial L_{\text{data}}}{\partial w}.$$
+
+      This is called **weight decay**. On every update, each weight is multiplied by $1-2\eta\lambda$ and the usual data step, worked out at the same old weight, is added on. With $\eta=0.1$ and $\lambda=0.5$, that number is $0.9$, so every update takes away $10\%$ of the weight on top of the data step.
+
+      ### Two updates on our example
+
+      For our example $x=1$, $y=3$, the data slope is $2(w-3)$. The picture starts at $w=3$, the best weight without a penalty. There the data slope is $0$, so only the decay acts and the weight shrinks to $2.7$. Both parts of an update use the weight from before the update. From $2.7$, the decay takes off $10\%$, giving $2.43$. At $2.7$ the prediction is below the target, so the data step $-0.1\times2(2.7-3)=0.06$ pushes it back up, to $2.49$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="A number line for the weight w from 2 to 3. Update 1 starts at w = 3, where the data slope is 0, and an orange decay arrow multiplies the weight by 0.9, taking it to 2.7. Update 2 starts at 2.7: an orange decay arrow takes it to 2.43 and a short blue data-step arrow pushes it back up by 0.06 to 2.49. A green dot at 2 marks where the weight settles.">
+      <defs><marker id="rg2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker><marker id="rg2-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M50 250 H590" stroke="#737373"/>
+      <path d="M95 245 V255" stroke="#737373"/>
+      <path d="M288.5 245 V255" stroke="#737373"/>
+      <path d="M315.5 245 V255" stroke="#737373"/>
+      <path d="M410 245 V255" stroke="#737373"/>
+      <path d="M545 245 V255" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="95" y="274" text-anchor="middle">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="410" y="274" text-anchor="middle">2.7</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="545" y="274" text-anchor="middle">3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="285.5" y="274" text-anchor="end">2.43</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="318.5" y="274" text-anchor="start">2.49</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="598" y="255">w</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="50" y="50">Update 1, from w = 3: the data slope is 0, so only the decay acts</text>
+      <path d="M545 80 L410 80" stroke="#f59e0b" stroke-width="3" marker-end="url(#rg2-amber)"/>
+      <circle cx="545" cy="80" r="4" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="477.5" y="104" fill="#f59e0b" text-anchor="middle">decay × 0.9: 3 → 2.7</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="50" y="140">Update 2, from w = 2.7: the decay pulls in, the data step pushes back</text>
+      <path d="M410 170 L288.5 170" stroke="#f59e0b" stroke-width="3" marker-end="url(#rg2-amber)"/>
+      <path d="M288.5 184 L315.5 184" stroke="#3b82f6" stroke-width="3" marker-end="url(#rg2-blue)"/>
+      <circle cx="410" cy="170" r="4" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="432.5" y="175" fill="#f59e0b">decay × 0.9: 2.7 → 2.43</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="280.5" y="189" fill="#3b82f6" text-anchor="end">data step + 0.06: 2.43 → 2.49</text>
+      <circle cx="95" cy="250" r="5" fill="#10b981"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="103" y="238" fill="#10b981">settles at 2</text>
+      </g></svg>
+      ```
+
+      The weight stops moving where the two pulls balance. At $w=2$, the data slope is $-2$ and the penalty slope is $+2$, so the update leaves it there. That is the lowest point of the total loss from step 1.
+
+      Be careful when you set weight decay in code. Many training libraries, such as PyTorch, take a setting $d$ and use the update $(1-\eta d)\,w$, so to get our $\lambda$ you set $d=2\lambda$.
+    worked: |
+      Training often starts from a small weight, so let's run three updates on our example from $w=0$, with $\eta=0.1$ and $\lambda=0.5$. The update is $w_{\text{new}}=0.9w-0.1\times2(w-3)$.
+
+      1. **Simplify the update.** Multiplying out the data step gives $0.9w-0.2w+0.6$, so each update becomes one short calculation.
+         $$w_{\text{new}}=0.7w+0.6.$$
+
+      2. **First update, from $w=0$.** There's nothing yet for the decay to shrink, so only the data step acts.
+         $$0.7\times0+0.6=0.6.$$
+
+      3. **Second update, from $w=0.6$.** The data step adds $-0.1\times2(0.6-3)=0.48$, while the decay takes off only $0.06$.
+         $$0.7\times0.6+0.6=1.02.$$
+
+      4. **Third update, from $w=1.02$.** Each update moves the weight less than the one before.
+         $$0.7\times1.02+0.6=1.314.$$
+
+      The weight's distance from $2$ goes $2$, $1.4$, $0.98$, $0.686$, shrinking by a factor of $0.7$ each update, because $0.7w+0.6-2=0.7(w-2)$. So the weight climbs towards $2$ and settles there, below the $3$ it would reach without the penalty.
+    problems:
+      - rg-weight-decay-basics
+      - rgp-decay-self-explain
+      - rgp-factor-template
+      - rgp-one-step-template
+      - rgp-pure-decay
+      - rgp-decay-vs-lr
+      - rgp-settle
+      - rgp-decay-setting
+  - id: rg-strength
+    title: "Choose how strong the penalty is"
+    explain: |
+      ### Too little, too much
+
+      The penalty strength $\lambda$ is a **hyperparameter**, a setting that training doesn't learn, so we choose it ourselves. Too small a $\lambda$ changes little, and the model can still copy its training examples' quirks. Too large a $\lambda$ pushes every weight close to $0$, so the model can't follow even the real pattern and underfits.
+
+      ### Choosing it with validation error
+
+      We choose $\lambda$ the way the overfitting lesson chose between models. We train once for each of several values of $\lambda$, measure each trained model's error on the validation examples, and keep the $\lambda$ with the lowest validation error. We rarely know even roughly how big $\lambda$ should be, so we space the tries by factors of ten, such as $0.01$, $0.1$, $1$ and $10$. The test examples stay aside until the very end, for one final score.
+
+      Be careful not to choose $\lambda$ by training loss. It is always lowest at $\lambda=0$, because the penalty only worsens the training fit.
+
+      ### Which weights to penalize
+
+      Many models also have a **bias** $b$, an extra number added to every prediction, as in $\hat y=wx+b$. We usually leave $b$ out of the penalty. The bias moves every prediction by the same amount, so it can't make predictions swing between nearby examples. Shrinking it wouldn't make the model any smoother, so it would only add error.
+
+      ### Other ways to regularize
+
+      Penalties aren't the only way to regularize. Training usually starts from small weights, so stopping early, as in the overfitting lesson, also regularizes. It keeps the weights from growing far enough to copy the quirks.
+
+      Neural networks are models built from layers of simple **units**, each passing a number on to the next layer. They often use **dropout**. On each training update, dropout sets each unit's output to $0$ with some probability, such as $0.5$, and scales up the outputs it keeps so their average stays the same. With $0.5$, an output of $3$ becomes $0$ or $6$, which averages $3$. The network can't rely on any one unit, so it spreads what it learns across many. Dropout is switched off when the trained network makes predictions.
+    worked: |
+      Let's choose $\lambda$ for our example. Say the true pattern is $y=2x$ and only our training target picked up noise, so a fair validation example is $x=2$, $y=4$. There the prediction is $2w$, and its squared error is $(2w-4)^2$. Real validation examples are noisy too, but we've kept this one clean. We also try $\lambda=0$, $0.5$, $2$ and $5$ instead of factors of ten, so the numbers stay small.
+
+      1. **Find the trained weight.** Training finds the lowest point of the total loss, which step 1 found at $w=3/(1+\lambda)$. For $\lambda=2$, that is
+         $$w=\frac{3}{1+2}=1.$$
+
+      2. **Work out the training loss.** For $\lambda=2$, the prediction on the training example is $1$ against a target of $3$.
+         $$(1-3)^2=4.$$
+
+      3. **Work out the validation loss.** For $\lambda=2$, the prediction on the validation example is $2\times1=2$ against a target of $4$.
+         $$(2\times1-4)^2=4.$$
+
+      4. **Fill in the other rows and compare.** Doing the same for $\lambda=0$, $0.5$ and $5$ gives the table below, which shows the data loss on each example, without the penalty. We look for the lowest validation loss.
+         $$\min(4,\ 0,\ 4,\ 9)=0.$$
+
+      | $\lambda$ | weight $w$ | training loss | validation loss |
+      | --- | --- | --- | --- |
+      | $0$ | $3$ | $0$ | $4$ |
+      | $0.5$ | $2$ | $1$ | $0$ |
+      | $2$ | $1$ | $4$ | $4$ |
+      | $5$ | $0.5$ | $6.25$ | $9$ |
+
+      With $\lambda=0$, the training loss is $0$ but the validation loss is $4$, because the model has copied the noise in its one training example. As $\lambda$ grows, the training loss keeps rising, but the validation loss first falls and then rises again. With $\lambda=2$, the training loss is high too, a sign of underfitting. We keep $\lambda=0.5$, the value with the lowest validation loss. It reaches exactly $0$ only because our validation example is clean.
+    problems:
+      - rg-strength-basics
+      - rgp-strength-self-explain
+      - rgp-diagnose-large
+      - rgp-val-loss-template
+      - rgp-bias
+      - rgp-early-stop
+      - rgp-dropout
+      - rgp-still-falling
+      - rgp-robot-strength
+  - id: rg-l1
+    title: "Penalize weights by their absolute size"
+    explain: |
+      ### The L1 penalty
+
+      The **L1 penalty** charges each weight's absolute size instead of its square:
+
+      $$L_{\text{total}}=L_{\text{data}}+\lambda\sum_j |w_j|.$$
+
+      Both names come from ways of measuring the size of a list of weights. The L1 size adds up the $|w_j|$. The L2 size treats the weights as the coordinates of a point and measures its straight-line distance from $0$, whose square is $\sum_j w_j^2$.
+
+      The loss functions recap tells us how the two penalties pull. The L2 penalty's slope $2\lambda w$ is proportional to the weight, so each update takes away the same fraction, $2\eta\lambda$, of whatever weight is left. The L1 penalty's slope is $+\lambda$ for every positive weight and $-\lambda$ for every negative one, so each update moves the weight the same distance, $\eta\lambda$, towards $0$, however small it already is.
+
+      ### Shrinking towards zero, update by update
+
+      Say a model has an input that has nothing to do with the target, such as a random number, and its weight happens to start at $1$. The data doesn't pull on that weight, so only the penalty acts. The picture follows it with $\eta=0.1$. We use $\lambda=0.5$ for L2 and $\lambda=2$ for L1, which both move our running example's weight from $3$ to $2$, so the two penalties are equally strong there. Under L2, in orange, the weight is multiplied by $0.9$ each update and is still $0.53$ after six. It gets ever closer to $0$ but never reaches it. Under L1, in red, it loses $0.2$ each update and reaches exactly $0$ after five. If an update would carry a weight past $0$, it's set to exactly $0$ instead, because on the other side L1 would only pull it back.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" aria-label="A weight starting at 1, followed for six updates with no pull from the data and learning rate 0.1. Under L2 with λ = 0.5, in orange, it is multiplied by 0.9 each update: 0.9, 0.81, 0.73, 0.66, 0.59 and 0.53. Under L1 with λ = 2, in red, it falls by 0.2 each update: 0.8, 0.6, 0.4, 0.2, then 0 at update 5, where it stays.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M80 50 V300 H590" stroke="#737373" fill="#ffffff" fill-opacity="0"/>
+      <path d="M80 296 V304" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="322" text-anchor="middle">0</text>
+      <path d="M160 296 V304" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="160" y="322" text-anchor="middle">1</text>
+      <path d="M240 296 V304" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="240" y="322" text-anchor="middle">2</text>
+      <path d="M320 296 V304" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="322" text-anchor="middle">3</text>
+      <path d="M400 296 V304" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="400" y="322" text-anchor="middle">4</text>
+      <path d="M480 296 V304" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="480" y="322" text-anchor="middle">5</text>
+      <path d="M560 296 V304" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560" y="322" text-anchor="middle">6</text>
+      <path d="M76 300 H84" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="305" text-anchor="end">0</text>
+      <path d="M76 185 H84" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="190" text-anchor="end">0.5</text>
+      <path d="M76 70 H84" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="75" text-anchor="end">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="346" fill="#737373" text-anchor="middle">update</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="40">weight w</text>
+      <polyline points="80 70 160 93 240 113.7 320 132.33 400 149.1 480 164.19 560 177.77" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="2.5"/>
+      <polyline points="80 70 160 116 240 162 320 208 400 254 480 300 560 300" fill="#ffffff" fill-opacity="0" stroke="#ef4444" stroke-width="2.5"/>
+      <circle cx="80" cy="70" r="4" fill="#f59e0b"/>
+      <circle cx="80" cy="70" r="4" fill="#ef4444"/>
+      <circle cx="160" cy="93" r="4" fill="#f59e0b"/>
+      <circle cx="160" cy="116" r="4" fill="#ef4444"/>
+      <circle cx="240" cy="113.7" r="4" fill="#f59e0b"/>
+      <circle cx="240" cy="162" r="4" fill="#ef4444"/>
+      <circle cx="320" cy="132.33" r="4" fill="#f59e0b"/>
+      <circle cx="320" cy="208" r="4" fill="#ef4444"/>
+      <circle cx="400" cy="149.1" r="4" fill="#f59e0b"/>
+      <circle cx="400" cy="254" r="4" fill="#ef4444"/>
+      <circle cx="480" cy="164.19" r="4" fill="#f59e0b"/>
+      <circle cx="480" cy="300" r="4" fill="#ef4444"/>
+      <circle cx="560" cy="177.77" r="4" fill="#f59e0b"/>
+      <circle cx="560" cy="300" r="4" fill="#ef4444"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="336" y="111.4" fill="#f59e0b">L2: × 0.9 each update</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560" y="202.1" fill="#f59e0b" text-anchor="end">0.53 after update 6</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="310" y="232" fill="#ef4444" text-anchor="end">L1: − 0.2 each update</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="580" y="288" fill="#ef4444" text-anchor="end">0 from update 5</text>
+      </g></svg>
+      ```
+
+      So L1 sets weights that don't help enough to exactly $0$, and the worked example shows what "enough" means. A weight of $0$ means the model ignores that input, so L1 also tells us which inputs the model can do without. L2 makes weights small but leaves almost all of them nonzero.
+
+      Neither penalty is better in general. L1 suits problems where we expect only a few inputs to matter. L2 is the usual default, and it's the penalty that weight decay comes from.
+    worked: |
+      Let's compare the penalties on two one-weight problems. The first is our running example, where the data wants $w=3$. The second has one training example $x=1$, $y=0.5$, so the data wants $w=0.5$. We use L1 with $\lambda=2$ and L2 with $\lambda=0.5$.
+
+      1. **L1 on our example.** For a positive weight, the penalty $2|w|$ has slope $2$, so the slope of the total is $2(w-3)+2$. Setting it to zero gives
+         $$2(w-3)+2=0,\ \text{so}\ w=2.$$
+
+      2. **L2 on the second problem.** The total $(w-0.5)^2+0.5w^2$ has slope $2(w-0.5)+w=3w-1$, which is zero at
+         $$w=\frac{1}{3}.$$
+
+      3. **L1 on the second problem, for a positive weight.** The slope of $(w-0.5)^2+2|w|$ is positive for every positive $w$, so the total keeps falling as $w$ comes down towards $0$.
+         $$2(w-0.5)+2=2w+1>0.$$
+
+      4. **L1 for a negative weight.** Now the penalty's slope is $-2$, and the total's slope is negative for every negative $w$, so the total keeps falling as $w$ rises towards $0$.
+         $$2(w-0.5)-2=2w-3<0.$$
+
+      On our example, L1 and L2 both give $w=2$. On the second problem, the L1 total is lowest at exactly $w=0$, the corner of $|w|$. A corner has no single slope, so a lowest point there never shows up as a zero slope. L2 shrinks this weight to $1/3$ but keeps it, while L1 switches it off.
+
+      In general, just right of $0$ the total's slope is the data slope plus $\lambda$, and just left of $0$ it's the data slope minus $\lambda$. If the data slope at $w=0$ is smaller than $\lambda$ in size, the total rises on both sides, so L1 keeps the weight at $0$. Here the data slope is $2(0-0.5)=-1$, smaller than $2$. In our running example it is $2(0-3)=-6$, bigger than $2$ in size, so that weight survives.
+    problems:
+      - rg-l1-basics
+      - rgp-l1-self-explain
+      - rgp-l1-steps-template
+      - rgp-which-penalty
+      - rgp-l1-best-template
+      - rgp-l1-zero
+      - rgp-l1-sensor
+final: rg-explain-decay
+summary: |
+  - Regularization changes training so that a model fits its training examples less closely and does better on new ones. The L2 penalty adds $\lambda\sum_j w_j^2$ to the loss, so each weight settles where shrinking it further would cost more data loss than it saves.
+  - In gradient descent, the L2 penalty becomes weight decay. Every update first multiplies each weight by $1-2\eta\lambda$ and then takes the usual data step.
+  - We choose $\lambda$ by validation error, because too small a value still overfits and too large a value underfits. We usually leave the bias out of the penalty.
+  - Stopping early and dropout also regularize. Dropout switches off random units of a neural network during training.
+  - The L1 penalty $\lambda\sum_j|w_j|$ moves each weight a fixed distance towards $0$ on every update, so it sets weights that don't help enough to exactly $0$.
+
+  **Next:** The generalization lesson asks what it means for a model to work on examples it has never seen, and when that can fail.

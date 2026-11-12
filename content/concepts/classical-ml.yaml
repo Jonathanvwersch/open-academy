@@ -133,7 +133,7 @@ concepts:
     prereqs: [{ id: overfitting }, { id: loss-functions }]
     objectives:
       - { text: "Explain how weight decay changes the update", dimension: math }
-    status: stub
+    status: authored
   - id: generalization
     title: Generalization
     description: What it means for a model to work on unseen data; distribution assumptions.
