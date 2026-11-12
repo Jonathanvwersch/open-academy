@@ -1179,6 +1179,26 @@ test('Saturday allocates a 300-minute lab with a capped review warm-up and refle
   expect(plan.activities.some((activity) => activity.kind === 'reflect')).toBe(true);
 });
 
+test('Saturday skips a stub project and falls back to the latest available project', () => {
+  const plan = planSession(emptyState(), content, now, 300, 'saturday');
+  expect(plan.activities.find((activity) => activity.kind === 'lab')?.projectId).toBe(
+    'linreg-numpy',
+  );
+});
+
+test('Saturday omits labs when no available project has verifier tests', () => {
+  const projects = content.projects.map((project) =>
+    project.id === 'linreg-numpy' ? { ...project, tests: [] } : project,
+  );
+  const testlessContent: ContentIndex = {
+    ...content,
+    projects,
+    projectsById: new Map(projects.map((project) => [project.id, project])),
+  };
+  const plan = planSession(emptyState(), testlessContent, now, 300, 'saturday');
+  expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(false);
+});
+
 test('Saturday skips a completed project when no extension exercise exists', () => {
   const state = emptyState();
   state.currentProjectId = 'linreg-numpy';

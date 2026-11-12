@@ -288,6 +288,7 @@ export interface ProjectPayload {
     title: string;
     objective: string;
     background: string;
+    status: 'authored' | 'stub';
     tasks: Array<{ id: string; title: string; md: string }>;
     acceptance: string[];
   };

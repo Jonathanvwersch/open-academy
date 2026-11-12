@@ -405,6 +405,39 @@ test('Home offers alternative lessons and starts the selected lesson', async ({ 
   ).toBe(true);
 });
 
+test('stub projects have no lab link or results form', async ({ page }) => {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'saturday',
+      plannedMinutes: 120,
+      status: 'active',
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create stub project session');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind: 'lab',
+    projectId: 'optimization-project',
+    exerciseIds: [],
+    plannedMinutes: 50,
+    status: 'in_progress',
+  });
+
+  await page.goto(`/session/${session.id}`);
+  await expect(page.getByRole('heading', { name: 'Optimization playground' }).last()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open project' })).toHaveCount(0);
+
+  await page.goto('/projects/optimization-project');
+  await expect(page.getByRole('heading', { name: 'Optimization playground' })).toBeVisible();
+  await expect(page.getByText('Coming soon', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Submit results' })).toHaveCount(0);
+  await expect(page.getByLabel('Upload results.json')).toHaveCount(0);
+});
+
 test('unknown projects show the unavailable route message', async ({ page }) => {
   await page.goto('/projects/unknown-project');
   await expect(page.getByRole('alert')).toHaveText('Project unavailable.');

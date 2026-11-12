@@ -675,15 +675,24 @@ function planSaturday(
     });
   }
   const projectMinutes = Math.max(0, remainingMinutes - (paperMinutes >= 30 ? paperMinutes : 0));
-  const currentProject =
+  const availableProjects = content.projects.filter(
+    (project) => project.status === 'authored' && project.tests.length > 0,
+  );
+  const preferredProjectId =
     state.currentProjectId ??
     content.curriculum?.weeks.find((entry) => entry.week === week)?.project ??
-    content.projects.find(
-      (project) =>
-        !state.projectProgress.some(
-          (item) => item.projectId === project.id && item.status === 'completed',
-        ),
-    )?.id;
+    undefined;
+  const currentProject =
+    availableProjects.find((project) => project.id === preferredProjectId)?.id ??
+    availableProjects
+      .filter(
+        (project) =>
+          project.week <= week &&
+          !state.projectProgress.some(
+            (item) => item.projectId === project.id && item.status === 'completed',
+          ),
+      )
+      .sort((left, right) => right.week - left.week || left.id.localeCompare(right.id))[0]?.id;
   const projectDone =
     currentProject &&
     state.projectProgress.some(

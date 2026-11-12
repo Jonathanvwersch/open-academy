@@ -359,7 +359,7 @@ export function buildCourseWeeks(
           ? {
               id: project.id,
               title: project.title,
-              available: project.status === 'authored',
+              available: project.status === 'authored' && project.tests.length > 0,
               status: projectStatuses.get(project.id) ?? 'not_started',
             }
           : null,

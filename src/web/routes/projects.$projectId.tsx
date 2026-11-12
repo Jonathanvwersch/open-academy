@@ -56,6 +56,18 @@ function ProjectPage() {
   }
 
   const project = data.project;
+  if (project.status === 'stub' || data.checksTotal === 0) {
+    return (
+      <section className="space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{project.title}</h1>
+          <p className="text-muted-foreground">{project.objective}</p>
+        </div>
+        <p className="text-sm text-muted-foreground">Coming soon</p>
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-6">
       <div className="space-y-2">

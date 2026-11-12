@@ -799,7 +799,10 @@ function SessionPage() {
                     ? 'Take a moment to reflect on what you learned and what remains unclear.'
                     : 'No eligible exercise is available for this activity yet.'}
             </p>
-            {activity.kind === 'lab' && activity.projectId ? (
+            {activity.kind === 'lab' &&
+            activity.projectId &&
+            labProjectQuery.data?.project.status === 'authored' &&
+            labProjectQuery.data.checksTotal > 0 ? (
               <Button variant="outline" asChild>
                 <Link to="/projects/$projectId" params={{ projectId: activity.projectId }}>
                   Open project

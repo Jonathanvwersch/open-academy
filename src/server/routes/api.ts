@@ -1821,6 +1821,7 @@ export function createApiRoutes(deps: {
         tasks: project.tasks,
         acceptance: project.acceptance,
         reflection: project.reflection,
+        status: project.status,
       },
       checksTotal: project.tests.length,
       submitted: Boolean(submissions[0]),
