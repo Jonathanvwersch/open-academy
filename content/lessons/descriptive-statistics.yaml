@@ -90,7 +90,7 @@ knowledge_points:
 
       We time 100 independent grasps on varied objects and positions, whether they hold the object or drop it. Suppose step 1's calculation on all 100 gives mean 4 seconds and standard deviation 2 seconds. How much might another experiment's average differ?
 
-      Imagine running the 25-grasp experiment five separate times. We call each run's group of grasps a **batch**, with its own average.
+      Imagine running a 25-grasp experiment five separate times. We call each run's group of grasps a **batch**, with its own average.
 
       A **standard error**, or **SE**, measures how much an estimate varies across repeats of the same size. We made up these averages to match the rule below. Repeating with 100-grasp batches puts their averages closer together.
 
