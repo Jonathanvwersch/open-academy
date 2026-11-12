@@ -281,6 +281,46 @@ test('Course tutor sidebar fills at least 90 percent of the viewport height', as
   ).toBeGreaterThanOrEqual(viewportHeight * 0.9);
 });
 
+test('restored tutor sidebar loads while the tutor flag is pending', async ({ page }) => {
+  let startTodayRequest!: () => void;
+  let releaseTodayResponse!: () => void;
+  const todayRequestStarted = new Promise<void>((resolve) => {
+    startTodayRequest = resolve;
+  });
+  const todayResponseGate = new Promise<void>((resolve) => {
+    releaseTodayResponse = resolve;
+  });
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.removeItem('academy.tutor.thread');
+    localStorage.setItem('academy.tutor.open', 'true');
+  });
+  await page.route('**/api/today', async (route) => {
+    startTodayRequest();
+    await todayResponseGate;
+    await route.continue();
+  });
+
+  const navigation = page.goto('/course');
+  await todayRequestStarted;
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const unavailable = tutor.getByText('Tutor is unavailable.', { exact: true });
+  try {
+    await expect(tutor).toBeVisible();
+    await expect(unavailable).toHaveCount(0);
+    await expect(tutor.getByRole('status', { name: 'Loading tutor' })).toBeVisible();
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await expect(unavailable).toHaveCount(0);
+  } finally {
+    releaseTodayResponse();
+  }
+
+  await navigation;
+  await expect(tutor.getByRole('heading', { name: 'Chats' })).toBeVisible();
+  await expect(tutor.getByRole('button', { name: 'New chat' }).first()).toBeVisible();
+});
+
 test('tutor sidebar defaults to 448px when width storage is empty', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(() => {
