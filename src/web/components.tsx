@@ -1,5 +1,5 @@
 import { Check, Info, X } from 'lucide-react';
-import type { FormEvent, KeyboardEvent, ReactNode, RefObject } from 'react';
+import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react';
 import * as React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
@@ -478,6 +478,26 @@ export function ExerciseForm({
   );
   const inputsLocked = locked || disabled || loading;
   useEffect(() => {
+    if (!primaryAction) return;
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key !== 'Enter' ||
+        event.shiftKey ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      if (!primaryAction.loading && !primaryAction.disabled) primaryAction.onClick();
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown, true);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown, true);
+  }, [primaryAction]);
+  useEffect(() => {
     if (answerOptions) {
       if (exercise.type === 'mc') {
         setSelected(answerOptions.selected);
@@ -559,12 +579,13 @@ export function ExerciseForm({
       onSubmit(value);
     }
   };
-  const handleKeyDown = (event: KeyboardEvent<HTMLFormElement>) => {
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLFormElement>) => {
     if (
       event.key === 'Enter' &&
       !event.shiftKey &&
       (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
     ) {
+      if (primaryAction && event.target instanceof HTMLTextAreaElement) return;
       event.preventDefault();
       if (primaryAction) {
         if (!primaryAction.loading && !primaryAction.disabled) primaryAction.onClick();

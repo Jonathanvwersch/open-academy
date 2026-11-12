@@ -34,7 +34,10 @@ test.beforeEach(async () => {
   await db.$client.end();
 });
 
-async function createReviewSession() {
+async function createReviewSession(
+  exerciseIds = ['vectors-magnitude'],
+  nextExerciseId = 'vectors-component-sum',
+) {
   const db = createDb(env.TEST_DATABASE_URL);
   const [user] = await db.select({ id: users.id }).from(users).limit(1);
   if (!user) throw new Error('Missing E2E learner');
@@ -55,7 +58,7 @@ async function createReviewSession() {
       idx: 0,
       kind: 'review',
       conceptId: 'vectors',
-      exerciseIds: ['vectors-magnitude'],
+      exerciseIds,
       plannedMinutes: 10,
       status: 'in_progress',
     },
@@ -64,7 +67,7 @@ async function createReviewSession() {
       idx: 1,
       kind: 'practice',
       conceptId: 'vectors',
-      exerciseIds: ['vectors-component-sum'],
+      exerciseIds: [nextExerciseId],
       plannedMinutes: 10,
       status: 'planned',
     },
@@ -104,6 +107,28 @@ test('Enter after a correct Review answer continues without resubmitting', async
   await expect(page.getByText(/Activity \d+ of \d+ today/)).toHaveCount(0);
   await expect(page.getByTestId('exercise-prompt')).toContainText('sum of the coordinates');
   await expect(page.getByText('Not quite', { exact: true })).toHaveCount(0);
+  expect(answerPosts).toBe(1);
+});
+
+test('Enter outside a textarea continues after multiple-choice feedback', async ({ page }) => {
+  const sessionId = await createReviewSession(['vectors-fixture-1-basics']);
+  let answerPosts = 0;
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/attempts') && request.method() === 'POST') {
+      answerPosts += 1;
+    }
+  });
+
+  await page.goto(`/session/${sessionId}`);
+  await page.getByRole('radio').first().click();
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByRole('status')).toBeVisible();
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await page.keyboard.press('Enter');
+
+  await expect(page.getByTestId('exercise-prompt')).toContainText('sum of the coordinates');
   expect(answerPosts).toBe(1);
 });
 
