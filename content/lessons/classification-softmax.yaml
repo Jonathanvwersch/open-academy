@@ -218,12 +218,12 @@ knowledge_points:
          $$z_{\text{cup}}=2-0.67=1.33,\qquad z_{\text{ball}}=1+0.76=1.76,\qquad z_{\text{box}}=0-0.09=-0.09$$
 
       3. **Recompute the ball's probability.** We raise $e$ to each new score and divide by the new total.
-         $$p_{\text{ball}}=\frac{e^{1.76}}{e^{1.33}+e^{1.76}+e^{-0.09}}\approx\frac{5.81}{3.78+5.81+0.91}\approx0.55$$
+         $$p_{\text{ball}}=\frac{e^{1.76}}{e^{1.33}+e^{1.76}+e^{-0.09}}\approx\frac{5.81}{3.78+5.81+0.91}\approx0.553$$
 
       4. **Find the new loss.** Minus the natural log of the new probability.
-         $$L=-\ln0.55\approx0.60$$
+         $$L=-\ln0.553\approx0.59$$
 
-      In one step the loss fell from $1.41$ to $0.60$, and the ball's $5.81$ now beats the cup's $3.78$, so the model would predict ball.
+      In one step the loss fell from $1.41$ to $0.59$, and the ball's $5.81$ now beats the cup's $3.78$, so the model would predict ball.
     problems:
       [
         sm-grad-basics,
