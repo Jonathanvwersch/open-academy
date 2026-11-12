@@ -359,7 +359,7 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: What does KL divergence from actual probabilities p to forecast probabilities q measure?
+    prompt: What does KL divergence $\mathrm{KL}(p\Vert q)$, with actual probabilities p and forecast probabilities q, measure?
     options:
       - id: a
         text: The average surprise that remains even when q equals p.
@@ -442,7 +442,7 @@ exercises:
     prompt: Let $a=(1,0)$ and $b=(1/2,1/2)$. Which statement is correct?
     options:
       - id: a
-        text: KL from a to b is 1 bit, while KL from b to a is infinite.
+        text: $\mathrm{KL}(a\Vert b)$ is 1 bit, while $\mathrm{KL}(b\Vert a)$ is infinite.
         correct: true
         feedback: Here a and b name fixed distributions. When b is actual and a is the forecast, the second outcome can occur but receives forecast probability zero.
       - id: b
@@ -450,7 +450,7 @@ exercises:
         correct: false
         feedback: Changing direction changes which outcomes can occur and how they are scored.
       - id: c
-        text: KL from a to b is infinite, while KL from b to a is 1 bit.
+        text: $\mathrm{KL}(a\Vert b)$ is infinite, while $\mathrm{KL}(b\Vert a)$ is 1 bit.
         correct: false
         feedback: The infinite direction is the one whose prediction rules out a possible outcome.
     solution:
