@@ -80,7 +80,7 @@ test('multiple choice uses a concise fallback when a wrong option has no feedbac
   expect((await gradeExercise(exercise, wrong.id)).feedback).toBe(
     MULTIPLE_CHOICE_FALLBACK_FEEDBACK,
   );
-  expect(MULTIPLE_CHOICE_FALLBACK_FEEDBACK).toBe('Not quite.');
+  expect(MULTIPLE_CHOICE_FALLBACK_FEEDBACK).toBe('Review the options and try again.');
 });
 
 test('numeric accepts fractions, scientific notation, tolerance, and common wrong answers', async () => {

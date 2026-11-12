@@ -4,7 +4,7 @@ import type { GradeResult } from './types.js';
 
 type MultipleChoiceExercise = Extract<Exercise, { type: 'mc' }>;
 
-export const MULTIPLE_CHOICE_FALLBACK_FEEDBACK = 'Not quite.';
+export const MULTIPLE_CHOICE_FALLBACK_FEEDBACK = 'Review the options and try again.';
 
 export function gradeMultipleChoice(
   exercise: MultipleChoiceExercise,
