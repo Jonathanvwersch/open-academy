@@ -307,7 +307,9 @@ export function FeedbackPanel({
   const title =
     xp !== undefined && Number(result.correct) >= 1 ? `${baseTitle} · +${xp} XP` : baseTitle;
   const rawFeedback = typeof result.feedback === 'string' ? result.feedback.trim() : '';
-  const titlePrefix = baseTitle ? new RegExp(`^${baseTitle}\\s*[.!,:;–—-]*(?=\\s|$)`, 'i') : null;
+  const titlePrefix = baseTitle
+    ? new RegExp(`^${baseTitle}\\s*(?:[.!,:;–—-]+(?=\\s|$)|$)`, 'i')
+    : null;
   const feedbackWithoutTitle = titlePrefix ? rawFeedback.replace(titlePrefix, '') : rawFeedback;
   const feedback =
     feedbackWithoutTitle === rawFeedback

@@ -120,6 +120,16 @@ test('does not strip a title word in the middle of feedback', () => {
   expect(html).toContain('This is not quite the MAE.');
 });
 
+test('does not strip a title word that starts a sentence without punctuation', () => {
+  const html = renderFeedback({
+    correct: 1,
+    feedback:
+      'Correct arithmetic cannot remove disagreement between a subset and the whole dataset.',
+  });
+
+  expect(html).toContain('Correct arithmetic cannot remove disagreement');
+});
+
 test('Almost feedback with a partial rubric item tells the learner what to add', () => {
   const html = renderFeedback({
     correct: 0.5,
