@@ -3,9 +3,9 @@ version: 1
 objective: "**Goal:** compute convolutional layer output shapes and explain shared filters, pooling and receptive fields."
 recap:
   - concept: images-as-tensors
-    text: "A grayscale image is an H×W grid of brightnesses indexed img[r,c] from zero. A colour image in CHW layout has shape (3,H,W), with separate grids for red, green and blue."
+    text: "A grayscale image is an $H\\times W$ grid of brightnesses indexed `img[r, c]` from zero. A colour image in CHW layout has shape $(3, H, W)$, with separate grids for red, green and blue."
   - concept: mlp-forward-pass
-    text: "A fully connected neuron takes a weighted sum of every input plus a bias, then applies ReLU. A layer with d_in inputs and d_out neurons has d_out·d_in + d_out parameters."
+    text: "A fully connected neuron takes a weighted sum of every input plus a bias, then applies ReLU. A layer with $d_\\text{in}$ inputs and $d_\\text{out}$ neurons has $d_\\text{out}d_\\text{in}+d_\\text{out}$ parameters."
 where_this_fits: |
   ### What is a convolution?
 
