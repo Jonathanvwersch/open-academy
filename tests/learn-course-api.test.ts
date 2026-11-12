@@ -381,6 +381,48 @@ test('Course project status reflects the learner project-progress row', async ()
   });
 });
 
+test('empty project evidence and out-of-range metrics cannot complete a project', async () => {
+  const results = {
+    project: 'linreg-numpy',
+    version: 1,
+    tests: [],
+    metrics: { val_mse: 999, weight_error: 999 },
+    generated_at: '2026-11-14T12:00:00.000Z',
+  };
+  const submissionResponse = await app.request('/api/projects/linreg-numpy/results', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
+    body: JSON.stringify(results),
+  });
+  expect(submissionResponse.status).toBe(201);
+  const submission = await submissionResponse.json();
+  expect(submission.evidence).toContain('No verifier tests were reported');
+  expect(submission.evidence).toContain('Validation MSE');
+  expect(submission.evidence).toContain('Max |w - w_true|');
+
+  const projectResponse = await get('/projects/linreg-numpy');
+  expect(projectResponse.status).toBe(200);
+  const project = await projectResponse.json();
+  expect(project.status).toBe('in_progress');
+  expect(project.latestSubmission.results).toMatchObject({
+    tests: [],
+    metrics: results.metrics,
+  });
+
+  const failingMetricResponse = await app.request('/api/projects/linreg-numpy/results', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
+    body: JSON.stringify({
+      ...results,
+      tests: [{ id: 'test_predict_shape_and_values', passed: true, message: 'passed' }],
+    }),
+  });
+  expect(failingMetricResponse.status).toBe(201);
+  expect((await failingMetricResponse.json()).evidence).toContain('Validation MSE');
+  const failedMetricProject = await (await get('/projects/linreg-numpy')).json();
+  expect(failedMetricProject.status).toBe('in_progress');
+});
+
 test('active-session tasks, done-today activity, and local-date KP XP are returned read-only', async () => {
   const [session] = await db
     .insert(studySessions)

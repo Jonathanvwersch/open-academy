@@ -171,6 +171,42 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   expect(createdSessionRequest).toEqual({ kind: 'weekday' });
 });
 
+test('project evidence and reflection survive reloading the project page', async ({ page }) => {
+  await page.goto('/projects/linreg-numpy');
+  await page.getByLabel('Upload results.json').setInputFiles({
+    name: 'results.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        project: 'linreg-numpy',
+        version: 1,
+        tests: [],
+        metrics: { 'validation-mse': 999 },
+        generated_at: '2026-01-01T12:00:00.000Z',
+      }),
+    ),
+  });
+  const submissionResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith('/api/projects/linreg-numpy/results'),
+  );
+  await page.getByRole('button', { name: 'Upload results', exact: true }).click();
+  const response = await submissionResponse;
+  const responseBody = await response.json();
+  expect(response.status(), JSON.stringify(responseBody)).toBe(201);
+  await expect(page.getByRole('heading', { name: 'Project evidence' })).toBeVisible();
+  await expect(page.getByText('No verifier tests were reported')).toBeVisible();
+  await expect(page.getByText(/Validation MSE \(999\) must be below 0\.3/)).toBeVisible();
+  await expect(page.getByText('Complete a gradient update.')).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Project evidence' })).toBeVisible();
+  await expect(page.getByText('No verifier tests were reported')).toBeVisible();
+  await expect(page.getByText(/Validation MSE \(999\) must be below 0\.3/)).toBeVisible();
+  await expect(page.getByText('Complete a gradient update.')).toBeVisible();
+});
+
 test('navigation has four destinations and Lab redirects to Course', async ({ page }) => {
   await page.goto('/');
   const navigationLinks = page.locator('nav a');

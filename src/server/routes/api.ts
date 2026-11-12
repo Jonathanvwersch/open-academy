@@ -86,6 +86,45 @@ type TutorGradeResult = {
   exemplar: string;
 };
 
+type ProjectVerifierResults = {
+  tests: Array<{ id: string; passed: boolean; message: string }>;
+  metrics: Record<string, number>;
+};
+
+function projectEvidenceSummary(
+  project: {
+    metrics: Array<{ id: string; label: string; threshold: number; direction: 'below' | 'above' }>;
+  },
+  results: ProjectVerifierResults,
+) {
+  const failures = results.tests
+    .filter((test) => !test.passed)
+    .map((test) => `Test ${test.id} failed: ${test.message}`);
+  if (results.tests.length === 0) failures.unshift('No verifier tests were reported.');
+
+  const passingMetrics = project.metrics.filter((metric) => {
+    const value = results.metrics[metric.id];
+    if (typeof value !== 'number') {
+      failures.push(`${metric.label} was not reported.`);
+      return false;
+    }
+    const passes =
+      metric.direction === 'below' ? value < metric.threshold : value > metric.threshold;
+    if (!passes) {
+      failures.push(`${metric.label} (${value}) must be ${metric.direction} ${metric.threshold}.`);
+    }
+    return passes;
+  });
+  const passed = results.tests.filter((test) => test.passed).length;
+  return {
+    complete:
+      results.tests.length > 0 &&
+      passed === results.tests.length &&
+      passingMetrics.length === project.metrics.length,
+    evidence: `${passed}/${results.tests.length} checks passed${failures.length ? ` · ${failures.join(' ')}` : ''}`,
+  };
+}
+
 export function createApiRoutes(deps: {
   db: Database;
   content?: ContentIndex;
@@ -1755,6 +1794,10 @@ export function createApiRoutes(deps: {
         ),
       )
       .limit(1);
+    const latestSubmission = submissions[0] ?? null;
+    const evidence = latestSubmission
+      ? projectEvidenceSummary(project, latestSubmission.results as ProjectVerifierResults).evidence
+      : null;
     return context.json({
       project: {
         id: project.id,
@@ -1765,8 +1808,16 @@ export function createApiRoutes(deps: {
         acceptance: project.acceptance,
         reflection: project.reflection,
       },
+      checksTotal: project.tests.length,
       submitted: Boolean(submissions[0]),
-      latestSubmission: submissions[0] ?? null,
+      latestSubmission,
+      evidence,
+      reflection: project.reflection
+        .map((id) => {
+          const exercise = index.exercisesById.get(id);
+          return exercise ? serializeExercise(exercise, context.get('userId')) : null;
+        })
+        .filter(Boolean),
       status: progress[0]?.status ?? 'not_started',
     });
   });
@@ -1793,10 +1844,13 @@ export function createApiRoutes(deps: {
     if (
       new Set(body.data.tests.map((test) => test.id)).size !== body.data.tests.length ||
       body.data.tests.some((test) => !allowedTests.has(test.id)) ||
-      project.metrics.some((metric) => !(metric.id in body.data.metrics))
+      Object.keys(body.data.metrics).some(
+        (metricId) => !project.metrics.some((metric) => metric.id === metricId),
+      )
     ) {
       return context.json({ error: 'Unknown verifier test' }, 400);
     }
+    const verification = projectEvidenceSummary(project, body.data);
     const passed = body.data.tests.filter((test) => test.passed).length;
     const [submission] = await db
       .insert(projectSubmissions)
@@ -1814,14 +1868,14 @@ export function createApiRoutes(deps: {
       .values({
         userId: context.get('userId'),
         projectId: project.id,
-        status: passed === body.data.tests.length ? 'completed' : 'in_progress',
-        completedAt: passed === body.data.tests.length ? requestNow(context) : null,
+        status: verification.complete ? 'completed' : 'in_progress',
+        completedAt: verification.complete ? requestNow(context) : null,
       })
       .onConflictDoUpdate({
         target: [projectProgress.userId, projectProgress.projectId],
         set: {
-          status: passed === body.data.tests.length ? 'completed' : 'in_progress',
-          completedAt: passed === body.data.tests.length ? requestNow(context) : null,
+          status: verification.complete ? 'completed' : 'in_progress',
+          completedAt: verification.complete ? requestNow(context) : null,
         },
       });
     for (const check of body.data.tests.filter((test) => test.passed)) {
@@ -1853,7 +1907,7 @@ export function createApiRoutes(deps: {
     return context.json(
       {
         submission,
-        evidence: `${passed}/${body.data.tests.length} checks passed`,
+        evidence: verification.evidence,
         reflection: project.reflection
           .map((id) => {
             const exercise = index.exercisesById.get(id);
