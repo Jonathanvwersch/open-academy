@@ -1,0 +1,207 @@
+concept: evaluation-metrics
+version: 1
+objective: "**Goal:** compute precision and recall from a confusion matrix and choose scores that reveal the mistakes a task cares about."
+recap:
+  - concept: train-test-split
+    text: "A model is scored on a held-out test set it never trained on, because training error only measures fit to the training examples. Keep the test set out of model selection too."
+where_this_fits: |
+  ### What are evaluation metrics?
+
+  An evaluation metric is a number that sums up how well a model's predictions match the correct answers. On a held-out test set, it helps us judge how useful those predictions might be on new examples of the same kind.
+
+  Imagine a camera that checks factory parts and says faulty or fine. It is a **classifier**, a model that predicts a category. Missing a faulty part may be worse than wrongly calling a fine part faulty. We'll measure how many warnings are right, called precision, and how many faults get caught, called recall. For number predictions like prices, we'll instead measure average error sizes.
+knowledge_points:
+  - id: evm-count
+    title: Count right and wrong answers
+    explain: |
+      ### Four outcomes for a factory camera
+
+      Our camera says faulty or fine for each test part. When the camera says faulty, we say it **flags** the part. Flagged parts are counted in the column labelled Camera says faulty. They go to a person to check by hand. We call faulty the **positive** class, the thing we're trying to detect. Fine is the negative class. Positive doesn't mean good.
+
+      A true positive (TP) is a correctly flagged faulty part. A false positive (FP) is a fine part wrongly flagged, a false alarm. A false negative (FN) is a missed faulty part. A true negative (TN) is a fine part correctly called fine. True means the camera was right. Positive or negative names what the camera said.
+
+      There are 100 test parts, of which 10 are actually faulty. A **confusion matrix** compares what parts actually are with what the camera says. Each cell counts parts. Each part goes in exactly one cell. Rows tell us whether parts are actually faulty or fine. Columns tell us what the camera says.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 156" aria-label="Confusion matrix of counts. Columns are Camera says faulty and Camera says fine. The Actually faulty row has 6 true positives and 4 false negatives. The Actually fine row has 2 false positives and 88 true negatives.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717" text-anchor="middle">
+      <path d="M0 52 H360 M0 104 H360 M120 0 V156 M240 0 V156" stroke="#d4d4d4"/>
+      <text x="180" y="20">Camera says</text><text x="180" y="40">faulty</text>
+      <text x="300" y="20">Camera says</text><text x="300" y="40">fine</text>
+      <text x="60" y="72">Actually</text><text x="60" y="92">faulty</text>
+      <text x="60" y="124">Actually</text><text x="60" y="144">fine</text>
+      <text x="180" y="83">6 (TP)</text><text x="300" y="83">4 (FN)</text>
+      <text x="180" y="135">2 (FP)</text><text x="300" y="135">88 (TN)</text>
+      </g>
+      </svg>
+      ```
+
+      ### One overall score
+
+      **Accuracy** is the fraction of all test parts the camera gets right. Both true positives and true negatives count as correct.
+
+      $$\text{accuracy}=\frac{\text{TP}+\text{TN}}{\text{all test parts}}.$$
+
+      ### When accuracy hides missed faults
+
+      Now imagine a second, lazy camera that always says fine. It gets all 90 fine parts right, so its accuracy is 0.90. But it catches none of the faults. Faulty parts are rare here, meaning only a small share of parts are faulty. So we need scores that look at the faulty parts directly. The next step builds two: precision and recall.
+
+      Be careful not to read 90% accuracy as catching 90% of faults. Accuracy includes the many fine parts too.
+    worked: |
+      Let's score the factory camera using the four counts in the table.
+
+      1. **Check the total.** Check that the four counts add to all 100 test parts, so no part is missed or counted twice.
+         $$6+4+2+88=100.$$
+
+      2. **Count the parts the camera gets right.** Both caught faulty parts and correctly cleared fine parts count.
+         $$\text{TP}+\text{TN}=6+88=94.$$
+
+      3. **Divide by all test parts.** Accuracy asks about every test part, not just faulty ones.
+         $$\text{accuracy}=\frac{94}{100}=0.94=94\%.$$
+
+      The score looks high, yet the camera still missed four of the ten faults.
+    problems:
+      [
+        evm-count-basics,
+        evm-count-why,
+        evm-false-alarm,
+        evm-accuracy-template,
+        evm-always-fine,
+        evm-robot-count,
+        evm-rare-class,
+      ]
+  - id: evm-catch
+    title: Measure caught faults and false alarms
+    explain: |
+      ### Of the flagged parts, how many were faulty?
+
+      Our camera's accuracy includes fine parts it clears. Precision instead starts from the Camera says faulty column. Its eight flagged parts include six actually faulty parts and two fine parts.
+
+      **Precision** is the fraction of flagged parts that are actually faulty.
+
+      $$\text{precision}=\frac{\text{TP}}{\text{TP}+\text{FP}}.$$
+
+      The bottom counts every flagged part, including false alarms. High precision means most flags are genuine faults. It doesn't tell us how many faulty parts were missed.
+
+      ### Of the faulty parts, how many did we catch?
+
+      **Recall** is the fraction of actually faulty parts the camera flags. It starts from the Actually faulty row. Of those ten faulty parts, six were caught and four missed.
+
+      $$\text{recall}=\frac{\text{TP}}{\text{TP}+\text{FN}}.$$
+
+      Both fractions have the caught faults, TP, on top.
+
+      ### Two comparison cameras
+
+      Imagine two comparison cameras on these 100 parts.
+
+      - **All-parts** flags all 100 parts.
+      - **One-part** flags just one part, and happens to be right.
+
+      The table scores these two imaginary cameras. Our camera's scores are calculated in the worked example, then compared with both.
+
+      | Camera | Precision | Recall |
+      | --- | --- | --- |
+      | All-parts | 10/100 | 10/10 |
+      | One-part | 1/1 | 1/10 |
+
+      All-parts catches every fault but sends all the fine parts to a person to check by hand. One-part avoids false alarms but misses most faults.
+
+      ### Which mistakes cost more?
+
+      If a missed fault can hurt someone, favour high recall while checking that the person can handle the false alarms. When false alarms are costly, precision matters more. Choose this priority before comparing models. Never use the test set to choose.
+
+      Be careful with a camera that flags nothing. No false alarms might look perfect, but precision is 0/0. Report that it can't be computed because there are no flags. Recall is 0/10 = 0, so it catches nothing. If there are no actually faulty parts, recall can't be computed either.
+    worked: |
+      Let's compute both scores from our factory matrix, where TP = 6, FP = 2, FN = 4 and TN = 88.
+
+      1. **Find precision among the flags.** The six actually faulty parts and two false alarms make eight flagged parts.
+         $$\text{precision}=\frac{6}{6+2}=\frac{6}{8}=0.75.$$
+
+      2. **Find recall among actually faulty parts.** The six caught faulty parts and four missed faulty parts make ten actually faulty parts.
+         $$\text{recall}=\frac{6}{6+4}=\frac{6}{10}=0.60.$$
+
+      So 75% of our camera's flags are right, and it catches 60% of faulty parts. It catches more faults than One-part and has fewer false alarms than All-parts. Neither fraction uses the 88 fine parts the camera correctly passed.
+    problems:
+      [
+        evm-catch-basics,
+        evm-catch-why,
+        evm-precision-template,
+        evm-recall-template,
+        evm-swapped-denominator,
+        evm-no-flags,
+        evm-spam,
+      ]
+  - id: evm-numbers
+    title: Score predicted prices
+    explain: |
+      ### From faulty parts to house prices
+
+      We count faulty-or-fine answers but measure how far predicted numbers miss. Predicting a number is **regression**. A **signed error** is prediction minus actual price, keeping its sign. Negative means the prediction was too low.
+
+      Two models predict four held-out sales. All figures are in thousands of pounds.
+
+      | House | Actual | A predicts | A error |
+      | --- | --- | --- | --- |
+      | 1 | 200 | 210 | +10 |
+      | 2 | 300 | 290 | −10 |
+      | 3 | 250 | 260 | +10 |
+      | 4 | 150 | 140 | −10 |
+
+      | House | Actual | B predicts | B error |
+      | --- | --- | --- | --- |
+      | 1 | 200 | 200 | 0 |
+      | 2 | 300 | 300 | 0 |
+      | 3 | 250 | 250 | 0 |
+      | 4 | 150 | 190 | +40 |
+
+      A's signed errors average to 0, yet every prediction misses. Opposite signs cancel, hiding mistakes.
+
+      ### Average the sizes of the misses
+
+      **Mean absolute error (MAE)** averages error sizes, ignoring signs. Absolute error is distance from zero. Both +10 and −10 have size 10. A's sizes total 40, and B's sizes also total 40.
+
+      $$\text{MAE}=\frac{\text{sum of absolute errors}}{\text{number of examples}}.$$
+
+      **Mean squared error (MSE)** averages squared errors. Squaring a number multiplies it by itself, so 10 squared is 100 and −10 squared is also 100. A's squared errors total 400. B's one 40-unit miss squares to 1600, so B's total is 1600. Squaring gives the large miss more influence.
+
+      $$\text{MSE}=\frac{\text{sum of squared errors}}{\text{number of examples}}.$$
+
+      ### Why take a square root?
+
+      MSE is measured in squared thousands of pounds, which is not an amount of money. The square root undoes the squaring, so **root mean squared error (RMSE)** is back in thousands of pounds.
+
+      $$\text{RMSE}=\sqrt{\text{MSE}}.$$
+
+      A square root is the positive or zero number that squares to the starting number. Lower is better for all three error scores. MSE and RMSE always rank models in the same order because a bigger MSE always has a bigger square root. RMSE is easier to report because it uses the units of the prices.
+    worked: |
+      Let's compare A and B on the four house sales above, with errors in thousands of pounds. $\text{MAE}_A$ means MAE for model A. The small letters below MSE and RMSE name the model in the same way.
+
+      1. **Average absolute errors.** Ignore signs so underpricing doesn't cancel overpricing.
+         $$\text{MAE}_A=\frac{10+10+10+10}{4}=10,\qquad\text{MAE}_B=\frac{0+0+0+40}{4}=10.$$
+
+      2. **Average squared errors.** Squaring gives B's one large miss more weight.
+         $$\text{MSE}_A=\frac{100+100+100+100}{4}=100,\qquad\text{MSE}_B=\frac{0+0+0+1600}{4}=400.$$
+
+      3. **Take the square roots.** Now the scores are back in thousands of pounds.
+         $$\text{RMSE}_A=\sqrt{100}=10,\qquad\text{RMSE}_B=\sqrt{400}=20.$$
+
+      MAE ties the models. MSE and RMSE both rate A better because it avoids B's large miss. RMSE expresses that difference in thousands of pounds. These error scores describe the test houses. They don't guarantee the error on the next house.
+    problems:
+      [
+        evm-numbers-basics,
+        evm-numbers-why,
+        evm-mae-template,
+        evm-rmse-template,
+        evm-cancellation,
+        evm-units,
+        evm-robot-distance,
+      ]
+final: evm-explain
+summary: |
+  - A confusion matrix counts what parts actually are and what the camera says. Accuracy is $(\text{TP}+\text{TN})/\text{all test parts}$ and can hide missed faulty parts when few parts are faulty.
+  - Precision is $\text{TP}/(\text{TP}+\text{FP})$, the genuine share of flags. Recall is $\text{TP}/(\text{TP}+\text{FN})$, the caught share of actually faulty parts.
+  - MAE averages absolute errors, while RMSE is $\sqrt{\text{MSE}}$. Both error scores use the units of the thing predicted, such as thousands of pounds, but RMSE emphasises large misses more.
+  - Choose metrics to reflect costly mistakes before model selection, and report the chosen model's scores on an untouched test set.
+
+  **Next:** Mean, variance and confidence intervals asks how much scores change from one set of examples to another, and whether a difference in scores is convincing.

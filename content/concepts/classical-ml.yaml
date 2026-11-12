@@ -157,4 +157,4 @@ concepts:
     prereqs: [{ id: train-test-split }]
     objectives:
       - { text: "Compute precision and recall from a confusion matrix", dimension: math }
-    status: stub
+    status: authored

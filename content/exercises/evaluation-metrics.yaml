@@ -1,0 +1,500 @@
+concept: evaluation-metrics
+exercises:
+  - id: evm-count-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does a confusion matrix record?
+    options:
+      - id: a
+        text: Counts of what parts actually are and what the camera says.
+        correct: true
+        feedback: Each cell pairs what parts actually are with what the camera says.
+      - id: b
+        text: The order in which a model learned its training examples.
+        correct: false
+        feedback: The table counts what the camera says about parts, not training order.
+      - id: c
+        text: The size of each error in a number prediction.
+        correct: false
+        feedback: Error sizes belong to regression. These cells count parts.
+    solution:
+      A confusion matrix compares what parts actually are with what the camera says. It shows
+      both correct answers and each kind of mistake.
+  - id: evm-count-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example add 6 and 88 when finding accuracy?
+    options:
+      - id: a
+        text: Only parts actually faulty can count as correct answers.
+        correct: false
+        feedback: That would exclude correctly cleared fine parts.
+      - id: b
+        text: Both caught faulty parts and correctly cleared fine parts are right.
+        correct: true
+        feedback: Accuracy counts parts the camera gets right, whether faulty or fine.
+      - id: c
+        text: Every flagged part is correct, even when it is fine.
+        correct: false
+        feedback: A fine part flagged faulty is a false positive, which is wrong.
+    solution:
+      The camera gets the 6 true positives and 88 true negatives right. Accuracy counts both,
+      then divides by all 100 parts.
+  - id: evm-false-alarm
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A camera says faulty for an actually fine part. With faulty as positive, which cell contains it?
+    options:
+      - id: a
+        text: False negative, because the part is actually fine.
+        correct: false
+        feedback: Negative describes what the camera says, not what the part actually is.
+      - id: b
+        text: True positive, because the camera raised a flag.
+        correct: false
+        feedback: A flag is correct only if the part is actually faulty.
+      - id: c
+        text: False positive, because the warning was wrong.
+        correct: true
+        feedback: The camera said faulty but the part was actually fine.
+    solution: A false positive is a false alarm. Here the camera flags an actually fine part.
+  - id: evm-accuracy-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A camera has TP = {{= k }}, FP = 5, FN = {{= 25 - k }} and TN = 70 on 100 test parts.
+      What is its accuracy as a decimal, not a percentage?
+    params:
+      k:
+        min: 5
+        max: 25
+        step: 5
+    answer_expr: (k + 70) / 100
+    tolerance:
+      abs: 0.000001
+    solution:
+      The four counts sum to all 100 test parts. Add TP and TN to get {{= k + 70 }} parts the
+      camera gets right, then divide by 100 for accuracy {{= (k + 70) / 100 }}.
+  - id: evm-always-fine
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Of 100 test parts, 10 are actually faulty. A camera says fine for every part. What is its accuracy?
+    options:
+      - id: a
+        text: 0.90, because it correctly clears the 90 fine parts.
+        correct: true
+        feedback: It misses ten faulty parts but correctly says fine for the 90 fine parts.
+      - id: b
+        text: 0.00, because it never catches any of the faulty parts.
+        correct: false
+        feedback: That describes its caught fraction of faults, not its overall accuracy.
+      - id: c
+        text: 1.00, because the camera says the same thing for every part.
+        correct: false
+        feedback: Saying fine every time does not make the ten missed faulty parts correct.
+    solution: It correctly labels 90 fine parts out of 100, giving 0.90 accuracy despite missing every fault.
+  - id: evm-robot-count
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt:
+      A robot flags failed grasps as positive. Of 20 failed grasps it flags 15. Of 80 successful
+      grasps it flags 5. Which counts are correct?
+    options:
+      - id: a
+        text: TP = 15, FN = 5, FP = 75, TN = 5.
+        correct: false
+        feedback: Only five successful grasps were flagged, so FP is five, not 75.
+      - id: b
+        text: TP = 15, FN = 5, FP = 5, TN = 75.
+        correct: true
+        feedback: Five failed grasps were missed and 75 successful grasps were correctly cleared.
+      - id: c
+        text: TP = 5, FN = 15, FP = 5, TN = 75.
+        correct: false
+        feedback: The robot flagged 15 actual failures, so TP is 15.
+    solution: The 20 failures split into 15 caught and 5 missed. The 80 successes split into 5 false
+      alarms and 75 correct clearances.
+  - id: evm-rare-class
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt:
+      Only 1 in 100 test parts is actually faulty. A camera claims its 99% accuracy proves it catches
+      faults well. What should you check first?
+    options:
+      - id: a
+        text: Whether it used the same prediction for every training example.
+        correct: false
+        feedback: Training behaviour alone does not show which test faults it caught.
+      - id: b
+        text: Whether its test set contains exactly as many faults as fine parts.
+        correct: false
+        feedback:
+          Only a few test parts are faulty. Changing that balance does not explain what this camera
+          gets right or wrong.
+      - id: c
+        text: Whether it simply says fine for every test part.
+        correct: true
+        feedback: That rule gets 99 of 100 right while missing the only fault.
+    solution: An always-fine camera reaches 99% accuracy here without detecting anything. Read the
+      confusion matrix before trusting that score.
+  - id: evm-catch-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does recall measure when faulty is positive?
+    options:
+      - id: a
+        text: The share of flagged parts that are actually faulty.
+        correct: false
+        feedback: That starts from the flags and measures precision.
+      - id: b
+        text: The share of actually faulty parts that are flagged.
+        correct: true
+        feedback: Recall starts from the Actually faulty row, including caught and missed faulty parts.
+      - id: c
+        text: The share of all parts the camera gets right.
+        correct: false
+        feedback: That includes correctly cleared fine parts and measures accuracy.
+    solution: Recall asks how many actually faulty parts were flagged, so it divides TP by TP + FN.
+  - id: evm-catch-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example use 6 + 2 for precision but 6 + 4 for recall?
+    options:
+      - id: a
+        text: Precision starts with flags. Recall starts with actually faulty parts.
+        correct: true
+        feedback: The flagged column includes false alarms. The actually faulty row includes missed faults.
+      - id: b
+        text: Precision counts correct answers. Recall counts every test part.
+        correct: false
+        feedback: Both fractions have TP on top. Neither starts from all test parts.
+      - id: c
+        text: Precision ignores mistakes. Recall includes both kinds of mistakes.
+        correct: false
+        feedback: Precision's starting group includes FP, while recall's includes FN.
+    solution: Precision starts from the column of eight flagged parts, including two false alarms.
+      Recall starts from the row of ten actually faulty parts, including four misses.
+  - id: evm-precision-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A camera flags 20 parts. Of these, {{= 5 * k }} are actually faulty and {{= 20 - 5 * k }}
+      are actually fine. What is precision as a decimal?
+    params:
+      k:
+        min: 1
+        max: 4
+        step: 1
+    answer_expr: 5 * k / 20
+    tolerance:
+      abs: 0.000001
+    solution: Of 20 flagged parts, {{= 5 * k }} are actually faulty. Precision is {{= 5 * k }} /
+      20 = {{= 5 * k / 20 }}.
+  - id: evm-recall-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A camera catches {{= 5 * k }} faulty parts and misses {{= 20 - 5 * k }} faulty parts. What
+      is recall as a decimal?
+    params:
+      k:
+        min: 1
+        max: 4
+        step: 1
+    answer_expr: 5 * k / 20
+    tolerance:
+      abs: 0.000001
+    solution:
+      There are 20 actually faulty parts, including the misses. Recall is {{= 5 * k }} / 20 = {{= 5 * k
+      / 20 }}.
+  - id: evm-swapped-denominator
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt:
+      A camera has TP = 8, FP = 2 and FN = 12. A learner reports recall as 8 / (8 + 2) = 0.8. What
+      went wrong?
+    options:
+      - id: a
+        text: They should include true negatives in the starting group.
+        correct: false
+        feedback: Recall starts from actually faulty parts, not fine parts correctly called fine.
+      - id: b
+        text: They should count false positives as detected faults.
+        correct: false
+        feedback: False positives are fine parts incorrectly flagged, not detected faults.
+      - id: c
+        text: They started from flagged parts instead of actually faulty parts.
+        correct: true
+        feedback: Recall uses TP + FN = 20, so recall is 8/20 = 0.4.
+    solution: The group of 8 + 2 counts flagged parts. Recall uses the 8 caught plus 12 missed
+      faulty parts, giving 0.4.
+  - id: evm-no-flags
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: A camera flags nothing in a test set containing 10 actually faulty parts. Which statement is correct?
+    options:
+      - id: a
+        text: Precision can't be computed and recall is zero.
+        correct: true
+        feedback: Precision divides by zero because there are no flags. Recall is 0/10.
+      - id: b
+        text: Precision is one and recall is zero.
+        correct: false
+        feedback: No false alarms does not make 0/0 equal one.
+      - id: c
+        text: Precision is zero and recall is one.
+        correct: false
+        feedback: No faulty parts were caught, so recall cannot be one. Precision can't be computed.
+    solution: With TP = FP = 0, precision is 0/0 and can't be computed. With FN = 10, recall is 0/10 = 0.
+  - id: evm-spam
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt:
+      A spam filter marks spam as positive. Blocking a genuine email is very costly, but users can
+      tolerate some spam in their inbox. Which priority fits?
+    options:
+      - id: a
+        text: Favour recall alone, even if many genuine emails are blocked.
+        correct: false
+        feedback: That ignores the stated high cost of false positives.
+      - id: b
+        text: Favour precision while still reporting recall.
+        correct: true
+        feedback:
+          High precision means blocked messages are mostly genuine spam. Recall shows how much spam
+          slips through.
+      - id: c
+        text: Favour accuracy alone, without checking blocked messages.
+        correct: false
+        feedback: Accuracy can hide the costly false positives among many correctly delivered messages.
+    solution: Blocking genuine email is a false positive. Precision directly checks the genuine-spam
+      share of blocked messages, but recall is still needed to reveal missed spam.
+  - id: evm-numbers-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does mean absolute error measure?
+    options:
+      - id: a
+        text: The average error size after ignoring positive and negative signs.
+        correct: true
+        feedback: Absolute error measures distance from zero, so signs cannot cancel.
+      - id: b
+        text: The average signed error after allowing opposite signs to cancel.
+        correct: false
+        feedback: That can hide large misses and is not mean absolute error.
+      - id: c
+        text: The fraction of predicted categories that match the correct ones.
+        correct: false
+        feedback: That is accuracy for category predictions, not a price-error score.
+    solution: MAE averages how far predicted prices are from actual prices, in the same units as the prices.
+  - id: evm-numbers-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the house worked example square the errors before averaging for RMSE?
+    options:
+      - id: a
+        text: Squaring removes the need to divide by the number of houses.
+        correct: false
+        feedback: MSE is still an average, so it must divide by four houses.
+      - id: b
+        text: Squaring makes all large errors contribute less than small ones.
+        correct: false
+        feedback: Squaring increases the relative contribution of larger errors.
+      - id: c
+        text: Squaring prevents sign cancellation and emphasises larger misses.
+        correct: true
+        feedback: A 40-unit miss contributes 1600 before averaging, compared with 100 for a 10-unit miss.
+    solution:
+      Squaring keeps positive and negative errors from cancelling and gives large misses greater
+      relative weight. The final square root restores the original units.
+  - id: evm-mae-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A model's errors on four held-out houses are +{{= k }}, −{{= k }}, +{{= 3 * k }} and −{{= 3
+      * k }} thousand pounds. What is MAE in thousands of pounds?
+    params:
+      k:
+        min: 1
+        max: 10
+        step: 1
+    answer_expr: 2 * k
+    tolerance:
+      abs: 0.000001
+    solution: The absolute errors sum to {{= 8 * k }}. Divide by four houses to get {{= 2 * k }}
+      thousand pounds.
+  - id: evm-rmse-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A model's errors on four test houses are 0, 0, 0 and +{{= 4 * k }} thousand pounds. What is
+      RMSE in thousands of pounds?
+    params:
+      k:
+        min: 1
+        max: 10
+        step: 1
+    answer_expr: 2 * k
+    tolerance:
+      abs: 0.000001
+    solution:
+      The squared errors sum to {{= 16 * k * k }}. MSE is {{= 4 * k * k }}, whose square root is
+      {{= 2 * k }} thousand pounds.
+  - id: evm-cancellation
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Two price errors are +20 and −20 thousand pounds. A learner says the model is perfect
+      because their average is zero. What is the mistake?
+    options:
+      - id: a
+        text: They should divide the signed sum by four rather than two.
+        correct: false
+        feedback: There are two errors. The problem is cancellation, not the number of examples.
+      - id: b
+        text: Opposite signed errors cancel even when both predictions miss.
+        correct: true
+        feedback: Both predictions miss by 20, so both error scores are 20.
+      - id: c
+        text: Negative errors mean the actual prices must also be negative.
+        correct: false
+        feedback: A negative error just means the prediction was below the actual price.
+    solution: Signed error averages can cancel overpricing against underpricing. Absolute or squared
+      errors reveal both misses, giving MAE = RMSE = 20.
+  - id: evm-units
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: House prices are measured in pounds. Which units do MSE and RMSE have?
+    options:
+      - id: a
+        text: MSE uses squared pounds, while RMSE uses pounds.
+        correct: true
+        feedback: Squaring changes the units. The final square root reverses that change.
+      - id: b
+        text: MSE uses pounds, while RMSE uses squared pounds.
+        correct: false
+        feedback: That reverses the effects of squaring and taking a square root.
+      - id: c
+        text: MSE and RMSE are both fractions without units.
+        correct: false
+        feedback: These errors measure numeric price differences, not class proportions.
+    solution: MSE averages squared price errors, in pounds squared. RMSE takes the square root,
+      restoring pounds.
+  - id: evm-robot-distance
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt:
+      A robot predicts travel distances. Model A has errors +2, −2, +2, −2 cm. B has 0, 0, 0, +8
+      cm. Large single misses are especially dangerous. Which comparison fits?
+    options:
+      - id: a
+        text: Both MAE and RMSE tie, so either model is equally safe.
+        correct: false
+        feedback: MAE ties at 2 cm, but RMSE is 2 for A and 4 for B.
+      - id: b
+        text: MAE favours B because it is exactly right three times.
+        correct: false
+        feedback: B's 8 cm miss makes its average absolute error 2 cm, equal to A's.
+      - id: c
+        text: MAE ties, but RMSE favours A for avoiding one large miss.
+        correct: true
+        feedback: The squared averages are 4 and 16, giving RMSE 2 and 4 cm.
+    solution:
+      Both total absolute errors are 8 cm, so MAE ties at 2 cm. RMSE is 2 cm for A and 4 cm for
+      B, revealing B's dangerous large miss.
+  - id: evm-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: A factory camera has 94% test accuracy with TP = 6, FP = 2, FN = 4 and TN = 88. Explain
+      its precision and recall, why accuracy alone is not enough when missing a fault is dangerous,
+      and why a house-price model instead needs an error score.
+    rubric:
+      - id: scores
+        criterion: Computes precision 6/8 = 0.75 from flagged parts and recall 6/10 = 0.60 from actually faulty parts.
+        weight: 1
+        required: true
+      - id: cost
+        criterion:
+          Explains that many true negatives can hide missed faults and prioritises recall while
+          monitoring false alarms.
+        weight: 1
+        required: true
+      - id: regression
+        criterion: Distinguishes counting faulty-or-fine answers from measuring price error sizes and names MAE or RMSE for prices.
+        weight: 1
+        required: true
+    exemplar:
+      "Precision is 6/8 = 0.75, so three quarters of flags are genuine faults. Recall is 6/10 =
+      0.60, so four of the ten faults were missed. The 88 true negatives make accuracy look high
+      without removing the danger of those misses, so I would prioritise recall but also monitor
+      precision to keep the number of parts checked by hand manageable. A house-price model predicts numbers, not fault
+      categories, so I would measure error sizes with MAE and use RMSE too if large misses are
+      especially costly."
+    solution:
+      Precision starts from flagged parts, while recall starts from actually faulty parts. The
+      task's costly mistakes determine which scores matter. Price predictions instead need an error score
+      of how far their numbers miss.
