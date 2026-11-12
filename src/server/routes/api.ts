@@ -94,14 +94,20 @@ type ProjectVerifierResults = {
 
 function projectEvidenceSummary(
   project: {
+    tests: Array<{ id: string }>;
     metrics: Array<{ id: string; label: string; threshold: number; direction: 'below' | 'above' }>;
   },
   results: ProjectVerifierResults,
 ) {
+  const reportedTests = new Map(results.tests.map((test) => [test.id, test]));
+  const missingTests = project.tests.filter((test) => !reportedTests.has(test.id));
   const failures = results.tests
     .filter((test) => !test.passed)
     .map((test) => `Test ${test.id} failed: ${test.message}`);
   if (results.tests.length === 0) failures.unshift('No verifier tests were reported.');
+  if (missingTests.length > 0) {
+    failures.push(`Missing: ${missingTests.map((test) => test.id).join(', ')}`);
+  }
 
   const passingMetrics = project.metrics.filter((metric) => {
     const value = results.metrics[metric.id];
@@ -116,13 +122,16 @@ function projectEvidenceSummary(
     }
     return passes;
   });
-  const passed = results.tests.filter((test) => test.passed).length;
+  const passed = project.tests.filter((test) => reportedTests.get(test.id)?.passed).length;
+  const allTestsPassed =
+    project.tests.length > 0 &&
+    results.tests.length === project.tests.length &&
+    missingTests.length === 0 &&
+    results.tests.every((test) => test.passed) &&
+    passed === project.tests.length;
   return {
-    complete:
-      results.tests.length > 0 &&
-      passed === results.tests.length &&
-      passingMetrics.length === project.metrics.length,
-    evidence: `${passed}/${results.tests.length} checks passed${failures.length ? ` · ${failures.join(' ')}` : ''}`,
+    complete: allTestsPassed && passingMetrics.length === project.metrics.length,
+    evidence: `${passed}/${project.tests.length} checks passed${failures.length ? ` · ${failures.join(' ')}` : ''}`,
   };
 }
 
@@ -1853,7 +1862,7 @@ export function createApiRoutes(deps: {
         (metricId) => !project.metrics.some((metric) => metric.id === metricId),
       )
     ) {
-      return context.json({ error: 'Unknown verifier test' }, 400);
+      return context.json({ error: 'Unknown verifier test or metric' }, 422);
     }
     const verification = projectEvidenceSummary(project, body.data);
     const passed = body.data.tests.filter((test) => test.passed).length;

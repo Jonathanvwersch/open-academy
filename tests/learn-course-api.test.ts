@@ -82,6 +82,36 @@ async function get(path: string) {
   });
 }
 
+const nnFromScratchTestIds = [
+  'test_data_is_seeded_and_split',
+  'test_parameter_forward_and_gradient_shapes',
+  'test_forward_matches_reference',
+  'test_loss_matches_mean_binary_cross_entropy',
+  'test_gradients_match_numerical_differences',
+  'test_training_step_lowers_loss',
+  'test_training_reaches_validation_accuracy',
+  'test_hidden_layer_beats_linear_baseline',
+];
+
+const nnFromScratchPassingMetrics = {
+  final_train_loss: 0.05,
+  validation_accuracy: 0.95,
+  max_gradient_check_relative_error: 0.000001,
+};
+
+function nnFromScratchResults(
+  tests = nnFromScratchTestIds.map((id) => ({ id, passed: true, message: 'passed' })),
+  metrics = nnFromScratchPassingMetrics,
+) {
+  return {
+    project: 'nn-from-scratch',
+    version: 1,
+    tests,
+    metrics,
+    generated_at: '2026-11-14T12:00:00.000Z',
+  };
+}
+
 test('lesson response includes ordered authored prerequisites', async () => {
   const response = await get('/lessons/gradient-descent');
   expect(response.status).toBe(200);
@@ -421,6 +451,74 @@ test('empty project evidence and out-of-range metrics cannot complete a project'
   expect((await failingMetricResponse.json()).evidence).toContain('Validation MSE');
   const failedMetricProject = await (await get('/projects/linreg-numpy')).json();
   expect(failedMetricProject.status).toBe('in_progress');
+});
+
+test('project evidence requires every declared verifier test', async () => {
+  const results = nnFromScratchResults([
+    {
+      id: nnFromScratchTestIds[0] ?? '',
+      passed: true,
+      message: 'passed',
+    },
+  ]);
+  const response = await app.request('/api/projects/nn-from-scratch/results', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
+    body: JSON.stringify(results),
+  });
+
+  expect(response.status).toBe(201);
+  const submission = await response.json();
+  expect(submission.evidence).toContain('1/8 checks passed');
+  expect(submission.evidence).toContain('Missing:');
+  for (const missingTestId of nnFromScratchTestIds.slice(1)) {
+    expect(submission.evidence).toContain(missingTestId);
+  }
+
+  const project = await (await get('/projects/nn-from-scratch')).json();
+  expect(project.status).toBe('in_progress');
+});
+
+test('all verifier tests still require every project metric to pass', async () => {
+  const results = nnFromScratchResults(undefined, {
+    ...nnFromScratchPassingMetrics,
+    validation_accuracy: 0.89,
+  });
+  const response = await app.request('/api/projects/nn-from-scratch/results', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
+    body: JSON.stringify(results),
+  });
+
+  expect(response.status).toBe(201);
+  expect((await response.json()).evidence).toContain('8/8 checks passed');
+  const project = await (await get('/projects/nn-from-scratch')).json();
+  expect(project.status).toBe('in_progress');
+});
+
+test('all verifier tests and metrics complete the project', async () => {
+  const results = nnFromScratchResults();
+  const response = await app.request('/api/projects/nn-from-scratch/results', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
+    body: JSON.stringify(results),
+  });
+
+  expect(response.status).toBe(201);
+  expect((await response.json()).evidence).toContain('8/8 checks passed');
+  const project = await (await get('/projects/nn-from-scratch')).json();
+  expect(project.status).toBe('completed');
+});
+
+test('unknown project verifier test IDs are rejected with 422', async () => {
+  const results = nnFromScratchResults([{ id: 'test_unknown', passed: true, message: 'passed' }]);
+  const response = await app.request('/api/projects/nn-from-scratch/results', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
+    body: JSON.stringify(results),
+  });
+
+  expect(response.status).toBe(422);
 });
 
 test('active-session tasks, done-today activity, and local-date KP XP are returned read-only', async () => {
