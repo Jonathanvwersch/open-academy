@@ -8,7 +8,7 @@ recap:
 where_this_fits: |
   ### What is an image tensor?
 
-  To a computer, an image is a grid of numbers, one for each tiny square of colour, called a pixel. A grayscale image needs one grid, which is just a matrix. A colour image needs three same-sized grids stacked on top of each other, one for red, one for green and one for blue, and a stack of grids like that is called a tensor.
+  To a computer, an image is a grid of numbers, one for each tiny square of colour, called a pixel. A grayscale image needs one grid, which is just a matrix. An RGB colour image needs three same-sized grids stacked on top of each other, one for red, one for green and one for blue, and a stack of grids like that is called a tensor.
 
   A model can only read numbers, so every photo has to become a tensor before the model sees it. But different tools stack the grids in different orders, and models expect pixel values on a particular scale. If we get the order wrong, the code often runs without any error, and the model just sees scrambled pixels.
 knowledge_points:
@@ -75,7 +75,7 @@ knowledge_points:
       </svg>
       ```
 
-      Image files store these brightnesses as whole numbers from 0 to 255, because that range fits in exactly one byte of memory. NumPy calls this way of storing numbers **uint8**, short for "unsigned 8-bit integer". Unsigned means it has no negative values, and 8 bits make one byte, which can hold exactly 256 different values.
+      We use 8-bit images here, whose decoded brightnesses are whole numbers from 0 to 255. Other images can use higher bit depths or floats. NumPy calls this one-byte representation **uint8**, short for "unsigned 8-bit integer". Unsigned means it has no negative values, and 8 bits make one byte, which can hold exactly 256 different values.
 
       ### Height comes first
 
@@ -113,7 +113,7 @@ knowledge_points:
     explain: |
       ### Three numbers per pixel
 
-      Our grayscale image had one brightness for each pixel. A colour image has three, saying how much red, green and blue light the pixel has, and each of these is called a **channel**.
+      Our grayscale image had one brightness for each pixel. An RGB colour image has three, saying how much red, green and blue light the pixel has, and each of these is called a **channel**.
 
       There are two common ways to arrange those numbers. On the left of the picture, each pixel of a tiny $2\times2$ image keeps its three numbers together. On the right, the same twelve numbers are sorted into three separate grids, or planes, one per channel. No number changes; only the order does.
 
@@ -164,13 +164,13 @@ knowledge_points:
 
       ### Put the channels first
 
-      The left-hand order is called **HWC**, for height, width, channels, and its shape is `(H, W, 3)`. It's what you usually get when you load a photo in Python, with Python's image libraries, such as PIL, matplotlib or OpenCV. (OpenCV also lists the colours as blue, green, red, so check the colour order too.)
+      The left-hand order is called **HWC**, for height, width, channels, and its shape is `(H, W, 3)` for RGB. It's a common layout for NumPy arrays converted from PIL RGB images, or images loaded with matplotlib or OpenCV. (OpenCV defaults to blue, green, red, so check the colour order too.)
 
-      The right-hand order is **CHW**, with shape `(3, H, W)`, and it's the one PyTorch vision models usually expect. Models also work on several images at once, called a **batch**, which adds one more axis at the front for the number of images $N$. That gives `(N, H, W, 3)`, called NHWC, or `(N, 3, H, W)`, called NCHW. A single image is passed to the model as a batch of one, with shape `(1, 3, H, W)` in NCHW.
+      The right-hand order is **CHW**, with shape `(3, H, W)`, and it's the one PyTorch vision models usually expect. Models also work on several images at once, called a **batch**, which adds one more axis at the front for the number of images $N$. That gives `(N, H, W, 3)`, called NHWC, or `(N, 3, H, W)`, called NCHW. For a model expecting NCHW, a single RGB image is passed as a batch of one, with shape `(1, 3, H, W)`.
 
       To turn HWC into CHW, we use `np.transpose(img, (2, 0, 1))`. Each number in the tuple is an old axis number, and the tuple lists them in their new order. So old axis 2, the channels, moves to the front, followed by axis 0, the height, and axis 1, the width.
 
-      Be careful not to use `img.reshape(3, H, W)` instead. **Reshape** reads the numbers in the order they're stored and cuts them into pieces of the new shape, so we get the right shape but the wrong pixels. Only a transpose moves the axes and keeps each number with its own pixel.
+      Be careful not to use `img.reshape(3, H, W)` instead. **Reshape** reads the numbers in NumPy's default row-by-row index order and cuts them into pieces of the new shape, so the shape can be right while the pixels are wrong. A transpose moves the axes and keeps each number with its own pixel.
     worked: |
       Let's move the diagram's 2×2 RGB image into CHW.
 
@@ -181,7 +181,7 @@ knowledge_points:
       3. **Stack the planes.** There are three planes, each two rows by two columns.
          $$\text{CHW shape}=(3,2,2).$$
 
-      The top-left pixel is still (10, 20, 30), but now its three numbers are in the top-left corners of the red, green and blue planes. The code below does the same in NumPy. There, `.tolist()` turns an array into nested Python lists so it prints on one line, and `chw[0]` picks out the first plane, the red one. The last line shows the reshape mistake. NumPy keeps an HWC image's numbers in one long line, pixel by pixel, so 10, 20, 30, 40, 50 and so on. Reshape just cuts that line into new pieces, so its "red plane" `[[10, 20], [30, 40]]` mixes the red, green and blue of the first pixel with the red of the second.
+      The top-left pixel is still (10, 20, 30), but now its three numbers are in the top-left corners of the red, green and blue planes. The code below does the same in NumPy. There, `.tolist()` turns an array into nested Python lists so it prints on one line, and `chw[0]` picks out the first plane, the red one. The last line shows the reshape mistake. In this array, the default index order reads pixel by pixel: 10, 20, 30, 40, 50 and so on. Reshape just cuts that line into new pieces, so its "red plane" `[[10, 20], [30, 40]]` mixes the red, green and blue of the first pixel with the red of the second.
 
       ```python
       import numpy as np
@@ -194,6 +194,8 @@ knowledge_points:
       ```
 
       Why not use `.T`, the transpose from the matrices lesson? On three axes it reverses all of them, so it would give shape `(3, W, H)` and swap the height and width.
+
+      We used RGB here. Other formats can have more channels, such as a fourth for transparency.
     problems:
       [
         iat-layout-basics,
@@ -210,9 +212,9 @@ knowledge_points:
     explain: |
       ### From whole numbers to small numbers
 
-      The channels are now in order, but the values still run from 0 to 255. A model multiplies each input by a weight and adds the results, so thousands of inputs in the hundreds add up to huge sums, and models learn more reliably from small inputs centred near zero.
+      The channels are now in order, but our uint8 values still run from 0 to 255. A model multiplies each input by a weight and adds the results, so thousands of inputs in the hundreds can add up to huge sums, and models often learn more reliably from small inputs centred near zero.
 
-      So the first change is **rescaling**: we divide every pixel value by 255, so it lies between 0 and 1. For example, 153 becomes $153/255=0.6$. The result has decimals, so NumPy stores it as a **float** rather than uint8.
+      So the first change for our uint8 images is **rescaling**: we divide every pixel value by 255, so it lies between 0 and 1. For example, 153 becomes $153/255=0.6$. The result has decimals, so NumPy stores it as a **float** rather than uint8.
 
       ### Centre each channel
 
@@ -220,7 +222,7 @@ knowledge_points:
 
       $$x' = \frac{x-m_c}{s_c}.$$
 
-      Here $x$ is a rescaled value in channel $c$. That channel's mean is $m_c$ and its standard deviation is $s_c$, and $x'$ is the result.
+      Here $x$ is a rescaled value in channel $c$. That channel's mean is $m_c$ and its standard deviation is $s_c$, which must be positive to avoid division by zero, and $x'$ is the result.
 
       ### Line the means up with the channels
 
@@ -235,9 +237,11 @@ knowledge_points:
 
       The red value was above its mean, so it came out positive, and the blue value was exactly at its mean, so it became zero. A value below its mean would come out negative.
 
-      We used round numbers here, but in practice the statistics come from the model. A pretrained model, one that someone has already trained, expects the same means and standard deviations it was trained with, and its documentation lists them. Many use means (0.485, 0.456, 0.406) and standard deviations (0.229, 0.224, 0.225), measured on ImageNet, a collection of over a million labelled photos.
+      We used round numbers here, but in practice follow the model's documented input preparation; not every model expects this standardisation. A pretrained model, one that someone has already trained, that uses it expects the same means and standard deviations it was trained with. Many use means (0.485, 0.456, 0.406) and standard deviations (0.229, 0.224, 0.225), measured on ImageNet, a collection of over a million labelled photos.
 
-      The code below does the same for a one-pixel image, first in HWC and then in CHW. There, `dtype=np.uint8` stores the values as uint8, one byte each, like a loaded photo, `.astype(float)` switches to floats before we divide, and `np.round(..., 2)` rounds the printed results to two decimal places.
+      Check the loaded values first: matplotlib loads PNGs as floats already between 0 and 1, so dividing those by 255 again would be wrong.
+
+      The code below does the same for a one-pixel image, first in HWC and then in CHW. There, `dtype=np.uint8` stores the values as uint8, one byte each, like a loaded 8-bit photo, `.astype(float)` switches to floats before we divide, and `np.round(..., 2)` rounds the printed results to two decimal places.
 
       ```python
       import numpy as np
@@ -268,9 +272,9 @@ knowledge_points:
       ]
 final: iat-explain-pipeline
 summary: |
-  - A grayscale image is a matrix of brightnesses from 0 to 255, with shape (height, width), height first, and `img[r, c]` reads the pixel in row `r` and column `c`, counting from zero.
-  - A colour image is a tensor with three channels, red, green and blue. HWC stores it as `(H, W, 3)`, CHW as `(3, H, W)`, and a batch of $N$ images adds an axis at the front.
-  - `np.transpose(img, (2, 0, 1))` turns HWC into CHW. Reshape gives the right shape but scrambles the pixels, because it only cuts the stored numbers into new pieces.
-  - Before a model sees an image, we divide by 255 and then standardise each channel with $x'=(x-m_c)/s_c$, using the model's own means and standard deviations, with shape `(3, 1, 1)` for a CHW image.
+  - An 8-bit grayscale image is a matrix of brightnesses from 0 to 255, with shape (height, width), height first, and `img[r, c]` reads the pixel in row `r` and column `c`, counting from zero.
+  - An RGB colour image is a tensor with three channels, red, green and blue. HWC stores it as `(H, W, 3)`, CHW as `(3, H, W)`, and a batch of $N$ images adds an axis at the front.
+  - `np.transpose(img, (2, 0, 1))` turns HWC into CHW. Reshape can give the right shape but scramble the pixels, because it only cuts the default index-order sequence into new pieces.
+  - For a model expecting this preparation, we divide uint8 values by 255 and then standardise each channel with $x'=(x-m_c)/s_c$, using the model's own means and positive standard deviations, with shape `(3, 1, 1)` for a CHW image. Don't rescale values already in the expected range.
 
   **Next:** The next vision lesson slides a small grid of weights across these channels to find patterns such as edges.
