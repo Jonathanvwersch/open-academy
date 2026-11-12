@@ -1405,6 +1405,47 @@ test('SVG fences reject malformed, unsafe, inaccessible, and non-hex SVG', async
   );
 });
 
+test('exercise prose rejects unwrapped maths and ignores inline maths and code spans', async () => {
+  const data = await notationFixture();
+  const explanation = data.exercises.find(({ value }) => value.type === 'explain');
+  const multipleChoice = data.exercises.find(({ value }) => value.type === 'mc');
+  if (explanation?.value.type !== 'explain' || multipleChoice?.value.type !== 'mc') {
+    throw new Error('Missing explanation and multiple-choice fixtures');
+  }
+  const criterion = explanation.value.rubric[0];
+  const option = multipleChoice.value.options[0];
+  if (!criterion || !option) throw new Error('Missing rubric criterion and option fixtures');
+
+  explanation.value.prompt = 'Use d_in and W₁.';
+  criterion.criterion = 'Mentions ∇f.';
+  explanation.value.exemplar = 'Compare θ and ‖x‖.';
+  explanation.value.solution = 'Use x_1.';
+  explanation.value.hints = ['Use b_k.'];
+  option.text = 'The value is y_k.';
+  option.feedback = 'The update uses z_1.';
+
+  const mathIssues = validateContent(data).filter(
+    (issue) => issue.message === 'plain-text maths; wrap in $…$',
+  );
+  expect(mathIssues.map((issue) => issue.id)).toEqual(
+    expect.arrayContaining([explanation.value.id, multipleChoice.value.id]),
+  );
+
+  explanation.value.prompt = 'Use $d_\\text{in}$ and $W_1$.';
+  criterion.criterion = 'Mentions $\\nabla f$.';
+  explanation.value.exemplar = 'Compare $\\theta$ and $\\|x\\|$.';
+  explanation.value.solution = 'Use `x_1`.';
+  explanation.value.hints = ['Use $b_k$.'];
+  option.text = 'The value is $y_k$.';
+  option.feedback = 'The update uses `z_1`.';
+  const remainingIssues = validateContent(data).filter(
+    (issue) =>
+      issue.message === 'plain-text maths; wrap in $…$' &&
+      [explanation.value.id, multipleChoice.value.id].includes(issue.id),
+  );
+  expect(remainingIssues).toEqual([]);
+});
+
 test('currency dollar markers are rejected without flagging inline math', async () => {
   const data = await notationFixture();
   const exercise = data.exercises.find(({ concept }) => concept === 'vectors');

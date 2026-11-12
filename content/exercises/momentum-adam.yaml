@@ -686,19 +686,19 @@ exercises:
     rubric:
       - {
           id: memories,
-          criterion: "Give m_t = beta1*m_(t-1) + (1-beta1)*g_t and v_t = beta2*v_(t-1) + (1-beta2)*g_t^2 with zero starts, distinguishing signed direction from squared size.",
+          criterion: "Give $m_t = \\beta_1m_{t-1} + (1-\\beta_1)g_t$ and $v_t = \\beta_2v_{t-1} + (1-\\beta_2)g_t^2$ with zero starts, distinguishing signed direction from squared size.",
           weight: 1,
           required: true,
         }
       - {
           id: correction,
-          criterion: "Give mhat_t = m_t/(1-beta1^t) and vhat_t = v_t/(1-beta2^t), with t counting updates, to remove the zero-start distortion while retaining raw memories.",
+          criterion: "Give $\\hat m_t = m_t/(1-\\beta_1^t)$ and $\\hat v_t = v_t/(1-\\beta_2^t)$, with $t$ counting updates, to remove the zero-start distortion while retaining raw memories.",
           weight: 1,
           required: true,
         }
       - {
           id: move,
-          criterion: "Give w_t = w_(t-1) - eta*mhat_t/(sqrt(vhat_t)+epsilon), explain positive epsilon prevents division by zero, and note an excessive eta can still raise loss.",
+          criterion: "Give $w_t = w_{t-1} - \\eta\\hat m_t/(\\sqrt{\\hat v_t}+\\epsilon)$, explain positive $\\epsilon$ prevents division by zero, and note an excessive $\\eta$ can still raise loss.",
           weight: 1,
           required: true,
         }

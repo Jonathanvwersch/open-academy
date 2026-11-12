@@ -38,6 +38,7 @@ export interface TutorContext {
   exerciseOptions: string[];
   learnerAnswer?: string;
   graderVerdict?: string;
+  graderFeedback: string;
   hintLevel: number;
   authoredHints: string[];
   solution: string;
@@ -45,7 +46,7 @@ export interface TutorContext {
   question?: string;
   mode?: 'practice';
   history: Array<{ role: 'learner' | 'tutor'; content: string }>;
-  problem_status: 'unanswered' | 'answered' | 'none';
+  problem_status: 'unanswered' | 'retrying' | 'answered' | 'none';
   page: string;
   page_content: string;
 }

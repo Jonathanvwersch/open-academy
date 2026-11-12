@@ -311,19 +311,19 @@ exercises:
     options:
       - {
           id: a,
-          text: "Its label minus its predicted probability, y_k-p_k.",
+          text: "Its label minus its predicted probability, $y_k-p_k$.",
           correct: false,
           feedback: "That reverses the slope's sign and hence the descent direction.",
         }
       - {
           id: b,
-          text: "Its probability minus its one-hot label, p_k-y_k.",
+          text: "Its probability minus its one-hot label, $p_k-y_k$.",
           correct: true,
           feedback: "Use label one for the true class and zero for each other class.",
         }
       - {
           id: c,
-          text: "Its score minus its predicted probability, z_k-p_k.",
+          text: "Its score minus its predicted probability, $z_k-p_k$.",
           correct: false,
           feedback: "The subtraction uses the label, not the score.",
         }
@@ -352,7 +352,7 @@ exercises:
           id: c,
           text: "Because the bias is added to $w_kx$, which stays fixed.",
           correct: true,
-          feedback: "With weights and input fixed, changing b_k changes z_k by exactly that amount.",
+          feedback: "With weights and input fixed, changing $b_k$ changes $z_k$ by exactly that amount.",
         }
     solution: In $z_k=w_kx+b_k$, holding $w_kx$ fixed means $\Delta z_k=\Delta b_k$ for each class separately, not one shared change for all classes.
   - id: sm-grad-faded

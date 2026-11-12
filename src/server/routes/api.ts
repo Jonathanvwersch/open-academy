@@ -63,6 +63,7 @@ import {
 import { bringWeakestPrerequisiteCardDueNow } from '../learning/prerequisite-review.js';
 import { compareOutlinePosition, masteryKey, prerequisiteMet } from '../learning/prerequisites.js';
 import { buildProgress } from '../learning/progress.js';
+import { attemptAllowsRetry } from '../learning/retry.js';
 import type { PlannedActivity, SessionPreferences } from '../learning/scheduler.js';
 import {
   currentCurriculumWeek,
@@ -74,6 +75,12 @@ import type { LearningMode, MasteryRecord } from '../learning/types.js';
 import { initialMastery, masteryRank } from '../learning/types.js';
 import { localDateKey, sessionKindForDate, xpGoalFor } from '../learning/xp.js';
 import type { PaperFetcher } from '../papers/fetcher.js';
+import {
+  formatGraderFeedback,
+  graderVerdictFor,
+  tutorAnswerFor,
+  tutorSolutionFor,
+} from '../tutor/feedback-context.js';
 import { createTutorProvider, E2ETutorProvider, type TutorProvider } from '../tutor/provider.js';
 import { scoreRubric } from '../tutor/scoring.js';
 import { TutorService } from '../tutor/service.js';
@@ -506,10 +513,7 @@ export function createApiRoutes(deps: {
                 const feedback = attempt.feedback as Record<string, unknown>;
                 const answer = attempt.answer;
                 const followUp = feedback.followUp === true;
-                const retryAllowed =
-                  attempt.mode === 'practice' &&
-                  attempt.attemptNo < 2 &&
-                  (attempt.correct === 0 || followUp);
+                const retryAllowed = attemptAllowsRetry(attempt);
                 const exercise = index.exercisesById.get(attempt.exerciseId);
                 const answerOptions = exercise
                   ? answerOptionsFor(exercise, answer, !retryAllowed)
@@ -851,6 +855,8 @@ export function createApiRoutes(deps: {
         .slice(0, 5)
         .map((attempt) => attempt.mistakeCategory ?? '');
       const priorAttempt = recentAttempts.find((attempt) => attempt.exerciseId === exercise.id);
+      const retrying = priorAttempt ? attemptAllowsRetry(priorAttempt) : false;
+      const problemStatus = !priorAttempt ? 'unanswered' : retrying ? 'retrying' : 'answered';
       const tutorService = tutor(context);
       if (!tutorService) {
         return context.json({
@@ -882,16 +888,15 @@ export function createApiRoutes(deps: {
           exerciseOptions: optionTexts.map(
             ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
           ),
-          learnerAnswer: priorAttempt ? JSON.stringify(priorAttempt.answer) : '',
-          graderVerdict: priorAttempt
-            ? `${priorAttempt.correct ? 'Correct' : 'Incorrect'}${priorAttempt.mistakeCategory ? ` (${priorAttempt.mistakeCategory})` : ''}`
-            : 'No prior answer.',
+          learnerAnswer: priorAttempt ? tutorAnswerFor(exercise, priorAttempt.answer) : '',
+          graderVerdict: priorAttempt ? graderVerdictFor(priorAttempt.correct) : 'No prior answer.',
+          graderFeedback: priorAttempt ? formatGraderFeedback(priorAttempt.feedback, retrying) : '',
           hintLevel: level,
           authoredHints: hints,
-          solution: exercise.solution ?? '',
+          solution: problemStatus === 'answered' ? tutorSolutionFor(exercise) : '',
           recentMistakes,
           history: [],
-          problem_status: priorAttempt ? 'answered' : 'unanswered',
+          problem_status: problemStatus,
           page: 'none',
           page_content: '',
         },

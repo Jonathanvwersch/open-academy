@@ -860,6 +860,38 @@ test('tutor reply renders TeX inline and display delimiters', async ({ page }) =
   await page.screenshot({ path: `${latexScreenshotDir}/reply.png`, fullPage: true });
 });
 
+test('copying tutor math preserves its TeX source as plain text', async ({ page }) => {
+  const { assistantMessage } = await openMockedTutorReply(
+    page,
+    '00000000-0000-4000-8000-000000000008',
+    'What does this batch shape mean?',
+    'Keep one row per example: $B \\times d_{in}$ is the batch shape.',
+  );
+  const paragraph = assistantMessage.locator('p').filter({ hasText: 'Keep one row per example' });
+  await expect(paragraph.locator('.katex')).toBeVisible();
+  const copiedText = await paragraph.evaluate((element) => {
+    const selection = window.getSelection();
+    if (!selection) throw new Error('Could not select the tutor message');
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    let plainText = '';
+    document.addEventListener(
+      'copy',
+      (event) => {
+        plainText = event.clipboardData?.getData('text/plain') ?? '';
+      },
+      { once: true },
+    );
+    document.execCommand('copy');
+    selection.removeAllRanges();
+    return plainText;
+  });
+  expect(copiedText).toContain('$B \\times d_{in}$');
+  expect(copiedText.split(/\r?\n/).filter((line) => line.trim().length === 1)).toEqual([]);
+});
+
 test('lesson step tutor request includes the visible question label', async ({ page }) => {
   const { requestBody, visibleQuestionLabel } = await openMockedTutorReply(
     page,

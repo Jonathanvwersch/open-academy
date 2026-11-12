@@ -651,7 +651,7 @@ exercises:
       [
         {
           "id": "local-shared",
-          "criterion": "Explains local patches and shared weights and counts C_out(C_in k²+1) parameters including biases",
+          "criterion": "Explains local patches and shared weights and counts $C_{\\text{out}}(C_{\\text{in}}k^2+1)$ parameters including biases",
           "weight": 1,
           "required": true,
         },
@@ -668,5 +668,5 @@ exercises:
           "required": true,
         },
       ]
-    exemplar: "A convolution reads local patches and reuses each filter's weights at every position, unlike a fully connected layer with separate connections from every input to every output. With C_in input channels and C_out filters of side k, it has C_out(C_in k²+1) parameters. Its output is (C_out,H_out,W_out), where each spatial side is floor((input side+2p−k)/s)+1. Max pooling takes the largest value in each patch. With 2×2 patches, stride-2 pooling with no padding halves even spatial sides, preserves channels and has no weights or biases."
+    exemplar: "A convolution reads local patches and reuses each filter's weights at every position, unlike a fully connected layer with separate connections from every input to every output. With $C_{\\text{in}}$ input channels and $C_{\\text{out}}$ filters of side $k$, it has $C_{\\text{out}}(C_{\\text{in}}k^2+1)$ parameters. Its output is $(C_{\\text{out}},H_{\\text{out}},W_{\\text{out}})$, where each spatial side is $\\lfloor(\\text{input side}+2p-k)/s\\rfloor+1$. Max pooling takes the largest value in each patch. With $2\\times2$ patches, stride-$2$ pooling with no padding halves even spatial sides, preserves channels and has no weights or biases."
     solution: "Local patches limit the weights per filter, and sharing prevents positions from multiplying that count. Count patch starts separately for height and width, put the filter count first, and apply the same patch-counting rule for pooling."
