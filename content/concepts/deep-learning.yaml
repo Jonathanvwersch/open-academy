@@ -157,7 +157,7 @@ concepts:
     prereqs: [{ id: sgd-minibatch }, { id: overfitting }]
     objectives:
       - { text: "Diagnose a failing training run from its symptoms", dimension: transfer }
-    status: stub
+    status: authored
   - id: classification-softmax
     title: Softmax and multiclass cross-entropy
     description: Turning logits into probabilities; categorical cross-entropy.
