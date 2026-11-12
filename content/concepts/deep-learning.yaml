@@ -130,7 +130,7 @@ concepts:
     prereqs: [{ id: sgd-minibatch }]
     objectives:
       - { text: "Write the Adam update rule", dimension: math }
-    status: stub
+    status: authored
   - id: weight-init-normalization
     title: Initialization and normalization
     description: Why init scale matters; batch norm and layer norm.

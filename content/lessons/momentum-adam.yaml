@@ -1,0 +1,275 @@
+concept: momentum-adam
+version: 1
+objective: |
+  **Goal:** write the Adam update rule and explain how its remembered gradients, size adjustment and correction for a zero start determine each parameter's move.
+recap:
+  - concept: sgd-minibatch
+    text: "A minibatch averages its examples' loss gradients, the slopes of prediction error with respect to parameters. Subtract learning rate $\\eta$ times that average, then recompute after moving. A batch can disagree with the whole dataset."
+where_this_fits: |
+  ### What are momentum and Adam?
+
+  Momentum is a way of choosing a training update using recent gradients as well as the latest one. Adam combines that memory with a separate adjustment to the step size for each parameter.
+
+  In minibatch training, one batch may ask us to undo the previous batch's move. Remembering recent directions can soften those reversals. A model can also have several parameters with very different slope sizes. One learning rate can then make some moves too large and others too small. Adam uses each parameter's gradient history to adjust its moves, so we don't have to choose a separate learning rate for each parameter. We'll build these ideas into Adam's rule.
+knowledge_points:
+  - id: mad-remember-slopes
+    title: "Remember recent slopes"
+    explain: |
+      ### Letting several batches influence a move
+
+      In the minibatch lesson, each update used only the current batch's gradient. Now we'll keep a running average so one batch doesn't completely replace what earlier batches told us.
+
+      Imagine a robot learning to predict trip times. Our first model predicts the same $w$ seconds for every trip, initially $3$ seconds. Changing $w$ changes its prediction directly. Suppose fresh batches give loss slopes $4$, then $-4$, each measured at the current prediction. Positive slopes ask us to lower $w$, and negative slopes ask us to raise it. Blue bars show these slopes, and orange bars show the averages we'll use instead.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 245" aria-label="Two batches give blue gradients 4 and minus 4. Starting the average at zero and retaining three quarters each time gives orange averages 1 and minus 0.25. Bars extend above zero for positive values and below zero for negative values.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717" text-anchor="middle">
+      <text x="200" y="24">Blue: gradient · Orange: average</text>
+      <path d="M30 120 H370" stroke="#737373"/>
+      <text x="20" y="126">0</text>
+      <rect x="80" y="48" width="28" height="72" fill="#3b82f6"/><text x="94" y="41">4</text>
+      <rect x="120" y="102" width="28" height="18" fill="#f59e0b"/><text x="134" y="94">1</text>
+      <rect x="250" y="120" width="28" height="72" fill="#3b82f6"/><text x="264" y="214">−4</text>
+      <rect x="290" y="120" width="28" height="4.5" fill="#f59e0b"/><text x="304" y="148">−0.25</text>
+      <text x="114" y="238">batch 1</text><text x="284" y="238">batch 2</text>
+      </g></svg>
+      ```
+
+      ### Keeping part of the old average
+
+      **Momentum** updates parameters using a weighted average of recent gradients. Let $t$ count updates, $g_t$ be the current batch slope, and $m_t$ be the average after including it. Set the initial average $m_0$ to zero.
+
+      $$m_t=\beta_1m_{t-1}+(1-\beta_1)g_t.$$
+
+      The subscript $t-1$ means the previous update. We choose $\beta_1$ (beta one) to be at least $0$ but less than $1$. With $\beta_1=0.75$, we keep three quarters of the old average and add one quarter of the new gradient. Each older contribution is multiplied by $0.75$ again on every update, so it gradually fades. This is called an **exponentially weighted average**.
+
+      With learning rate $\eta$, momentum's update for this parameter is
+
+      $$w_t=w_{t-1}-\eta m_t.$$
+
+      Here $w_0$ is the starting prediction and $w_t$ is its value after update $t$. With several parameters, we would track a separate average for each.
+
+      ### Responding to a changed direction
+
+      With $\beta_1=0$, we use only the current gradient. Larger values remember further back, which can smooth batch noise but respond slowly when the useful direction changes. If the stored average were $4$ when a gradient changed to $-4$, keeping three quarters would give a new average of $2$, still asking us to lower $w$. Be careful not to assume that a zero gradient stops the move. The remembered average may still be nonzero.
+    worked: |
+      Let's update the trip-time prediction from $w_0=3$ with gradients $4,-4$, $\beta_1=0.75$ and $\eta=0.2$.
+
+      1. **Start the first average.** The previous average is zero, so only one quarter of the first gradient enters.
+         $$m_1=0.75\times0+0.25\times4=1.$$
+
+      2. **Make the first move.** A positive average lowers the prediction.
+         $$w_1=3-0.2\times1=2.8.$$
+
+      3. **Include the reversed gradient.** The next batch's gradient is measured at the new prediction. Three quarters of the stored average gives $0.75$, while one quarter of $-4$ gives $-1$.
+         $$m_2=0.75-1=-0.25.$$
+
+      4. **Make the second move.** The negative average raises the prediction, but by less than the first move lowered it.
+         $$w_2=2.8-0.2\times(-0.25)=2.85.$$
+
+      The second move raises the prediction by $2.85-2.8=0.05$, only partly undoing the first move because it remembers the earlier direction. To judge whether this improves predictions, we would check the loss over the whole dataset.
+    problems:
+      - mad-memory-basics
+      - mad-memory-why
+      - mad-memory-template
+      - mad-memory-zero
+      - mad-memory-update-template
+      - mad-memory-robot
+  - id: mad-scale-moves
+    title: "Adjust how far each parameter moves"
+    explain: |
+      ### Remembering gradient sizes too
+
+      Our simple robot model has one parameter. A richer version could predict one time for short trips and another for long trips, giving two adjustable parameters. Batches containing both kinds of trip give loss slopes for both predictions. With slopes $4$ and $2$, learning rate $0.1$ makes moves of size $0.4$ and $0.2$. If the first prediction is already near its best value, we might reduce the rate to avoid overshooting, shrinking the second move too.
+
+      We'll remember sizes too, so we can divide each parameter's move by its own size estimate. First look just at the short-trip parameter in a fresh run, with gradient $4$. As with momentum, let's keep three quarters of the old average and include one quarter of the new value. Squaring $4$ gives $16$. We start at zero, so one quarter of $16$ gives an average of $4$. Its square root is $2$, as the arrows show.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 245" aria-label="For the first gradient 4, square to get 16, average one quarter of it with three quarters of the starting zero to get v equals 4, then take the square root to get size 2. Each arrow means perform the next operation.">
+      <defs><marker id="mad-scale-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717" text-anchor="middle">
+      <rect x="90" y="8" width="220" height="38" fill="#d4d4d4" fill-opacity="0" stroke="#3b82f6"/><text x="200" y="33">gradient = 4</text>
+      <path d="M200 46 V69" stroke="#737373" marker-end="url(#mad-scale-arrow)"/>
+      <rect x="90" y="72" width="220" height="38" fill="#d4d4d4" fill-opacity="0" stroke="#d4d4d4"/><text x="200" y="97">square: 16</text>
+      <path d="M200 110 V133" stroke="#737373" marker-end="url(#mad-scale-arrow)"/>
+      <rect x="90" y="136" width="220" height="38" fill="#d4d4d4" fill-opacity="0" stroke="#d4d4d4"/><text x="200" y="161">average: v = 4</text>
+      <path d="M200 174 V197" stroke="#737373" marker-end="url(#mad-scale-arrow)"/>
+      <rect x="90" y="200" width="220" height="38" fill="#d4d4d4" fill-opacity="0" stroke="#d4d4d4"/><text x="200" y="225">square root: size = 2</text>
+      </g></svg>
+      ```
+
+      ### A separate size for each parameter
+
+      An **adaptive learning rate** adjusts the scale of an update using that parameter's own gradient history. Let $v_t$ be an exponentially weighted average of squared gradients, starting at $v_0=0$:
+
+      $$v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2.$$
+
+      We also choose $\beta_2$ (beta two) to be at least $0$ but less than $1$, and can choose it independently of $\beta_1$. Squaring stops opposite signs from cancelling in this size estimate. We then take the square root because we want to divide by a gradient size rather than a squared size.
+
+      We'll divide the remembered gradient by this size. Using these two stored averages for now gives the scaled value
+
+      $$\frac{m_t}{\sqrt{v_t}}.$$
+
+      For the same signed average $m_t$, dividing by a larger size makes the move smaller. Each parameter uses its own history for this division.
+
+      Be careful not to use $v_t$ for the direction, because squaring removes the sign. Direction still comes from $m_t$. Next we'll correct the starting zeros, then make the division safe when the size is zero.
+    worked: |
+      Let's start the richer trip-time model, with parameter $A$ predicting short trips and parameter $B$ predicting long trips. Suppose a batch gives them gradients $4$ and $2$. Both start with zero averages and use $\beta_1=\beta_2=0.75$. The superscript labels $(A)$ and $(B)$ tell us which parameter we're calculating for.
+
+      1. **Average each signed gradient.** With no previous history, each average is one quarter of its gradient.
+         $$\begin{aligned}m_1^{(A)}&=0.25\times4=1\\m_1^{(B)}&=0.25\times2=0.5.\end{aligned}$$
+
+      2. **Average each squared gradient.** Each parameter remembers its own squared gradient.
+         $$\begin{aligned}v_1^{(A)}&=0.25\times4^2=4\\v_1^{(B)}&=0.25\times2^2=1.\end{aligned}$$
+
+      3. **Divide by each size.** Each parameter uses the square root of its own average.
+         $$\begin{aligned}\frac{1}{\sqrt4}&=0.5\\\frac{0.5}{\sqrt1}&=0.5.\end{aligned}$$
+
+      Parameter $A$ has twice the gradient of $B$. Its square-root size estimate is also twice as large: $2$ versus $1$. The division makes both scaled directions $0.5$, counteracting $B$'s slower movement under a shared learning rate. Future batches build each parameter's own history, so these scaled directions won't always match.
+    problems:
+      - mad-scale-basics
+      - mad-scale-why
+      - mad-squares-template
+      - mad-squares-sign
+      - mad-denominator-template
+      - mad-scale-new-model
+  - id: mad-correct-start
+    title: "Fix averages that start at zero"
+    explain: |
+      ### How zero affects the first averages
+
+      Our averages start at zero, which initially makes them smaller than the gradients they describe. Imagine every batch gives the same gradient, $4$. With $\beta_1=0.75$, the first average is only $1$, and the second is $1.75$. The gradient hasn't shrunk, so this small average comes from how we started it.
+
+      The blue bars show the constant gradient. Orange shows the stored average, and green shows the average after removing the starting zero's influence.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 255" aria-label="With a constant gradient 4 and memory 0.75, raw averages are 1 after update 1 and 1.75 after update 2. Corrected averages are 4 both times. All bars rise from the same zero line with heights proportional to their values.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717" text-anchor="middle">
+      <text x="200" y="22">Blue: gradient · Orange: average</text><text x="200" y="45" fill="#10b981">Green: corrected average</text>
+      <path d="M35 210 H375" stroke="#737373"/><text x="23" y="216">0</text>
+      <rect x="65" y="90" width="26" height="120" fill="#3b82f6"/><text x="78" y="85">4</text>
+      <rect x="103" y="180" width="26" height="30" fill="#f59e0b"/><text x="116" y="172">1</text>
+      <rect x="141" y="90" width="26" height="120" fill="#10b981"/><text x="154" y="85">4</text>
+      <rect x="235" y="90" width="26" height="120" fill="#3b82f6"/><text x="248" y="85">4</text>
+      <rect x="273" y="157.5" width="26" height="52.5" fill="#f59e0b"/><text x="286" y="149">1.75</text>
+      <rect x="311" y="90" width="26" height="120" fill="#10b981"/><text x="324" y="85">4</text>
+      <text x="116" y="241">update 1</text><text x="286" y="241">update 2</text>
+      </g></svg>
+      ```
+
+      ### Removing zero from the average
+
+      In the first average, we multiply the gradient by $1/4$ and the starting zero by $3/4$. These multipliers are their **weights**, and together they add to $1$. On the next update, the starting zero's multiplier becomes $(3/4)^2=9/16$. The weights still add to $1$, but the zero contributes nothing to the result:
+
+      $$\begin{aligned}m_2&=\frac34\left(\frac14g_1\right)+\frac14g_2\\&=\frac3{16}g_1+\frac4{16}g_2.\end{aligned}$$
+
+      The two gradient weights add to $7/16$, not $1$. Dividing by $7/16$ turns them into $3/7$ and $4/7$, which do add to $1$. We now have a weighted average of just the real gradients, with no weight left on the starting zero.
+
+      **Bias correction** divides each stored average by the total weight assigned to actual gradients. We'll put a hat over a value to show that we've corrected it:
+
+      $$\hat m_t=\frac{m_t}{1-\beta_1^t}.$$
+
+      $$\hat v_t=\frac{v_t}{1-\beta_2^t}.$$
+
+      The power $t$ counts updates since we started the averages at zero. The starting zero retains weight $\beta_1^t$ in the signed average and $\beta_2^t$ in the squared average. Each denominator subtracts the matching starting weight from $1$.
+
+      ### What this correction can fix
+
+      Here “bias” means distortion from the starting values. Be careful not to mistake this for removing batch noise. When gradients change, the corrected average still remembers earlier batches rather than simply returning the latest gradient.
+    worked: |
+      Let's correct the second update's averages for a fresh run with two constant gradients $4,4$ and $\beta_1=\beta_2=0.75$. The first update stored $m_1=1$ and $v_1=4$.
+
+      1. **Include the second gradient.** Keep three quarters of each stored value, then add one quarter of the new gradient or its square.
+         $$\begin{aligned}m_2&=0.75+1=1.75\\v_2&=3+4=7.\end{aligned}$$
+
+      2. **Find the real gradients' weight.** Two updates leave the starting zero with weight $9/16$.
+         $$1-\left(\frac34\right)^2=1-\frac9{16}=\frac7{16}.$$
+
+      3. **Correct both averages.** Divide each stored value by that weight, since $\beta_1$ and $\beta_2$ are both $0.75$ here.
+         $$\begin{aligned}\hat m_2&=\frac{1.75}{7/16}=4\\\hat v_2&=\frac7{7/16}=16.\end{aligned}$$
+
+      4. **Compare the scaled directions.** On the first update, dividing the raw $m_1=1$ and $v_1=4$ by $1/4$ gives corrected values $4$ and $16$. The scaled direction changes from the first line to the second:
+         $$\begin{aligned}\frac1{\sqrt4}&=0.5\\\frac4{\sqrt{16}}&=1.\end{aligned}$$
+
+      The corrected values recover the constant gradient and its square. Without correction, the starting zero would halve the first scaled direction in this example.
+    problems:
+      - mad-correction-basics
+      - mad-correction-why
+      - mad-correction-template
+      - mad-correction-clock
+      - mad-correction-two-memories
+      - mad-correction-changing
+  - id: mad-combine-update
+    title: "Combine the pieces into Adam"
+    explain: |
+      ### Calculating one parameter's update
+
+      We now have a remembered direction and a separate size for each parameter, both corrected for their zero start. **Adam** is the training algorithm that combines them into a complete update.
+
+      The picture shows one parameter's calculation. We use a fresh batch gradient to update both averages, then correct them. Taking the square root of the corrected squared average gives the size. The small positive number epsilon keeps the size we divide by above zero, and eta is our learning rate.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 275" aria-label="A fresh batch gradient feeds two parallel calculations: update and correct the signed average, and update and correct the squared average. Take the square root of the corrected squared average to get size. Divide direction by size plus epsilon, scale by eta, and subtract from the parameter.">
+      <defs><marker id="mad-combine-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" fill="#171717" text-anchor="middle">
+      <rect x="80" y="5" width="240" height="38" fill="#d4d4d4" fill-opacity="0" stroke="#3b82f6"/><text x="200" y="31">fresh batch gradient</text>
+      <path d="M170 43 L105 75" stroke="#737373" marker-end="url(#mad-combine-arrow)"/><path d="M230 43 L295 75" stroke="#737373" marker-end="url(#mad-combine-arrow)"/>
+      <rect x="10" y="78" width="185" height="68" fill="#d4d4d4" fill-opacity="0" stroke="#10b981"/><text x="102" y="103">signed average</text><text x="102" y="128">update, then correct</text>
+      <rect x="205" y="78" width="185" height="68" fill="#d4d4d4" fill-opacity="0" stroke="#10b981"/><text x="298" y="103">squared average</text><text x="298" y="128">update, then correct</text>
+      <path d="M105 146 L170 180" stroke="#737373" marker-end="url(#mad-combine-arrow)"/><path d="M295 146 L230 180" stroke="#737373" marker-end="url(#mad-combine-arrow)"/>
+      <rect x="10" y="183" width="380" height="87" fill="#d4d4d4" fill-opacity="0" stroke="#f59e0b"/><text x="200" y="208">take square root for size</text><text x="200" y="233">divide by size + epsilon</text><text x="200" y="258">scale by eta, then subtract</text>
+      </g></svg>
+      ```
+
+      ### The complete Adam rule
+
+      Start with $m_0=v_0=0$. For each update $t=1,2,\ldots$, use the current batch gradient $g_t$, measured at $w_{t-1}$:
+
+      $$m_t=\beta_1m_{t-1}+(1-\beta_1)g_t.$$
+
+      $$v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2.$$
+
+      $$\hat m_t=\frac{m_t}{1-\beta_1^t}.$$
+
+      $$\hat v_t=\frac{v_t}{1-\beta_2^t}.$$
+
+      $$w_t=w_{t-1}-\eta\frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon}.$$
+
+      Adding the positive $\epsilon$ (epsilon) to the square root keeps the denominator above zero. Keep the uncorrected, or **raw**, averages for the next batch. Putting corrected values into the next averaging calculation would give early gradients too much weight. Use the corrected averages only for the move.
+
+      With several parameters, repeat this calculation using each parameter's own slope and stored averages. All parameters use the same settings and update count $t$. Our examples use $\beta_1=\beta_2=0.75$ for easy arithmetic. Common choices, held fixed throughout training, are $\beta_1=0.9$ and $\beta_2=0.999$. Epsilon is usually tiny, such as $10^{-8}$, meaning $0.00000001$.
+
+      ### A learning rate still matters
+
+      Be careful not to assume adaptive scaling guarantees that loss falls. Suppose our simple trip-time model sees a target of $1$ second, giving squared loss $(w-1)^2$. At $w=3$, the slope is $2(3-1)=4$. The worked example below gives corrected averages $4$ and $16$. With $\epsilon=1$ for easy arithmetic, the scaled direction is $4/5$. Learning rate $0.2$ moves by $0.16$ to $2.84$. Rate $10$ moves by $8$ to $-5$, raising loss from $4$ to $36$. If moves are too large, try a smaller learning rate and check the loss again.
+    worked: |
+      Let's perform the first complete Adam update from $w_0=3$ with gradient $g_1=4$, $\beta_1=\beta_2=0.75$ and $\eta=0.2$. Use $\epsilon=1$, deliberately much larger than normal to keep the denominator an exact integer.
+
+      1. **Update the two memories.** Both start at zero, and the squared average receives the square of the gradient.
+         $$\begin{aligned}m_1&=0.75\times0+0.25\times4=1\\v_1&=0.75\times0+0.25\times16=4.\end{aligned}$$
+
+      2. **Correct the zero start.** At update $1$, both correction divisors are $1-0.75=0.25$.
+         $$\begin{aligned}\hat m_1&=1/0.25=4\\\hat v_1&=4/0.25=16.\end{aligned}$$
+
+      3. **Find the denominator.** Take the square root first, then add epsilon.
+         $$\sqrt{16}+1=5.$$
+
+      4. **Move the parameter.** Subtract the learning rate times the corrected direction divided by that denominator.
+         $$w_1=3-0.2\times\frac45=2.84.$$
+
+      To continue the weighted history, store $m_1=1$ and $v_1=4$. For example, a next gradient of zero would give raw $m_2=0.75$ from the stored $1$. Reusing the corrected $4$ would incorrectly give $3$ instead. We would next recompute the gradient at $w_1=2.84$ and use $t=2$ for the next update.
+    problems:
+      - mad-adam-basics
+      - mad-adam-why
+      - mad-adam-template
+      - mad-epsilon-position
+      - mad-adam-store
+      - mad-adam-rate
+final: mad-explain-adam
+summary: |
+  - Momentum remembers recent signed gradients with $m_t=\beta_1m_{t-1}+(1-\beta_1)g_t$, softening sudden batch reversals but sometimes delaying a useful turn.
+  - Adam also remembers squared sizes with $v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2$, separately for each parameter.
+  - Correct the zero start using $\hat m_t=m_t/(1-\beta_1^t)$ and $\hat v_t=v_t/(1-\beta_2^t)$, then update with $w_t=w_{t-1}-\eta\hat m_t/(\sqrt{\hat v_t}+\epsilon)$.
+  - Keep the raw averages for the next update and compute a fresh gradient there; adaptive scaling still needs a suitable learning rate.
+
+  **Next:** Debugging training runs uses loss curves and small checks to investigate why training isn't improving.
