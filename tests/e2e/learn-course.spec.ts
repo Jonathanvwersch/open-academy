@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { expect, type Page, test } from '@playwright/test';
+import { eq } from 'drizzle-orm';
 import { parse } from 'yaml';
 import { LessonSchema, normalizeLesson } from '../../src/server/content/schemas.js';
 import { createDb } from '../../src/server/db/client.js';
@@ -169,6 +170,61 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   await page.getByRole('button', { name: 'Start learning' }).click();
   await expect(page).toHaveURL(/\/session\//);
   expect(createdSessionRequest).toEqual({ kind: 'weekday' });
+});
+
+test('completed activity deep links can continue or show the session finish screen', async ({
+  page,
+}) => {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'saturday',
+      plannedMinutes: 30,
+      status: 'active',
+      startedAt: new Date('2026-01-03T12:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create session fixture');
+  const [paper, nextActivity] = await db
+    .insert(sessionActivities)
+    .values([
+      {
+        sessionId: session.id,
+        idx: 0,
+        kind: 'paper',
+        exerciseIds: [],
+        plannedMinutes: 10,
+        status: 'completed',
+      },
+      {
+        sessionId: session.id,
+        idx: 1,
+        kind: 'practice',
+        conceptId: 'vectors',
+        exerciseIds: ['vectors-magnitude'],
+        plannedMinutes: 20,
+        status: 'planned',
+      },
+    ])
+    .returning();
+  if (!paper || !nextActivity) throw new Error('Could not create activity fixtures');
+
+  await page.goto(`/session/${session.id}?activity=${paper.id}`);
+  await expect(page.getByRole('status')).toHaveText('Paper reading complete.');
+  await expect(page.getByRole('link', { name: 'Continue' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('link', { name: 'Continue' })).toBeVisible();
+  await page.getByRole('link', { name: 'Continue' }).click();
+  await expect(page).toHaveURL(`/session/${session.id}`);
+  await expect(page.getByRole('button', { name: 'Submit answer' })).toBeVisible();
+
+  await db
+    .update(sessionActivities)
+    .set({ status: 'completed' })
+    .where(eq(sessionActivities.id, nextActivity.id));
+  await page.goto(`/session/${session.id}?activity=${paper.id}`);
+  await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
 });
 
 test('project evidence and reflection survive reloading the project page', async ({ page }) => {

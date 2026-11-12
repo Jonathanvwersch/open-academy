@@ -176,14 +176,15 @@ function SessionPage() {
         item.exerciseIds.includes(exerciseId),
       ),
   );
-  const requestedPaperActivity = activities.find(
-    (item) => item.id === requestedActivityId && item.kind === 'paper',
+  const requestedCompletedActivity = activities.find(
+    (item) => item.id === requestedActivityId && item.status === 'completed',
   );
   const activity =
-    (requestedPaperActivity?.status === 'completed' ? requestedPaperActivity : undefined) ??
     completedLesson ??
     completedFinal ??
+    (requestedCompletedActivity && activeActivity ? requestedCompletedActivity : undefined) ??
     activeActivity;
+  const showingRequestedCompletedActivity = activity?.id === requestedCompletedActivity?.id;
   const showingCompletedFinal = activity?.id === completedFinal?.id;
   const exerciseId = showingCompletedFinal
     ? activity?.exerciseIds.find((candidate) =>
@@ -467,6 +468,23 @@ function SessionPage() {
         onFinish={endSession}
         finishing={endingSession}
       />
+    );
+  }
+  if (showingRequestedCompletedActivity) {
+    const title =
+      activity.kind === 'paper'
+        ? 'Paper reading'
+        : (activity.conceptTitle ?? sessionActivityLabel(activity.kind));
+    return (
+      <section className="space-y-6">
+        <SessionActivityHeader title={title} label={sessionActivityLabel(activity.kind)} />
+        <p role="status">{title} complete.</p>
+        <Button asChild>
+          <Link to="/session/$id" params={{ id }} search={{}}>
+            Continue
+          </Link>
+        </Button>
+      </section>
     );
   }
   const mode =
