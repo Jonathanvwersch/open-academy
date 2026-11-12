@@ -65,7 +65,7 @@ import {
 } from '../learning/scheduler.js';
 import type { LearningMode, MasteryRecord } from '../learning/types.js';
 import { initialMastery, masteryRank } from '../learning/types.js';
-import { localDateKey, xpGoalFor } from '../learning/xp.js';
+import { localDateKey, sessionKindForDate, xpGoalFor } from '../learning/xp.js';
 import type { PaperFetcher } from '../papers/fetcher.js';
 import { createTutorProvider, E2ETutorProvider, type TutorProvider } from '../tutor/provider.js';
 import { scoreRubric } from '../tutor/scoring.js';
@@ -173,11 +173,7 @@ export function createApiRoutes(deps: {
       sundayMinutes?: number;
       goal?: string;
     };
-    const weekday = new Intl.DateTimeFormat('en-US', {
-      weekday: 'short',
-      timeZone: context.get('timeZone'),
-    }).format(now);
-    const sessionKind = weekday === 'Sat' ? 'saturday' : weekday === 'Sun' ? 'sunday' : 'weekday';
+    const sessionKind = sessionKindForDate(localDateKey(now, context.get('timeZone')));
     const budget = sessionBudget(sessionKind, prefs);
     const plan = planSession(state, index, now, budget, sessionKind);
     const active = await repo.activeSession(now);
@@ -211,7 +207,7 @@ export function createApiRoutes(deps: {
   api.post('/sessions', async (context) => {
     const body = z
       .object({
-        kind: z.enum(['weekday', 'saturday', 'sunday', 'custom']).default('weekday'),
+        kind: z.enum(['weekday', 'saturday', 'sunday', 'custom']).optional(),
         budgetMinutes: z.number().int().positive().max(600).optional(),
         focusConceptId: z.string().optional(),
       })
@@ -221,6 +217,8 @@ export function createApiRoutes(deps: {
     }
     const [index, repo] = [await content(), withRepo(context)];
     const now = requestNow(context);
+    const sessionKind =
+      body.data.kind ?? sessionKindForDate(localDateKey(now, context.get('timeZone')));
     const state = await repo.schedulerState(now);
     const user = await repo.user();
     const prefs = (user?.prefs ?? {}) as {
@@ -228,7 +226,7 @@ export function createApiRoutes(deps: {
       saturdayMinutes?: number;
       sundayMinutes?: number;
     };
-    const budgetMinutes = body.data.budgetMinutes ?? sessionBudget(body.data.kind, prefs);
+    const budgetMinutes = body.data.budgetMinutes ?? sessionBudget(sessionKind, prefs);
     if (body.data.focusConceptId) {
       const focusConcept = index.conceptsById.get(body.data.focusConceptId);
       if (!focusConcept) {
@@ -255,7 +253,7 @@ export function createApiRoutes(deps: {
       }
       state.inProgressConceptId = body.data.focusConceptId;
     }
-    const plan = planSession(state, index, now, budgetMinutes, body.data.kind);
+    const plan = planSession(state, index, now, budgetMinutes, sessionKind);
     if (body.data.focusConceptId) {
       const inProgressLessonConcepts = new Set(
         (state.lessonRuns ?? [])
@@ -333,7 +331,7 @@ export function createApiRoutes(deps: {
       .insert(studySessions)
       .values({
         userId: context.get('userId'),
-        kind: body.data.kind,
+        kind: sessionKind,
         plannedMinutes: budgetMinutes,
         startedAt: now,
         status: 'active',

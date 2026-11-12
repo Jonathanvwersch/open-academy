@@ -34,7 +34,7 @@ function LearnPage() {
       const response = await apiFetch('/api/sessions', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ kind: today.sessionKind }),
       });
       if (!response.ok) throw new Error('Could not start session');
       return response.json() as Promise<{ id: string }>;
@@ -48,7 +48,7 @@ function LearnPage() {
       const response = await apiFetch('/api/sessions', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ focusConceptId }),
+        body: JSON.stringify({ focusConceptId, kind: today.sessionKind }),
       });
       if (!response.ok) throw new Error('Could not start the selected lesson');
       return response.json() as Promise<{ id: string }>;

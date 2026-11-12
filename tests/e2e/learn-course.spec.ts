@@ -159,8 +159,16 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
 
   await page.goto('/');
+  let createdSessionRequest: Record<string, unknown> | null = null;
+  await page.route('**/api/sessions', async (route) => {
+    if (route.request().method() === 'POST') {
+      createdSessionRequest = JSON.parse(route.request().postData() ?? '{}');
+    }
+    await route.continue();
+  });
   await page.getByRole('button', { name: 'Start learning' }).click();
   await expect(page).toHaveURL(/\/session\//);
+  expect(createdSessionRequest).toEqual({ kind: 'weekday' });
 });
 
 test('navigation has four destinations and Lab redirects to Course', async ({ page }) => {

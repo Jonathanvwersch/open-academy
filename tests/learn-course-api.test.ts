@@ -204,6 +204,32 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
   expect(await rowCounts()).toEqual(before);
 });
 
+test('session creation matches the local-day preview kind and activities', async () => {
+  for (const [now, expectedKind] of [
+    ['2026-11-14T12:00:00.000Z', 'saturday'],
+    ['2026-11-15T12:00:00.000Z', 'sunday'],
+    ['2026-11-16T12:00:00.000Z', 'weekday'],
+  ] as const) {
+    const headers = { 'X-Now': now, 'X-Time-Zone': 'UTC' };
+    const previewResponse = await app.request('/api/today', { headers });
+    expect(previewResponse.status).toBe(200);
+    const preview = await previewResponse.json();
+    expect(preview.sessionKind).toBe(expectedKind);
+
+    const createdResponse = await app.request('/api/sessions', {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(createdResponse.status).toBe(201);
+    const created = await createdResponse.json();
+    expect(created.kind).toBe(preview.sessionKind);
+    expect(created.activities.map((activity: { kind: string }) => activity.kind)).toEqual(
+      preview.plan.activities.map((activity: { kind: string }) => activity.kind),
+    );
+  }
+});
+
 test('lesson choices exclude locked, completed and stub concepts and retain the recommended lesson past five', async () => {
   const outlineIds = Array.from(
     new Set(
