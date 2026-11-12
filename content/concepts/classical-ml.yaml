@@ -121,7 +121,7 @@ concepts:
     prereqs: [{ id: train-test-split }]
     objectives:
       - { text: "Diagnose over/underfitting from learning curves", dimension: transfer }
-    status: stub
+    status: authored
   - id: regularization
     title: Regularization
     description: L2/L1 penalties, weight decay, dropout, early stopping.
