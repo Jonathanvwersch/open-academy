@@ -1,0 +1,930 @@
+concept: weight-init-normalization
+exercises:
+  - id: wi-depth-chain-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What are vanishing activations?
+    solution: Repeated multiplication by a factor below 1 shrinks the outputs towards 0 as they pass
+      through many layers.
+    options:
+      - id: a
+        text: Outputs grow away from 0 through many layers, each multiplying by a factor above 1.
+        correct: false
+        feedback: That describes exploding activations, not vanishing ones.
+        category: incorrect_reasoning
+      - id: b
+        text: Outputs shrink towards 0 through many layers, each multiplying by a factor below 1.
+        correct: true
+        feedback:
+          Repeated multiplication by a factor below 1 shrinks the outputs towards 0 as they pass
+          through many layers.
+      - id: c
+        text: Outputs stay at their original size through many layers, each multiplying by 1.
+        correct: false
+        feedback: Multiplication by 1 preserves the outputs rather than shrinking them.
+        category: incorrect_reasoning
+      - id: d
+        text: Outputs become 0 in one layer because every starting weight must be 0.
+        correct: false
+        feedback: Vanishing can happen gradually with nonzero weights below 1.
+        category: incorrect_reasoning
+  - id: wip-chain-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why is the slope multiplied by 0.5 at each layer on the way back?
+    solution:
+      Each layer multiplies its input by 0.5, giving a local derivative of 0.5. Backpropagation
+      multiplies the arriving slope by that local derivative.
+    options:
+      - id: a
+        text: Each forward output halves, so the loss must halve and its slope must halve too.
+        correct: false
+        feedback: A halved activation does not imply a halved loss; the local derivative supplies the factor.
+        category: incorrect_reasoning
+      - id: b
+        text: ReLU always halves every slope, so each backward step multiplies the slope by 0.5.
+        correct: false
+        feedback: ReLU passes positive inputs unchanged; the weight supplies this factor.
+        category: incorrect_reasoning
+      - id: c
+        text:
+          Each layer computes $h_k=0.5h_{k-1}$, so backpropagation multiplies by its local derivative,
+          0.5.
+        correct: true
+        feedback:
+          Each layer multiplies its input by 0.5, giving a local derivative of 0.5. Backpropagation
+          multiplies the arriving slope by that local derivative.
+      - id: d
+        text: The slope is averaged over two layers, so each layer receives half of that average.
+        correct: false
+        feedback: Backpropagation multiplies local derivatives; it does not average slopes over layers.
+        category: incorrect_reasoning
+  - id: wip-chain-output
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt:
+      A chain has 4 layers, each with weight 3 and no bias or activation function. With input 1,
+      what is the last output?
+    solution: The input is multiplied by 3 once per layer, so the output is $3^4=81$.
+    answer: 81
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer: 12
+        category: math_error
+        feedback: Multiply by 3 four times, rather than multiplying 3 by 4.
+      - answer: 27
+        category: math_error
+        feedback: That includes only three of the four layers.
+  - id: wip-chain-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A chain has {{= L }} layers, each with weight {{= w }}, no bias and no activation function.
+      With input 1, what is its last output?
+    solution: Each layer multiplies by the weight, so the last output is ${{= w }}^{{= L }}={{= w^L }}$.
+    tolerance:
+      rel: 0.001
+    common_wrong:
+      - answer_expr: w*L
+        category: math_error
+        feedback: Depth repeats multiplication, not addition.
+      - answer_expr: w^(L-1)
+        category: math_error
+        feedback: Count every layer, including the first.
+    params:
+      L:
+        min: 2
+        max: 5
+      w:
+        min: 1.5
+        max: 3
+        step: 0.5
+    constraints: ["w^L != w*L"]
+    answer_expr: w^L
+  - id: wip-chain-slope
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A chain has 6 layers, each multiplying by 0.5. The loss slope for the last output is 1. What
+      is the slope for $h_1$, the output of layer 1?
+    solution: The slope passes back through layers 6 to 2, five factors of 0.5, so it is $0.5^5=0.03125$.
+    answer: 0.03125
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer: 0.015625
+        category: math_error
+        feedback: Only five layers lie between the last output and the output of layer 1.
+      - answer: 3
+        category: math_error
+        feedback: The local derivatives multiply; they are not added.
+  - id: wip-chain-near-one
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A 50-layer chain has weight 1.1 in every layer, no bias or activation function, and input 1.
+      About how large is its last output?
+    solution: The output is $1.1^{50}\approx117.39$, so even a factor just above 1 can grow large with depth.
+    options:
+      - id: a
+        text: About 6, because each layer adds 0.1 to the original input.
+        correct: false
+        feedback: Each layer multiplies the current value, rather than adding a fixed 0.1.
+        category: incorrect_reasoning
+      - id: b
+        text: About 55, because the weight 1.1 is multiplied by fifty layers.
+        correct: false
+        feedback: The output is a power, not weight times depth.
+        category: incorrect_reasoning
+      - id: c
+        text: About 117, because the factor 1.1 is multiplied fifty times.
+        correct: true
+        feedback:
+          The output is $1.1^{50}\approx117.39$, so even a factor just above 1 can grow large with
+          depth.
+      - id: d
+        text: About 1, because any weight close to 1 keeps outputs steady.
+        correct: false
+        feedback: A small excess compounds through many layers.
+        category: incorrect_reasoning
+  - id: wip-chain-negative
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      A 5-layer chain has weight $-2$ in every layer, no bias or activation function, and input 1.
+      What is its last output?
+    solution:
+      The size doubles at each layer and the sign flips each time. Five layers therefore give
+      $(-2)^5=-32$.
+    answer: -32
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer: 32
+        category: math_error
+        feedback: Five negative factors give a negative result.
+      - answer: -10
+        category: math_error
+        feedback: Multiply by -2 five times; do not multiply the weight by depth.
+  - id: wip-chain-robot
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      A 20-layer network controls a robot arm. Training barely changes the first layers' weights,
+      whose slopes are about a millionth of the last layer's slopes. Which explanation fits?
+    solution:
+      Repeated factors below 1 shrink the slopes on the way back, so the early weights barely
+      change. This is vanishing gradients.
+    options:
+      - id: a
+        text: "Vanishing gradients: each layer multiplies the slope by a factor below 1 on the way back."
+        correct: true
+        feedback:
+          Repeated factors below 1 shrink the slopes on the way back, so the early weights barely
+          change. This is vanishing gradients.
+      - id: b
+        text: "Exploding gradients: each layer multiplies the slope by a factor above 1 on the way back."
+        correct: false
+        feedback: That would make early slopes larger, not smaller.
+        category: incorrect_reasoning
+      - id: c
+        text:
+          The first layers have reached their best weights, so their small slopes prove training is
+          complete.
+        correct: false
+        feedback: Small slopes can result from repeated shrinking and do not prove the weights are best.
+        category: incorrect_reasoning
+      - id: d
+        text:
+          The input readings are too large, so they necessarily shrink the slopes in every earlier
+          layer.
+        correct: false
+        feedback: Large readings do not explain the repeated shrinking of slopes across layers.
+        category: incorrect_reasoning
+  - id: wi-init-scale-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does LeCun initialization, $a=1/\sqrt n$, aim to do?
+    solution: For random weights of typical size $a$, scores have average square $na^2$ times the
+      inputs'. Setting $a=1/\sqrt n$ makes that factor 1.
+    options:
+      - id: a
+        text: Make every score exactly equal to the corresponding input value.
+        correct: false
+        feedback: The rule preserves typical size, not individual values.
+        category: incorrect_reasoning
+      - id: b
+        text: Keep the typical size of a layer's scores the same as its inputs.
+        correct: true
+        feedback:
+          For random weights of typical size $a$, scores have average square $na^2$ times the
+          inputs'. Setting $a=1/\sqrt n$ makes that factor 1.
+      - id: c
+        text: Make every weight identical so the neurons produce matching outputs.
+        correct: false
+        feedback: Weights should be random; identical weights keep neurons identical.
+        category: incorrect_reasoning
+      - id: d
+        text: Make each layer double its typical size to strengthen the outputs.
+        correct: false
+        feedback: Doubling repeatedly would cause exploding activations.
+        category: incorrect_reasoning
+  - id: wip-init-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked ReLU example, why use $2/50$ rather than $1/50$ inside the square root?
+    solution:
+      ReLU removes the negative half of the scores, halving their average square. Starting with
+      twice the average square leaves the outputs at the intended size.
+    options:
+      - id: a
+        text: ReLU doubles the positive scores, so the 2 makes the weights match those doubled scores.
+        correct: false
+        feedback: ReLU leaves positive scores unchanged.
+        category: incorrect_reasoning
+      - id: b
+        text: Each neuron has two outputs, so the 2 shares the score between those two outputs.
+        correct: false
+        feedback: The 2 compensates for ReLU, not a second output.
+        category: incorrect_reasoning
+      - id: c
+        text: ReLU turns the negative half to 0, halving the average square; the 2 makes up for it.
+        correct: true
+        feedback:
+          ReLU removes the negative half of the scores, halving their average square. Starting with
+          twice the average square leaves the outputs at the intended size.
+      - id: d
+        text: The backward pass always halves the weights, so the 2 restores their original starting size.
+        correct: false
+        feedback: Backpropagation computes slopes; it does not automatically halve weights.
+        category: incorrect_reasoning
+  - id: wip-init-three-inputs
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A neuron has 3 inputs all equal to 1. Each weight is randomly +1 or -1, with all 8 sign
+      patterns equally likely. What is the average of the score squared?
+    solution: Two sign patterns give squared score 9 and six give squared score 1, so the average is
+      $(2\times9+6\times1)/8=3$.
+    answer: 3
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer: 0
+        category: math_error
+        feedback: The scores average to 0, but their squares do not.
+      - answer: 9
+        category: math_error
+        feedback: Only the all-positive and all-negative patterns have squared score 9.
+  - id: wip-init-lecun-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A neuron has {{= k*k }} inputs of typical size 1 and no activation function. What LeCun
+      weight typical size should it use? Give your answer to three decimal places.
+    solution: LeCun initialization uses $1/\sqrt n$, so the typical size is $1/{{= k }}={{= 1/k }}$
+      before rounding.
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 1/(k*k)
+        category: math_error
+        feedback: Take the square root of the number of inputs first.
+      - answer_expr: k
+        category: math_error
+        feedback: Use the reciprocal of the square root, not the square root itself.
+    params:
+      k:
+        min: 4
+        max: 20
+    answer_expr: 1/k
+  - id: wip-init-score-size
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A neuron has 400 inputs of typical size 1 and random weights of typical size 0.1. With no
+      activation function, what is the typical size of its score?
+    solution: The score's average square is $400\times0.1^2=4$. Its typical size is $\sqrt4=2$.
+    answer: 2
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer: 4
+        category: math_error
+        feedback: That is the average square; take its square root for typical size.
+      - answer: 40
+        category: math_error
+        feedback: Random signed contributions partly cancel; use the square root of the sum of squares.
+  - id: wip-init-same-weights
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Why not start every weight in a layer at the same value 0.1?
+    solution: Identical starting weights make neurons compute the same outputs and receive the same
+      slopes. They then change together rather than becoming different neurons.
+    options:
+      - id: a
+        text: Equal weights cannot change during training, even if their slopes are different.
+        correct: false
+        feedback: Training can change equal weights; the problem is their matching outputs and slopes.
+        category: incorrect_reasoning
+      - id: b
+        text: Equal weights always make the score too large, regardless of the number of inputs.
+        correct: false
+        feedback: The score size depends on the inputs; identical neurons are the issue here.
+        category: incorrect_reasoning
+      - id: c
+        text: Neurons would compute the same outputs and get the same slopes, staying identical copies.
+        correct: true
+        feedback:
+          Identical starting weights make neurons compute the same outputs and receive the same
+          slopes. They then change together rather than becoming different neurons.
+      - id: d
+        text: Equal weights are fine because only their typical size matters for useful training.
+        correct: false
+        feedback: Randomness also matters so neurons can develop different outputs.
+        category: incorrect_reasoning
+  - id: wip-init-five-layers
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      Each neuron in each of 5 layers has 100 inputs and random weights of typical size 0.2. There
+      is no activation function. Starting from input typical size 1, what is the typical size after
+      all 5 layers?
+    solution: Each layer multiplies typical size by $\sqrt{100\times0.2^2}=2$. Five layers give $2^5=32$.
+    answer: 32
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer: 1024
+        category: math_error
+        feedback: That compounds the average-square factor 4 rather than the typical-size factor 2.
+      - answer: 3200000
+        category: math_error
+        feedback:
+          Random signed contributions give a factor of square root of 100 times 0.2, not 100 times
+          0.2.
+  - id: wip-init-robot
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      A robot camera network has a ReLU layer whose neurons each have 256 inputs. Approximately
+      what starting weight typical size does He initialization give?
+    solution: He initialization gives $\sqrt{2/256}\approx0.0884$. The factor 2 compensates for ReLU
+      removing the negative half.
+    options:
+      - id: a
+        text: 0.088, from taking the square root of 2 divided by 256.
+        correct: true
+        feedback:
+          He initialization gives $\sqrt{2/256}\approx0.0884$. The factor 2 compensates for ReLU
+          removing the negative half.
+      - id: b
+        text: 0.0625, from taking 1 divided by the square root of 256.
+        correct: false
+        feedback: That is the LeCun size and does not compensate for ReLU.
+        category: incorrect_reasoning
+      - id: c
+        text: 0.0078, from taking 2 divided by 256 without a square root.
+        correct: false
+        feedback: He initialization takes the square root of 2 divided by the input count.
+        category: incorrect_reasoning
+      - id: d
+        text: 1.000, from keeping the weights as large as the input typical size.
+        correct: false
+        feedback: With many inputs that would give much larger scores.
+        category: incorrect_reasoning
+  - id: wi-layer-norm-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does LayerNorm do to one example's layer outputs?
+    solution: LayerNorm centres one example's outputs using their mean and rescales them using their
+      standard deviation. Learned gain and shift then let the network choose the size and offset it
+      needs.
+    options:
+      - id: a
+        text:
+          Subtract each neuron's mean across examples, divide by its standard deviation, then apply gain
+          and shift.
+        correct: false
+        feedback: That averages across examples, rather than within one example.
+        category: incorrect_reasoning
+      - id: b
+        text: Subtract their mean, divide by their standard deviation, then apply a learned gain and shift.
+        correct: true
+        feedback:
+          LayerNorm centres one example's outputs using their mean and rescales them using their
+          standard deviation. Learned gain and shift then let the network choose the size and offset
+          it needs.
+      - id: c
+        text: Divide by their mean, subtract their standard deviation, then apply a learned gain and shift.
+        correct: false
+        feedback: Subtract the mean first and divide by the standard deviation.
+        category: incorrect_reasoning
+      - id: d
+        text: Subtract their mean and divide by the largest output, without any learned gain or shift.
+        correct: false
+        feedback: LayerNorm divides by standard deviation and includes learned gain and shift.
+        category: incorrect_reasoning
+  - id: wip-ln-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: For the lesson's outputs 1, 7, 9, 15, why does LayerNorm divide the centred values by 5?
+    solution:
+      The centred values have average square $(49+1+1+49)/4=25$, so their standard deviation is
+      5. Dividing by 5 gives typical size 1.
+    options:
+      - id: a
+        text: 5 is the average of -7, -1, 1, 7; dividing by their average makes typical size 1.
+        correct: false
+        feedback: Those differences average to 0, not 5.
+        category: incorrect_reasoning
+      - id: b
+        text: 5 is the largest distance from the mean; dividing by that distance bounds all outputs.
+        correct: false
+        feedback: The largest distance is 7; the standard deviation is 5.
+        category: incorrect_reasoning
+      - id: c
+        text: 5 is the standard deviation, the typical size of -7, -1, 1, 7; dividing makes typical size 1.
+        correct: true
+        feedback:
+          The centred values have average square $(49+1+1+49)/4=25$, so their standard deviation is
+          5. Dividing by 5 gives typical size 1.
+      - id: d
+        text: 5 is the factor that makes the mean 0; the subtraction only sets the typical size.
+        correct: false
+        feedback: Subtracting the mean already made the mean 0; division sets typical size.
+        category: incorrect_reasoning
+  - id: wip-ln-mean
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A layer outputs 2, 6, 7, 9 for one example. What is their mean?
+    solution: "The mean is the sum divided by the count: $(2+6+7+9)/4=24/4=6$."
+    answer: 6
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer: 24
+        category: math_error
+        feedback: Divide the sum by the four outputs.
+      - answer: 7
+        category: math_error
+        feedback: The mean uses all four outputs, not one chosen output.
+  - id: wip-ln-std-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      For one example, a layer outputs {{= c-7*d }}, {{= c-d }}, {{= c+d }}, {{= c+7*d }}. What is
+      their standard deviation?
+    solution: The mean is ${{= c }}$, and the differences are $-7\times{{= d }},-{{= d }},{{= d
+      }},7\times{{= d }}$. Their average square is $25\times{{= d*d }}$, whose square root is ${{=
+      5*d }}$.
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer_expr: 25*d*d
+        category: math_error
+        feedback: That is the average squared difference; take the square root.
+      - answer_expr: 4*d
+        category: math_error
+        feedback: Average squared differences and take the square root, rather than averaging distances.
+    params:
+      c:
+        min: 10
+        max: 30
+      d:
+        min: 1
+        max: 4
+    answer_expr: 5*d
+  - id: wip-ln-value
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      For one example the outputs are 4, 8, 10, 12, 16. With gain 1 and shift 0, what LayerNorm
+      value corresponds to 16? Ignore the tiny number added in code.
+    solution:
+      The mean is 10 and the average squared difference is 16, so the standard deviation is 4.
+      The normalized value is $(16-10)/4=1.5$.
+    answer: 1.5
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer: 6
+        category: math_error
+        feedback: You subtracted the mean 10 but still need to divide by the standard deviation 4.
+      - answer: 0.375
+        category: math_error
+        feedback: Divide the centred value 6 by standard deviation 4, not by average squared difference 16.
+  - id: wip-ln-drift
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      All outputs of a layer for one example become 10 times bigger. With gain 1 and shift 0, what
+      happens to its LayerNorm outputs? Assume nonzero standard deviation and ignore the tiny number
+      added in code.
+    solution:
+      Multiplying every output by 10 multiplies the mean and standard deviation by 10 too. The
+      factor cancels in each centred value divided by the standard deviation.
+    options:
+      - id: a
+        text: They become ten times bigger because LayerNorm passes the larger outputs through unchanged.
+        correct: false
+        feedback: LayerNorm also divides by a standard deviation that grew tenfold.
+        category: incorrect_reasoning
+      - id: b
+        text: They become ten times smaller because only the standard deviation grows tenfold.
+        correct: false
+        feedback: The centred values grow tenfold too, so the two factors cancel.
+        category: incorrect_reasoning
+      - id: c
+        text: They remain unchanged because both centred values and standard deviation grow tenfold.
+        correct: true
+        feedback:
+          Multiplying every output by 10 multiplies the mean and standard deviation by 10 too. The
+          factor cancels in each centred value divided by the standard deviation.
+      - id: d
+        text: They all become 1 because LayerNorm makes every individual output have size 1.
+        correct: false
+        feedback: Typical size 1 describes the group, not each output individually.
+        category: incorrect_reasoning
+  - id: wip-ln-gain-shift
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: For one example the outputs are 4, 8, 10, 12, 16. With gain $\gamma=2$ and shift
+      $\beta=0.5$, what LayerNorm output corresponds to 4? Ignore the tiny number added in code.
+    solution:
+      The mean is 10 and standard deviation is 4, so 4 becomes $-1.5$. Applying gain then shift
+      gives $2\times(-1.5)+0.5=-2.5$.
+    answer: -2.5
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer: -1.5
+        category: math_error
+        feedback: That is the normalized value before applying gain and shift.
+      - answer: -2
+        category: math_error
+        feedback: Multiply by the gain before adding the shift; do not multiply the shift too.
+  - id: wip-ln-robot
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      A robot's sensor readings for one observation all read 50 higher one day. What happens after
+      LayerNorm over those readings, with gain 1 and shift 0? Assume nonzero standard deviation.
+    solution:
+      The mean rises by 50 along with every reading, so centred readings stay the same. Their
+      standard deviation also stays the same, giving unchanged normalized outputs.
+    options:
+      - id: a
+        text: Outputs are unchanged because subtracting the mean removes the shared shift of 50.
+        correct: true
+        feedback:
+          The mean rises by 50 along with every reading, so centred readings stay the same. Their
+          standard deviation also stays the same, giving unchanged normalized outputs.
+      - id: b
+        text: Outputs are 50 higher because division cannot remove an offset shared by every reading.
+        correct: false
+        feedback: Subtracting the new mean removes the offset before division.
+        category: incorrect_reasoning
+      - id: c
+        text: Outputs are 50 times smaller because the standard deviation increases by 50.
+        correct: false
+        feedback: Adding a shared offset leaves the standard deviation unchanged.
+        category: incorrect_reasoning
+      - id: d
+        text: Outputs all become 0 because LayerNorm removes every difference among the readings.
+        correct: false
+        feedback: Subtracting a shared mean preserves differences between readings.
+        category: incorrect_reasoning
+  - id: wi-batch-norm-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: How do BatchNorm and LayerNorm choose the values they normalize together?
+    solution:
+      BatchNorm normalizes down each neuron's column across examples. LayerNorm normalizes along
+      each example's row across neurons.
+    options:
+      - id: a
+        text: BatchNorm works along each example's row; LayerNorm works down each neuron's column.
+        correct: false
+        feedback: Those directions are reversed.
+        category: incorrect_reasoning
+      - id: b
+        text: BatchNorm works down each neuron's column; LayerNorm works along each example's row.
+        correct: true
+        feedback:
+          BatchNorm normalizes down each neuron's column across examples. LayerNorm normalizes along
+          each example's row across neurons.
+      - id: c
+        text: Both use one mean and standard deviation for the whole grid of outputs at once.
+        correct: false
+        feedback: Both use separate groups, not the whole grid at once.
+        category: incorrect_reasoning
+      - id: d
+        text: Both work down each neuron's column, but LayerNorm leaves out the gain and shift.
+        correct: false
+        feedback: LayerNorm groups within one example and also uses gain and shift.
+        category: incorrect_reasoning
+  - id: wip-bn-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example, why does example 1's BatchNorm output depend on the other examples?
+    solution:
+      The column contains 1, 5, 1, 5, so its mean is 3 and standard deviation is 2. Example 1 is
+      normalized with those shared values, which depend on the other examples.
+    options:
+      - id: a
+        text: Its mean 3 and standard deviation 2 are computed only from example 1's own row.
+        correct: false
+        feedback: That would be LayerNorm; BatchNorm uses the column.
+        category: incorrect_reasoning
+      - id: b
+        text: Its gain and shift are chosen again by copying the output of the last example.
+        correct: false
+        feedback: The dependency comes from batch statistics, not copying another example.
+        category: incorrect_reasoning
+      - id: c
+        text: Its mean 3 and standard deviation 2 are computed from the whole neuron column.
+        correct: true
+        feedback:
+          The column contains 1, 5, 1, 5, so its mean is 3 and standard deviation is 2. Example 1 is
+          normalized with those shared values, which depend on the other examples.
+      - id: d
+        text: Its original output is replaced by the sum of all the other examples' outputs.
+        correct: false
+        feedback: BatchNorm subtracts the column mean and divides by its standard deviation.
+        category: incorrect_reasoning
+  - id: wip-bn-direction
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt:
+      A grid has one row per example and one column per neuron. In which direction does BatchNorm
+      work?
+    solution: BatchNorm uses each neuron's outputs over the batch, which lie down one column in this grid.
+    options:
+      - id: a
+        text: Along each row, grouping one example's outputs across the neurons.
+        correct: false
+        feedback: That is the LayerNorm direction.
+        category: incorrect_reasoning
+      - id: b
+        text: Over the whole grid at once, grouping every neuron and example together.
+        correct: false
+        feedback: BatchNorm computes separate statistics for each neuron.
+        category: incorrect_reasoning
+      - id: c
+        text: Only along the first row, using its values for every other example.
+        correct: false
+        feedback: Every example contributes to its neuron's column statistics.
+        category: incorrect_reasoning
+      - id: d
+        text: Down each column, grouping one neuron's outputs across the examples.
+        correct: true
+        feedback:
+          BatchNorm uses each neuron's outputs over the batch, which lie down one column in this
+          grid.
+  - id: wip-bn-column-value
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      One neuron outputs 10, 70, 90, 150 over a batch of four examples. With gain 1 and shift 0,
+      what BatchNorm value corresponds to 150? Ignore the tiny number added in code.
+    solution:
+      The mean is 80 and the squared differences average to 2500, giving standard deviation 50.
+      Thus 150 becomes $(150-80)/50=1.4$.
+    answer: 1.4
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer: 70
+        category: math_error
+        feedback: That subtracts the mean 80 but does not divide by standard deviation 50.
+      - answer: 3
+        category: math_error
+        feedback: Subtract the mean before dividing; 150/50 omits that step.
+  - id: wip-bn-saved-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      After training, BatchNorm has saved mean {{= mu }} and saved standard deviation {{= s }}. A
+      new output is {{= mu+d }}. With gain 1 and shift 0, what normalized value does it give? Ignore
+      the tiny number added in code.
+    solution:
+      Subtracting the saved mean gives ${{= d }}$, then dividing by the saved standard deviation
+      gives ${{= d }}/{{= s }}={{= d/s }}$.
+    tolerance:
+      abs: 0.000001
+    common_wrong:
+      - answer_expr: d
+        category: math_error
+        feedback: The mean has been subtracted, but the standard deviation must still divide the result.
+      - answer_expr: (mu+d)/s
+        category: math_error
+        feedback: Subtract the saved mean before dividing.
+    params:
+      mu:
+        min: 2
+        max: 10
+      s:
+        min: 2
+        max: 4
+        step: 2
+      d:
+        min: -8
+        max: 8
+        step: 2
+    answer_expr: d/s
+    constraints:
+      - d != 0
+  - id: wip-bn-two-examples
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A batch of two gives one neuron outputs 3 and 100. Another batch gives it 3 and 3.1. With
+      gain 1 and shift 0, how does BatchNorm normalize them? Ignore the tiny number added in code.
+    solution:
+      For two distinct outputs the centred values are opposite halves of their gap, and their
+      standard deviation is half that gap. Dividing therefore gives -1 and 1 for both pairs.
+    options:
+      - id: a
+        text: The first pair becomes -1 and 1, but the second stays at 3 and 3.1.
+        correct: false
+        feedback: Even a small nonzero gap is divided by its own standard deviation.
+        category: incorrect_reasoning
+      - id: b
+        text: Both pairs become 0 and 0 because subtracting the mean removes their gap.
+        correct: false
+        feedback: Subtracting the mean preserves the gap; division rescales it.
+        category: incorrect_reasoning
+      - id: c
+        text: Both pairs become -1 and 1, despite their very different original gaps.
+        correct: true
+        feedback:
+          For two distinct outputs the centred values are opposite halves of their gap, and their
+          standard deviation is half that gap. Dividing therefore gives -1 and 1 for both pairs.
+      - id: d
+        text: The first pair becomes much larger than the second because its gap is larger.
+        correct: false
+        feedback: The larger gap also creates a larger standard deviation, cancelling that size.
+        category: incorrect_reasoning
+  - id: wip-bn-robot
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      A robot's control network runs on one reading at a time. Which normalization works the same
+      as in training without saved averages?
+    solution: LayerNorm needs only the current example, so its calculation works the same during
+      training and afterwards. BatchNorm instead needs batch statistics during training and saved
+      values when running alone.
+    options:
+      - id: a
+        text: BatchNorm, because a single example supplies the same averages as a training batch.
+        correct: false
+        feedback: A single example cannot supply the batch statistics used in training.
+        category: incorrect_reasoning
+      - id: b
+        text: BatchNorm, because it needs no saved values when the trained network runs alone.
+        correct: false
+        feedback: BatchNorm uses saved values afterwards when there is no batch to average over.
+        category: incorrect_reasoning
+      - id: c
+        text: Neither method, because both require other examples to calculate a mean.
+        correct: false
+        feedback: LayerNorm computes its mean across one example's neuron outputs.
+        category: incorrect_reasoning
+      - id: d
+        text: LayerNorm, because it uses the current example's outputs across neurons.
+        correct: true
+        feedback: LayerNorm needs only the current example, so its calculation works the same during
+          training and afterwards. BatchNorm instead needs batch statistics during training and
+          saved values when running alone.
+  - id: wi-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      Explain why a deep network's activations and slopes can vanish or explode, how the starting
+      weight size prevents that at the start, and what LayerNorm does during training.
+    solution:
+      Repeated multiplication makes depth amplify even modest size changes, so initialization
+      sets a steady starting size. LayerNorm then recentres and rescales each example's outputs as
+      training changes the weights, before applying learned gain and shift.
+    rubric:
+      - id: depth
+        criterion:
+          Explains repeated multiplication of activations and backward slopes, shrinking for
+          factors below 1 and growing for factors above 1.
+        weight: 1
+        required: true
+      - id: initialization
+        criterion:
+          Explains choosing random starting weight size to preserve typical size, with LeCun for no
+          activation or He for ReLU.
+        weight: 1
+        required: true
+      - id: layernorm
+        criterion:
+          Explains subtracting one example's layer-output mean, dividing by its standard deviation,
+          then applying learned gain and shift during training.
+        weight: 1
+        required: true
+    exemplar: Every layer multiplies its inputs, and backpropagation multiplies slopes by local
+      derivatives on the way back. Repeated factors below 1 make activations and slopes vanish,
+      while factors above 1 make them explode. Random starting weights with LeCun typical size 1
+      divided by the square root of the input count preserve score size; He uses the square root of
+      2 divided by the input count to compensate for ReLU. During training weights change, so
+      LayerNorm subtracts the mean of one example's layer outputs and divides by their standard
+      deviation, then applies learned gain and shift.

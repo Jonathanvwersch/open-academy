@@ -145,7 +145,7 @@ concepts:
           text: "Explain vanishing/exploding activations and what LayerNorm does",
           dimension: conceptual,
         }
-    status: stub
+    status: authored
   - id: debugging-training
     title: Debugging training runs
     description: Reading loss curves, overfitting a single batch, gradient checks, common bugs.
