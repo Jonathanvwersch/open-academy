@@ -306,8 +306,17 @@ export function FeedbackPanel({
             : 'Not quite';
   const title =
     xp !== undefined && Number(result.correct) >= 1 ? `${baseTitle} · +${xp} XP` : baseTitle;
-  const feedback = typeof result.feedback === 'string' ? result.feedback.trim() : '';
-  const repeatsTitle = feedback.replace(/\.$/, '').toLowerCase() === baseTitle.toLowerCase();
+  const rawFeedback = typeof result.feedback === 'string' ? result.feedback.trim() : '';
+  const titlePrefix = baseTitle
+    ? new RegExp(`^${baseTitle}\\s*(?:[.!,:;–—-]+(?=\\s|$)|$)`, 'i')
+    : null;
+  const feedbackWithoutTitle = titlePrefix ? rawFeedback.replace(titlePrefix, '') : rawFeedback;
+  const feedback =
+    feedbackWithoutTitle === rawFeedback
+      ? rawFeedback
+      : feedbackWithoutTitle
+          .trim()
+          .replace(/^(\p{Ll})/u, (firstLetter) => firstLetter.toUpperCase());
   const rubric = Array.isArray(result.rubric)
     ? (result.rubric as Array<{ id?: string; criterion?: string; judgement?: string }>)
     : [];
@@ -317,7 +326,7 @@ export function FeedbackPanel({
   const showAnswers = typeof result.yourAnswer === 'string' && (writtenAnswer || !correct);
   const solution =
     typeof result.solution === 'string' && result.solution.trim() ? result.solution : '';
-  const showFeedback = Boolean(feedback) && !repeatsTitle;
+  const showFeedback = Boolean(feedback);
   const showSolution =
     result.followUp !== true &&
     !writtenAnswer &&

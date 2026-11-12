@@ -11,7 +11,7 @@ export function gradeDebug(exercise: DebugExercise, answer: unknown): GradeResul
   const fix = exercise.fix_options.find((option) => option.id === fixId);
   const fixCorrect = fix?.correct === true;
   if (lineCorrect && fixCorrect) {
-    return graded(1, fix?.feedback ?? 'Correct. Both the line and fix are right.');
+    return graded(1, fix?.feedback ?? 'Both the line and fix are right.');
   }
   if (lineCorrect || fixCorrect) {
     return graded(0.5, fix?.feedback ?? 'One part is right; identify both the line and its fix.');

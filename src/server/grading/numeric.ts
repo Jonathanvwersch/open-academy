@@ -13,5 +13,5 @@ export function gradeNumeric(exercise: NumericExercise, answer: unknown): GradeR
   }
   return numericEqual(parsed, exercise.answer, exercise.tolerance)
     ? graded(1, 'Correct.')
-    : graded(0, 'Not quite. Review the quantities and try again.');
+    : graded(0, 'Review the quantities and try again.');
 }

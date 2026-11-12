@@ -80,6 +80,56 @@ test('wrong answers keep feedback, answer lines, and solution', () => {
   expect(html).toContain('The score is 0.5, so the output is 1.');
 });
 
+test('strips a repeated Not quite title from wrong-answer feedback', () => {
+  const html = renderFeedback({
+    correct: 0,
+    feedback: 'Not quite. Review the quantities and try again.',
+  });
+
+  expect(html.match(/Not quite/g) ?? []).toHaveLength(1);
+  expect(html).toContain('Review the quantities and try again.');
+});
+
+test('strips a repeated Correct title and capitalizes the remaining feedback', () => {
+  const html = renderFeedback({ correct: 1, feedback: 'Correct! Nice work.' });
+
+  expect(html.match(/Correct/g) ?? []).toHaveLength(1);
+  expect(html).toContain('Nice work.');
+});
+
+test('strips a repeated Partly correct title and capitalizes the remaining feedback', () => {
+  const html = renderFeedback({
+    correct: 0.5,
+    feedback: 'Partly correct — you missed the bias.',
+  });
+
+  expect(html).toContain('You missed the bias.');
+  expect(html).not.toContain('you missed the bias.');
+});
+
+test('hides feedback that contains only the repeated title', () => {
+  const html = renderFeedback({ correct: 0, feedback: 'Not quite.' });
+
+  expect(html.match(/Not quite/g) ?? []).toHaveLength(1);
+  expect(html).not.toContain('data-slot="alert-description"');
+});
+
+test('does not strip a title word in the middle of feedback', () => {
+  const html = renderFeedback({ correct: 0, feedback: 'This is not quite the MAE.' });
+
+  expect(html).toContain('This is not quite the MAE.');
+});
+
+test('does not strip a title word that starts a sentence without punctuation', () => {
+  const html = renderFeedback({
+    correct: 1,
+    feedback:
+      'Correct arithmetic cannot remove disagreement between a subset and the whole dataset.',
+  });
+
+  expect(html).toContain('Correct arithmetic cannot remove disagreement');
+});
+
 test('Almost feedback with a partial rubric item tells the learner what to add', () => {
   const html = renderFeedback({
     correct: 0.5,
