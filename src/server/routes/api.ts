@@ -1,6 +1,8 @@
 import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
+import type { Card } from 'ts-fsrs';
+import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
 import { getLessonPrerequisites } from '../content/index.js';
 import { loadContent } from '../content/load.js';
@@ -16,7 +18,6 @@ import {
   masteryEvents,
   projectProgress,
   projectSubmissions,
-  remediationFlags,
   reviewCards,
   reviewLogs,
   sessionActivities,
@@ -52,6 +53,7 @@ import {
   inferPrerequisite,
   recordLessonViewed,
 } from '../learning/mastery.js';
+import { bringWeakestPrerequisiteCardDueNow } from '../learning/prerequisite-review.js';
 import { compareOutlinePosition, masteryKey, prerequisiteMet } from '../learning/prerequisites.js';
 import { buildProgress } from '../learning/progress.js';
 import type { PlannedActivity, SessionPreferences } from '../learning/scheduler.js';
@@ -1139,6 +1141,15 @@ export function createApiRoutes(deps: {
                   hintsUsed: items.reduce((total, attempt) => total + attempt.hintsUsed, 0),
                 })),
               );
+              const [previousLog] =
+                rating === Rating.Again
+                  ? await db
+                      .select({ rating: reviewLogs.rating })
+                      .from(reviewLogs)
+                      .where(eq(reviewLogs.cardId, card.id))
+                      .orderBy(desc(reviewLogs.createdAt))
+                      .limit(1)
+                  : [];
               const scheduled = scheduleReview(
                 card.fsrs as never,
                 now,
@@ -1163,6 +1174,42 @@ export function createApiRoutes(deps: {
                 fsrsLog: scheduled.log,
                 createdAt: now,
               });
+              if (rating === Rating.Again && previousLog?.rating === String(Rating.Again)) {
+                const hardPrerequisiteIds =
+                  index.conceptsById
+                    .get(card.conceptId)
+                    ?.prereqs.filter((prerequisite) => prerequisite.strength === 'hard')
+                    .map((prerequisite) => prerequisite.id) ?? [];
+                if (hardPrerequisiteIds.length > 0) {
+                  const prerequisiteCards = await db
+                    .select({
+                      id: reviewCards.id,
+                      dueAt: reviewCards.dueAt,
+                      fsrs: reviewCards.fsrs,
+                    })
+                    .from(reviewCards)
+                    .where(
+                      and(
+                        eq(reviewCards.userId, context.get('userId')),
+                        inArray(reviewCards.conceptId, hardPrerequisiteIds),
+                      ),
+                    );
+                  const weakest = bringWeakestPrerequisiteCardDueNow(
+                    prerequisiteCards.map((prerequisiteCard) => ({
+                      ...prerequisiteCard,
+                      fsrs: prerequisiteCard.fsrs as Card,
+                    })),
+                    now,
+                    process.env.NODE_ENV !== 'test',
+                  );
+                  if (weakest) {
+                    await db
+                      .update(reviewCards)
+                      .set({ dueAt: weakest.dueAt, fsrs: weakest.fsrs })
+                      .where(eq(reviewCards.id, weakest.id));
+                  }
+                }
+              }
             }
           }
         } else {
@@ -1965,18 +2012,6 @@ async function applyMastery(input: {
       toState: result.event.toState,
       rule: result.event.rule,
       attemptId: result.event.attemptId,
-      createdAt: input.now,
-    });
-  }
-  if (
-    result.remediationFlagOpen &&
-    !open.some((flag) => flag.conceptId === input.exercise.concept)
-  ) {
-    await input.repo.db.insert(remediationFlags).values({
-      userId: input.userId,
-      conceptId: input.exercise.concept,
-      status: 'open',
-      openedByAttemptId: input.attemptId,
       createdAt: input.now,
     });
   }

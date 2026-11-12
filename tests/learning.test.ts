@@ -731,20 +731,19 @@ test('Scheduler never assigns lessons or practice to stub concepts', () => {
   ).toBe(false);
 });
 
-test('Repeated failure triggers remediation targeting the weakest prerequisite', () => {
-  const state = emptyState();
-  state.remediationFlags = [{ conceptId: 'gradient-descent', targetPrereqId: 'gradients' }];
-  state.mastery = [
-    { ...initialMastery('gradients', 'math'), state: 'introduced' },
-    { ...initialMastery('loss-functions', 'math'), state: 'assisted' },
-  ];
-  const plan = planSession(state, content, now, 60);
-  expect(
-    plan.activities.some(
-      (activity) => activity.kind === 'remediate' && activity.conceptId === 'gradients',
-    ),
-  ).toBe(true);
-});
+test.each([
+  { sessionKind: 'weekday' as const, budget: 60 },
+  { sessionKind: 'saturday' as const, budget: 300 },
+  { sessionKind: 'sunday' as const, budget: 60 },
+])(
+  'open remediation flags do not schedule remediation on $sessionKind',
+  ({ sessionKind, budget }) => {
+    const state = emptyState();
+    state.remediationFlags = [{ conceptId: 'gradient-descent', targetPrereqId: 'gradients' }];
+    const plan = planSession(state, content, now, budget, sessionKind);
+    expect(plan.activities.some((activity) => activity.kind === 'remediate')).toBe(false);
+  },
+);
 
 test('Independent success outranks hinted success', () => {
   const independent = calculateCredit({
@@ -1180,17 +1179,13 @@ test('Saturday allocates a 300-minute lab with a capped review warm-up and refle
   expect(plan.activities.some((activity) => activity.kind === 'reflect')).toBe(true);
 });
 
-test('Saturday plans an extension after a project is complete', () => {
+test('Saturday skips a completed project when no extension exercise exists', () => {
   const state = emptyState();
   state.currentProjectId = 'linreg-numpy';
   state.projectProgress = [{ projectId: 'linreg-numpy', status: 'completed' }];
   const plan = planSession(state, content, now, 300, 'saturday');
   expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(false);
-  expect(
-    plan.activities.some(
-      (activity) => activity.kind === 'practice' || activity.kind === 'remediate',
-    ),
-  ).toBe(true);
+  expect(plan.activities.some((activity) => activity.kind === 'remediate')).toBe(false);
 });
 
 test('Saturday reserves up to 90 minutes for the current week paper', () => {
@@ -1218,7 +1213,7 @@ test('Saturday omits paper reading when less than 30 minutes remain', () => {
   expect(plan.activities.some((activity) => activity.kind === 'paper')).toBe(false);
 });
 
-test('Sunday creates a full cumulative assessment plan with interleaved no-hint items', () => {
+test('Sunday creates its cumulative assessment and leaves remediation minutes unused', () => {
   const state = emptyState();
   state.mastery = [
     { ...initialMastery('vectors', 'math'), state: 'independent' },
@@ -1227,5 +1222,5 @@ test('Sunday creates a full cumulative assessment plan with interleaved no-hint 
   const plan = planSession(state, content, now, 60, 'sunday');
   const assessment = plan.activities.find((activity) => activity.kind === 'quick_check');
   expect(assessment?.exerciseIds.length).toBeGreaterThan(0);
-  expect(plan.activities.reduce((sum, activity) => sum + activity.plannedMinutes, 0)).toBe(60);
+  expect(plan.activities.reduce((sum, activity) => sum + activity.plannedMinutes, 0)).toBe(40);
 });
