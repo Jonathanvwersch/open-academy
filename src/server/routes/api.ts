@@ -1922,6 +1922,7 @@ export function createApiRoutes(deps: {
     return context.json(
       {
         submission,
+        status: verification.complete ? 'completed' : 'in_progress',
         evidence: verification.evidence,
         reflection: project.reflection
           .map((id) => {

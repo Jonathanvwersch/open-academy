@@ -264,6 +264,51 @@ test('project evidence and reflection survive reloading the project page', async
   await expect(page.getByText('Complete a gradient update.')).toBeVisible();
 });
 
+test('failed project uploads update the Course status without a reload', async ({ page }) => {
+  await db.insert(projectProgress).values({
+    userId,
+    projectId: 'linreg-numpy',
+    status: 'completed',
+    completedAt: new Date('2026-01-01T11:00:00.000Z'),
+  });
+  await page.goto('/course');
+  const project = page.getByRole('region', { name: 'Project' }).first();
+  const projectLink = project.getByRole('link', { name: 'Linear regression in NumPy' });
+  await expect(projectLink).toContainText('Complete');
+  await projectLink.click();
+  await expect(page).toHaveURL('/projects/linreg-numpy');
+  await page.getByLabel('Upload results.json').setInputFiles({
+    name: 'results.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        project: 'linreg-numpy',
+        version: 1,
+        tests: [],
+        metrics: { 'validation-mse': 999 },
+        generated_at: '2026-01-01T12:00:00.000Z',
+      }),
+    ),
+  });
+
+  const submissionResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith('/api/projects/linreg-numpy/results'),
+  );
+  await page.getByRole('button', { name: 'Upload results', exact: true }).click();
+  const response = await submissionResponse;
+  const result = await response.json();
+  expect(response.status(), JSON.stringify(result)).toBe(201);
+  expect(result.status).toBe('in_progress');
+
+  await page.getByRole('link', { name: 'Course', exact: true }).click();
+  await expect(page).toHaveURL('/course');
+  const updatedProject = page.getByRole('region', { name: 'Project' }).first();
+  await expect(updatedProject).toContainText('In progress');
+  await expect(updatedProject).not.toContainText('Complete');
+});
+
 test('lab activities show project progress and finish without awarding XP', async ({ page }) => {
   const [session] = await db
     .insert(studySessions)
