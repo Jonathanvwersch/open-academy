@@ -1,0 +1,610 @@
+concept: information-theory
+exercises:
+  - id: it-surprise-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does the surprise of an outcome measure?
+    options:
+      - id: a
+        text: How unlikely that outcome was before it happened.
+        correct: true
+        feedback: Less likely outcomes have larger surprise.
+      - id: b
+        text: How often that outcome has already happened.
+        correct: false
+        feedback: Past outcomes can estimate probability, but surprise falls as probability rises.
+      - id: c
+        text: How many other outcomes happened at once.
+        correct: false
+        feedback: Surprise concerns one outcome and its probability.
+    solution: Surprise measures how unexpected an outcome is. Smaller probability gives larger surprise.
+  - id: it-surprise-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does rain give 2 bits in the worked weather example, while sun gives 1?
+    options:
+      - id: a
+        text: Rain has twice the probability, so its surprise doubles.
+        correct: false
+        feedback: "Rain is less likely: 1/4 compared with 1/2."
+      - id: b
+        text: Rain has half the probability, so its surprise must halve.
+        correct: false
+        feedback: Surprise increases when probability decreases.
+      - id: c
+        text: Rain has half the probability, so its reciprocal needs one more doubling.
+        correct: true
+        feedback: The reciprocal rises from 2 to 4, adding one doubling.
+    solution: Rain has probability 1/4, whose reciprocal is 4 and takes two doublings. Sun has
+      probability 1/2 and needs one doubling.
+  - id: it-surprise-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: An outcome has probability $1/8$. How many bits of surprise does it give?
+    answer: 3
+    tolerance:
+      abs: 0.001
+    solution: The reciprocal is 8, and three doublings reach 8, so the surprise is 3 bits.
+  - id: it-surprise-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A signal has probability $1/{{= 2^k }}$. How many bits of surprise does it give?
+    answer_expr: k
+    tolerance:
+      abs: 0.001
+    solution: The reciprocal is ${{= 2^k }}$, reached after ${{= k }}$ doublings, so its surprise is
+      ${{= k }}$ bits.
+    params:
+      k:
+        min: 2
+        max: 6
+        step: 1
+  - id: it-surprise-product
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: Three independent fair coin tosses all land heads. What is the surprise of all three
+      results together, in bits?
+    answer: 3
+    tolerance:
+      abs: 0.001
+    solution:
+      The joint probability is $1/2\times1/2\times1/2=1/8$, so its surprise is 3 bits, also the
+      sum of three 1-bit surprises.
+  - id: it-surprise-robot
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      A robot predicts a dropped object with probability $1/8$ on one grasp and $1/2$ on another.
+      If each drops, which outcome is more surprising?
+    options:
+      - id: a
+        text: Both drops have the same surprise.
+        correct: false
+        feedback: The physical outcome is the same, but the probabilities differ.
+      - id: b
+        text: The first drop gives 3 bits rather than 1 bit.
+        correct: true
+        feedback: The first was less likely, so its surprise is greater.
+      - id: c
+        text: The second drop gives 3 bits rather than 1 bit.
+        correct: false
+        feedback: Probability 1/2 gives 1 bit, while probability 1/8 gives 3 bits.
+    solution:
+      The first drop was assigned probability 1/8, so it gives 3 bits. The second gives 1 bit
+      because it was assigned probability 1/2.
+  - id: it-entropy-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is entropy?
+    options:
+      - id: a
+        text: The surprise averaged using the actual probabilities.
+        correct: true
+        feedback: Each surprise is weighted by how often its outcome occurs.
+      - id: b
+        text: The largest surprise among the possible outcomes.
+        correct: false
+        feedback: Entropy is an average, not a maximum.
+      - id: c
+        text: The surprise averaged with equal weight for every outcome.
+        correct: false
+        feedback: Equal weights apply only when the outcomes are equally likely.
+    solution: Entropy is expected surprise. We multiply each surprise by its actual probability and add.
+  - id: it-entropy-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked entropy calculation multiply the sunny surprise by $1/2$?
+    options:
+      - id: a
+        text: Sunny days are half as surprising as every possible outcome.
+        correct: false
+        feedback: The weight comes from probability, not a ratio of surprises.
+      - id: b
+        text: Sunny days must be discounted because they are easy to predict.
+        correct: false
+        feedback: This is a probability-weighted average, not an arbitrary discount.
+      - id: c
+        text: Sunny days account for half the days in the actual distribution.
+        correct: true
+        feedback: An expected value weights by each outcome's actual probability.
+    solution: Sun happens with probability 1/2, so its 1-bit surprise contributes 1/2 bit to the
+      long-run average.
+  - id: it-entropy-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A fair coin has distribution $(1/2,1/2)$. What is its entropy in bits?
+    answer: 1
+    tolerance:
+      abs: 0.001
+    solution: Both outcomes give 1 bit, so the weighted average is $1/2\times1+1/2\times1=1$ bit.
+  - id: it-entropy-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A fair device has ${{= 2^k }}$ equally likely outcomes. What is its entropy in bits?
+    answer_expr: k
+    tolerance:
+      abs: 0.001
+    solution:
+      Each outcome has probability $1/{{= 2^k }}$ and surprise ${{= k }}$ bits. Their weighted
+      average is also ${{= k }}$ bits.
+    params:
+      k:
+        min: 1
+        max: 5
+        step: 1
+  - id: it-entropy-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A distribution is $(1,0,0)$. How should its entropy be calculated?
+    options:
+      - id: a
+        text: Give each outcome one third of the weight, giving positive entropy.
+        correct: false
+        feedback: The weights are the stated probabilities, not equal weights.
+      - id: b
+        text: Only the outcome that is sure to happen contributes, giving 0 bits.
+        correct: true
+        feedback: Only the certain outcome occurs, and it has zero surprise.
+      - id: c
+        text: Evaluate the surprise of all three outcomes, giving infinite entropy.
+        correct: false
+        feedback: Impossible outcomes never occur, so they contribute zero to entropy.
+    solution:
+      The outcome that is sure to happen gives zero surprise. The two impossible outcomes contribute zero
+      because they never occur.
+  - id: it-entropy-sensor
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      A sensor reports four labels with probabilities $(1/2,1/4,1/8,1/8)$. What is the entropy in
+      bits?
+    answer: 1.75
+    tolerance:
+      abs: 0.001
+    solution: The surprises are 1, 2, 3 and 3 bits, so entropy is $1/2+2/4+3/8+3/8=1.75$ bits.
+  - id: it-cross-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which probabilities are used in cross-entropy $H(p,q)$?
+    options:
+      - id: a
+        text: Actual probabilities p weight the surprises calculated from predictions q.
+        correct: true
+        feedback: Actual probabilities supply the weights, while forecast probabilities supply the surprises.
+      - id: b
+        text: Predictions q weight the surprises calculated from actual probabilities p.
+        correct: false
+        feedback: That swaps the roles and generally gives a different score.
+      - id: c
+        text: Predictions q supply both the weights and the surprises.
+        correct: false
+        feedback: That is the entropy of q, not the score of q when actual weather follows p.
+    solution: Cross-entropy calculates surprises from forecast probabilities and averages them using actual probabilities.
+  - id: it-cross-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked average of the app's daily losses use $1/2\times2$ for sun?
+    options:
+      - id: a
+        text: Sun happens one quarter of the time and gives a half-bit surprise.
+        correct: false
+        feedback: That uses the forecast probability as the averaging weight and misreads the logarithm.
+      - id: b
+        text: Sun happens half the time and every correct prediction costs 2 bits.
+        correct: false
+        feedback: Surprise depends on the assigned probability, not simply correctness.
+      - id: c
+        text: Sun happens half the time, but the model assigns it a 2-bit surprise.
+        correct: true
+        feedback: The actual probability is 1/2, while the forecast probability is 1/4.
+    solution:
+      Actual sun probability 1/2 supplies the weight. Forecast sun probability 1/4 supplies the
+      2-bit surprise.
+  - id: it-cross-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Reality is $(1/4,3/4)$ and the model predicts $(1/2,1/2)$. What is the cross-entropy in bits?
+    answer: 1
+    tolerance:
+      abs: 0.001
+    solution: Both predicted probabilities give 1 bit of surprise, so cross-entropy is
+      $1/4\times1+3/4\times1=1$ bit.
+  - id: it-cross-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      For one labelled example, a classifier assigns the correct class probability $1/{{= 2^k }}$.
+      What is its cross-entropy loss in bits?
+    answer_expr: k
+    tolerance:
+      abs: 0.001
+    solution:
+      The loss is the surprise of the observed class, so it is the logarithm of ${{= 2^k }}$,
+      or ${{= k }}$ bits.
+    params:
+      k:
+        min: 1
+        max: 6
+        step: 1
+  - id: it-cross-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A model gives the correct class probability zero. What is the mathematical cross-entropy loss?
+    options:
+      - id: a
+        text: The loss is one bit because every wrong prediction receives the same penalty.
+        correct: false
+        feedback: Cross-entropy depends on confidence and is not a fixed error count.
+      - id: b
+        text: The loss is infinite, although training software can replace zero with a tiny positive probability.
+        correct: true
+        feedback: Zero probability for an observed event gives unbounded surprise.
+      - id: c
+        text: The loss is zero because the model gives the observed class no probability.
+        correct: false
+        feedback: The loss is the observed class's surprise, which grows as its forecast probability shrinks.
+    solution: A zero probability for the observed class means infinite surprise. Replacing zero with
+      a tiny positive probability makes the numerical calculation finite.
+  - id: it-cross-robot
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt:
+      On two labelled robot grasps, the correct classes receive probabilities $1/4$ and $1/16$.
+      What is the average cross-entropy loss in bits?
+    answer: 3
+    tolerance:
+      abs: 0.001
+    solution: The losses are 2 and 4 bits, so the mean across the two examples is $(2+4)/2=3$ bits.
+  - id: it-cross-confidence
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      On an example labelled cat, two classifiers both pick dog. One gives cat probability $1/4$, while the other
+      gives cat probability $1/8$. What do their scores show?
+    options:
+      - id: a
+        text: Accuracy ties, but the second gets a larger loss of 3 bits rather than 2 bits.
+        correct: true
+        feedback: Both picks are wrong, but 1/8 assigns less probability to the observed answer.
+      - id: b
+        text: Accuracy ties, and cross-entropy ties because both picks are wrong.
+        correct: false
+        feedback: Cross-entropy retains the probability of the correct class.
+      - id: c
+        text: Accuracy ties, but the first gets a larger loss of 3 bits rather than 2 bits.
+        correct: false
+        feedback: The lower correct-class probability gets the larger loss.
+    solution: Both are wrong by accuracy, but the correct-class probabilities give losses of 2 and 3
+      bits, distinguishing their confidence.
+  - id: it-kl-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does KL divergence from actual probabilities p to forecast probabilities q measure?
+    options:
+      - id: a
+        text: The average surprise that remains even when q equals p.
+        correct: false
+        feedback: That is entropy, which can stay positive with perfect predictions.
+      - id: b
+        text: The fraction of examples on which the selected class is wrong.
+        correct: false
+        feedback: That ignores probability values and is not KL.
+      - id: c
+        text: The extra average surprise caused by using q instead of p.
+        correct: true
+        feedback: It subtracts the unavoidable entropy from cross-entropy.
+    solution: KL is the extra average surprise due to mismatched forecast probabilities. It excludes
+      the entropy baseline from actual weather probabilities.
+  - id: it-kl-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the weather example subtract 1.5 from 1.75 bits?
+    options:
+      - id: a
+        text: To make the answer identical whichever distribution is actual.
+        correct: false
+        feedback: Swapping actual and predicted probabilities can change KL.
+      - id: b
+        text: To remove the baseline average surprise from the app's score.
+        correct: true
+        feedback: Entropy is the baseline when using the actual probabilities.
+      - id: c
+        text: To remove the number of wrong class picks from the model score.
+        correct: false
+        feedback: The numbers are average surprises, not counts of mistakes.
+    solution:
+      The 1.5-bit entropy remains even with the actual probabilities, so subtracting it isolates
+      the mismatch cost.
+  - id: it-kl-fixed
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      On one fixed distribution, entropy is 1 bit and a prediction has cross-entropy 1.25 bits.
+      What is KL in bits?
+    answer: 0.25
+    tolerance:
+      abs: 0.001
+    solution: KL is cross-entropy minus entropy, so $1.25-1=0.25$ extra bits.
+  - id: it-kl-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      On fixed data with entropy 1 bit, cross-entropy falls from ${{= 1+a/4 }}$ to ${{= 1+b/4 }}$
+      bits. By how many bits does KL fall?
+    answer_expr: (a-b)/4
+    tolerance:
+      abs: 0.001
+    solution: "Entropy stays fixed, so KL falls by the same difference: ${{= (a-b)/4 }}$ bits."
+    params:
+      a:
+        min: 3
+        max: 6
+        step: 1
+      b:
+        min: 0
+        max: 2
+        step: 1
+  - id: it-kl-direction
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: Let $a=(1,0)$ and $b=(1/2,1/2)$. Which statement is correct?
+    options:
+      - id: a
+        text: KL from a to b is 1 bit, while KL from b to a is infinite.
+        correct: true
+        feedback: Here a and b name fixed distributions. When b is actual and a is the forecast, the second outcome can occur but receives forecast probability zero.
+      - id: b
+        text: Both directions give 1 bit because the two distributions are unchanged.
+        correct: false
+        feedback: Changing direction changes which outcomes can occur and how they are scored.
+      - id: c
+        text: KL from a to b is infinite, while KL from b to a is 1 bit.
+        correct: false
+        feedback: The infinite direction is the one whose prediction rules out a possible outcome.
+    solution:
+      Using b when a is actual adds 1 bit. Using a when b is actual assigns zero probability to an
+      outcome that occurs half the time.
+  - id: it-kl-robot
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      A robot model's cross-entropy falls from 2 to 1.5 bits on the same observed-outcome distribution. What
+      follows?
+    options:
+      - id: a
+        text: Its KL must become zero because cross-entropy decreased.
+        correct: false
+        feedback: A decrease need not remove all mismatch.
+      - id: b
+        text: Its actual-outcome entropy falls by 0.5 bits because the model improved.
+        correct: false
+        feedback: Changing predictions does not change the actual probabilities estimated from recorded outcomes.
+      - id: c
+        text: Its KL falls by 0.5 bits because actual-outcome entropy stays fixed.
+        correct: true
+        feedback: Subtracting the same entropy leaves the same decrease.
+    solution: KL subtracts fixed actual-outcome entropy from cross-entropy, so both scores fall by exactly 0.5 bits.
+  - id: it-check-entropy
+    dimension: math
+    type: numeric
+    role: check
+    difficulty: 1
+    est_minutes: 2
+    prompt: What is the entropy in bits of four equally likely outcomes?
+    answer: 2
+    tolerance:
+      abs: 0.001
+    solution: Each outcome has probability 1/4 and surprise 2 bits, so their weighted average is 2 bits.
+  - id: it-check-loss
+    dimension: math
+    type: numeric
+    role: check
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A labelled example gets correct-class probability $1/4$. What is its classification loss in
+      bits?
+    answer: 2
+    tolerance:
+      abs: 0.001
+    solution: The loss is the surprise of the observed class, so it is $\log_2 4=2$ bits.
+  - id: it-diagnostic
+    dimension: math
+    type: numeric
+    role: diagnostic
+    difficulty: 2
+    est_minutes: 2
+    prompt: A distribution has probabilities $(1/2,1/4,1/4)$. What is its entropy in bits?
+    answer: 1.5
+    tolerance:
+      abs: 0.001
+    solution: Weight surprises 1, 2 and 2 bits by 1/2, 1/4 and 1/4, giving 1.5 bits.
+  - id: it-core-cross
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: Reality is $(1/4,1/4,1/2)$ and a model predicts $(1/2,1/4,1/4)$. What is cross-entropy in bits?
+    answer: 1.75
+    tolerance:
+      abs: 0.001
+    solution:
+      The surprises calculated from forecasts are 1, 2 and 2 bits, so their actual-probability-weighted average is
+      $1/4+2/4+2/2=1.75$ bits.
+  - id: it-review-match
+    dimension: conceptual
+    type: mc
+    role: review
+    difficulty: 2
+    est_minutes: 1
+    prompt: If a forecast distribution exactly matches the actual probabilities, which statement holds?
+    options:
+      - id: a
+        text: Entropy is zero, and KL equals cross-entropy.
+        correct: false
+        feedback: Entropy is zero only for a certain distribution.
+      - id: b
+        text: Cross-entropy equals entropy, and KL is zero.
+        correct: true
+        feedback: There is no extra surprise from a mismatch.
+      - id: c
+        text: Cross-entropy is zero, even when several outcomes can occur.
+        correct: false
+        feedback: Perfect probabilities do not eliminate uncertainty in the outcomes.
+    solution:
+      Matching probabilities removes the mismatch cost, so KL is zero and cross-entropy equals
+      entropy.
+  - id: it-transfer-grasp
+    dimension: conceptual
+    type: mc
+    role: transfer
+    difficulty: 3
+    est_minutes: 3
+    prompt: Two robot grasp classifiers have equal accuracy on the same labelled grasps. Can their
+      average cross-entropy losses differ?
+    options:
+      - id: a
+        text: Yes, because they may assign different probabilities to the observed classes.
+        correct: true
+        feedback: Accuracy uses picks, but cross-entropy scores the probabilities.
+      - id: b
+        text: No, because equal accuracy fixes the probability of every correct class.
+        correct: false
+        feedback: Identical pick accuracy leaves confidence unspecified.
+      - id: c
+        text: No, because cross-entropy counts wrong picks without considering confidence.
+        correct: false
+        feedback: That describes an error count rather than cross-entropy.
+    solution: Equal accuracy does not imply equal correct-class probabilities. Cross-entropy can
+      distinguish them.
+  - id: it-explain-classification
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: Why is cross-entropy used as the loss for classification? Connect surprise, the
+      observed-class probability, and KL. Explain what accuracy misses.
+    rubric:
+      - id: surprise
+        criterion: Explains that one labelled example is scored by the predicted surprise of its observed class.
+        weight: 1
+        required: true
+      - id: confidence
+        criterion:
+          Explains that small correct-class probabilities incur large loss, unlike accuracy which
+          only counts picks.
+        weight: 1
+        required: true
+      - id: kl
+        criterion:
+          Explains that averaging daily losses gives cross-entropy and lowering it lowers KL because
+          actual-outcome entropy is fixed.
+        weight: 1
+        required: true
+    exemplar:
+      "For a labelled weather example, the loss is the forecast surprise of the observed class,
+      log base two of the reciprocal of its forecast probability. A tiny observed-class probability
+      gets a large loss. Accuracy only records whether the app picked the observed class and misses
+      this confidence. Averaging these daily losses using actual weather probabilities gives cross-entropy.
+      Reducing it reduces KL by the same amount because the actual-outcome entropy stays fixed.
+      KL is smallest when forecast and actual probabilities match."
+    solution:
+      The loss rewards probability on the correct class, not merely a correct pick. With fixed
+      observed outcomes, reducing average cross-entropy also reduces the extra surprise measured by KL.

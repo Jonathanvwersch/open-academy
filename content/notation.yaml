@@ -119,7 +119,7 @@ terms:
       id: cross-entropy,
       label: "cross-entropy",
       match: ["cross-entropy"],
-      introduced_by: [logistic-regression],
+      introduced_by: [logistic-regression, information-theory],
     }
   - {
       id: cnn,

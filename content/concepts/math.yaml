@@ -148,7 +148,7 @@ concepts:
     objectives:
       - { text: "Compute entropy and cross-entropy for a small distribution", dimension: math }
       - { text: "Explain why cross-entropy is the loss for classification", dimension: conceptual }
-    status: stub
+    status: authored
   - id: descriptive-statistics
     title: Mean, variance and confidence intervals
     description: Mean, variance, standard deviation, standard error and confidence intervals for averages and success rates.
