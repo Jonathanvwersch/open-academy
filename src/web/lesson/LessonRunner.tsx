@@ -1,4 +1,5 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { Check, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { apiFetch } from '../authenticated-fetch.js';
@@ -431,12 +432,9 @@ export function LessonRunner({
           ...sessionQueryOptions(sessionId),
           staleTime: 0,
         });
-        toast.success(
-          `Step ${checkpointDetails.pointNumber} of ${checkpointDetails.pointCount} done`,
-          {
-            description: `+${checkpointDetails.xpEarned} XP · Today: ${freshSession.xp.today} / ${freshSession.xp.goal} XP`,
-          },
-        );
+        toast.success(`Step ${checkpointDetails.pointNumber} done`, {
+          description: `+${checkpointDetails.xpEarned} XP · Today: ${freshSession.xp.today} / ${freshSession.xp.goal} XP`,
+        });
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load the next problem.');
@@ -562,16 +560,46 @@ export function LessonRunner({
                   onClick={() => viewStep(item.id)}
                 >
                   {item.status === 'passed' ? '✓ ' : ''}
-                  Step {index + 1} of {state.points.length}
+                  Step {index + 1}
                 </button>
               </Badge>
             ) : (
               <Badge variant="outline" className="border-border text-muted-foreground">
-                Step {index + 1} of {state.points.length}
+                Step {index + 1}
               </Badge>
             )}
           </li>
         ))}
+        <li>
+          {state.status === 'completed' || state.quiz.bestPassed ? (
+            <Badge
+              variant="outline"
+              data-testid="lesson-quiz-chip"
+              aria-label="Lesson quiz, passed"
+              className="border-green-300 bg-green-50 text-green-900"
+            >
+              ✓ Quiz
+            </Badge>
+          ) : state.status === 'quiz' ? (
+            <Badge
+              variant="outline"
+              data-testid="lesson-quiz-chip"
+              aria-label="Lesson quiz, current"
+              className="border-primary bg-muted text-foreground"
+            >
+              Quiz
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              data-testid="lesson-quiz-chip"
+              aria-label="Lesson quiz, upcoming"
+              className="border-border text-muted-foreground"
+            >
+              Quiz
+            </Badge>
+          )}
+        </li>
       </ol>
 
       {viewingPastStep ? (
@@ -730,16 +758,39 @@ export function LessonRunner({
             </Button>
             {quizReview.items.map((item, index) => (
               <article key={item.id} className="space-y-3 border-t pt-4">
-                <h3 className="font-semibold">Question {index + 1}</h3>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-semibold">Question {index + 1}</h3>
+                  {item.correct != null && item.correct >= 1 ? (
+                    <span
+                      data-testid="quiz-review-mark"
+                      data-correct="true"
+                      className="flex items-center gap-1 text-sm font-medium text-green-700"
+                    >
+                      <Check aria-hidden="true" className="size-4" />
+                      Correct
+                    </span>
+                  ) : item.correct === 0 ? (
+                    <span
+                      data-testid="quiz-review-mark"
+                      data-correct="false"
+                      className="flex items-center gap-1 text-sm font-medium text-red-700"
+                    >
+                      <X aria-hidden="true" className="size-4" />
+                      Incorrect
+                    </span>
+                  ) : null}
+                </div>
                 <Markdown>{item.exercise.prompt}</Markdown>
-                <p>
+                <p className={item.correct === 0 ? 'text-red-700' : undefined}>
                   <span className="font-medium">Your answer: </span>
-                  {item.yourAnswer}
+                  <Markdown inline>{item.yourAnswer}</Markdown>
                 </p>
-                <p>
-                  <span className="font-medium">Correct answer: </span>
-                  {item.correctAnswer}
-                </p>
+                {item.correct != null && item.correct >= 1 ? null : (
+                  <p>
+                    <span className="font-medium">Correct answer: </span>
+                    <Markdown inline>{item.correctAnswer}</Markdown>
+                  </p>
+                )}
                 <div>
                   <p className="font-medium">Working</p>
                   <Markdown>{item.solution}</Markdown>
@@ -768,18 +819,21 @@ export function LessonRunner({
                 </Button>
               ))}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() => void startQuiz()}
-              >
-                Retake quiz
-              </Button>
-              <Button type="button" disabled={busy} onClick={() => void next()}>
-                Continue
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div />
+              <div className="ml-auto flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void startQuiz()}
+                >
+                  Retake quiz
+                </Button>
+                <Button type="button" disabled={busy} onClick={() => void next()}>
+                  Continue
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -788,21 +842,13 @@ export function LessonRunner({
           <CardContent className="space-y-4 text-green-950">
             <h2 className="text-xl font-semibold">
               {state.quiz.last?.passed
-                ? `Passed · ${state.quiz.last.correctCount} of ${state.quiz.last.total}${
-                    state.quiz.xpAwarded > 0 ? ` · +${state.quiz.xpAwarded} XP` : ''
-                  }`
+                ? `Quiz passed · ${state.quiz.last.correctCount} of ${state.quiz.last.total}`
                 : 'Quiz passed'}
             </h2>
-            {state.quiz.last?.passed ? (
-              <div className="space-y-2">
-                {state.quiz.last.perStep.map((step, index) => (
-                  <p key={step.pointId}>
-                    Step {index + 1} · {step.title}: {step.correct} of {step.total} right
-                  </p>
-                ))}
-              </div>
+            {state.quiz.xpAwarded > 0 ? (
+              <p className="text-sm opacity-70">+{state.quiz.xpAwarded} XP</p>
             ) : null}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               {state.quiz.last?.passed ? (
                 <Button
                   type="button"
@@ -815,18 +861,22 @@ export function LessonRunner({
                 >
                   See answers
                 </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() => void startQuiz()}
-              >
-                Retake quiz
-              </Button>
-              <Button type="button" disabled={busy} onClick={() => void next()}>
-                Continue
-              </Button>
+              ) : (
+                <div />
+              )}
+              <div className="ml-auto flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void startQuiz()}
+                >
+                  Retake quiz
+                </Button>
+                <Button type="button" disabled={busy} onClick={() => void next()}>
+                  Continue
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -853,18 +903,21 @@ export function LessonRunner({
                 </Button>
               ))}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() => void startQuiz()}
-              >
-                Retake quiz
-              </Button>
-              <Button type="button" disabled={busy} onClick={() => void next()}>
-                Continue
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div />
+              <div className="ml-auto flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void startQuiz()}
+                >
+                  Retake quiz
+                </Button>
+                <Button type="button" disabled={busy} onClick={() => void next()}>
+                  Continue
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
