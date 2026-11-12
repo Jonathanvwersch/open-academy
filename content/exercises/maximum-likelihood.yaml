@@ -1,0 +1,663 @@
+concept: maximum-likelihood
+exercises:
+  - id: mle-likelihood-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: A bent coin gave some flips. What is the likelihood of a guess $p$ for its chance of heads?
+    options:
+      - id: a
+        text: The probability of the flips we saw, worked out as if $p$ were the true chance.
+        correct: true
+        feedback: The data stay fixed, and the likelihood scores how probable they are under each guess.
+      - id: b
+        text: The probability that $p$ is the true chance of heads, given the flips we saw.
+        correct: false
+        feedback: That reverses it. The likelihood is the chance of the data under the guess, not the chance of the guess.
+      - id: c
+        text: The fraction of the flips that came up heads, whatever the guess is.
+        correct: false
+        feedback: The fraction of heads is the best guess, but the likelihood is a score that changes with the guess.
+    solution: The likelihood of $p$ is the probability of the observed data if the chance of heads
+      were $p$. Maximum likelihood picks the $p$ that makes it largest.
+  - id: mle-likelihood-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example for heads, heads, tails, why do we set the derivative $L'(p)$ to 0?
+    options:
+      - id: a
+        text: The slope is 0 at the top of a smooth hill, so the best guess has $L'(p)=0$.
+        correct: true
+        feedback: The best guess is the top of the likelihood curve, where it is flat.
+      - id: b
+        text: A slope of 0 makes the likelihood itself 0, which is the best possible score.
+        correct: false
+        feedback: A likelihood of 0 is the worst score, since it says the data could not happen.
+      - id: c
+        text: The derivative is the probability of a guess, so it must be 0 for bad guesses.
+        correct: false
+        feedback: The derivative is the slope of the likelihood curve, not a probability.
+    solution:
+      We want the top of $L(p)$, and the slope is 0 there. Of the two points with zero slope,
+      $p=0$ has likelihood 0, so the top is $p=2/3$.
+  - id: mle-sequence-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 3
+    prompt: A bent coin lands heads with probability {{= k/10}}. Its independent flips come up
+      heads, tails, heads. What is the likelihood of the guess $p={{= k/10}}$ for these flips? Give
+      three decimal places.
+    params:
+      k:
+        min: 1
+        max: 9
+        step: 1
+    answer_expr: (k/10)^2*(1-k/10)
+    tolerance:
+      abs: 0.0006
+    solution:
+      Independent chances multiply, so the likelihood is $p\times(1-p)\times p={{= k/10}}^2\times{{=
+      1-k/10}}\approx{{= round((k/10)^2*(1-k/10)*1000)/1000}}$.
+  - id: mle-fraction-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: A bent coin is flipped {{= h+t}} times and comes up heads {{= h}} times. What is the
+      maximum likelihood estimate of its chance of heads? Give two decimal places.
+    params:
+      h:
+        min: 2
+        max: 6
+        step: 1
+      t:
+        min: 1
+        max: 4
+        step: 1
+    answer_expr: h/(h+t)
+    tolerance:
+      abs: 0.006
+    solution: The maximum likelihood estimate of a coin's chance of heads is the fraction of heads,
+      ${{= h}}/{{= h+t}}\approx{{= round(h/(h+t)*100)/100}}$.
+  - id: mle-not-probability
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For heads, heads, tails, $L(2/3)\approx0.148$. A friend says this means there is a 14.8%
+      chance that the coin's true chance of heads is $2/3$. What is wrong?
+    options:
+      - id: a
+        text: 0.148 is the chance of these flips if $p$ were $2/3$, not the chance that $p$ is $2/3$.
+        correct: true
+        feedback: The likelihood fixes the guess and asks how probable the data are.
+      - id: b
+        text: Nothing. The likelihood of a guess is the probability that the guess is true.
+        correct: false
+        feedback: The likelihoods of all the guesses don't even add up to 1, so they can't be the guesses' probabilities.
+      - id: c
+        text: It should be 85.2%, because the likelihood and its complement add up to 1.
+        correct: false
+        feedback: The complement $1-0.148$ is the chance of any other flips under $p=2/3$, which says nothing about $p$.
+    solution: The likelihood $L(p)$ is the probability of the data assuming the chance is $p$. It
+      ranks guesses, but it is not the probability that a guess is correct.
+  - id: mle-htt-peak
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 4
+    prompt: A bent coin's flips come up heads, tails, tails, so $L(p)=p(1-p)^2=p-2p^2+p^3$. Use the
+      derivative to find the maximum likelihood estimate of $p$. Give two decimal places.
+    answer: 0.3333
+    tolerance:
+      abs: 0.006
+    solution: $L'(p)=1-4p+3p^2=(1-p)(1-3p)$, which is 0 at $p=1$ and $p=1/3$. $L(1)=0$, so the
+      top is at $p=1/3\approx0.33$, the fraction of heads.
+  - id: mle-gripper
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      A robot gripper's grasps succeed independently with an unknown chance $q$. Its first three
+      grasps all succeed, so $L(q)=q^3$. What is the maximum likelihood estimate of $q$?
+    options:
+      - id: a
+        text: $q=1$, which claims the gripper never fails, too sure for only three grasps.
+        correct: true
+        feedback: $q^3$ keeps rising up to $q=1$, so the estimate is the fraction of successes, 3/3.
+      - id: b
+        text: $q=0.5$, because with no failures seen we have no information about $q$.
+        correct: false
+        feedback: Three successes are information. $0.5^3=0.125$ is far below $1^3=1$.
+      - id: c
+        text: $q=3/4$, because we must leave room for a failure that hasn't happened yet.
+        correct: false
+        feedback: That's a sensible adjustment, but maximum likelihood itself picks the top of $q^3$, which is at $q=1$.
+    solution:
+      $q^3$ grows all the way to $q=1$, so the estimate is $q=1$, the fraction of successes. With
+      so little data, maximum likelihood can be overconfident.
+  - id: mle-log-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why does the guess with the largest log-likelihood $\ln L$ also have the largest likelihood $L$?
+    options:
+      - id: a
+        text: $\ln x$ always rises, so a larger likelihood always has a larger log.
+        correct: true
+        feedback: The log changes heights but keeps their order, so the top stays at the same guess.
+      - id: b
+        text: For numbers between 0 and 1, $\ln x$ is equal to $x$, so nothing changes.
+        correct: false
+        feedback: $\ln 0.5\approx-0.69$, not 0.5. Only the order of the heights is kept.
+      - id: c
+        text: The log flips the order of the heights, so we look for the smallest log.
+        correct: false
+        feedback: $\ln x$ rises, so it keeps the order. Only the negative log-likelihood $-\ln L$ is minimised.
+    solution: The slope of $\ln x$ is $1/x$, which is positive, so $\ln$ always rises. Larger
+      likelihoods give larger log-likelihoods, and both peak at the same guess.
+  - id: mle-log-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example with 100 flips, why do we compare log-likelihoods instead of the
+      likelihoods themselves?
+    options:
+      - id: a
+        text: The likelihoods are tiny, around $10^{-30}$, but their logs are ordinary-sized numbers.
+        correct: true
+        feedback: Adding logs avoids ever forming the tiny product.
+      - id: b
+        text: The logs give a different best guess, and that guess is a better one.
+        correct: false
+        feedback: The log always rises, so the best guess is the same for $L$ and $\ln L$.
+      - id: c
+        text: The logs of the likelihoods of all the guesses add up to 1, like probabilities.
+        correct: false
+        feedback: Log-likelihoods here are about $-67$ and $-69$; they don't add to 1.
+    solution:
+      Each likelihood is a product of 100 numbers below 1, which is tiny. Its log is a sum of
+      100 ordinary-sized terms and keeps the same order.
+  - id: mle-log-rule
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Which expression equals $\ln(0.5\times0.2)$?
+    options:
+      - id: a
+        text: $\ln0.5+\ln0.2$
+        correct: true
+        feedback: The log of a product is the sum of the logs.
+      - id: b
+        text: $\ln0.5\times\ln0.2$
+        correct: false
+        feedback: Logs turn products into sums, not into other products.
+      - id: c
+        text: $\ln(0.5+0.2)$
+        correct: false
+        feedback: That is $\ln0.7$, but $0.5\times0.2=0.1$.
+    solution: Since $e^a\times e^b=e^{a+b}$, $\ln(ab)=\ln a+\ln b$. Both sides equal $\ln0.1\approx-2.30$.
+  - id: mle-loglik-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt:
+      A bent coin is flipped 10 times and comes up heads {{= h}} times. What is the log-likelihood
+      $\ln L$ of the guess $p={{= k/10}}$? Give two decimal places.
+    params:
+      h:
+        min: 2
+        max: 8
+        step: 1
+      k:
+        min: 2
+        max: 8
+        step: 1
+    answer_expr: h*log(k/10)+(10-h)*log(1-k/10)
+    tolerance:
+      abs: 0.006
+    solution: Each head adds $\ln{{= k/10}}$ and each tail adds $\ln{{= 1-k/10}}$, so $\ln L={{=
+      h}}\ln{{= k/10}}+{{= 10-h}}\ln{{= 1-k/10}}\approx{{= round((h*log(k/10)+(10-h)*log(1-k/10))*100)/100}}$.
+  - id: mle-log-negative
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      For the same data, guess A has log-likelihood $-67.3$ and guess B has $-69.3$. Which guess
+      fits the data better?
+    options:
+      - id: a
+        text: A, because $-67.3$ is larger, so A's likelihood is larger.
+        correct: true
+        feedback: Closer to zero means more likely, since the log always rises.
+      - id: b
+        text: B, because $69.3$ is the bigger number when we ignore the signs.
+        correct: false
+        feedback: The signs matter. $-69.3$ is smaller than $-67.3$, so B is less likely.
+      - id: c
+        text: Neither, because a negative log-likelihood means the data are impossible.
+        correct: false
+        feedback: Any probability below 1 has a negative log. Impossible data would have likelihood 0.
+    solution:
+      Log-likelihoods are usually negative because probabilities are below 1. The larger one,
+      $-67.3$, belongs to the more likely guess.
+  - id: mle-underflow
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A program multiplies the chances of 10,000 independent readings, each about 0.1, and gets
+      exactly 0 for every guess. What went wrong?
+    options:
+      - id: a
+        text: The true product, about $10^{-10000}$, is too small to store, so it rounds to 0.
+        correct: true
+        feedback: Adding the logs instead gives about $-23{,}000$, which a computer handles easily.
+      - id: b
+        text: One of the readings must have a chance of exactly 0 under every guess.
+        correct: false
+        feedback: Every factor here is about 0.1. The product is tiny, not zero.
+      - id: c
+        text: Likelihoods always shrink to 0 with lots of data, so more data cannot help.
+        correct: false
+        feedback: The products shrink, but their logs still rank the guesses, and more data ranks them more reliably.
+    solution:
+      Multiplying 10,000 factors of 0.1 gives $10^{-10000}$, far below the smallest number a computer
+      stores. Summing logs, $10000\ln0.1\approx-23026$, avoids this.
+  - id: mle-log-ratio
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      For the same readings, guess A has log-likelihood $-40.2$ and guess B has $-42.5$. How many
+      times as probable are the readings under A as under B? Give one decimal place.
+    answer: 9.974
+    tolerance:
+      abs: 0.06
+    solution: The gap $-40.2-(-42.5)=2.3$ is the log of the ratio of likelihoods, so the ratio is
+      $e^{2.3}\approx10.0$.
+  - id: mle-centre-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt:
+      Readings have Gaussian noise with a fixed $\sigma$ around an unknown centre $\mu$. Which $\mu$
+      has the highest likelihood?
+    options:
+      - id: a
+        text: The one with the smallest sum of squared distances to the readings, their mean.
+        correct: true
+        feedback: The log-likelihood is a constant minus that sum over $2\sigma^2$.
+      - id: b
+        text: The one with the largest sum of squared distances, since it is part of $\ln L$.
+        correct: false
+        feedback: The sum is subtracted in $\ln L$, so a larger sum lowers the likelihood.
+      - id: c
+        text: Any of them, because the readings are fixed and so the likelihood cannot change.
+        correct: false
+        feedback: The readings are fixed, but the bell moves with $\mu$, so its heights at the readings change.
+    solution: $\ln L(\mu)$ is a constant minus the sum of squared distances over $2\sigma^2$. It is
+      largest where that sum is smallest, at the mean of the readings.
+  - id: mle-centre-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example for the readings 98, 101 and 104 cm, why do we expand $(x-\mu)^2$
+      before differentiating?
+    options:
+      - id: a
+        text: It writes the square as powers of $\mu$, so the power rule applies to each term.
+        correct: true
+        feedback: Each of $x^2$, $-2x\mu$ and $\mu^2$ has a slope we can read off.
+      - id: b
+        text: Expanding changes the value of the sum, which moves its lowest point to the mean.
+        correct: false
+        feedback: Expanding never changes a value; it only rewrites it.
+      - id: c
+        text: Expanding removes the readings, so the answer no longer depends on the data.
+        correct: false
+        feedback: The readings stay, in $x^2$ and $-2x\mu$, and the answer is their mean.
+    solution:
+      Expanding gives $x^2-2x\mu+\mu^2$, a sum of powers of $\mu$, so the power rule gives the
+      slope $-2x+2\mu$ for each reading.
+  - id: mle-mean-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt:
+      A sensor with Gaussian noise of fixed $\sigma$ gives the readings {{= m-d}}, {{= m+d}} and
+      {{= m+3*d}} cm. What is the maximum likelihood estimate of the true distance $\mu$, in cm?
+    params:
+      m:
+        min: 20
+        max: 80
+        step: 10
+      d:
+        min: 1
+        max: 4
+        step: 1
+    answer_expr: m+d
+    tolerance:
+      abs: 0.005
+    solution: The maximum likelihood centre is the mean, $({{= m-d}}+{{= m+d}}+{{= m+3*d}})/3={{=
+      m+d}}$ cm.
+  - id: mle-sumsq-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt:
+      The readings are {{= m-d}}, {{= m}} and {{= m+d}} cm. What is their sum of squared distances
+      to the guess $\mu={{= m+g}}$?
+    params:
+      m:
+        min: 20
+        max: 80
+        step: 10
+      d:
+        min: 1
+        max: 4
+        step: 1
+      g:
+        min: 1
+        max: 3
+        step: 1
+    answer_expr: (d+g)^2+g^2+(d-g)^2
+    tolerance:
+      abs: 0.005
+    solution: The distances are ${{= -(d+g)}}$, ${{= -g}}$ and ${{= d-g}}$ cm, so the sum is ${{=
+      (d+g)^2}}+{{= g^2}}+{{= (d-g)^2}}={{= (d+g)^2+g^2+(d-g)^2}}$.
+  - id: mle-width-cancels
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      Each reading's chance is about $f(x)\,w$ for a narrow width $w$. Why can we drop $w$ when
+      comparing guesses of $\mu$?
+    options:
+      - id: a
+        text: $w$ doesn't depend on $\mu$, so $w^3$ multiplies every guess's likelihood equally.
+        correct: true
+        feedback: A common factor scales every score by the same amount, so the ranking is unchanged.
+      - id: b
+        text: $w$ is so small that it is effectively 0, so it can be left out.
+        correct: false
+        feedback: If $w$ were 0, every chance would be 0 and no guess would win.
+      - id: c
+        text: $w$ is the standard deviation, so it is already inside the density $f$.
+        correct: false
+        feedback: $w$ is a narrow interval we choose around each reading, not the noise's spread $\sigma$.
+    solution:
+      The same $w^3$ multiplies the likelihood of every guess, so it changes no comparison, and
+      we can rank guesses by the product of heights alone.
+  - id: mle-centre-sigma
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt:
+      For the readings 98, 101 and 104 cm, suppose the noise had $\sigma=4$ cm instead of 2 cm.
+      What would the maximum likelihood centre be?
+    options:
+      - id: a
+        text: Still 101 cm; a larger $\sigma$ flattens the peak but doesn't move it.
+        correct: true
+        feedback: The sum of squared distances is divided by $2\sigma^2=32$ instead of 8, and its lowest point stays at 101.
+      - id: b
+        text: Higher than 101 cm, because wider noise lets the centre sit further away.
+        correct: false
+        feedback: $\sigma$ divides every guess's sum by the same number, so it can't favour any direction.
+      - id: c
+        text: There is none, because with wider noise every centre is equally likely.
+        correct: false
+        feedback: Wider noise makes the likelihood peak less sharp, but 101 still has the smallest sum.
+    solution:
+      $\ln L(\mu)=3c-S(\mu)/(2\sigma^2)$. Changing $\sigma$ changes $c$ and the divisor, but not
+      which $\mu$ makes $S(\mu)$ smallest, so the best centre stays at the mean, 101 cm.
+  - id: mle-centre-gap
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 4
+    prompt:
+      For the readings 98, 101 and 104 cm with $\sigma=2$ cm, how much higher is the log-likelihood
+      of $\mu=101$ than that of $\mu=99$?
+    answer: 1.5
+    tolerance:
+      abs: 0.005
+    solution:
+      The sums of squared distances are 18 at 101 and $1+4+25=30$ at 99. The log-likelihoods are
+      $3c-18/8$ and $3c-30/8$, so the gap is $12/8=1.5$.
+  - id: mle-mse-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 2
+    prompt: When is training a model to minimise the mean squared error the same as maximum likelihood?
+    options:
+      - id: a
+        text: When each reading is its prediction plus Gaussian noise with a fixed $\sigma$.
+        correct: true
+        feedback: Then $\ln L$ is a constant minus the sum of squared errors over $2\sigma^2$.
+      - id: b
+        text: Always, whatever kind of data the model predicts, including yes-or-no outcomes.
+        correct: false
+        feedback: Other kinds of noise, such as coin-like outcomes, give a different loss.
+      - id: c
+        text: Only when the model predicts every reading exactly, with all errors 0.
+        correct: false
+        feedback: The link holds for every set of predictions, not only perfect ones.
+    solution:
+      With Gaussian noise of fixed spread, the log-likelihood falls exactly as the sum of squared
+      errors grows, so the lowest MSE gives the highest likelihood.
+  - id: mle-mse-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example comparing models A and B, why can we ignore the $4c$ term?
+    options:
+      - id: a
+        text: Both models have 4 readings and the same $\sigma$, so $4c$ is equal and cancels.
+        correct: true
+        feedback: $c$ depends only on $\sigma$, not on the predictions.
+      - id: b
+        text: The number $c$ is always 0, so the term $4c$ adds nothing.
+        correct: false
+        feedback: With $\sigma=1$, $c=\ln(1/\sqrt{2\pi})\approx-0.92$, which is not 0.
+      - id: c
+        text: The term $4c$ is tiny compared with the squared errors, so it hardly matters.
+        correct: false
+        feedback: Its size is irrelevant; it cancels because it is the same for both models.
+    solution: $c$ depends only on $\sigma$, which both models share, so both scores contain the same
+      $4c$ and it cancels in their difference.
+  - id: mle-mse-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: A model's errors on four readings are {{= a}}, {{= -b}}, {{= c}} and 0. What is its mean
+      squared error? Give two decimal places.
+    params:
+      a:
+        min: 1
+        max: 4
+        step: 1
+      b:
+        min: 1
+        max: 4
+        step: 1
+      c:
+        min: 1
+        max: 4
+        step: 1
+    answer_expr: (a^2+b^2+c^2)/4
+    tolerance:
+      abs: 0.005
+    solution: Square the errors, add them and divide by 4, $({{= a^2}}+{{= b^2}}+{{= c^2}}+0)/4={{=
+      (a^2+b^2+c^2)/4}}$.
+  - id: mle-sse-loglik-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt:
+      A model has MSE {{= q}} on {{= n}} readings, with Gaussian noise of $\sigma=1$. Its log-likelihood
+      is $nc$ minus how much?
+    params:
+      n:
+        min: 4
+        max: 10
+        step: 2
+      q:
+        min: 1
+        max: 5
+        step: 1
+    answer_expr: n*q/2
+    tolerance:
+      abs: 0.005
+    solution: The sum of squared errors is $n\times\text{MSE}={{= n*q}}$, and $2\sigma^2=2$, so
+      $\ln L=nc-{{= n*q}}/2=nc-{{= n*q/2}}$.
+  - id: mle-outlier
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A sensor misfire makes one reading 50 m where the model predicted 7 m; the other errors are about
+      1 m. What happens when the model is trained to minimise MSE?
+    options:
+      - id: a
+        text: Its squared error of 1849 swamps the rest, so training pulls the model's predictions towards it.
+        correct: true
+        feedback: Squaring makes one big miss count as much as about 1849 errors of 1 m.
+      - id: b
+        text: Very little, because averaging over all the readings smooths away a single error.
+        correct: false
+        feedback: The average includes 1849, which outweighs many small squared errors.
+      - id: c
+        text: It counts 43 times as much as a 1 m error, in proportion to its size.
+        correct: false
+        feedback: It counts $43^2=1849$ times as much, because the error is squared.
+    solution:
+      The error $50-7=43$ squares to 1849. Gaussian noise almost never misses by that much, so the
+      fit bends towards the bad reading.
+  - id: mle-which-model
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      On the same 10 readings, with Gaussian noise of the same fixed $\sigma$, model P has MSE 2.4
+      and model Q has MSE 1.8. Which model has the higher likelihood?
+    options:
+      - id: a
+        text: Q, because lower MSE means a smaller sum of squared errors to subtract.
+        correct: true
+        feedback: $\ln L=10c-10\,\text{MSE}/(2\sigma^2)$, which is larger for Q.
+      - id: b
+        text: P, because a larger MSE means the model covers more of the data.
+        correct: false
+        feedback: A larger MSE means larger errors, which make the readings less probable.
+      - id: c
+        text: We can't tell without knowing the value of $\sigma$ and the constant $c$.
+        correct: false
+        feedback: Both models share $\sigma$ and $c$, so the lower MSE wins whatever their values.
+    solution:
+      With the same $n$, $\sigma$ and $c$, the log-likelihood falls as the MSE rises, so Q, with the
+      lower MSE, has the higher likelihood.
+  - id: mle-arm-models
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 4
+    prompt:
+      Two models predict where a robot arm's gripper will stop, with Gaussian noise of $\sigma=0.5$
+      cm. On four test moves, model A's errors are $0.5,-0.5,0,1$ cm and model B's are $1,1,-1,0$ cm.
+      How much higher is A's log-likelihood than B's?
+    answer: 3
+    tolerance:
+      abs: 0.005
+    solution: The squared errors add to 1.5 for A and 3 for B. With $2\sigma^2=0.5$, the gap is
+      $(3-1.5)/0.5=3$.
+  - id: mle-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt:
+      Explain what the likelihood of a guess is, why we usually work with the log-likelihood, and why
+      assuming Gaussian noise turns maximum likelihood into minimising the mean squared error.
+    rubric:
+      - id: likelihood
+        criterion:
+          Defines the likelihood as the probability of the observed data under a guess, and the
+          estimate as the guess that makes it largest, not the probability that the guess is true.
+        weight: 1
+      - id: logs
+        criterion:
+          Explains that logs turn the product over independent readings into a sum and, because
+          the log always rises, keep the same best guess.
+        weight: 1
+      - id: mse
+        criterion: Explains that a Gaussian log height is a constant minus a squared error over
+          $2\sigma^2$, so with fixed $\sigma$ the highest likelihood has the lowest MSE, and names a limit
+          such as outliers or non-Gaussian data.
+        weight: 1
+    exemplar:
+      The likelihood of a guess is the probability of the data we saw if that guess were true, and
+      maximum likelihood picks the guess that makes it largest. Independent readings multiply, which
+      gives tiny numbers, so we take logs, turning the product into a sum; the log always rises, so
+      the best guess doesn't move. With Gaussian noise, each log height is a constant minus the squared
+      error over $2\sigma^2$, so with a fixed $\sigma$ the highest likelihood comes from the lowest sum
+      of squared errors, which is the lowest MSE. Big outliers dominate squared error, and other kinds
+      of data need other losses.
+    solution:
+      Maximum likelihood ranks guesses by how probable they make the data. Logs keep that ranking
+      while turning products into sums, and with Gaussian noise the log-likelihood is a constant minus
+      the sum of squared errors over $2\sigma^2$.

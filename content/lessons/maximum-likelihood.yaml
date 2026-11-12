@@ -1,0 +1,256 @@
+concept: maximum-likelihood
+version: 1
+objective: "**Goal:** choose a model's unknown numbers by maximum likelihood, making the observed
+  data as probable as possible, and show that with Gaussian noise this means minimising the mean
+  squared error."
+recap:
+  - concept: probability-basics
+    text: A probability is a number from 0 to 1 saying how likely an event is. Two events are
+      independent when one happening tells us nothing about whether the other happens.
+  - concept: gaussian-distribution
+    text: A Gaussian with mean $\mu$ and standard deviation $\sigma$ has the bell-shaped density
+      $f(x)=\frac{1}{\sigma\sqrt{2\pi}}e^{-(x-\mu)^2/(2\sigma^2)}$, highest at $\mu$. Height times a
+      small width gives the chance of a reading in that narrow interval.
+  - concept: derivatives
+    text: A derivative gives a curve's slope, 0 at a smooth hill's top or valley's bottom. By the
+      power rule, $x^n$ has slope $nx^{n-1}$. $\ln x$, the power of $e\approx2.718$ giving $x$,
+      exists for $x>0$ with slope $1/x$.
+where_this_fits: |
+  ### What is maximum likelihood?
+
+  Maximum likelihood is a rule for choosing the unknown numbers in a probability model, which says how likely each outcome is. It picks the values that make the data we saw as probable as possible.
+
+  Models have numbers we must fill in from data, such as a coin's chance of heads. Probability says how likely data is once those numbers are known, but not how to choose them. Maximum likelihood works for any kind of data. Training a model means adjusting its numbers to make a **loss**, a score of how badly its predictions fit, as small as possible. Maximum likelihood explains where the usual loss for predicting numbers, the mean squared error, comes from when the random errors in the data are Gaussian.
+knowledge_points:
+  - id: mle-score-guess
+    title: Score a guess for a coin's chance of heads
+    explain: |
+      ### Three flips of a bent coin
+
+      Let's start with the simplest case. A bent coin lands heads with some unknown probability $p$. We flip it three times and see heads, heads, tails. Which value of $p$ fits these flips best? A coin that almost never lands heads would rarely give two heads, and a coin that always lands heads could never give a tail, so some guesses clearly fit better than others.
+
+      ### The chance of the whole sequence
+
+      Separate flips are independent, and the chance that independent events all happen is the product of their chances. Picture repeating the three flips many times. The first flip is heads on a fraction $p$ of those tries. Of those tries, a fraction $p$ also give heads on the second flip, and of those, a fraction $1-p$ give tails on the third. So if the chance of heads is $p$, the chance of our exact flips is
+
+      $$L(p)=p\times p\times(1-p)$$
+
+      This is the **likelihood** of the guess $p$: the probability of the data we saw, worked out as if $p$ were the true value. The data stay fixed, and we change the guess.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="The likelihood L of p equals p times p times 1 minus p for the flips heads, heads, tails, drawn for every guess p from 0 to 1. It is 0 at both ends. Blue dots mark the guesses 0.2, 0.5 and 0.9, with likelihoods 0.032, 0.125 and 0.081. The orange dot marks the top of the curve at p equals 2/3, where the likelihood is 4/27, about 0.148"><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717"><path d="M70 270 H600 M70 270 V30" stroke="#737373" fill="#ffffff" fill-opacity="0"/><path d="M65 195 H70" stroke="#737373"/><text x="60" y="200" text-anchor="end" fill="#737373">0.05</text><path d="M65 120 H70" stroke="#737373"/><text x="60" y="125" text-anchor="end" fill="#737373">0.1</text><path d="M65 45 H70" stroke="#737373"/><text x="60" y="50" text-anchor="end" fill="#737373">0.15</text><text x="60" y="275" text-anchor="end" fill="#737373">0</text><path d="M70 270 v5" stroke="#737373"/><text x="70" y="292" text-anchor="middle" fill="#737373">0</text><path d="M174 270 v5" stroke="#737373"/><text x="174" y="292" text-anchor="middle" fill="#737373">0.2</text><path d="M330 270 v5" stroke="#737373"/><text x="330" y="292" text-anchor="middle" fill="#737373">0.5</text><path d="M416.67 270 v5" stroke="#737373"/><text x="416.67" y="292" text-anchor="middle" fill="#737373">2/3</text><path d="M538 270 v5" stroke="#737373"/><text x="538" y="292" text-anchor="middle" fill="#737373">0.9</text><path d="M590 270 v5" stroke="#737373"/><text x="590" y="292" text-anchor="middle" fill="#737373">1</text><text x="335" y="318" text-anchor="middle">guess p (chance of heads)</text><text x="70" y="20" text-anchor="start">likelihood L(p) of heads, heads, tails</text><path d="M70 270 L75.2 269.85 L80.4 269.41 L85.6 268.69 L90.8 267.7 L96 266.44 L101.2 264.92 L106.4 263.16 L111.6 261.17 L116.8 258.94 L122 256.5 L127.2 253.85 L132.4 250.99 L137.6 247.95 L142.8 244.72 L148 241.31 L153.2 237.74 L158.4 234.02 L163.6 230.15 L168.8 226.14 L174 222 L179.2 217.74 L184.4 213.37 L189.6 208.9 L194.8 204.34 L200 199.69 L205.2 194.96 L210.4 190.17 L215.6 185.33 L220.8 180.43 L226 175.5 L231.2 170.54 L236.4 165.55 L241.6 160.56 L246.8 155.56 L252 150.56 L257.2 145.58 L262.4 140.63 L267.6 135.71 L272.8 130.83 L278 126 L283.2 121.23 L288.4 116.53 L293.6 111.91 L298.8 107.38 L304 102.94 L309.2 98.6 L314.4 94.38 L319.6 90.29 L324.8 86.32 L330 82.5 L335.2 78.83 L340.4 75.31 L345.6 71.97 L350.8 68.8 L356 65.81 L361.2 63.02 L366.4 60.44 L371.6 58.07 L376.8 55.92 L382 54 L387.2 52.32 L392.4 50.89 L397.6 49.72 L402.8 48.82 L408 48.19 L413.2 47.84 L418.4 47.79 L423.6 48.05 L428.8 48.61 L434 49.5 L439.2 50.72 L444.4 52.27 L449.6 54.18 L454.8 56.44 L460 59.06 L465.2 62.06 L470.4 65.45 L475.6 69.23 L480.8 73.41 L486 78 L491.2 83.01 L496.4 88.45 L501.6 94.33 L506.8 100.66 L512 107.44 L517.2 114.68 L522.4 122.4 L527.6 130.61 L532.8 139.3 L538 148.5 L543.2 158.21 L548.4 168.43 L553.6 179.19 L558.8 190.48 L564 202.31 L569.2 214.7 L574.4 227.66 L579.6 241.19 L584.8 255.3 L590 270" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="2"/><path d="M416.67 47.78 V270" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 4"/><circle cx="174" cy="222" r="5" fill="#3b82f6"/><text x="164" y="210" text-anchor="end" fill="#3b82f6">0.032</text><circle cx="330" cy="82.5" r="5" fill="#3b82f6"/><text x="318" y="70.5" text-anchor="end" fill="#3b82f6">0.125</text><circle cx="538" cy="148.5" r="5" fill="#3b82f6"/><text x="550" y="136.5" text-anchor="start" fill="#3b82f6">0.081</text><circle cx="416.67" cy="47.78" r="6" fill="#f59e0b"/><text x="416.67" y="33.78" text-anchor="middle" fill="#f59e0b">best: 4/27 ≈ 0.148</text></g></svg>
+      ```
+
+      The curve shows $L(p)$ for every guess. A fair-coin guess, $p=0.5$, gives $0.5\times0.5\times0.5=0.125$. The guess $p=0.9$ gives $0.9\times0.9\times0.1=0.081$, which is smaller because under that guess a tail is rare, with a chance of only 0.1. The guess $p=0.2$ gives only $0.032$.
+
+      ### The best guess
+
+      The **maximum likelihood estimate** is the guess with the largest likelihood, the top of the curve. Here it is $p=2/3$, the fraction of flips that were heads. The same calculation works for any number of flips, so the maximum likelihood estimate of a coin's chance of heads is always the fraction of heads seen.
+
+      Be careful not to read $L(2/3)\approx0.148$ as "a 14.8% chance that $p$ is $2/3$". It is the chance of the flips *if* $p$ were $2/3$. Likelihoods are not chances of the different guesses, so there is no reason for them to add up to 1.
+    worked: |
+      Let's find the top of the likelihood curve exactly, using the fact that the slope is 0 at the top of a smooth hill.
+
+      1. **Multiply out the likelihood.** The power rule works one power at a time, so we first write $L$ as a sum of powers of $p$.
+         $$L(p)=p^2(1-p)=p^2-p^3$$
+
+      2. **Take the derivative.** The power rule turns $p^2$ into $2p$ and $p^3$ into $3p^2$.
+         $$L'(p)=2p-3p^2=p\,(2-3p)$$
+
+      3. **Set the slope to 0.** A product is 0 only when one of its factors is 0, so the slope is 0 at $p=0$ or where $2-3p=0$. Guesses run from 0 to 1, so the highest point is either a flat point or one of the two ends, where the curve stops. The likelihood is 0 at both ends, $p=0$ and $p=1$, so the top is the other flat point.
+         $$2-3p=0\quad\text{so}\quad p=\tfrac23$$
+
+      4. **Check the height.** We put $p=2/3$ back into $L$.
+         $$L(\tfrac23)=\tfrac23\times\tfrac23\times\tfrac13=\tfrac{4}{27}\approx0.148$$
+
+      This beats every guess we tried, and $2/3$ is exactly the fraction of heads: two of the three flips.
+    problems:
+      - mle-likelihood-basics
+      - mle-likelihood-why
+      - mle-sequence-template
+      - mle-fraction-template
+      - mle-not-probability
+      - mle-htt-peak
+      - mle-gripper
+  - id: mle-logs
+    title: Swap a product of chances for a sum of logs
+    explain: |
+      ### Many flips make tiny numbers
+
+      Real data has many readings, not three. Suppose we flip the coin 100 times and record a sequence with 60 heads and 40 tails. As in step 1, the likelihood is the chance of that exact sequence, so it multiplies 60 factors of $p$ and 40 factors of $1-p$:
+
+      $$L(p)=p^{60}(1-p)^{40}$$
+
+      Even at its best guess, $p=0.6$, this is only about $5.9\times10^{-30}$. With thousands of readings, the product gets so small that a computer, which stores numbers to limited precision, rounds it to exactly 0. Then every guess looks equally bad.
+
+      ### Logs turn products into sums
+
+      The natural logarithm $\ln x$, or log for short, is the power of $e$ that gives $x$. Powers add when we multiply, as in $e^a\times e^b=e^{a+b}$, so the log of a product is the sum of the logs:
+
+      $$\ln(ab)=\ln a+\ln b$$
+
+      Taking the log of the likelihood gives the **log-likelihood**. Sixty factors of $p$ become sixty copies of $\ln p$ added together:
+
+      $$\ln L(p)=60\ln p+40\ln(1-p)$$
+
+      Each log, such as $\ln 0.6\approx-0.51$, is an ordinary-sized number, so the sum stays easy to store however many flips there are.
+
+      ### The same best guess
+
+      The log changes the heights but never their order. Its slope, $1/x$, is positive for every $x$ above 0, so $\ln x$ always rises, and a larger likelihood always has a larger log-likelihood. A guess with likelihood 0 has no log, since $\ln x$ exists only for $x$ above 0, but it is never the best guess anyway. So the guess that maximises one also maximises the other. The picture below shows this for the three flips from step 1, where $\ln L(p)=2\ln p+\ln(1-p)$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" aria-label="Top: the likelihood L of p for heads, heads, tails, peaking at 0.148. Bottom: its log, ln L of p, which is negative everywhere, falls away on both sides and peaks at about minus 1.91. An orange dashed line shows that both peaks are at the same guess, p equals 2/3"><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717"><path d="M70 160 H600 M70 160 V30" stroke="#737373" fill="#ffffff" fill-opacity="0"/><path d="M70 370 H600 M70 370 V210" stroke="#737373" fill="#ffffff" fill-opacity="0"/><text x="60" y="165" text-anchor="end" fill="#737373">0</text><path d="M65 80 H70" stroke="#737373"/><text x="60" y="85" text-anchor="end" fill="#737373">0.1</text><path d="M65 236.67 H70" stroke="#737373"/><text x="60" y="241.67" text-anchor="end" fill="#737373">−2</text><path d="M65 303.33 H70" stroke="#737373"/><text x="60" y="308.33" text-anchor="end" fill="#737373">−4</text><path d="M65 370 H70" stroke="#737373"/><text x="60" y="375" text-anchor="end" fill="#737373">−6</text><path d="M70 370 v5" stroke="#737373"/><text x="70" y="392" text-anchor="middle" fill="#737373">0</text><path d="M70 160 v5" stroke="#737373"/><path d="M330 370 v5" stroke="#737373"/><text x="330" y="392" text-anchor="middle" fill="#737373">0.5</text><path d="M330 160 v5" stroke="#737373"/><path d="M416.67 370 v5" stroke="#737373"/><text x="416.67" y="392" text-anchor="middle" fill="#737373">2/3</text><path d="M416.67 160 v5" stroke="#737373"/><path d="M590 370 v5" stroke="#737373"/><text x="590" y="392" text-anchor="middle" fill="#737373">1</text><path d="M590 160 v5" stroke="#737373"/><text x="80" y="25" text-anchor="start">likelihood L(p)</text><text x="80" y="205" text-anchor="start">log-likelihood ln L(p)</text><text x="600" y="358" text-anchor="end">guess p</text><path d="M70 160 L75.2 159.92 L80.4 159.69 L85.6 159.3 L90.8 158.77 L96 158.1 L101.2 157.29 L106.4 156.35 L111.6 155.29 L116.8 154.1 L122 152.8 L127.2 151.38 L132.4 149.86 L137.6 148.24 L142.8 146.52 L148 144.7 L153.2 142.8 L158.4 140.81 L163.6 138.75 L168.8 136.61 L174 134.4 L179.2 132.13 L184.4 129.8 L189.6 127.41 L194.8 124.98 L200 122.5 L205.2 119.98 L210.4 117.43 L215.6 114.84 L220.8 112.23 L226 109.6 L231.2 106.95 L236.4 104.29 L241.6 101.63 L246.8 98.96 L252 96.3 L257.2 93.64 L262.4 91 L267.6 88.38 L272.8 85.78 L278 83.2 L283.2 80.66 L288.4 78.15 L293.6 75.69 L298.8 73.27 L304 70.9 L309.2 68.59 L314.4 66.34 L319.6 64.15 L324.8 62.04 L330 60 L335.2 58.04 L340.4 56.17 L345.6 54.38 L350.8 52.69 L356 51.1 L361.2 49.61 L366.4 48.23 L371.6 46.97 L376.8 45.82 L382 44.8 L387.2 43.9 L392.4 43.14 L397.6 42.52 L402.8 42.04 L408 41.7 L413.2 41.52 L418.4 41.49 L423.6 41.63 L428.8 41.93 L434 42.4 L439.2 43.05 L444.4 43.88 L449.6 44.89 L454.8 46.1 L460 47.5 L465.2 49.1 L470.4 50.91 L475.6 52.92 L480.8 55.15 L486 57.6 L491.2 60.27 L496.4 63.17 L501.6 66.31 L506.8 69.68 L512 73.3 L517.2 77.16 L522.4 81.28 L527.6 85.66 L532.8 90.3 L538 95.2 L543.2 100.38 L548.4 105.83 L553.6 111.57 L558.8 117.59 L564 123.9 L569.2 130.51 L574.4 137.42 L579.6 144.63 L584.8 152.16 L590 160" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="2"/><path d="M101.2 359.62 L106.4 349.7 L111.6 341.16 L116.8 333.67 L122 327.02 L127.2 321.04 L132.4 315.61 L137.6 310.66 L142.8 306.1 L148 301.89 L153.2 297.98 L158.4 294.34 L163.6 290.93 L168.8 287.74 L174 284.73 L179.2 281.9 L184.4 279.22 L189.6 276.69 L194.8 274.29 L200 272.01 L205.2 269.84 L210.4 267.78 L215.6 265.81 L220.8 263.94 L226 262.15 L231.2 260.45 L236.4 258.82 L241.6 257.26 L246.8 255.77 L252 254.35 L257.2 252.99 L262.4 251.68 L267.6 250.44 L272.8 249.25 L278 248.11 L283.2 247.03 L288.4 245.99 L293.6 245 L298.8 244.06 L304 243.16 L309.2 242.31 L314.4 241.5 L319.6 240.73 L324.8 240 L330 239.31 L335.2 238.67 L340.4 238.06 L345.6 237.49 L350.8 236.96 L356 236.47 L361.2 236.02 L366.4 235.61 L371.6 235.23 L376.8 234.9 L382 234.6 L387.2 234.34 L392.4 234.12 L397.6 233.94 L402.8 233.81 L408 233.71 L413.2 233.66 L418.4 233.65 L423.6 233.69 L428.8 233.78 L434 233.91 L439.2 234.1 L444.4 234.33 L449.6 234.63 L454.8 234.98 L460 235.39 L465.2 235.87 L470.4 236.41 L475.6 237.04 L480.8 237.74 L486 238.52 L491.2 239.41 L496.4 240.39 L501.6 241.49 L506.8 242.71 L512 244.07 L517.2 245.59 L522.4 247.29 L527.6 249.2 L532.8 251.34 L538 253.78 L543.2 256.55 L548.4 259.75 L553.6 263.48 L558.8 267.91 L564 273.28 L569.2 280.02 L574.4 288.92 L579.6 301.75" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="2"/><path d="M416.67 30 V370" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 4"/><circle cx="416.67" cy="41.48" r="6" fill="#f59e0b"/><text x="404.67" y="31.48" text-anchor="end" fill="#f59e0b">top: 0.148</text><circle cx="416.67" cy="233.65" r="6" fill="#f59e0b"/><text x="404.67" y="223.65" text-anchor="end" fill="#f59e0b">top: ln 0.148 ≈ −1.91</text></g></svg>
+      ```
+
+      Both curves peak at $p=2/3$. Training pushes a loss down, so a loss must be low when the fit is good. In practice we therefore flip the sign and *minimise* the **negative log-likelihood**, $-\ln L$. It has its lowest point at the same guess.
+
+      Be careful with the signs. A likelihood below 1 has a log below 0, so log-likelihoods are usually negative. For example, a log-likelihood of $-67$ beats one of $-69$, because closer to zero means more likely. The worked example below has numbers like these.
+    worked: |
+      Let's compare the guesses $p=0.5$ and $p=0.6$ for the 100 flips with 60 heads, without ever forming a tiny product.
+
+      1. **Score $p=0.5$.** All 100 factors are $0.5$, so we add 100 copies of $\ln0.5$.
+         $$\ln L(0.5)=100\ln0.5\approx-69.31$$
+
+      2. **Score $p=0.6$.** We add 60 copies of $\ln0.6$ for the heads and 40 copies of $\ln0.4$ for the tails.
+         $$\begin{aligned}\ln L(0.6)&=60\ln0.6+40\ln0.4\\&\approx-30.65-36.65\\&=-67.30\end{aligned}$$
+
+      3. **Compare.** The data are more probable under the guess with the larger log-likelihood, so $p=0.6$ fits better.
+         $$-67.30-(-69.31)=2.01$$
+
+      4. **Measure how much better.** Since $a=b\times(a/b)$, the rule $\ln(ab)=\ln a+\ln b$ gives $\ln a=\ln b+\ln(a/b)$. So the gap is the log of the ratio of likelihoods, and raising $e$ to the gap undoes the log.
+         $$\frac{L(0.6)}{L(0.5)}=e^{2.01}\approx7.5$$
+
+      The 100 flips are about 7.5 times as probable if $p=0.6$ as if $p=0.5$. And $0.6$ is the fraction of heads, so it is the maximum likelihood estimate.
+    problems:
+      - mle-log-basics
+      - mle-log-why
+      - mle-log-rule
+      - mle-loglik-template
+      - mle-log-negative
+      - mle-underflow
+      - mle-log-ratio
+  - id: mle-gauss-centre
+    title: Fit a bell curve's centre to readings
+    explain: |
+      ### Noisy readings of one distance
+
+      Now let's apply the same rule to measured numbers with Gaussian noise. A robot's distance sensor gives readings with Gaussian noise of standard deviation $\sigma=2$ cm around the true distance $\mu$, which we don't know. Three readings come back: 98, 101 and 104 cm. Which $\mu$ fits best?
+
+      ### Likelihood from heights
+
+      A Gaussian gives any single exact distance a chance of 0. Only ranges have chances. This sensor reports whole centimetres, so a reading of 98 means somewhere between 97.5 and 98.5, an interval of width $w=1$ cm. Its chance is about height times width, $f(x)\,w$, where $f$ is the Gaussian density centred at the guess $\mu$. The readings are independent, so we multiply. The factor $w^3$ is the same for every guess, so it never changes which guess wins. We drop it and use the product of heights as the likelihood:
+
+      $$L(\mu)=f(98)\times f(101)\times f(104)$$
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" aria-label="Three sensor readings, 98, 101 and 104 cm, as black dots on a number line. The solid orange bell is a Gaussian with centre 101 and standard deviation 2; its heights at the readings are 0.065, 0.199 and 0.065, which multiply to 0.00084. The dashed blue bell has centre 99; its heights are 0.176, 0.121 and 0.009, which multiply to 0.00019, about 4.5 times less"><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717"><path d="M50 300 H600" stroke="#737373"/><path d="M50 300 v5" stroke="#737373"/><text x="50" y="322" text-anchor="middle" fill="#737373">92</text><path d="M140 300 v5" stroke="#737373"/><text x="140" y="322" text-anchor="middle" fill="#737373">95</text><path d="M230 300 v5" stroke="#737373"/><text x="230" y="322" text-anchor="middle" fill="#737373">98</text><path d="M320 300 v5" stroke="#737373"/><text x="320" y="322" text-anchor="middle" fill="#737373">101</text><path d="M410 300 v5" stroke="#737373"/><text x="410" y="322" text-anchor="middle" fill="#737373">104</text><path d="M500 300 v5" stroke="#737373"/><text x="500" y="322" text-anchor="middle" fill="#737373">107</text><path d="M590 300 v5" stroke="#737373"/><text x="590" y="322" text-anchor="middle" fill="#737373">110</text><text x="325" y="350" text-anchor="middle">reading (cm)</text><path d="M50 299.56 L53 299.48 L56 299.38 L59 299.27 L62 299.14 L65 298.99 L68 298.81 L71 298.6 L74 298.37 L77 298.1 L80 297.78 L83 297.43 L86 297.02 L89 296.56 L92 296.04 L95 295.45 L98 294.79 L101 294.04 L104 293.21 L107 292.28 L110 291.24 L113 290.08 L116 288.8 L119 287.39 L122 285.84 L125 284.13 L128 282.26 L131 280.22 L134 278.01 L137 275.6 L140 273 L143 270.2 L146 267.19 L149 263.97 L152 260.52 L155 256.86 L158 252.98 L161 248.87 L164 244.54 L167 240 L170 235.24 L173 230.28 L176 225.14 L179 219.81 L182 214.32 L185 208.68 L188 202.91 L191 197.03 L194 191.07 L197 185.06 L200 179.01 L203 172.97 L206 166.96 L209 161.01 L212 155.15 L215 149.43 L218 143.87 L221 138.51 L224 133.39 L227 128.53 L230 123.97 L233 119.74 L236 115.86 L239 112.38 L242 109.31 L245 106.67 L248 104.48 L251 102.76 L254 101.52 L257 100.78 L260 100.53 L263 100.78 L266 101.52 L269 102.76 L272 104.48 L275 106.67 L278 109.31 L281 112.38 L284 115.86 L287 119.74 L290 123.97 L293 128.53 L296 133.39 L299 138.51 L302 143.87 L305 149.43 L308 155.15 L311 161.01 L314 166.96 L317 172.97 L320 179.01 L323 185.06 L326 191.07 L329 197.03 L332 202.91 L335 208.68 L338 214.32 L341 219.81 L344 225.14 L347 230.28 L350 235.24 L353 240 L356 244.54 L359 248.87 L362 252.98 L365 256.86 L368 260.52 L371 263.97 L374 267.19 L377 270.2 L380 273 L383 275.6 L386 278.01 L389 280.22 L392 282.26 L395 284.13 L398 285.84 L401 287.39 L404 288.8 L407 290.08 L410 291.24 L413 292.28 L416 293.21 L419 294.04 L422 294.79 L425 295.45 L428 296.04 L431 296.56 L434 297.02 L437 297.43 L440 297.78 L443 298.1 L446 298.37 L449 298.6 L452 298.81 L455 298.99 L458 299.14 L461 299.27 L464 299.38 L467 299.48 L470 299.56 L473 299.63 L476 299.69 L479 299.74 L482 299.79 L485 299.82 L488 299.85 L491 299.88 L494 299.9 L497 299.92 L500 299.93 L503 299.95 L506 299.96 L509 299.96 L512 299.97 L515 299.98 L518 299.98 L521 299.98 L524 299.99 L527 299.99 L530 299.99 L533 299.99 L536 299.99 L539 300 L542 300 L545 300 L548 300 L551 300 L554 300 L557 300 L560 300 L563 300 L566 300 L569 300 L572 300 L575 300 L578 300 L581 300 L584 300 L587 300 L590 300" fill="#ffffff" fill-opacity="0" stroke="#3b82f6" stroke-width="2" stroke-dasharray="6 4"/><path d="M50 299.99 L53 299.99 L56 299.99 L59 299.98 L62 299.98 L65 299.98 L68 299.97 L71 299.96 L74 299.96 L77 299.95 L80 299.93 L83 299.92 L86 299.9 L89 299.88 L92 299.85 L95 299.82 L98 299.79 L101 299.74 L104 299.69 L107 299.63 L110 299.56 L113 299.48 L116 299.38 L119 299.27 L122 299.14 L125 298.99 L128 298.81 L131 298.6 L134 298.37 L137 298.1 L140 297.78 L143 297.43 L146 297.02 L149 296.56 L152 296.04 L155 295.45 L158 294.79 L161 294.04 L164 293.21 L167 292.28 L170 291.24 L173 290.08 L176 288.8 L179 287.39 L182 285.84 L185 284.13 L188 282.26 L191 280.22 L194 278.01 L197 275.6 L200 273 L203 270.2 L206 267.19 L209 263.97 L212 260.52 L215 256.86 L218 252.98 L221 248.87 L224 244.54 L227 240 L230 235.24 L233 230.28 L236 225.14 L239 219.81 L242 214.32 L245 208.68 L248 202.91 L251 197.03 L254 191.07 L257 185.06 L260 179.01 L263 172.97 L266 166.96 L269 161.01 L272 155.15 L275 149.43 L278 143.87 L281 138.51 L284 133.39 L287 128.53 L290 123.97 L293 119.74 L296 115.86 L299 112.38 L302 109.31 L305 106.67 L308 104.48 L311 102.76 L314 101.52 L317 100.78 L320 100.53 L323 100.78 L326 101.52 L329 102.76 L332 104.48 L335 106.67 L338 109.31 L341 112.38 L344 115.86 L347 119.74 L350 123.97 L353 128.53 L356 133.39 L359 138.51 L362 143.87 L365 149.43 L368 155.15 L371 161.01 L374 166.96 L377 172.97 L380 179.01 L383 185.06 L386 191.07 L389 197.03 L392 202.91 L395 208.68 L398 214.32 L401 219.81 L404 225.14 L407 230.28 L410 235.24 L413 240 L416 244.54 L419 248.87 L422 252.98 L425 256.86 L428 260.52 L431 263.97 L434 267.19 L437 270.2 L440 273 L443 275.6 L446 278.01 L449 280.22 L452 282.26 L455 284.13 L458 285.84 L461 287.39 L464 288.8 L467 290.08 L470 291.24 L473 292.28 L476 293.21 L479 294.04 L482 294.79 L485 295.45 L488 296.04 L491 296.56 L494 297.02 L497 297.43 L500 297.78 L503 298.1 L506 298.37 L509 298.6 L512 298.81 L515 298.99 L518 299.14 L521 299.27 L524 299.38 L527 299.48 L530 299.56 L533 299.63 L536 299.69 L539 299.74 L542 299.79 L545 299.82 L548 299.85 L551 299.88 L554 299.9 L557 299.92 L560 299.93 L563 299.95 L566 299.96 L569 299.96 L572 299.97 L575 299.98 L578 299.98 L581 299.98 L584 299.99 L587 299.99 L590 299.99" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="3"/><path d="M230 300 V235.24" stroke="#f59e0b" stroke-width="2"/><text x="222" y="233.24" text-anchor="end" fill="#f59e0b">0.065</text><path d="M320 300 V100.53" stroke="#f59e0b" stroke-width="2"/><text x="328" y="86.53" text-anchor="start" fill="#f59e0b">0.199</text><path d="M410 300 V235.24" stroke="#f59e0b" stroke-width="2"/><text x="418" y="233.24" text-anchor="start" fill="#f59e0b">0.065</text><circle cx="230" cy="123.97" r="5" fill="#3b82f6"/><text x="220" y="117.97" text-anchor="end" fill="#3b82f6">0.176</text><circle cx="320" cy="179.01" r="5" fill="#3b82f6"/><text x="310" y="173.01" text-anchor="end" fill="#3b82f6">0.121</text><circle cx="410" cy="291.24" r="5" fill="#3b82f6"/><text x="420" y="279.24" text-anchor="start" fill="#3b82f6">0.009</text><circle cx="230" cy="300" r="6" fill="#171717"/><circle cx="320" cy="300" r="6" fill="#171717"/><circle cx="410" cy="300" r="6" fill="#171717"/><text x="50" y="24" text-anchor="start" fill="#f59e0b">orange: centre 101, heights multiply to 0.00084</text><text x="50" y="46" text-anchor="start" fill="#3b82f6">blue: centre 99, heights multiply to 0.00019</text><text x="600" y="280" text-anchor="end">black: readings</text></g></svg>
+      ```
+
+      The orange bell, centred at 101, is fairly high at all three readings. The blue bell, centred at 99, is higher at 98 but almost zero at 104, so its product of heights is about 4.5 times smaller. These products are not chances themselves. But the same $w^3$ was dropped from each, so their ratio is about the ratio of the chances.
+
+      ### Taking logs gives squared distances
+
+      From the recap, each height is $f(x)=\frac{1}{\sigma\sqrt{2\pi}}e^{-(x-\mu)^2/(2\sigma^2)}$. The log of a product is a sum, and $\ln(e^y)=y$, so the log of one height has two parts. The first, $\ln\frac{1}{\sigma\sqrt{2\pi}}$, is the same for every $\mu$, so we call it $c$:
+
+      $$\ln f(x)=c-\frac{(x-\mu)^2}{2\sigma^2}$$
+
+      Adding the three logs, with $2\sigma^2=8$, gives
+
+      $$\ln L(\mu)=3c-\frac{S(\mu)}{8}$$
+
+      where $S(\mu)$ is the sum of squared distances from the readings to $\mu$:
+
+      $$\begin{aligned}S(\mu)={}&(98-\mu)^2+(101-\mu)^2\\&+(104-\mu)^2\end{aligned}$$
+
+      Only $S(\mu)$ depends on $\mu$, and it is subtracted. So the most likely centre is the one with the **smallest sum of squared distances** to the readings. That sum is 21 at $\mu=100$, 18 at $\mu=101$ and 21 at $\mu=102$.
+
+      Be careful about the role of $\sigma$. Plotted against the guess $\mu$, $\ln L$ is a hill with its top at $\mu=101$. Changing $\sigma$ reshapes the hill but never moves its top, because $\sigma$ doesn't change which $\mu$ makes $S(\mu)$ smallest.
+    worked: |
+      Let's find the centre $\mu$ that makes the sum of squared distances $S(\mu)$ as small as possible.
+
+      1. **Expand one square.** Multiplying out writes each square as powers of $\mu$, ready for the power rule. Here $x$ is any one reading.
+         $$(x-\mu)^2=x^2-2x\mu+\mu^2$$
+
+      2. **Differentiate in $\mu$.** The reading $x$ is fixed, so $x^2$ has slope 0, $-2x\mu$ has slope $-2x$ and $\mu^2$ has slope $2\mu$. Adding the slopes for the three readings gives
+         $$\begin{aligned}S'(\mu)&=(2\mu-196)+(2\mu-202)\\&\quad+(2\mu-208)\\&=6\mu-606\end{aligned}$$
+
+      3. **Set the slope to 0.** The slope $6\mu-606$ is negative for $\mu$ below 101 and positive above it, so $S$ falls until $\mu=101$ and rises after. Its only flat point is the bottom.
+         $$6\mu-606=0\quad\text{so}\quad\mu=101$$
+
+      4. **Recognise the mean.** The 606 is twice the sum of the readings and the 6 is twice their count, so $\mu$ is their average.
+         $$\mu=\frac{98+101+104}{3}=101$$
+
+      The same steps work for any readings: the maximum likelihood centre for Gaussian readings is their mean.
+    problems:
+      - mle-centre-basics
+      - mle-centre-why
+      - mle-mean-template
+      - mle-sumsq-template
+      - mle-width-cancels
+      - mle-centre-sigma
+      - mle-centre-gap
+  - id: mle-mse
+    title: Turn likelihood into mean squared error
+    explain: |
+      ### From one centre to many predictions
+
+      So far all readings shared one centre. A model is a rule with adjustable numbers that turns each input into a prediction. The same few numbers serve every example, so errors usually remain. Suppose a robot stands at four spots in a room and a model predicts its sensor's distance reading at each spot. The readings are $4,6,9$ and $7$ m. We write $y_i$ for the $i$-th measured reading and $\hat y_i$, said "y-hat", for the model's prediction of it. We assume each reading is its prediction plus independent Gaussian noise with a fixed $\sigma$, so each $y_i$ has its own bell centred at $\hat y_i$.
+
+      ### The same steps with new centres
+
+      As in step 3, the log-likelihood is the sum of the log heights at the readings, and each log height is now $c-(y_i-\hat y_i)^2/(2\sigma^2)$. We call each gap $y_i-\hat y_i$ an **error**. Write $E$ for the sum of the squared errors over all $n$ readings:
+
+      $$\begin{aligned}E={}&(y_1-\hat y_1)^2+\dots\\&+(y_n-\hat y_n)^2\end{aligned}$$
+
+      Adding the $n$ log heights then gives
+
+      $$\ln L=nc-\frac{E}{2\sigma^2}$$
+
+      Dividing $E$ by $n$ gives the **mean squared error**, an average that doesn't grow just because there are more readings:
+
+      $$\text{MSE}=\frac{E}{n}$$
+
+      Since $n$, $c$ and $\sigma$ stay fixed, the predictions with the higher likelihood are exactly those with the lower MSE. So training a model to minimise MSE *is* maximum likelihood, provided the noise is Gaussian with a fixed spread. That assumption often suits measured numbers, so MSE is the usual loss for predicting them.
+
+      One model, model A, predicts 3, 7, 7 and 7 m. Its errors are $1,-1,2$ and $0$, their squares add to 6, and its MSE is $6/4=1.5$ square metres.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 310" aria-label="Measured sensor readings 4, 6, 9 and 7 m at four spots as black dots, and model A’s predictions 3, 7, 7 and 7 m as orange rings. Red dashed segments show the errors, reading minus prediction: 1, minus 1, 2 and 0, whose squares are 1, 1, 4 and 0. The squares add to 6, so the mean squared error is 1.5"><g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717"><path d="M80 270 H600 M80 270 V30" stroke="#737373" fill="#ffffff" fill-opacity="0"/><path d="M75 270 H80" stroke="#737373"/><text x="70" y="275" text-anchor="end" fill="#737373">0</text><path d="M75 222 H80" stroke="#737373"/><text x="70" y="227" text-anchor="end" fill="#737373">2</text><path d="M75 174 H80" stroke="#737373"/><text x="70" y="179" text-anchor="end" fill="#737373">4</text><path d="M75 126 H80" stroke="#737373"/><text x="70" y="131" text-anchor="end" fill="#737373">6</text><path d="M75 78 H80" stroke="#737373"/><text x="70" y="83" text-anchor="end" fill="#737373">8</text><path d="M75 30 H80" stroke="#737373"/><text x="70" y="35" text-anchor="end" fill="#737373">10</text><text x="80" y="20" text-anchor="start">reading (m)</text><text x="150" y="292" text-anchor="middle" fill="#737373">spot 1</text><path d="M150 174 V198" stroke="#ef4444" stroke-width="2" stroke-dasharray="5 3"/><circle cx="150" cy="198" r="8" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="3"/><circle cx="150" cy="174" r="4" fill="#171717"/><text x="164" y="191" text-anchor="start" fill="#ef4444">error +1</text><text x="164" y="209" text-anchor="start" fill="#ef4444">squared 1</text><text x="280" y="292" text-anchor="middle" fill="#737373">spot 2</text><path d="M280 126 V102" stroke="#ef4444" stroke-width="2" stroke-dasharray="5 3"/><circle cx="280" cy="102" r="8" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="3"/><circle cx="280" cy="126" r="4" fill="#171717"/><text x="294" y="119" text-anchor="start" fill="#ef4444">error −1</text><text x="294" y="137" text-anchor="start" fill="#ef4444">squared 1</text><text x="410" y="292" text-anchor="middle" fill="#737373">spot 3</text><path d="M410 54 V102" stroke="#ef4444" stroke-width="2" stroke-dasharray="5 3"/><circle cx="410" cy="102" r="8" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="3"/><circle cx="410" cy="54" r="4" fill="#171717"/><text x="424" y="83" text-anchor="start" fill="#ef4444">error +2</text><text x="424" y="101" text-anchor="start" fill="#ef4444">squared 4</text><text x="540" y="292" text-anchor="middle" fill="#737373">spot 4</text><circle cx="540" cy="102" r="8" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="3"/><circle cx="540" cy="102" r="4" fill="#171717"/><text x="554" y="107" text-anchor="start" fill="#ef4444">error 0</text><text x="554" y="125" text-anchor="start" fill="#ef4444">squared 0</text><text x="100" y="50" text-anchor="start">black dot: measured reading y</text><text x="100" y="72" text-anchor="start" fill="#f59e0b">orange ring: model A’s prediction ŷ</text></g></svg>
+      ```
+
+      ### When squared error misleads
+
+      Squaring makes a miss of 10 count 100 times as much as a miss of 1. That suits Gaussian noise, which almost never lands far away. Be careful when one reading is a wild mistake, say the sensor misfires and reads 50 m where 7 m was predicted. Its squared error of $43^2=1849$ swamps the rest, so training moves the predictions towards that bad reading. And yes-or-no outcomes, like whether a coin lands heads, aren't a number plus bell-shaped noise. For them, maximum likelihood gives the negative log-likelihood of step 2 as the loss.
+    worked: |
+      Model A has MSE 1.5, from the picture. Model B predicts 6, 8, 9 and 5 m for the same four readings. Let's check that the model with the lower MSE also has the higher likelihood, taking $\sigma=1$ m.
+
+      1. **Find B's errors.** We subtract each of B's predictions from its measured reading.
+         $$\begin{aligned}4-6&=-2,&6-8&=-2\\9-9&=0,&7-5&=2\end{aligned}$$
+
+      2. **Find B's MSE.** We square the errors, add them and divide by 4.
+         $$\text{MSE}_B=\frac{4+4+0+4}{4}=3$$
+
+      3. **Score both models.** With $n=4$ and $2\sigma^2=2$, each log-likelihood is $4c-E/2$. A's squared errors add to 6 and B's to 12.
+         $$\ln L_A=4c-3,\quad \ln L_B=4c-6$$
+
+      4. **Compare.** The $4c$ cancels in the difference.
+         $$(4c-3)-(4c-6)=3$$
+
+      Undoing the log, model A's product of heights is about $e^3\approx20$ times model B's. So the model with the lower MSE is also the one with the higher likelihood.
+    problems:
+      - mle-mse-basics
+      - mle-mse-why
+      - mle-mse-template
+      - mle-sse-loglik-template
+      - mle-outlier
+      - mle-which-model
+      - mle-arm-models
+final: mle-explain
+summary: |
+  - The likelihood of a guess is the probability of the observed data if that guess were true. For measured readings such as distances, we use the product of density heights, which ranks guesses the same way. Maximum likelihood picks the guess that makes it largest; for a coin, that is the fraction of heads.
+  - Logs turn the product over independent readings into a sum, $\ln(ab)=\ln a+\ln b$, without moving the best guess. We often minimise the negative log-likelihood $-\ln L$ instead.
+  - For Gaussian readings with a fixed $\sigma$, the log-likelihood is a constant minus the sum of squared distances over $2\sigma^2$, so the best centre is the mean.
+  - When a model's predictions are the centres of the bells, maximising the likelihood is minimising the mean squared error. That holds only for Gaussian noise; wild mistakes in readings or yes-or-no data call for care or another loss.
+
+  **Next:** Language models, which predict the next word of a text, come later in the course. They are trained by maximum likelihood, adjusting their numbers to make real text as probable as possible.

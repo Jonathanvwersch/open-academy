@@ -60,7 +60,7 @@ terms:
       id: mse,
       label: "MSE",
       match: ['\bMSE\b', "mean squared error"],
-      introduced_by: [supervised-learning, loss-functions],
+      introduced_by: [supervised-learning, loss-functions, maximum-likelihood],
     }
   - {
       id: mae,
@@ -87,7 +87,8 @@ terms:
       id: sigma,
       label: "σ (sigmoid or standard deviation)",
       match: ['\\sigma'],
-      introduced_by: [activation-functions, logistic-regression, gaussian-distribution],
+      introduced_by:
+        [activation-functions, logistic-regression, gaussian-distribution, maximum-likelihood],
     }
   - {
       id: hadamard,

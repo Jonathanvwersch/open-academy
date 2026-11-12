@@ -135,7 +135,7 @@ concepts:
       ]
     objectives:
       - { text: "Derive MSE as Gaussian maximum likelihood", dimension: math }
-    status: stub
+    status: authored
   - id: information-theory
     title: Entropy, cross-entropy and KL divergence
     description: Surprise and entropy, cross-entropy as the classification loss, KL divergence as the gap between two distributions.
