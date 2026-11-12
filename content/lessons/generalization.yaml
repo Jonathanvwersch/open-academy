@@ -77,9 +77,9 @@ knowledge_points:
       <text x="50" y="20">Price ($1000s)</text>
       <path d="M50 40 V200 H330" fill="#171717" fill-opacity="0" stroke="#737373"/>
       <text x="43" y="205" text-anchor="end">0</text><text x="43" y="155" text-anchor="end">100</text><text x="43" y="105" text-anchor="end">200</text><text x="43" y="55" text-anchor="end">300</text>
-      <circle cx="100" cy="150" r="5" fill="#3b82f6"/><circle cx="280" cy="100" r="5" fill="#3b82f6"/>
-      <circle cx="100" cy="100" r="5" fill="#10b981"/><circle cx="280" cy="50" r="5" fill="#10b981"/>
-      <text x="100" y="221" text-anchor="middle">80</text><text x="280" y="221" text-anchor="middle">160</text>
+      <circle cx="165" cy="150" r="5" fill="#3b82f6"/><circle cx="280" cy="100" r="5" fill="#3b82f6"/>
+      <circle cx="165" cy="100" r="5" fill="#10b981"/><circle cx="280" cy="50" r="5" fill="#10b981"/>
+      <text x="165" y="221" text-anchor="middle">80</text><text x="280" y="221" text-anchor="middle">160</text>
       <text x="190" y="243" text-anchor="middle">House size (m²)</text>
       <text x="65" y="265" fill="#3b82f6">● City A</text><text x="225" y="265" fill="#10b981">● City B</text>
       </g></svg>

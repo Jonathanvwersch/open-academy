@@ -292,7 +292,7 @@ exercises:
     params:
       n: { min: 2, max: 8, step: 2 }
       c: { min: 2, max: 4, step: 1 }
-    prompt: "A validation table has {{= n*c }} rows: {{= c }} identical copies of each of {{= n }} distinct house sales. None of these houses is in training. After removing duplicate copies, how many distinct sales remain?"
+    prompt: "A validation table has {{= n*c }} rows. Every house sale in it appears as exactly {{= c }} identical copies, and none of these houses is in training. After removing duplicate copies, how many distinct sales remain?"
     answer_expr: n
     tolerance: { abs: 0.01 }
     solution: "Divide {{= n*c }} rows by {{= c }} copies per sale to get {{= n }} distinct sales. Copying records does not create more independent evidence."
