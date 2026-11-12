@@ -17,7 +17,7 @@ const feedbackCorrectScreenshotDir = '/home/ubuntu/screenshots/feedback-correct'
 const mcShuffleScreenshotDir = '/home/ubuntu/screenshots/mc-shuffle';
 const buttonLoadingScreenshotDir = '/home/ubuntu/screenshots/button-loading';
 const finalContinueScreenshotDir = '/home/ubuntu/screenshots/final-continue';
-const checkpointScreenshotDir = '/home/ubuntu/screenshots/kp-checkpoint';
+const stepToastScreenshotDir = '/home/ubuntu/screenshots/step-toast';
 const lessonQuizScreenshotDir = '/home/ubuntu/shots/lesson-quiz';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
@@ -26,7 +26,7 @@ mkdirSync(feedbackCorrectScreenshotDir, { recursive: true });
 mkdirSync(mcShuffleScreenshotDir, { recursive: true });
 mkdirSync(buttonLoadingScreenshotDir, { recursive: true });
 mkdirSync(finalContinueScreenshotDir, { recursive: true });
-mkdirSync(checkpointScreenshotDir, { recursive: true });
+mkdirSync(stepToastScreenshotDir, { recursive: true });
 mkdirSync(lessonQuizScreenshotDir, { recursive: true });
 
 test.beforeEach(async () => {
@@ -84,6 +84,25 @@ async function currentRun(page: Page, runConceptId = conceptId) {
     const response = await fetch(`/api/lessons/${concept}/run`);
     return (await response.json()).run;
   }, runConceptId);
+}
+
+async function expectToastInViewport(page: Page, text: string) {
+  const toast = page.locator('[data-sonner-toast]').filter({ hasText: text });
+  await expect(toast).toBeVisible();
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error('Expected a viewport size');
+  await expect
+    .poll(async () => {
+      const bounds = await toast.boundingBox();
+      return (
+        bounds !== null &&
+        bounds.x >= 0 &&
+        bounds.x + bounds.width <= viewport.width &&
+        bounds.y >= 0 &&
+        bounds.y + bounds.height <= viewport.height
+      );
+    })
+    .toBe(true);
 }
 
 async function answerAndReload(page: Page, correct: boolean, runConceptId = conceptId) {
@@ -154,8 +173,8 @@ async function nextProblemAndReload(
       ? `Next: ${nextPointTitle}`
       : 'Next step'
     : 'Next problem';
-  const opensCheckpoint = buttonName.startsWith('Next: ');
-  const checkScroll = opensCheckpoint || buttonName === 'Next step' || assertWithinStepScroll;
+  const advancesStep = buttonName.startsWith('Next: ');
+  const checkScroll = advancesStep || buttonName === 'Next step' || assertWithinStepScroll;
   if (checkScroll) {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
@@ -169,17 +188,12 @@ async function nextProblemAndReload(
   const response = await responsePromise;
   const body = await response.json();
   expect(response.status()).toBe(200);
-  if (opensCheckpoint) {
-    await expect(page.getByTestId('kp-checkpoint')).toBeVisible();
-    const continueButton = page.getByRole('button', {
-      name: `Continue to ${body.run.currentPoint.title}`,
-      exact: true,
-    });
-    await continueButton.click();
+  if (advancesStep) {
     await expect(
       page.getByRole('heading', { name: body.run.currentPoint.title, exact: true }),
     ).toBeVisible();
     await expect(page.getByTestId('lesson-problem')).toBeVisible();
+    await expect(page.getByTestId('kp-checkpoint')).toHaveCount(0);
   } else if (buttonName === 'Next step') {
     await expect(
       page.getByRole('heading', { name: body.run.currentPoint.title, exact: true }),
@@ -242,7 +256,7 @@ async function passFirstKnowledgePoint(page: Page) {
   };
 }
 
-async function openFirstCheckpoint(page: Page) {
+async function advanceToNextStep(page: Page) {
   const run = await currentRun(page);
   const nextTitle = run.currentPoint?.title;
   if (!nextTitle) throw new Error('Expected a next knowledge point');
@@ -251,11 +265,17 @@ async function openFirstCheckpoint(page: Page) {
       response.url().endsWith(`/api/lessons/${conceptId}/run`) &&
       response.request().method() === 'POST',
   );
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   await page.getByRole('button', { name: `Next: ${nextTitle}`, exact: true }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(200);
-  await expect(page.getByTestId('kp-checkpoint')).toBeVisible();
-  return response.json();
+  const body = await response.json();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await expect(page.getByRole('heading', { name: nextTitle, exact: true })).toBeVisible();
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
+  await expect(page.getByTestId('kp-checkpoint')).toHaveCount(0);
+  return body.run;
 }
 
 test('lesson session header shows the active step title', async ({ page }) => {
@@ -296,64 +316,55 @@ test('lesson runner loading state reserves the subtitle slot', async ({ page }) 
   await expect(page.getByTestId('lesson-problem')).toBeVisible();
 });
 
-test('a passed knowledge point shows its XP checkpoint before the next step', async ({ page }) => {
+test('a passed knowledge point opens the next step and shows an XP toast', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  const { sessionId, run, firstTitle, nextTitle } = await passFirstKnowledgePoint(page);
+  const { sessionId, run, nextTitle } = await passFirstKnowledgePoint(page);
   expect(run.points[0].xpEarned).toBe(10);
   await expect(page.getByText('Correct · +10 XP')).toBeVisible();
   await expect(page.getByRole('button', { name: `Next: ${nextTitle}`, exact: true })).toBeVisible();
 
-  const advancedRun = await openFirstCheckpoint(page);
-  await expect(page.locator('section > header h2')).toHaveText(firstTitle);
+  const advancedRun = await advanceToNextStep(page);
+  await expect(page.locator('section > header h2')).toHaveText(nextTitle);
   const session = await page.evaluate(async (id) => {
     const response = await fetch(`/api/sessions/${id}`);
     return response.json();
   }, sessionId);
   expect(session.xp.session).toBe(10);
   expect(session.xp.today).toBe(10);
-  await expect(page.getByTestId('kp-checkpoint')).toContainText(`✓ ${firstTitle}`);
-  await expect(page.getByTestId('kp-checkpoint')).toContainText('+10 XP');
-  await expect(
-    page.getByText(`Today: ${session.xp.today} / ${session.xp.goal} XP`, { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText(`Knowledge point 1 of ${run.points.length} done`, { exact: true }),
-  ).toBeVisible();
-  const goalBar = page.getByRole('progressbar', { name: "Today's XP goal" });
-  await expect
-    .poll(async () => Number(await goalBar.getAttribute('aria-valuenow')))
-    .toBeGreaterThan(0);
-  expect(Number(await goalBar.getAttribute('aria-valuenow'))).toBeCloseTo(
-    (session.xp.today / session.xp.goal) * 100,
-  );
-  await page.waitForTimeout(750);
-  if (process.env.TITLES_CHECKPOINT_SCREENSHOT) {
-    await page.screenshot({ path: process.env.TITLES_CHECKPOINT_SCREENSHOT });
-  }
-  await page.screenshot({
-    path: `${checkpointScreenshotDir}/checkpoint-desktop.png`,
-    fullPage: true,
-  });
+  await expect(page.getByTestId('kp-checkpoint')).toHaveCount(0);
+  const toastTitle = `Step 1 of ${run.points.length} done`;
+  const toastDescription = `+${run.points[0].xpEarned} XP · Today: ${session.xp.today} / ${session.xp.goal} XP`;
+  await expect(page.getByText(toastTitle, { exact: true })).toBeVisible();
+  await expect(page.getByText(toastDescription, { exact: true })).toBeVisible();
+  await expectToastInViewport(page, toastTitle);
+  const [toastFont, appFont] = await Promise.all([
+    page
+      .locator('[data-sonner-toaster]')
+      .evaluate((element) => getComputedStyle(element).fontFamily),
+    page.locator('body').evaluate((element) => getComputedStyle(element).fontFamily),
+  ]);
+  expect(toastFont).toBe(appFont);
+  await page.screenshot({ path: `${stepToastScreenshotDir}/desktop.png` });
 
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  await page.screenshot({
-    path: `${checkpointScreenshotDir}/checkpoint-mobile.png`,
-    fullPage: true,
-  });
-
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await page.getByRole('button', { name: `Continue to ${nextTitle}`, exact: true }).click();
+  await expect(page.getByText(toastTitle, { exact: true })).toBeVisible();
+  await expect(page.getByText(toastDescription, { exact: true })).toBeVisible();
+  await expectToastInViewport(page, toastTitle);
+  await page.screenshot({ path: `${stepToastScreenshotDir}/mobile.png` });
   await expect(page.getByRole('heading', { name: nextTitle, exact: true })).toBeVisible();
   await expect(page.getByTestId('lesson-problem')).toBeVisible();
-  expect(advancedRun.run.currentPoint.title).toBe(nextTitle);
+  expect(advancedRun.currentPoint.title).toBe(nextTitle);
 });
 
-test('stopping at a checkpoint resumes on the next knowledge point', async ({ page }) => {
+test('leaving after a step resumes on the next knowledge point', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   const { sessionId, nextTitle } = await passFirstKnowledgePoint(page);
-  await openFirstCheckpoint(page);
-  await page.getByRole('button', { name: 'Stop here', exact: true }).click();
+  await advanceToNextStep(page);
+  await page
+    .locator('nav[aria-label="Main navigation"]')
+    .getByRole('link', { name: 'Home' })
+    .click();
   await expect(page).toHaveURL('/');
   const resume = page.getByRole('link', { name: 'Resume session', exact: true });
   await expect(resume).toBeVisible();

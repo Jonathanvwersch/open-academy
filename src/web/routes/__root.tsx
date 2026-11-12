@@ -6,6 +6,7 @@ import {
   redirect,
   useRouterState,
 } from '@tanstack/react-router';
+import { Toaster } from 'sonner';
 import { Button } from '@/ui/button.js';
 import { Logo } from '@/ui/logo.js';
 import { Skeleton } from '@/ui/skeleton.js';
@@ -80,9 +81,30 @@ function AppShellSkeleton() {
   );
 }
 
+function AppToaster() {
+  return (
+    <Toaster
+      position="bottom-center"
+      style={{ fontFamily: 'inherit' }}
+      toastOptions={{
+        className: 'border border-border bg-background text-foreground shadow-md',
+        descriptionClassName: 'text-muted-foreground',
+      }}
+      icons={{ success: null }}
+    />
+  );
+}
+
 function RootLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  if (pathname === '/login') return <Outlet />;
+  if (pathname === '/login') {
+    return (
+      <>
+        <Outlet />
+        <AppToaster />
+      </>
+    );
+  }
   const isPaperReader = pathname.startsWith('/papers/');
   return (
     <TooltipProvider>
@@ -137,6 +159,7 @@ function RootLayout() {
           </div>
         </div>
       </TutorContextProvider>
+      <AppToaster />
     </TooltipProvider>
   );
 }
