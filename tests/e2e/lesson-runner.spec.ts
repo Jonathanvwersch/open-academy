@@ -175,10 +175,7 @@ async function expectToastInViewport(page: Page, text: string) {
 async function expectEnterToAdvance(page: Page, runConceptId: string, problemId: string) {
   let nextPostCount = 0;
   const onRequest = (request: import('@playwright/test').Request) => {
-    if (
-      request.url().endsWith(`/api/lessons/${runConceptId}/run`) &&
-      request.method() === 'POST'
-    ) {
+    if (request.url().endsWith(`/api/lessons/${runConceptId}/run`) && request.method() === 'POST') {
       nextPostCount += 1;
     }
   };
@@ -887,10 +884,7 @@ test('LessonRunner advances after MC feedback when the selected label focuses it
   const run = await currentRun(page, 'derivatives');
   const problem = run.pendingProblem;
   expect(problem.exercise.type).toBe('mc');
-  await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
-    'data-problem-id',
-    problem.id,
-  );
+  await expect(page.getByTestId('lesson-problem')).toHaveAttribute('data-problem-id', problem.id);
   const answer = await page.evaluate(async (problemId: string) => {
     const response = await fetch(`/api/test/lesson-problems/${problemId}/answer`);
     return (await response.json()).answer;
