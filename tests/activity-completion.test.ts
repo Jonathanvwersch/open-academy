@@ -130,6 +130,39 @@ test('skips XP for activities with no attempts and for knowledge-point lessons',
   expect(await db.select().from(xpEvents).where(eq(xpEvents.userId, userId))).toHaveLength(0);
 });
 
+test('does not award activity XP for completed lab activities', async () => {
+  const activity = await createActivity();
+  await db
+    .update(sessionActivities)
+    .set({ kind: 'lab', projectId: 'linreg-numpy' })
+    .where(eq(sessionActivities.id, activity.id));
+  await db.insert(attempts).values({
+    userId,
+    sessionId: activity.sessionId,
+    activityId: activity.id,
+    exerciseId: 'vectors-magnitude',
+    exerciseVersion: '1',
+    conceptId: 'vectors',
+    dimension: 'math',
+    mode: 'practice',
+    answer: 5,
+    correct: 1,
+    credit: 1,
+    attemptNo: 1,
+    gradedBy: 'deterministic',
+  });
+
+  await updateActivityAndAdvance(db, {
+    activityId: activity.id,
+    completed: true,
+    now: new Date('2026-01-02T12:00:00.000Z'),
+    userId,
+    timeZone: 'UTC',
+  });
+
+  expect(await db.select().from(xpEvents).where(eq(xpEvents.userId, userId))).toHaveLength(0);
+});
+
 test('advancing an abandoned session activity does not reactivate its parent session', async () => {
   const activity = await createActivity();
   const [nextActivity] = await db

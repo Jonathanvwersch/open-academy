@@ -828,6 +828,7 @@ export function TutorContextProvider({
                         </Alert>
                       ) : null}
                       <PromptInputTextarea
+                        className="max-h-[40vh] min-h-36 resize-none overflow-y-auto"
                         aria-label="Ask the tutor"
                         value={draft}
                         onChange={(event) => setDraft(event.target.value)}
@@ -846,7 +847,7 @@ export function TutorContextProvider({
                         >
                           Send
                         </PromptInputSubmit>
-                        {draftLength > TUTOR_QUESTION_MAX_LENGTH - 500 ? (
+                        {draftLength > 0 ? (
                           <span
                             data-testid="tutor-draft-length"
                             className={`text-xs ${draftTooLong ? 'text-destructive' : 'text-muted-foreground'}`}

@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import type { Card } from 'ts-fsrs';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
+import { emptyAnswerMessage } from '../../shared/answer-validation.js';
 import { getLessonPrerequisites } from '../content/index.js';
 import { loadContent } from '../content/load.js';
 import { serializeConcept, serializeExercise, serializeLesson } from '../content/serialize.js';
@@ -65,7 +66,7 @@ import {
 } from '../learning/scheduler.js';
 import type { LearningMode, MasteryRecord } from '../learning/types.js';
 import { initialMastery, masteryRank } from '../learning/types.js';
-import { localDateKey, xpGoalFor } from '../learning/xp.js';
+import { localDateKey, sessionKindForDate, xpGoalFor } from '../learning/xp.js';
 import type { PaperFetcher } from '../papers/fetcher.js';
 import { createTutorProvider, E2ETutorProvider, type TutorProvider } from '../tutor/provider.js';
 import { scoreRubric } from '../tutor/scoring.js';
@@ -85,6 +86,54 @@ type TutorGradeResult = {
   rubric: Array<{ id: string; criterion: string; judgement: 'met' | 'partial' | 'missing' }>;
   exemplar: string;
 };
+
+type ProjectVerifierResults = {
+  tests: Array<{ id: string; passed: boolean; message: string }>;
+  metrics: Record<string, number>;
+};
+
+function projectEvidenceSummary(
+  project: {
+    tests: Array<{ id: string }>;
+    metrics: Array<{ id: string; label: string; threshold: number; direction: 'below' | 'above' }>;
+  },
+  results: ProjectVerifierResults,
+) {
+  const reportedTests = new Map(results.tests.map((test) => [test.id, test]));
+  const missingTests = project.tests.filter((test) => !reportedTests.has(test.id));
+  const failures = results.tests
+    .filter((test) => !test.passed)
+    .map((test) => `Test ${test.id} failed: ${test.message}`);
+  if (results.tests.length === 0) failures.unshift('No verifier tests were reported.');
+  if (missingTests.length > 0) {
+    failures.push(`Missing: ${missingTests.map((test) => test.id).join(', ')}`);
+  }
+
+  const passingMetrics = project.metrics.filter((metric) => {
+    const value = results.metrics[metric.id];
+    if (typeof value !== 'number') {
+      failures.push(`${metric.label} was not reported.`);
+      return false;
+    }
+    const passes =
+      metric.direction === 'below' ? value < metric.threshold : value > metric.threshold;
+    if (!passes) {
+      failures.push(`${metric.label} (${value}) must be ${metric.direction} ${metric.threshold}.`);
+    }
+    return passes;
+  });
+  const passed = project.tests.filter((test) => reportedTests.get(test.id)?.passed).length;
+  const allTestsPassed =
+    project.tests.length > 0 &&
+    results.tests.length === project.tests.length &&
+    missingTests.length === 0 &&
+    results.tests.every((test) => test.passed) &&
+    passed === project.tests.length;
+  return {
+    complete: allTestsPassed && passingMetrics.length === project.metrics.length,
+    evidence: `${passed}/${project.tests.length} checks passed${failures.length ? ` · ${failures.join(' ')}` : ''}`,
+  };
+}
 
 export function createApiRoutes(deps: {
   db: Database;
@@ -173,11 +222,7 @@ export function createApiRoutes(deps: {
       sundayMinutes?: number;
       goal?: string;
     };
-    const weekday = new Intl.DateTimeFormat('en-US', {
-      weekday: 'short',
-      timeZone: context.get('timeZone'),
-    }).format(now);
-    const sessionKind = weekday === 'Sat' ? 'saturday' : weekday === 'Sun' ? 'sunday' : 'weekday';
+    const sessionKind = sessionKindForDate(localDateKey(now, context.get('timeZone')));
     const budget = sessionBudget(sessionKind, prefs);
     const plan = planSession(state, index, now, budget, sessionKind);
     const active = await repo.activeSession(now);
@@ -211,7 +256,7 @@ export function createApiRoutes(deps: {
   api.post('/sessions', async (context) => {
     const body = z
       .object({
-        kind: z.enum(['weekday', 'saturday', 'sunday', 'custom']).default('weekday'),
+        kind: z.enum(['weekday', 'saturday', 'sunday', 'custom']).optional(),
         budgetMinutes: z.number().int().positive().max(600).optional(),
         focusConceptId: z.string().optional(),
       })
@@ -221,6 +266,8 @@ export function createApiRoutes(deps: {
     }
     const [index, repo] = [await content(), withRepo(context)];
     const now = requestNow(context);
+    const sessionKind =
+      body.data.kind ?? sessionKindForDate(localDateKey(now, context.get('timeZone')));
     const state = await repo.schedulerState(now);
     const user = await repo.user();
     const prefs = (user?.prefs ?? {}) as {
@@ -228,7 +275,7 @@ export function createApiRoutes(deps: {
       saturdayMinutes?: number;
       sundayMinutes?: number;
     };
-    const budgetMinutes = body.data.budgetMinutes ?? sessionBudget(body.data.kind, prefs);
+    const budgetMinutes = body.data.budgetMinutes ?? sessionBudget(sessionKind, prefs);
     if (body.data.focusConceptId) {
       const focusConcept = index.conceptsById.get(body.data.focusConceptId);
       if (!focusConcept) {
@@ -255,7 +302,7 @@ export function createApiRoutes(deps: {
       }
       state.inProgressConceptId = body.data.focusConceptId;
     }
-    const plan = planSession(state, index, now, budgetMinutes, body.data.kind);
+    const plan = planSession(state, index, now, budgetMinutes, sessionKind);
     if (body.data.focusConceptId) {
       const inProgressLessonConcepts = new Set(
         (state.lessonRuns ?? [])
@@ -333,7 +380,7 @@ export function createApiRoutes(deps: {
       .insert(studySessions)
       .values({
         userId: context.get('userId'),
-        kind: body.data.kind,
+        kind: sessionKind,
         plannedMinutes: budgetMinutes,
         startedAt: now,
         status: 'active',
@@ -898,6 +945,8 @@ export function createApiRoutes(deps: {
     if (!exercise) {
       return context.json({ error: 'Exercise not found' }, 404);
     }
+    const emptyMessage = emptyAnswerMessage(exercise.type, body.data.answer);
+    if (emptyMessage) return context.json({ error: emptyMessage }, 422);
     if (isTemplate(exercise)) {
       return context.json(
         { error: 'Template exercises must be answered through a lesson run.' },
@@ -1429,6 +1478,8 @@ export function createApiRoutes(deps: {
     if (!run || !exercise) {
       return context.json({ error: 'Diagnostic or exercise not found' }, 404);
     }
+    const emptyMessage = emptyAnswerMessage(exercise.type, body.data.answer);
+    if (emptyMessage) return context.json({ error: emptyMessage }, 422);
     const nextExercise = nextDiagnosticExercise(run.state as never, index);
     if (nextExercise?.id !== exercise.id) {
       return context.json({ error: 'This is not the current diagnostic item.' }, 409);
@@ -1757,6 +1808,10 @@ export function createApiRoutes(deps: {
         ),
       )
       .limit(1);
+    const latestSubmission = submissions[0] ?? null;
+    const evidence = latestSubmission
+      ? projectEvidenceSummary(project, latestSubmission.results as ProjectVerifierResults).evidence
+      : null;
     return context.json({
       project: {
         id: project.id,
@@ -1766,9 +1821,18 @@ export function createApiRoutes(deps: {
         tasks: project.tasks,
         acceptance: project.acceptance,
         reflection: project.reflection,
+        status: project.status,
       },
+      checksTotal: project.tests.length,
       submitted: Boolean(submissions[0]),
-      latestSubmission: submissions[0] ?? null,
+      latestSubmission,
+      evidence,
+      reflection: project.reflection
+        .map((id) => {
+          const exercise = index.exercisesById.get(id);
+          return exercise ? serializeExercise(exercise, context.get('userId')) : null;
+        })
+        .filter(Boolean),
       status: progress[0]?.status ?? 'not_started',
     });
   });
@@ -1795,10 +1859,13 @@ export function createApiRoutes(deps: {
     if (
       new Set(body.data.tests.map((test) => test.id)).size !== body.data.tests.length ||
       body.data.tests.some((test) => !allowedTests.has(test.id)) ||
-      project.metrics.some((metric) => !(metric.id in body.data.metrics))
+      Object.keys(body.data.metrics).some(
+        (metricId) => !project.metrics.some((metric) => metric.id === metricId),
+      )
     ) {
-      return context.json({ error: 'Unknown verifier test' }, 400);
+      return context.json({ error: 'Unknown verifier test or metric' }, 422);
     }
+    const verification = projectEvidenceSummary(project, body.data);
     const passed = body.data.tests.filter((test) => test.passed).length;
     const [submission] = await db
       .insert(projectSubmissions)
@@ -1816,14 +1883,14 @@ export function createApiRoutes(deps: {
       .values({
         userId: context.get('userId'),
         projectId: project.id,
-        status: passed === body.data.tests.length ? 'completed' : 'in_progress',
-        completedAt: passed === body.data.tests.length ? requestNow(context) : null,
+        status: verification.complete ? 'completed' : 'in_progress',
+        completedAt: verification.complete ? requestNow(context) : null,
       })
       .onConflictDoUpdate({
         target: [projectProgress.userId, projectProgress.projectId],
         set: {
-          status: passed === body.data.tests.length ? 'completed' : 'in_progress',
-          completedAt: passed === body.data.tests.length ? requestNow(context) : null,
+          status: verification.complete ? 'completed' : 'in_progress',
+          completedAt: verification.complete ? requestNow(context) : null,
         },
       });
     for (const check of body.data.tests.filter((test) => test.passed)) {
@@ -1855,7 +1922,8 @@ export function createApiRoutes(deps: {
     return context.json(
       {
         submission,
-        evidence: `${passed}/${body.data.tests.length} checks passed`,
+        status: verification.complete ? 'completed' : 'in_progress',
+        evidence: verification.evidence,
         reflection: project.reflection
           .map((id) => {
             const exercise = index.exercisesById.get(id);

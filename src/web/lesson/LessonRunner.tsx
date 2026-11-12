@@ -461,9 +461,14 @@ export function LessonRunner({
   const showingAnswer = practiceMode
     ? Boolean(
         state.lastAnsweredProblem?.practiceOnly &&
+          state.lastAnsweredProblem.id === shownProblem?.id &&
           state.lastAnsweredProblem.knowledgePointId === practicePointId,
       )
-    : Boolean(state.lastAnsweredProblem && !state.pendingProblem);
+    : Boolean(
+        state.lastAnsweredProblem &&
+          !state.pendingProblem &&
+          state.lastAnsweredProblem.id === shownProblem?.id,
+      );
   const quizItems = state.quiz.current?.items ?? [];
   const unansweredQuizIndex = quizItems.findIndex((item) => !item.answered);
   const quizQuestionIndex =
@@ -615,7 +620,11 @@ export function LessonRunner({
           </Button>
           {stepContent}
           {practiceMode && shownProblem ? (
-            <Card data-testid="lesson-problem" data-problem-id={shownProblem.id}>
+            <Card
+              data-testid="lesson-problem"
+              data-exercise-container=""
+              data-problem-id={shownProblem.id}
+            >
               <CardContent className="space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="text-sm font-medium">{problemLabel(shownProblem)}</h3>
@@ -993,6 +1002,7 @@ export function LessonRunner({
               <Card
                 className="space-y-5"
                 data-testid="lesson-problem"
+                data-exercise-container=""
                 data-problem-id={shownProblem.id}
               >
                 <CardContent className="space-y-5">

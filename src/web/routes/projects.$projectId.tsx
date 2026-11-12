@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Button } from '@/ui/button.js';
@@ -7,7 +7,7 @@ import { Input } from '@/ui/input.js';
 import { Label } from '@/ui/label.js';
 import { apiFetch } from '../authenticated-fetch.js';
 import { Markdown } from '../components.js';
-import { projectQueryOptions } from '../queries.js';
+import { courseQueryOptions, projectQueryOptions } from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
 import { ProjectSkeleton } from '../skeletons.js';
 
@@ -22,11 +22,14 @@ export const Route = createFileRoute('/projects/$projectId')({
 function ProjectPage() {
   const { projectId } = Route.useParams();
   const [error, setError] = useState('');
-  const [evidence, setEvidence] = useState('');
-  const [reflection, setReflection] = useState<Array<{ id: string; prompt: string }>>([]);
+  const [evidence, setEvidence] = useState<string | null>(null);
+  const [reflection, setReflection] = useState<Array<{ id: string; prompt: string }> | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const queryClient = useQueryClient();
   const { data } = useSuspenseQuery(projectQueryOptions(projectId));
+  const visibleEvidence = evidence ?? data.evidence;
+  const visibleReflection = reflection ?? data.reflection;
 
   async function upload(file?: File) {
     if (!file || uploading) return;
@@ -39,12 +42,44 @@ function ProjectPage() {
       });
       const result = (await response.json()) as {
         error?: string;
+        status?: 'in_progress' | 'completed';
+        submission?: {
+          results: { tests: Array<{ id: string; passed: boolean; message: string }> };
+        };
         evidence?: string;
         reflection?: Array<{ id: string; prompt: string }>;
       };
       if (!response.ok) throw new Error(result.error ?? 'Upload failed');
-      setEvidence(result.evidence ?? 'Results recorded');
-      setReflection(result.reflection ?? []);
+      if (!result.status || !result.submission) throw new Error('Upload status unavailable');
+      const status = result.status;
+      const submission = result.submission;
+      const evidenceText = result.evidence ?? 'Results recorded';
+      const reflectionQuestions = result.reflection ?? [];
+      setEvidence(evidenceText);
+      setReflection(reflectionQuestions);
+      queryClient.setQueryData(projectQueryOptions(projectId).queryKey, (current) =>
+        current
+          ? {
+              ...current,
+              status,
+              latestSubmission: { results: { tests: submission.results.tests } },
+              evidence: evidenceText,
+              reflection: reflectionQuestions,
+            }
+          : current,
+      );
+      queryClient.setQueryData(courseQueryOptions().queryKey, (current) =>
+        current
+          ? {
+              ...current,
+              weeks: current.weeks.map((week) =>
+                week.project?.id === projectId
+                  ? { ...week, project: { ...week.project, status } }
+                  : week,
+              ),
+            }
+          : current,
+      );
       setError('');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Invalid results file');
@@ -54,6 +89,18 @@ function ProjectPage() {
   }
 
   const project = data.project;
+  if (project.status === 'stub' || data.checksTotal === 0) {
+    return (
+      <section className="space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{project.title}</h1>
+          <p className="text-muted-foreground">{project.objective}</p>
+        </div>
+        <p className="text-sm text-muted-foreground">Coming soon</p>
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-6">
       <div className="space-y-2">
@@ -110,16 +157,16 @@ function ProjectPage() {
           ) : null}
         </CardContent>
       </Card>
-      {evidence ? (
+      {visibleEvidence ? (
         <Card>
           <CardHeader>
             <CardTitle>Project evidence</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>{evidence}</p>
+            <p>{visibleEvidence}</p>
             <h3 className="mt-4 font-medium">Reflection questions</h3>
             <div className="mt-3 space-y-4">
-              {reflection.map((exercise) => (
+              {visibleReflection.map((exercise) => (
                 <div key={exercise.id}>
                   <Markdown>{exercise.prompt}</Markdown>
                 </div>

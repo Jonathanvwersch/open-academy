@@ -1179,6 +1179,26 @@ test('Saturday allocates a 300-minute lab with a capped review warm-up and refle
   expect(plan.activities.some((activity) => activity.kind === 'reflect')).toBe(true);
 });
 
+test('Saturday skips a stub project and falls back to the latest available project', () => {
+  const plan = planSession(emptyState(), content, now, 300, 'saturday');
+  expect(plan.activities.find((activity) => activity.kind === 'lab')?.projectId).toBe(
+    'linreg-numpy',
+  );
+});
+
+test('Saturday omits labs when no available project has verifier tests', () => {
+  const projects = content.projects.map((project) =>
+    project.id === 'linreg-numpy' ? { ...project, tests: [] } : project,
+  );
+  const testlessContent: ContentIndex = {
+    ...content,
+    projects,
+    projectsById: new Map(projects.map((project) => [project.id, project])),
+  };
+  const plan = planSession(emptyState(), testlessContent, now, 300, 'saturday');
+  expect(plan.activities.some((activity) => activity.kind === 'lab')).toBe(false);
+});
+
 test('Saturday skips a completed project when no extension exercise exists', () => {
   const state = emptyState();
   state.currentProjectId = 'linreg-numpy';
@@ -1223,4 +1243,37 @@ test('Sunday creates its cumulative assessment and leaves remediation minutes un
   const assessment = plan.activities.find((activity) => activity.kind === 'quick_check');
   expect(assessment?.exerciseIds.length).toBeGreaterThan(0);
   expect(plan.activities.reduce((sum, activity) => sum + activity.plannedMinutes, 0)).toBe(40);
+});
+
+test('Sunday omits recap activities when the learner has not learned any concepts', () => {
+  const plan = planSession(emptyState(), content, now, 60, 'sunday');
+  expect(plan.activities.some((activity) => activity.kind === 'teachback')).toBe(false);
+  expect(plan.activities.some((activity) => activity.kind === 'quick_check')).toBe(false);
+});
+
+test('Sunday recap and quick check use learned concepts and prioritize low recall', () => {
+  const state = emptyState();
+  state.lessonRuns = [
+    { conceptId: 'vectors', status: 'completed' },
+    { conceptId: 'derivatives', status: 'completed' },
+  ];
+  state.cards = [
+    { conceptId: 'vectors', dimension: 'math', dueAt: now.toISOString(), retrievability: 0.2 },
+    {
+      conceptId: 'derivatives',
+      dimension: 'math',
+      dueAt: now.toISOString(),
+      retrievability: 0.8,
+    },
+  ];
+
+  const plan = planSession(state, content, now, 90, 'sunday');
+  const teachback = plan.activities.find((activity) => activity.kind === 'teachback');
+  const quickCheck = plan.activities.find((activity) => activity.kind === 'quick_check');
+  expect(teachback?.conceptId).toBe('vectors');
+  expect(
+    quickCheck?.exerciseIds.every((id) =>
+      ['vectors', 'derivatives'].includes(content.exercisesById.get(id)?.concept ?? ''),
+    ),
+  ).toBe(true);
 });

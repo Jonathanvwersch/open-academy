@@ -82,6 +82,36 @@ async function get(path: string) {
   });
 }
 
+const nnFromScratchTestIds = [
+  'test_data_is_seeded_and_split',
+  'test_parameter_forward_and_gradient_shapes',
+  'test_forward_matches_reference',
+  'test_loss_matches_mean_binary_cross_entropy',
+  'test_gradients_match_numerical_differences',
+  'test_training_step_lowers_loss',
+  'test_training_reaches_validation_accuracy',
+  'test_hidden_layer_beats_linear_baseline',
+];
+
+const nnFromScratchPassingMetrics = {
+  final_train_loss: 0.05,
+  validation_accuracy: 0.95,
+  max_gradient_check_relative_error: 0.000001,
+};
+
+function nnFromScratchResults(
+  tests = nnFromScratchTestIds.map((id) => ({ id, passed: true, message: 'passed' })),
+  metrics = nnFromScratchPassingMetrics,
+) {
+  return {
+    project: 'nn-from-scratch',
+    version: 1,
+    tests,
+    metrics,
+    generated_at: '2026-11-14T12:00:00.000Z',
+  };
+}
+
 test('lesson response includes ordered authored prerequisites', async () => {
   const response = await get('/lessons/gradient-descent');
   expect(response.status).toBe(200);
@@ -112,11 +142,13 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
   expect(learn.activeSessionId).toBeNull();
   expect(learn.tasks.length).toBeGreaterThan(0);
   expect(learn.tasks[0]).toMatchObject({
+    id: expect.any(String),
     label: expect.stringMatching(/^(Lesson|Review|Practice|Project|Quiz)$/),
     title: expect.any(String),
     xp: expect.any(Number),
     prerequisites: expect.any(Array),
   });
+  expect(new Set(learn.tasks.map((task: { id: string }) => task.id)).size).toBe(learn.tasks.length);
   expect(learn.course).toMatchObject({
     percentComplete: expect.any(Number),
     topicsDone: expect.any(Number),
@@ -202,6 +234,32 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
     expect(topic.status === 'locked').toBe(locked);
   }
   expect(await rowCounts()).toEqual(before);
+});
+
+test('session creation matches the local-day preview kind and activities', async () => {
+  for (const [now, expectedKind] of [
+    ['2026-11-14T12:00:00.000Z', 'saturday'],
+    ['2026-11-15T12:00:00.000Z', 'sunday'],
+    ['2026-11-16T12:00:00.000Z', 'weekday'],
+  ] as const) {
+    const headers = { 'X-Now': now, 'X-Time-Zone': 'UTC' };
+    const previewResponse = await app.request('/api/today', { headers });
+    expect(previewResponse.status).toBe(200);
+    const preview = await previewResponse.json();
+    expect(preview.sessionKind).toBe(expectedKind);
+
+    const createdResponse = await app.request('/api/sessions', {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(createdResponse.status).toBe(201);
+    const created = await createdResponse.json();
+    expect(created.kind).toBe(preview.sessionKind);
+    expect(created.activities.map((activity: { kind: string }) => activity.kind)).toEqual(
+      preview.plan.activities.map((activity: { kind: string }) => activity.kind),
+    );
+  }
 });
 
 test('lesson choices exclude locked, completed and stub concepts and retain the recommended lesson past five', async () => {
@@ -355,6 +413,116 @@ test('Course project status reflects the learner project-progress row', async ()
   });
 });
 
+test('empty project evidence and out-of-range metrics cannot complete a project', async () => {
+  const results = {
+    project: 'linreg-numpy',
+    version: 1,
+    tests: [],
+    metrics: { val_mse: 999, weight_error: 999 },
+    generated_at: '2026-11-14T12:00:00.000Z',
+  };
+  const submissionResponse = await app.request('/api/projects/linreg-numpy/results', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
+    body: JSON.stringify(results),
+  });
+  expect(submissionResponse.status).toBe(201);
+  const submission = await submissionResponse.json();
+  expect(submission.evidence).toContain('No verifier tests were reported');
+  expect(submission.evidence).toContain('Validation MSE');
+  expect(submission.evidence).toContain('Max |w - w_true|');
+
+  const projectResponse = await get('/projects/linreg-numpy');
+  expect(projectResponse.status).toBe(200);
+  const project = await projectResponse.json();
+  expect(project.status).toBe('in_progress');
+  expect(project.latestSubmission.results).toMatchObject({
+    tests: [],
+    metrics: results.metrics,
+  });
+
+  const failingMetricResponse = await app.request('/api/projects/linreg-numpy/results', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
+    body: JSON.stringify({
+      ...results,
+      tests: [{ id: 'test_predict_shape_and_values', passed: true, message: 'passed' }],
+    }),
+  });
+  expect(failingMetricResponse.status).toBe(201);
+  expect((await failingMetricResponse.json()).evidence).toContain('Validation MSE');
+  const failedMetricProject = await (await get('/projects/linreg-numpy')).json();
+  expect(failedMetricProject.status).toBe('in_progress');
+});
+
+test('project evidence requires every declared verifier test', async () => {
+  const results = nnFromScratchResults([
+    {
+      id: nnFromScratchTestIds[0] ?? '',
+      passed: true,
+      message: 'passed',
+    },
+  ]);
+  const response = await app.request('/api/projects/nn-from-scratch/results', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
+    body: JSON.stringify(results),
+  });
+
+  expect(response.status).toBe(201);
+  const submission = await response.json();
+  expect(submission.evidence).toContain('1/8 checks passed');
+  expect(submission.evidence).toContain('Missing:');
+  for (const missingTestId of nnFromScratchTestIds.slice(1)) {
+    expect(submission.evidence).toContain(missingTestId);
+  }
+
+  const project = await (await get('/projects/nn-from-scratch')).json();
+  expect(project.status).toBe('in_progress');
+});
+
+test('all verifier tests still require every project metric to pass', async () => {
+  const results = nnFromScratchResults(undefined, {
+    ...nnFromScratchPassingMetrics,
+    validation_accuracy: 0.89,
+  });
+  const response = await app.request('/api/projects/nn-from-scratch/results', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
+    body: JSON.stringify(results),
+  });
+
+  expect(response.status).toBe(201);
+  expect((await response.json()).evidence).toContain('8/8 checks passed');
+  const project = await (await get('/projects/nn-from-scratch')).json();
+  expect(project.status).toBe('in_progress');
+});
+
+test('all verifier tests and metrics complete the project', async () => {
+  const results = nnFromScratchResults();
+  const response = await app.request('/api/projects/nn-from-scratch/results', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
+    body: JSON.stringify(results),
+  });
+
+  expect(response.status).toBe(201);
+  expect((await response.json()).evidence).toContain('8/8 checks passed');
+  const project = await (await get('/projects/nn-from-scratch')).json();
+  expect(project.status).toBe('completed');
+});
+
+test('unknown project verifier test IDs are rejected with 422', async () => {
+  const results = nnFromScratchResults([{ id: 'test_unknown', passed: true, message: 'passed' }]);
+  const response = await app.request('/api/projects/nn-from-scratch/results', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'X-Now': results.generated_at },
+    body: JSON.stringify(results),
+  });
+
+  expect(response.status).toBe(422);
+});
+
 test('active-session tasks, done-today activity, and local-date KP XP are returned read-only', async () => {
   const [session] = await db
     .insert(studySessions)
@@ -391,11 +559,21 @@ test('active-session tasks, done-today activity, and local-date KP XP are return
     ])
     .returning();
   if (!completed || !remaining) throw new Error('Could not create Learn fixture activities');
+  const [run] = await db
+    .insert(lessonRuns)
+    .values({
+      userId,
+      conceptId: 'supervised-learning',
+      status: 'in_progress',
+      startedAt: new Date('2026-01-07T11:00:00.000Z'),
+    })
+    .returning();
+  if (!run) throw new Error('Could not create active lesson run');
   await db.insert(xpEvents).values([
     {
       userId,
       kind: 'knowledge_point',
-      sourceKey: 'kp:fixture:point',
+      sourceKey: `kp:${run.id}:point`,
       conceptId: 'supervised-learning',
       amount: 10,
       earnedAt: new Date('2026-01-07T11:15:00.000Z'),
@@ -430,6 +608,7 @@ test('active-session tasks, done-today activity, and local-date KP XP are return
   });
   expect(learn.tasks).toHaveLength(1);
   expect(learn.tasks[0]).toMatchObject({
+    id: remaining.id,
     activityKind: 'learn',
     label: 'Lesson',
     conceptId: 'supervised-learning',
@@ -438,13 +617,110 @@ test('active-session tasks, done-today activity, and local-date KP XP are return
   });
   expect(learn.doneToday).toEqual([
     {
+      activityId: expect.any(String),
       label: 'Practice',
       title: 'Vectors and vector operations',
-      xp: 12,
+      xp: 0,
       completedAt: '2026-01-07T11:30:00.000Z',
     },
   ]);
   expect(await rowCounts()).toEqual(before);
+});
+
+test('done-today XP rows include lesson quiz XP and sum to the earned total', async () => {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 60,
+      status: 'completed',
+      startedAt: new Date('2026-01-07T10:00:00.000Z'),
+      endedAt: new Date('2026-01-07T11:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create passed-quiz session');
+  const [lessonActivity, reviewActivity] = await db
+    .insert(sessionActivities)
+    .values([
+      {
+        sessionId: session.id,
+        idx: 0,
+        kind: 'learn',
+        conceptId: 'supervised-learning',
+        exerciseIds: [],
+        plannedMinutes: 40,
+        status: 'completed',
+        completedAt: new Date('2026-01-07T10:50:00.000Z'),
+      },
+      {
+        sessionId: session.id,
+        idx: 1,
+        kind: 'review',
+        conceptId: 'vectors',
+        exerciseIds: [],
+        plannedMinutes: 4,
+        status: 'completed',
+        completedAt: new Date('2026-01-07T11:00:00.000Z'),
+      },
+    ])
+    .returning();
+  if (!lessonActivity || !reviewActivity) {
+    throw new Error('Could not create passed-quiz activities');
+  }
+  const [run] = await db
+    .insert(lessonRuns)
+    .values({
+      userId,
+      conceptId: 'supervised-learning',
+      status: 'completed',
+      startedAt: new Date('2026-01-07T10:00:00.000Z'),
+      completedAt: new Date('2026-01-07T10:50:00.000Z'),
+      quizPassedAt: new Date('2026-01-07T10:50:00.000Z'),
+    })
+    .returning();
+  if (!run) throw new Error('Could not create passed lesson run');
+  await db.insert(xpEvents).values([
+    {
+      userId,
+      kind: 'knowledge_point',
+      sourceKey: `kp:${run.id}:sl-inputs-targets`,
+      conceptId: 'supervised-learning',
+      amount: 40,
+      earnedAt: new Date('2026-01-07T10:40:00.000Z'),
+      localDate: '2026-01-07',
+    },
+    {
+      userId,
+      kind: 'quiz',
+      sourceKey: `quiz:${run.id}`,
+      conceptId: 'supervised-learning',
+      amount: 8,
+      earnedAt: new Date('2026-01-07T10:50:00.000Z'),
+      localDate: '2026-01-07',
+    },
+    {
+      userId,
+      kind: 'activity',
+      sourceKey: `activity:${reviewActivity.id}`,
+      conceptId: 'vectors',
+      amount: 4,
+      earnedAt: new Date('2026-01-07T11:00:00.000Z'),
+      localDate: '2026-01-07',
+    },
+  ]);
+
+  const response = await get('/learn');
+  expect(response.status).toBe(200);
+  const learn = await response.json();
+  expect(learn.xp.today).toBe(52);
+  expect(learn.doneToday).toMatchObject([
+    { activityId: lessonActivity.id, xp: 48 },
+    { activityId: reviewActivity.id, xp: 4 },
+  ]);
+  expect(learn.doneToday.reduce((total: number, item: { xp: number }) => total + item.xp, 0)).toBe(
+    learn.xp.today,
+  );
 });
 
 test('learn XP goal follows the learner daily study time', async () => {

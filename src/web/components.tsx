@@ -1,5 +1,5 @@
 import { Check, Info, X } from 'lucide-react';
-import type { FormEvent, KeyboardEvent, ReactNode, RefObject } from 'react';
+import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode, RefObject } from 'react';
 import * as React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
@@ -8,6 +8,7 @@ import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import type { LessonPrerequisite } from '../server/content/schemas.js';
+import { emptyAnswerMessage } from '../shared/answer-validation.js';
 import { normalizeDisplayMath } from '../shared/markdown';
 import { seededOrder } from '../shared/shuffle.js';
 import { apiFetch } from './authenticated-fetch.js';
@@ -24,6 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Textarea } from './ui/textarea.js';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/github.css';
+
+const EXERCISE_CONTAINER_SELECTOR = '[data-exercise-container]';
 
 export interface ClientExercise {
   id: string;
@@ -464,6 +467,7 @@ export function ExerciseForm({
   const [line, setLine] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [criteria, setCriteria] = useState<string[]>([]);
+  const [answerError, setAnswerError] = useState('');
   const options = exercise.options;
   const orderedOptions = useMemo(
     () => seededOrder(options ?? [], exercise.id),
@@ -477,6 +481,58 @@ export function ExerciseForm({
     [exercise.id, fixOptions],
   );
   const inputsLocked = locked || disabled || loading;
+  useEffect(() => {
+    if (!primaryAction) return;
+    const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      const targetElement = target instanceof Element ? target : null;
+      const lockedAnswerField =
+        (targetElement instanceof HTMLInputElement ||
+          targetElement instanceof HTMLTextAreaElement) &&
+        (targetElement.readOnly || targetElement.disabled) &&
+        Boolean(targetElement.closest(EXERCISE_CONTAINER_SELECTOR));
+      if (
+        event.key !== 'Enter' ||
+        event.shiftKey ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        (targetElement instanceof HTMLTextAreaElement && !lockedAnswerField)
+      ) {
+        return;
+      }
+      const nonTextInput =
+        targetElement instanceof HTMLInputElement &&
+        ['checkbox', 'color', 'radio', 'range'].includes(targetElement.type);
+      const inExerciseCard = Boolean(targetElement?.closest(EXERCISE_CONTAINER_SELECTOR));
+      const isPageTarget = target === document || target === document.body;
+      if (!isPageTarget && !inExerciseCard && !nonTextInput) return;
+      const interactiveTarget = targetElement?.closest(
+        'button, a, area, select, textarea, input, label, summary, [contenteditable]:not([contenteditable="false"]), [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"], [role="menuitem"], [role="option"], [role="combobox"], [role="slider"], [role="spinbutton"], [role="listbox"], [role="menu"], [role="treeitem"], [role="gridcell"], [tabindex]:not([tabindex="-1"])',
+      );
+      const isExerciseCard = targetElement?.matches(EXERCISE_CONTAINER_SELECTOR) === true;
+      const isRadioGroup = targetElement?.matches('[role="radiogroup"]') === true;
+      const disabledRadio = targetElement?.closest(
+        '[role="radio"]:disabled, [role="radio"][aria-disabled="true"], input[type="radio"]:disabled',
+      );
+      if (
+        interactiveTarget &&
+        !isPageTarget &&
+        !(nonTextInput && interactiveTarget === targetElement) &&
+        !(isExerciseCard && interactiveTarget === targetElement) &&
+        !(isRadioGroup && inExerciseCard && interactiveTarget === targetElement) &&
+        !(disabledRadio && inExerciseCard && interactiveTarget === disabledRadio) &&
+        !lockedAnswerField
+      ) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      if (!primaryAction.loading && !primaryAction.disabled) primaryAction.onClick();
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown, true);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown, true);
+  }, [primaryAction]);
   useEffect(() => {
     if (answerOptions) {
       if (exercise.type === 'mc') {
@@ -540,35 +596,41 @@ export function ExerciseForm({
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (inputsLocked) return;
+    let answer: unknown;
     if (exercise.type === 'debug') {
-      onSubmit({ line: Number(line), fixId: value });
+      answer = { line: Number(line), fixId: value };
     } else if (exercise.type === 'mc') {
-      onSubmit(selected.length === 1 ? selected[0] : selected);
+      answer = selected.length === 1 ? selected[0] : selected;
     } else if (exercise.type === 'explain') {
-      onSubmit({
+      answer = {
         text: explainStep === 'self-check' ? (readOnlyAnswer ?? value) : value,
         ...(explainStep === 'self-check' ? { metCriteria: criteria } : {}),
-      });
+      };
     } else if (exercise.type === 'numeric') {
-      onSubmit(value.trim());
+      answer = value.trim();
     } else if (exercise.type === 'code_read') {
-      onSubmit(
-        value.trim() === '' || !Number.isFinite(Number(value)) ? value.trim() : Number(value),
-      );
+      answer =
+        value.trim() === '' || !Number.isFinite(Number(value)) ? value.trim() : Number(value);
     } else {
-      onSubmit(value);
+      answer = value;
     }
+    const emptyMessage = emptyAnswerMessage(exercise.type, answer);
+    if (emptyMessage) {
+      setAnswerError(emptyMessage);
+      return;
+    }
+    setAnswerError('');
+    onSubmit(answer);
   };
-  const handleKeyDown = (event: KeyboardEvent<HTMLFormElement>) => {
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLFormElement>) => {
     if (
       event.key === 'Enter' &&
       !event.shiftKey &&
       (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
     ) {
+      if (primaryAction) return;
       event.preventDefault();
-      if (primaryAction) {
-        if (!primaryAction.loading && !primaryAction.disabled) primaryAction.onClick();
-      } else if (inputsLocked) {
+      if (inputsLocked) {
         return;
       } else {
         event.currentTarget.requestSubmit();
@@ -593,6 +655,11 @@ export function ExerciseForm({
   };
   return (
     <form onSubmit={submit} onKeyDown={handleKeyDown} className="space-y-4">
+      {answerError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {answerError}
+        </p>
+      ) : null}
       <div
         data-testid="exercise-inputs"
         style={{ minHeight: inputAreaMinHeight }}

@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { expect, type Page, test } from '@playwright/test';
+import { eq } from 'drizzle-orm';
 import { parse } from 'yaml';
 import { LessonSchema, normalizeLesson } from '../../src/server/content/schemas.js';
 import { createDb } from '../../src/server/db/client.js';
@@ -9,6 +10,7 @@ import {
   lessonRuns,
   mastery,
   projectProgress,
+  projectSubmissions,
   sessionActivities,
   studySessions,
   users,
@@ -159,8 +161,211 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   await expect(page.getByRole('heading', { name: 'Vectors' })).toBeVisible();
 
   await page.goto('/');
+  let createdSessionRequest: Record<string, unknown> | null = null;
+  await page.route('**/api/sessions', async (route) => {
+    if (route.request().method() === 'POST') {
+      createdSessionRequest = JSON.parse(route.request().postData() ?? '{}');
+    }
+    await route.continue();
+  });
   await page.getByRole('button', { name: 'Start learning' }).click();
   await expect(page).toHaveURL(/\/session\//);
+  expect(createdSessionRequest).toEqual({ kind: 'weekday' });
+});
+
+test('completed activity deep links can continue or show the session finish screen', async ({
+  page,
+}) => {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'saturday',
+      plannedMinutes: 30,
+      status: 'active',
+      startedAt: new Date('2026-01-03T12:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create session fixture');
+  const [paper, nextActivity] = await db
+    .insert(sessionActivities)
+    .values([
+      {
+        sessionId: session.id,
+        idx: 0,
+        kind: 'paper',
+        exerciseIds: [],
+        plannedMinutes: 10,
+        status: 'completed',
+      },
+      {
+        sessionId: session.id,
+        idx: 1,
+        kind: 'practice',
+        conceptId: 'vectors',
+        exerciseIds: ['vectors-magnitude'],
+        plannedMinutes: 20,
+        status: 'planned',
+      },
+    ])
+    .returning();
+  if (!paper || !nextActivity) throw new Error('Could not create activity fixtures');
+
+  await page.goto(`/session/${session.id}?activity=${paper.id}`);
+  await expect(page.getByRole('status')).toHaveText('Paper reading complete.');
+  await expect(page.getByRole('link', { name: 'Continue' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('link', { name: 'Continue' })).toBeVisible();
+  await page.getByRole('link', { name: 'Continue' }).click();
+  await expect(page).toHaveURL(`/session/${session.id}`);
+  await expect(page.getByRole('button', { name: 'Submit answer' })).toBeVisible();
+
+  await db
+    .update(sessionActivities)
+    .set({ status: 'completed' })
+    .where(eq(sessionActivities.id, nextActivity.id));
+  await page.goto(`/session/${session.id}?activity=${paper.id}`);
+  await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+});
+
+test('project evidence and reflection survive reloading the project page', async ({ page }) => {
+  await page.goto('/projects/linreg-numpy');
+  await page.getByLabel('Upload results.json').setInputFiles({
+    name: 'results.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        project: 'linreg-numpy',
+        version: 1,
+        tests: [],
+        metrics: { 'validation-mse': 999 },
+        generated_at: '2026-01-01T12:00:00.000Z',
+      }),
+    ),
+  });
+  const submissionResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith('/api/projects/linreg-numpy/results'),
+  );
+  await page.getByRole('button', { name: 'Upload results', exact: true }).click();
+  const response = await submissionResponse;
+  const responseBody = await response.json();
+  expect(response.status(), JSON.stringify(responseBody)).toBe(201);
+  await expect(page.getByRole('heading', { name: 'Project evidence' })).toBeVisible();
+  await expect(page.getByText('No verifier tests were reported')).toBeVisible();
+  await expect(page.getByText(/Validation MSE \(999\) must be below 0\.3/)).toBeVisible();
+  await expect(page.getByText('Complete a gradient update.')).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Project evidence' })).toBeVisible();
+  await expect(page.getByText('No verifier tests were reported')).toBeVisible();
+  await expect(page.getByText(/Validation MSE \(999\) must be below 0\.3/)).toBeVisible();
+  await expect(page.getByText('Complete a gradient update.')).toBeVisible();
+});
+
+test('failed project uploads update the Course status without a reload', async ({ page }) => {
+  await db.insert(projectProgress).values({
+    userId,
+    projectId: 'linreg-numpy',
+    status: 'completed',
+    completedAt: new Date('2026-01-01T11:00:00.000Z'),
+  });
+  await page.goto('/course');
+  const project = page.getByRole('region', { name: 'Project' }).first();
+  const projectLink = project.getByRole('link', { name: 'Linear regression in NumPy' });
+  await expect(projectLink).toContainText('Complete');
+  await projectLink.click();
+  await expect(page).toHaveURL('/projects/linreg-numpy');
+  await page.getByLabel('Upload results.json').setInputFiles({
+    name: 'results.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(
+      JSON.stringify({
+        project: 'linreg-numpy',
+        version: 1,
+        tests: [],
+        metrics: { 'validation-mse': 999 },
+        generated_at: '2026-01-01T12:00:00.000Z',
+      }),
+    ),
+  });
+
+  const submissionResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith('/api/projects/linreg-numpy/results'),
+  );
+  await page.getByRole('button', { name: 'Upload results', exact: true }).click();
+  const response = await submissionResponse;
+  const result = await response.json();
+  expect(response.status(), JSON.stringify(result)).toBe(201);
+  expect(result.status).toBe('in_progress');
+
+  await page.getByRole('link', { name: 'Course', exact: true }).click();
+  await expect(page).toHaveURL('/course');
+  const updatedProject = page.getByRole('region', { name: 'Project' }).first();
+  await expect(updatedProject).toContainText('In progress');
+  await expect(updatedProject).not.toContainText('Complete');
+});
+
+test('lab activities show project progress and finish without awarding XP', async ({ page }) => {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 20,
+      status: 'active',
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create lab session');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind: 'lab',
+    projectId: 'linreg-numpy',
+    exerciseIds: [],
+    plannedMinutes: 20,
+    status: 'in_progress',
+  });
+
+  await page.goto(`/session/${session.id}`);
+  await expect(
+    page.getByRole('heading', { name: 'Linear regression in NumPy' }).last(),
+  ).toBeVisible();
+  await expect(page.getByText('Not started', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open project' })).toHaveAttribute(
+    'href',
+    '/projects/linreg-numpy',
+  );
+
+  await db.insert(projectSubmissions).values({
+    userId,
+    projectId: 'linreg-numpy',
+    results: {
+      project: 'linreg-numpy',
+      version: 1,
+      tests: [{ id: 'test-predict', passed: true, message: 'passed' }],
+      metrics: { 'validation-mse': 0.2 },
+      generated_at: '2026-01-01T12:00:00.000Z',
+    },
+    passed: 1,
+    total: 1,
+    metrics: { 'validation-mse': 0.2 },
+  });
+  await page.reload();
+  await expect(page.getByText('1 of 1 checks passed', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Done for today' }).click();
+  await expect(page.getByRole('heading', { name: 'Session complete' })).toBeVisible();
+  const sessionData = await page.evaluate(async (sessionId) => {
+    const response = await fetch(`/api/sessions/${sessionId}`);
+    return response.json() as Promise<{ xp: { session: number } }>;
+  }, session.id);
+  expect(sessionData.xp.session).toBe(0);
+  expect(await db.select().from(xpEvents).where(eq(xpEvents.userId, userId))).toHaveLength(0);
 });
 
 test('navigation has four destinations and Lab redirects to Course', async ({ page }) => {
@@ -245,6 +450,39 @@ test('Home offers alternative lessons and starts the selected lesson', async ({ 
   ).toBe(true);
 });
 
+test('stub projects have no lab link or results form', async ({ page }) => {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'saturday',
+      plannedMinutes: 120,
+      status: 'active',
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create stub project session');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind: 'lab',
+    projectId: 'optimization-project',
+    exerciseIds: [],
+    plannedMinutes: 50,
+    status: 'in_progress',
+  });
+
+  await page.goto(`/session/${session.id}`);
+  await expect(page.getByRole('heading', { name: 'Optimization playground' }).last()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open project' })).toHaveCount(0);
+
+  await page.goto('/projects/optimization-project');
+  await expect(page.getByRole('heading', { name: 'Optimization playground' })).toBeVisible();
+  await expect(page.getByText('Coming soon', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Submit results' })).toHaveCount(0);
+  await expect(page.getByLabel('Upload results.json')).toHaveCount(0);
+});
+
 test('unknown projects show the unavailable route message', async ({ page }) => {
   await page.goto('/projects/unknown-project');
   await expect(page.getByRole('alert')).toHaveText('Project unavailable.');
@@ -265,19 +503,52 @@ test('available project rows display learner progress', async ({ page }) => {
 
 test('navigation cleanup pages render at desktop and mobile widths', async ({ page }) => {
   await markDiagnosticComplete();
+  const duplicateKeyWarnings: string[] = [];
+  page.on('console', (message) => {
+    if (/same key/i.test(message.text())) duplicateKeyWarnings.push(message.text());
+  });
   await page.route('**/api/learn', async (route) => {
     const response = await route.fetch({
       headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
     });
     const payload = await response.json();
+    payload.tasks = [
+      {
+        id: 'next-up-vectors-practice-first',
+        activityKind: 'practice',
+        label: 'Practice',
+        conceptId: 'vectors',
+        title: 'Vectors practice',
+        xp: 10,
+        prerequisites: [],
+      },
+      {
+        id: 'next-up-vectors-practice-second',
+        activityKind: 'practice',
+        label: 'Practice',
+        conceptId: 'vectors',
+        title: 'Vectors practice',
+        xp: 10,
+        prerequisites: [],
+      },
+    ];
     payload.doneToday = [
       {
+        activityId: 'activity-first-session',
         label: 'Lesson',
         title: 'Vectors',
         xp: 20,
         completedAt: '2026-01-01T10:00:00.000Z',
       },
       {
+        activityId: 'activity-second-session',
+        label: 'Lesson',
+        title: 'Vectors',
+        xp: 20,
+        completedAt: '2026-01-01T10:00:00.000Z',
+      },
+      {
+        activityId: 'activity-practice',
         label: 'Practice',
         title: 'Dot product practice',
         xp: 10,
@@ -290,12 +561,17 @@ test('navigation cleanup pages render at desktop and mobile widths', async ({ pa
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
   await hideTutorLauncher(page);
+  const nextUpCard = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByRole('heading', { name: 'Next up' }) });
+  await expect(nextUpCard.getByRole('heading', { name: 'Vectors practice' })).toHaveCount(2);
   await expect(page.getByRole('heading', { name: 'Done today' })).toBeVisible();
   const doneTodayCard = page
     .locator('[data-slot="card"]')
     .filter({ has: page.getByRole('heading', { name: 'Done today' }) });
-  await expect(doneTodayCard.getByText('Vectors', { exact: true })).toBeVisible();
+  await expect(doneTodayCard.getByText('Vectors', { exact: true }).first()).toBeVisible();
   await expect(doneTodayCard.getByText('Dot product practice', { exact: true })).toBeVisible();
+  expect(duplicateKeyWarnings).toEqual([]);
   await page.screenshot({
     path: `${navCleanupScreenshotDir}/home-desktop.png`,
     fullPage: true,

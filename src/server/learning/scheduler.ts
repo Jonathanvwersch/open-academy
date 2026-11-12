@@ -675,15 +675,24 @@ function planSaturday(
     });
   }
   const projectMinutes = Math.max(0, remainingMinutes - (paperMinutes >= 30 ? paperMinutes : 0));
-  const currentProject =
+  const availableProjects = content.projects.filter(
+    (project) => project.status === 'authored' && project.tests.length > 0,
+  );
+  const preferredProjectId =
     state.currentProjectId ??
     content.curriculum?.weeks.find((entry) => entry.week === week)?.project ??
-    content.projects.find(
-      (project) =>
-        !state.projectProgress.some(
-          (item) => item.projectId === project.id && item.status === 'completed',
-        ),
-    )?.id;
+    undefined;
+  const currentProject =
+    availableProjects.find((project) => project.id === preferredProjectId)?.id ??
+    availableProjects
+      .filter(
+        (project) =>
+          project.week <= week &&
+          !state.projectProgress.some(
+            (item) => item.projectId === project.id && item.status === 'completed',
+          ),
+      )
+      .sort((left, right) => right.week - left.week || left.id.localeCompare(right.id))[0]?.id;
   const projectDone =
     currentProject &&
     state.projectProgress.some(
@@ -750,21 +759,53 @@ function planSunday(
   budget: number,
 ): SessionPlan {
   const plan: PlannedActivity[] = [];
-  const known = state.mastery.filter(
-    (record) =>
-      content.conceptsById.get(record.conceptId)?.status !== 'stub' &&
-      masteryRank(record.state) >= masteryRank('assisted'),
-  );
+  const learnedConceptIds = new Set([
+    ...state.mastery
+      .filter((record) => masteryRank(record.state) >= masteryRank('assisted'))
+      .map((record) => record.conceptId),
+    ...(state.lessonRuns ?? [])
+      .filter((run) => run.status === 'completed')
+      .map((run) => run.conceptId),
+  ]);
+  const known = [...learnedConceptIds]
+    .map((conceptId) => content.conceptsById.get(conceptId))
+    .filter((concept): concept is IndexedConcept => Boolean(concept && concept.status !== 'stub'));
+  const recallByConcept = (conceptId: string) => {
+    const recalls = state.cards
+      .filter((card) => card.conceptId === conceptId)
+      .flatMap((card) => (typeof card.retrievability === 'number' ? [card.retrievability] : []));
+    return recalls.length ? recalls.reduce((sum, recall) => sum + recall, 0) / recalls.length : 1;
+  };
+  const teachback =
+    budget > 40
+      ? content.exercises
+          .filter(
+            (exercise) =>
+              exercise.type === 'explain' &&
+              learnedConceptIds.has(exercise.concept) &&
+              content.conceptsById.get(exercise.concept)?.status !== 'stub' &&
+              !(state.usedExerciseIds ?? []).includes(exercise.id),
+          )
+          .sort(
+            (left, right) =>
+              recallByConcept(left.concept) - recallByConcept(right.concept) ||
+              left.id.localeCompare(right.id),
+          )[0]
+      : undefined;
   const checkExercises = known
-    .map((record) => content.conceptsById.get(record.conceptId))
-    .filter((concept): concept is IndexedConcept => Boolean(concept))
     .map((concept) => chooseExercise(state, content, concept, undefined, ['core', 'transfer'], now))
-    .filter((exercise): exercise is IndexedExercise => Boolean(exercise));
+    .filter(
+      (exercise): exercise is IndexedExercise =>
+        exercise !== undefined && exercise.id !== teachback?.id,
+    );
   const uniqueCheckExercises = [
     ...new Map(checkExercises.map((exercise) => [exercise.id, exercise])).values(),
   ];
-  const usedExerciseIds = new Set(state.usedExerciseIds ?? []);
-  if (budget > 0) {
+  const usedExerciseIds = new Set([
+    ...(state.usedExerciseIds ?? []),
+    ...(teachback ? [teachback.id] : []),
+  ]);
+  if (budget > 0 && uniqueCheckExercises.length > 0) {
     plan.push(
       staticCandidate(
         'quick_check',
@@ -776,20 +817,17 @@ function planSunday(
     );
     for (const exercise of uniqueCheckExercises.slice(0, 6)) usedExerciseIds.add(exercise.id);
   }
-  if (budget > 40) {
-    const teachback = content.exercises.find(
-      (exercise) => exercise.type === 'explain' && !usedExerciseIds.has(exercise.id),
-    );
+  if (teachback) {
     plan.push(
       staticCandidate(
         'teachback',
-        teachback?.concept,
-        teachback ? [teachback.id] : [],
+        teachback.concept,
+        [teachback.id],
         Math.min(10, budget - 40),
         'Summarize a concept without notes.',
       ),
     );
-    if (teachback) usedExerciseIds.add(teachback.id);
+    usedExerciseIds.add(teachback.id);
   }
   if (budget > 50) {
     const currentProject =

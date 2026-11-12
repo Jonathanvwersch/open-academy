@@ -34,7 +34,7 @@ function LearnPage() {
       const response = await apiFetch('/api/sessions', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ kind: today.sessionKind }),
       });
       if (!response.ok) throw new Error('Could not start session');
       return response.json() as Promise<{ id: string }>;
@@ -48,7 +48,7 @@ function LearnPage() {
       const response = await apiFetch('/api/sessions', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ focusConceptId }),
+        body: JSON.stringify({ focusConceptId, kind: today.sessionKind }),
       });
       if (!response.ok) throw new Error('Could not start the selected lesson');
       return response.json() as Promise<{ id: string }>;
@@ -123,10 +123,7 @@ function LearnPage() {
               {data.tasks.length ? (
                 <ul className="divide-y">
                   {data.tasks.map((task) => (
-                    <li
-                      key={`${task.activityKind}-${task.conceptId ?? task.title}-${task.title}`}
-                      className="space-y-2 py-4 first:pt-0 last:pb-0"
-                    >
+                    <li key={task.id} className="space-y-2 py-4 first:pt-0 last:pb-0">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 space-y-1">
                           <Badge variant="secondary">{task.label}</Badge>
@@ -202,7 +199,7 @@ function LearnPage() {
                 <ul className="space-y-3">
                   {data.doneToday.map((item) => (
                     <li
-                      key={`${item.label}-${item.title}-${item.completedAt}`}
+                      key={item.activityId}
                       className="flex items-start justify-between gap-3 text-sm"
                     >
                       <div className="min-w-0">

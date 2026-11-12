@@ -160,4 +160,26 @@ describe('buildProgress', () => {
     expect(domain?.counts.assisted).toBe(1);
     expect(domain?.counts.not_assessed).toBe(totalDimensions - 1);
   });
+
+  it('counts explicit not-assessed mastery and ignores undeclared dimensions', () => {
+    const concept = content.concepts.find(
+      (item) => item.status === 'authored' && !item.dimensions.includes('transfer'),
+    );
+    if (!concept) throw new Error('Fixture must include a concept without a transfer dimension');
+    const dimension = concept.dimensions[0];
+    if (!dimension) throw new Error('Authored concept must include a dimension');
+    const totalDimensions = content.concepts
+      .filter((item) => item.domain === concept.domain && item.status === 'authored')
+      .reduce((total, item) => total + item.dimensions.length, 0);
+    const records = [
+      { ...initialMastery(concept.id, dimension), state: 'not_assessed' as const },
+      { ...initialMastery(concept.id, 'transfer'), state: 'retained' as const },
+    ];
+
+    const domain = buildProgress(progressInput({ records })).domains.find(
+      (item) => item.id === concept.domain,
+    );
+    expect(domain?.counts.not_assessed).toBe(totalDimensions);
+    expect(domain?.counts.retained).toBe(0);
+  });
 });

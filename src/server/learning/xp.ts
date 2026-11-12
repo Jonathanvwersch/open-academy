@@ -13,7 +13,7 @@ export interface LessonXpState {
   points: Array<{ status: string }>;
 }
 
-function kindFor(localDate: string): Exclude<SessionKind, 'custom'> {
+export function sessionKindForDate(localDate: string): Exclude<SessionKind, 'custom'> {
   const weekday = new Date(`${localDate}T00:00:00.000Z`).getUTCDay();
   if (weekday === 6) return 'saturday';
   if (weekday === 0) return 'sunday';
@@ -30,7 +30,7 @@ function defaultAverageDailyXp(prefs?: SessionPreferences): number {
 }
 
 export function xpGoalFor(localDate: string, prefs?: SessionPreferences): number {
-  return sessionBudget(kindFor(localDate), prefs);
+  return sessionBudget(sessionKindForDate(localDate), prefs);
 }
 
 export function estimateTaskXp(
@@ -40,6 +40,7 @@ export function estimateTaskXp(
   if (activity.kind === 'learn' && lessonState) {
     return lessonState.points.filter((point) => point.status !== 'passed').length * 10;
   }
+  if (activity.kind === 'lab') return 0;
   return activity.plannedMinutes;
 }
 

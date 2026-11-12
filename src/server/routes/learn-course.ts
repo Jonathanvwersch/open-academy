@@ -107,7 +107,7 @@ export function registerLearnCourseRoutes(
         )
       : plannedActivities(state, index, prefs, timeZone, now);
 
-    const tasks = activities.map((activity) => {
+    const tasks = activities.map((activity, taskIndex) => {
       const conceptId = activity.conceptId;
       const concept = conceptId ? index.conceptsById.get(conceptId) : undefined;
       const lesson = conceptId ? index.lessonsByConcept.get(conceptId) : undefined;
@@ -128,6 +128,7 @@ export function registerLearnCourseRoutes(
       const projectId = 'projectId' in activity ? activity.projectId : undefined;
       const project = projectId ? index.projectsById.get(projectId) : undefined;
       return {
+        id: 'id' in activity ? activity.id : `planned-${taskIndex}`,
         activityKind: activity.kind,
         label: activityLabel(activity.kind),
         ...(conceptId ? { conceptId } : {}),
@@ -206,23 +207,37 @@ export function registerLearnCourseRoutes(
           (right.activity.completedAt?.getTime() ?? 0),
       );
     const doneToday = todayDone.map(({ activity }) => {
-      const run = activity.conceptId ? runsByConcept.get(activity.conceptId) : undefined;
-      const activityEvent = events.find((event) => event.sourceKey === `activity:${activity.id}`);
-      const lessonXp = run
-        ? events
-            .filter(
-              (event) =>
-                event.sourceKey.startsWith(`kp:${run.id}:`) && event.localDate === todayLocal,
-            )
-            .reduce((total, event) => total + event.amount, 0)
-        : 0;
+      const run =
+        activity.kind === 'learn' && activity.conceptId
+          ? runsByConcept.get(activity.conceptId)
+          : undefined;
+      const activityXp = events
+        .filter(
+          (event) =>
+            event.sourceKey === `activity:${activity.id}` && event.localDate === todayLocal,
+        )
+        .reduce((total, event) => total + event.amount, 0);
+      const lessonXp =
+        run?.completedAt &&
+        activity.completedAt &&
+        run.completedAt.getTime() === activity.completedAt.getTime()
+          ? events
+              .filter(
+                (event) =>
+                  event.localDate === todayLocal &&
+                  (event.sourceKey.startsWith(`kp:${run.id}:`) ||
+                    event.sourceKey === `quiz:${run.id}`),
+              )
+              .reduce((total, event) => total + event.amount, 0)
+          : 0;
       return {
+        activityId: activity.id,
         label: activityLabel(activity.kind),
         title:
           (activity.conceptId && index.conceptsById.get(activity.conceptId)?.title) ??
           (activity.projectId && index.projectsById.get(activity.projectId)?.title) ??
           titleForKind(activity.kind),
-        xp: activityEvent?.amount ?? lessonXp,
+        xp: activityXp + lessonXp,
         completedAt: activity.completedAt?.toISOString(),
       };
     });
@@ -359,7 +374,7 @@ export function buildCourseWeeks(
           ? {
               id: project.id,
               title: project.title,
-              available: project.status === 'authored',
+              available: project.status === 'authored' && project.tests.length > 0,
               status: projectStatuses.get(project.id) ?? 'not_started',
             }
           : null,

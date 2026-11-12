@@ -114,6 +114,25 @@ async function answerReviewIncorrectly(exerciseId: string, activityId: string) {
   });
 }
 
+test('attempts rejects empty answers before creating an attempt', async () => {
+  await resetLearner();
+  const activity = await createReviewActivity('vectors', 'vectors-magnitude');
+  const response = await app.request('/api/attempts', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({
+      exerciseId: 'vectors-magnitude',
+      activityId: activity.id,
+      answer: ' \t ',
+      mode: 'review',
+    }),
+  });
+
+  expect(response.status).toBe(422);
+  expect(await response.json()).toMatchObject({ error: 'Write an answer first.' });
+  expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(0);
+});
+
 async function createReviewCard(
   conceptId: string,
   dimension: string,

@@ -1,4 +1,4 @@
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
@@ -23,6 +23,7 @@ import {
   lessonRunQueryOptions,
   paperStatusLabel,
   papersQueryOptions,
+  projectQueryOptions,
   sessionQueryOptions,
   todayQueryOptions,
 } from '../queries.js';
@@ -41,6 +42,11 @@ export const Route = createFileRoute('/session/$id')({
     await Promise.all([
       context.queryClient.ensureQueryData(papersQueryOptions()),
       context.queryClient.ensureQueryData(todayQueryOptions()),
+      ...session.activities
+        .filter((activity) => activity.kind === 'lab' && activity.projectId)
+        .map((activity) =>
+          context.queryClient.ensureQueryData(projectQueryOptions(activity.projectId ?? '')),
+        ),
     ]);
     const lessons = await Promise.all(
       session.activities.map((activity) =>
@@ -176,15 +182,21 @@ function SessionPage() {
         item.exerciseIds.includes(exerciseId),
       ),
   );
-  const requestedPaperActivity = activities.find(
-    (item) => item.id === requestedActivityId && item.kind === 'paper',
+  const requestedCompletedActivity = activities.find(
+    (item) => item.id === requestedActivityId && item.status === 'completed',
   );
   const activity =
-    (requestedPaperActivity?.status === 'completed' ? requestedPaperActivity : undefined) ??
     completedLesson ??
     completedFinal ??
+    (requestedCompletedActivity && activeActivity ? requestedCompletedActivity : undefined) ??
     activeActivity;
+  const showingRequestedCompletedActivity = activity?.id === requestedCompletedActivity?.id;
   const showingCompletedFinal = activity?.id === completedFinal?.id;
+  const labProjectId = activity?.kind === 'lab' ? activity.projectId : undefined;
+  const labProjectQuery = useQuery({
+    ...projectQueryOptions(labProjectId ?? ''),
+    enabled: Boolean(labProjectId),
+  });
   const exerciseId = showingCompletedFinal
     ? activity?.exerciseIds.find((candidate) =>
         (activity.progress?.completedExerciseIds ?? []).includes(candidate),
@@ -469,6 +481,23 @@ function SessionPage() {
       />
     );
   }
+  if (showingRequestedCompletedActivity) {
+    const title =
+      activity.kind === 'paper'
+        ? 'Paper reading'
+        : (activity.conceptTitle ?? sessionActivityLabel(activity.kind));
+    return (
+      <section className="space-y-6">
+        <SessionActivityHeader title={title} label={sessionActivityLabel(activity.kind)} />
+        <p role="status">{title} complete.</p>
+        <Button asChild>
+          <Link to="/session/$id" params={{ id }} search={{}}>
+            Continue
+          </Link>
+        </Button>
+      </section>
+    );
+  }
   const mode =
     activity.kind === 'review'
       ? 'review'
@@ -477,6 +506,7 @@ function SessionPage() {
         : 'practice';
   const activityLabel = sessionActivityLabel(activity.kind);
   const activityTitle =
+    (activity.kind === 'lab' ? labProjectQuery.data?.project.title : undefined) ??
     activity.conceptTitle ??
     (activity.kind === 'paper'
       ? 'Paper reading'
@@ -679,7 +709,7 @@ function SessionPage() {
         }
       />
       {exerciseQuery.data ? (
-        <Card data-testid="session-exercise">
+        <Card data-testid="session-exercise" data-exercise-container="">
           <CardContent className="space-y-5">
             <QuestionProgress states={questionStates} />
             <div data-testid="exercise-prompt">
@@ -749,18 +779,38 @@ function SessionPage() {
       ) : !exerciseId ? (
         <Card>
           <CardContent className="space-y-4">
-            <h2 className="text-lg font-semibold capitalize">{activity.kind.replace('_', ' ')}</h2>
+            <h2 className="text-lg font-semibold capitalize">
+              {activity.kind === 'lab'
+                ? (labProjectQuery.data?.project.title ?? 'Project')
+                : activity.kind.replace('_', ' ')}
+            </h2>
             <p className="max-w-[70ch] text-sm leading-6 text-muted-foreground">
               {activity.kind === 'lab'
-                ? `Project ${activity.projectId ?? 'activity'} is ready to continue in your local workspace.`
+                ? labProjectQuery.data?.latestSubmission
+                  ? `${
+                      labProjectQuery.data.latestSubmission.results.tests.filter(
+                        (test) => test.passed,
+                      ).length
+                    } of ${labProjectQuery.data.checksTotal} checks passed`
+                  : 'Not started'
                 : activity.kind === 'teachback'
                   ? 'Summarize the main idea from memory before continuing.'
                   : activity.kind === 'reflect'
                     ? 'Take a moment to reflect on what you learned and what remains unclear.'
                     : 'No eligible exercise is available for this activity yet.'}
             </p>
+            {activity.kind === 'lab' &&
+            activity.projectId &&
+            labProjectQuery.data?.project.status === 'authored' &&
+            labProjectQuery.data.checksTotal > 0 ? (
+              <Button variant="outline" asChild>
+                <Link to="/projects/$projectId" params={{ projectId: activity.projectId }}>
+                  Open project
+                </Link>
+              </Button>
+            ) : null}
             <Button type="button" onClick={completeActivity} loading={continuing}>
-              Continue
+              {activity.kind === 'lab' ? 'Done for today' : 'Continue'}
             </Button>
           </CardContent>
         </Card>

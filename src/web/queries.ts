@@ -40,6 +40,7 @@ export interface LearnPayload {
     estimatedFinishAtGoal: string | null;
   };
   tasks: Array<{
+    id: string;
     activityKind: string;
     label: 'Lesson' | 'Review' | 'Practice' | 'Project' | 'Quiz';
     conceptId?: string;
@@ -53,7 +54,13 @@ export interface LearnPayload {
     xp: number;
     recommended: boolean;
   }>;
-  doneToday: Array<{ label: string; title: string; xp: number; completedAt: string }>;
+  doneToday: Array<{
+    activityId: string;
+    label: string;
+    title: string;
+    xp: number;
+    completedAt: string;
+  }>;
   activeSessionId: string | null;
 }
 
@@ -288,9 +295,19 @@ export interface ProjectPayload {
     title: string;
     objective: string;
     background: string;
+    status: 'authored' | 'stub';
     tasks: Array<{ id: string; title: string; md: string }>;
     acceptance: string[];
   };
+  checksTotal: number;
+  latestSubmission: {
+    results: {
+      tests: Array<{ id: string; passed: boolean; message: string }>;
+    };
+  } | null;
+  evidence: string | null;
+  reflection: Array<{ id: string; prompt: string }>;
+  status: 'not_started' | 'in_progress' | 'completed';
 }
 
 export interface SettingsPayload {
