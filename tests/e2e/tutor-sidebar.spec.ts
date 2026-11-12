@@ -1094,3 +1094,61 @@ test('tutor Context follows the session, lesson, and home pages', async ({ page 
   await expect(page).toHaveURL('/');
   await expect(tutor.getByTestId('tutor-reading-context')).toHaveCount(0);
 });
+
+test('long tutor drafts keep the composer controls in view on desktop and mobile', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.setItem('academy.tutor.open', 'true');
+  });
+  await page.goto('/course');
+
+  const initialTutor = page.getByRole('complementary', { name: 'Tutor' });
+  await expect(initialTutor).toBeVisible();
+  await initialTutor.getByRole('button', { name: 'New chat' }).first().click();
+
+  const draft = 'x'.repeat(7000);
+  for (const viewport of [
+    { width: 1280, height: 900, mobile: false },
+    { width: 390, height: 844, mobile: true },
+  ]) {
+    if (viewport.mobile) await page.setViewportSize(viewport);
+    const tutor = viewport.mobile
+      ? page.locator('[data-slot="sidebar"][data-mobile="true"]')
+      : page.getByRole('complementary', { name: 'Tutor' });
+    await expect(tutor).toBeVisible();
+
+    const textarea = tutor.getByLabel('Ask the tutor');
+    await textarea.fill(draft);
+    const sendButton = tutor.getByRole('button', { name: 'Send' });
+    const characterCount = tutor.getByTestId('tutor-draft-length');
+    await expect(characterCount).toHaveText('7,000 / 8,000');
+    await expect(sendButton).toBeEnabled();
+
+    const geometry = await textarea.evaluate((element) => {
+      const panel = element.closest('[data-slot="sidebar"]');
+      const panelHeight = panel?.getBoundingClientRect().height;
+      const controlRects = [
+        element.closest('form')?.querySelector('[aria-label="Send"]')?.getBoundingClientRect(),
+        element
+          .closest('form')
+          ?.querySelector('[data-testid="tutor-draft-length"]')
+          ?.getBoundingClientRect(),
+      ];
+      return {
+        textareaHeight: element.getBoundingClientRect().height,
+        textareaScrollHeight: element.scrollHeight,
+        panelHeight: panelHeight ?? 0,
+        controlsVisible: controlRects.every(
+          (rect) => rect && rect.top >= 0 && rect.bottom <= window.innerHeight,
+        ),
+      };
+    });
+    expect(geometry.panelHeight).toBeGreaterThan(0);
+    expect(geometry.textareaHeight).toBeLessThanOrEqual(geometry.panelHeight * 0.5);
+    expect(geometry.textareaScrollHeight).toBeGreaterThan(geometry.textareaHeight);
+    expect(geometry.controlsVisible).toBe(true);
+    await sendButton.click({ trial: true });
+  }
+});
