@@ -355,7 +355,7 @@ exercises:
       - id: d
         text: $\lambda=0.001$
         correct: false
-        feedback: That multiplies $d$ by a learning rate of $0.1$, but $\eta$ appears in both updates and cancels.
+        feedback: That also multiplies $d$ by a learning rate, but $\eta$ appears in both updates and cancels.
     solution: Our update multiplies the weight by $1-2\eta\lambda$ and the library's by $1-\eta d$, so $d=2\lambda$ and $\lambda=0.01/2=0.005$.
   - id: rg-strength-basics
     dimension: conceptual
@@ -507,7 +507,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: During training, dropout sets each hidden unit's output to $0$ with probability $0.5$ on every step. Why does this help the network do better on new examples?
+    prompt: During training, dropout sets each unit's output to $0$ with probability $0.5$ on every step. Why does this help the network do better on new examples?
     options:
       - id: a
         text: It shrinks every weight by a fixed fraction on each step.
@@ -545,7 +545,7 @@ exercises:
       - id: c
         text: Go back to $\lambda=0$, because falling error means the penalty isn't working.
         correct: false
-        feedback: Falling validation error means the penalty is helping; $\lambda=0$ had the highest error.
+        feedback: Falling validation error means a stronger penalty is helping, so removing the penalty would undo that.
       - id: d
         text: Compare the values on the test examples instead.
         correct: false
