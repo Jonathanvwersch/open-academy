@@ -191,7 +191,7 @@ concepts:
             dimension: math,
           },
         ],
-      status: stub,
+      status: authored,
     }
   - id: gpu-inference-basics
     title: GPUs and fast inference
