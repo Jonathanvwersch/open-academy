@@ -237,7 +237,7 @@ knowledge_points:
 
       The red value was above its mean, so it came out positive, and the blue value was exactly at its mean, so it became zero. A value below its mean would come out negative.
 
-      We used round numbers here, but in practice follow the model's documented input preparation; not every model expects this standardisation. A pretrained model, one that someone has already trained, that uses it expects the same means and standard deviations it was trained with. Many use means (0.485, 0.456, 0.406) and standard deviations (0.229, 0.224, 0.225), measured on ImageNet, a collection of over a million labelled photos.
+      We used round numbers here, but in practice you follow the model's documentation, because not every model expects this standardisation. A pretrained model, one that someone has already trained, expects the same means and standard deviations it was trained with. Many use means (0.485, 0.456, 0.406) and standard deviations (0.229, 0.224, 0.225), measured on ImageNet, a collection of over a million labelled photos.
 
       Check the loaded values first: matplotlib loads PNGs as floats already between 0 and 1, so dividing those by 255 again would be wrong.
 
