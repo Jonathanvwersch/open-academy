@@ -509,7 +509,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: The code slope is $a={{= a }}$ and the numerical slope is $n={{= n }}$. What is $|a-n|/\max(|a|,|n|)$?
+    prompt: The code slope is $a={{= a }}$ and the numerical slope is $n={{= n }}$. What is $|a-n|/\max(|a|,|n|)$? Give 3 decimal places.
     params:
       a:
         min: -8

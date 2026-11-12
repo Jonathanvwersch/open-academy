@@ -170,7 +170,7 @@ knowledge_points:
 
       We divide by $2h$ because that is the distance between $w-h$ and $w+h$. A **gradient check** compares this numerical slope with the code slope, one parameter at a time.
 
-      Choose $h$ small enough that the curve is almost straight between nudges; the two nudged points then give the slope at $w$. Computers store numbers with limited digits, so subtracting nearly equal losses loses precision when $h$ is tiny. A common starting choice is $0.01$. Here it gives $-12$; correct code agrees, but buggy code gives $-6$.
+      Choose $h$ small enough that the curve is almost straight between nudges; the two nudged points then give the slope at $w$. Computers store numbers with limited digits, so subtracting nearly equal losses loses precision when $h$ is tiny. Libraries often use about $0.000001$; we use $0.01$ for readable arithmetic, giving $-12$; correct code agrees, buggy code gives $-6$.
 
       The **relative difference** compares disagreement with slope size:
 
