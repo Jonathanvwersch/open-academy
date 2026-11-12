@@ -164,7 +164,7 @@ concepts:
           text: "Judge whether two small-sample success rates really differ",
           dimension: conceptual,
         }
-    status: stub
+    status: authored
   - id: rotation-matrices
     title: Rotation matrices
     description: 2D/3D rotations as orthonormal matrices; composition.

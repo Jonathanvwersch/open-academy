@@ -1,0 +1,301 @@
+concept: descriptive-statistics
+version: 1
+objective: |
+  **Goal:** compute the standard error of an average or success rate, and use an interval for the difference to judge whether two success rates really differ, recognising when small samples leave us unsure.
+recap:
+  - concept: probability-basics
+    text: "A probability is a chance between 0 and 1. The fraction of past trials that succeeded estimates the chance of success. Independent trials do not change one another's chances."
+where_this_fits: |
+  ### What are the mean, variance and confidence intervals?
+
+  The mean is the average of a set of results, variance measures how spread out they are, and a confidence interval gives a range the long-run average or success chance probably lies in.
+
+  The **long-run average** is the average we'd get over endless trials. We never see it, so we estimate it from our trials. The **long-run success chance** is the fraction succeeding over endless trials.
+
+  An updated robot holds an object on 9 of 10 grasps, against 7 of 10 before. Is it better or lucky? Results change from test to test, and these tools tell us by how much. We'll start with grasp times because spread is easiest to see in times, then count successes as numbers.
+knowledge_points:
+  - id: ds-centre-spread
+    title: Find the average and spread
+    explain: |
+      ### Average grasp time
+
+      Our grasping robot takes 2, 4 and 6 seconds on three attempts.
+
+      The **sample mean** adds the observed values and divides by their count to estimate the long-run average. We write it as $\bar x$, read "x bar". If $n$ is the count and $x_1$ through $x_n$ are the observations, then
+
+      $$\bar x=\frac{x_1+\cdots+x_n}{n}.$$
+
+      One slow grasp can pull the mean up, so we should also look at the individual times.
+
+      ### Distances from the average
+
+      On the number line, 4 sits between 2 and 6. An observation minus the mean is its **deviation**. These deviations are $-2$, $0$ and $2$ seconds.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 180" aria-label="Grasp times 2, 4 and 6 seconds on a number line. Their mean is 4. Deviations are minus 2, 0 and plus 2 seconds.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <path d="M60 100 H540" stroke="#737373"/><path d="M300 45 V120" stroke="#10b981" stroke-width="2"/>
+      <path d="M140 65 H300 M300 80 H460" stroke="#3b82f6" stroke-width="3"/>
+      <circle cx="140" cy="100" r="6"/><circle cx="300" cy="100" r="6"/><circle cx="460" cy="100" r="6"/>
+      <text x="220" y="55" text-anchor="middle" fill="#3b82f6">−2</text><text x="380" y="70" text-anchor="middle" fill="#3b82f6">+2</text>
+      <text x="300" y="30" text-anchor="middle" fill="#10b981">mean = 4</text>
+      <text x="140" y="130" text-anchor="middle">2</text><text x="300" y="130" text-anchor="middle">4</text><text x="460" y="130" text-anchor="middle">6</text>
+      <text x="300" y="165" text-anchor="middle">grasp time (seconds)</text>
+      </g></svg>
+      ```
+
+      Adding signed deviations gives zero even when results differ. Squaring them prevents that cancellation. **Sample variance**, written $s^2$, estimates the spread of individual results using these squared distances:
+
+      $$s^2=\frac{(x_1-\bar x)^2+\cdots+(x_n-\bar x)^2}{n-1}.$$
+
+      Why one less? We fitted the mean to these points, so distances to it tend to be smaller than distances to the long-run average. We divide by one less to correct for this, when trials are independent and conditions stay the same. Why the correction is exactly one is beyond this lesson. We need at least two times because one alone tells us nothing about spread, and would make $n-1$ zero.
+
+      ### Spread in the original units
+
+      Squaring a distance in seconds gives seconds squared, so variance isn't itself a time. The **sample standard deviation**, $s$, takes the square root to measure spread in seconds again:
+
+      $$s=\sqrt{s^2}.$$
+
+      Three times of 4 seconds would give the same average but no spread, because they wouldn't differ.
+    worked: |
+      Let's summarise the three grasp times.
+
+      1. **Find the average.** We add all three times and divide by three because each attempt counts equally.
+         $$\bar x=\frac{2+4+6}{3}=4\text{ seconds}.$$
+
+      2. **Square the distances.** We square before adding so the negative and positive deviations don't cancel.
+         $$(-2)^2+0^2+2^2=8\text{ seconds}^2.$$
+
+      3. **Estimate the variance.** We divide by two because we estimated the mean from these three times.
+         $$s^2=\frac{8}{3-1}=4\text{ seconds}^2.$$
+
+      4. **Find the standard deviation.** We take the square root so our measure of spread is in seconds again.
+         $$s=\sqrt{4}=2\text{ seconds}.$$
+
+      Our average is 4 seconds, and individual times have a standard deviation of 2 seconds.
+
+    problems:
+      [
+        ds-spread-basics,
+        ds-squares-why,
+        ds-mean-template,
+        ds-variance-template,
+        ds-shift-spread,
+        ds-latency-spread,
+      ]
+  - id: ds-average-wobble
+    title: How sure is an average?
+    explain: |
+      ### Repeating the experiment
+
+      We time 100 independent grasps on varied objects and positions, whether they hold the object or drop it. Suppose step 1's calculation on all 100 gives mean 4 seconds and standard deviation 2 seconds. How much might another experiment's average differ?
+
+      Imagine running the 25-grasp experiment five separate times. We call each run's group of grasps a **batch**, with its own average.
+
+      A **standard error**, or **SE**, measures how much an estimate varies across repeats of the same size. We made up these averages to match the rule below. Repeating with 100-grasp batches puts their averages closer together.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 250" aria-label="Illustrative batch averages on one shared time axis. Dots stack vertically where averages tie, so height only separates tied dots. Five averages for batches of 25 are 3.6, 3.6, 4, 4.4, 4.4 seconds. Five for batches of 100 are 3.8, 3.8, 4, 4.2, 4.2 seconds. Applying step 1 to the five averages in each row gives sample standard deviations of 0.4 and 0.2 seconds. Individual-time standard deviation is held at 2 seconds.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+      <text x="25" y="28">Dots stack when batch averages tie</text>
+      <text x="25" y="50">25 per batch: standard deviation = 0.4 seconds</text><text x="25" y="120">100 per batch: standard deviation = 0.2 seconds</text>
+      <path d="M100 185 H540 M180 185 v5 M260 185 v5 M340 185 v5 M420 185 v5 M500 185 v5" stroke="#737373"/>
+      <g fill="#3b82f6"><circle cx="180" cy="80" r="5"/><circle cx="180" cy="66" r="5"/><circle cx="340" cy="80" r="5"/><circle cx="500" cy="80" r="5"/><circle cx="500" cy="66" r="5"/>
+      <circle cx="260" cy="150" r="5"/><circle cx="260" cy="136" r="5"/><circle cx="340" cy="150" r="5"/><circle cx="420" cy="150" r="5"/><circle cx="420" cy="136" r="5"/></g>
+      <text x="180" y="210" text-anchor="middle">3.6</text><text x="260" y="210" text-anchor="middle">3.8</text><text x="340" y="210" text-anchor="middle">4</text><text x="420" y="210" text-anchor="middle">4.2</text><text x="500" y="210" text-anchor="middle">4.4</text>
+      <text x="320" y="240" text-anchor="middle">batch average time (seconds)</text>
+      </g></svg>
+      ```
+
+      ### More trials reduce uncertainty
+
+      A slow and a fast grasp pull their batch average in opposite directions, so their effects partly cancel. Four times as many grasps only halves the standard error. We won't prove this square-root rule here:
+
+      $$\mathrm{SE}(\bar x)=\frac{s}{\sqrt n}.$$
+
+      We read $\mathrm{SE}(\bar x)$ as "the standard error of $\bar x$". Here $s$ measures individual-time spread and $n$ counts trials. We need independent trials under unchanged conditions.
+
+      ### A range for the long-run average
+
+      With enough trials and no extreme times dominating, averages cluster around the long-run average in a **bell shape**. The curve is taller where more averages fall. Its maths puts about 95% within 1.96 standard errors, which we round to 2.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 220" aria-label="A bell shape for averages across repeated experiments. The shaded middle extends two standard errors either side of the long-run average and contains about 95 percent of averages when the approximation works well.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#171717">
+      <path d="M150 150 L150 136.466 L168.75 128.373 L187.5 117.535 L206.25 104.217 L225 89.347 L243.75 74.516 L262.5 61.750 L281.25 53.077 L300 50.000 L318.75 53.077 L337.5 61.750 L356.25 74.516 L375 89.347 L393.75 104.217 L412.5 117.535 L431.25 128.373 L450 136.466 L450 150 Z" fill="#3b82f6" fill-opacity="0.2"/>
+      <path d="M75 148.889 L93.75 147.721 L112.5 145.606 L131.25 142.044 L150 136.466 L168.75 128.373 L187.5 117.535 L206.25 104.217 L225 89.347 L243.75 74.516 L262.5 61.750 L281.25 53.077 L300 50.000 L318.75 53.077 L337.5 61.750 L356.25 74.516 L375 89.347 L393.75 104.217 L412.5 117.535 L431.25 128.373 L450 136.466 L468.75 142.044 L487.5 145.606 L506.25 147.721 L525 148.889" fill="#3b82f6" fill-opacity="0" stroke="#3b82f6" stroke-width="3"/>
+      <path d="M60 150 H540 M150 150 v6 M300 150 v6 M450 150 v6" stroke="#737373"/>
+      <text x="300" y="30" text-anchor="middle">About 95% of averages are in the shaded middle</text>
+      <text x="150" y="178" text-anchor="middle">−2 SE</text><text x="450" y="178" text-anchor="middle">+2 SE</text>
+      <text x="300" y="205" text-anchor="middle">long-run average</text>
+      </g></svg>
+      ```
+
+      We build an **approximate 95% confidence interval** around our estimate:
+
+      $$\text{estimate}\;\pm\;2\times\mathrm{SE}.$$
+
+      The sign $\pm$ means subtract and add to get the endpoints. "Confidence" refers to the method, because about 95% of ranges built this way contain the long-run average, not 95% of individual grasp times.
+
+      Below, four experiments' ranges contain 4 and one misses it. Over very many experiments, about 1 in 20 would miss the long-run average.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 250" aria-label="Five illustrative intervals for average grasp time, each extending 0.4 seconds from its estimate. Estimates 3.7, 3.9, 4.1 and 4.3 give intervals containing the long-run average of 4. The estimate 4.5 gives 4.1 to 4.9 and misses 4. Over very many suitable experiments about 1 in 20 would miss, not 1 in 5.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+      <path d="M280 30 V205" stroke="#737373" stroke-dasharray="4 4"/><text x="280" y="20" text-anchor="middle">long-run average = 4 seconds</text>
+      <path d="M105 50 H305 M155 80 H355 M205 110 H405 M255 140 H455" stroke="#3b82f6" stroke-width="3"/>
+      <path d="M305 170 H505" stroke="#ef4444" stroke-width="3"/>
+      <g fill="#10b981"><circle cx="205" cy="50" r="5"/><circle cx="255" cy="80" r="5"/><circle cx="305" cy="110" r="5"/><circle cx="355" cy="140" r="5"/><circle cx="405" cy="170" r="5"/></g>
+      <text x="520" y="175" fill="#ef4444">misses 4</text>
+      <path d="M80 205 H530 M130 205 v5 M280 205 v5 M430 205 v5" stroke="#737373"/>
+      <text x="130" y="230" text-anchor="middle">3.4</text><text x="280" y="230" text-anchor="middle">4</text><text x="430" y="230" text-anchor="middle">4.6 seconds</text>
+      </g></svg>
+      ```
+    worked: |
+      Let's find a range for the long-run average from our 100 timed grasps.
+
+      1. **Find the standard error.** Because we average 100 times, we divide their spread by $\sqrt{100}$.
+         $$\mathrm{SE}(\bar x)=\frac{2}{\sqrt{100}}=0.2\text{ seconds}.$$
+
+      2. **Find the interval.** We extend our estimate by two standard errors each way for an approximate 95% range.
+         $$4\pm2(0.2)=[3.6,\;4.4]\text{ seconds}.$$
+
+      We estimated the long-run average, so this isn't a limit on individual grasp times.
+
+    problems:
+      [ds-se-basics, ds-se-why, ds-mean-se-template, ds-interval-template, ds-fourfold, ds-coverage]
+  - id: ds-success-uncertainty
+    title: How sure is a success rate?
+    explain: |
+      ### Count each success as 1
+
+      Of our 100 timed grasps, 80 held the object. A **success rate** is the successful fraction. We write it as $\hat p$, read "p hat", because it estimates the long-run success chance.
+
+      Count each success as 1 and each failure as 0. Their average is exactly the success rate, so the previous step's reasoning about averages applies.
+
+      ### Where the spread comes from
+
+      We need the spread of these zeros and ones. A success is $1-\hat p$ above their average, while a failure is $\hat p$ below it. Of the 100 squared distances, 80 are $(1-\hat p)^2$ and 20 are $\hat p^2$. Adding them and dividing by $n=100$ gives
+
+      $$\frac{80(1-\hat p)^2+20\hat p^2}{100}=\hat p(1-\hat p)^2+(1-\hat p)\hat p^2.$$
+
+      We can factor out $\hat p(1-\hat p)$ because both terms contain it:
+
+      $$\hat p(1-\hat p)[(1-\hat p)+\hat p]=\hat p(1-\hat p).$$
+
+      Taking the square root gives spread $\sqrt{\hat p(1-\hat p)}$. We divided by 100 rather than 99, which changes this answer by about half a percent, so we'll use this simpler form. Because the rate is an average, we divide its spread by $\sqrt n$:
+
+      $$\mathrm{SE}(\hat p)=\sqrt{\frac{\hat p(1-\hat p)}{n}}.$$
+
+      This reads "the standard error of $\hat p$". The failure fraction is $1-\hat p$, because every attempt either succeeds or fails, and $n$ counts all attempts.
+
+      ### When to trust the range
+
+      A common rule of thumb is at least 10 successes and 10 failures. This helps the bell approximation, but doesn't guarantee it. With very few of either outcome, repeated rates are lopsided, so we can't trust $\pm2\mathrm{SE}$. Instead, collect more trials or use an exact method in statistics software, which calculates from the possible success counts rather than assuming a bell shape.
+
+      We also need independent trials. If every test grasp is on the same mug in the same spot, a quirk of that setup affects all attempts, so they aren't 100 independent pieces of evidence about varied objects and positions. We should test across the conditions we want the robot to handle.
+    worked: |
+      Let's use our 80 successes and 20 failures to estimate the long-run success chance.
+
+      1. **Find the observed rate.** We average the ones and zeros, so the sum counts successes.
+         $$\hat p=\frac{80}{100}=0.8.$$
+
+      2. **Find the standard error.** Because the rate averages zeros and ones, we use their spread.
+         $$\mathrm{SE}(\hat p)=\sqrt{\frac{0.8(0.2)}{100}}=0.04.$$
+
+      3. **Build the interval.** Both counts pass our rule of thumb, so we extend the rate by two standard errors.
+         $$0.8\pm2(0.04)=[0.72,\;0.88].$$
+
+      Our range is 72% to 88%, which is 8 **percentage points** either side of 80%. Percentage points means subtracting the percentages, not calculating a relative percent change.
+
+    problems:
+      [
+        ds-rate-basics,
+        ds-rate-why,
+        ds-rate-se-template,
+        ds-interval-why,
+        ds-interval-basics,
+        ds-camera-independence,
+        ds-new-setting,
+      ]
+  - id: ds-compare-rates
+    title: Tell if two success rates differ
+    explain: |
+      ### Look at the difference in rates
+
+      The robot's engineers test each version on 200 fresh grasps, with 160 successes before the update and 180 after. The earlier quick test gave 7 and 9 out of 10, as in our opening.
+
+      We call the observed rates $\hat p_1$ for original and $\hat p_2$ for updated. We subtract original from updated to estimate the improvement, $d$:
+
+      $$d=\hat p_2-\hat p_1.$$
+
+      A positive difference favours the update, while zero means the observed rates match.
+
+      ### Combine the two uncertainties
+
+      Either estimate can be off in either direction, so subtraction doesn't remove uncertainty. For independent estimates, the squared standard errors add:
+
+      $$\mathrm{SE}_{\mathrm{diff}}=\sqrt{\mathrm{SE}_1^2+\mathrm{SE}_2^2}.$$
+
+      The small 1 and 2 tell us which version's standard error we're using. A raised 2 means we square that error, and "diff" means the difference. We extend the difference by two combined standard errors:
+
+      $$d\pm2\mathrm{SE}_{\mathrm{diff}}.$$
+
+      When tests are independent, conditions comparable and counts large enough, a range excluding zero supports a real difference. If zero is inside, the evidence doesn't settle whether the versions differ, rather than proving they're equal.
+
+      ### Large and small experiments
+
+      Both experiments share a difference axis, so we can see whether either range crosses the line at zero improvement.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 250" aria-label="Intervals for updated minus original success chance on one shared axis. With 160 of 200 versus 180 of 200 successes, the interval is about 0.03 to 0.17 and excludes zero. With 7 of 10 versus 9 of 10, a rough interval is minus 0.15 to 0.55 and includes zero. The small experiment also fails the count rule, so its interval is only a warning, not a reliable 95 percent interval.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+      <path d="M60 195 H540 M60 195 v5 M180 195 v5 M300 195 v5 M420 195 v5 M540 195 v5" stroke="#737373"/>
+      <path d="M180 25 V195" stroke="#737373" stroke-dasharray="4 4"/>
+      <text x="195" y="25">zero = no improvement</text>
+      <text x="25" y="55">200 trials each</text><text x="210" y="125">10 each: rough warning only</text>
+      <path d="M198 80 H282 M198 74 V86 M282 74 V86" stroke="#3b82f6" stroke-width="3"/>
+      <path d="M90 150 H510 M90 144 V156 M510 144 V156" stroke="#3b82f6" stroke-width="3" stroke-dasharray="5 4"/>
+      <circle cx="240" cy="80" r="5" fill="#10b981"/><circle cx="300" cy="150" r="5" fill="#10b981"/>
+      <text x="60" y="220" text-anchor="middle">−0.2</text><text x="180" y="220" text-anchor="middle">0</text><text x="300" y="220" text-anchor="middle">0.2</text><text x="420" y="220" text-anchor="middle">0.4</text><text x="540" y="220" text-anchor="middle">0.6</text>
+      <text x="300" y="245" text-anchor="middle">updated minus original success rate</text>
+      </g></svg>
+      ```
+
+      ### Limits of the comparison
+
+      With 140/200 versus 160/200, individual ranges of about 0.64–0.76 and 0.74–0.86 overlap. Yet the difference range is about 0.01–0.19, excluding zero. Using overlap alone would hide this evidence of improvement.
+    worked: |
+      Let's compare both experiments using the difference in long-run success chances.
+
+      1. **Find the improvement.** We compare the rates by subtracting original from updated.
+         $$d=\frac{180}{200}-\frac{160}{200}=0.90-0.80=0.10.$$
+
+      2. **Combine the uncertainties.** Either estimated rate could change in a fresh test, so ignoring one would understate uncertainty in their difference.
+         $$\mathrm{SE}_{\mathrm{diff}}=\sqrt{\frac{0.8(0.2)}{200}+\frac{0.9(0.1)}{200}}\approx0.035.$$
+
+      3. **Check the interval.** Both versions pass the count rule, so we can judge the difference.
+         $$d\pm2\mathrm{SE}_{\mathrm{diff}}\approx[0.03,\;0.17].$$
+
+      4. **Answer the opening question.** We repeat the calculation for 7 versus 9 successes because that quick test first made us wonder whether the update helped.
+         $$d=0.20,\quad\mathrm{SE}_{\mathrm{diff}}\approx0.173,\quad d\pm2\mathrm{SE}_{\mathrm{diff}}\approx[-0.15,\;0.55].$$
+
+      The larger range excludes zero, so it supports improvement without proving it. The smaller range includes zero and fails the count rule, so it doesn't settle whether the long-run success chances differ.
+    problems:
+      [
+        ds-difference-basics,
+        ds-difference-why,
+        ds-difference-se-template,
+        ds-difference-upper-template,
+        ds-overlap,
+        ds-small-comparison,
+        ds-warehouse-comparison,
+      ]
+final: ds-explain
+summary: |
+  - Mean, variance and standard deviation describe the average and spread of results.
+  - Standard error measures variation across experiments using $s/\sqrt n$ for a mean or $\sqrt{\hat p(1-\hat p)/n}$ for a rate.
+  - About 95% of estimate $\pm2\mathrm{SE}$ intervals contain the long-run average or success chance when the approximation works well.
+  - A difference interval excluding zero supports a real difference when independent tests pass the count rule.
+
+  **Next:** Information theory measures how uncertain we are about which outcome will happen, rather than about an estimated average.
