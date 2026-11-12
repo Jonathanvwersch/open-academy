@@ -544,6 +544,33 @@ test('a completed KP lesson satisfies a prerequisite despite introduced mastery'
   ).toBe(true);
 });
 
+test('an existing lesson run requires quiz completion regardless of assisted mastery', async () => {
+  const fullContent = await loadContent();
+  const masteryByKey = new Map([
+    [
+      masteryKey('supervised-learning', 'conceptual'),
+      { ...initialMastery('supervised-learning', 'conceptual'), state: 'assisted' as const },
+    ],
+  ]);
+  expect(
+    prerequisiteMet(
+      'supervised-learning',
+      masteryByKey,
+      [{ conceptId: 'supervised-learning', status: 'quiz' }],
+      fullContent,
+    ),
+  ).toBe(false);
+  expect(prerequisiteMet('supervised-learning', masteryByKey, [], fullContent)).toBe(true);
+  expect(
+    prerequisiteMet(
+      'supervised-learning',
+      masteryByKey,
+      [{ conceptId: 'supervised-learning', status: 'completed' }],
+      fullContent,
+    ),
+  ).toBe(true);
+});
+
 test('unfinished knowledge-point lessons are prioritized regardless of mastery, but completed ones are not relearned', () => {
   const concept = required(content.conceptsById.get('supervised-learning'), 'supervised-learning');
   const base = emptyState();
@@ -564,7 +591,7 @@ test('unfinished knowledge-point lessons are prioritized regardless of mastery, 
         );
       }),
   ];
-  for (const status of ['in_progress', 'needs_retry'] as const) {
+  for (const status of ['in_progress', 'needs_retry', 'quiz'] as const) {
     const state = {
       ...base,
       lessonRuns: [{ conceptId: concept.id, status }],

@@ -21,6 +21,8 @@ describe('course mastery and status', () => {
     expect(topicIsComplete('completed', ['not_assessed'])).toBe(true);
     expect(topicIsComplete(undefined, ['assisted', 'independent'])).toBe(true);
     expect(topicIsComplete(undefined, ['assisted', 'introduced'])).toBe(false);
+    expect(topicIsComplete('quiz', ['assisted', 'independent'])).toBe(false);
+    expect(topicIsComplete('in_progress', ['assisted', 'independent'])).toBe(false);
   });
 
   test('locks only unstarted topics with an incomplete hard prerequisite', () => {
@@ -48,5 +50,12 @@ describe('course mastery and status', () => {
         prerequisites: [{ strength: 'hard', done: false }],
       }),
     ).toBe('complete');
+    expect(
+      topicStatus({
+        lessonRunStatus: 'quiz',
+        dimensionStates: ['assisted'],
+        prerequisites: [{ strength: 'hard', done: false }],
+      }),
+    ).toBe('quiz');
   });
 });

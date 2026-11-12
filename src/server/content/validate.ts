@@ -763,13 +763,13 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
     }
     if (
       lesson.knowledge_points &&
-      (lesson.knowledge_points.length < 2 || lesson.knowledge_points.length > 4)
+      (lesson.knowledge_points.length < 1 || lesson.knowledge_points.length > 4)
     ) {
       addIssue(
         issues,
         file,
         lesson.concept,
-        'knowledge-point lessons must have 2–4 knowledge points',
+        'knowledge-point lessons must have 1–4 knowledge points',
       );
     }
     for (const point of lesson.knowledge_points ?? []) {

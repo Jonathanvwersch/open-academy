@@ -1,6 +1,8 @@
+import { sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
+  check,
   customType,
   index,
   integer,
@@ -75,6 +77,7 @@ export const projectStatusEnum = pgEnum('project_status', [
 export const lessonRunStatusEnum = pgEnum('lesson_run_status', [
   'in_progress',
   'needs_retry',
+  'quiz',
   'completed',
 ]);
 export const xpEventKindEnum = pgEnum('xp_event_kind', [
@@ -182,6 +185,7 @@ export const lessonRuns = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     completedAt: timestamp('completed_at', { withTimezone: true, mode: 'date' }),
+    quizPassedAt: timestamp('quiz_passed_at', { withTimezone: true, mode: 'date' }),
   },
   (table) => [
     uniqueIndex('lesson_runs_user_concept_unique').on(table.userId, table.conceptId),
@@ -201,6 +205,7 @@ export const lessonProblems = pgTable(
     position: integer('position').notNull(),
     exerciseId: text('exercise_id').notNull(),
     seed: integer('seed'),
+    practiceOnly: boolean('practice_only').notNull().default(false),
     servedAt: timestamp('served_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     answeredAt: timestamp('answered_at', { withTimezone: true, mode: 'date' }),
     correct: real('correct'),
@@ -214,6 +219,52 @@ export const lessonProblems = pgTable(
       table.position,
     ),
     index('lesson_problems_run_point_idx').on(table.runId, table.knowledgePointId, table.round),
+  ],
+);
+
+export const lessonQuizAttempts = pgTable(
+  'lesson_quiz_attempts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => lessonRuns.id, { onDelete: 'cascade' }),
+    attemptNo: integer('attempt_no').notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    submittedAt: timestamp('submitted_at', { withTimezone: true, mode: 'date' }),
+    score: real('score'),
+    passed: boolean('passed'),
+  },
+  (table) => [
+    check(
+      'lesson_quiz_attempts_score_range',
+      sql`${table.score} IS NULL OR (${table.score} >= 0 AND ${table.score} <= 1)`,
+    ),
+    uniqueIndex('lesson_quiz_attempts_run_attempt_unique').on(table.runId, table.attemptNo),
+  ],
+);
+
+export const lessonQuizItems = pgTable(
+  'lesson_quiz_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    quizAttemptId: uuid('quiz_attempt_id')
+      .notNull()
+      .references(() => lessonQuizAttempts.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+    knowledgePointId: text('knowledge_point_id').notNull(),
+    exerciseId: text('exercise_id').notNull(),
+    seed: integer('seed'),
+    answer: jsonb('answer'),
+    correct: real('correct'),
+    attemptId: uuid('attempt_id').references(() => attempts.id, { onDelete: 'set null' }),
+    answeredAt: timestamp('answered_at', { withTimezone: true, mode: 'date' }),
+  },
+  (table) => [
+    uniqueIndex('lesson_quiz_items_attempt_position_unique').on(
+      table.quizAttemptId,
+      table.position,
+    ),
   ],
 );
 

@@ -95,7 +95,7 @@ export interface SchedulerState {
   usedExerciseIds?: string[];
   lessonRuns?: Array<{
     conceptId: string;
-    status: 'in_progress' | 'needs_retry' | 'completed';
+    status: 'in_progress' | 'needs_retry' | 'quiz' | 'completed';
   }>;
 }
 
@@ -208,7 +208,10 @@ function packWeekday(
   };
   const unfinishedLessonConcepts = new Set(
     (state.lessonRuns ?? [])
-      .filter((run) => run.status === 'in_progress' || run.status === 'needs_retry')
+      .filter(
+        (run) =>
+          run.status === 'in_progress' || run.status === 'needs_retry' || run.status === 'quiz',
+      )
       .map((run) => run.conceptId),
   );
   const compareLearnCandidates = (left: Candidate, right: Candidate) => {
@@ -446,7 +449,9 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     const shouldResumeLesson =
       hasKnowledgePointLesson &&
       prereqsReady &&
-      (lessonRunStatus === 'in_progress' || lessonRunStatus === 'needs_retry');
+      (lessonRunStatus === 'in_progress' ||
+        lessonRunStatus === 'needs_retry' ||
+        lessonRunStatus === 'quiz');
     const completedKnowledgePointLesson =
       hasKnowledgePointLesson && lessonRunStatus === 'completed';
     if (shouldResumeLesson) {

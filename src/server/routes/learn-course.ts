@@ -410,6 +410,7 @@ export function buildCourseWeeks(
             .map((prerequisite) => ({
               id: prerequisite.id,
               title: index.conceptsById.get(prerequisite.id)?.title ?? prerequisite.id,
+              ...(runsByConcept.get(prerequisite.id)?.status === 'quiz' ? { quiz: true } : {}),
             }));
           const buildsOn = [...concept.prereqs]
             .sort((left, right) => compareOutlinePosition(left.id, right.id, index))

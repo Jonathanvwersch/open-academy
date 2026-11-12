@@ -1,7 +1,7 @@
 import type { Exercise, KnowledgePoint } from '../content/schemas.js';
 
-export type LessonRunStatus = 'in_progress' | 'needs_retry' | 'completed';
-export type KnowledgePointStatus = 'passed' | 'failed' | 'active' | 'locked';
+export type LessonRunStatus = 'in_progress' | 'quiz' | 'completed';
+export type KnowledgePointStatus = 'passed' | 'active' | 'locked';
 
 export interface LessonProblemRow {
   knowledgePointId: string;
@@ -9,6 +9,7 @@ export interface LessonProblemRow {
   position: number;
   exerciseId: string;
   attemptId?: string | null;
+  practiceOnly?: boolean;
   seed: number | null;
   servedAt: Date;
   answeredAt: Date | null;
@@ -36,10 +37,10 @@ export const XP_BY_PROBLEMS_USED = {
   2: 10,
   3: 9,
   4: 8,
-  5: 7,
-} as const; // Hypothesis: faster knowledge-point passes should earn slightly more XP.
+} as const;
 
 export function xpForPassedPoint(problemsUsed: number): number {
+  if (problemsUsed >= 5) return 7;
   return XP_BY_PROBLEMS_USED[problemsUsed as keyof typeof XP_BY_PROBLEMS_USED] ?? 0;
 }
 
@@ -70,15 +71,18 @@ function orderedRows<Row extends LessonProblemRow>(rows: readonly Row[]): Row[] 
 export function deriveLessonState<Row extends LessonProblemRow>(
   lesson: { knowledge_points?: readonly KnowledgePoint[] },
   problems: readonly Row[],
-  exercises: ReadonlyMap<string, Pick<Exercise, 'role'>>,
+  _exercises: ReadonlyMap<string, Pick<Exercise, 'role'>>,
+  quizPassedAt?: Date | null,
 ): DerivedLessonState<Row> {
   const knowledgePoints = lesson.knowledge_points ?? [];
   const currentIds = new Set(knowledgePoints.map((point) => point.id));
-  const currentProblems = problems.filter((problem) => currentIds.has(problem.knowledgePointId));
+  const progressionProblems = problems.filter((problem) => !problem.practiceOnly);
+  const currentProblems = progressionProblems.filter((problem) =>
+    currentIds.has(problem.knowledgePointId),
+  );
   const pointStates: LessonPointState<Row>[] = [];
   let blocked = false;
   let currentPointId: string | undefined;
-  let failed = false;
 
   for (const point of knowledgePoints) {
     const rows = currentProblems.filter((problem) => problem.knowledgePointId === point.id);
@@ -88,29 +92,15 @@ export function deriveLessonState<Row extends LessonProblemRow>(
     let streak = 0;
     let passedOn: Row | undefined;
     let answeredCount = 0;
-    let roundFailed = false;
-    const countedAnswers = answered.filter(
-      (problem) => exercises.get(problem.exerciseId)?.role !== 'basics',
-    );
-    for (const [index, problem] of countedAnswers.entries()) {
-      answeredCount = index + 1;
+    for (const problem of answered) {
+      answeredCount += 1;
       streak = problem.correct === 1 ? streak + 1 : 0;
       if (streak === 2) {
         passedOn = problem;
         break;
       }
-      if (answeredCount === 5 || (answeredCount === 4 && problem.correct !== 1)) {
-        roundFailed = true;
-        break;
-      }
     }
-    const status: KnowledgePointStatus = blocked
-      ? 'locked'
-      : passedOn
-        ? 'passed'
-        : roundFailed
-          ? 'failed'
-          : 'active';
+    const status: KnowledgePointStatus = blocked ? 'locked' : passedOn ? 'passed' : 'active';
     const effectivePassedOn = status === 'passed' ? passedOn : undefined;
     pointStates.push({
       id: point.id,
@@ -123,7 +113,6 @@ export function deriveLessonState<Row extends LessonProblemRow>(
     if (status !== 'passed' && !blocked) {
       blocked = true;
       currentPointId = point.id;
-      failed = roundFailed;
     }
   }
 
@@ -138,7 +127,8 @@ export function deriveLessonState<Row extends LessonProblemRow>(
         )
       : [];
   const pointOrder = new Map(knowledgePoints.map((point, index) => [point.id, index]));
-  const lastAnswered = [...currentProblems]
+  const lastAnswered = problems
+    .filter((problem) => currentIds.has(problem.knowledgePointId))
     .filter((problem) => problem.answeredAt !== null)
     .sort(
       (left, right) =>
@@ -151,7 +141,7 @@ export function deriveLessonState<Row extends LessonProblemRow>(
   const pending = currentRows.find((problem) => problem.answeredAt === null);
   const allPassed = pointStates.every((point) => point.status === 'passed');
   return {
-    status: allPassed ? 'completed' : failed ? 'needs_retry' : 'in_progress',
+    status: allPassed ? (quizPassedAt ? 'completed' : 'quiz') : 'in_progress',
     points: pointStates,
     ...(currentPointId ? { currentPointId } : {}),
     ...(pending ? { pending } : {}),
@@ -165,17 +155,16 @@ export interface SelectedLessonProblem {
   position: number;
 }
 
+type RoundProblem = Pick<LessonProblemRow, 'exerciseId' | 'seed' | 'position' | 'correct'> &
+  Partial<Pick<LessonProblemRow, 'servedAt'>>;
+
 export function selectNextProblem(
   point: Pick<KnowledgePoint, 'problems'>,
   exercises: ReadonlyMap<string, Exercise>,
-  roundProblems: readonly Pick<LessonProblemRow, 'exerciseId' | 'seed' | 'position' | 'correct'>[],
+  roundProblems: readonly RoundProblem[],
   templateSeed: number,
   usedSeeds: ReadonlySet<number> = new Set(),
 ): SelectedLessonProblem | undefined {
-  const countedProblems = roundProblems.filter(
-    (problem) => exercises.get(problem.exerciseId)?.role !== 'basics',
-  );
-  if (countedProblems.length >= 5) return undefined;
   const served = new Set(roundProblems.map((problem) => problem.exerciseId));
   const position = roundProblems.length + 1;
 
@@ -203,7 +192,8 @@ export function selectNextProblem(
     return exercise && exercise.role !== 'basics' ? [{ id, exercise }] : [];
   });
 
-  const countedAnswers = countedProblems
+  const countedAnswers = roundProblems
+    .filter((problem) => exercises.get(problem.exerciseId)?.role !== 'basics')
     .filter((problem) => problem.correct !== null)
     .sort((left, right) => right.position - left.position);
   const last = countedAnswers[0];
@@ -236,7 +226,16 @@ export function selectNextProblem(
     return { exerciseId: candidate.id, seed: null, position };
   }
 
-  if (templates.length === 0) return undefined;
+  if (templates.length === 0) {
+    const reusable = roundProblems
+      .filter((problem) => exercises.get(problem.exerciseId)?.role !== 'basics')
+      .sort(
+        (left, right) =>
+          (left.servedAt?.getTime() ?? left.position) -
+            (right.servedAt?.getTime() ?? right.position) || left.position - right.position,
+      )[0];
+    return reusable ? { exerciseId: reusable.exerciseId, seed: null, position } : undefined;
+  }
   const difficulty = nextDifficulty(
     templates.map((template) => template.difficulty),
     lastAttempt,

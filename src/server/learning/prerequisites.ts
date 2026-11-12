@@ -4,7 +4,7 @@ import { masteryRank } from './types.js';
 
 type LessonRun = {
   conceptId: string;
-  status: 'in_progress' | 'needs_retry' | 'completed';
+  status: 'in_progress' | 'needs_retry' | 'quiz' | 'completed';
 };
 
 export function masteryKey(conceptId: string, dimension: string): string {
@@ -20,16 +20,14 @@ export function prerequisiteMet(
   const concept = content.conceptsById.get(prereqId);
   if (!concept) return false;
 
-  const mastered = concept.dimensions.some((dimension) => {
+  const lessonRun = lessonRuns.find((run) => run.conceptId === prereqId);
+  if (lessonRun) return lessonRun.status === 'completed';
+  return concept.dimensions.some((dimension) => {
     const record = masteryByKey.get(masteryKey(prereqId, dimension));
     return (
       record?.inferred || masteryRank(record?.state ?? 'not_assessed') >= masteryRank('assisted')
     );
   });
-  const completedLesson = lessonRuns.some(
-    (run) => run.conceptId === prereqId && run.status === 'completed',
-  );
-  return mastered || completedLesson;
 }
 
 export function outlinePosition(conceptId: string, content: ContentIndex): [number, number] {

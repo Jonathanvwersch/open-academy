@@ -255,7 +255,10 @@ export function createApiRoutes(deps: {
     if (body.data.focusConceptId) {
       const inProgressLessonConcepts = new Set(
         (state.lessonRuns ?? [])
-          .filter((run) => run.status === 'in_progress' || run.status === 'needs_retry')
+          .filter(
+            (run) =>
+              run.status === 'in_progress' || run.status === 'needs_retry' || run.status === 'quiz',
+          )
           .map((run) => run.conceptId),
       );
       const keptActivities = plan.activities
@@ -1145,9 +1148,12 @@ export function createApiRoutes(deps: {
       ];
       let exerciseIds = activity.exerciseIds;
       let learningGoalMet = false;
+      let lessonFinalNeedsQuiz = false;
       if (activity.kind === 'learn' && activity.conceptId) {
         const mastery = masteryResult.mastery as MasteryRecord;
-        const finalExercise = index.lessonsByConcept.get(activity.conceptId)?.final === exercise.id;
+        const lesson = index.lessonsByConcept.get(activity.conceptId);
+        const finalExercise = lesson?.final === exercise.id;
+        lessonFinalNeedsQuiz = Boolean(finalExercise && lesson?.knowledge_points?.length);
         learningGoalMet =
           finalExercise ||
           (mastery.independentItemIds.length >= 2 && mastery.lastIndependentCorrect);
@@ -1170,7 +1176,8 @@ export function createApiRoutes(deps: {
         }
       }
       const completed =
-        learningGoalMet || exerciseIds.every((id) => completedExerciseIds.includes(id));
+        !lessonFinalNeedsQuiz &&
+        (learningGoalMet || exerciseIds.every((id) => completedExerciseIds.includes(id)));
       await updateActivityAndAdvance(db, {
         activityId: activity.id,
         completed,

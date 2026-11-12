@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../src/server/app.js';
 import { loadContent } from '../src/server/content/load.js';
@@ -8,6 +8,8 @@ import { createDb } from '../src/server/db/client.js';
 import {
   attempts,
   lessonProblems,
+  lessonQuizAttempts,
+  lessonQuizItems,
   lessonRuns,
   sessionActivities,
   studySessions,
@@ -70,6 +72,13 @@ function correctAnswer(exerciseId: string, seed: number | null): unknown {
   }
   if (exercise.type === 'numeric') return exercise.answer;
   if ('answer' in exercise) return exercise.answer;
+  if ('accept' in exercise) return exercise.accept[0];
+  if (exercise.type === 'debug') {
+    return {
+      line: exercise.buggy_line,
+      fixId: exercise.fix_options.find((option) => option.correct)?.id,
+    };
+  }
   throw new Error(`No test answer for ${exercise.id}`);
 }
 
@@ -79,6 +88,16 @@ function wrongAnswer(exerciseId: string, seed: number | null): unknown {
     return exercise.options.find((option) => !option.correct)?.id ?? 'incorrect-option';
   }
   if (exercise.type === 'numeric') return exercise.answer + 1_000_000;
+  if (exercise.type === 'debug') {
+    return {
+      line: exercise.buggy_line + 1,
+      fixId: exercise.fix_options.find((option) => option.correct)?.id,
+    };
+  }
+  if ('answer' in exercise) {
+    return typeof exercise.answer === 'number' ? exercise.answer + 1_000_000 : 'wrong answer';
+  }
+  if ('accept' in exercise) return 'wrong answer';
   throw new Error(`No test wrong answer for ${exercise.id}`);
 }
 
@@ -88,6 +107,73 @@ async function answerProblem(problemId: string, answer: unknown, activityId?: st
     headers,
     body: JSON.stringify({ problemId, answer, ...(activityId ? { activityId } : {}) }),
   });
+}
+
+async function startQuiz(activityId?: string) {
+  return app.request(`/api/lessons/${conceptId}/quiz/start`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(activityId ? { activityId } : {}),
+  });
+}
+
+async function answerQuizItem(itemId: string, answer: unknown, activityId?: string) {
+  return app.request(`/api/lessons/${conceptId}/quiz/answer`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ itemId, answer, ...(activityId ? { activityId } : {}) }),
+  });
+}
+
+async function submitQuiz(activityId?: string) {
+  return app.request(`/api/lessons/${conceptId}/quiz/submit`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(activityId ? { activityId } : {}),
+  });
+}
+
+async function finishLessonSteps(activityId?: string) {
+  let run = (await (await startRun(activityId)).json()).run;
+  let steps = 0;
+  while (run.status === 'in_progress' && steps < 100) {
+    if (!run.pending) {
+      run = (await (await startRun(activityId)).json()).run;
+      continue;
+    }
+    const pending = run.pending;
+    const response = await answerProblem(
+      pending.id,
+      correctAnswer(pending.exerciseId, pending.seed),
+      activityId,
+    );
+    expect(response.status).toBe(200);
+    run = (await response.json()).state;
+    steps += 1;
+  }
+  expect(steps).toBeLessThan(100);
+  expect(run.status).toMatch(/^(quiz|completed)$/);
+  return run;
+}
+
+async function answerQuizAttempt(
+  quiz: { current: { attemptId: string } },
+  correct = true,
+  activityId?: string,
+) {
+  const items = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, quiz.current.attemptId))
+    .orderBy(lessonQuizItems.position);
+  for (const item of items) {
+    const answer = correct
+      ? correctAnswer(item.exerciseId, item.seed)
+      : wrongAnswer(item.exerciseId, item.seed);
+    const response = await answerQuizItem(item.id, answer, activityId);
+    expect(response.status).toBe(200);
+  }
+  return items;
 }
 
 async function activityFixture() {
@@ -175,7 +261,7 @@ test('GET run is read-only and POST creates exactly one pending problem', async 
   expect(await db.select().from(lessonProblems)).toHaveLength(1);
 });
 
-test('basics does not count toward the two correct answers or the XP award', async () => {
+test('basics counts toward the two-correct streak and the XP award', async () => {
   let run = (await (await startRun()).json()).run;
   expect(run.currentPointId).toBe('sl-inputs-targets');
   expect(content.exercisesById.get(run.pending.exerciseId)?.role).toBe('basics');
@@ -200,7 +286,7 @@ test('basics does not count toward the two correct answers or the XP award', asy
         correct: expect.any(Array),
       });
     }
-    if (count === 0) expect(run.points[0]).toMatchObject({ answered: 0, streak: 0 });
+    if (count === 0) expect(run.points[0]).toMatchObject({ answered: 1, streak: 1 });
     if (count < 2) run = (await (await startRun()).json()).run;
   }
   expect(run.points[0]).toMatchObject({ id: 'sl-inputs-targets', status: 'passed', answered: 2 });
@@ -264,10 +350,9 @@ test('a template is graded with its stored seed and rejects another seed answer'
   expect((await rejected.json()).correct).toBe(0);
 });
 
-test('failed round completes its activity, starts the next, and resumes at round two', async () => {
+test('five misses keep the step active and leave the session activity open', async () => {
   const activities = await activityFixture();
   let run = (await (await startRun(activities.learn.id)).json()).run;
-  const firstProblemId = run.pending.id;
   for (let count = 0; count < 5; count += 1) {
     const pending = run.pending;
     const result = await answerProblem(
@@ -279,10 +364,16 @@ test('failed round completes its activity, starts the next, and resumes at round
     const body = await result.json();
     run = body.state;
     expect(run.lastAnsweredProblem.id).toBe(pending.id);
-    if (count < 4) run = (await (await startRun(activities.learn.id)).json()).run;
+    run = (await (await startRun(activities.learn.id)).json()).run;
   }
-  expect(run.status).toBe('needs_retry');
-  expect(run.points[0]).toMatchObject({ id: 'sl-inputs-targets', status: 'failed', round: 1 });
+  expect(run.status).toBe('in_progress');
+  expect(run.points[0]).toMatchObject({
+    id: 'sl-inputs-targets',
+    status: 'active',
+    round: 1,
+    answered: 5,
+  });
+  expect(run.pending).toBeTruthy();
   const [completedActivity] = await db
     .select()
     .from(sessionActivities)
@@ -291,13 +382,12 @@ test('failed round completes its activity, starts the next, and resumes at round
     .select()
     .from(sessionActivities)
     .where(eq(sessionActivities.id, activities.next.id));
-  expect(completedActivity?.status).toBe('completed');
-  expect(startedActivity?.status).toBe('in_progress');
+  expect(completedActivity?.status).toBe('in_progress');
+  expect(startedActivity?.status).not.toBe('in_progress');
   const resumed = (await (await startRun(activities.learn.id)).json()).run;
   expect(resumed.currentPointId).toBe('sl-inputs-targets');
-  expect(resumed.points[0]).toMatchObject({ status: 'active', round: 2, answered: 0 });
-  expect(resumed.pending.round).toBe(2);
-  expect(resumed.pending.id).not.toBe(firstProblemId);
+  expect(resumed.points[0]).toMatchObject({ status: 'active', round: 1, answered: 5 });
+  expect(resumed.pending.round).toBe(1);
 });
 
 test('finishing all points awards the XP sum and GET matches each POST state', async () => {
@@ -305,7 +395,7 @@ test('finishing all points awards the XP sum and GET matches each POST state', a
   let reload = await getCurrentRun();
   expect(reload).toEqual(run);
   let steps = 0;
-  while (run.status !== 'completed' && steps < 30) {
+  while (run.status === 'in_progress' && steps < 30) {
     if (!run.pending) {
       run = (await (await startRun()).json()).run;
     } else {
@@ -323,7 +413,7 @@ test('finishing all points awards the XP sum and GET matches each POST state', a
     expect(reload).toEqual(run);
     steps += 1;
   }
-  expect(run.status).toBe('completed');
+  expect(run.status).toBe('quiz');
   expect(run.points.every((point: { status: string }) => point.status === 'passed')).toBe(true);
   expect(run.xpEarned).toBe(
     run.points.reduce((sum: number, point: { answered: number }) => {
@@ -332,6 +422,196 @@ test('finishing all points awards the XP sum and GET matches each POST state', a
     }, 0),
   );
   expect(run.xpEarned).toBeGreaterThan(0);
+});
+
+test('practice-only questions resume, record practice, and do not change XP or run status', async () => {
+  const completedSteps = await finishLessonSteps();
+  const xpBefore = await db.select().from(xpEvents).where(eq(xpEvents.userId, userId));
+  const pointId = completedSteps.points[0].id;
+  const response = await app.request(`/api/lessons/${conceptId}/run/practice`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ pointId }),
+  });
+  expect(response.status).toBe(200);
+  let run = (await response.json()).run;
+  expect(run.status).toBe('quiz');
+  expect(run.pendingPracticeProblem).toMatchObject({
+    practiceOnly: true,
+    answeredAt: null,
+  });
+  const practiceId = run.pendingPracticeProblem.id;
+  const pendingRows = await db
+    .select()
+    .from(lessonProblems)
+    .where(eq(lessonProblems.runId, completedSteps.id));
+  expect(pendingRows.filter((row) => row.practiceOnly && row.answeredAt === null)).toHaveLength(1);
+  expect(
+    (
+      await app.request(`/api/lessons/${conceptId}/run/practice`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ pointId: completedSteps.points[1].id }),
+      })
+    ).status,
+  ).toBe(409);
+  const resumed = await getCurrentRun();
+  expect(resumed.pendingPracticeProblem.id).toBe(practiceId);
+  const answer = correctAnswer(
+    resumed.pendingPracticeProblem.exerciseId,
+    resumed.pendingPracticeProblem.seed,
+  );
+  const answered = await answerProblem(practiceId, answer);
+  expect(answered.status).toBe(200);
+  run = (await answered.json()).state;
+  expect(run.status).toBe('quiz');
+  expect(run.pendingPracticeProblem).toBeUndefined();
+  expect(await db.select().from(xpEvents).where(eq(xpEvents.userId, userId))).toEqual(xpBefore);
+  const [attempt] = await db
+    .select()
+    .from(attempts)
+    .where(eq(attempts.id, run.lastAnsweredProblem.attemptId));
+  expect(attempt?.mode).toBe('practice');
+  const [problem] = await db.select().from(lessonProblems).where(eq(lessonProblems.id, practiceId));
+  expect(problem?.practiceOnly).toBe(true);
+});
+
+test('quiz start is idempotent and unsubmitted answers disclose no correctness', async () => {
+  await finishLessonSteps();
+  const firstResponse = await startQuiz();
+  expect(firstResponse.status).toBe(200);
+  const firstRun = (await firstResponse.json()).run;
+  expect(firstRun.quiz).toMatchObject({
+    status: 'in_progress',
+    passMark: 0.8,
+    bestPassed: false,
+  });
+  expect(firstRun.quiz.current.items.length).toBeGreaterThan(0);
+  const repeatedStart = await startQuiz();
+  const repeatedRun = (await repeatedStart.json()).run;
+  expect(repeatedRun.quiz.current.attemptId).toBe(firstRun.quiz.current.attemptId);
+  expect(await db.select().from(lessonQuizAttempts)).toHaveLength(1);
+
+  const firstItem = firstRun.quiz.current.items[0];
+  const question = JSON.stringify(firstItem);
+  for (const secret of ['"answer"', '"answer_expr"', '"correct"', '"feedback"', '"solution"']) {
+    expect(question).not.toContain(secret);
+  }
+  const [firstRow] = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.id, firstItem.id));
+  if (!firstRow) throw new Error('Quiz item missing from database');
+  const answered = await answerQuizItem(
+    firstItem.id,
+    correctAnswer(firstRow.exerciseId, firstRow.seed),
+  );
+  expect(answered.status).toBe(200);
+  const answerBody = await answered.json();
+  expect(answerBody).not.toHaveProperty('correct');
+  expect(answerBody).not.toHaveProperty('feedback');
+  expect(answerBody).not.toHaveProperty('solution');
+  expect(answerBody.run.quiz.current.items[0]).toMatchObject({ answered: true });
+  expect(JSON.stringify(answerBody.run.quiz.current)).not.toMatch(
+    /"(?:correct|feedback|solution|answer_expr|answer)"\s*:/,
+  );
+  expect((await answerQuizItem(firstItem.id, 'second answer')).status).toBe(409);
+  expect((await submitQuiz()).status).toBe(409);
+  const review = await app.request(
+    `/api/lessons/${conceptId}/quiz/${firstRun.quiz.current.attemptId}/review`,
+    { headers },
+  );
+  expect(review.status).toBe(403);
+  const remaining = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, firstRun.quiz.current.attemptId));
+  for (const item of remaining.filter((row) => row.id !== firstItem.id)) {
+    const response = await answerQuizItem(item.id, wrongAnswer(item.exerciseId, item.seed));
+    expect(response.status).toBe(200);
+  }
+  const failed = await submitQuiz();
+  expect(failed.status).toBe(200);
+  const failedRun = (await failed.json()).run;
+  expect(failedRun.quiz).toMatchObject({
+    status: 'failed',
+    bestPassed: false,
+    last: { passed: false },
+  });
+  const failedReview = await app.request(
+    `/api/lessons/${conceptId}/quiz/${firstRun.quiz.current.attemptId}/review`,
+    { headers },
+  );
+  expect(failedReview.status).toBe(403);
+});
+
+test('passing and retaking a quiz awards quiz XP only once and enables review', async () => {
+  await finishLessonSteps();
+  const started = (await (await startQuiz()).json()).run;
+  const firstItems = await answerQuizAttempt(started.quiz);
+  const passedResponse = await submitQuiz();
+  expect(passedResponse.status).toBe(200);
+  let result = await passedResponse.json();
+  expect(result.run.quiz).toMatchObject({
+    status: 'passed',
+    bestPassed: true,
+    last: { passed: true, total: firstItems.length },
+  });
+  expect(result.xpAwarded).toBe(firstItems.length);
+  const quizXp = await db
+    .select()
+    .from(xpEvents)
+    .where(and(eq(xpEvents.userId, userId), eq(xpEvents.kind, 'quiz')));
+  expect(quizXp).toHaveLength(1);
+  expect(quizXp[0]?.amount).toBe(firstItems.length);
+  const review = await app.request(
+    `/api/lessons/${conceptId}/quiz/${result.run.quiz.last.attemptId}/review`,
+    { headers },
+  );
+  expect(review.status).toBe(200);
+  const reviewBody = await review.json();
+  expect(reviewBody.items).toHaveLength(firstItems.length);
+  expect(reviewBody.items[0]).toMatchObject({
+    exercise: { prompt: expect.any(String) },
+    yourAnswer: expect.any(String),
+    correctAnswer: expect.any(String),
+    solution: expect.any(String),
+    correct: 1,
+  });
+
+  const retake = (await (await startQuiz()).json()).run;
+  await answerQuizAttempt(retake.quiz);
+  const secondPass = await submitQuiz();
+  expect(secondPass.status).toBe(200);
+  result = await secondPass.json();
+  expect(result.xpAwarded).toBe(0);
+  expect(result.run.quiz.bestPassed).toBe(true);
+  expect(
+    await db
+      .select()
+      .from(xpEvents)
+      .where(and(eq(xpEvents.userId, userId), eq(xpEvents.kind, 'quiz'))),
+  ).toHaveLength(1);
+});
+
+test('quiz submission completes its attached learn activity after pass or fail', async () => {
+  const activities = await activityFixture();
+  const run = await finishLessonSteps(activities.learn.id);
+  const started = (await (await startQuiz(activities.learn.id)).json()).run;
+  await answerQuizAttempt(started.quiz, true, activities.learn.id);
+  const submitted = await submitQuiz(activities.learn.id);
+  expect(submitted.status).toBe(200);
+  const [completedActivity] = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, activities.learn.id));
+  const [nextActivity] = await db
+    .select()
+    .from(sessionActivities)
+    .where(eq(sessionActivities.id, activities.next.id));
+  expect(completedActivity?.status).toBe('completed');
+  expect(nextActivity?.status).toBe('in_progress');
+  expect(run.status).toBe('quiz');
 });
 
 test('template guards and tutor threads safely support unanswered lesson problems', async () => {
