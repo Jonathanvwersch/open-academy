@@ -53,7 +53,13 @@ export interface LearnPayload {
     xp: number;
     recommended: boolean;
   }>;
-  doneToday: Array<{ label: string; title: string; xp: number; completedAt: string }>;
+  doneToday: Array<{
+    activityId: string;
+    label: string;
+    title: string;
+    xp: number;
+    completedAt: string;
+  }>;
   activeSessionId: string | null;
 }
 

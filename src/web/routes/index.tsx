@@ -202,7 +202,7 @@ function LearnPage() {
                 <ul className="space-y-3">
                   {data.doneToday.map((item) => (
                     <li
-                      key={`${item.label}-${item.title}-${item.completedAt}`}
+                      key={item.activityId}
                       className="flex items-start justify-between gap-3 text-sm"
                     >
                       <div className="min-w-0">

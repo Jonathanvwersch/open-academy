@@ -503,6 +503,10 @@ test('available project rows display learner progress', async ({ page }) => {
 
 test('navigation cleanup pages render at desktop and mobile widths', async ({ page }) => {
   await markDiagnosticComplete();
+  const duplicateKeyWarnings: string[] = [];
+  page.on('console', (message) => {
+    if (/same key/i.test(message.text())) duplicateKeyWarnings.push(message.text());
+  });
   await page.route('**/api/learn', async (route) => {
     const response = await route.fetch({
       headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
@@ -510,12 +514,21 @@ test('navigation cleanup pages render at desktop and mobile widths', async ({ pa
     const payload = await response.json();
     payload.doneToday = [
       {
+        activityId: 'activity-first-session',
         label: 'Lesson',
         title: 'Vectors',
         xp: 20,
         completedAt: '2026-01-01T10:00:00.000Z',
       },
       {
+        activityId: 'activity-second-session',
+        label: 'Lesson',
+        title: 'Vectors',
+        xp: 20,
+        completedAt: '2026-01-01T10:00:00.000Z',
+      },
+      {
+        activityId: 'activity-practice',
         label: 'Practice',
         title: 'Dot product practice',
         xp: 10,
@@ -532,8 +545,9 @@ test('navigation cleanup pages render at desktop and mobile widths', async ({ pa
   const doneTodayCard = page
     .locator('[data-slot="card"]')
     .filter({ has: page.getByRole('heading', { name: 'Done today' }) });
-  await expect(doneTodayCard.getByText('Vectors', { exact: true })).toBeVisible();
+  await expect(doneTodayCard.getByText('Vectors', { exact: true }).first()).toBeVisible();
   await expect(doneTodayCard.getByText('Dot product practice', { exact: true })).toBeVisible();
+  expect(duplicateKeyWarnings).toEqual([]);
   await page.screenshot({
     path: `${navCleanupScreenshotDir}/home-desktop.png`,
     fullPage: true,

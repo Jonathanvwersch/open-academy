@@ -217,6 +217,7 @@ export function registerLearnCourseRoutes(
             .reduce((total, event) => total + event.amount, 0)
         : 0;
       return {
+        activityId: activity.id,
         label: activityLabel(activity.kind),
         title:
           (activity.conceptId && index.conceptsById.get(activity.conceptId)?.title) ??

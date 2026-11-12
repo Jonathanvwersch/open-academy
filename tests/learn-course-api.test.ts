@@ -604,6 +604,7 @@ test('active-session tasks, done-today activity, and local-date KP XP are return
   });
   expect(learn.doneToday).toEqual([
     {
+      activityId: expect.any(String),
       label: 'Practice',
       title: 'Vectors and vector operations',
       xp: 12,
