@@ -77,7 +77,9 @@ summary: "..."
 ```
 `recap` is optional. If present, include exactly one entry for every prerequisite that has an authored lesson. Each `concept` must be a prerequisite with an authored lesson, and its `text` must state one fact in at most 40 words. The lesson shows each prerequisite as a link with its recap; without this field, it shows the usual “Before this” links instead. When a recap is present, `where_this_fits` is rendered as plain lesson prose below the Recap card.
 
-Knowledge-point IDs are globally unique. Each point needs 3 or more practice problems, at least one fixed problem, and either 5 fixed problems or a parameterised template. The loader derives legacy-compatible objective, intuition, worked, check, and summary blocks; each check uses the point's first fixed problem.
+Knowledge-point lessons have 1–4 steps, as many as the topic needs. The first problem in each step is the concept multiple-choice question, marked `role: basics` in content but labelled like every other question.
+
+Knowledge-point IDs are globally unique. Each point needs at least 5 practice problems across difficulties 1–3, with at least one fixed problem. A parameterised template may provide fresh values when fixed items are exhausted. These questions supply both step practice and the lesson quiz. The loader derives legacy-compatible objective, intuition, worked, check, and summary blocks; each check uses the point's first fixed problem.
 
 ## content/exercises/<concept-id>.yaml
 ```yaml
@@ -117,10 +119,12 @@ Type-specific fields:
 
 `category` / mistake categories: missing_prerequisite | misunderstood_definition | math_error | incorrect_reasoning | implementation_error | misapplied_technique | recall_failure | incomplete_explanation.
 
-Knowledge-point lessons require a `final` exercise ID. It must identify a core `explain`
-exercise for the same concept and must not appear in any knowledge point's `problems`. The
-loader adds this exercise as the final check block, after the knowledge points and before the
-summary. See the [write-lesson skill](../.agents/skills/write-lesson/SKILL.md) for authoring guidance.
+Knowledge-point lessons require a `final` exercise ID. It is the "Explain it" self-check before
+the quiz: the learner sees the model answer and marks their own work, so it is not part of the
+quiz score. It must identify a core `explain` exercise for the same concept and must not appear
+in any knowledge point's `problems`. The loader adds this exercise as the final check block,
+after the knowledge points and before the summary. See the
+[write-lesson skill](../.agents/skills/write-lesson/SKILL.md) for authoring guidance.
 
 Fenced `svg` blocks in lesson and exercise Markdown render as accessible diagrams. Each SVG
 must be well-formed XML with an `<svg>` root, a `viewBox`, and a non-empty `aria-label`.

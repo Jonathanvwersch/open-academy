@@ -78,10 +78,23 @@ function CoursePage() {
                               <>
                                 {topic.status === 'locked' ? (
                                   <span className="text-xs text-muted-foreground">
-                                    Needs{' '}
-                                    {topic.needs
-                                      ?.map((prerequisite) => prerequisite.title)
-                                      .join(', ')}
+                                    {topic.needs?.some((prerequisite) => prerequisite.quiz) ? (
+                                      <>
+                                        Pass the{' '}
+                                        {
+                                          topic.needs.find((prerequisite) => prerequisite.quiz)
+                                            ?.title
+                                        }{' '}
+                                        quiz first
+                                      </>
+                                    ) : (
+                                      <>
+                                        Needs{' '}
+                                        {topic.needs
+                                          ?.map((prerequisite) => prerequisite.title)
+                                          .join(', ')}
+                                      </>
+                                    )}
                                   </span>
                                 ) : topic.status !== 'not_started' ? (
                                   <Badge
@@ -89,7 +102,9 @@ function CoursePage() {
                                     className={
                                       topic.status === 'complete'
                                         ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                        : ''
+                                        : topic.status === 'quiz'
+                                          ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200'
+                                          : ''
                                     }
                                   >
                                     {COURSE_STATUS_LABEL[topic.status]}
@@ -111,10 +126,23 @@ function CoursePage() {
                               <span className="text-xs text-muted-foreground">
                                 {topic.status === 'locked' ? (
                                   <>
-                                    Needs{' '}
-                                    {topic.needs
-                                      ?.map((prerequisite) => prerequisite.title)
-                                      .join(', ')}{' '}
+                                    {topic.needs?.some((prerequisite) => prerequisite.quiz) ? (
+                                      <>
+                                        Pass the{' '}
+                                        {
+                                          topic.needs.find((prerequisite) => prerequisite.quiz)
+                                            ?.title
+                                        }{' '}
+                                        quiz first
+                                      </>
+                                    ) : (
+                                      <>
+                                        Needs{' '}
+                                        {topic.needs
+                                          ?.map((prerequisite) => prerequisite.title)
+                                          .join(', ')}
+                                      </>
+                                    )}{' '}
                                     ·{' '}
                                   </>
                                 ) : null}
@@ -137,7 +165,9 @@ function CoursePage() {
                       ? 'text-muted-foreground opacity-60'
                       : topic.status === 'complete'
                         ? 'bg-emerald-50/70 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200'
-                        : ''
+                        : topic.status === 'quiz'
+                          ? 'bg-amber-50/70 dark:bg-amber-950/20'
+                          : ''
                   }`;
                   return (
                     <li key={topic.conceptId}>
@@ -272,5 +302,6 @@ function CoursePage() {
 const COURSE_STATUS_LABEL = {
   not_started: 'Not started',
   in_progress: 'In progress',
+  quiz: 'Quiz not passed',
   complete: 'Complete',
 } as const;

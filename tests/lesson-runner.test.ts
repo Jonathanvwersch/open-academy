@@ -52,7 +52,7 @@ function selectionRow(
   correct: number | null = null,
   seed: number | null = null,
 ) {
-  return { exerciseId, position, correct, seed };
+  return { exerciseId, position, correct, seed, servedAt: new Date(position * 1000) };
 }
 
 function derive(
@@ -70,19 +70,15 @@ function derive(
   return deriveLessonState(lesson, problems, exercises);
 }
 
-test('matches an independent reference for every right/wrong sequence of lengths 1–6', () => {
+test('basics-inclusive streaks match the reference for every right/wrong sequence of lengths 1–6', () => {
   function reference(sequence: number[]) {
     let streak = 0;
     let answered = 0;
-    for (const correct of sequence.slice(1)) {
+    for (const correct of sequence) {
       answered += 1;
       streak = correct === 1 ? streak + 1 : 0;
       if (streak === 2) return { status: 'passed', answered, streak: 2 };
-      if (answered === 4 && correct !== 1) {
-        return { status: 'failed', answered, streak };
-      }
     }
-    if (answered === 5) return { status: 'failed', answered, streak };
     return { status: 'active', answered, streak };
   }
 
@@ -95,30 +91,24 @@ test('matches an independent reference for every right/wrong sequence of lengths
       );
       expect(state.points[0]).toMatchObject(reference(sequence));
       expect(state.points[0]?.status).toBe(reference(sequence).status);
-      expect(state.status).toBe(
-        reference(sequence).status === 'failed'
-          ? 'needs_retry'
-          : reference(sequence).status === 'passed'
-            ? 'completed'
-            : 'in_progress',
-      );
+      expect(state.status).toBe(reference(sequence).status === 'passed' ? 'quiz' : 'in_progress');
     }
   }
 });
 
-test('basics answers do not increment, reset, or pass the streak', () => {
+test('basics answers count toward the streak and can finish the step', () => {
   const wrongBasics = derive(lesson, [row(1, 0), row(2, 1), row(3, 1)]);
   expect(wrongBasics.points[0]).toMatchObject({
     status: 'passed',
-    answered: 2,
+    answered: 3,
     streak: 2,
   });
 
   const correctBasics = derive(lesson, [row(1, 1), row(2, 1)]);
   expect(correctBasics.points[0]).toMatchObject({
-    status: 'active',
-    answered: 1,
-    streak: 1,
+    status: 'passed',
+    answered: 2,
+    streak: 2,
   });
 });
 
@@ -136,7 +126,18 @@ test('lesson state excludes basics by role rather than by problem position', () 
 
 test('only a score of exactly one contributes to the streak', () => {
   const state = derive(lesson, [row(1, 1), row(2, 0.5)]);
-  expect(state.points[0]).toMatchObject({ status: 'active', answered: 1, streak: 0 });
+  expect(state.points[0]).toMatchObject({ status: 'active', answered: 2, streak: 0 });
+});
+
+test('five or more misses do not fail an active step', () => {
+  const state = derive(
+    lesson,
+    Array.from({ length: 7 }, (_, index) => row(index + 1, 0)),
+  );
+  expect(state).toMatchObject({
+    status: 'in_progress',
+    points: [{ status: 'active', round: 1, answered: 7, streak: 0 }],
+  });
 });
 
 test('last answered uses answer time, then authored point order, round and position', () => {
@@ -159,7 +160,7 @@ test('last answered uses answer time, then authored point order, round and posit
   });
 });
 
-test('problem selection keeps authored order for equal difficulty, cycles templates, and caps at five', () => {
+test('problem selection keeps authored order for equal difficulty and continues serving templates', () => {
   const fixed = (id: string) => numericExercise(id, 1);
   const template = (id: string) => numericExercise(id, 1, true);
   const basics = ExerciseSchema.parse({
@@ -188,7 +189,7 @@ test('problem selection keeps authored order for equal difficulty, cycles templa
   const served: Array<ReturnType<typeof selectionRow>> = [];
   const take = (seed: number) => {
     const selected = selectNextProblem(kp, exercises, served, seed);
-    if (selected) served.push({ ...selected, correct: null });
+    if (selected) served.push({ ...selected, correct: null, servedAt: new Date(seed * 1000) });
     return selected;
   };
   expect(take(100)).toEqual({ exerciseId: 'kp-basics', seed: null, position: 1 });
@@ -197,10 +198,10 @@ test('problem selection keeps authored order for equal difficulty, cycles templa
   expect(take(103)).toEqual({ exerciseId: 'fixed-b', seed: null, position: 4 });
   expect(take(104)).toEqual({ exerciseId: 'template-b', seed: 104, position: 5 });
   expect(take(105)).toEqual({ exerciseId: 'template-a', seed: 105, position: 6 });
-  expect(take(106)).toBeUndefined();
+  expect(take(106)).toEqual({ exerciseId: 'template-b', seed: 106, position: 7 });
   expect(
     new Set(served.filter((problem) => problem.seed !== null).map((item) => item.seed)).size,
-  ).toBe(3);
+  ).toBe(4);
   expect(served.filter((problem) => problem.seed === null).map((item) => item.exerciseId)).toEqual([
     'kp-basics',
     'fixed-a',
@@ -211,7 +212,9 @@ test('problem selection keeps authored order for equal difficulty, cycles templa
   const usedSeeds = new Set([101, 103, 104]);
   const retryTake = (seed: number) => {
     const selected = selectNextProblem(kp, exercises, retryProblems, seed, usedSeeds);
-    if (selected) retryProblems.push({ ...selected, correct: null });
+    if (selected) {
+      retryProblems.push({ ...selected, correct: null, servedAt: new Date(seed * 1000) });
+    }
     return selected;
   };
   expect(retryTake(101)).toEqual({ exerciseId: 'kp-basics', seed: null, position: 1 });
@@ -222,17 +225,22 @@ test('problem selection keeps authored order for equal difficulty, cycles templa
   const fixedOnlyRows: Array<ReturnType<typeof selectionRow>> = [];
   for (const seed of [200, 201, 202]) {
     const selected = selectNextProblem(fixedOnly, exercises, fixedOnlyRows, seed);
-    if (selected) fixedOnlyRows.push({ ...selected, correct: null });
+    if (selected) {
+      fixedOnlyRows.push({ ...selected, correct: null, servedAt: new Date(seed * 1000) });
+    }
   }
   expect(fixedOnlyRows.map((problem) => problem.exerciseId)).toEqual([
     'kp-basics',
     'fixed-a',
     'fixed-b',
   ]);
-  expect(selectNextProblem(fixedOnly, exercises, fixedOnlyRows, 203)).toBeUndefined();
+  expect(selectNextProblem(fixedOnly, exercises, fixedOnlyRows, 203)).toMatchObject({
+    exerciseId: 'fixed-a',
+    position: 4,
+  });
 });
 
-test('basics does not use one of the five problem slots', () => {
+test('basics is served first and exhausted fixed pools reuse a previously served item', () => {
   const basics = ExerciseSchema.parse({
     id: 'kp-basics',
     dimension: 'conceptual',
@@ -288,7 +296,7 @@ test('basics does not use one of the five problem slots', () => {
       [...fourNonBasics, { exerciseId: 'e', seed: null, position: 6, correct: null }],
       11,
     ),
-  ).toBeUndefined();
+  ).toMatchObject({ exerciseId: 'a', position: 7 });
 });
 
 test('a correct answer at difficulty one or two moves to the next higher level', () => {
@@ -430,7 +438,7 @@ test('template fallback follows difficulty and favors the least-served tied temp
   ).toEqual({ exerciseId: 'template-d2-second', seed: 105, position: 5 });
 });
 
-test('retry uses only the latest round and resumes the failed knowledge point', () => {
+test('a legacy five-answer round continues in place without failing the step', () => {
   const multiPointLesson = {
     knowledge_points: [point('first', ['a', 'b']), point('second', ['c', 'd'])],
   };
@@ -443,7 +451,6 @@ test('retry uses only the latest round and resumes the failed knowledge point', 
     row(3, 0, 'second'),
     row(4, 0, 'second'),
     row(5, 0, 'second'),
-    row(1, null, 'second', 2),
   ];
   const state = derive(multiPointLesson, rows);
   expect(state).toMatchObject({
@@ -451,9 +458,8 @@ test('retry uses only the latest round and resumes the failed knowledge point', 
     currentPointId: 'second',
     points: [
       { status: 'passed', round: 1 },
-      { status: 'active', round: 2, answered: 0 },
+      { status: 'active', round: 1, answered: 5 },
     ],
-    pending: { knowledgePointId: 'second', round: 2, position: 1 },
   });
 });
 
@@ -466,12 +472,27 @@ test('stale knowledge-point rows are ignored and a lesson without points is safe
   });
   expect(stale.lastAnswered).toBeUndefined();
   expect(derive({}, [row(1, 1)])).toMatchObject({
-    status: 'completed',
+    status: 'quiz',
     points: [],
   });
 });
 
-test('passed-point XP follows the exported hypothesis table', () => {
-  expect([2, 3, 4, 5].map(xpForPassedPoint)).toEqual([10, 9, 8, 7]);
+test('passed-point XP follows the specified problems-used table', () => {
+  expect([2, 3, 4, 5, 8].map(xpForPassedPoint)).toEqual([10, 9, 8, 7, 7]);
   expect(xpForPassedPoint(1)).toBe(0);
+});
+
+test('practice-only answers do not affect step progress or run status', () => {
+  const practice = { ...row(2, 0, 'kp'), practiceOnly: true };
+  expect(derive(lesson, [row(1, 1), practice])).toMatchObject({
+    status: 'in_progress',
+    points: [{ status: 'active', answered: 1, streak: 1 }],
+  });
+});
+
+test('all steps enter quiz until quiz_passed_at is set', () => {
+  const rows = [row(1, 1), row(2, 1)];
+  const exercises = new Map(rows.map((item) => [item.exerciseId, { role: 'practice' as const }]));
+  expect(deriveLessonState(lesson, rows, exercises).status).toBe('quiz');
+  expect(deriveLessonState(lesson, rows, exercises, new Date()).status).toBe('completed');
 });

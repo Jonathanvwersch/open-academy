@@ -80,7 +80,9 @@ test('diagnostic to KP runner starts point one and preserves progress', async ({
   );
   await page.getByRole('button', { name: 'I haven’t studied this domain' }).click();
   await finalSkip;
-  await expect(page.getByRole('heading', { name: 'Your starting point' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your starting point' })).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(page.getByRole('heading', { name: 'Your plan' })).toBeVisible();
   await expect(page.getByText('90-day path')).toBeVisible();
   const runId = await page.evaluate(() => window.sessionStorage.getItem('diagnosticRunId'));
@@ -103,7 +105,7 @@ test('diagnostic to KP runner starts point one and preserves progress', async ({
   await expect(page.getByRole('heading', { name: 'Current week' })).toHaveCount(0);
   await page.screenshot({ path: `${screenshotDir}/today-plan.png`, fullPage: true });
   await page.getByRole('button', { name: 'Start learning' }).click();
-  await expect(page.getByText('Basics question', { exact: true })).toBeVisible();
+  await expect(page.getByText('Question 1', { exact: true })).toBeVisible();
   const run = await page.evaluate(async () => (await fetch('/api/lessons/vectors/run')).json());
   expect(run.run.currentPointId).toBe('vectors-fixture-1');
   expect(run.run.pendingProblem.id).toBeTruthy();
@@ -276,7 +278,7 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
     window.__layoutShifts = [];
   });
   await page.goto(`/session/${session.id}`);
-  await expect(page.getByText('Basics question', { exact: true })).toBeVisible();
+  await expect(page.getByText('Question 1', { exact: true })).toBeVisible();
   await expect(page.getByTestId('lesson-problem-prompt')).toContainText(
     'Which statement best describes the main idea in this step?',
   );

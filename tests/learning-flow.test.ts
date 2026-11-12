@@ -8,6 +8,7 @@ import { createDb } from '../src/server/db/client.js';
 import {
   attempts,
   hintEvents,
+  lessonQuizItems,
   lessonRuns,
   masteryEvents,
   reviewCards,
@@ -112,7 +113,7 @@ async function answerLessonProblem(
 
 async function passLessonRun(conceptId: string, activityId: string, now: string) {
   let run = await startLessonRun(conceptId, activityId, now);
-  for (let count = 0; count < 20 && run.status !== 'completed'; count += 1) {
+  for (let count = 0; count < 20 && run.status === 'in_progress'; count += 1) {
     if (!run.pending) run = await startLessonRun(conceptId, activityId, now);
     const pending = run.pending as
       | { id: string; exerciseId: string; seed: number | null }
@@ -122,7 +123,36 @@ async function passLessonRun(conceptId: string, activityId: string, now: string)
     expect(response.status).toBe(200);
     run = (await response.json()).state;
   }
-  expect(run.status).toBe('completed');
+  expect(run.status).toBe('quiz');
+  const quizStart = await app.request(`/api/lessons/${conceptId}/quiz/start`, {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ activityId }),
+  });
+  expect(quizStart.status).toBe(200);
+  const quiz = (await quizStart.json()).run.quiz;
+  const items = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, quiz.current.attemptId));
+  for (const item of items) {
+    const response = await app.request(`/api/lessons/${conceptId}/quiz/answer`, {
+      method: 'POST',
+      headers: headersAt(now),
+      body: JSON.stringify({
+        activityId,
+        itemId: item.id,
+        answer: correctAnswer(item.exerciseId, item.seed),
+      }),
+    });
+    expect(response.status).toBe(200);
+  }
+  const submitted = await app.request(`/api/lessons/${conceptId}/quiz/submit`, {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ activityId }),
+  });
+  expect(submitted.status).toBe(200);
 }
 
 async function createLearnActivity(now: string) {

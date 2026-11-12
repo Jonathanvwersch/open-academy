@@ -1,7 +1,7 @@
 import type { MasteryState } from './types.js';
 import { masteryRank } from './types.js';
 
-export type CourseTopicStatus = 'locked' | 'not_started' | 'in_progress' | 'complete';
+export type CourseTopicStatus = 'locked' | 'not_started' | 'in_progress' | 'quiz' | 'complete';
 
 const masteryLabels: Record<MasteryState, string> = {
   not_assessed: 'Not started',
@@ -22,18 +22,18 @@ export function masteryLabel(state: MasteryState): string {
 }
 
 export function topicIsComplete(
-  lessonRunStatus: 'in_progress' | 'needs_retry' | 'completed' | undefined,
+  lessonRunStatus: 'in_progress' | 'needs_retry' | 'quiz' | 'completed' | undefined,
   dimensionStates: readonly MasteryState[],
 ): boolean {
+  if (lessonRunStatus) return lessonRunStatus === 'completed';
   return (
-    lessonRunStatus === 'completed' ||
-    (dimensionStates.length > 0 &&
-      dimensionStates.every((state) => masteryRank(state) >= masteryRank('assisted')))
+    dimensionStates.length > 0 &&
+    dimensionStates.every((state) => masteryRank(state) >= masteryRank('assisted'))
   );
 }
 
 export function topicStatus(input: {
-  lessonRunStatus?: 'in_progress' | 'needs_retry' | 'completed';
+  lessonRunStatus?: 'in_progress' | 'needs_retry' | 'quiz' | 'completed';
   dimensionStates: readonly MasteryState[];
   prerequisites: readonly { strength: 'hard' | 'soft'; done: boolean }[];
 }): CourseTopicStatus {
@@ -50,5 +50,6 @@ export function topicStatus(input: {
   ) {
     return 'locked';
   }
+  if (input.lessonRunStatus === 'quiz') return 'quiz';
   return started ? 'in_progress' : 'not_started';
 }

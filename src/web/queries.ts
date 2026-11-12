@@ -81,9 +81,9 @@ export interface CoursePayload {
       conceptId: string;
       title: string;
       hasLesson: boolean;
-      status: 'locked' | 'not_started' | 'in_progress' | 'complete';
+      status: 'locked' | 'not_started' | 'in_progress' | 'quiz' | 'complete';
       mastery: 'Not started' | 'Attempted' | 'Familiar' | 'Proficient' | 'Mastered';
-      needs?: Array<{ id: string; title: string }>;
+      needs?: Array<{ id: string; title: string; quiz?: boolean }>;
       buildsOn: Array<{ id: string; title: string }>;
       leadsTo: Array<{ id: string; title: string }>;
       leadsToMore: number;
@@ -117,6 +117,7 @@ export interface SessionActivity {
     lessonViewed?: boolean;
     lessonRunnerContinued?: boolean;
     finalQuestionContinued?: boolean;
+    quizContinued?: boolean;
     completedExerciseIds?: string[];
     outcomes?: Record<string, 'correct' | 'incorrect'>;
   };
@@ -156,7 +157,7 @@ export type ExercisePayload = ClientExercise;
 export interface LessonRunPayload {
   run: null | {
     id: string;
-    status: 'in_progress' | 'needs_retry' | 'completed';
+    status: 'in_progress' | 'needs_retry' | 'quiz' | 'completed';
     where_this_fits?: string;
     prerequisites?: LessonPrerequisite[];
     points: Array<{
@@ -186,6 +187,16 @@ export interface LessonRunPayload {
       seed: number | null;
       exercise: ClientExercise;
     };
+    pendingPracticeProblem?: {
+      id: string;
+      knowledgePointId: string;
+      round: number;
+      position: number;
+      exerciseId: string;
+      seed: number | null;
+      practiceOnly: true;
+      exercise: ClientExercise;
+    };
     lastAnswered?: {
       id: string;
       knowledgePointId: string;
@@ -200,6 +211,7 @@ export interface LessonRunPayload {
       correct: number | null;
       round: number;
       position: number;
+      practiceOnly?: boolean;
       activityId?: string | null;
       exercise: ClientExercise;
       result: {
@@ -212,6 +224,31 @@ export interface LessonRunPayload {
       };
     };
     xpEarned: number;
+    quiz: {
+      status: 'not_started' | 'in_progress' | 'failed' | 'passed';
+      passMark: number;
+      questionCount: number;
+      current?: {
+        attemptId: string;
+        items: Array<{
+          id: string;
+          position: number;
+          exercise: ClientExercise | null;
+          answered: boolean;
+        }>;
+      };
+      last?: {
+        attemptId: string;
+        attemptNo: number;
+        score: number;
+        correctCount: number;
+        total: number;
+        passed: boolean;
+        perStep: Array<{ pointId: string; title: string; correct: number; total: number }>;
+      };
+      bestPassed: boolean;
+      xpAwarded: number;
+    };
   };
 }
 

@@ -729,7 +729,7 @@ test('knowledge-point lessons derive the legacy block shape', () => {
   expect(lesson.knowledge_points).toHaveLength(2);
 });
 
-test('knowledge-point lesson schema requires between two and four points', () => {
+test('knowledge-point lesson schema requires between one and four points', () => {
   const point = {
     id: 'kp-one',
     title: 'Title',
@@ -741,10 +741,16 @@ test('knowledge-point lesson schema requires between two and four points', () =>
     concept: 'vectors',
     version: 3,
     objective: 'Goal.',
+    where_this_fits: 'The lesson context.',
     final: 'final-explain',
     summary: 'Summary.',
   };
-  expect(LessonSchema.safeParse({ ...base, knowledge_points: [point] }).success).toBe(false);
+  expect(
+    LessonSchema.safeParse({
+      ...base,
+      knowledge_points: [{ ...point, problems: ['concept-question'] }],
+    }).success,
+  ).toBe(true);
   expect(
     LessonSchema.safeParse({
       ...base,

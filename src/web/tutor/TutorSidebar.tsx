@@ -917,6 +917,7 @@ export function TutorLauncher({
       type="button"
       variant="outline"
       size="sm"
+      disabled={context.allowed === false}
       onClick={() => tutor.startChat(context, greeting)}
     >
       {children}

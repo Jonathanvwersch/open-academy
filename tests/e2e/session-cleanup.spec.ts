@@ -307,6 +307,10 @@ test('knowledge-point lesson review shows explanations, final check and summary 
 test('legacy lesson review presents labelled blocks as cards with checks inside', async ({
   page,
 }) => {
+  test.skip(
+    process.env.PLAYWRIGHT_CONTENT_DIR !== 'content',
+    'requires the repository content directory',
+  );
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.route('**/api/lessons/train-test-split/review', (route) =>
     route.fulfill({

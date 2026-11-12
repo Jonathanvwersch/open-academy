@@ -6,7 +6,7 @@ description: How to write or rewrite an Open Academy lesson (content/lessons/*.y
 
 # Writing a lesson
 
-A lesson teaches one concept. It opens by recapping what the learner needs and saying what the new idea is, then teaches it in 2–4 **steps** (knowledge points, KPs), each ending with questions, and closes with a summary. The file format is in `docs/CONTENT_FORMAT.md`. This skill covers _how to explain_, and everything you need is in it. When a rule and clarity conflict, choose clarity and say why in the PR.
+A lesson teaches one concept. It opens by recapping what the learner needs and saying what the new idea is, then teaches it in 1–4 **steps** (knowledge points, KPs), as many as the topic needs, each ending with questions, and closes with a summary. The file format is in `docs/CONTENT_FORMAT.md`. This skill covers _how to explain_, and everything you need is in it. When a rule and clarity conflict, choose clarity and say why in the PR.
 
 The structure comes from the way Khan Academy's best teaching articles are built. A learner first sees what they need to remember, then a plain answer to "what is this?", then why it's useful, then how it works, with a picture before the formula, then examples, then where it goes wrong, and finally a summary. Each part answers the question a learner naturally has at that point, so the lesson reads as one explanation rather than a form.
 
@@ -15,7 +15,7 @@ The structure comes from the way Khan Academy's best teaching articles are built
 ```
 recap            → "Recap" list: each prerequisite lesson, linked, with the one fact you need from it
 where_this_fits  → "### What is X?": what it is in plain words, then why it's useful
-knowledge_points → 2–4 steps, each: how this part works → examples → questions
+knowledge_points → 1–4 steps, each: how this part works → examples → questions
                    (a "Limitations" section goes in the step it belongs to, when the topic has real ones)
 final, summary   → one written question, then bullets restating the main results
 ```
@@ -58,13 +58,13 @@ Then the `worked` example, then the questions.
 
 **Code** (when the concept's objective includes implementing the idea). Put a short, runnable code block (Python unless the course says otherwise) at the end of the `worked` example of the step that implements it, after the calculation by hand, and use the same numbers so the learner can match the two. Before the block, explain in a sentence any syntax a learner new to the language might not know. Show what it prints in a comment at the end, and run it to check that it prints exactly that.
 
-**Questions at the end of each step** (`problems`, in order; the runner starts easy and steps up). Put the `basics` MC question first. Then add one self-explanation question about the worked example ("Why does step 2 use the dot product?"), written as an `mc` whose options are plausible reasons, each wrong one with its own `feedback`. Knowledge-point problems can't be `explain` type; only the lesson `final` is. After that, go from partly worked to full and from easy to hard, with difficulty 1, 2 and 3 all present. The last problems use a new setting, such as a different function or a robot.
+**Questions at the end of each step** (`problems`, in order; the runner starts easy and steps up). Put the concept multiple-choice question first; keep `role: basics` as its content marker, but label and count it like every other question. Then add one self-explanation question about the worked example ("Why does step 2 use the dot product?"), written as an `mc` whose options are plausible reasons, each wrong one with its own `feedback`. Knowledge-point problems can't be `explain` type; only the lesson `final` is. Each step needs at least five problems across difficulties 1, 2 and 3, because those questions supply both step practice and the lesson quiz. Go from partly worked to full and from easy to hard. The last problems use a new setting, such as a different function or a robot.
 
 **Step titles.** Each step's `title` is shown under the lesson name while the learner works through it. Write it in plain words that a beginner understands _before_ reading the step, saying what the step does ("Take one step downhill", "Multiply a matrix by a vector"). At most about 6 words. No slogans, no wordplay, and no term that only the step itself explains ("Step against the gradient" fails).
 
 ### The end (`final`, `summary`)
 
-- **final:** one `explain` question that makes the learner connect the steps in their own words, because recalling beats rereading. Give it 2–3 rubric criteria and an exemplar.
+- **final:** the "Explain it" self-check before the quiz. It is one `explain` question that makes the learner connect the steps in their own words, because recalling beats rereading. The learner sees the model answer and marks their own work, so it is not part of the quiz score. Give it 2–3 rubric criteria and an exemplar.
 - **summary:** 3–4 bullets that restate the main results, each a complete sentence a learner could revise from, formula included where there is one. Add nothing new. Finish with the `**Next:**` line saying what the next lesson does with this idea.
 
 ## 2. How a lesson should sound
@@ -142,7 +142,7 @@ Every step whose idea is spatial (directions, slopes, surfaces, arrows, splits, 
 
 ## 5. Problems
 
-- Each step: the `basics` MC, then ≥5 fixed problems or a template, covering difficulty 1, 2 and 3.
+- Each step: a concept MC first (marked `role: basics` in content but labelled like every other question), then at least five problems across difficulties 1, 2 and 3.
 - Mix: recognition, computation (a parameterised template when there is arithmetic), misconception MC (each wrong option is a real mistake, with its own `feedback`), and application in a new setting.
 - Every problem has a 1–3 sentence `solution` that says _why_. MC options are of similar length, with no "all of the above".
 - Problems test this step and earlier ones, never later ones.
@@ -155,7 +155,7 @@ Every step whose idea is spatial (directions, slopes, surfaces, arrows, splits, 
    - the plain-words answer to "what is it?";
    - why it's useful, and why what the learner already knows isn't enough;
    - the one fact needed from each prerequisite (the recap);
-   - the 2–4 steps, in the order the learner needs them;
+   - the 1–4 steps, in the order the learner needs them;
    - the real limitations, if any, and the traps a beginner will fall into, each written as the wrong thought they'd have ("Isn't a zigzag a sign it's failing?"). In the lesson, each trap becomes a "Be careful…" sentence (§1).
 3. Pick the **simplest case you can picture** for each step, e.g. 2 inputs rather than 4, and numbers that come out clean ((3, 4) → 5, not 40√554).
 

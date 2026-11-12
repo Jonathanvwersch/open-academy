@@ -18,6 +18,7 @@ const mcShuffleScreenshotDir = '/home/ubuntu/screenshots/mc-shuffle';
 const buttonLoadingScreenshotDir = '/home/ubuntu/screenshots/button-loading';
 const finalContinueScreenshotDir = '/home/ubuntu/screenshots/final-continue';
 const checkpointScreenshotDir = '/home/ubuntu/screenshots/kp-checkpoint';
+const lessonQuizScreenshotDir = '/home/ubuntu/shots/lesson-quiz';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
@@ -26,6 +27,7 @@ mkdirSync(mcShuffleScreenshotDir, { recursive: true });
 mkdirSync(buttonLoadingScreenshotDir, { recursive: true });
 mkdirSync(finalContinueScreenshotDir, { recursive: true });
 mkdirSync(checkpointScreenshotDir, { recursive: true });
+mkdirSync(lessonQuizScreenshotDir, { recursive: true });
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -124,9 +126,13 @@ async function answerAndReload(page: Page, correct: boolean, runConceptId = conc
   const body = await response.json();
   expect(response.status()).toBe(200);
   await page.reload();
-  await expect(page.getByRole('status')).toContainText(correct ? 'Correct' : 'Not quite');
-  await expect(page.getByTestId('lesson-problem')).toHaveAttribute('data-problem-id', problem.id);
-  await expect(page.getByTestId('lesson-problem-prompt')).toBeVisible();
+  if (body.state.status === 'in_progress') {
+    await expect(page.getByRole('status')).toContainText(correct ? 'Correct' : 'Not quite');
+    await expect(page.getByTestId('lesson-problem')).toHaveAttribute('data-problem-id', problem.id);
+    await expect(page.getByTestId('lesson-problem-prompt')).toBeVisible();
+  } else {
+    await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
+  }
   expect(await currentRun(page, runConceptId)).toEqual(body.state);
   expect(body.state.lastAnsweredProblem.id).toBe(problem.id);
   return body.state;
@@ -187,7 +193,7 @@ async function nextProblemAndReload(
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   }
   await page.reload();
-  await expect(page.getByText(/^(?:Basics question|Problem \d+ · up to 5)$/)).toBeVisible();
+  await expect(page.getByText(/^Question \d+$/)).toBeVisible();
   expect(await currentRun(page, runConceptId)).toEqual(body.run);
   return body.run;
 }
@@ -391,6 +397,8 @@ test('passes every knowledge point and restores the exact problem and result aft
   let run = await currentRun(page);
   expect(run.pendingProblem.exercise.role).toBe('basics');
   expect(run.pendingProblem.exercise.id).toBe(`${run.points[0].id}-basics`);
+  await expect(page.getByText('Question 1', { exact: true })).toBeVisible();
+  await page.screenshot({ path: `${lessonQuizScreenshotDir}/step-question.png`, fullPage: true });
   await expect(page.getByTestId('lesson-problem-prompt')).toContainText(
     'Which statement best describes the main idea in this step?',
   );
@@ -401,11 +409,10 @@ test('passes every knowledge point and restores the exact problem and result aft
   await firstDisplayedOption.focus();
   await page.keyboard.press('1');
   await expect(firstDisplayedOption).toHaveAttribute('aria-checked', 'true');
-  await expect(page.getByLabel('0 correct in a row')).toHaveCount(0);
+  await expect(page.getByLabel('0 correct in a row')).toBeVisible();
   run = await answerAndReload(page, true);
-  expect(run.points[0]).toMatchObject({ status: 'active', answered: 0, streak: 0 });
-  await expect(page.getByLabel('0 correct in a row')).toHaveCount(0);
-  await expect(page.getByLabel('1 correct in a row')).toHaveCount(0);
+  expect(run.points[0]).toMatchObject({ status: 'active', answered: 1, streak: 1 });
+  await expect(page.getByLabel('1 correct in a row')).toBeVisible();
 
   for (let pointIndex = 0; pointIndex < run.points.length; pointIndex += 1) {
     while (run.points[pointIndex].status !== 'passed') {
@@ -420,7 +427,7 @@ test('passes every knowledge point and restores the exact problem and result aft
       }
       if (pointIndex === 0 && run.points[0].status === 'passed') {
         await expect(page.getByText('Correct · +10 XP')).toBeVisible();
-        await expect(page.getByText('Problem 2 · up to 5')).toBeVisible();
+        await expect(page.getByText('Question 2', { exact: true })).toBeVisible();
         await expect(page.getByText('Your answer:')).toHaveCount(0);
         await expect(page.getByText('Correct answer:')).toHaveCount(0);
         await page.screenshot({
@@ -440,7 +447,7 @@ test('passes every knowledge point and restores the exact problem and result aft
           (point: { id: string }) => point.id === run.currentPointId,
         );
         expect(currentStepIndex).toBe(1);
-        const backButtonName = `Back to step ${currentStepIndex + 1}`;
+        const backButtonName = 'Back';
 
         await expect(problemId).toBeTruthy();
         await page.getByRole('button', { name: firstStepButtonName }).click();
@@ -477,19 +484,18 @@ test('passes every knowledge point and restores the exact problem and result aft
     }
   }
 
-  expect(run.status).toBe('completed');
+  expect(run.status).toBe('quiz');
   expect(run.xpEarned).toBe(40);
-  await expect(page.getByText('Lesson complete · +40 XP')).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/lesson-complete.png`, fullPage: true });
+  await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/lesson-steps-complete.png`, fullPage: true });
   const firstStepButtonName = `Step 1 of ${run.points.length}, passed`;
   await page.getByRole('button', { name: firstStepButtonName }).click();
   await expect(page.getByRole('heading', { name: firstStepTitle, exact: true })).toBeVisible();
   await expect(page.getByTestId('lesson-problem')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Back to summary' }).first()).toBeVisible();
-  await page.getByRole('button', { name: 'Back to summary' }).first().click();
-  await expect(page.getByText('Lesson complete · +40 XP')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Back', exact: true }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Back', exact: true }).first().click();
+  await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByText('Lesson complete · +40 XP')).toHaveCount(0);
   await expect(page.getByLabel('Your answer')).toBeVisible();
   await expect(page.getByTestId('exercise-prompt')).toContainText('Pick any real problem');
   await page.reload();
@@ -567,7 +573,7 @@ test('passes every knowledge point and restores the exact problem and result aft
       (item: { conceptId: string }) => item.conceptId === 'supervised-learning',
     );
   }, sessionId);
-  expect(finalActivity.status).toBe('completed');
+  expect(finalActivity.status).toBe('in_progress');
   expect(finalActivity.progress.completedExerciseIds).toContain('sl-explain-setup');
   expect(finalActivity.lastAttempt.exerciseId).toBe('sl-explain-setup');
   expect(finalActivity.lastAttempt.status).toBe('graded');
@@ -614,7 +620,7 @@ test('shows a correct lesson-run solution without repeating generic feedback', a
   if (!activity) throw new Error('Could not create practice activity');
 
   await page.goto(`/session/${session.id}`);
-  await expect(page.getByText('Basics question', { exact: true })).toBeVisible();
+  await expect(page.getByText('Question 1', { exact: true })).toBeVisible();
   await expect
     .poll(async () => (await currentRun(page, 'loss-functions'))?.pendingProblem?.id)
     .toBeTruthy();
@@ -628,7 +634,7 @@ test('shows a correct lesson-run solution without repeating generic feedback', a
 
   const status = page.getByRole('status');
   await expect(status).toContainText('Correct');
-  await expect(status.getByText('Correct', { exact: true })).toHaveCount(1);
+  await expect(status.getByText(/^Correct(?: · \+\d+ XP)?$/)).toHaveCount(1);
   await expect(status.getByText('Correct.', { exact: true })).toHaveCount(0);
   await expect(status).toContainText('1 + 1 = 2.');
   await expect(page.getByText('Solution', { exact: true })).toHaveCount(0);
@@ -671,9 +677,9 @@ test('Enter advances a correct knowledge-point answer without another answer POS
   if (!activity) throw new Error('Could not create lesson activity');
 
   await page.goto(`/session/${session.id}`);
-  await expect(page.getByText('Basics question', { exact: true })).toBeVisible();
+  await expect(page.getByText('Question 1', { exact: true })).toBeVisible();
   let run = await currentRun(page, 'loss-functions');
-  run = await answerAndReload(page, true, 'loss-functions');
+  run = await answerAndReload(page, false, 'loss-functions');
   run = await nextProblemAndReload(page, 'loss-functions');
   expect(run.pendingProblem.exercise.id).toBe('loss-functions-fixture-practice-1');
   expect(run.pendingProblem.exercise.type).toBe('numeric');
@@ -701,7 +707,7 @@ test('Enter advances a correct knowledge-point answer without another answer POS
   );
   await answerField.press('Enter');
   expect((await answerResponse).status()).toBe(200);
-  await expect(page.getByText('Correct', { exact: true })).toBeVisible();
+  await expect(page.getByText(/^Correct(?: · \+\d+ XP)?$/)).toHaveCount(1);
   await expect(answerField).toBeFocused();
 
   const nextResponse = page.waitForResponse(
@@ -753,7 +759,7 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
   if (!activity) throw new Error('Could not create legacy learn activity');
 
   await page.goto(`/session/${session.id}`);
-  await expect(page.getByText('Basics question', { exact: true })).toBeVisible();
+  await expect(page.getByText('Question 1', { exact: true })).toBeVisible();
   await expect
     .poll(async () => (await currentRun(page, 'vectors'))?.pendingProblem?.id)
     .toBeTruthy();
@@ -761,13 +767,13 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
   expect(run.currentPointId).toBe('vectors-fixture-1');
   expect(run.points[0]).toMatchObject({ status: 'active', round: 1, answered: 0 });
 
-  while (run.status !== 'completed') {
+  while (run.status === 'in_progress') {
     run = run.pendingProblem
       ? await answerAndReload(page, true, 'vectors')
       : await nextProblemAndReload(page, 'vectors');
   }
-  await expect(page.locator('section > header h2')).toHaveText('Lesson complete');
-  await expect(page.getByRole('heading', { name: /^Lesson complete · \+\d+ XP$/ })).toBeVisible();
+  expect(run.status).toBe('quiz');
+  await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.locator('section > header h2')).toHaveText('Final question');
   await expect(page.getByTestId('exercise-prompt')).toContainText(
@@ -820,13 +826,13 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
     fullPage: true,
   });
   await continueButton.click();
-  await expect(page.getByRole('heading', { name: 'Session complete', exact: true })).toBeVisible();
+  await expect(page.getByTestId('lesson-quiz-intro')).toBeVisible();
   await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
   await page.screenshot({
     path: `${finalContinueScreenshotDir}/after-single-continue.png`,
     fullPage: true,
   });
-  const completed = await page.evaluate(
+  const continued = await page.evaluate(
     async ({ sessionId, activityId }) => {
       const response = await fetch(`/api/sessions/${sessionId}`);
       const data = await response.json();
@@ -834,56 +840,225 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
     },
     { sessionId: session.id, activityId: activity.id },
   );
-  expect(completed.status).toBe('completed');
-  expect(completed.progress.finalQuestionContinued).toBe(true);
-  expect(completed.lastAttempt.exerciseId).toBe('vectors-fixture-final');
+  expect(continued.status).toBe('in_progress');
+  expect(continued.progress.finalQuestionContinued).toBe(true);
+  expect(continued.lastAttempt.exerciseId).toBe('vectors-fixture-final');
 });
 
-test('a failed knowledge point shows the retry screen and resumes at round two if scheduled again', async ({
+test('a knowledge point keeps serving questions after five misses in the same round', async ({
   page,
 }) => {
   await createSession(page);
   let run = await currentRun(page);
-  const firstProblemId = run.pendingProblem.id;
-  for (let answerIndex = 0; answerIndex < 5; answerIndex += 1) {
+  for (let answerIndex = 0; answerIndex < 6; answerIndex += 1) {
     run = await answerAndReload(page, false);
     if (answerIndex === 0) {
-      expect(run.points[0]).toMatchObject({ status: 'active', answered: 0, streak: 0 });
+      expect(run.points[0]).toMatchObject({ status: 'active', answered: 1, streak: 0 });
     }
     if (answerIndex === 0) {
       await expect(page.getByText('Your answer:')).toHaveCount(0);
       await expect(page.getByText('Correct answer:')).toHaveCount(0);
       await page.screenshot({ path: `${screenshotDir}/wrong-answer.png`, fullPage: true });
     }
-    if (answerIndex < 4) run = await nextProblemAndReload(page);
+    if (answerIndex < 5) run = await nextProblemAndReload(page);
   }
-  expect(run.status).toBe('needs_retry');
-  expect(run.points[0]).toMatchObject({ status: 'failed', round: 1 });
-  await expect(page.getByText('Try again later')).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/try-again-later.png`, fullPage: true });
-  await page.getByRole('button', { name: 'Continue' }).click();
+  expect(run.status).toBe('in_progress');
+  expect(run.points[0]).toMatchObject({ status: 'active', round: 1, answered: 6 });
+  await expect(page.getByText('Try again later')).toHaveCount(0);
+  run = await nextProblemAndReload(page);
+  expect(run.pendingProblem).toMatchObject({ round: 1, position: 7 });
+  expect(run.points[0]).toMatchObject({ status: 'active', round: 1, answered: 6 });
+  await expect(page.getByText('Question 7', { exact: true })).toBeVisible();
+});
 
-  const session = await page.evaluate(async () => {
-    const response = await fetch('/api/sessions', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ budgetMinutes: 60 }),
-    });
-    return response.json();
-  });
-  const reoffered = session.activities?.find(
-    (activity: { conceptId?: string; kind: string }) =>
-      activity.conceptId === conceptId && activity.kind === 'learn',
+test('lesson quiz results are hidden until submit, resume after reload, and allow review after passing', async ({
+  page,
+}) => {
+  const sessionId = await createSession(page);
+  const prepared = await page.evaluate(
+    async ({ conceptId, sessionId }) => {
+      const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
+      const session = await sessionResponse.json();
+      const activity = session.activities.find(
+        (item: { conceptId?: string }) => item.conceptId === conceptId,
+      );
+      let run = (await (await fetch(`/api/lessons/${conceptId}/run`)).json()).run;
+      for (let count = 0; run.status === 'in_progress' && count < 200; count += 1) {
+        if (!run.pendingProblem) {
+          run = (
+            await (
+              await fetch(`/api/lessons/${conceptId}/run`, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ activityId: activity.id }),
+              })
+            ).json()
+          ).run;
+          continue;
+        }
+        const answer = await (
+          await fetch(`/api/test/lesson-problems/${run.pendingProblem.id}/answer`)
+        ).json();
+        const response = await fetch(`/api/lessons/${conceptId}/run/answer`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            problemId: run.pendingProblem.id,
+            answer: answer.answer,
+            activityId: activity.id,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? 'Could not answer lesson step');
+        run = result.state;
+      }
+      if (run.status !== 'quiz') throw new Error('Lesson steps did not reach the quiz');
+      return { activityId: activity.id, questionCount: run.quiz.questionCount };
+    },
+    { conceptId, sessionId },
   );
-  expect(reoffered).toBeTruthy();
-  expect(reoffered.exerciseIds).toEqual(['sl-explain-setup']);
-  await page.goto(`/session/${session.id}`);
-  await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
-  await expect.poll(async () => (await currentRun(page))?.pendingProblem?.round).toBe(2);
-  const resumed = await currentRun(page);
-  expect(resumed.currentPointId).toBe('sl-inputs-targets');
-  expect(resumed.points[0]).toMatchObject({ status: 'active', round: 2, answered: 0 });
-  expect(resumed.pendingProblem.id).not.toBe(firstProblemId);
-  await expect(page.getByText('Basics question', { exact: true })).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/round-two-retry.png`, fullPage: true });
+  await page.reload();
+  await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByTestId('exercise-prompt')).toContainText('Pick any real problem');
+  await page
+    .getByLabel('Your answer')
+    .fill(
+      'Inputs are distance and time of day; the target is delivery time. A linear model combines the inputs, squared error measures mistakes, and past deliveries provide the data.',
+    );
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  const selfCheck = page.getByRole('button', { name: 'Submit self-check' });
+  const retry = page.getByRole('button', { name: /Try again/ });
+  const followUp = page.getByRole('button', { name: 'Submit again' });
+  const continueButton = page.getByRole('button', { name: 'Continue' });
+  await expect
+    .poll(
+      async () =>
+        (await selfCheck.isVisible()) ||
+        (await retry.isVisible()) ||
+        (await followUp.isVisible()) ||
+        (await continueButton.isVisible()),
+    )
+    .toBe(true);
+  if (await selfCheck.isVisible()) {
+    for (const checkbox of await page.getByRole('checkbox').all()) await checkbox.click();
+    await selfCheck.click();
+  } else if (await retry.isVisible()) {
+    await retry.click();
+  } else if (await followUp.isVisible()) {
+    await followUp.click();
+  }
+  await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
+  await continueButton.click();
+  await expect(page.getByTestId('lesson-quiz-intro')).toBeVisible();
+  await page.screenshot({ path: `${lessonQuizScreenshotDir}/quiz-intro.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Start quiz' }).click();
+  await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+  await page.screenshot({ path: `${lessonQuizScreenshotDir}/quiz-question.png`, fullPage: true });
+  await expect(page.getByRole('button', { name: 'Open tutor' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ask the tutor' })).toBeDisabled();
+
+  const answerAttempt = async (wrong: boolean) =>
+    page.evaluate(
+      async ({ conceptId, activityId, wrong }) => {
+        let run = (await (await fetch(`/api/lessons/${conceptId}/run`)).json()).run;
+        for (const item of run.quiz.current.items) {
+          if (item.answered) continue;
+          const expected = await (
+            await fetch(`/api/test/lesson-quiz-items/${item.id}/answer`)
+          ).json();
+          let answer = expected.answer;
+          if (wrong) {
+            if (item.exercise.type === 'mc') {
+              const correctIds = Array.isArray(answer) ? answer : [answer];
+              const other = item.exercise.options.find(
+                (option: { id: string }) => !correctIds.includes(option.id),
+              )?.id;
+              answer = item.exercise.multi ? [other] : other;
+            } else if (typeof answer === 'number') {
+              answer += 1_000_000;
+            } else {
+              answer = `${String(answer)} incorrect`;
+            }
+          }
+          const response = await fetch(`/api/lessons/${conceptId}/quiz/answer`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ itemId: item.id, answer, activityId }),
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error ?? 'Could not save quiz answer');
+          run = result.run;
+        }
+        const response = await fetch(`/api/lessons/${conceptId}/quiz/submit`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ activityId }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? 'Could not submit quiz');
+        return result.run;
+      },
+      { conceptId, activityId: prepared.activityId, wrong },
+    );
+
+  const firstItem = await page.evaluate(async (concept) => {
+    const run = await (await fetch(`/api/lessons/${concept}/run`)).json();
+    return run.run.quiz.current.items[0];
+  }, conceptId);
+  const firstAnswer = await page.evaluate(
+    async ({ concept, item, activityId }) => {
+      const expected = await (await fetch(`/api/test/lesson-quiz-items/${item.id}/answer`)).json();
+      let answer = expected.answer;
+      if (item.exercise.type === 'mc') {
+        const correctIds = Array.isArray(answer) ? answer : [answer];
+        const other = item.exercise.options.find(
+          (option: { id: string }) => !correctIds.includes(option.id),
+        )?.id;
+        answer = item.exercise.multi ? [other] : other;
+      } else if (typeof answer === 'number') {
+        answer += 1_000_000;
+      } else {
+        answer = `${String(answer)} incorrect`;
+      }
+      const response = await fetch(`/api/lessons/${concept}/quiz/answer`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ itemId: item.id, answer, activityId }),
+      });
+      return response.status;
+    },
+    { concept: conceptId, item: firstItem, activityId: prepared.activityId },
+  );
+  expect(firstAnswer).toBe(200);
+  await page.reload();
+  await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+  await answerAttempt(true);
+  await page.reload();
+  const failed = page.getByTestId('lesson-quiz-results');
+  await expect(failed).toContainText('Not passed yet');
+  await expect(failed.getByText(/^Step \d+ · /).first()).toBeVisible();
+  await expect(failed.getByText(/Your answer:|Correct answer:|Question \d+/)).toHaveCount(0);
+  await page.screenshot({ path: `${lessonQuizScreenshotDir}/failed-results.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Retake quiz' }).click();
+  await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+  await answerAttempt(false);
+  await page.reload();
+  await expect(page.getByTestId('lesson-quiz-results')).toContainText('Passed');
+  await page.screenshot({ path: `${lessonQuizScreenshotDir}/passed-results.png`, fullPage: true });
+  await page.getByRole('button', { name: 'See answers' }).click();
+  await expect(page.getByTestId('lesson-quiz-review')).toContainText('Correct answer:');
+  await page.screenshot({ path: `${lessonQuizScreenshotDir}/see-answers.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Back to results' }).click();
+  await page.getByRole('button', { name: 'Retake quiz' }).click();
+  await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+  await answerAttempt(true);
+  await page.reload();
+  const failedRetake = page.getByTestId('lesson-quiz-results');
+  await expect(failedRetake).toContainText('Retake not passed');
+  await expect(failedRetake).toContainText('Your lesson quiz is already passed.');
+  await expect(failedRetake.getByText(/^Step \d+ · /).first()).toBeVisible();
+  await expect(failedRetake.getByRole('button', { name: 'See answers' })).toHaveCount(0);
+  await expect(failedRetake.getByText(/Your answer:|Correct answer:|Question \d+/)).toHaveCount(0);
+  expect(prepared.questionCount).toBeGreaterThan(0);
 });

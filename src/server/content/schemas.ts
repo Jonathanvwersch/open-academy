@@ -205,7 +205,7 @@ const KnowledgePointLessonSchema = LessonFieldsSchema.extend({
     .min(1)
     .max(4)
     .optional(),
-  knowledge_points: z.array(KnowledgePointSchema).min(2).max(4),
+  knowledge_points: z.array(KnowledgePointSchema).min(1).max(4),
   final: IdSchema,
   summary: z.string().min(1),
 }).strict();
