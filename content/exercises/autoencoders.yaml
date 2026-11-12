@@ -372,7 +372,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: An autoencoder squeezes a {{= s }} by {{= s }} RGB image into a latent vector of {{= k }} numbers. What is its compression factor?
+    prompt: An autoencoder squeezes RGB images of {{= s }} by {{= s }} pixels into a latent vector of {{= k }} numbers. What is its compression factor?
     params:
       s:
         min: 8

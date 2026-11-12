@@ -19,7 +19,7 @@ knowledge_points:
     explain: |
       ### A tiny image as one vector
 
-      In the images-as-tensors lesson, we saw that a grayscale image is a grid of brightnesses, which we divide by 255 so they lie between 0 and 1. A layer reads a vector, not a grid, so first we **flatten** the image: we lay its rows end to end. NumPy's `img.reshape(H * W)`, from the same lesson, does exactly this.
+      In the images-as-tensors lesson, we saw that a grayscale image is a grid of brightnesses, which we divide by 255 so they lie between 0 and 1. A layer reads a vector, not a grid, so first we **flatten** the image: we lay its rows end to end. NumPy's `img.reshape(H * W)` does exactly this.
 
       Let's take a $2\times2$ image with pixel values 204 and 204 in its top row and 51 and 51 below. Divided by 255, that's $0.8$, $0.8$, $0.2$ and $0.2$, so flattening gives $x=(0.8,0.8,0.2,0.2)$.
 
@@ -194,7 +194,7 @@ knowledge_points:
 
       which says how many input numbers there are for each latent number. For our stripe images it's $4/2=2$, and the worked example finds it for the digits.
 
-      In the images-as-tensors lesson, a colour image had three channels, one each for red, green and blue. So a robot camera's $64\times64$ colour frame flattens to $64\times64\times3=12{,}288$ numbers. A typical latent size for such frames, found the same way, is $256$, a compression factor of $12{,}288/256=48$.
+      In the images-as-tensors lesson, a colour image had three channels, one each for red, green and blue. So a robot camera's $64\times64$ colour frame flattens to $64\times64\times3=12{,}288$ numbers. If we pick a latent size of $256$ for such frames, again by trying sizes, the compression factor is $12{,}288/256=48$.
 
       ### Counting the parameters
 
