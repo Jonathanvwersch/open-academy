@@ -34,16 +34,23 @@ function stripPrivateFields(value: unknown, omitWeight = false): unknown {
   );
 }
 
+export function serializedOptionOrder<T>(
+  options: readonly T[],
+  userId: string,
+  exerciseId: string,
+): T[] {
+  return [...options].sort(
+    (left, right) => seededOrder(userId, exerciseId, left) - seededOrder(userId, exerciseId, right),
+  );
+}
+
 export function serializeExercise(exercise: IndexedExercise, userId = ''): Record<string, unknown> {
   const serialized = stripPrivateFields(exercise) as Record<string, unknown>;
   serialized.hintCount = exercise.hints.length;
   serialized.hintCount = exercise.hints.length;
   const options = serialized.options;
   if (Array.isArray(options)) {
-    serialized.options = [...options].sort(
-      (left, right) =>
-        seededOrder(userId, exercise.id, left) - seededOrder(userId, exercise.id, right),
-    );
+    serialized.options = serializedOptionOrder(options, userId, exercise.id);
   }
   return serialized;
 }

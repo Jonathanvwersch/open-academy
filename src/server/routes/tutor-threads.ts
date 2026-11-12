@@ -1,7 +1,9 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
+import { onScreenOptions } from '../../shared/shuffle.js';
 import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '../../shared/tutor.js';
+import { serializedOptionOrder } from '../content/serialize.js';
 import { instantiateExercise, isTemplate } from '../content/templates.js';
 import type { ContentIndex } from '../content/types.js';
 import type { Database } from '../db/client.js';
@@ -337,9 +339,12 @@ export function registerTutorThreadRoutes(
     const correct = currentAttempt?.correct ?? lessonProblem?.correct;
     const optionTexts =
       exercise?.type === 'mc'
-        ? exercise.options
+        ? onScreenOptions(
+            serializedOptionOrder(exercise.options, c.get('userId'), exercise.id),
+            exercise.id,
+          )
         : exercise?.type === 'debug'
-          ? exercise.fix_options
+          ? onScreenOptions(exercise.fix_options, exercise.id)
           : [];
     const service = deps.tutor(c);
     if (!service) return c.json({ error: 'Tutor unavailable' }, 503);

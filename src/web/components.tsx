@@ -10,7 +10,7 @@ import remarkMath from 'remark-math';
 import type { LessonPrerequisite } from '../server/content/schemas.js';
 import { emptyAnswerMessage } from '../shared/answer-validation.js';
 import { normalizeDisplayMath } from '../shared/markdown';
-import { seededOrder } from '../shared/shuffle.js';
+import { onScreenOptions } from '../shared/shuffle.js';
 import { apiFetch } from './authenticated-fetch.js';
 import { cn } from './lib/utils.js';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert.js';
@@ -470,14 +470,14 @@ export function ExerciseForm({
   const [answerError, setAnswerError] = useState('');
   const options = exercise.options;
   const orderedOptions = useMemo(
-    () => seededOrder(options ?? [], exercise.id),
+    () => onScreenOptions(options ?? [], exercise.id),
     [exercise.id, options],
   );
   const fixOptions = (
     exercise as ClientExercise & { fix_options?: Array<{ id: string; text: string }> }
   ).fix_options;
   const orderedFixOptions = useMemo(
-    () => seededOrder(fixOptions ?? [], exercise.id),
+    () => onScreenOptions(fixOptions ?? [], exercise.id),
     [exercise.id, fixOptions],
   );
   const inputsLocked = locked || disabled || loading;
@@ -675,7 +675,7 @@ export function ExerciseForm({
             <legend className="sr-only">Choose an answer</legend>
             {exercise.multi ? (
               <div className="space-y-2">
-                {orderedOptions.map((option) => {
+                {orderedOptions.map((option, index) => {
                   const optionId = `${exercise.id}-${option.id}`;
                   const state = optionState(option.id, selected.includes(option.id));
                   return (
@@ -701,6 +701,9 @@ export function ExerciseForm({
                           )
                         }
                       />
+                      <span className="w-5 shrink-0 text-sm font-medium text-muted-foreground">
+                        {String.fromCharCode(65 + index)}.
+                      </span>
                       <span className="text-base leading-6 font-normal">
                         <Markdown inline>{option.text}</Markdown>
                       </span>
@@ -714,7 +717,7 @@ export function ExerciseForm({
                 value={selected[0] ?? ''}
                 onValueChange={(next) => setSelected([next])}
               >
-                {orderedOptions.map((option) => {
+                {orderedOptions.map((option, index) => {
                   const optionId = `${exercise.id}-${option.id}`;
                   const state = optionState(option.id, selected.includes(option.id));
                   return (
@@ -733,6 +736,9 @@ export function ExerciseForm({
                         indicator={optionIcon(state)}
                         className={optionControlClassName(state)}
                       />
+                      <span className="w-5 shrink-0 text-sm font-medium text-muted-foreground">
+                        {String.fromCharCode(65 + index)}.
+                      </span>
                       <span className="text-base leading-6 font-normal">
                         <Markdown inline>{option.text}</Markdown>
                       </span>
@@ -786,9 +792,9 @@ export function ExerciseForm({
                     <SelectValue placeholder="Choose a fix" />
                   </SelectTrigger>
                   <SelectContent>
-                    {orderedFixOptions.map((option) => (
+                    {orderedFixOptions.map((option, index) => (
                       <SelectItem key={option.id} value={option.id}>
-                        <Markdown inline>{option.text}</Markdown>
+                        {String.fromCharCode(65 + index)}. <Markdown inline>{option.text}</Markdown>
                       </SelectItem>
                     ))}
                   </SelectContent>
