@@ -180,7 +180,7 @@ exercises:
     est_minutes: 3
     prompt:
       A Gaussian has mean {{= m}} and standard deviation {{= s}}. What is the upper endpoint of
-      the central range containing about 95% of its values?
+      the central range containing about 95% of its values? Use the lesson's 68–95–99.7 rule.
     params:
       m:
         min: 30
