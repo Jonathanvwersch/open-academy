@@ -533,7 +533,7 @@ exercises:
     est_minutes: 2
     prompt:
       For one example, a layer outputs {{= c-7*d }}, {{= c-d }}, {{= c+d }}, {{= c+7*d }}. What is
-      their standard deviation?
+      their standard deviation? Divide by the number of outputs, as LayerNorm does.
     solution: The mean is ${{= c }}$, and the differences are $-7\times{{= d }},-{{= d }},{{= d
       }},7\times{{= d }}$. Their average square is $25\times{{= d*d }}$, whose square root is ${{=
       5*d }}$.
@@ -546,6 +546,11 @@ exercises:
       - answer_expr: 4*d
         category: math_error
         feedback: Average squared differences and take the square root, rather than averaging distances.
+      - answer_expr: 5*d*sqrt(4/3)
+        tolerance:
+          abs: 0.01
+        category: math_error
+        feedback: That divides by one less than the count, as a sample standard deviation does. LayerNorm divides by the count, 4.
     params:
       c:
         min: 10

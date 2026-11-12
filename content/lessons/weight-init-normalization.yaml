@@ -70,7 +70,7 @@ knowledge_points:
 
       $$h_d=w^d\,x$$
 
-      When the weight is above $1$, the activations grow very fast with depth, which we call **exploding activations**. When it's below $1$, they shrink towards $0$, which we call **vanishing activations**. Only a weight close to $1$ keeps them a sensible size.
+      When the weight's size, ignoring its sign, is above $1$, the activations grow very fast with depth, which we call **exploding activations**. When it's below $1$, they shrink towards $0$, which we call **vanishing activations**. Only a weight whose size is close to $1$ keeps them a sensible size.
 
       ### The slopes do the same on the way back
 
@@ -219,7 +219,7 @@ knowledge_points:
          $$\mu=\frac{4+8+10+12+16}{5}=\frac{50}{5}=10$$
       2. **Subtract the mean.** This centres the outputs on $0$.
          $$-6,\ -2,\ 0,\ 2,\ 6$$
-      3. **Find the standard deviation.** We square the differences, average them and take the square root.
+      3. **Find the standard deviation.** We square the differences, average them and take the square root. Normalization divides by all $5$ outputs, not by one less as a sample standard deviation does.
          $$s=\sqrt{\frac{36+4+0+4+36}{5}}=\sqrt{16}=4$$
       4. **Divide by it.** This makes the typical size $1$.
          $$\hat h=-1.5,\ -0.5,\ 0,\ 0.5,\ 1.5$$
@@ -287,7 +287,7 @@ knowledge_points:
       Because BatchNorm averages over the batch, each example's output depends on which other examples are in the batch with it.
 
       - With small batches, the mean and standard deviation jump around from batch to batch. With only two examples, the mean sits halfway between the two values, so both differ from it by the same amount, which is their standard deviation. Dividing by it turns any two different values into $-1$ and $1$.
-      - A trained network often runs on one example, with no batch to average over. So during training, BatchNorm keeps a running average of each neuron's mean and standard deviation across batches. Afterwards it uses those saved values, and the network behaves a little differently than it did in training.
+      - A trained network often runs on one example, with no batch to average over. So during training, BatchNorm keeps a running average of each neuron's mean and of its squared standard deviation across batches. Afterwards it uses those saved values, and the network behaves a little differently than it did in training.
 
       LayerNorm needs only the example itself, so it works the same in training and afterwards, with any batch size. That suits a network that often runs on one input at a time, such as a robot's controller reading its sensors.
     worked: |
@@ -311,7 +311,7 @@ knowledge_points:
       - wip-bn-robot
 final: wi-explain
 summary: |
-  - Each layer multiplies the numbers passing through it, so after $d$ layers a chain with weight $w$ gives $h_d=w^dx$: activations explode when the factor is above $1$ and vanish when it's below $1$, and backpropagation's slopes do the same.
+  - Each layer multiplies the numbers passing through it, so after $d$ layers a chain with weight $w$ gives $h_d=w^dx$: activations explode when the factor's size is above $1$ and vanish when it's below $1$, and backpropagation's slopes do the same.
   - A neuron with $n$ inputs and random weights of typical size $a$ gives scores whose average square is $n\,a^2$ when the inputs have typical size $1$, so LeCun initialization uses $a=1/\sqrt n$, and He initialization uses $a=\sqrt{2/n}$ for ReLU layers.
   - Layer normalization rescales one example's outputs from a layer to $\hat h_i=(h_i-\mu)/s$, mean $0$ and standard deviation $1$, then applies a learned gain $\gamma$ and shift $\beta$, so drift in the weights doesn't change the size the next layer sees.
   - Batch normalization does the same for each neuron across the examples in a batch, which makes it depend on the batch, while LayerNorm needs only the example itself.
