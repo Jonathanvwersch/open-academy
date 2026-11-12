@@ -34,7 +34,7 @@ test('generic grader feedback matching other headings is case-insensitive', () =
 
   for (const { title, ...result } of cases) {
     const html = renderFeedback(result);
-    expect(html.toLowerCase().split(title.toLowerCase())).toHaveLength(2);
+    expect(html.toLowerCase().split(`>${title.toLowerCase()}<`)).toHaveLength(2);
     expect(html).not.toContain(result.feedback);
   }
 });
@@ -78,4 +78,35 @@ test('wrong answers keep feedback, answer lines, and solution', () => {
   expect(html).toContain('Correct answer:');
   expect(html).toContain('Solution');
   expect(html).toContain('The score is 0.5, so the output is 1.');
+});
+
+test('Almost feedback with a partial rubric item tells the learner what to add', () => {
+  const html = renderFeedback({
+    correct: 0.5,
+    followUp: true,
+    rubric: [{ id: 'loss', criterion: 'Explain the loss', judgement: 'partial' }],
+  });
+
+  expect(
+    html.match(/Add the points marked ½ or ✗ to your answer above, then press /g) ?? [],
+  ).toHaveLength(1);
+  expect(html).toContain('<strong>Submit again</strong>');
+  expect(html).toContain('You have one more try before the model answer is shown.');
+});
+
+test('Almost feedback without a rubric gives generic next-step guidance', () => {
+  const html = renderFeedback({ correct: 0.5, followUp: true });
+
+  expect(html.replaceAll('&#x27;', "'")).toContain(
+    "Add what's missing to your answer above, then press <strong>Submit again</strong>.",
+  );
+  expect(html).toContain('You have one more try before the model answer is shown.');
+});
+
+test('non-follow-up partly correct and correct results omit Almost guidance', () => {
+  const partlyCorrect = renderFeedback({ correct: 0.5 });
+  const correct = renderFeedback({ correct: 1 });
+
+  expect(partlyCorrect).not.toContain('almost-next-step');
+  expect(correct).not.toContain('almost-next-step');
 });
