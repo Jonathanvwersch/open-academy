@@ -118,7 +118,7 @@ concepts:
     prereqs: [{ id: probability-basics }]
     objectives:
       - { text: "Relate mean and variance to the normal density", dimension: math }
-    status: stub
+    status: authored
   - id: maximum-likelihood
     title: Maximum likelihood
     description: Choosing parameters that make observed data most probable; link to MSE and cross-entropy.
