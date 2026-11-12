@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
+import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '../../shared/tutor.js';
 import { instantiateExercise, isTemplate } from '../content/templates.js';
 import type { ContentIndex } from '../content/types.js';
 import type { Database } from '../db/client.js';
@@ -30,7 +31,7 @@ const optionalNullable = <T extends z.ZodTypeAny>(schema: T) =>
   schema.nullish().transform((value) => value ?? undefined);
 
 export const tutorThreadBodySchema = z.object({
-  question: z.string().trim().min(1).max(2000),
+  question: z.string().trim().min(1).max(TUTOR_QUESTION_MAX_LENGTH),
   conceptId: optionalNullable(z.string()),
   activityId: optionalNullable(z.string().uuid()),
   exerciseId: optionalNullable(z.string()),
@@ -137,8 +138,17 @@ export function registerTutorThreadRoutes(
     return c.json({ thread, messages });
   });
   const send = async (c: Ctx, requestedThreadId?: string) => {
-    const parsed = tutorThreadBodySchema.safeParse(await c.req.json().catch(() => ({})));
-    if (!parsed.success) return c.json({ error: 'Invalid tutor request' }, 400);
+    const body: unknown = await c.req.json().catch(() => ({}));
+    const parsed = tutorThreadBodySchema.safeParse(body);
+    if (!parsed.success) {
+      const question = (body as { question?: unknown } | null)?.question;
+      const tooLong =
+        typeof question === 'string' && question.trim().length > TUTOR_QUESTION_MAX_LENGTH;
+      return c.json(
+        { error: tooLong ? tutorQuestionTooLongMessage() : 'Invalid tutor request' },
+        400,
+      );
+    }
     const input = parsed.data;
     const [thread] = requestedThreadId
       ? await db

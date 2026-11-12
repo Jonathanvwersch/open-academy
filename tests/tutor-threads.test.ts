@@ -22,6 +22,7 @@ import { tutorThreadBodySchema } from '../src/server/routes/tutor-threads.js';
 import { sanitizePageContent } from '../src/server/tutor/page-context.js';
 import type { TutorProvider, TutorResult } from '../src/server/tutor/provider.js';
 import type { ExplanationContext, TutorContext, TutorReply } from '../src/server/tutor/schemas.js';
+import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '../src/shared/tutor.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000093';
@@ -707,4 +708,20 @@ test('diagnostic exercises and review activities are forbidden', async () => {
     .from(tutorMessages)
     .where(and(eq(tutorMessages.userId, userId), eq(tutorMessages.activityId, reviewActivity.id)));
   expect(count).toBeUndefined();
+});
+
+test('tutor request body accepts long questions up to the limit', () => {
+  expect(
+    tutorThreadBodySchema.safeParse({ question: 'a'.repeat(TUTOR_QUESTION_MAX_LENGTH) }).success,
+  ).toBe(true);
+  expect(
+    tutorThreadBodySchema.safeParse({ question: 'a'.repeat(TUTOR_QUESTION_MAX_LENGTH + 1) })
+      .success,
+  ).toBe(false);
+});
+
+test('a too-long tutor question says it is too long', async () => {
+  const response = await send('a'.repeat(TUTOR_QUESTION_MAX_LENGTH + 1));
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({ error: tutorQuestionTooLongMessage() });
 });
