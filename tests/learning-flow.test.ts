@@ -114,6 +114,96 @@ async function answerReviewIncorrectly(exerciseId: string, activityId: string) {
   });
 }
 
+async function createSessionWithPreviousFinalAttempt(attempt: {
+  attemptNo: number;
+  correct: number;
+  feedback: Record<string, unknown>;
+}) {
+  await resetLearner();
+  const finalExerciseId = 'vectors-fixture-final';
+  const finalExercise = content.exercisesById.get(finalExerciseId);
+  if (!finalExercise) throw new Error('Missing vectors final exercise');
+  const [previousSession] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 15,
+      startedAt: new Date(now),
+      endedAt: new Date(now),
+      status: 'completed',
+    })
+    .returning();
+  if (!previousSession) throw new Error('Could not create previous final-question session');
+  const [previousActivity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: previousSession.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: 'vectors',
+      exerciseIds: [finalExerciseId],
+      plannedMinutes: 15,
+      status: 'completed',
+    })
+    .returning();
+  if (!previousActivity) throw new Error('Could not create previous final-question activity');
+  await db.insert(attempts).values({
+    userId,
+    sessionId: previousSession.id,
+    activityId: previousActivity.id,
+    exerciseId: finalExerciseId,
+    exerciseVersion: finalExercise.contentVersion,
+    conceptId: 'vectors',
+    dimension: 'conceptual',
+    mode: 'practice',
+    answer: { text: 'A vector magnitude is its length.' },
+    correct: attempt.correct,
+    credit: attempt.correct,
+    attemptNo: attempt.attemptNo,
+    gradedBy: 'test',
+    feedback: attempt.feedback,
+    createdAt: new Date(now),
+  });
+
+  const response = await app.request('/api/sessions', {
+    method: 'POST',
+    headers: headersAt(now),
+    body: JSON.stringify({ budgetMinutes: 60, focusConceptId: 'vectors' }),
+  });
+  expect(response.status).toBe(201);
+  const session = await response.json();
+  const activity = session.activities.find(
+    (candidate: { kind: string; conceptId: string }) =>
+      candidate.kind === 'learn' && candidate.conceptId === 'vectors',
+  );
+  if (!activity) throw new Error('Could not find the new vectors learn activity');
+  return activity;
+}
+
+test('session creation prefills a finalized lesson final question', async () => {
+  const activity = await createSessionWithPreviousFinalAttempt({
+    attemptNo: 2,
+    correct: 1,
+    feedback: {},
+  });
+
+  expect(activity.progress).toEqual({
+    completedExerciseIds: ['vectors-fixture-final'],
+    outcomes: { 'vectors-fixture-final': 'correct' },
+  });
+});
+
+test('session creation leaves a retry-pending lesson final question unprefilled', async () => {
+  const activity = await createSessionWithPreviousFinalAttempt({
+    attemptNo: 1,
+    correct: 0.6,
+    feedback: { followUp: true },
+  });
+
+  expect(activity.progress).toEqual({});
+});
+
 test('attempts rejects empty answers before creating an attempt', async () => {
   await resetLearner();
   const activity = await createReviewActivity('vectors', 'vectors-magnitude');
