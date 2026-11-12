@@ -722,13 +722,14 @@ test('Enter advances a correct knowledge-point answer without another answer POS
   expect((await answerResponse).status()).toBe(200);
   await expect(page.getByText(/^Correct(?: · \+\d+ XP)?$/)).toHaveCount(1);
   await expect(answerField).toBeFocused();
+  await answerField.blur();
 
   const nextResponse = page.waitForResponse(
     (response) =>
       response.url().endsWith('/api/lessons/loss-functions/run') &&
       response.request().method() === 'POST',
   );
-  await answerField.press('Enter');
+  await page.keyboard.press('Enter');
   await nextResponse;
   await expect(page.getByTestId('lesson-problem')).not.toHaveAttribute(
     'data-problem-id',
