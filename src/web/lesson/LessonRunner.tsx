@@ -1,17 +1,15 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { apiFetch } from '../authenticated-fetch.js';
 import { ExerciseForm, FeedbackPanel, LessonBlock, Markdown } from '../components.js';
 import {
   type LessonRunPayload,
-  learnQueryOptions,
   lessonQueryOptions,
   lessonRunQueryOptions,
   sessionQueryOptions,
 } from '../queries.js';
 import { SessionActivityHeader } from '../session/SessionActivityHeader.js';
-import { XpGoalBar } from '../session/XpGoalBar.js';
 import { LessonSkeletonBody } from '../skeletons.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/TutorSidebar.js';
 import { Alert, AlertDescription } from '../ui/alert.js';
@@ -45,7 +43,6 @@ export function LessonRunner({
   onContinue: (status: 'quiz' | 'completed', stage: 'final' | 'done') => Promise<void>;
 }) {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const tutorSidebar = useTutorSidebar();
   const queryOptions = lessonRunQueryOptions(conceptId);
   const query = useSuspenseQuery(queryOptions);
@@ -83,15 +80,6 @@ export function LessonRunner({
       solution: string;
       correct: number | null;
     }>;
-  } | null>(null);
-  const [checkpoint, setCheckpoint] = useState<{
-    title: string;
-    nextTitle: string;
-    xpEarned: number;
-    pointNumber: number;
-    pointCount: number;
-    today: number;
-    goal: number;
   } | null>(null);
   const activePoint = state
     ? (lesson?.knowledge_points?.find((point) => point.id === state.currentPointId) ?? undefined)
@@ -398,10 +386,6 @@ export function LessonRunner({
     const checkpointDetails =
       answeredPoint?.status === 'passed' && nextPoint
         ? {
-            title:
-              lesson?.knowledge_points?.find((item) => item.id === answeredPoint.id)?.title ??
-              title,
-            nextTitle: nextPoint.title,
             xpEarned: answeredPoint.xpEarned,
             pointNumber: answeredPointIndex + 1,
             pointCount: state.points.length,
@@ -431,29 +415,25 @@ export function LessonRunner({
       });
       const data = (await response.json()) as LessonRunPayload;
       if (!response.ok || !data.run) throw new Error('Could not load the next problem.');
+      await updateState(data.run);
       if (checkpointDetails) {
         const freshSession = await queryClient.fetchQuery({
           ...sessionQueryOptions(sessionId),
           staleTime: 0,
         });
-        setCheckpoint({
-          ...checkpointDetails,
-          today: freshSession.xp.today,
-          goal: freshSession.xp.goal,
-        });
+        toast.success(
+          `Step ${checkpointDetails.pointNumber} of ${checkpointDetails.pointCount} done`,
+          {
+            description: `+${checkpointDetails.xpEarned} XP · Today: ${freshSession.xp.today} / ${freshSession.xp.goal} XP`,
+          },
+        );
       }
-      await updateState(data.run);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load the next problem.');
     } finally {
       setBusyAction(null);
       setBusy(false);
     }
-  };
-
-  const stopHere = async () => {
-    await queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey });
-    await navigate({ to: '/' });
   };
 
   if (!state) {
@@ -508,8 +488,9 @@ export function LessonRunner({
   ) : null;
   const sessionSubtitle = viewingPastStep
     ? displayedPoint?.title
-    : (checkpoint?.title ??
-      (state.status === 'completed' ? 'Lesson complete' : displayedPoint?.title));
+    : state.status === 'completed'
+      ? 'Lesson complete'
+      : displayedPoint?.title;
 
   const viewStep = (stepId: string) => {
     const nextViewingPointId = stepId === state.currentPointId ? null : stepId;
@@ -670,43 +651,6 @@ export function LessonRunner({
             {backButtonLabel}
           </Button>
         </>
-      ) : checkpoint ? (
-        <Card data-testid="kp-checkpoint">
-          <CardContent className="space-y-3">
-            <h2 className="text-lg font-semibold">✓ {checkpoint.title}</h2>
-            <p className="text-xl font-bold">+{checkpoint.xpEarned} XP</p>
-            <p className="text-sm text-muted-foreground">
-              Today: {checkpoint.today} / {checkpoint.goal} XP
-            </p>
-            <XpGoalBar
-              today={checkpoint.today}
-              goal={checkpoint.goal}
-              previousToday={checkpoint.today - checkpoint.xpEarned}
-            />
-            <p className="text-sm text-muted-foreground">
-              Knowledge point {checkpoint.pointNumber} of {checkpoint.pointCount} done
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                type="button"
-                className="h-auto min-h-9 w-full whitespace-normal sm:w-auto"
-                disabled={busy}
-                onClick={() => setCheckpoint(null)}
-              >
-                Continue to {checkpoint.nextTitle}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-auto min-h-9 w-full sm:w-auto"
-                disabled={busy}
-                onClick={() => void stopHere()}
-              >
-                Stop here
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       ) : state.quiz.current ? (
         quizAllAnswered ? (
           <Card>
