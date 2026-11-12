@@ -205,16 +205,16 @@ exercises:
         }
       - {
           id: directional,
-          criterion: "Says the slope in a chosen unit direction u is the dot product ∇f·u (the directional derivative), a single number for each direction.",
+          criterion: "Says the slope in a chosen unit direction $u$ is the dot product $\\nabla f\\cdot u$ (the directional derivative), a single number for each direction.",
           weight: 2,
           required: true,
         }
       - {
           id: descent,
-          criterion: "Explains that ∇f·u = ‖∇f‖cosθ is most negative at θ=180°, so −∇f gives the steepest local decrease.",
+          criterion: "Explains that $\\nabla f\\cdot u = \\|\\nabla f\\|\\cos\\theta$ is most negative at $\\theta=180^\\circ$, so $-\\nabla f$ gives the steepest local decrease.",
           weight: 1,
         }
-    exemplar: "The gradient at a point collects the partial derivatives, here (3, 4). As an arrow it points in the direction where f rises fastest, and its length, 5, is that fastest slope. To get the slope in any other direction, take a unit vector u for that direction and compute ∇f·u: for u=(0.6, 0.8) it is 5, for (0.8, −0.6) it is 0, and for (−0.6, −0.8) it is −5. Because ∇f·u = ‖∇f‖cosθ, the slope is most negative when u points opposite the gradient, so stepping along −∇f lowers f fastest for a small step, which is what gradient descent does."
+    exemplar: "The gradient at a point collects the partial derivatives, here $(3, 4)$. As an arrow it points in the direction where $f$ rises fastest, and its length, $5$, is that fastest slope. To get the slope in any other direction, take a unit vector $u$ for that direction and compute $\\nabla f\\cdot u$: for $u=(0.6, 0.8)$ it is $5$, for $(0.8, -0.6)$ it is $0$, and for $(-0.6, -0.8)$ it is $-5$. Because $\\nabla f\\cdot u = \\|\\nabla f\\|\\cos\\theta$, the slope is most negative when $u$ points opposite the gradient, so stepping along $-\\nabla f$ lowers $f$ fastest for a small step, which is what gradient descent does."
   - id: gradp-why-vector
     dimension: conceptual
     type: mc

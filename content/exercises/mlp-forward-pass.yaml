@@ -196,22 +196,22 @@ exercises:
     rubric:
       - {
           id: r1,
-          criterion: "Describes the forward pass in order: first-layer scores W₁x + b₁, an activation applied to each score to give hidden values h, then the output W₂h + b₂",
+          criterion: "Describes the forward pass in order: first-layer scores $W_1x + b_1$, an activation applied to each score to give hidden values $h$, then the output $W_2h + b_2$",
           weight: 2,
           required: true,
         }
       - {
           id: r2,
-          criterion: "States that a batch X of shape B × d_in passes through a layer with d_out neurons to give B × d_out, keeping one row per example",
+          criterion: "States that a batch $X$ of shape $B \\times d_\\text{in}$ passes through a layer with $d_\\text{out}$ neurons to give $B \\times d_\\text{out}$, keeping one row per example",
           weight: 2,
           required: true,
         }
       - {
           id: r3,
-          criterion: "Mentions that each row of a weight matrix is one neuron, or that a layer has d_in · d_out + d_out parameters, or that the activation stops the layers collapsing into one",
+          criterion: "Mentions that each row of a weight matrix is one neuron, or that a layer has $d_\\text{in} \\cdot d_\\text{out} + d_\\text{out}$ parameters, or that the activation stops the layers collapsing into one",
           weight: 1,
         }
-    exemplar: "The first layer multiplies the input by W₁, where each row is one neuron's weights, and adds the bias b₁ to get one score per hidden neuron. An activation such as ReLU is applied to each score to give the hidden values h, and the output layer computes ŷ = W₂h + b₂. For a batch, X has one example per row, shape B × d_in; each layer turns it into B × d_out, so the hidden array is B × (number of hidden neurons) and the output is B × (number of outputs). Each layer has d_in · d_out weights plus d_out biases, whatever the batch size."
+    exemplar: "The first layer multiplies the input by $W_1$, where each row is one neuron's weights, and adds the bias $b_1$ to get one score per hidden neuron. An activation such as ReLU is applied to each score to give the hidden values $h$, and the output layer computes $\\hat y = W_2h + b_2$. For a batch, $X$ has one example per row, shape $B \\times d_\\text{in}$; each layer turns it into $B \\times d_\\text{out}$, so the hidden array is $B \\times (\\text{number of hidden neurons})$ and the output is $B \\times (\\text{number of outputs})$. Each layer has $d_\\text{in} \\cdot d_\\text{out}$ weights plus $d_\\text{out}$ biases, whatever the batch size."
   - id: mlpp-layer-values
     dimension: math
     type: mc

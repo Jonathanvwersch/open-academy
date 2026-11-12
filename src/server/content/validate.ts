@@ -19,6 +19,16 @@ const SVG_COLOR_PROPERTIES = new Set([
   'background-color',
 ]);
 const REVIEWABLE_EXERCISE_ROLES = new Set(['review', 'core', 'practice', 'transfer', 'basics']);
+const MATH_PROSE_KEYS = new Set([
+  'criterion',
+  'exemplar',
+  'text',
+  'feedback',
+  'prompt',
+  'hints',
+  'solution',
+]);
+const PLAIN_TEXT_MATH = /[A-Za-z]_[A-Za-z0-9({]|[A-Za-z][\u2080-\u2089]|[∇θ‖]/u;
 
 function svgIssue(source: string): string | null {
   if (/<\s*(script|foreignObject)\b/i.test(source)) return 'forbidden element';
@@ -114,6 +124,24 @@ function validateCurrencyText(text: string, file: string, id: string, issues: Co
   if (CURRENCY_MARKERS.some((marker) => marker.test(text))) {
     addIssue(issues, file, id, 'currency prices must not use a dollar sign before a number');
   }
+}
+
+function containsPlainTextMath(value: unknown, key?: string): boolean {
+  if (typeof value === 'string') {
+    if (!key || !MATH_PROSE_KEYS.has(key)) return false;
+    const prose = value
+      .replace(/\$\$[\s\S]*?\$\$/g, '')
+      .replace(/\$[^$]*\$/g, '')
+      .replace(/(`+)[\s\S]*?\1/g, '');
+    return PLAIN_TEXT_MATH.test(prose);
+  }
+  if (Array.isArray(value)) return value.some((entry) => containsPlainTextMath(entry, key));
+  if (value && typeof value === 'object') {
+    return Object.entries(value).some(([childKey, child]) =>
+      containsPlainTextMath(child, childKey),
+    );
+  }
+  return false;
 }
 
 function addIssue(issues: ContentIssue[], file: string, id: string, message: string) {
@@ -884,6 +912,9 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
   }
 
   for (const { value: exercise, file } of data.exercises) {
+    if (containsPlainTextMath(exercise)) {
+      addIssue(issues, file, exercise.id, 'plain-text maths; wrap in $…$');
+    }
     for (const text of stringValues(exercise)) {
       validateSvgText(text, file, exercise.id, issues);
       validateCurrencyText(text, file, exercise.id, issues);

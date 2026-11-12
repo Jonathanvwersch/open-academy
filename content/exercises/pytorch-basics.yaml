@@ -578,7 +578,7 @@ exercises:
           id: d,
           text: "It needs to clear stored gradients by repeating the prediction.",
           correct: false,
-          feedback: "Model calls do not clear gradients; zero_grad does that.",
+          feedback: "Model calls do not clear gradients; `zero_grad()` does that.",
         }
     solution: "After the loop, `model(x)` makes fresh predictions with the final parameters so `new_loss` measures the trained model. The last pass's loss was measured before its update. Existing prediction and loss tensors do not automatically recalculate when parameters change."
   - id: ptb-loop-complete
@@ -608,7 +608,7 @@ exercises:
         "model.zero_grad()",
         "model.zero_grad(set_to_none=True)",
       ]
-    solution: "Zero_grad clears any stored gradients, so this update uses only the current loss gradient. The new prediction is 2."
+    solution: "`zero_grad()` clears any stored gradients, so this update uses only the current loss gradient. The new prediction is 2."
   - id: ptb-loop-template
     dimension: implementation
     type: numeric
@@ -635,7 +635,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "The first backward call stores weight gradient -4. The next fresh calculation gives gradient -2, but you omit zero_grad. What gradient is stored now?"
+    prompt: "The first backward call stores weight gradient -4. The next fresh calculation gives gradient -2, but you omit `zero_grad()`. What gradient is stored now?"
     options:
       - {
           id: a,

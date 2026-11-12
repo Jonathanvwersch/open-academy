@@ -21,7 +21,13 @@ import {
   tutorMessages,
   tutorThreads,
 } from '../db/schema.js';
-import { answerDisplay } from '../learning/answer-display.js';
+import { attemptAllowsRetry } from '../learning/retry.js';
+import {
+  formatGraderFeedback,
+  graderVerdictFor,
+  tutorAnswerFor,
+  tutorSolutionFor,
+} from '../tutor/feedback-context.js';
 import { buildTutorPageContent } from '../tutor/page-context.js';
 import type { TutorService } from '../tutor/service.js';
 import type { ApiEnv } from './api.js';
@@ -186,7 +192,7 @@ export function registerTutorThreadRoutes(
     let lessonProblem: typeof lessonProblems.$inferSelect | undefined;
     let currentAttempt: typeof attempts.$inferSelect | undefined;
     let activityId = input.activityId;
-    let status: 'unanswered' | 'answered' | 'none' = 'none';
+    let status: 'unanswered' | 'retrying' | 'answered' | 'none' = 'none';
     if (input.lessonProblemId) {
       const [row] = await db
         .select({ problem: lessonProblems, userId: lessonRuns.userId })
@@ -240,7 +246,7 @@ export function registerTutorThreadRoutes(
         .orderBy(desc(attempts.attemptNo))
         .limit(1);
       currentAttempt = attempt;
-      status = attempt ? 'answered' : 'unanswered';
+      status = !attempt ? 'unanswered' : attemptAllowsRetry(attempt) ? 'retrying' : 'answered';
     }
     let exercise = exerciseId ? index.exercisesById.get(exerciseId) : undefined;
     if (exercise && isTemplate(exercise)) {
@@ -363,14 +369,20 @@ export function registerTutorThreadRoutes(
           ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
         ),
         learnerAnswer:
-          status === 'answered' && currentAttempt && exercise
-            ? answerDisplay(exercise, currentAttempt.answer)
+          (status === 'retrying' || status === 'answered') && currentAttempt && exercise
+            ? tutorAnswerFor(exercise, currentAttempt.answer)
             : '',
         graderVerdict:
-          status !== 'answered' ? '' : correct === 1 ? 'correct' : correct === 0 ? 'incorrect' : '',
+          status === 'retrying' || status === 'answered' ? graderVerdictFor(correct) : '',
+        graderFeedback:
+          (status === 'retrying' || status === 'answered') && currentAttempt
+            ? formatGraderFeedback(currentAttempt.feedback, status === 'retrying')
+            : '',
         hintLevel: 0,
-        authoredHints: status === 'unanswered' ? (exercise?.hints ?? []) : [],
-        solution: status === 'unanswered' ? '' : (exercise?.solution ?? ''),
+        authoredHints:
+          status === 'unanswered' || status === 'retrying' ? (exercise?.hints ?? []) : [],
+        solution:
+          status === 'unanswered' || status === 'retrying' ? '' : tutorSolutionFor(exercise),
         recentMistakes: [],
         question: input.question,
         mode: 'practice',
@@ -379,7 +391,7 @@ export function registerTutorThreadRoutes(
         page: input.page ?? 'none',
         page_content: pageContent,
       },
-      status === 'unanswered' ? 'nudge' : 'worked_step',
+      status === 'unanswered' ? 'nudge' : status === 'retrying' ? 'hint' : 'worked_step',
     );
     if (result.status !== 'ok' || !result.value) {
       if (result.callId) await db.delete(llmCalls).where(eq(llmCalls.id, result.callId));

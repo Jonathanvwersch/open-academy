@@ -21,7 +21,12 @@ import { answerDisplay } from '../src/server/learning/answer-display.js';
 import { tutorThreadBodySchema } from '../src/server/routes/tutor-threads.js';
 import { sanitizePageContent } from '../src/server/tutor/page-context.js';
 import type { TutorProvider, TutorResult } from '../src/server/tutor/provider.js';
-import type { ExplanationContext, TutorContext, TutorReply } from '../src/server/tutor/schemas.js';
+import type {
+  ExplanationContext,
+  RubricJudgement,
+  TutorContext,
+  TutorReply,
+} from '../src/server/tutor/schemas.js';
 import { onScreenOptions } from '../src/shared/shuffle.js';
 import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '../src/shared/tutor.js';
 
@@ -31,6 +36,7 @@ const headers = { 'content-type': 'application/json', 'X-Now': '2026-01-04T12:00
 let content: ContentIndex;
 let captured: TutorContext[] = [];
 let failing = false;
+let explanationGrade: RubricJudgement = { criteria: [], feedback_md: '' };
 
 const provider: TutorProvider = {
   model: 'thread-test',
@@ -47,7 +53,7 @@ const provider: TutorProvider = {
     };
   },
   async gradeExplanation(_ctx: ExplanationContext) {
-    return { value: { criteria: [], feedback_md: '' }, usage: null };
+    return { value: explanationGrade, usage: null };
   },
 };
 let app: ReturnType<typeof createApp>;
@@ -59,6 +65,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   captured = [];
   failing = false;
+  explanationGrade = { criteria: [], feedback_md: '' };
   await db.delete(users);
   await db.insert(users).values({
     id: userId,
@@ -159,6 +166,35 @@ async function answerLessonProblem(conceptId: string, problemId: string, answer:
     headers,
     body: JSON.stringify({ problemId, answer }),
   });
+}
+
+async function createExerciseActivity(exerciseId: string) {
+  const exercise = content.exercisesById.get(exerciseId);
+  if (!exercise) throw new Error(`Missing exercise ${exerciseId}`);
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      plannedMinutes: 10,
+      startedAt: new Date(headers['X-Now']),
+      status: 'active',
+    })
+    .returning();
+  if (!session) throw new Error('Expected a study session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: exercise.concept,
+      exerciseIds: [exercise.id],
+      plannedMinutes: 5,
+      status: 'in_progress',
+    })
+    .returning();
+  if (!activity) throw new Error('Expected an activity');
+  return { exercise, activity, session };
 }
 
 test('create-on-first-send persists messages and list/detail preserve newest-first and chronological ordering', async () => {
@@ -416,14 +452,141 @@ test('legacy exercise context is unanswered until an attempt exists for that act
       })
     ).status,
   ).toBe(200);
-  expect(captured.at(-1)?.problem_status).toBe('answered');
-  expect(captured.at(-1)?.solution).toBe(exercise.solution);
+  expect(captured.at(-1)?.problem_status).toBe('retrying');
+  expect(captured.at(-1)?.solution).toBe('');
+  expect(captured.at(-1)?.graderFeedback).toContain('The learner has one more try.');
   const displayedAnswer =
     exercise.type === 'mc'
       ? (exercise.options.find((option) => option.id === 'a')?.text ?? 'a')
       : 'a';
   expect(captured.at(-1)?.learnerAnswer).toBe(displayedAnswer);
   expect(captured.at(-1)?.graderVerdict).toBe('incorrect');
+});
+
+test('session explain context exposes partial grader feedback until the retry is used', async () => {
+  const { exercise, activity } = await createExerciseActivity('mlp-explain');
+  if (exercise.type !== 'explain') throw new Error('Expected an explanation exercise');
+  explanationGrade = {
+    criteria: [
+      { id: 'r1', judgement: 'met', evidence: 'describes the forward pass' },
+      { id: 'r2', judgement: 'partial', evidence: 'misses a batch dimension' },
+      { id: 'r3', judgement: 'missing', evidence: null },
+    ],
+    feedback_md: 'Almost: clarify the batch shapes.',
+  };
+  const answer = 'The layers transform each input and then combine the batch.';
+  const submit = (text: string) =>
+    app.request('/api/attempts', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer: { text },
+        mode: 'practice',
+      }),
+    });
+
+  expect((await submit(answer)).status).toBe(200);
+  expect(
+    (
+      await send('Can you see the almost statement?', undefined, {
+        exerciseId: exercise.id,
+        activityId: activity.id,
+      })
+    ).status,
+  ).toBe(200);
+  const retrying = captured.at(-1);
+  const criteria = exercise.rubric.map((criterion, index) => {
+    const marker = index === 0 ? '✓' : index === 1 ? '½' : '✗';
+    return `${marker} ${criterion.criterion}`;
+  });
+  expect(retrying).toMatchObject({
+    problem_status: 'retrying',
+    learnerAnswer: answer,
+    graderVerdict: 'partly correct',
+    solution: '',
+    authoredHints: exercise.hints ?? [],
+    graderFeedback: [
+      'Almost: clarify the batch shapes.',
+      ...criteria,
+      'The learner has one more try.',
+    ].join('\n'),
+  });
+
+  explanationGrade = {
+    criteria: exercise.rubric.map((criterion) => ({
+      id: criterion.id,
+      judgement: 'met',
+      evidence: 'covered',
+    })),
+    feedback_md: 'Complete explanation.',
+  };
+  const secondAnswer = 'Each layer preserves the batch rows and transforms the feature width.';
+  expect((await submit(secondAnswer)).status).toBe(200);
+  expect(
+    (
+      await send('What did I miss?', undefined, {
+        exerciseId: exercise.id,
+        activityId: activity.id,
+      })
+    ).status,
+  ).toBe(200);
+  expect(captured.at(-1)).toMatchObject({
+    problem_status: 'answered',
+    learnerAnswer: secondAnswer,
+    graderVerdict: 'correct',
+  });
+  expect(captured.at(-1)?.solution).toBeTruthy();
+  expect(captured.at(-1)?.graderFeedback).not.toContain('one more try');
+});
+
+test('session MC context keeps a wrong first practice answer retryable', async () => {
+  const { exercise, activity } = await createExerciseActivity('sl-check-target');
+  if (exercise.type !== 'mc') throw new Error('Expected a multiple-choice exercise');
+  const wrong = exercise.options.find((option) => !option.correct);
+  const correct = exercise.options.find((option) => option.correct);
+  if (!wrong || !correct) throw new Error('Expected correct and incorrect options');
+  const submit = (answer: string) =>
+    app.request('/api/attempts', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        exerciseId: exercise.id,
+        activityId: activity.id,
+        answer,
+        mode: 'practice',
+      }),
+    });
+
+  expect((await submit(wrong.id)).status).toBe(200);
+  expect(
+    (
+      await send('What should I reconsider?', undefined, {
+        exerciseId: exercise.id,
+        activityId: activity.id,
+      })
+    ).status,
+  ).toBe(200);
+  expect(captured.at(-1)).toMatchObject({
+    problem_status: 'retrying',
+    graderVerdict: 'incorrect',
+    solution: '',
+  });
+  expect(captured.at(-1)?.graderFeedback).toContain('The learner has one more try.');
+
+  expect((await submit(correct.id)).status).toBe(200);
+  expect(
+    (
+      await send('What does the solution show?', undefined, {
+        exerciseId: exercise.id,
+        activityId: activity.id,
+      })
+    ).status,
+  ).toBe(200);
+  expect(captured.at(-1)?.problem_status).toBe('answered');
+  expect(captured.at(-1)?.solution).toBeTruthy();
+  expect(captured.at(-1)?.graderFeedback).not.toContain('one more try');
 });
 
 test('null-concept practice activity uses its exercise concept in new and existing threads', async () => {

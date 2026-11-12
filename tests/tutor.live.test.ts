@@ -18,6 +18,7 @@ describe('live OpenAI tutor smoke', () => {
           exerciseOptions: [],
           learnerAnswer: 'The intercept.',
           graderVerdict: 'Incorrect.',
+          graderFeedback: '',
           hintLevel: 1,
           authoredHints: ['Compare output changes.'],
           solution: 'The slope is the predicted change per unit.',
