@@ -38,6 +38,7 @@ async function createReviewSession(
   exerciseIds = ['vectors-magnitude'],
   nextExerciseId = 'vectors-component-sum',
   firstActivityKind: 'review' | 'practice' = 'review',
+  conceptId = 'vectors',
 ) {
   const db = createDb(env.TEST_DATABASE_URL);
   const [user] = await db.select({ id: users.id }).from(users).limit(1);
@@ -58,7 +59,7 @@ async function createReviewSession(
       sessionId: session.id,
       idx: 0,
       kind: firstActivityKind,
-      conceptId: 'vectors',
+      conceptId,
       exerciseIds,
       plannedMinutes: 10,
       status: 'in_progress',
@@ -67,7 +68,7 @@ async function createReviewSession(
       sessionId: session.id,
       idx: 1,
       kind: 'practice',
-      conceptId: 'vectors',
+      conceptId,
       exerciseIds: [nextExerciseId],
       plannedMinutes: 10,
       status: 'planned',
@@ -77,7 +78,7 @@ async function createReviewSession(
   return session.id;
 }
 
-test('Enter after a correct Review answer continues without resubmitting', async ({ page }) => {
+test('Enter on a locked numeric answer continues without resubmitting', async ({ page }) => {
   const sessionId = await createReviewSession();
   let answerPosts = 0;
   page.on('request', (request) => {
@@ -98,20 +99,56 @@ test('Enter after a correct Review answer continues without resubmitting', async
   expect((await firstAnswer).status()).toBe(200);
   await expect(page.getByText('Correct', { exact: true })).toBeVisible();
   await expect(answer).toBeFocused();
-
-  await page
-    .getByTestId('session-exercise')
-    .locator('form')
-    .evaluate((form) => (form as HTMLFormElement).requestSubmit());
-  await page.evaluate(() => {
-    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-  });
-  await page.keyboard.press('Enter');
+  await expect(answer).toHaveAttribute('readonly', '');
+  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
+  await answer.press('Enter');
 
   await expect(page.getByText(/Activity \d+ of \d+ today/)).toHaveCount(0);
   await expect(page.getByTestId('exercise-prompt')).toContainText('sum of the coordinates');
   await expect(page.getByText('Not quite', { exact: true })).toHaveCount(0);
   expect(answerPosts).toBe(1);
+});
+
+test('Enter on a locked explanation textarea continues without resubmitting', async ({ page }) => {
+  const sessionId = await createReviewSession(
+    ['sl-explain-setup'],
+    'sl-inputs-targets-basics',
+    'practice',
+    'supervised-learning',
+  );
+  let answerPosts = 0;
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/attempts') && request.method() === 'POST') {
+      answerPosts += 1;
+    }
+  });
+
+  await page.goto(`/session/${sessionId}`);
+  const answer = page.getByLabel('Your answer');
+  await answer.fill('Inputs go in and a target comes out.');
+  const firstAnswer = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/attempts') && response.request().method() === 'POST',
+  );
+  await answer.press('Enter');
+  expect((await firstAnswer).status()).toBe(200);
+  await expect(page.getByText('Almost', { exact: true })).toBeVisible();
+  await answer.fill('Inputs go in and a target comes out; loss measures error.');
+  const secondAnswer = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/attempts') && response.request().method() === 'POST',
+  );
+  await answer.press('Enter');
+  expect((await secondAnswer).status()).toBe(200);
+  await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
+  await expect(answer).toBeFocused();
+  await expect(answer).toHaveAttribute('readonly', '');
+  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
+
+  await answer.press('Enter');
+
+  await expect(page.getByRole('radio')).toHaveCount(4);
+  expect(answerPosts).toBe(2);
 });
 
 test('Tab and Enter on Hint reveals it instead of continuing', async ({ page }) => {

@@ -482,18 +482,23 @@ export function ExerciseForm({
   useEffect(() => {
     if (!primaryAction) return;
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      const targetElement = target instanceof Element ? target : null;
+      const lockedAnswerField =
+        (targetElement instanceof HTMLInputElement ||
+          targetElement instanceof HTMLTextAreaElement) &&
+        (targetElement.readOnly || targetElement.disabled) &&
+        Boolean(targetElement.closest('[data-testid="session-exercise"]'));
       if (
         event.key !== 'Enter' ||
         event.shiftKey ||
         event.altKey ||
         event.ctrlKey ||
         event.metaKey ||
-        event.target instanceof HTMLTextAreaElement
+        (targetElement instanceof HTMLTextAreaElement && !lockedAnswerField)
       ) {
         return;
       }
-      const target = event.target;
-      const targetElement = target instanceof Element ? target : null;
       const nonTextInput =
         targetElement instanceof HTMLInputElement &&
         ['checkbox', 'color', 'radio', 'range'].includes(targetElement.type);
@@ -508,7 +513,8 @@ export function ExerciseForm({
         interactiveTarget &&
         !isPageTarget &&
         !(nonTextInput && interactiveTarget === targetElement) &&
-        !(isExerciseCard && interactiveTarget === targetElement)
+        !(isExerciseCard && interactiveTarget === targetElement) &&
+        !lockedAnswerField
       ) {
         return;
       }
