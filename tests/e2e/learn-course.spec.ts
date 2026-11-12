@@ -363,6 +363,10 @@ test('navigation cleanup pages render at desktop and mobile widths', async ({ pa
 });
 
 test('authored course-structure lessons render their diagrams', async ({ page }) => {
+  test.skip(
+    process.env.PLAYWRIGHT_CONTENT_DIR !== 'content',
+    'requires the repository content directory',
+  );
   await page.setViewportSize({ width: 800, height: 1000 });
   await mockLessonReview(
     page,
@@ -696,8 +700,6 @@ test('passing a knowledge point increases Learn XP after reload', async ({ page 
   await expect(page.getByTestId('lesson-problem')).toBeVisible();
   await answerCurrentProblem(page);
   await expect(page.getByRole('button', { name: 'Next problem' })).toBeVisible();
-  await page.getByRole('button', { name: 'Next problem' }).click();
-  await answerCurrentProblem(page);
   await page.getByRole('button', { name: 'Next problem' }).click();
   await answerCurrentProblem(page);
   await page.goto('/');

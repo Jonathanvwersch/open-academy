@@ -1,10 +1,21 @@
+import { mkdirSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
+import { and, eq } from 'drizzle-orm';
 import { createDb } from '../../src/server/db/client.js';
 import { diagnosticRuns, lessonRuns, users } from '../../src/server/db/schema.js';
 import { env } from '../../src/server/env.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
+const screenshotDir = '/home/ubuntu/shots/lesson-quiz';
 let userId = '';
+mkdirSync(screenshotDir, { recursive: true });
+
+function requireRepositoryContent() {
+  test.skip(
+    process.env.PLAYWRIGHT_CONTENT_DIR !== 'content',
+    'requires the repository content directory',
+  );
+}
 
 test.beforeEach(async () => {
   await db.delete(users);
@@ -64,6 +75,7 @@ async function expectGradientDescentRecap(page: Page) {
 }
 
 test('full lesson shows recap facts and opens a prerequisite lesson', async ({ page }) => {
+  requireRepositoryContent();
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/lessons/gradient-descent');
 
@@ -78,6 +90,7 @@ test('full lesson shows recap facts and opens a prerequisite lesson', async ({ p
 });
 
 test('session lesson shows recap facts and opens a prerequisite lesson', async ({ page }) => {
+  requireRepositoryContent();
   await page.setViewportSize({ width: 1280, height: 900 });
   await db.insert(lessonRuns).values(
     ['gradients', 'loss-functions', 'linear-regression'].map((conceptId) => ({
@@ -110,7 +123,52 @@ test('session lesson shows recap facts and opens a prerequisite lesson', async (
   await expect(page).toHaveURL(/\/lessons\/gradients$/);
 });
 
+test('course shows an unpassed quiz and locks a dependent lesson', async ({ page }) => {
+  requireRepositoryContent();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const completedAt = new Date();
+  await db.insert(lessonRuns).values([
+    { userId, conceptId: 'supervised-learning', status: 'quiz' },
+    {
+      userId,
+      conceptId: 'dot-product',
+      status: 'completed',
+      completedAt,
+      quizPassedAt: completedAt,
+    },
+    {
+      userId,
+      conceptId: 'matrices',
+      status: 'completed',
+      completedAt,
+      quizPassedAt: completedAt,
+    },
+  ]);
+
+  await page.goto('/course');
+  await expect(page.getByText('Quiz not passed', { exact: true })).toBeVisible();
+  const lockedDependent = page.getByRole('link', { name: /1\.6 Linear regression/ });
+  await expect(lockedDependent).toHaveClass(/opacity-60/);
+  await expect(lockedDependent).toContainText('Pass the Supervised learning setup quiz first');
+  await page.screenshot({
+    path: `${screenshotDir}/course-quiz-not-passed.png`,
+  });
+  await lockedDependent.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: `${screenshotDir}/locked-dependent-quiz-prerequisite.png`,
+  });
+
+  await db
+    .update(lessonRuns)
+    .set({ status: 'completed', completedAt, quizPassedAt: completedAt })
+    .where(and(eq(lessonRuns.userId, userId), eq(lessonRuns.conceptId, 'supervised-learning')));
+  await page.reload();
+  await expect(lockedDependent).not.toHaveClass(/opacity-60/);
+  await expect(lockedDependent).not.toContainText('Pass the Supervised learning setup quiz first');
+});
+
 test('loss functions shows its authored prerequisite recap', async ({ page }) => {
+  requireRepositoryContent();
   await page.goto('/lessons/loss-functions');
 
   await expect(page.getByRole('heading', { name: 'Recap' })).toBeVisible();
