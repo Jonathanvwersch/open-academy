@@ -25,7 +25,7 @@ concepts:
       prereqs: [{ id: images-as-tensors }, { id: mlp-forward-pass }],
       objectives: [{ text: "Compute output shapes of conv layers", dimension: math }],
       projects: [image-classifier],
-      status: stub,
+      status: authored,
     }
   - {
       id: camera-geometry,
