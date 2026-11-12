@@ -19,6 +19,7 @@ const buttonLoadingScreenshotDir = '/home/ubuntu/screenshots/button-loading';
 const finalContinueScreenshotDir = '/home/ubuntu/screenshots/final-continue';
 const stepToastScreenshotDir = '/home/ubuntu/screenshots/step-toast';
 const lessonQuizScreenshotDir = '/home/ubuntu/shots/lesson-quiz';
+const quizUiScreenshotDir = '/home/ubuntu/screenshots/quiz-ui';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
@@ -26,6 +27,7 @@ mkdirSync(feedbackCorrectScreenshotDir, { recursive: true });
 mkdirSync(mcShuffleScreenshotDir, { recursive: true });
 mkdirSync(buttonLoadingScreenshotDir, { recursive: true });
 mkdirSync(finalContinueScreenshotDir, { recursive: true });
+mkdirSync(quizUiScreenshotDir, { recursive: true });
 mkdirSync(stepToastScreenshotDir, { recursive: true });
 mkdirSync(lessonQuizScreenshotDir, { recursive: true });
 
@@ -332,7 +334,7 @@ test('a passed knowledge point opens the next step and shows an XP toast', async
   expect(session.xp.session).toBe(10);
   expect(session.xp.today).toBe(10);
   await expect(page.getByTestId('kp-checkpoint')).toHaveCount(0);
-  const toastTitle = `Step 1 of ${run.points.length} done`;
+  const toastTitle = 'Step 1 done';
   const toastDescription = `+${run.points[0].xpEarned} XP · Today: ${session.xp.today} / ${session.xp.goal} XP`;
   await expect(page.getByText(toastTitle, { exact: true })).toBeVisible();
   await expect(page.getByText(toastDescription, { exact: true })).toBeVisible();
@@ -471,9 +473,7 @@ test('passes every knowledge point and restores the exact problem and result aft
           'step',
         );
         if (run.points.length > 2) {
-          await expect(
-            page.getByText(`Step 3 of ${run.points.length}`, { exact: true }),
-          ).toBeVisible();
+          await expect(page.getByText('Step 3', { exact: true })).toBeVisible();
           await expect(page.getByRole('button', { name: /^Step 3 of/ })).toHaveCount(0);
         }
         await page.screenshot({ path: `${stepReviewScreenshotDir}/desktop-viewing.png` });
@@ -810,6 +810,7 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
   const selfCheck = page.getByRole('button', { name: 'Submit self-check' });
   const retry = page.getByRole('button', { name: /Try again/ });
   const followUp = page.getByRole('button', { name: 'Submit again' });
+  const nextStep = page.getByTestId('almost-next-step');
   const continueButton = page.getByRole('button', { name: 'Continue' });
   await expect
     .poll(
@@ -826,7 +827,11 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
   } else if (await retry.isVisible()) {
     await retry.click();
   } else if (await followUp.isVisible()) {
+    await expect(nextStep).toBeVisible();
+    await expect(nextStep).toContainText('Submit again');
+    await expect(nextStep).toContainText('one more try');
     await followUp.click();
+    await expect(nextStep).toHaveCount(0);
   }
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
   await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
@@ -885,7 +890,15 @@ test('a knowledge point keeps serving questions after five misses in the same ro
 test('lesson quiz results are hidden until submit, resume after reload, and allow review after passing', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   const sessionId = await createSession(page);
+  const quizChip = page.getByTestId('lesson-quiz-chip');
+  await expect(quizChip).toHaveAttribute('aria-label', 'Lesson quiz, upcoming');
+  await page.screenshot({ path: `${quizUiScreenshotDir}/step-row-desktop.png` });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: `${quizUiScreenshotDir}/step-row-mobile.png` });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1280, height: 900 });
   const prepared = await page.evaluate(
     async ({ conceptId, sessionId }) => {
       const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
@@ -962,6 +975,7 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
   await continueButton.click();
   await expect(page.getByTestId('lesson-quiz-intro')).toBeVisible();
+  await expect(quizChip).toHaveAttribute('aria-label', 'Lesson quiz, current');
   await page.screenshot({ path: `${lessonQuizScreenshotDir}/quiz-intro.png`, fullPage: true });
   await page.getByRole('button', { name: 'Start quiz' }).click();
   await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
@@ -969,17 +983,20 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await expect(page.getByRole('button', { name: 'Open tutor' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Ask the tutor' })).toBeDisabled();
 
-  const answerAttempt = async (wrong: boolean) =>
+  const answerAttempt = async (wrong: boolean, oneWrong = false) =>
     page.evaluate(
-      async ({ conceptId, activityId, wrong }) => {
+      async ({ conceptId, activityId, wrong, oneWrong }) => {
         let run = (await (await fetch(`/api/lessons/${conceptId}/run`)).json()).run;
+        let wrongUsed = false;
         for (const item of run.quiz.current.items) {
           if (item.answered) continue;
           const expected = await (
             await fetch(`/api/test/lesson-quiz-items/${item.id}/answer`)
           ).json();
           let answer = expected.answer;
-          if (wrong) {
+          const makeWrong = wrong || (oneWrong && !wrongUsed);
+          if (makeWrong) {
+            wrongUsed = true;
             if (item.exercise.type === 'mc') {
               const correctIds = Array.isArray(answer) ? answer : [answer];
               const other = item.exercise.options.find(
@@ -1010,7 +1027,7 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
         if (!response.ok) throw new Error(result.error ?? 'Could not submit quiz');
         return result.run;
       },
-      { conceptId, activityId: prepared.activityId, wrong },
+      { conceptId, activityId: prepared.activityId, wrong, oneWrong },
     );
 
   const firstItem = await page.evaluate(async (concept) => {
@@ -1053,12 +1070,66 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await page.screenshot({ path: `${lessonQuizScreenshotDir}/failed-results.png`, fullPage: true });
   await page.getByRole('button', { name: 'Retake quiz' }).click();
   await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
-  await answerAttempt(false);
+  await answerAttempt(false, true);
   await page.reload();
-  await expect(page.getByTestId('lesson-quiz-results')).toContainText('Passed');
+  const passed = page.getByTestId('lesson-quiz-results');
+  await expect(passed).toContainText(/^Quiz passed ·/);
+  await expect(passed.getByRole('heading')).not.toContainText('XP');
+  await expect(passed.getByText(/^\+\d+ XP$/)).toBeVisible();
+  await expect(quizChip).toHaveAttribute('aria-label', 'Lesson quiz, passed');
+  await expect(quizChip).toContainText('✓ Quiz');
+  const seeAnswers = passed.getByRole('button', { name: 'See answers' });
+  const retake = passed.getByRole('button', { name: 'Retake quiz' });
+  const resultsContinueButton = passed.getByRole('button', { name: 'Continue' });
+  const [seeBounds, retakeBounds, continueBounds] = await Promise.all([
+    seeAnswers.boundingBox(),
+    retake.boundingBox(),
+    resultsContinueButton.boundingBox(),
+  ]);
+  if (!seeBounds || !retakeBounds || !continueBounds) {
+    throw new Error('Quiz result buttons should be visible');
+  }
+  expect(seeBounds.x).toBeLessThan(retakeBounds.x);
+  expect(retakeBounds.x).toBeLessThan(continueBounds.x);
   await page.screenshot({ path: `${lessonQuizScreenshotDir}/passed-results.png`, fullPage: true });
-  await page.getByRole('button', { name: 'See answers' }).click();
-  await expect(page.getByTestId('lesson-quiz-review')).toContainText('Correct answer:');
+  await page.screenshot({ path: `${quizUiScreenshotDir}/passed-desktop.png`, fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: `${quizUiScreenshotDir}/passed-mobile.png`, fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.route(`**/api/lessons/${conceptId}/quiz/*/review`, async (route) => {
+    const response = await route.fetch();
+    const data = await response.json();
+    data.items[0].yourAnswer = '$-1$';
+    await route.fulfill({ response, json: data });
+  });
+  await seeAnswers.click();
+  const review = page.getByTestId('lesson-quiz-review');
+  const mathAnswer = review
+    .locator('article')
+    .first()
+    .locator('p')
+    .filter({ hasText: 'Your answer:' });
+  await expect(mathAnswer.locator('.katex')).toBeVisible();
+  await expect(mathAnswer).not.toContainText('$');
+  const wrongMark = review
+    .locator('[data-testid="quiz-review-mark"][data-correct="false"]')
+    .first();
+  const rightMark = review.locator('[data-testid="quiz-review-mark"][data-correct="true"]').first();
+  await expect(wrongMark).toContainText('Incorrect');
+  await expect(
+    wrongMark.locator('xpath=ancestor::article').getByText('Correct answer:'),
+  ).toBeVisible();
+  await expect(rightMark).toContainText('Correct');
+  await expect(
+    rightMark.locator('xpath=ancestor::article').getByText('Correct answer:'),
+  ).toHaveCount(0);
+  await page.screenshot({ path: `${quizUiScreenshotDir}/review-desktop.png`, fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: `${quizUiScreenshotDir}/review-mobile.png`, fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(review).toContainText('Correct answer:');
   await page.screenshot({ path: `${lessonQuizScreenshotDir}/see-answers.png`, fullPage: true });
   await page.getByRole('button', { name: 'Back to results' }).click();
   await page.getByRole('button', { name: 'Retake quiz' }).click();

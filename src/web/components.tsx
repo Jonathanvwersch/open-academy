@@ -1,4 +1,4 @@
-import { Check, X } from 'lucide-react';
+import { Check, Info, X } from 'lucide-react';
 import type { FormEvent, KeyboardEvent, ReactNode, RefObject } from 'react';
 import * as React from 'react';
 import { useEffect, useMemo, useState } from 'react';
@@ -398,6 +398,20 @@ export function FeedbackPanel({
             <Markdown>{solution}</Markdown>
           </AlertDescription>
         )
+      ) : null}
+      {result.followUp === true ? (
+        <div
+          data-testid="almost-next-step"
+          className="mt-3 flex items-start gap-2 border-t border-current/15 pt-3"
+        >
+          <Info aria-hidden="true" className="mt-1 size-4 shrink-0" />
+          <p>
+            {rubric.some((item) => item.judgement === 'partial' || item.judgement === 'missing')
+              ? 'Add the points marked ½ or ✗ to your answer above, then press '
+              : "Add what's missing to your answer above, then press "}
+            <strong>Submit again</strong>. You have one more try before the model answer is shown.
+          </p>
+        </div>
       ) : null}
     </Alert>
   );

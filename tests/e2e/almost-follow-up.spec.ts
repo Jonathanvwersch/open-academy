@@ -97,17 +97,26 @@ test('partial explain feedback keeps the answer editable for one Almost follow-u
   await expect(page.getByRole('button', { name: 'Submit again' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Continue' })).toHaveCount(0);
   await expect(page.getByRole('status')).toContainText('½');
+  const nextStep = page.getByTestId('almost-next-step');
+  await expect(nextStep).toBeVisible();
+  await expect(nextStep).toContainText('Submit again');
+  await expect(nextStep).toContainText('one more try');
   expect(checkedFollowUpResponse).toBe(true);
   expect(await answer.evaluate((element) => element.getAttribute('data-test-almost-editor'))).toBe(
     'mounted',
   );
   await page.screenshot({ path: `${screenshotDir}/almost-1.png`, fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(nextStep).toBeVisible();
+  await page.screenshot({ path: `${screenshotDir}/almost-1-mobile.png`, fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
 
   const secondAnswer = `${firstAnswer} Squared error measures the prediction's miss.`;
   await answer.fill(secondAnswer);
   await page.getByRole('button', { name: 'Submit again' }).click();
 
   await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('almost-next-step')).toHaveCount(0);
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible();
   await expect(answer).toHaveValue(secondAnswer);
