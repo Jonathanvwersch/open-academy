@@ -36,6 +36,7 @@ function tutorContext(overrides: Partial<TutorContext> = {}): TutorContext {
     objectives: ['Understand the slope'],
     lessonSummary: 'A line models the relationship between two variables.',
     exercisePrompt: 'What does the slope represent?',
+    exerciseLabel: 'Question 4',
     exerciseOptions: [],
     hintLevel: 1,
     authoredHints: ['Think about how y changes as x changes.'],
@@ -76,18 +77,26 @@ describe('buildTutorInput', () => {
     expect(input.map((message) => message.role)).toEqual([
       'system',
       'user',
-      'user',
       'assistant',
+      'system',
       'user',
     ]);
     expect(input.at(-1)).toEqual({ role: 'user', content: 'ah true makes sense' });
-    const contextMessage = input[1];
+    const contextMessage = input.at(-2);
     if (!contextMessage) throw new Error('Missing tutor context message');
-    const context = JSON.parse(contextMessage.content) as Record<string, unknown>;
+    expect(contextMessage.role).toBe('system');
+    const contextPrefix =
+      "Context for the learner's next message — what is on their screen right now:\n";
+    expect(contextMessage.content.startsWith(contextPrefix)).toBe(true);
+    const context = JSON.parse(contextMessage.content.slice(contextPrefix.length)) as Record<
+      string,
+      unknown
+    >;
     expect(context).not.toHaveProperty('history');
     expect(context).not.toHaveProperty('question');
     expect(context).toMatchObject({
       conceptTitle: 'Linear regression',
+      exerciseLabel: 'Question 4',
       requested_help_level: 'hint',
     });
   });
@@ -96,11 +105,25 @@ describe('buildTutorInput', () => {
     const input = buildTutorInput(tutorContext({ history: [], question: undefined }), 'nudge');
 
     expect(input).toHaveLength(3);
+    expect(input.map((message) => message.role)).toEqual(['system', 'system', 'user']);
     expect(input.at(-1)).toEqual({
       role: 'user',
       content:
         '(No chat message: the learner pressed the hint button. Give help at requested_help_level.)',
     });
+  });
+
+  it('places context before the latest question when history is empty', () => {
+    const input = buildTutorInput(
+      tutorContext({ history: [], question: 'Can you explain this?' }),
+      'hint',
+    );
+
+    expect(input.map((message) => message.role)).toEqual(['system', 'system', 'user']);
+    expect(input.at(-1)).toEqual({ role: 'user', content: 'Can you explain this?' });
+    expect(input.at(-2)?.content).toContain(
+      "Context for the learner's next message — what is on their screen right now:\n",
+    );
   });
 
   it('maps tutor turns to assistant and learner turns to user', () => {
@@ -115,7 +138,7 @@ describe('buildTutorInput', () => {
       'nudge',
     );
 
-    expect(input.slice(2, 4)).toEqual([
+    expect(input.slice(1, 3)).toEqual([
       { role: 'assistant', content: 'Consider the slope.' },
       { role: 'user', content: 'I see it now.' },
     ]);

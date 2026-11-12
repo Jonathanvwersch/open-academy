@@ -38,16 +38,16 @@ export function buildTutorInput(ctx: TutorContext, level: TutorLevel): TutorInpu
   const { history = [], question, ...rest } = ctx;
   return [
     { role: 'system', content: tutorPrompt },
-    {
-      role: 'user',
-      content: JSON.stringify({ ...rest, requested_help_level: level }),
-    },
     ...history.map(
       (message): TutorInputMessage => ({
         role: message.role === 'tutor' ? 'assistant' : 'user',
         content: message.content,
       }),
     ),
+    {
+      role: 'system',
+      content: `Context for the learner's next message — what is on their screen right now:\n${JSON.stringify({ ...rest, requested_help_level: level })}`,
+    },
     {
       role: 'user',
       content: question?.trim()

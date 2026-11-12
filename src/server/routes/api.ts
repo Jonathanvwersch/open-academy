@@ -818,6 +818,7 @@ export function createApiRoutes(deps: {
               .map((block) => block.md)
               .join('\n') ?? '',
           exercisePrompt: exercise.prompt,
+          exerciseLabel: 'Current question',
           exerciseOptions: optionTexts.map(
             ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
           ),

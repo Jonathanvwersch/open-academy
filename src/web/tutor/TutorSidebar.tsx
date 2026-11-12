@@ -11,7 +11,11 @@ import {
 } from 'react';
 import type { StickToBottomContext } from 'use-stick-to-bottom';
 import { useIsMobile } from '@/hooks/use-mobile.js';
-import { TUTOR_QUESTION_MAX_LENGTH, tutorQuestionTooLongMessage } from '../../shared/tutor.js';
+import {
+  repairTutorMarkdown,
+  TUTOR_QUESTION_MAX_LENGTH,
+  tutorQuestionTooLongMessage,
+} from '../../shared/tutor.js';
 import { apiFetch } from '../authenticated-fetch.js';
 import { Markdown } from '../components.js';
 import {
@@ -48,6 +52,7 @@ export interface TutorRequestContext {
   conceptTitle?: string;
   activityId?: string;
   exerciseId?: string;
+  questionLabel?: string;
   lessonProblemId?: string;
   page?: 'session' | 'lesson' | 'course' | 'map' | 'paper';
   knowledgePointId?: string;
@@ -303,6 +308,7 @@ export function TutorContextProvider({
           conceptId: requestContext.conceptId ?? undefined,
           activityId: requestContext.activityId ?? undefined,
           exerciseId: requestContext.exerciseId ?? undefined,
+          questionLabel: requestContext.questionLabel ?? undefined,
           lessonProblemId: requestContext.lessonProblemId ?? undefined,
           page: requestContext.page ?? undefined,
           knowledgePointId: requestContext.knowledgePointId ?? undefined,
@@ -703,7 +709,9 @@ export function TutorContextProvider({
                             <MessageContent
                               style={{ '--katex-cover': 'var(--sidebar)' } as React.CSSProperties}
                             >
-                              <Markdown wrapDisplayMath>{greeting.text}</Markdown>
+                              <Markdown wrapDisplayMath>
+                                {repairTutorMarkdown(greeting.text)}
+                              </Markdown>
                             </MessageContent>
                           </Message>
                         ) : null}
@@ -732,7 +740,11 @@ export function TutorContextProvider({
                                 } as React.CSSProperties
                               }
                             >
-                              <Markdown wrapDisplayMath>{message.content}</Markdown>
+                              <Markdown wrapDisplayMath>
+                                {message.role === 'assistant'
+                                  ? repairTutorMarkdown(message.content)
+                                  : message.content}
+                              </Markdown>
                             </MessageContent>
                           </Message>
                         ))}
