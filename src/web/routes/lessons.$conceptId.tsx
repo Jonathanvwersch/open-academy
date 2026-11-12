@@ -3,7 +3,11 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { Button } from '@/ui/button.js';
 import { LessonBlock, Markdown } from '../components.js';
-import { exerciseQueryOptions, lessonReviewQueryOptions } from '../queries.js';
+import {
+  exerciseQueryOptions,
+  lessonReviewQueryOptions,
+  lessonRunQueryOptions,
+} from '../queries.js';
 import { RouteLoadError } from '../route-error.js';
 import { LessonReviewSkeleton } from '../skeletons.js';
 import { useTutorSidebar } from '../tutor/TutorSidebar.js';
@@ -17,6 +21,7 @@ export const Route = createFileRoute('/lessons/$conceptId')({
     const payload = await context.queryClient.ensureQueryData(
       lessonReviewQueryOptions(params.conceptId),
     );
+    await context.queryClient.ensureQueryData(lessonRunQueryOptions(params.conceptId));
     await Promise.all(
       payload.lesson.blocks.flatMap((block) =>
         block.exercise
@@ -38,6 +43,7 @@ function LessonReviewPage() {
   const { conceptId } = Route.useParams();
   const { from } = Route.useSearch();
   const { data } = useSuspenseQuery(lessonReviewQueryOptions(conceptId));
+  const { data: runData } = useSuspenseQuery(lessonRunQueryOptions(conceptId));
   const { lesson, checkAnswers, conceptTitle } = data;
   const tutorSidebar = useTutorSidebar();
   const finalBlock = lesson.blocks.find(
@@ -62,6 +68,11 @@ function LessonReviewPage() {
         </Button>
       ) : null}
       <h1 className="text-3xl font-semibold">{conceptTitle}</h1>
+      {runData.run?.status === 'completed' ? (
+        <p className="text-sm text-muted-foreground">Quiz passed</p>
+      ) : runData.run?.status === 'quiz' ? (
+        <p className="text-sm text-muted-foreground">Quiz not passed yet</p>
+      ) : null}
       {lesson.knowledge_points?.length ? (
         <div className="space-y-5">
           {lesson.where_this_fits ? (

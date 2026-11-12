@@ -29,7 +29,7 @@ export function LessonRunner({
   activityCount,
   lessonHref,
   tutorEnabled,
-  resumeRetry,
+  finalAnswered,
   onContinue,
 }: {
   conceptId: string;
@@ -41,8 +41,8 @@ export function LessonRunner({
   activityCount: number;
   lessonHref?: string;
   tutorEnabled: boolean;
-  resumeRetry: boolean;
-  onContinue: (status: 'completed' | 'needs_retry') => Promise<void>;
+  finalAnswered: boolean;
+  onContinue: (status: 'quiz' | 'completed', stage: 'final' | 'done') => Promise<void>;
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -52,7 +52,10 @@ export function LessonRunner({
   const lesson = useSuspenseQuery(lessonQueryOptions(conceptId)).data;
   const state = query.data.run;
   const starting = useRef(false);
-  const visibleProblemId = state?.pendingProblem?.id ?? state?.lastAnsweredProblem?.id;
+  const visibleProblemId =
+    state?.pendingPracticeProblem?.id ??
+    state?.pendingProblem?.id ??
+    state?.lastAnsweredProblem?.id;
   const previousProblemId = useRef(visibleProblemId);
   const problemCardRef = useRef<HTMLDivElement>(null);
   const problemPromptRef = useRef<HTMLDivElement>(null);
@@ -66,6 +69,21 @@ export function LessonRunner({
   const [busyAction, setBusyAction] = useState<'submit' | 'next' | 'continue' | null>(null);
   const [error, setError] = useState('');
   const [viewingPointId, setViewingPointId] = useState<string | null>(null);
+  const [practicePointId, setPracticePointId] = useState<string | null>(null);
+  const [quizReview, setQuizReview] = useState<{
+    attemptId: string;
+    items: Array<{
+      id: string;
+      position: number;
+      pointId: string;
+      title: string;
+      exercise: { prompt: string; type: string };
+      yourAnswer: string;
+      correctAnswer: string;
+      solution: string;
+      correct: number | null;
+    }>;
+  } | null>(null);
   const [checkpoint, setCheckpoint] = useState<{
     title: string;
     nextTitle: string;
@@ -85,12 +103,9 @@ export function LessonRunner({
         )
       : undefined;
   const point = answeredPoint ?? activePoint ?? state?.currentPoint;
-  const pointId = point?.id;
   const nextPoint = state?.currentPointId
     ? lesson?.knowledge_points?.find((item) => item.id === state.currentPointId)
     : undefined;
-  const basicsExerciseId = lesson?.knowledge_points?.find((item) => item.id === pointId)
-    ?.problems[0];
   const contextProblem = state?.pendingProblem ?? state?.lastAnsweredProblem;
   const currentPointIndex = state?.currentPointId
     ? state.points.findIndex((point) => point.id === state.currentPointId)
@@ -102,12 +117,21 @@ export function LessonRunner({
     ? lesson?.knowledge_points?.find((item) => item.id === viewingPointId)
     : undefined;
   const viewingPastStep = Boolean(viewingPointId && viewingPointId !== state?.currentPointId);
+  const practiceMode = Boolean(viewingPointId && viewingPointId === practicePointId);
+  const practiceProblem =
+    state?.pendingPracticeProblem ??
+    (state?.lastAnsweredProblem?.practiceOnly ? state.lastAnsweredProblem : undefined);
+  const pendingPracticePointId = state?.pendingPracticeProblem?.knowledgePointId;
   const displayedPoint = viewingPastStep ? viewingPoint : point;
   const pageLabel =
     state && currentPointIndex >= 0
       ? `${title} · step ${currentPointIndex + 1} of ${state.points.length}`
       : title;
-  const tutorContextProblem = viewingPastStep ? undefined : contextProblem;
+  const tutorContextProblem = practiceMode
+    ? practiceProblem
+    : viewingPastStep
+      ? undefined
+      : contextProblem;
   const tutorContextPointId = viewingPastStep ? viewingPointId : state?.currentPointId;
   const tutorContextPageLabel =
     viewingPastStep && state && viewingPointIndex >= 0
@@ -134,6 +158,12 @@ export function LessonRunner({
   }, [state?.currentPointId]);
 
   useEffect(() => {
+    if (!pendingPracticePointId) return;
+    setPracticePointId(pendingPracticePointId);
+    setViewingPointId(pendingPracticePointId);
+  }, [pendingPracticePointId]);
+
+  useEffect(() => {
     tutorSidebar.setContext({
       conceptId,
       conceptTitle: title,
@@ -143,7 +173,7 @@ export function LessonRunner({
       page: 'session',
       knowledgePointId: tutorContextPointId ?? undefined,
       pageLabel: tutorContextPageLabel,
-      allowed: true,
+      allowed: !state?.quiz.current,
       enabled: tutorEnabled,
     });
     return () => tutorSidebar.clearContext();
@@ -154,6 +184,7 @@ export function LessonRunner({
     tutorContextProblem?.id,
     tutorContextPageLabel,
     tutorContextPointId,
+    state?.quiz.current,
     title,
     tutorEnabled,
     tutorSidebar,
@@ -168,11 +199,7 @@ export function LessonRunner({
   );
 
   useEffect(() => {
-    const retryBelongsToAnotherActivity =
-      state?.status === 'needs_retry' &&
-      resumeRetry &&
-      state.lastAnsweredProblem?.activityId !== activityId;
-    if ((!state || retryBelongsToAnotherActivity) && !starting.current) {
+    if (!state && !starting.current) {
       starting.current = true;
       setBusy(true);
       void apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/run`, {
@@ -190,10 +217,11 @@ export function LessonRunner({
         )
         .finally(() => setBusy(false));
     }
-  }, [activityId, conceptId, resumeRetry, state, updateState]);
+  }, [activityId, conceptId, state, updateState]);
 
   const submit = async (answer: unknown) => {
-    if (!state?.pending) return;
+    const pending = practiceMode ? state?.pendingPracticeProblem : state?.pendingProblem;
+    if (!state || !pending) return;
     setBusy(true);
     setBusyAction('submit');
     setError('');
@@ -201,7 +229,7 @@ export function LessonRunner({
       const response = await apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/run/answer`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ problemId: state.pending.id, answer, activityId }),
+        body: JSON.stringify({ problemId: pending.id, answer, activityId }),
       });
       const data = (await response.json()) as {
         state?: NonNullable<LessonRunPayload['run']>;
@@ -217,14 +245,145 @@ export function LessonRunner({
     }
   };
 
+  const startQuiz = async () => {
+    setBusy(true);
+    setBusyAction('next');
+    setError('');
+    setQuizReview(null);
+    try {
+      const response = await apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/quiz/start`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ activityId }),
+      });
+      const data = (await response.json()) as LessonRunPayload & { error?: string };
+      if (!response.ok || !data.run) throw new Error(data.error ?? 'Could not start the quiz.');
+      await updateState(data.run);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not start the quiz.');
+    } finally {
+      setBusyAction(null);
+      setBusy(false);
+    }
+  };
+
+  const submitQuizResult = async () => {
+    const response = await apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/quiz/submit`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ activityId }),
+    });
+    const data = (await response.json()) as LessonRunPayload & { error?: string };
+    if (!response.ok || !data.run) throw new Error(data.error ?? 'Could not submit the quiz.');
+    await updateState(data.run);
+    await queryClient.invalidateQueries({ queryKey: sessionQueryOptions(sessionId).queryKey });
+  };
+
+  const submitQuiz = async () => {
+    setBusy(true);
+    setBusyAction('submit');
+    setError('');
+    try {
+      await submitQuizResult();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not submit the quiz.');
+    } finally {
+      setBusyAction(null);
+      setBusy(false);
+    }
+  };
+
+  const submitQuizAnswer = async (itemId: string, answer: unknown, last: boolean) => {
+    setBusy(true);
+    setBusyAction('submit');
+    setError('');
+    try {
+      const response = await apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/quiz/answer`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ itemId, answer, activityId }),
+      });
+      const data = (await response.json()) as {
+        run?: NonNullable<LessonRunPayload['run']>;
+        error?: string;
+      };
+      if (!response.ok || !data.run) throw new Error(data.error ?? 'Your answer was not saved.');
+      await updateState(data.run);
+      if (last || data.run.quiz.current?.items.every((item) => item.answered)) {
+        await submitQuizResult();
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Your answer was not saved.');
+    } finally {
+      setBusyAction(null);
+      setBusy(false);
+    }
+  };
+
+  const startPractice = async (pointId: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      const response = await apiFetch(
+        `/api/lessons/${encodeURIComponent(conceptId)}/run/practice`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ pointId, activityId }),
+        },
+      );
+      const data = (await response.json()) as LessonRunPayload & { error?: string };
+      if (!response.ok || !data.run) {
+        throw new Error(data.error ?? 'Could not load a practice question.');
+      }
+      setPracticePointId(pointId);
+      await updateState(data.run);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not load a practice question.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const showQuizReview = async (attemptId: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      const response = await apiFetch(
+        `/api/lessons/${encodeURIComponent(conceptId)}/quiz/${encodeURIComponent(attemptId)}/review`,
+      );
+      const data = (await response.json()) as NonNullable<typeof quizReview> & { error?: string };
+      if (!response.ok) throw new Error(data.error ?? 'Could not load quiz answers.');
+      setQuizReview(data);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not load quiz answers.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const next = async () => {
     if (!state) return;
-    if (state.status === 'needs_retry' || state.status === 'completed') {
+    if (state.status === 'quiz' && !finalAnswered) {
       setBusy(true);
       setBusyAction('continue');
       setError('');
       try {
-        await onContinue(state.status === 'completed' ? 'completed' : 'needs_retry');
+        await onContinue('quiz', 'final');
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : 'Could not save lesson progress.');
+      } finally {
+        setBusyAction(null);
+        setBusy(false);
+      }
+      return;
+    }
+    if (state.status === 'completed' || (state.status === 'quiz' && finalAnswered)) {
+      setBusy(true);
+      setBusyAction('continue');
+      setError('');
+      try {
+        await onContinue(state.status, 'done');
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Could not save lesson progress.');
       } finally {
@@ -313,19 +472,26 @@ export function LessonRunner({
     );
   }
 
-  const pointStatus = state.points.find((item) => item.id === point?.id);
-  const shownProblem = state.pendingProblem ?? state.lastAnsweredProblem;
-  const showingAnswer = Boolean(state.lastAnsweredProblem && !state.pendingProblem);
+  const pointStatus = state.points.find((item) => item.id === displayedPoint?.id);
+  const shownProblem = practiceMode
+    ? practiceProblem
+    : (state.pendingProblem ?? state.lastAnsweredProblem);
+  const showingAnswer = practiceMode
+    ? Boolean(
+        state.lastAnsweredProblem?.practiceOnly &&
+          state.lastAnsweredProblem.knowledgePointId === practicePointId,
+      )
+    : Boolean(state.lastAnsweredProblem && !state.pendingProblem);
+  const quizItems = state.quiz.current?.items ?? [];
+  const unansweredQuizIndex = quizItems.findIndex((item) => !item.answered);
+  const quizQuestionIndex =
+    unansweredQuizIndex >= 0 ? unansweredQuizIndex : Math.max(0, quizItems.length - 1);
+  const currentQuizItem = quizItems[quizQuestionIndex];
+  const quizAllAnswered = quizItems.length > 0 && quizItems.every((item) => item.answered);
   const stableHeightForCurrentPoint =
     stableCardHeights?.pointId === state.currentPointId ? stableCardHeights : null;
-  const problemLabel = (exerciseId: string, pending = false) => {
-    if (basicsExerciseId === exerciseId) return 'Basics question';
-    return `Problem ${(pointStatus?.answered ?? 0) + (pending ? 1 : 0)} · up to 5`;
-  };
-  const backButtonLabel =
-    state.status === 'completed'
-      ? 'Back to summary'
-      : `Back to step ${Math.max(0, currentPointIndex) + 1}`;
+  const problemLabel = (problem: { position: number }) => `Question ${problem.position}`;
+  const backButtonLabel = 'Back';
   const stepContent = displayedPoint ? (
     <section data-testid="lesson-step-content" className="space-y-4">
       {displayedPoint.id === lesson?.knowledge_points?.[0]?.id &&
@@ -370,8 +536,8 @@ export function LessonRunner({
         {state.points.map((item, index) => (
           <li key={item.id}>
             {item.status === 'passed' ||
-            item.status === 'failed' ||
             item.id === state.currentPointId ||
+            state.status === 'quiz' ||
             state.status === 'completed' ? (
               <Badge
                 asChild
@@ -379,11 +545,9 @@ export function LessonRunner({
                 className={`${
                   item.status === 'passed'
                     ? 'border-green-300 bg-green-50 text-green-900'
-                    : item.status === 'failed'
-                      ? 'border-red-300 bg-red-50 text-red-900'
-                      : item.id === state.currentPointId
-                        ? 'border-primary bg-muted text-foreground'
-                        : 'border-border text-muted-foreground'
+                    : item.id === state.currentPointId
+                      ? 'border-primary bg-muted text-foreground'
+                      : 'border-border text-muted-foreground'
                 } cursor-pointer hover:brightness-95 ${
                   viewingPastStep && item.id === viewingPointId ? 'ring-1 ring-primary' : ''
                 }`}
@@ -393,11 +557,9 @@ export function LessonRunner({
                   aria-label={`Step ${index + 1} of ${state.points.length}, ${
                     item.status === 'passed'
                       ? 'passed'
-                      : item.status === 'failed'
-                        ? 'failed'
-                        : item.id === state.currentPointId
-                          ? 'current'
-                          : 'completed'
+                      : item.id === state.currentPointId
+                        ? 'current'
+                        : 'locked'
                   }`}
                   aria-current={
                     (viewingPastStep && item.id === viewingPointId) ||
@@ -409,7 +571,7 @@ export function LessonRunner({
                   }
                   onClick={() => viewStep(item.id)}
                 >
-                  {item.status === 'passed' ? '✓ ' : item.status === 'failed' ? '! ' : ''}
+                  {item.status === 'passed' ? '✓ ' : ''}
                   Step {index + 1} of {state.points.length}
                 </button>
               </Badge>
@@ -428,6 +590,82 @@ export function LessonRunner({
             {backButtonLabel}
           </Button>
           {stepContent}
+          {practiceMode && shownProblem ? (
+            <Card data-testid="lesson-problem" data-problem-id={shownProblem.id}>
+              <CardContent className="space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-sm font-medium">{problemLabel(shownProblem)}</h3>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div
+                      role="img"
+                      aria-label={`${pointStatus?.streak ?? 0} correct in a row`}
+                      className="flex gap-2"
+                    >
+                      {[0, 1].map((index) => (
+                        <span
+                          key={index}
+                          className={`h-3 w-3 rounded-full border ${
+                            index < (pointStatus?.streak ?? 0)
+                              ? 'border-green-600 bg-green-500'
+                              : 'border-border bg-background'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span>2 in a row to finish this step</span>
+                  </div>
+                </div>
+                <div data-testid="lesson-problem-prompt">
+                  <Markdown>{shownProblem.exercise.prompt}</Markdown>
+                </div>
+                <ExerciseForm
+                  key={shownProblem.id}
+                  exercise={shownProblem.exercise}
+                  onSubmit={submit}
+                  loading={busyAction === 'submit'}
+                  disabled={busy && busyAction !== 'submit'}
+                  locked={showingAnswer}
+                  submittedAnswer={
+                    showingAnswer ? state.lastAnsweredProblem?.result.yourAnswer : undefined
+                  }
+                  answerOptions={
+                    showingAnswer ? state.lastAnsweredProblem?.result.answerOptions : undefined
+                  }
+                  submitLabel="Submit answer"
+                  actions={
+                    tutorEnabled ? (
+                      <TutorLauncher
+                        context={{
+                          conceptId,
+                          activityId,
+                          lessonProblemId: shownProblem.id,
+                          allowed: true,
+                          enabled: tutorEnabled,
+                        }}
+                      />
+                    ) : null
+                  }
+                />
+                {showingAnswer && state.lastAnsweredProblem ? (
+                  <FeedbackPanel
+                    result={state.lastAnsweredProblem.result}
+                    hideAnswerLines={['mc', 'debug', 'explain'].includes(
+                      state.lastAnsweredProblem.exercise.type,
+                    )}
+                  />
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
+          {pointStatus?.status === 'passed' && displayedPoint ? (
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={() => void startPractice(displayedPoint.id)}
+            >
+              Practise this step
+            </Button>
+          ) : null}
           <Button type="button" onClick={returnToCurrentStep}>
             {backButtonLabel}
           </Button>
@@ -469,52 +707,247 @@ export function LessonRunner({
             </div>
           </CardContent>
         </Card>
-      ) : state.status === 'completed' ? (
-        <Card className="border-green-300 bg-green-50">
-          <CardContent className="space-y-3 text-green-950">
-            <h2 className="text-xl font-semibold">Lesson complete · +{state.xpEarned} XP</h2>
-            <p>Your progress and experience points have been saved.</p>
-            {state.lastAnsweredProblem ? (
-              <>
-                <div
-                  data-testid="lesson-problem"
-                  data-problem-id={state.lastAnsweredProblem.id}
-                  className="rounded-lg border border-green-200 bg-background p-4"
-                >
-                  <p className="mb-2 text-sm font-medium">
-                    {problemLabel(state.lastAnsweredProblem.exercise.id)}
-                  </p>
-                  <div data-testid="lesson-problem-prompt">
-                    <Markdown>{state.lastAnsweredProblem.exercise.prompt}</Markdown>
-                  </div>
+      ) : state.quiz.current ? (
+        quizAllAnswered ? (
+          <Card>
+            <CardContent className="space-y-4">
+              <p>All questions are answered.</p>
+              <Button
+                type="button"
+                loading={busyAction === 'submit'}
+                disabled={busy}
+                onClick={() => void submitQuiz()}
+              >
+                Submit quiz
+              </Button>
+            </CardContent>
+          </Card>
+        ) : currentQuizItem?.exercise ? (
+          <Card data-testid="lesson-quiz-question">
+            <CardContent className="space-y-5">
+              <h2 className="text-lg font-semibold">
+                Question {quizQuestionIndex + 1} of {quizItems.length}
+              </h2>
+              <div data-testid="lesson-quiz-prompt">
+                <Markdown>{currentQuizItem.exercise.prompt}</Markdown>
+              </div>
+              <ExerciseForm
+                key={currentQuizItem.id}
+                exercise={currentQuizItem.exercise}
+                onSubmit={(answer) =>
+                  submitQuizAnswer(
+                    currentQuizItem.id,
+                    answer,
+                    quizQuestionIndex === quizItems.length - 1,
+                  )
+                }
+                loading={busyAction === 'submit'}
+                disabled={busy && busyAction !== 'submit'}
+                submitLabel={quizQuestionIndex === quizItems.length - 1 ? 'Submit quiz' : 'Next'}
+                actions={
+                  tutorEnabled ? (
+                    <TutorLauncher
+                      context={{
+                        conceptId,
+                        conceptTitle: title,
+                        activityId,
+                        exerciseId: currentQuizItem.exercise.id,
+                        allowed: false,
+                        enabled: tutorEnabled,
+                      }}
+                    />
+                  ) : null
+                }
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="space-y-4">
+              <p>Could not load this quiz question.</p>
+            </CardContent>
+          </Card>
+        )
+      ) : quizReview ? (
+        <Card data-testid="lesson-quiz-review">
+          <CardContent className="space-y-5">
+            <h2 className="text-xl font-semibold">See answers</h2>
+            <Button type="button" variant="outline" onClick={() => setQuizReview(null)}>
+              Back to results
+            </Button>
+            {quizReview.items.map((item, index) => (
+              <article key={item.id} className="space-y-3 border-t pt-4">
+                <h3 className="font-semibold">Question {index + 1}</h3>
+                <Markdown>{item.exercise.prompt}</Markdown>
+                <p>
+                  <span className="font-medium">Your answer: </span>
+                  {item.yourAnswer}
+                </p>
+                <p>
+                  <span className="font-medium">Correct answer: </span>
+                  {item.correctAnswer}
+                </p>
+                <div>
+                  <p className="font-medium">Working</p>
+                  <Markdown>{item.solution}</Markdown>
                 </div>
-                <FeedbackPanel result={state.lastAnsweredProblem.result} />
-              </>
-            ) : null}
+              </article>
+            ))}
           </CardContent>
         </Card>
-      ) : state.status === 'needs_retry' ? (
-        <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="space-y-2 text-amber-950">
-            <h2 className="text-xl font-semibold">Try again later</h2>
-            <p>This step comes back in your next session.</p>
-            {state.lastAnsweredProblem ? (
-              <>
-                <div
-                  data-testid="lesson-problem"
-                  data-problem-id={state.lastAnsweredProblem.id}
-                  className="rounded-lg border border-amber-200 bg-background p-4"
+      ) : state.status === 'completed' && state.quiz.last && !state.quiz.last.passed ? (
+        <Card className="border-amber-300 bg-amber-50" data-testid="lesson-quiz-results">
+          <CardContent className="space-y-4 text-amber-950">
+            <h2 className="text-xl font-semibold">
+              Retake not passed · {state.quiz.last.correctCount} of {state.quiz.last.total}
+            </h2>
+            <p>Your lesson quiz is already passed. Here&apos;s how this retake went:</p>
+            <div className="space-y-2">
+              {state.quiz.last.perStep.map((step, index) => (
+                <Button
+                  key={step.pointId}
+                  type="button"
+                  variant="link"
+                  className="h-auto whitespace-normal p-0 text-left text-amber-950"
+                  onClick={() => viewStep(step.pointId)}
                 >
-                  <p className="mb-2 text-sm font-medium">
-                    {problemLabel(state.lastAnsweredProblem.exercise.id)}
+                  Step {index + 1} · {step.title}: {step.correct} of {step.total} right
+                </Button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void startQuiz()}
+              >
+                Retake quiz
+              </Button>
+              <Button type="button" disabled={busy} onClick={() => void next()}>
+                Continue
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : state.status === 'completed' ? (
+        <Card className="border-green-300 bg-green-50" data-testid="lesson-quiz-results">
+          <CardContent className="space-y-4 text-green-950">
+            <h2 className="text-xl font-semibold">
+              {state.quiz.last?.passed
+                ? `Passed · ${state.quiz.last.correctCount} of ${state.quiz.last.total}${
+                    state.quiz.xpAwarded > 0 ? ` · +${state.quiz.xpAwarded} XP` : ''
+                  }`
+                : 'Quiz passed'}
+            </h2>
+            {state.quiz.last?.passed ? (
+              <div className="space-y-2">
+                {state.quiz.last.perStep.map((step, index) => (
+                  <p key={step.pointId}>
+                    Step {index + 1} · {step.title}: {step.correct} of {step.total} right
                   </p>
-                  <div data-testid="lesson-problem-prompt">
-                    <Markdown>{state.lastAnsweredProblem.exercise.prompt}</Markdown>
-                  </div>
-                </div>
-                <FeedbackPanel result={state.lastAnsweredProblem.result} />
-              </>
+                ))}
+              </div>
             ) : null}
+            <div className="flex flex-wrap gap-2">
+              {state.quiz.last?.passed ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => {
+                    const attemptId = state.quiz.last?.attemptId;
+                    if (attemptId) void showQuizReview(attemptId);
+                  }}
+                >
+                  See answers
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void startQuiz()}
+              >
+                Retake quiz
+              </Button>
+              <Button type="button" disabled={busy} onClick={() => void next()}>
+                Continue
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : state.quiz.last && !state.quiz.last.passed ? (
+        <Card className="border-amber-300 bg-amber-50" data-testid="lesson-quiz-results">
+          <CardContent className="space-y-4 text-amber-950">
+            <h2 className="text-xl font-semibold">
+              Not passed yet · {state.quiz.last.correctCount} of {state.quiz.last.total}
+            </h2>
+            <p>
+              You need {Math.ceil(state.quiz.passMark * state.quiz.last.total)}. Here&apos;s how
+              each step went:
+            </p>
+            <div className="space-y-2">
+              {state.quiz.last.perStep.map((step, index) => (
+                <Button
+                  key={step.pointId}
+                  type="button"
+                  variant="link"
+                  className="h-auto whitespace-normal p-0 text-left text-amber-950"
+                  onClick={() => viewStep(step.pointId)}
+                >
+                  Step {index + 1} · {step.title}: {step.correct} of {step.total} right
+                </Button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void startQuiz()}
+              >
+                Retake quiz
+              </Button>
+              <Button type="button" disabled={busy} onClick={() => void next()}>
+                Continue
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : state.status === 'quiz' && !finalAnswered ? (
+        <Card data-testid="lesson-steps-complete">
+          <CardContent className="space-y-4">
+            <h2 className="text-xl font-semibold">Lesson steps complete</h2>
+            <p>Continue to the Explain it self-check before the lesson quiz.</p>
+            <Button
+              type="button"
+              loading={busyAction === 'continue'}
+              disabled={busy}
+              onClick={() => void next()}
+            >
+              Continue
+            </Button>
+          </CardContent>
+        </Card>
+      ) : state.status === 'quiz' ? (
+        <Card data-testid="lesson-quiz-intro">
+          <CardContent className="space-y-4">
+            <h2 className="text-xl font-semibold">Lesson quiz</h2>
+            <p>
+              {state.quiz.questionCount} questions from the whole lesson. You&apos;ll see your score
+              at the end, not after each question. Pass with{' '}
+              {Math.ceil(state.quiz.passMark * state.quiz.questionCount)} of{' '}
+              {state.quiz.questionCount}.
+            </p>
+            <Button
+              type="button"
+              loading={busyAction === 'next'}
+              disabled={busy}
+              onClick={() => void startQuiz()}
+            >
+              {state.quiz.bestPassed ? 'Retake quiz' : 'Start quiz'}
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -532,30 +965,26 @@ export function LessonRunner({
                     data-testid="lesson-problem-header"
                     className="flex flex-wrap items-center justify-between gap-3"
                   >
-                    <h3 className="text-sm font-medium">
-                      {problemLabel(shownProblem.exercise.id, Boolean(state.pendingProblem))}
-                    </h3>
-                    {basicsExerciseId !== shownProblem.exercise.id ? (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <div
-                          role="img"
-                          aria-label={`${pointStatus?.streak ?? 0} correct in a row`}
-                          className="flex gap-2"
-                        >
-                          {[0, 1].map((index) => (
-                            <span
-                              key={index}
-                              className={`h-3 w-3 rounded-full border ${
-                                index < (pointStatus?.streak ?? 0)
-                                  ? 'border-green-600 bg-green-500'
-                                  : 'border-border bg-background'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <span>2 in a row to move on</span>
+                    <h3 className="text-sm font-medium">{problemLabel(shownProblem)}</h3>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div
+                        role="img"
+                        aria-label={`${pointStatus?.streak ?? 0} correct in a row`}
+                        className="flex gap-2"
+                      >
+                        {[0, 1].map((index) => (
+                          <span
+                            key={index}
+                            className={`h-3 w-3 rounded-full border ${
+                              index < (pointStatus?.streak ?? 0)
+                                ? 'border-green-600 bg-green-500'
+                                : 'border-border bg-background'
+                            }`}
+                          />
+                        ))}
                       </div>
-                    ) : null}
+                      <span>2 in a row to finish this step</span>
+                    </div>
                   </div>
                   <div
                     ref={problemPromptRef}
@@ -628,28 +1057,10 @@ export function LessonRunner({
           ) : null}
         </>
       )}
-      {!viewingPastStep && error ? (
+      {error ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      ) : null}
-      {!viewingPastStep &&
-      !state.pendingProblem &&
-      (state.status === 'completed' || state.status === 'needs_retry') ? (
-        <Button
-          type="button"
-          onClick={() => void next()}
-          loading={busyAction === 'next' || busyAction === 'continue'}
-          disabled={busy && busyAction !== 'next' && busyAction !== 'continue'}
-        >
-          {state.status === 'completed'
-            ? 'Continue'
-            : state.status === 'needs_retry'
-              ? 'Continue'
-              : pointStatus?.status === 'passed'
-                ? 'Next step'
-                : 'Next problem'}
-        </Button>
       ) : null}
     </section>
   );

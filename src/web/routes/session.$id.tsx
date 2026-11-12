@@ -155,17 +155,21 @@ function SessionPage() {
       item.kind !== 'learn' ||
       item.status !== 'completed' ||
       !item.conceptId ||
-      item.progress?.lessonRunnerContinued
+      item.progress?.quizContinued
     ) {
       return false;
     }
     const run = queryClient.getQueryData<LessonRunPayload>(['lesson-run', item.conceptId])?.run;
-    return run?.status === 'needs_retry' || run?.status === 'completed';
+    return (
+      run?.status === 'completed' ||
+      (run?.status === 'quiz' &&
+        (item.progress?.finalQuestionContinued || item.exerciseIds.length === 0))
+    );
   });
   const completedFinal = activities.find(
     (item) =>
       item.kind === 'learn' &&
-      item.status === 'completed' &&
+      (item.status === 'completed' || item.status === 'in_progress') &&
       item.progress?.lessonRunnerContinued &&
       !item.progress.finalQuestionContinued &&
       (item.progress.completedExerciseIds ?? []).some((exerciseId) =>
@@ -398,7 +402,6 @@ function SessionPage() {
       if (
         currentExerciseId &&
         freshActivity?.kind === 'learn' &&
-        freshActivity.status === 'completed' &&
         freshActivity.progress?.lessonRunnerContinued &&
         !freshActivity.progress.finalQuestionContinued &&
         (freshActivity.progress.completedExerciseIds ?? []).includes(currentExerciseId)
@@ -408,7 +411,6 @@ function SessionPage() {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             ...(freshActivity.progress ?? {}),
-            complete: true,
             finalQuestionContinued: true,
           }),
         });
@@ -418,10 +420,10 @@ function SessionPage() {
       setContinuing(false);
     }
   };
-  const continueLessonRunner = async (status: 'completed' | 'needs_retry') => {
+  const continueLessonRunner = async (_status: 'quiz' | 'completed', stage: 'final' | 'done') => {
     if (!activity) return;
     const finalQuestionPending =
-      status === 'completed' &&
+      stage === 'final' &&
       !!lesson?.final &&
       !(activity.progress?.completedExerciseIds ?? []).includes(lesson.final);
     await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
@@ -429,8 +431,9 @@ function SessionPage() {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ...(activity.progress ?? {}),
-        ...(!finalQuestionPending ? { complete: true } : {}),
         lessonRunnerContinued: true,
+        ...(finalQuestionPending ? {} : { finalQuestionContinued: true }),
+        ...(stage === 'done' ? { complete: true, quizContinued: true } : {}),
       }),
     });
     await queryClient.invalidateQueries({ queryKey: ['session', id] });
@@ -543,11 +546,19 @@ function SessionPage() {
     }
     return 'upcoming';
   });
+  const lessonRun = activity?.conceptId
+    ? queryClient.getQueryData<LessonRunPayload>(['lesson-run', activity.conceptId])?.run
+    : null;
+  const finalAnswered =
+    !lesson?.final || (activity?.progress?.completedExerciseIds ?? []).includes(lesson.final);
   if (
     activity.kind === 'learn' &&
     activity.conceptId &&
     lesson?.knowledge_points?.length &&
-    !activity.progress?.lessonRunnerContinued
+    (!activity.progress?.lessonRunnerContinued ||
+      (!activity.progress?.quizContinued &&
+        activity.progress?.finalQuestionContinued &&
+        (lessonRun?.status === 'quiz' || lessonRun?.status === 'completed')))
   ) {
     return (
       <LessonRunner
@@ -560,7 +571,7 @@ function SessionPage() {
         activityCount={activities.length}
         lessonHref={lessonHref}
         tutorEnabled={sessionQuery.data.tutorEnabled}
-        resumeRetry={activity.status !== 'completed'}
+        finalAnswered={Boolean(finalAnswered)}
         onContinue={continueLessonRunner}
       />
     );
