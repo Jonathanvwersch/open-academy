@@ -1,0 +1,377 @@
+concept: generalization
+exercises:
+  - id: gen-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does generalization mean for a house-price model?
+    options:
+      - {
+          id: a,
+          text: Remembering every price in its training sales.,
+          correct: false,
+          feedback: Remembering training prices does not show success on new houses.,
+        }
+      - {
+          id: b,
+          text: Making useful predictions for unseen houses.,
+          correct: true,
+          feedback: Generalization is success on new examples rather than memorising training sales.,
+        }
+      - {
+          id: c,
+          text: Giving every house the same predicted price.,
+          correct: false,
+          feedback: Generalization concerns useful predictions on unseen examples rather than identical predictions.,
+        }
+    solution: Generalization is useful prediction on examples the model did not learn from. Training success alone does not establish it.
+  - id: gen-average-reason
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example divide the total absolute error of 60 by four?
+    options:
+      - {
+          id: a,
+          text: To make each individual house have error 15.,
+          correct: false,
+          feedback: Averaging does not change the individual errors of 10 or 20.,
+        }
+      - {
+          id: b,
+          text: To guarantee error 15 on the next house.,
+          correct: false,
+          feedback: Even with matching independent examples an average does not guarantee an individual prediction.,
+        }
+      - { id: c, text: To measure average error per test house., correct: true }
+    solution: Dividing by four gives a mean absolute error of 15 thousand dollars per house. It summarises these four predictions without promising that error on each future house.
+  - id: gen-average-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      e: { min: 5, max: 15, step: 5 }
+    prompt: "Four untouched test houses have absolute prediction errors {{= e }}, {{= e + 10 }}, {{= e }} and {{= e + 10 }} thousand dollars. What is their mean absolute error in thousands of dollars?"
+    answer_expr: e + 5
+    tolerance: { abs: 0.01 }
+    solution: "Add the four absolute errors to get {{= 4*e+20 }}, then divide by four to get {{= e+5 }} thousand dollars. This is an average, not a bound on any one prediction."
+  - id: gen-identical
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Which situation fits the identically distributed part of i.i.d. sampling?
+    options:
+      - {
+          id: a,
+          text: Different house sizes and prices drawn by one unchanged sales process.,
+          correct: true,
+        }
+      - {
+          id: b,
+          text: Every house has the same size but prices come from changing markets.,
+          correct: false,
+          feedback: Matching sizes do not make the distribution of sizes and prices unchanged.,
+        }
+      - {
+          id: c,
+          text: Different sales processes are used but the model stays unchanged.,
+          correct: false,
+          feedback: Identically distributed describes where examples come from rather than whether the model changes.,
+        }
+    solution: Identically distributed means each example comes from the same distribution. Examples can have different values even when the process producing them stays the same.
+  - id: gen-robot-evidence
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot predicts delivery time. A large untouched test set contains independent trips from the same unchanged process as future trips. Its average absolute error is 2 minutes. What does this support?
+    options:
+      - {
+          id: a,
+          text: Every future trip will have an error of at most 2 minutes.,
+          correct: false,
+          feedback: An average allows individual errors above or below it.,
+        }
+      - {
+          id: b,
+          text: Average future error is estimated at 2 minutes with some uncertainty.,
+          correct: true,
+        }
+      - {
+          id: c,
+          text: Future error is known exactly because the trips are independent.,
+          correct: false,
+          feedback: Independence makes the test more informative but finite samples still leave uncertainty.,
+        }
+    solution: Under these assumptions the test average estimates average future error. Neither independence nor an unchanged source guarantees an exact future average or a bound on every trip.
+  - id: gen-shift-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is distribution shift?
+    options:
+      - {
+          id: a,
+          text: A change in the distribution of examples between evaluation and use.,
+          correct: true,
+          feedback: The source or mix of examples can change even with an unchanged model.,
+        }
+      - {
+          id: b,
+          text: A change in model predictions with the example source kept fixed.,
+          correct: false,
+          feedback: Changing predictions is not itself a change in the distribution of examples.,
+        }
+      - {
+          id: c,
+          text: A difference in two house prices drawn from one unchanged source.,
+          correct: false,
+          feedback: Different example values are normal even without a distribution change.,
+        }
+    solution: Distribution shift means the examples in real use come from a different distribution than the examples tested on. House measurements or the prices associated with them can change.
+  - id: gen-fixed-reason
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example keep predictions at 100 and 200 when checking city B?
+    options:
+      - {
+          id: a,
+          text: Because city B must have the same real prices as city A.,
+          correct: false,
+          feedback: The example gives B prices of 200 and 300 instead.,
+        }
+      - {
+          id: b,
+          text: Because a model automatically learns new prices when used in a new city.,
+          correct: false,
+          feedback: Using the model in a new city does not teach it new prices without further training.,
+        }
+      - {
+          id: c,
+          text: Because we are checking the unchanged model on new sale prices.,
+          correct: true,
+        }
+    solution: The model has not been trained again, so at the same sizes it makes the same predictions. Comparing those predictions with B's real prices reveals the error caused by this changed setting.
+  - id: gen-shift-template
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      d: { min: 20, max: 100, step: 20 }
+    prompt: "An unchanged model predicts 100 and 200 thousand dollars for two sizes. In a new city the actual prices are {{=100+d}} and {{=200+d}}. What is its mean absolute error on these two houses in thousands of dollars?"
+    answer_expr: d
+    tolerance: { abs: 0.01 }
+    solution: "Both real prices exceed their predictions by {{= d }} thousand dollars, so their average absolute error is also {{= d }}. Familiar sizes do not ensure familiar prices."
+  - id: gen-large-houses
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A model was tested on mostly small houses. Its users now submit mostly large houses, although the price relationship at each size has stayed unchanged. What changed?
+    options:
+      - {
+          id: a,
+          text: Nothing relevant changed because the price relationship is unchanged.,
+          correct: false,
+          feedback: How often different sizes occur is also part of the distribution.,
+        }
+      - {
+          id: b,
+          text: The input distribution changed so the old average may not transfer.,
+          correct: true,
+        }
+      - {
+          id: c,
+          text: Only the model changed because large houses cost more.,
+          correct: false,
+          feedback: The scenario changes the mix of houses rather than the model.,
+        }
+    solution: The frequencies of input sizes changed, which is distribution shift even with the same price relationship. A model may make different errors on large and small houses, changing its overall average.
+  - id: gen-lighting
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot vision model has low error on independent daylight images. It will now work at night. Which next check best addresses whether its score transfers?
+    options:
+      - {
+          id: a,
+          text: Randomly divide the daylight images again and report that score.,
+          correct: false,
+          feedback: Another daylight split still does not evaluate the night setting.,
+        }
+      - {
+          id: b,
+          text: Report the training error because the robot hardware is unchanged.,
+          correct: false,
+          feedback: Hardware staying unchanged does not make night images match daylight images.,
+        }
+      - {
+          id: c,
+          text: Evaluate on separate labelled night images from its intended use.,
+          correct: true,
+        }
+    solution: Night lighting can change the input distribution. Separate labelled night images directly test the intended setting instead of assuming that a daylight score transfers.
+  - id: gen-independent-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: How does a group split help us evaluate predictions for new houses?
+    options:
+      - {
+          id: a,
+          text: It keeps all records for each house on one side of the split.,
+          correct: true,
+          feedback: Keeping records together prevents copies of a held-out sale from appearing in training.,
+        }
+      - {
+          id: b,
+          text: It puts one copy of each house in every side of the split.,
+          correct: false,
+          feedback: Putting copies on both sides leaks held-out sale information into training.,
+        }
+      - {
+          id: c,
+          text: It gives each row a new number before dividing the rows.,
+          correct: false,
+          feedback: New row numbers do not stop records of the same house from crossing the split.,
+        }
+    solution: A group split keeps each house's records together. This prevents a copy of a held-out house's sale from teaching the model the price it is supposed to predict.
+  - id: gen-group-reason
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example put both H copies in training and both J copies in validation?
+    options:
+      - {
+          id: a,
+          text: To give the model a copy of every validation sale during training.,
+          correct: false,
+          feedback: That is the problem with the original row split rather than the goal.,
+        }
+      - {
+          id: b,
+          text: To check a house whose sale was not already seen during training.,
+          correct: true,
+        }
+      - {
+          id: c,
+          text: To make the two J copies count as two independent new sales.,
+          correct: false,
+          feedback: Identical copies remain one sale even when they are both held out.,
+        }
+    solution: Grouping by house keeps copies of the same sale on one side. It removes the duplicate-house shortcut but does not turn duplicate validation rows into independent evidence.
+  - id: gen-count-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      n: { min: 2, max: 8, step: 2 }
+      c: { min: 2, max: 4, step: 1 }
+    prompt: "A validation table has {{= n*c }} rows: {{= c }} identical copies of each of {{= n }} distinct house sales. None of these houses is in training. After removing duplicate copies, how many distinct sales remain?"
+    answer_expr: n
+    tolerance: { abs: 0.01 }
+    solution: "Divide {{= n*c }} rows by {{= c }} copies per sale to get {{= n }} distinct sales. Copying records does not create more independent evidence."
+  - id: gen-time-split
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: You want to predict next year's house prices using information available on each prediction date. Which evaluation most closely rehearses that use?
+    options:
+      - {
+          id: a,
+          text: Mix all dates randomly and allow later sale prices as inputs.,
+          correct: false,
+          feedback: Later sale prices would be unavailable when making the earlier predictions.,
+        }
+      - {
+          id: b,
+          text: Train on later years and evaluate predictions for earlier years.,
+          correct: false,
+          feedback: Learning from the future does not rehearse forecasting from earlier data.,
+        }
+      - {
+          id: c,
+          text: Train on earlier years and check later years using available inputs.,
+          correct: true,
+        }
+    solution: A time split follows the direction of real forecasting and uses only information available at prediction time. It is a better rehearsal but cannot guarantee that next year's market will stay unchanged.
+  - id: gen-patient-split
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A medical model must work on new patients. Each patient has many related scans. A random scan split gives very low validation error. What evaluation change best checks the intended task?
+    options:
+      - {
+          id: a,
+          text: Keep each patient's scans in one split and evaluate held-out patients.,
+          correct: true,
+        }
+      - {
+          id: b,
+          text: Keep random scans in each split and give every scan a unique number.,
+          correct: false,
+          feedback: Renumbering scans does not remove information shared by scans from one patient.,
+        }
+      - {
+          id: c,
+          text: Copy the validation scans into training and report the resulting score.,
+          correct: false,
+          feedback: This directly leaks the held-out examples into training.,
+        }
+    solution: New-patient use calls for a patient-level group split. Related scans across splits can make validation appear easier than predicting for a patient the model has never seen.
+  - id: gen-explain-evidence
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: A house model has low error on a held-out table from city A. Some rows copy training sales. The model will be used in city B. Explain why the score is not enough to claim good generalization and how you would make the evaluation more useful.
+    rubric:
+      - {
+          id: assumptions,
+          criterion: Explain that held-out evidence needs independent examples from the same distribution as intended use.,
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: leakage,
+          criterion: Identify the copied sales as leakage and keep related records together while removing duplicate scoring rows.,
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: shift,
+          criterion: Explain that B may differ and propose evaluating separate B sales covering the kinds of houses the model will price without claiming a guarantee.,
+          weight: 1,
+          required: true,
+        }
+    exemplar: Generalization means useful predictions on unseen houses. Independent examples from the same distribution make a held-out average informative about future average error. Copies of training sales are not independent evidence about new houses, so I would keep records of each house together and remove duplicates when scoring. City B may have a different mix of houses or different prices at the same sizes, so I would gather B sales covering the kinds of houses the model will price and keep separate validation and untouched test houses there. Even a good test average would estimate performance rather than guarantee every prediction.

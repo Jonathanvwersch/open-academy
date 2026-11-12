@@ -145,7 +145,7 @@ concepts:
     prereqs: [{ id: overfitting }]
     objectives:
       - { text: "Explain i.i.d. assumptions and when they break", dimension: conceptual }
-    status: stub
+    status: authored
   - id: evaluation-metrics
     title: Evaluation metrics
     description: Accuracy, precision/recall, confusion matrices, regression metrics.
