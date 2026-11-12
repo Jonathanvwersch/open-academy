@@ -85,6 +85,7 @@ function AppToaster() {
   return (
     <Toaster
       position="bottom-center"
+      style={{ fontFamily: 'inherit' }}
       toastOptions={{
         className: 'border border-border bg-background text-foreground shadow-md',
         descriptionClassName: 'text-muted-foreground',

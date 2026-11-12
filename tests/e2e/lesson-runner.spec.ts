@@ -265,10 +265,13 @@ async function advanceToNextStep(page: Page) {
       response.url().endsWith(`/api/lessons/${conceptId}/run`) &&
       response.request().method() === 'POST',
   );
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   await page.getByRole('button', { name: `Next: ${nextTitle}`, exact: true }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(200);
   const body = await response.json();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await expect(page.getByRole('heading', { name: nextTitle, exact: true })).toBeVisible();
   await expect(page.getByTestId('lesson-problem')).toBeVisible();
   await expect(page.getByTestId('kp-checkpoint')).toHaveCount(0);
@@ -334,6 +337,13 @@ test('a passed knowledge point opens the next step and shows an XP toast', async
   await expect(page.getByText(toastTitle, { exact: true })).toBeVisible();
   await expect(page.getByText(toastDescription, { exact: true })).toBeVisible();
   await expectToastInViewport(page, toastTitle);
+  const [toastFont, appFont] = await Promise.all([
+    page
+      .locator('[data-sonner-toaster]')
+      .evaluate((element) => getComputedStyle(element).fontFamily),
+    page.locator('body').evaluate((element) => getComputedStyle(element).fontFamily),
+  ]);
+  expect(toastFont).toBe(appFont);
   await page.screenshot({ path: `${stepToastScreenshotDir}/desktop.png` });
 
   await page.setViewportSize({ width: 390, height: 844 });

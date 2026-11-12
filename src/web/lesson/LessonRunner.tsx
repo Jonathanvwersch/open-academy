@@ -417,6 +417,7 @@ export function LessonRunner({
       if (!response.ok || !data.run) throw new Error('Could not load the next problem.');
       await updateState(data.run);
       if (checkpointDetails) {
+        window.scrollTo({ top: 0 });
         const freshSession = await queryClient.fetchQuery({
           ...sessionQueryOptions(sessionId),
           staleTime: 0,
