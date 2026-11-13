@@ -1,15 +1,15 @@
 import { mkdirSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
-import { createDb } from '../../src/server/db/client.js';
-import { sessionActivities, studySessions, users } from '../../src/server/db/schema.js';
-import { env } from '../../src/server/env.js';
+import { env } from '../../apps/api/src/config.js';
+import { createDb } from '../../apps/api/src/db/client.js';
+import { sessionActivities, studySessions, users } from '../../apps/api/src/db/schema.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
-const screenshotDir = '/home/ubuntu/screenshots/shadcn';
-const lessonCardScreenshotDir = '/home/ubuntu/screenshots/lesson-cards';
-const questionDotsScreenshotDir = '/home/ubuntu/screenshots/question-dots';
-const xpFinishScreenshotDir = '/home/ubuntu/screenshots/xp-finish';
-const lessonReviewScreenshotDir = '/home/ubuntu/lesson-review';
+const screenshotDir = 'test-results/screenshots/screenshots/shadcn';
+const lessonCardScreenshotDir = 'test-results/screenshots/screenshots/lesson-cards';
+const questionDotsScreenshotDir = 'test-results/screenshots/screenshots/question-dots';
+const xpFinishScreenshotDir = 'test-results/screenshots/screenshots/xp-finish';
+const lessonReviewScreenshotDir = 'test-results/screenshots/lesson-review';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(questionDotsScreenshotDir, { recursive: true });

@@ -150,7 +150,7 @@ Pure function: `planSession(state, content, now, budgetMinutes, kind) → { acti
 - An independent failure at `independent`/`retained` drops the state one level and adds learning debt.
 - Remediation flag: 2 consecutive independent failures on a concept, or ≥ 3 failures in the last 5 attempts.
 
-**Traceability:** every state change writes a `mastery_events` row (from, to, the attempt ID that caused it, the rule name). The concept drawer shows this history. The scoring code lives in one module (`src/server/learning/mastery.ts`) behind a `MasteryModel` interface, so it is easy to replace.
+**Traceability:** every state change writes a `mastery_events` row (from, to, the attempt ID that caused it, the rule name). The concept drawer shows this history. The scoring code lives in one module (`apps/api/src/learning/mastery.ts`) behind a `MasteryModel` interface, so it is easy to replace.
 
 **Reviews (FSRS)**
 - A card is created per (concept, dimension) when the state first reaches `assisted`.
@@ -171,7 +171,7 @@ Pure function: `planSession(state, content, now, budgetMinutes, kind) → { acti
 
 ## 9. Tutor architecture
 
-- Module `src/server/tutor/`: provider interface, OpenAI and fake providers, strict response schemas, service/budget handling, and the verbatim prompt files `prompts/tutor-system.md` and `prompts/rubric-grader.md`.
+- Module `apps/api/src/features/tutor/`: provider interface, OpenAI and fake providers, strict response schemas, service/budget handling, and the verbatim prompt files `prompts/tutor-system.md` and `prompts/rubric-grader.md`.
 - The `TutorProvider` interface exposes `respond(ctx, level)` and `gradeExplanation(ctx)`, returning `{ value, usage }` with nullable token usage. `OpenAIProvider` uses the official `openai` package and the Responses API with strict JSON Schema structured outputs generated from zod. `OPENAI_MODEL` selects the model (default `gpt-5.4-mini`); `OPENAI_API_KEY` is read only from the validated environment. Provider calls have a 20-second timeout and a 600-token output limit.
 - A `FakeProvider` is injected by tests only. Without a key, the provider is absent: hints are authored-only, explain exercises use self-check, and tutor chat returns 503. Provider errors, timeouts, budget exhaustion and schema failures do not create hint events; the solution is always authored. The generated tutor schema has no correctness field, and extra fields are rejected.
 - `respond` supports `nudge`, `hint` and `worked_step`; it is called only after authored hints at the requested level run out. `gradeExplanation` returns rubric judgements, while the application scores weights and required criteria in code. Without an API key the existing learner self-check remains available. Tutor chat is practice-only and its messages never mutate mastery.
@@ -229,7 +229,7 @@ Migrations: drizzle-kit generated SQL in `drizzle/`, applied by `pnpm db:migrate
 
 ## 13. API and application architecture
 
-Single Node process (Hono). Modules under `src/server/`: `content/` (load, validate, index, client-safe serializers), `grading/`, `learning/` (mastery, fsrs, scheduler, diagnostic, debt, remediation), `tutor/`, `sessions/`, `projects/`, `progress/`, `routes/`. Learning modules are pure functions over plain data + a thin repository layer → unit-testable without DB.
+Single Node process (Hono). Modules under `apps/api/src/`: `content/` (load, validate, index, client-safe serializers), `grading/`, `learning/` (mastery, fsrs, scheduler, diagnostic, debt, remediation), `tutor/`, `sessions/`, `projects/`, `progress/`, `routes/`. Learning modules are pure functions over plain data + a thin repository layer → unit-testable without DB.
 
 Routes (JSON, zod-validated, single user resolved by middleware):
 - `GET /api/today` — plan preview (computed, not persisted) + due counts, objective, week, Saturday project, goal progress

@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { createDb } from '../../src/server/db/client.js';
+import { env } from '../../apps/api/src/config.js';
+import { createDb } from '../../apps/api/src/db/client.js';
 import {
   diagnosticRuns,
   sessionActivities,
   studySessions,
   users,
-} from '../../src/server/db/schema.js';
-import { env } from '../../src/server/env.js';
+} from '../../apps/api/src/db/schema.js';
 
 const conceptId = 'mlp-forward-pass';
 
@@ -34,6 +34,10 @@ test.beforeEach(async () => {
 });
 
 test('continuing a final question after lesson-run query GC opens the quiz', async ({ page }) => {
+  test.skip(
+    process.env.PLAYWRIGHT_CONTENT_DIR !== 'content',
+    'requires the authored mlp-forward-pass lesson; run with PLAYWRIGHT_CONTENT_DIR=content',
+  );
   const db = createDb(env.TEST_DATABASE_URL);
   const [user] = await db.select({ id: users.id }).from(users).limit(1);
   if (!user) throw new Error('Missing final question learner');

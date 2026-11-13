@@ -3,8 +3,7 @@
 Local starter for a single-user adaptive learning app. Requires Node 24, pnpm, and Docker Compose.
 
 ```sh
-pnpm install
-cp .env.example .env
+pnpm bootstrap
 pnpm dev
 ```
 
@@ -17,6 +16,8 @@ pnpm db:generate
 pnpm db:migrate
 pnpm db:seed
 pnpm db:reset
+pnpm check
+pnpm test:unit
 pnpm test
 pnpm test:e2e
 pnpm typecheck
@@ -27,6 +28,24 @@ pnpm build
 
 Vitest uses the separate `academy_test` database. `pnpm test:e2e` starts the local dev stack through Playwright's web server configuration.
 `pnpm db:reset` truncates learner state in the development database and reseeds the default learner.
+
+`pnpm check` runs structure/import checks, Biome, TypeScript, curriculum validation and the
+architecture checker's tests without PostgreSQL or provider credentials. `pnpm bootstrap` also
+installs repository-local pre-commit checks; it leaves an existing custom hooks configuration intact.
+Python lab tests require the dependencies in `labs/linreg-numpy/requirements.txt` and
+`labs/nn-from-scratch/requirements.txt` in the `python3` environment used for testing.
+
+Playwright uses the small fixture curriculum by default. Tests requiring authored lessons are
+explicitly skipped in that mode; run a matching test with `PLAYWRIGHT_CONTENT_DIR=content`, for
+example `PLAYWRIGHT_CONTENT_DIR=content pnpm test:e2e tests/e2e/final-question-repeat.spec.ts`.
+
+The workspace separates `apps/web` (React/Vite) and `apps/api` (Hono). Shared API definitions live
+in `packages/contracts`, pure common helpers in `packages/shared`, and product behavior in
+feature folders. See [architecture](docs/architecture.md) and the scoped `AGENTS.md` files.
+
+Inject runtime secrets through your secret manager before running commands. `.env.example`
+documents environment variable names; do not put real secrets into tracked files or plaintext
+`.env` files. API configuration validates injected values without printing them.
 
 ## Deployment
 

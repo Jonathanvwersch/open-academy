@@ -1,12 +1,12 @@
 import { mkdirSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 import { and, eq } from 'drizzle-orm';
-import { createDb } from '../../src/server/db/client.js';
-import { diagnosticRuns, lessonRuns, users } from '../../src/server/db/schema.js';
-import { env } from '../../src/server/env.js';
+import { env } from '../../apps/api/src/config.js';
+import { createDb } from '../../apps/api/src/db/client.js';
+import { diagnosticRuns, lessonRuns, users } from '../../apps/api/src/db/schema.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
-const screenshotDir = '/home/ubuntu/shots/lesson-quiz';
+const screenshotDir = 'test-results/screenshots/shots/lesson-quiz';
 let userId = '';
 mkdirSync(screenshotDir, { recursive: true });
 
@@ -83,7 +83,7 @@ test('full lesson shows recap facts and opens a prerequisite lesson', async ({ p
   await expect(page.getByRole('heading', { name: 'What is gradient descent?' })).toBeVisible();
   const prerequisiteLink = page.getByRole('link', { name: 'Gradient vectors' });
   await expect(prerequisiteLink).toBeVisible();
-  await page.screenshot({ path: '/home/ubuntu/lesson-review/recap-full.png' });
+  await page.screenshot({ path: 'test-results/screenshots/lesson-review/recap-full.png' });
 
   await prerequisiteLink.click();
   await expect(page).toHaveURL(/\/lessons\/gradients$/);
@@ -118,7 +118,7 @@ test('session lesson shows recap facts and opens a prerequisite lesson', async (
   await expect(page.getByRole('heading', { name: 'What is gradient descent?' })).toBeVisible();
   const prerequisiteLink = page.getByRole('link', { name: 'Gradient vectors' });
   await expect(prerequisiteLink).toBeVisible();
-  await page.screenshot({ path: '/home/ubuntu/lesson-review/recap-runner.png' });
+  await page.screenshot({ path: 'test-results/screenshots/lesson-review/recap-runner.png' });
   await prerequisiteLink.click();
   await expect(page).toHaveURL(/\/lessons\/gradients$/);
 });

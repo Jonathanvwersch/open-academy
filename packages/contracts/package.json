@@ -1,0 +1,30 @@
+{
+  "name": "@academy/contracts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "exports": {
+    "./auth": "./src/auth.ts",
+    "./course": "./src/course.ts",
+    "./diagnostic": "./src/diagnostic.ts",
+    "./exercises": "./src/exercises.ts",
+    "./health": "./src/health.ts",
+    "./lessons": "./src/lessons.ts",
+    "./papers": "./src/papers.ts",
+    "./progress": "./src/progress.ts",
+    "./projects": "./src/projects.ts",
+    "./reviews": "./src/reviews.ts",
+    "./sessions": "./src/sessions.ts",
+    "./settings": "./src/settings.ts",
+    "./tutor": "./src/tutor.ts"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "@types/node": "26.6.6"
+  }
+}

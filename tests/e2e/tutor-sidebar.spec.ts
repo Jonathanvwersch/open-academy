@@ -1,9 +1,9 @@
 import { mkdirSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
 import { eq } from 'drizzle-orm';
-import { createDb } from '../../src/server/db/client.js';
-import { sessionActivities, studySessions, users } from '../../src/server/db/schema.js';
-import { env } from '../../src/server/env.js';
+import { env } from '../../apps/api/src/config.js';
+import { createDb } from '../../apps/api/src/db/client.js';
+import { sessionActivities, studySessions, users } from '../../apps/api/src/db/schema.js';
 
 declare global {
   interface Window {
@@ -11,19 +11,19 @@ declare global {
   }
 }
 
-const screenshotDir = '/home/ubuntu/screenshots/tutor-optimistic';
+const screenshotDir = 'test-results/screenshots/screenshots/tutor-optimistic';
 mkdirSync(screenshotDir, { recursive: true });
-const pageContextScreenshotDir = '/home/ubuntu/screenshots/tutor-page-context';
+const pageContextScreenshotDir = 'test-results/screenshots/screenshots/tutor-page-context';
 mkdirSync(pageContextScreenshotDir, { recursive: true });
-const greetingScreenshotDir = '/home/ubuntu/screenshots/tutor-greeting';
+const greetingScreenshotDir = 'test-results/screenshots/screenshots/tutor-greeting';
 mkdirSync(greetingScreenshotDir, { recursive: true });
-const headerScreenshotDir = '/home/ubuntu/screenshots/tutor-header';
+const headerScreenshotDir = 'test-results/screenshots/screenshots/tutor-header';
 mkdirSync(headerScreenshotDir, { recursive: true });
-const latexScreenshotDir = '/home/ubuntu/screenshots/tutor-latex';
+const latexScreenshotDir = 'test-results/screenshots/screenshots/tutor-latex';
 mkdirSync(latexScreenshotDir, { recursive: true });
-const tutorMathScreenshotDir = '/home/ubuntu/screenshots/tutor-math';
+const tutorMathScreenshotDir = 'test-results/screenshots/screenshots/tutor-math';
 mkdirSync(tutorMathScreenshotDir, { recursive: true });
-const tutorSidebarScreenshotDir = '/home/ubuntu/shots/tutor-sidebar';
+const tutorSidebarScreenshotDir = 'test-results/screenshots/shots/tutor-sidebar';
 mkdirSync(tutorSidebarScreenshotDir, { recursive: true });
 let sessionId = '';
 

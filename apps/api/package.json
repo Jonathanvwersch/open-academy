@@ -1,0 +1,39 @@
+{
+  "name": "@academy/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
+    "start": "tsx src/prod.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "db:generate": "drizzle-kit generate --config drizzle.config.ts",
+    "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:reset": "tsx scripts/db-reset.ts",
+    "content:check": "tsx src/content/check.ts",
+    "vercel:migrate": "tsx scripts/vercel-migrate.ts"
+  },
+  "dependencies": {
+    "yaml": "2.9.1",
+    "drizzle-orm": "0.45.4",
+    "hono": "4.13.16",
+    "@academy/contracts": "workspace:*",
+    "zod": "4.6.7",
+    "mathjs": "15.2.0",
+    "postgres": "4.0.0",
+    "ts-fsrs": "6.0.0",
+    "@academy/shared": "workspace:*",
+    "pdfjs-dist": "6.3.289",
+    "openai": "7.47.0",
+    "@hono/node-server": "2.1.6",
+    "tsx": "4.23.15",
+    "dotenv": "18.0.9"
+  },
+  "devDependencies": {
+    "drizzle-kit": "0.31.11",
+    "vitest": "5.1.0",
+    "typescript": "7.0.2",
+    "@types/node": "26.6.6"
+  }
+}

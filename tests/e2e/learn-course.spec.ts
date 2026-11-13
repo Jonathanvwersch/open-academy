@@ -3,8 +3,9 @@ import { readFile } from 'node:fs/promises';
 import { expect, type Page, test } from '@playwright/test';
 import { eq } from 'drizzle-orm';
 import { parse } from 'yaml';
-import { LessonSchema, normalizeLesson } from '../../src/server/content/schemas.js';
-import { createDb } from '../../src/server/db/client.js';
+import { env } from '../../apps/api/src/config.js';
+import { LessonSchema, normalizeLesson } from '../../apps/api/src/content/schemas.js';
+import { createDb } from '../../apps/api/src/db/client.js';
 import {
   diagnosticRuns,
   lessonRuns,
@@ -15,21 +16,20 @@ import {
   studySessions,
   users,
   xpEvents,
-} from '../../src/server/db/schema.js';
-import { env } from '../../src/server/env.js';
+} from '../../apps/api/src/db/schema.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
-const screenshotDir = '/home/ubuntu/screenshots/learn-course';
-const brandScreenshotDir = '/home/ubuntu/screenshots/brand';
-const courseStructureScreenshotDir = '/home/ubuntu/screenshots/course-structure';
+const screenshotDir = 'test-results/screenshots/screenshots/learn-course';
+const brandScreenshotDir = 'test-results/screenshots/screenshots/brand';
+const courseStructureScreenshotDir = 'test-results/screenshots/screenshots/course-structure';
 const courseStructureBatch1ScreenshotDir = `${courseStructureScreenshotDir}/batch1`;
 const courseStructureBatch2ScreenshotDir = `${courseStructureScreenshotDir}/batch2`;
 const courseStructureBatch3ScreenshotDir = `${courseStructureScreenshotDir}/batch3`;
-const mathLinesScreenshotDir = '/home/ubuntu/screenshots/math-lines';
-const courseComingSoonScreenshotDir = '/home/ubuntu/screenshots/course-coming-soon';
-const navCleanupScreenshotDir = '/home/ubuntu/screenshots/nav-cleanup';
-const xpFinishScreenshotDir = '/home/ubuntu/screenshots/xp-finish';
-const chooseLessonScreenshotDir = '/home/ubuntu/screenshots/choose-lesson';
+const mathLinesScreenshotDir = 'test-results/screenshots/screenshots/math-lines';
+const courseComingSoonScreenshotDir = 'test-results/screenshots/screenshots/course-coming-soon';
+const navCleanupScreenshotDir = 'test-results/screenshots/screenshots/nav-cleanup';
+const xpFinishScreenshotDir = 'test-results/screenshots/screenshots/xp-finish';
+const chooseLessonScreenshotDir = 'test-results/screenshots/screenshots/choose-lesson';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(brandScreenshotDir, { recursive: true });
 mkdirSync(courseStructureScreenshotDir, { recursive: true });

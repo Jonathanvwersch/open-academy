@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { createDb } from '../../src/server/db/client.js';
+import { env } from '../../apps/api/src/config.js';
+import { createDb } from '../../apps/api/src/db/client.js';
 import {
   reviewCards,
   sessionActivities,
   studySessions,
   users,
-} from '../../src/server/db/schema.js';
-import { env } from '../../src/server/env.js';
-import { newReviewCard } from '../../src/server/learning/fsrs.js';
+} from '../../apps/api/src/db/schema.js';
+import { newReviewCard } from '../../apps/api/src/learning/fsrs.js';
 
 const sessionStart = new Date('2026-01-01T12:00:00.000Z');
 

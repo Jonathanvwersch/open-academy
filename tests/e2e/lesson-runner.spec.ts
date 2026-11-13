@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
-import { createDb } from '../../src/server/db/client.js';
+import { env } from '../../apps/api/src/config.js';
+import { createDb } from '../../apps/api/src/db/client.js';
 import {
   diagnosticRuns,
   lessonProblems,
@@ -8,21 +9,20 @@ import {
   sessionActivities,
   studySessions,
   users,
-} from '../../src/server/db/schema.js';
-import { env } from '../../src/server/env.js';
+} from '../../apps/api/src/db/schema.js';
 
 const conceptId = 'supervised-learning';
-const screenshotDir = '/home/ubuntu/screenshots/shadcn';
-const lessonCardScreenshotDir = '/home/ubuntu/screenshots/lesson-cards';
-const stepReviewScreenshotDir = '/home/ubuntu/ui-audit/step-review';
-const feedbackCorrectScreenshotDir = '/home/ubuntu/screenshots/feedback-correct';
-const mcShuffleScreenshotDir = '/home/ubuntu/screenshots/mc-shuffle';
-const buttonLoadingScreenshotDir = '/home/ubuntu/screenshots/button-loading';
-const finalContinueScreenshotDir = '/home/ubuntu/screenshots/final-continue';
-const stepToastScreenshotDir = '/home/ubuntu/screenshots/step-toast';
-const lessonQuizScreenshotDir = '/home/ubuntu/shots/lesson-quiz';
-const quizUiScreenshotDir = '/home/ubuntu/screenshots/quiz-ui';
-const spacedReviewScreenshotDir = '/home/ubuntu/screenshots/spaced-review';
+const screenshotDir = 'test-results/screenshots/screenshots/shadcn';
+const lessonCardScreenshotDir = 'test-results/screenshots/screenshots/lesson-cards';
+const stepReviewScreenshotDir = 'test-results/screenshots/ui-audit/step-review';
+const feedbackCorrectScreenshotDir = 'test-results/screenshots/screenshots/feedback-correct';
+const mcShuffleScreenshotDir = 'test-results/screenshots/screenshots/mc-shuffle';
+const buttonLoadingScreenshotDir = 'test-results/screenshots/screenshots/button-loading';
+const finalContinueScreenshotDir = 'test-results/screenshots/screenshots/final-continue';
+const stepToastScreenshotDir = 'test-results/screenshots/screenshots/step-toast';
+const lessonQuizScreenshotDir = 'test-results/screenshots/shots/lesson-quiz';
+const quizUiScreenshotDir = 'test-results/screenshots/screenshots/quiz-ui';
+const spacedReviewScreenshotDir = 'test-results/screenshots/screenshots/spaced-review';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });

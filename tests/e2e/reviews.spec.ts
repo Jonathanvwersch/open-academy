@@ -1,18 +1,18 @@
 import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { createDb } from '../../src/server/db/client.js';
+import { env } from '../../apps/api/src/config.js';
+import { createDb } from '../../apps/api/src/db/client.js';
 import {
   diagnosticRuns,
   reviewCards,
   sessionActivities,
   studySessions,
   users,
-} from '../../src/server/db/schema.js';
-import { env } from '../../src/server/env.js';
-import { newReviewCard } from '../../src/server/learning/fsrs.js';
+} from '../../apps/api/src/db/schema.js';
+import { newReviewCard } from '../../apps/api/src/learning/fsrs.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
-const screenshotDir = '/home/ubuntu/screenshots/spaced-review';
+const screenshotDir = 'test-results/screenshots/screenshots/spaced-review';
 mkdirSync(screenshotDir, { recursive: true });
 let userId = '';
 
