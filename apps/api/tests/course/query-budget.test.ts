@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { afterAll, beforeAll, expect, test } from 'vitest';
@@ -43,6 +44,19 @@ test('tutor availability does not read any learning state', async () => {
   expect(await response.json()).toEqual({ tutorEnabled: false });
   expect(response.headers.get('server-timing')).toMatch(/^api;dur=\d+(?:\.\d+)?$/);
   expect(statements).toHaveLength(1); // The request's learner lookup only.
+});
+
+test('full lesson review avoids building quiz history and XP summaries', async () => {
+  await db.insert(schema.lessonRuns).values({ userId, conceptId: 'supervised-learning' });
+  statements = [];
+  const response = await app.request('/api/lessons/supervised-learning/review');
+  expect(response.status).toBe(200);
+  expect((await response.json()).runStatus).toBe('in_progress');
+  expect(statements.length).toBeLessThanOrEqual(3);
+  expect(statements.join('\n')).not.toMatch(
+    /"lesson_quiz_attempts"|"lesson_quiz_items"|"xp_events"/,
+  );
+  await db.delete(schema.lessonRuns).where(eq(schema.lessonRuns.userId, userId));
 });
 
 test('resuming Home uses the existing session instead of rebuilding the schedule', async () => {

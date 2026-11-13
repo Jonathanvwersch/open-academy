@@ -16,7 +16,7 @@ import { Skeleton } from '../../components/ui/skeleton.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
 import { FeedbackPanel, FinalRetryNote, isFinalRetryResult } from '../exercises/feedback-panel.js';
 import { sessionQueryOptions } from '../sessions/queries.js';
-import { SessionActivityHeader } from '../sessions/session-activity-header.js';
+import { type LessonLink, SessionActivityHeader } from '../sessions/session-activity-header.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { LessonBlock } from './lesson-block.js';
 import { LessonSteps } from './lesson-steps.js';
@@ -33,7 +33,7 @@ export function LessonRunner({
   sessionId,
   title,
   activityLabel,
-  lessonHref,
+  lessonLink,
   tutorEnabled,
   finalAnswered,
   onContinue,
@@ -43,7 +43,7 @@ export function LessonRunner({
   sessionId: string;
   title: string;
   activityLabel: string;
-  lessonHref?: string;
+  lessonLink?: LessonLink;
   tutorEnabled: boolean;
   finalAnswered: boolean;
   onContinue: (status: 'quiz' | 'completed', stage: 'final' | 'done') => Promise<void>;
@@ -437,7 +437,7 @@ export function LessonRunner({
             <SessionActivityHeader
               title={title}
               label={activityLabel}
-              lessonHref={lessonHref}
+              lessonLink={lessonLink}
               subtitleSkeleton
             />
             <div className="flex flex-wrap gap-2" aria-hidden="true">
@@ -512,7 +512,7 @@ export function LessonRunner({
       <SessionActivityHeader
         title={title}
         label={activityLabel}
-        lessonHref={lessonHref}
+        lessonLink={lessonLink}
         subtitle={sessionSubtitle}
       />
       <LessonSteps

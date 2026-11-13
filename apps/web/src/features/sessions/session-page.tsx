@@ -19,6 +19,11 @@ import { lessonQueryOptions, lessonRunQueryOptions } from '../lessons/queries.js
 import { projectQueryOptions } from '../projects/queries.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { sessionActivityLabel } from './activity-label.js';
+import {
+  selectSessionActivity,
+  sessionActivityCandidates,
+  usesLessonRunner,
+} from './activity-selection.js';
 import { InlineLessonCheck } from './inline-lesson-check.js';
 import { PaperActivity } from './paper-activity.js';
 import { sessionQueryOptions, todayQueryOptions } from './queries.js';
@@ -68,12 +73,9 @@ export function SessionPage() {
     }
   }, [sessionQuery.data?.serverNow]);
   const activities = sessionQuery.data.activities;
-  const activeActivity =
-    activities.find((item) => item.status === 'in_progress') ??
-    activities.find((item) => item.status === 'planned');
   const lessonRunConceptIds = [
     ...new Set(
-      activities.flatMap((item) =>
+      sessionActivityCandidates(activities, requestedActivityId).flatMap((item) =>
         item.kind === 'learn' && item.conceptId && item.lessonAvailable ? [item.conceptId] : [],
       ),
     ),
@@ -88,40 +90,11 @@ export function SessionPage() {
     lessonRunConceptIds.map((conceptId, index) => [conceptId, lessonRunQueries[index]?.data?.run]),
   );
   const lessonRunsPending = lessonRunQueries.some((query) => query.isPending);
-  const completedLesson = activities.find((item) => {
-    if (
-      item.kind !== 'learn' ||
-      item.status !== 'completed' ||
-      !item.conceptId ||
-      item.progress?.quizContinued
-    ) {
-      return false;
-    }
-    const run = lessonRunsByConcept.get(item.conceptId);
-    return (
-      run?.status === 'completed' ||
-      (run?.status === 'quiz' &&
-        (item.progress?.finalQuestionContinued || item.exerciseIds.length === 0))
-    );
-  });
-  const completedFinal = activities.find(
-    (item) =>
-      item.kind === 'learn' &&
-      (item.status === 'completed' || item.status === 'in_progress') &&
-      item.progress?.lessonRunnerContinued &&
-      !item.progress.finalQuestionContinued &&
-      (item.progress.completedExerciseIds ?? []).some((exerciseId) =>
-        item.exerciseIds.includes(exerciseId),
-      ),
+  const { activity, completedFinal, requestedCompletedActivity } = selectSessionActivity(
+    activities,
+    lessonRunsByConcept,
+    requestedActivityId,
   );
-  const requestedCompletedActivity = activities.find(
-    (item) => item.id === requestedActivityId && item.status === 'completed',
-  );
-  const activity =
-    completedLesson ??
-    completedFinal ??
-    (requestedCompletedActivity && activeActivity ? requestedCompletedActivity : undefined) ??
-    activeActivity;
   const showingRequestedCompletedActivity = activity?.id === requestedCompletedActivity?.id;
   const showingCompletedFinal = activity?.id === completedFinal?.id;
   const labProjectId = activity?.kind === 'lab' ? activity.projectId : undefined;
@@ -137,7 +110,20 @@ export function SessionPage() {
         (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
       );
   const currentResult = exerciseId && result?.exerciseId === exerciseId ? result : null;
-  const exerciseQuery = useSuspenseQuery(exerciseQueryOptions(exerciseId ?? null));
+  const lessonQuery = useSuspenseQuery(
+    lessonQueryOptions(
+      activity &&
+        ['learn', 'practice', 'remediate', 'transfer'].includes(activity.kind) &&
+        activity.lessonAvailable
+        ? (activity.conceptId ?? null)
+        : null,
+    ),
+  );
+  const lesson = lessonQuery.data;
+  const lessonRunnerActive = usesLessonRunner(activity, lesson);
+  const exerciseQuery = useSuspenseQuery(
+    exerciseQueryOptions(lessonRunnerActive ? null : (exerciseId ?? null)),
+  );
   const activityScrollKey = activity
     ? `${activity.id}:${activity.progress?.lessonViewed ?? ''}`
     : '';
@@ -185,25 +171,6 @@ export function SessionPage() {
       }).then(() => queryClient.invalidateQueries({ queryKey: ['session', id] }));
     }
   }, [clock, id, queryClient, sessionQuery.data, timeAnchor]);
-  const lessonQuery = useSuspenseQuery(
-    lessonQueryOptions(
-      activity &&
-        ['learn', 'practice', 'remediate', 'transfer'].includes(activity.kind) &&
-        activity.lessonAvailable
-        ? (activity.conceptId ?? null)
-        : null,
-    ),
-  );
-  const lesson = lessonQuery.data;
-  const lessonRunnerActive = Boolean(
-    activity?.kind === 'learn' &&
-      activity.conceptId &&
-      lesson?.knowledge_points?.length &&
-      (!activity.progress?.lessonRunnerContinued ||
-        (activity.progress.lessonRunnerContinued &&
-          activity.progress.finalQuestionContinued &&
-          !activity.progress.quizContinued)),
-  );
   useEffect(() => {
     if (lessonRunnerActive) return;
     if (!activity) {
@@ -294,6 +261,19 @@ export function SessionPage() {
         setSubmitError(typeof data.error === 'string' ? data.error : 'Your answer was not saved.');
       }
       if (response.ok && data.status !== 'invalid') {
+        // Client-side lesson navigation must retain the same feedback a document reload restores.
+        queryClient.setQueryData(sessionQueryOptions(id).queryKey, (session) =>
+          session
+            ? {
+                ...session,
+                activities: session.activities.map((item) =>
+                  item.id === activity.id
+                    ? { ...item, lastAttempt: { ...data, exerciseId } }
+                    : item,
+                ),
+              }
+            : session,
+        );
         setHints([]);
         setTutorUnavailable(false);
       }
@@ -515,9 +495,9 @@ export function SessionPage() {
           : ['quick_check', 'diagnostic', 'assessment'].includes(activity.kind)
             ? 'Quiz'
             : sessionActivityLabel(activity.kind));
-  const lessonHref =
+  const lessonLink =
     activity.conceptId && activity.lessonAvailable
-      ? `/lessons/${encodeURIComponent(activity.conceptId)}?from=${encodeURIComponent(id)}`
+      ? { conceptId: activity.conceptId, from: id }
       : undefined;
   const canSubmitAnswer =
     !currentResult ||
@@ -593,7 +573,7 @@ export function SessionPage() {
         sessionId={id}
         title={activity.conceptTitle ?? activity.conceptId}
         activityLabel={activityLabel}
-        lessonHref={lessonHref}
+        lessonLink={lessonLink}
         tutorEnabled={sessionQuery.data.tutorEnabled}
         finalAnswered={Boolean(finalAnswered)}
         onContinue={continueLessonRunner}
@@ -646,7 +626,7 @@ export function SessionPage() {
         <SessionActivityHeader
           title={activityTitle}
           label={activityLabel}
-          lessonHref={lessonHref}
+          lessonLink={lessonLink}
         />
         <div className="space-y-5">
           {orderedBlocks.map((block) => (
@@ -692,7 +672,7 @@ export function SessionPage() {
       <SessionActivityHeader
         title={activityTitle}
         label={activityLabel}
-        lessonHref={lessonHref}
+        lessonLink={lessonLink}
         subtitle={
           activity.kind === 'learn' && lesson?.final === exerciseId ? 'Final question' : undefined
         }

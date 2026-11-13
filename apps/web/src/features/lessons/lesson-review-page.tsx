@@ -1,5 +1,5 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
-import { getRouteApi } from '@tanstack/react-router';
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
+import { getRouteApi, Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { Markdown } from '../../components/markdown.js';
 import { Button } from '../../components/ui/button.js';
@@ -12,9 +12,14 @@ const Route = getRouteApi('/lessons/$conceptId');
 export function LessonReviewPage() {
   const { conceptId } = Route.useParams();
   const { from } = Route.useSearch();
-  const { data } = useSuspenseQuery(lessonReviewQueryOptions(conceptId));
-  const { data: runData } = useSuspenseQuery(lessonRunQueryOptions(conceptId));
-  const { lesson, checkAnswers, conceptTitle } = data;
+  const reviewQuery = useSuspenseQuery(lessonReviewQueryOptions(conceptId));
+  // Observe newer answers already in the cache without fetching the full run for a read-only page.
+  const cachedRun = useQuery({ ...lessonRunQueryOptions(conceptId), enabled: false });
+  const { lesson, checkAnswers, conceptTitle } = reviewQuery.data;
+  const runStatus =
+    cachedRun.dataUpdatedAt > reviewQuery.dataUpdatedAt
+      ? (cachedRun.data?.run?.status ?? null)
+      : reviewQuery.data.runStatus;
   const tutorSidebar = useTutorSidebar();
   const finalBlock = lesson.blocks.find(
     (block) => block.kind === 'check' && block.exercise === lesson.final,
@@ -34,13 +39,15 @@ export function LessonReviewPage() {
     <section className="space-y-6">
       {from ? (
         <Button asChild variant="link" className="px-0">
-          <a href={`/session/${encodeURIComponent(from)}`}>← Back to session</a>
+          <Link to="/session/$id" params={{ id: from }}>
+            ← Back to session
+          </Link>
         </Button>
       ) : null}
       <h1 className="text-3xl font-semibold">{conceptTitle}</h1>
-      {runData.run?.status === 'completed' ? (
+      {runStatus === 'completed' ? (
         <p className="text-sm text-muted-foreground">Quiz passed</p>
-      ) : runData.run?.status === 'quiz' ? (
+      ) : runStatus === 'quiz' ? (
         <p className="text-sm text-muted-foreground">Quiz not passed yet</p>
       ) : null}
       {lesson.knowledge_points?.length ? (

@@ -3,7 +3,7 @@ import { LessonReviewPage } from '@/features/lessons/lesson-review-page.js';
 import { RouteLoadError } from '../components/route-error.js';
 import { LessonReviewSkeleton } from '../components/skeletons.js';
 import { exerciseQueryOptions } from '../features/exercises/queries.js';
-import { lessonReviewQueryOptions, lessonRunQueryOptions } from '../features/lessons/queries.js';
+import { lessonReviewQueryOptions } from '../features/lessons/queries.js';
 
 export const Route = createFileRoute('/lessons/$conceptId')({
   pendingComponent: LessonReviewSkeleton,
@@ -11,13 +11,18 @@ export const Route = createFileRoute('/lessons/$conceptId')({
     from: typeof search.from === 'string' ? search.from : undefined,
   }),
   loader: async ({ context, params }) => {
-    const [payload] = await Promise.all([
-      context.queryClient.ensureQueryData(lessonReviewQueryOptions(params.conceptId)),
-      context.queryClient.ensureQueryData(lessonRunQueryOptions(params.conceptId)),
-    ]);
+    const payload = await context.queryClient.ensureQueryData(
+      lessonReviewQueryOptions(params.conceptId),
+    );
+    for (const [id, exercise] of Object.entries(payload.checks)) {
+      context.queryClient.setQueryData(exerciseQueryOptions(id).queryKey, exercise);
+    }
     await Promise.all(
       payload.lesson.blocks.flatMap((block) =>
-        block.exercise
+        block.kind === 'check' &&
+        block.exercise &&
+        (!payload.lesson.knowledge_points?.length || block.exercise === payload.lesson.final) &&
+        !payload.checks[block.exercise]
           ? [context.queryClient.ensureQueryData(exerciseQueryOptions(block.exercise))]
           : [],
       ),

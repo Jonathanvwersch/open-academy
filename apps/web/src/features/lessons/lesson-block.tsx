@@ -1,4 +1,5 @@
 import type { LessonBlockKind, LessonPrerequisite } from '@academy/contracts/lessons';
+import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import * as React from 'react';
 import { Markdown } from '../../components/markdown.js';
@@ -42,12 +43,14 @@ export function LessonBlock({
               <ul className="list-disc space-y-2 pl-5">
                 {prerequisites?.map((prerequisite) => (
                   <li key={prerequisite.id}>
-                    <a
+                    <Link
                       className="cursor-pointer underline"
-                      href={`/lessons/${encodeURIComponent(prerequisite.id)}`}
+                      to="/lessons/$conceptId"
+                      params={{ conceptId: prerequisite.id }}
+                      search={{ from: undefined }}
                     >
                       {prerequisite.title}
-                    </a>
+                    </Link>
                     {': '}
                     <Markdown inline>{prerequisite.recap ?? ''}</Markdown>
                   </li>
@@ -63,12 +66,14 @@ export function LessonBlock({
               {prerequisites.map((prerequisite, index) => (
                 <React.Fragment key={prerequisite.id}>
                   {index > 0 ? ', ' : null}
-                  <a
+                  <Link
                     className="cursor-pointer underline"
-                    href={`/lessons/${encodeURIComponent(prerequisite.id)}`}
+                    to="/lessons/$conceptId"
+                    params={{ conceptId: prerequisite.id }}
+                    search={{ from: undefined }}
                   >
                     {prerequisite.title}
-                  </a>
+                  </Link>
                 </React.Fragment>
               ))}
             </p>
