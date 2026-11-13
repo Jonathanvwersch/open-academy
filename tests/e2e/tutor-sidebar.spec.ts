@@ -430,6 +430,76 @@ test('tutor sidebar width resizes, persists, responds to the keyboard, and clamp
     .toBe('448');
 });
 
+test('chat text stays visible while Markdown loads', async ({ page }) => {
+  let releaseMarkdown!: () => void;
+  let markMarkdownRequested!: () => void;
+  const markdownGate = new Promise<void>((resolve) => {
+    releaseMarkdown = resolve;
+  });
+  const markdownRequested = new Promise<void>((resolve) => {
+    markMarkdownRequested = resolve;
+  });
+  await page.route('**/src/components/markdown.tsx*', async (route) => {
+    markMarkdownRequested();
+    await markdownGate;
+    await route.continue();
+  });
+  await page.goto('/course');
+  await page.getByRole('button', { name: 'Open tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  await tutor.getByRole('button', { name: 'New chat' }).click();
+  const question = 'Explain this without hiding my message';
+  try {
+    await tutor.getByLabel('Ask the tutor').fill(question);
+    await tutor.getByLabel('Ask the tutor').press('Enter');
+    await markdownRequested;
+    await expect(tutor.getByTestId('tutor-user-message')).toContainText(question);
+    await expect(tutor.getByTestId('tutor-assistant-message')).toContainText(
+      `Tutor reply to: ${question}`,
+    );
+    await expect(tutor.getByRole('status', { name: 'Loading message' })).toHaveCount(0);
+    await expect(tutor.locator('[data-testid="tutor-user-message"] svg')).toHaveCount(0);
+    await page.screenshot({ path: `${screenshotDir}/markdown-loading.png` });
+  } finally {
+    releaseMarkdown();
+  }
+  await expect(tutor.getByTestId('tutor-assistant-message').locator('.markdown')).toBeVisible();
+});
+
+test('pending tutor reply uses a skeleton within the mobile conversation', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let releaseReply!: () => void;
+  const replyGate = new Promise<void>((resolve) => {
+    releaseReply = resolve;
+  });
+  await page.route('**/api/tutor/threads**', async (route) => {
+    if (route.request().method() === 'POST') await replyGate;
+    await route.continue();
+  });
+  await page.goto('/course');
+  await page.getByRole('button', { name: 'Open tutor' }).click();
+  const conversation = page.getByLabel('Ask the tutor');
+  await page.getByRole('button', { name: 'New chat' }).click();
+  try {
+    await conversation.fill('Explain this topic');
+    await conversation.press('Enter');
+    await expect(page.getByTestId('tutor-user-message')).toContainText('Explain this topic');
+    const loading = page.getByRole('status', { name: 'Tutor is responding' });
+    await expect(loading).toBeVisible();
+    await expect(loading.locator('[data-slot="skeleton"]')).toHaveCount(3);
+    const bounds = await loading.boundingBox();
+    if (!bounds) throw new Error('Reply skeleton is not visible');
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
+    await page.screenshot({ path: `${screenshotDir}/tutor-pending-mobile.png` });
+  } finally {
+    releaseReply();
+  }
+  await expect(page.getByTestId('tutor-assistant-message')).toContainText(
+    'Tutor reply to: Explain this topic',
+  );
+});
+
 test('tutor chat sends optimistically and supports chat-list navigation', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-01-01T12:00:00.000Z') });
   await page.addInitScript(() => {
@@ -514,6 +584,10 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   ).toHaveCount(1);
   await expect(tutor.getByRole('status', { name: 'Tutor is responding' })).toBeVisible();
   await expect(tutor.getByTestId('tutor-thinking-bubble')).toBeVisible();
+  await expect(
+    tutor.getByTestId('tutor-thinking-bubble').locator('[data-slot="skeleton"]'),
+  ).toHaveCount(3);
+  await expect(tutor.getByTestId('tutor-thinking-bubble').locator('svg')).toHaveCount(0);
   await expect(sendButton).toHaveAttribute('aria-busy', 'true');
   await expect(sendButton).toHaveAttribute('data-loading', 'true');
   await expect(sendButton.getByTestId('button-spinner')).toBeVisible();
