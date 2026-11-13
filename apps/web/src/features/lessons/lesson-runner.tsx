@@ -54,6 +54,20 @@ export function LessonRunner({
   const query = useSuspenseQuery(queryOptions);
   const lesson = useSuspenseQuery(lessonQueryOptions(conceptId)).data;
   const state = query.data.run;
+  const reviewRequired = state?.quiz.reviewRequired ?? [];
+  const firstPendingStep = state?.quiz.last?.perStep.find((step) =>
+    reviewRequired.some(
+      (review) => review.pointId === step.pointId && review.answered < review.needed,
+    ),
+  );
+  const firstPendingStepNumber = firstPendingStep
+    ? (state?.quiz.last?.perStep.findIndex((step) => step.pointId === firstPendingStep.pointId) ??
+        -1) + 1
+    : null;
+  const remainingReviewQuestions = reviewRequired.reduce(
+    (remaining, review) => remaining + Math.max(0, review.needed - review.answered),
+    0,
+  );
   const starting = useRef(false);
   const visibleProblemId =
     state?.pendingPracticeProblem?.id ??
@@ -761,12 +775,10 @@ export function LessonRunner({
               Not passed yet · {state.quiz.last.correctCount} of {state.quiz.last.total}
             </h2>
             <p>
-              You need {Math.ceil(state.quiz.passMark * state.quiz.last.total)}. Here&apos;s how
-              each step went:
+              To pass, practise each step you missed (3 questions each), then retake the quiz. You
+              need {Math.ceil(state.quiz.passMark * state.quiz.last.total)} of{' '}
+              {state.quiz.last.total}.
             </p>
-            {state.quiz.reviewRequired.length > 0 ? (
-              <p>Before you retake it, answer 3 more questions on each step you missed.</p>
-            ) : null}
             <div className="space-y-2">
               {state.quiz.last.perStep.map((step, index) => {
                 const review = state.quiz.reviewRequired.find(
@@ -790,7 +802,7 @@ export function LessonRunner({
                           size="sm"
                           onClick={() => viewStep(step.pointId)}
                         >
-                          Review · {review.answered}/{review.needed}
+                          Practise · {review.answered}/{review.needed}
                         </Button>
                       )
                     ) : null}
@@ -801,21 +813,30 @@ export function LessonRunner({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div />
               <div className="ml-auto flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={
-                    busy || state.quiz.reviewRequired.some((step) => step.answered < step.needed)
-                  }
-                  onClick={() => void startQuiz()}
-                >
-                  Retake quiz
-                </Button>
-                <Button type="button" disabled={busy} onClick={() => void next()}>
-                  Continue
+                {firstPendingStep && firstPendingStepNumber !== null ? (
+                  <Button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => viewStep(firstPendingStep.pointId)}
+                  >
+                    Practise step {firstPendingStepNumber}
+                  </Button>
+                ) : (
+                  <Button type="button" disabled={busy} onClick={() => void startQuiz()}>
+                    Retake quiz
+                  </Button>
+                )}
+                <Button type="button" variant="outline" disabled={busy} onClick={() => void next()}>
+                  Do this later
                 </Button>
               </div>
             </div>
+            <p className="text-sm text-muted-foreground">
+              {firstPendingStep
+                ? `Retake unlocks after ${remainingReviewQuestions} more practice question${remainingReviewQuestions === 1 ? '' : 's'}. `
+                : ''}
+              It&apos;ll come first in your next session.
+            </p>
           </CardContent>
         </Card>
       ) : state.status === 'quiz' && !finalAnswered ? (

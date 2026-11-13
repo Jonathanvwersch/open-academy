@@ -55,6 +55,11 @@ export interface SessionActivity {
   };
 }
 
+export interface ActiveSessionPayload {
+  id: string;
+  activities: Array<Pick<SessionActivity, 'kind' | 'conceptId' | 'status'>>;
+}
+
 export interface SessionPayload {
   activities: SessionActivity[];
   plannedMinutes: number;

@@ -1,9 +1,12 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
-import { getRouteApi } from '@tanstack/react-router';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
+import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Markdown } from '../../components/markdown.js';
 import { Button } from '../../components/ui/button.js';
+import { Card, CardContent } from '../../components/ui/card.js';
 import { exerciseQueryOptions } from '../exercises/queries.js';
+import { activeSessionQueryOptions, todayQueryOptions } from '../sessions/queries.js';
 import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { LessonBlock } from './lesson-block.js';
 import { lessonReviewQueryOptions, lessonRunQueryOptions } from './queries.js';
@@ -12,10 +15,14 @@ const Route = getRouteApi('/lessons/$conceptId');
 export function LessonReviewPage() {
   const { conceptId } = Route.useParams();
   const { from } = Route.useSearch();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data } = useSuspenseQuery(lessonReviewQueryOptions(conceptId));
   const { data: runData } = useSuspenseQuery(lessonRunQueryOptions(conceptId));
   const { lesson, checkAnswers, conceptTitle } = data;
   const tutorSidebar = useTutorSidebar();
+  const [startingQuiz, setStartingQuiz] = useState(false);
+  const [quizStartError, setQuizStartError] = useState('');
   const finalBlock = lesson.blocks.find(
     (block) => block.kind === 'check' && block.exercise === lesson.final,
   );
@@ -30,6 +37,43 @@ export function LessonReviewPage() {
     });
     return () => tutorSidebar.clearContext();
   }, [conceptId, conceptTitle, tutorSidebar]);
+  const openQuiz = async () => {
+    setStartingQuiz(true);
+    setQuizStartError('');
+    try {
+      const activeSession = await queryClient.fetchQuery({
+        ...activeSessionQueryOptions(),
+        staleTime: 0,
+      });
+      const activeLesson = activeSession?.activities.find(
+        (activity) =>
+          activity.kind === 'learn' &&
+          activity.conceptId === conceptId &&
+          activity.status === 'in_progress',
+      );
+      if (activeSession && activeLesson) {
+        await navigate({ to: '/session/$id', params: { id: activeSession.id } });
+        return;
+      }
+
+      const today = await queryClient.fetchQuery({ ...todayQueryOptions(), staleTime: 0 });
+      const response = await apiFetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ focusConceptId: conceptId, kind: today.sessionKind }),
+      });
+      const session = (await response.json()) as { id?: string; error?: string };
+      if (!response.ok || !session.id) {
+        throw new Error(session.error ?? 'Could not start a session for this quiz.');
+      }
+      await navigate({ to: '/session/$id', params: { id: session.id } });
+    } catch (cause) {
+      setQuizStartError(cause instanceof Error ? cause.message : 'Could not open the lesson quiz.');
+    } finally {
+      setStartingQuiz(false);
+    }
+  };
+
   return (
     <section className="space-y-6">
       {from ? (
@@ -41,7 +85,23 @@ export function LessonReviewPage() {
       {runData.run?.status === 'completed' ? (
         <p className="text-sm text-muted-foreground">Quiz passed</p>
       ) : runData.run?.status === 'quiz' ? (
-        <p className="text-sm text-muted-foreground">Quiz not passed yet</p>
+        <Card className="gap-0 border-amber-300 bg-amber-50" data-testid="lesson-quiz-entry">
+          <CardContent className="space-y-4 text-amber-950">
+            <p>
+              {runData.run.quiz.last
+                ? `Quiz not passed yet · ${runData.run.quiz.last.correctCount} of ${runData.run.quiz.last.total}. Practise the steps you missed, then retake it.`
+                : 'Lesson steps done; quiz not taken yet.'}
+            </p>
+            <Button type="button" loading={startingQuiz} onClick={() => void openQuiz()}>
+              {runData.run.quiz.last ? 'Go to the quiz' : 'Take the quiz'}
+            </Button>
+            {quizStartError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {quizStartError}
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
       ) : null}
       {lesson.knowledge_points?.length ? (
         <div className="space-y-5">
