@@ -227,7 +227,7 @@ export function PageLayoutSkeleton({ fallback }: { fallback?: ReactNode } = {}) 
       ref={ref}
       role="status"
       data-testid="route-skeleton"
-      className="relative w-full"
+      className={`relative w-full ${!layout && !fallback ? 'flex flex-1 items-center justify-center' : ''}`}
       aria-busy="true"
       aria-label="Loading page"
       style={layout ? { height: layout.height } : undefined}
@@ -256,7 +256,7 @@ export function PageLayoutSkeleton({ fallback }: { fallback?: ReactNode } = {}) 
       ) : fallback ? (
         fallback
       ) : (
-        <div className="flex h-10 items-center">
+        <div className="flex items-center justify-center" data-testid="page-loading-indicator">
           <Loader2
             className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none"
             aria-hidden="true"

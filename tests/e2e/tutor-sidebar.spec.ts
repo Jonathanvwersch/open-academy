@@ -310,6 +310,16 @@ test('restored tutor sidebar loads while the tutor flag is pending', async ({ pa
     await expect(tutor).toBeVisible();
     await expect(unavailable).toHaveCount(0);
     await expect(tutor.getByRole('status', { name: 'Loading tutor' })).toBeVisible();
+    const loadingPosition = await tutor
+      .getByRole('status', { name: 'Loading tutor' })
+      .evaluate((element) => {
+        const content = element.closest('[data-slot="sidebar-content"]');
+        if (!content) throw new Error('Expected sidebar content');
+        const rect = element.getBoundingClientRect();
+        const bounds = content.getBoundingClientRect();
+        return { actual: rect.y + rect.height / 2, expected: bounds.y + bounds.height / 2 };
+      });
+    expect(Math.abs(loadingPosition.actual - loadingPosition.expected)).toBeLessThan(1);
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await expect(unavailable).toHaveCount(0);
   } finally {
