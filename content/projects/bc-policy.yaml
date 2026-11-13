@@ -1,6 +1,6 @@
 id: bc-policy
 title: "Behavioral cloning from demonstrations"
-week: 7
+week: 8
 status: stub
 est_hours: 5
 objective: "Collect scripted demonstrations, train a BC policy, measure success rate and observe distribution shift."

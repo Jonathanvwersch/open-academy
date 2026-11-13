@@ -2,7 +2,7 @@ id: domain-randomization
 title: Domain Randomization for Transferring Deep Neural Networks from Simulation to the Real World
 authors: Tobin et al.
 year: 2017
-week: 6
+week: 7
 est_minutes: 45
 source:
   arxiv: 1703.06907v1

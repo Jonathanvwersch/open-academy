@@ -21,6 +21,11 @@ domains:
       description: "Tokens, attention, transformer blocks and language-model training.",
     }
   - {
+      id: inference,
+      title: Inference,
+      description: "A trained model is only useful if it runs fast enough. You'll learn what makes inference slow, from memory bandwidth to the KV cache, and the techniques serving systems use to speed it up: caching, quantisation, speculative decoding and batching.",
+    }
+  - {
       id: vision,
       title: Computer vision,
       description: "Images, convolutions, vision encoders and vision-language models.",
@@ -136,6 +141,24 @@ weeks:
     }
   - {
       week: 5,
+      title: Inference,
+      project: inference-engine,
+      intro: "A trained model is only useful if it runs fast enough. You'll learn what makes inference slow, from memory bandwidth to the KV cache, and the techniques serving systems use to speed it up: caching, quantisation, speculative decoding and batching.",
+      concepts:
+        [
+          inference-metrics,
+          prefill-decode,
+          arithmetic-intensity,
+          gpu-inference-basics,
+          kv-cache,
+          fast-attention,
+          quantization,
+          speculative-decoding,
+          llm-serving,
+        ],
+    }
+  - {
+      week: 6,
       title: Robotics foundations,
       project: planar-arm,
       intro: "How robots describe where things are: coordinate frames, rotations and transforms, then working out where an arm's hand is from its joint angles, and back.",
@@ -153,7 +176,7 @@ weeks:
         ],
     }
   - {
-      week: 6,
+      week: 7,
       title: Robotics control and perception,
       project: control-sim,
       intro: "How a robot senses the world and acts on it: sensors, cameras, feedback control and basic dynamics.",
@@ -168,7 +191,7 @@ weeks:
         ],
     }
   - {
-      week: 7,
+      week: 8,
       title: Imitation learning,
       project: bc-policy,
       intro: "Teaching a robot by showing it: learning a policy from human demonstrations, why it breaks when the robot drifts off course, and how to fix that.",
@@ -183,7 +206,7 @@ weeks:
         ],
     }
   - {
-      week: 8,
+      week: 9,
       title: Reinforcement learning,
       project: rl-sim,
       intro: "Learning by trial and error from rewards instead of demonstrations: decision problems, value functions, Q-learning and policy gradients.",
@@ -203,7 +226,7 @@ weeks:
         ],
     }
   - {
-      week: 9,
+      week: 10,
       title: Modern multimodal AI,
       project: vision-policy,
       intro: "Models that connect images and text, and how they let a robot act on what its camera sees.",
@@ -219,7 +242,7 @@ weeks:
         ],
     }
   - {
-      week: 10,
+      week: 11,
       title: Advanced robot learning,
       project: chunking-policy,
       intro: "The methods behind current robot foundation models: action chunking, diffusion policies, transformer policies and vision-language-action models.",
@@ -229,7 +252,7 @@ weeks:
           diffusion-policies,
           flow-matching,
           transformer-policies,
-          gpu-inference-basics,
+          robot-inference-latency,
           vla-models,
           vla-action-heads,
           robot-foundation-models,
@@ -240,7 +263,7 @@ weeks:
         ],
     }
   - {
-      week: 11,
+      week: 12,
       title: End-to-end robot learning,
       project: capstone,
       intro: "Running a robot-learning project properly: data pipelines, evaluation, failure analysis and statistics.",
@@ -248,7 +271,7 @@ weeks:
         [data-pipelines-robotics, failure-analysis, experimental-design, statistical-evaluation],
     }
   - {
-      week: 12,
+      week: 13,
       title: Capstone and final assessment,
       project: capstone,
       intro: "Designing a complete ML system, reading research papers and judging models critically.",

@@ -2,7 +2,7 @@ id: i-jepa
 title: Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture
 authors: Assran et al.
 year: 2023
-week: 9
+week: 10
 est_minutes: 90
 source:
   arxiv: 2301.08243v3
