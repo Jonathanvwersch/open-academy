@@ -64,11 +64,11 @@ test('diagnostic to KP runner starts point one and preserves progress', async ({
   });
 
   await page.getByRole('link', { name: 'Start diagnostic' }).click();
-  await expect(page.getByRole('heading', { name: 'Starting-point diagnostic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Diagnostic' })).toBeVisible();
   const firstSkip = page.waitForResponse(
     (response) => response.url().includes('/skip') && response.request().method() === 'POST',
   );
-  await page.getByRole('button', { name: 'I haven’t studied this domain' }).click();
+  await page.getByRole('button', { name: 'Skip topic' }).click();
   const firstSkipResult = await (await firstSkip).json();
   expect(firstSkipResult).toMatchObject({
     complete: false,
@@ -78,7 +78,7 @@ test('diagnostic to KP runner starts point one and preserves progress', async ({
   const finalSkip = page.waitForResponse(
     (response) => response.url().includes('/skip') && response.request().method() === 'POST',
   );
-  await page.getByRole('button', { name: 'I haven’t studied this domain' }).click();
+  await page.getByRole('button', { name: 'Skip topic' }).click();
   await finalSkip;
   await expect(page.getByRole('heading', { name: 'Your starting point' })).toBeVisible({
     timeout: 15_000,
@@ -240,9 +240,9 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
 
   await page.getByRole('link', { name: 'Home', exact: true }).click();
   await page.getByRole('link', { name: 'Start diagnostic' }).click();
-  await expect(page.getByRole('heading', { name: 'Starting-point diagnostic' })).toBeVisible();
-  await page.getByRole('button', { name: 'I haven’t studied this domain' }).click();
-  await page.getByRole('button', { name: 'I haven’t studied this domain' }).click();
+  await expect(page.getByRole('heading', { name: 'Diagnostic' })).toBeVisible();
+  await page.getByRole('button', { name: 'Skip topic' }).click();
+  await page.getByRole('button', { name: 'Skip topic' }).click();
   await expect(page.getByRole('heading', { name: 'Your starting point' })).toBeVisible();
   const runId = await page.evaluate(() => window.sessionStorage.getItem('diagnosticRunId'));
   expect(runId).toBeTruthy();
@@ -283,4 +283,38 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
     'Which statement best describes the main idea in this step?',
   );
   await assertStable('/session/:id');
+});
+
+test('diagnostic distinguishes an unknown answer from skipping an entire topic', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/diagnostic');
+  const submit = page.getByRole('button', { name: 'Submit answer', exact: true });
+  const unknown = page.getByRole('button', { name: 'I don’t know', exact: true });
+  const skip = page.getByRole('button', { name: 'Skip topic', exact: true });
+  await expect(submit).toBeVisible();
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const submitBounds = await submit.boundingBox();
+    const unknownBounds = await unknown.boundingBox();
+    const skipBounds = await skip.boundingBox();
+    expect(submitBounds?.y).toBe(unknownBounds?.y);
+    expect(skipBounds?.y).toBeGreaterThan((submitBounds?.y ?? 0) + (submitBounds?.height ?? 0));
+  }
+  await expect(page.getByText('Assessment — no help')).toHaveCount(0);
+  await expect(page.getByText('Getting started', { exact: true })).toHaveCount(0);
+  const answered = page.waitForResponse(
+    (response) => response.url().endsWith('/answer') && response.request().method() === 'POST',
+  );
+  await unknown.click();
+  const answerResponse = await answered;
+  expect(answerResponse.request().postDataJSON()).toMatchObject({ dontKnow: true });
+  expect(await answerResponse.json()).toMatchObject({ correct: 0 });
+  await expect(unknown).toBeEnabled();
+  const skipped = page.waitForResponse(
+    (response) => response.url().endsWith('/skip') && response.request().method() === 'POST',
+  );
+  await skip.click();
+  expect((await skipped).ok()).toBe(true);
 });

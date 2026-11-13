@@ -330,3 +330,103 @@ test('session retries keep the action in place and reveal the answer only after 
     'correct',
   );
 });
+
+for (const width of [320, 1280]) {
+  test(`a resumed lesson skeleton preserves measured geometry at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await createLessonSession(page);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const entry = Object.entries(sessionStorage).find(([key]) =>
+            key.startsWith('academy.page-layout.'),
+          );
+          return entry
+            ? Object.keys(JSON.parse(entry[1])).some((key) => key.startsWith(location.pathname))
+            : false;
+        }),
+      )
+      .toBe(true);
+    const title = await page.locator('h1').evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const rect = range.getClientRects()[0] ?? range.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    });
+    const controls = await page
+      .locator('[data-page-frame] [data-slot="button"], [data-page-frame] input[data-slot="input"]')
+      .evaluateAll((elements) =>
+        elements.map((element) => {
+          const rect = element.getBoundingClientRect();
+          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+        }),
+      );
+    await page.screenshot({
+      path: `${screenshotDir}/measured-loaded-${width}.png`,
+      fullPage: true,
+    });
+    const before = await page.locator('[data-page-frame] [data-slot="card"]').evaluateAll((cards) =>
+      cards.map((card) => {
+        const rect = card.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      }),
+    );
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route('**/api/sessions/*', async (route) => {
+      await gate;
+      await route.continue();
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    const skeleton = page.getByTestId('route-skeleton');
+    await expect(skeleton.locator('[data-layout-shape="frame"]')).toHaveCount(before.length);
+    const during = await skeleton.locator('[data-layout-shape="frame"]').evaluateAll((cards) =>
+      cards.map((card) => {
+        const rect = card.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      }),
+    );
+    const contentShapes = await skeleton
+      .locator('[data-layout-shape="content"]')
+      .evaluateAll((shapes) =>
+        shapes.map((shape) => {
+          const rect = shape.getBoundingClientRect();
+          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+        }),
+      );
+    expect(
+      contentShapes.some((shape) =>
+        (['x', 'y', 'width', 'height'] as const).every(
+          (field) => Math.abs(shape[field] - title[field]) <= 1,
+        ),
+      ),
+    ).toBe(true);
+    for (const control of controls) {
+      expect(
+        contentShapes.some((shape) =>
+          (['x', 'y', 'width', 'height'] as const).every(
+            (field) => Math.abs(shape[field] - control[field]) <= 1,
+          ),
+        ),
+      ).toBe(true);
+    }
+    try {
+      for (const [index, card] of before.entries()) {
+        const placeholder = during[index];
+        if (!placeholder) throw new Error('Missing card placeholder');
+        for (const field of ['x', 'y', 'width', 'height'] as const)
+          expect(Math.abs(card[field] - placeholder[field])).toBeLessThanOrEqual(1);
+      }
+      await page.screenshot({
+        path: `${screenshotDir}/measured-skeleton-${width}.png`,
+        fullPage: true,
+      });
+    } finally {
+      release();
+    }
+    await expect(page.getByTestId('lesson-problem')).toBeVisible();
+  });
+}

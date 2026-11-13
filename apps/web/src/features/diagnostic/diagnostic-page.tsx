@@ -1,3 +1,4 @@
+import type { DiagnosticAnswerInput } from '@academy/contracts/diagnostic';
 import { useQueryClient } from '@tanstack/react-query';
 import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -5,9 +6,8 @@ import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Markdown } from '../../components/markdown.js';
 import { DiagnosticQuestionSkeleton } from '../../components/skeletons.js';
 import { Button } from '../../components/ui/button.js';
-import { Card, CardContent } from '../../components/ui/card.js';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
-import { ModeBadge } from '../exercises/mode-badge.js';
 
 interface DiagnosticItem {
   id: string;
@@ -28,7 +28,7 @@ export function DiagnosticPage() {
   const [domainTitle, setDomainTitle] = useState('');
   const [exercise, setExercise] = useState<DiagnosticItem | null>(null);
   const [feedback, setFeedback] = useState('');
-  const [busy, setBusy] = useState<'submit' | 'skip' | null>(null);
+  const [busy, setBusy] = useState<'submit' | 'unknown' | 'skip' | null>(null);
   const runPromise = useRef<Promise<{ id: string }> | null>(null);
 
   const loadNext = useCallback(
@@ -70,22 +70,27 @@ export function DiagnosticPage() {
     };
   }, [loadNext, pathname]);
 
-  const submit = async (answer: unknown) => {
+  const submit = async (answer: unknown, dontKnow = false) => {
     if (!exercise || !runId) return;
-    setBusy('submit');
+    setBusy(dontKnow ? 'unknown' : 'submit');
+    const input: DiagnosticAnswerInput = dontKnow
+      ? { exerciseId: exercise.id, dontKnow: true }
+      : { exerciseId: exercise.id, answer };
     try {
       const response = await apiFetch(`/api/diagnostic/${runId}/answer`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ exerciseId: exercise.id, answer }),
+        body: JSON.stringify(input),
       });
       const result = await response.json();
       if (!response.ok) {
-        setFeedback(result.feedback ?? 'Answer could not be graded.');
+        setFeedback(result.error ?? result.feedback ?? 'Answer could not be recorded.');
         return;
       }
       setFeedback(result.feedback ?? (result.correct ? 'Correct.' : 'Answer recorded.'));
       await loadNext(runId);
+    } catch {
+      setFeedback('Answer could not be recorded. Try again.');
     } finally {
       setBusy(null);
     }
@@ -101,6 +106,10 @@ export function DiagnosticPage() {
         body: JSON.stringify({ domain }),
       });
       const result = await response.json();
+      if (!response.ok) {
+        setFeedback(result.error ?? 'Topic could not be skipped.');
+        return;
+      }
       if (result.complete) {
         window.sessionStorage.setItem('diagnosticRunId', runId);
         queryClient.removeQueries({ queryKey: ['today'] });
@@ -109,6 +118,8 @@ export function DiagnosticPage() {
       } else {
         await loadNext(runId);
       }
+    } catch {
+      setFeedback('Topic could not be skipped. Try again.');
     } finally {
       setBusy(null);
     }
@@ -120,43 +131,52 @@ export function DiagnosticPage() {
 
   return (
     <section className="space-y-6">
-      <div>
-        <p className="text-sm text-muted-foreground">Getting started</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Starting-point diagnostic</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          A short set of questions will help place your first session.
-        </p>
-      </div>
+      <h1 className="sr-only">Diagnostic</h1>
       {exercise ? (
         <Card>
+          <CardHeader className="flex flex-row items-baseline gap-2">
+            <span className="text-sm text-muted-foreground">Topic</span>
+            <CardTitle>{domainTitle}</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {domainTitle}
-            </p>
-            <ModeBadge mode="assessment" />
             <Markdown>{exercise.prompt}</Markdown>
             <ExerciseForm
               key={`${runId}:${exercise.id}`}
               exercise={exercise}
-              onSubmit={submit}
+              compactActions
+              onSubmit={(answer) => void submit(answer)}
               loading={busy === 'submit'}
-              disabled={busy === 'skip'}
+              disabled={busy === 'skip' || busy === 'unknown'}
+              actions={
+                <Button
+                  type="button"
+                  loading={busy === 'unknown'}
+                  disabled={busy !== null && busy !== 'unknown'}
+                  onClick={() => void submit(undefined, true)}
+                  variant="outline"
+                  className="h-10"
+                >
+                  I don’t know
+                </Button>
+              }
             />
+            <div className="border-t pt-4">
+              <Button
+                type="button"
+                variant="link"
+                loading={busy === 'skip'}
+                disabled={busy !== null && busy !== 'skip'}
+                onClick={skip}
+                className="h-9 px-0 text-muted-foreground"
+              >
+                Skip topic
+              </Button>
+            </div>
             {feedback ? (
               <div role="status" className="text-sm text-muted-foreground">
                 <Markdown>{feedback}</Markdown>
               </div>
             ) : null}
-            <Button
-              type="button"
-              loading={busy === 'skip'}
-              disabled={busy === 'submit'}
-              onClick={skip}
-              variant="link"
-              className="px-0 text-muted-foreground"
-            >
-              I haven’t studied this domain
-            </Button>
           </CardContent>
         </Card>
       ) : (

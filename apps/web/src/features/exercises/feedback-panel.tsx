@@ -70,12 +70,12 @@ export function FeedbackPanel({
   return (
     <Alert
       role="status"
-      className={`${statusClass} text-base`}
+      className={`${statusClass} text-base leading-7`}
       style={{ '--katex-cover': katexCover } as React.CSSProperties}
     >
       {title ? <AlertTitle>{title}</AlertTitle> : null}
       {showFeedback ? (
-        <AlertDescription className="mt-1 text-base text-inherit">
+        <AlertDescription className="mt-1 text-base leading-7 text-inherit">
           <Markdown>{feedback}</Markdown>
         </AlertDescription>
       ) : null}
@@ -120,7 +120,7 @@ export function FeedbackPanel({
             <Markdown>{solution}</Markdown>
           </div>
         ) : (
-          <AlertDescription className="mt-1 text-base text-inherit">
+          <AlertDescription className="mt-1 text-base leading-7 text-inherit">
             <Markdown>{solution}</Markdown>
           </AlertDescription>
         )

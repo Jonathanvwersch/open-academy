@@ -1,19 +1,7 @@
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { Toaster } from 'sonner';
-import {
-  CourseSkeleton,
-  DiagnosticResultsSkeleton,
-  DiagnosticSkeleton,
-  LearnSkeleton,
-  LessonReviewSkeleton,
-  PageSkeleton,
-  PaperSkeleton,
-  ProgressSkeleton,
-  ProjectSkeleton,
-  ReviewsSkeleton,
-  SessionSkeleton,
-  SettingsSkeleton,
-} from '../components/skeletons.js';
+import { useCapturePageLayout } from '../components/page-layout-skeleton.js';
+import { PageSkeleton } from '../components/skeletons.js';
 import { Button } from '../components/ui/button.js';
 import { Logo } from '../components/ui/logo.js';
 import { Skeleton } from '../components/ui/skeleton.js';
@@ -31,18 +19,6 @@ const navigation = [
 export function AppShellSkeleton() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const isPaperReader = pathname.startsWith('/papers/');
-  let pageSkeleton = <PageSkeleton />;
-  if (pathname.startsWith('/papers/')) pageSkeleton = <PaperSkeleton />;
-  else if (pathname.startsWith('/session/')) pageSkeleton = <SessionSkeleton />;
-  else if (pathname.startsWith('/lessons/')) pageSkeleton = <LessonReviewSkeleton />;
-  else if (pathname.startsWith('/projects/')) pageSkeleton = <ProjectSkeleton />;
-  else if (pathname === '/diagnostic/results') pageSkeleton = <DiagnosticResultsSkeleton />;
-  else if (pathname === '/diagnostic') pageSkeleton = <DiagnosticSkeleton />;
-  else if (pathname === '/settings') pageSkeleton = <SettingsSkeleton />;
-  else if (pathname === '/reviews') pageSkeleton = <ReviewsSkeleton />;
-  else if (pathname === '/progress') pageSkeleton = <ProgressSkeleton />;
-  else if (pathname === '/course') pageSkeleton = <CourseSkeleton />;
-  else if (pathname === '/') pageSkeleton = <LearnSkeleton />;
   return (
     <div
       aria-hidden="true"
@@ -69,13 +45,14 @@ export function AppShellSkeleton() {
         </div>
       </header>
       <div
+        data-page-frame
         className={
           isPaperReader
             ? 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0'
             : 'mx-auto w-full max-w-3xl px-4 pt-6 pb-20 sm:px-6 sm:py-8'
         }
       >
-        {pageSkeleton}
+        <PageSkeleton />
       </div>
     </div>
   );
@@ -96,6 +73,7 @@ function AppToaster() {
 }
 
 export function RootLayout() {
+  const contentRef = useCapturePageLayout();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   if (pathname === '/login') {
     return (
@@ -149,6 +127,8 @@ export function RootLayout() {
             </div>
           </header>
           <div
+            ref={contentRef}
+            data-page-frame
             className={
               isPaperReader
                 ? 'flex w-full min-h-0 min-w-0 flex-1 px-0 py-0'

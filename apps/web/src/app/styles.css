@@ -87,7 +87,7 @@ label[for],
   cursor: pointer;
 }
 
-:focus-visible {
+:focus-visible:not([data-slot]) {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
 }

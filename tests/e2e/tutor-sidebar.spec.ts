@@ -489,7 +489,7 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   expect(contextFollowsSend).toBe(true);
   await tutor.getByRole('button', { name: 'New chat' }).click();
   await expect(tutor.getByTestId('tutor-conversation-title')).toHaveText('New chat');
-  await expect(tutor.getByText('Start a conversation')).toBeVisible();
+  await expect(tutor.getByText('Start a conversation')).toHaveCount(0);
 
   const textarea = tutor.getByLabel('Ask the tutor');
   await textarea.fill('Explain the first step');
@@ -559,7 +559,7 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   expect(restoredVisibleHeaderText).toBe('Chats');
   await restoredTutor.getByRole('button', { name: 'New chat' }).click();
   await expect(restoredTutor.getByTestId('tutor-conversation-title')).toHaveText('New chat');
-  await expect(restoredTutor.getByText('Start a conversation')).toBeVisible();
+  await expect(restoredTutor.getByText('Start a conversation')).toHaveCount(0);
   await expect(restoredTutor.getByTestId('tutor-reading-context')).toContainText(
     /^Context: Supervised learning/,
   );
@@ -602,7 +602,7 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
     /^Context: Supervised learning/,
   );
   await expect(restoredTutor.getByTestId('tutor-user-message')).toHaveCount(0);
-  await expect(restoredTutor.getByText('Start a conversation')).toBeVisible();
+  await expect(restoredTutor.getByText('Start a conversation')).toHaveCount(0);
 
   await restoredTutor.getByRole('button', { name: 'Chats' }).click();
   await firstThread.click();
@@ -726,7 +726,7 @@ test('conversation-header new chat focuses the tutor composer', async ({ page })
   await expect(composer).toHaveValue('x');
 });
 
-test('Chats-list new chat buttons focus the tutor composer', async ({ page }) => {
+test('Chat lists expose one New chat action and focus the composer', async ({ page }) => {
   await page.goto(`/session/${sessionId}`);
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
   await page.getByRole('button', { name: 'Ask the tutor' }).click();
@@ -735,23 +735,34 @@ test('Chats-list new chat buttons focus the tutor composer', async ({ page }) =>
   const composer = tutor.getByLabel('Ask the tutor');
   await tutor.getByRole('button', { name: 'Chats' }).click();
   await expect(tutor.getByRole('heading', { name: 'Chats' })).toBeVisible();
-  await tutor
-    .locator('[data-slot="sidebar-header"]')
-    .getByRole('button', { name: 'New chat' })
-    .click();
+  await expect(tutor.getByRole('button', { name: 'New chat', exact: true })).toHaveCount(1);
+  await tutor.getByRole('button', { name: 'New chat', exact: true }).click();
   await expect(composer).toBeFocused();
   await page.keyboard.type('x');
   await expect(composer).toHaveValue('x');
 
   await tutor.getByRole('button', { name: 'Chats' }).click();
-  const emptyStateNewChat = tutor
-    .getByText('No chats yet')
-    .locator('..')
-    .getByRole('button', { name: 'New chat' });
-  await emptyStateNewChat.click();
+  await expect(tutor.getByRole('button', { name: 'New chat', exact: true })).toHaveCount(1);
+  await tutor.getByRole('button', { name: 'New chat', exact: true }).click();
   await expect(composer).toBeFocused();
-  await page.keyboard.type('y');
-  await expect(composer).toHaveValue('y');
+  await composer.fill('Explain the first step');
+  await tutor.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect(tutor.getByTestId('tutor-assistant-message')).toHaveCount(1);
+  await tutor.getByRole('button', { name: 'Chats', exact: true }).click();
+  await expect(tutor.getByRole('button', { name: 'New chat', exact: true })).toHaveCount(1);
+  await expect(tutor.getByText('No chats yet')).toHaveCount(0);
+  await tutor
+    .locator('[data-slot="sidebar-header"]')
+    .getByRole('button', { name: 'New chat', exact: true })
+    .click();
+  await expect(composer).toBeFocused();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileTutor = page.locator('[data-slot="sidebar"][data-mobile="true"]');
+  await expect(mobileTutor).toBeVisible();
+  await waitForTutorSidebarToSettle(page, '[data-slot="sidebar"][data-mobile="true"]');
+  const panel = await mobileTutor.boundingBox();
+  expect(panel?.width).toBeGreaterThanOrEqual(389);
+  expect(Math.abs(panel?.x ?? 100)).toBeLessThan(1);
 });
 
 test('tutor send failure restores the draft and removes the optimistic message', async ({

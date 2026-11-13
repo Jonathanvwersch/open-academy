@@ -348,3 +348,45 @@ test('Saturday session offers the current week papers and a skip action', async 
   await expect(page.getByRole('link', { name: /Fixture Paper One/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Skip for today' }).click();
 });
+
+test('a measured paper loading layout preserves viewport clipping', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/papers/fixture-paper-one');
+  await expect(page.locator('.react-pdf__Page__canvas').first()).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const entry = Object.entries(sessionStorage).find(([key]) =>
+          key.startsWith('academy.page-layout.'),
+        );
+        return entry
+          ? Object.keys(JSON.parse(entry[1])).some((key) => key.startsWith(location.pathname))
+          : false;
+      }),
+    )
+    .toBe(true);
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/api/papers/fixture-paper-one', async (route) => {
+    await gate;
+    await route.continue();
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  try {
+    const pending = page.getByTestId('route-skeleton');
+    await expect(pending.locator('[data-layout-shape]').first()).toBeVisible();
+    const geometry = await page.evaluate(() => ({
+      width: document.documentElement.scrollWidth,
+      height: document.documentElement.scrollHeight,
+      viewportWidth: innerWidth,
+      viewportHeight: innerHeight,
+    }));
+    expect(geometry.width).toBeLessThanOrEqual(geometry.viewportWidth);
+    expect(geometry.height).toBeLessThanOrEqual(geometry.viewportHeight + 1);
+  } finally {
+    release();
+  }
+  await expect(page.locator('.react-pdf__Page__canvas').first()).toBeVisible();
+});

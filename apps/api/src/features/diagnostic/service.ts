@@ -11,6 +11,7 @@ import {
   recordDiagnosticAnswer,
 } from '../../learning/diagnostic.js';
 import { gradeExercise } from '../../learning/grading/index.js';
+import type { GradeResult } from '../../learning/grading/types.js';
 import { inferPrerequisite } from '../../learning/mastery.js';
 import { applyMastery } from '../../learning/mastery-service.js';
 import { planSession, sessionBudget } from '../../learning/scheduler.js';
@@ -96,7 +97,16 @@ export async function postDiagnosticByIdSkip(deps: FeatureServices, request: Fea
 
 export async function postDiagnosticByIdAnswer(deps: FeatureServices, request: FeatureRequest) {
   const { db, content } = deps;
-  const body = z.object({ exerciseId: z.string(), answer: z.unknown() }).safeParse(request.body);
+  const body = z
+    .union([
+      z.object({ exerciseId: z.string(), dontKnow: z.literal(true) }),
+      z.object({
+        exerciseId: z.string(),
+        answer: z.unknown(),
+        dontKnow: z.literal(false).optional(),
+      }),
+    ])
+    .safeParse(request.body);
   if (!body.success) {
     return serviceResult({ error: 'Invalid diagnostic answer' }, 400);
   }
@@ -107,13 +117,24 @@ export async function postDiagnosticByIdAnswer(deps: FeatureServices, request: F
   if (!run || !exercise) {
     return serviceResult({ error: 'Diagnostic or exercise not found' }, 404);
   }
-  const emptyMessage = emptyAnswerMessage(exercise.type, body.data.answer);
-  if (emptyMessage) return serviceResult({ error: emptyMessage }, 422);
+  const submittedAnswer = body.data.dontKnow ? { dontKnow: true } : body.data.answer;
+  if (!body.data.dontKnow) {
+    const emptyMessage = emptyAnswerMessage(exercise.type, submittedAnswer);
+    if (emptyMessage) return serviceResult({ error: emptyMessage }, 422);
+  }
   const nextExercise = nextDiagnosticExercise(run.state as never, index);
   if (nextExercise?.id !== exercise.id) {
     return serviceResult({ error: 'This is not the current diagnostic item.' }, 409);
   }
-  const result = await gradeExercise(exercise, body.data.answer);
+  const result: GradeResult = body.data.dontKnow
+    ? {
+        status: 'graded',
+        correct: 0,
+        credit: 0,
+        feedback: 'Recorded as unknown.',
+        graded_by: 'self',
+      }
+    : await gradeExercise(exercise, submittedAnswer);
   if (result.status !== 'graded') {
     return serviceResult(result, result.status === 'invalid' ? 422 : 200);
   }
@@ -131,7 +152,7 @@ export async function postDiagnosticByIdAnswer(deps: FeatureServices, request: F
       conceptId: exercise.concept,
       dimension: exercise.dimension,
       mode: 'diagnostic',
-      answer: body.data.answer,
+      answer: submittedAnswer,
       correct: result.correct,
       credit: result.correct,
       hintsUsed: 0,
