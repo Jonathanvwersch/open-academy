@@ -201,6 +201,8 @@ export function TutorContextProvider({
     allowed: true,
     enabled: false,
   });
+  const contextRef = useRef(context);
+  contextRef.current = context;
   const [open, setOpen] = useState(() => localStorage.getItem(OPEN_KEY) === 'true');
   const [selectedId, setSelectedId] = useState(() => localStorage.getItem(THREAD_KEY) || '');
   const [view, setView] = useState<'list' | 'conversation'>(() =>
@@ -228,6 +230,7 @@ export function TutorContextProvider({
     queryFn: () => getJson<{ tutorEnabled: boolean }>('/api/today'),
   });
   const enabled = context.enabled || tutorFlag.data?.tutorEnabled === true;
+  const visibleOpen = open && routeAllowed && context.allowed;
   const loadingTutor = !context.enabled && tutorFlag.isPending && context.allowed;
   const threads = useQuery({
     ...tutorThreadsQueryOptions(),
@@ -400,12 +403,17 @@ export function TutorContextProvider({
       pageLabel: current.pageLabel?.replace(/ · selected passage$/, ''),
     }));
   }, []);
-  const openTutor = useCallback((next?: Partial<TutorRequestContext>) => {
-    if (next) setContext((current) => ({ ...current, ...next }));
-    setOpen(true);
-  }, []);
+  const openTutor = useCallback(
+    (next?: Partial<TutorRequestContext>) => {
+      if (!contextRef.current.allowed || !routeAllowed) return;
+      if (next) setContext((current) => ({ ...current, ...next }));
+      setOpen(true);
+    },
+    [routeAllowed],
+  );
   const openConversation = useCallback(
     (next?: Partial<TutorRequestContext>) => {
+      if (!contextRef.current.allowed || !routeAllowed) return;
       if (next) setContext((current) => ({ ...current, ...next }));
       setError('');
       if (view !== 'conversation') {
@@ -417,19 +425,23 @@ export function TutorContextProvider({
       setFocusComposerOnOpen(true);
       setOpen(true);
     },
-    [view],
+    [routeAllowed, view],
   );
-  const startChat = useCallback((next: Partial<TutorRequestContext>, greetingText: string) => {
-    setContext((current) => ({ ...current, ...next }));
-    setError('');
-    setDraft('');
-    setNewChatSelected(true);
-    setSelectedId('');
-    setView('conversation');
-    setGreeting({ text: greetingText, threadId: null });
-    setFocusComposerOnOpen(true);
-    setOpen(true);
-  }, []);
+  const startChat = useCallback(
+    (next: Partial<TutorRequestContext>, greetingText: string) => {
+      if (!contextRef.current.allowed || !routeAllowed) return;
+      setContext((current) => ({ ...current, ...next }));
+      setError('');
+      setDraft('');
+      setNewChatSelected(true);
+      setSelectedId('');
+      setView('conversation');
+      setGreeting({ text: greetingText, threadId: null });
+      setFocusComposerOnOpen(true);
+      setOpen(true);
+    },
+    [routeAllowed],
+  );
   const value = useMemo<TutorContextValue>(
     () => ({
       setContext,
@@ -534,14 +546,17 @@ export function TutorContextProvider({
   };
   return (
     <SidebarProvider
-      open={open && routeAllowed}
-      onOpenChange={setOpen}
+      open={visibleOpen}
+      onOpenChange={(nextOpen) => {
+        if (context.allowed && routeAllowed) setOpen(nextOpen);
+      }}
+      disableKeyboardShortcut={!context.allowed || !routeAllowed}
       data-resizing={isResizing ? 'true' : undefined}
       style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
     >
       <TutorContext.Provider value={value}>
         <SidebarInset className="min-w-0">{children}</SidebarInset>
-        {routeAllowed && (!shouldPushSidebar || open) ? (
+        {routeAllowed && context.allowed && (!shouldPushSidebar || visibleOpen) ? (
           <Sidebar
             side="right"
             collapsible={shouldPushSidebar ? 'none' : 'offcanvas'}
@@ -938,12 +953,12 @@ export function TutorLauncher({
   children?: React.ReactNode;
 }) {
   const tutor = useTutorSidebar();
+  if (context.allowed === false) return null;
   return (
     <Button
       type="button"
       variant="outline"
       size="sm"
-      disabled={context.allowed === false}
       onClick={() => tutor.startChat(context, greeting)}
     >
       {children}

@@ -740,20 +740,6 @@ export function LessonRunner({
                 loading={busyAction === 'submit'}
                 disabled={busy && busyAction !== 'submit'}
                 submitLabel={quizQuestionIndex === quizItems.length - 1 ? 'Submit quiz' : 'Next'}
-                actions={
-                  tutorEnabled ? (
-                    <TutorLauncher
-                      context={{
-                        conceptId,
-                        conceptTitle: title,
-                        activityId,
-                        exerciseId: currentQuizItem.exercise.id,
-                        allowed: false,
-                        enabled: tutorEnabled,
-                      }}
-                    />
-                  ) : null
-                }
               />
             </CardContent>
           </Card>
