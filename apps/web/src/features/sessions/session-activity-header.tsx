@@ -1,16 +1,22 @@
+import { Link } from '@tanstack/react-router';
 import { Button } from '../../components/ui/button.js';
 import { Skeleton } from '../../components/ui/skeleton.js';
+
+export interface LessonLink {
+  conceptId: string;
+  from: string;
+}
 
 export function SessionActivityHeader({
   title,
   label,
-  lessonHref,
+  lessonLink,
   subtitle,
   subtitleSkeleton = false,
 }: {
   title: string;
   label: string;
-  lessonHref?: string;
+  lessonLink?: LessonLink;
   subtitle?: string;
   subtitleSkeleton?: boolean;
 }) {
@@ -31,9 +37,15 @@ export function SessionActivityHeader({
         ) : null}
       </div>
       <div className="flex items-center gap-2">
-        {lessonHref ? (
+        {lessonLink ? (
           <Button asChild variant="outline" size="sm">
-            <a href={lessonHref}>View full lesson</a>
+            <Link
+              to="/lessons/$conceptId"
+              params={{ conceptId: lessonLink.conceptId }}
+              search={{ from: lessonLink.from }}
+            >
+              View full lesson
+            </Link>
           </Button>
         ) : null}
       </div>

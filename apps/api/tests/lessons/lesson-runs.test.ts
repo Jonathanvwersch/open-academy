@@ -62,6 +62,22 @@ async function getRun() {
   return app.request(`/api/lessons/${conceptId}/run`, { headers });
 }
 
+test('full lesson review carries its rendered checks and the same derived run status', async () => {
+  const started = await (await startRun()).json();
+  const response = await app.request(`/api/lessons/${conceptId}/review`, { headers });
+  expect(response.status).toBe(200);
+  const review = await response.json();
+  expect(review.runStatus).toBe(started.run.status);
+  const ids = Object.keys(review.checks);
+  expect(ids).toEqual([review.lesson.final]);
+  for (const id of ids) {
+    const exercise = await (await app.request(`/api/exercises/${id}`, { headers })).json();
+    expect(review.checks[id]).toEqual(exercise);
+    expect(review.checks[id]).not.toHaveProperty('solution');
+    expect(review.checks[id]).not.toHaveProperty('answer');
+  }
+});
+
 function concreteExercise(exerciseId: string, seed: number | null) {
   const exercise = content.exercisesById.get(exerciseId);
   if (!exercise) throw new Error(`Missing exercise ${exerciseId}`);

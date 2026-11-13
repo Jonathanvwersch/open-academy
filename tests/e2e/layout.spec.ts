@@ -1,7 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
-import { diagnosticRuns, studySessions, users } from '../../apps/api/src/db/schema.js';
+import {
+  diagnosticRuns,
+  sessionActivities,
+  studySessions,
+  users,
+} from '../../apps/api/src/db/schema.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 let userId = '';
@@ -231,6 +236,70 @@ test('session loading starts lesson metadata and run state together without fetc
   await navigation;
   await expect(page.getByTestId('lesson-problem')).toBeVisible();
   expect(requests).not.toContain('/api/papers');
+});
+
+test('resuming shows the current question without loading later lessons or the final exercise', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const session = await page.evaluate(async () =>
+    (
+      await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ budgetMinutes: 60, focusConceptId: 'supervised-learning' }),
+      })
+    ).json(),
+  );
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 99,
+    kind: 'learn',
+    conceptId: 'vectors',
+    exerciseIds: [],
+    plannedMinutes: 10,
+    status: 'planned',
+  });
+  const requests: string[] = [];
+  page.on('request', (request) => requests.push(new URL(request.url()).pathname));
+  await page.route('**/api/lessons/vectors*', (route) => route.abort());
+  await page.goto(`/session/${session.id}`);
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
+  expect(requests.filter((path) => path.startsWith('/api/lessons/vectors'))).toEqual([]);
+  expect(requests.filter((path) => path.startsWith('/api/exercises/'))).toEqual([]);
+});
+
+test('full lessons and Back to session use one document and one review request', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const session = await page.evaluate(async () =>
+    (
+      await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ budgetMinutes: 60, focusConceptId: 'supervised-learning' }),
+      })
+    ).json(),
+  );
+  await page.goto(`/session/${session.id}`);
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
+  const startedAt = await page.evaluate(() => performance.timeOrigin);
+  const requests: string[] = [];
+  page.on('request', (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith('/api/lessons/') || path.startsWith('/api/exercises/')) requests.push(path);
+  });
+  await page.getByRole('link', { name: 'View full lesson' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Supervised learning', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show answer' })).toBeVisible();
+  expect(requests).toEqual(['/api/lessons/supervised-learning/review']);
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(startedAt);
+  await page.getByRole('link', { name: 'Back to session' }).click();
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(startedAt);
 });
 
 test('Home and tutor availability avoid building a second learning plan', async ({ page }) => {

@@ -9,7 +9,7 @@ export type LessonBlockKind =
   | 'faded'
   | 'summary';
 
-import type { AnswerOptions, ClientExercise } from '@academy/contracts/exercises';
+import type { AnswerOptions, ClientExercise, ExercisePayload } from '@academy/contracts/exercises';
 
 export interface LessonPayload {
   where_this_fits?: string;
@@ -28,6 +28,8 @@ export interface LessonPayload {
 export interface LessonReviewPayload {
   lesson: LessonPayload;
   checkAnswers: Record<string, string>;
+  checks: Record<string, ExercisePayload>;
+  runStatus: NonNullable<LessonRunPayload['run']>['status'] | null;
   conceptTitle: string;
 }
 
