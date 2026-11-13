@@ -1113,6 +1113,11 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await page.setViewportSize({ width: 1280, height: 900 });
   const sessionId = await createSession(page);
   const quizChip = page.getByTestId('lesson-quiz-chip');
+  const tutorPanel = page.getByRole('complementary', { name: 'Tutor' });
+  const askTutorButton = page.getByRole('button', { name: 'Ask the tutor' });
+  await expect(askTutorButton).toBeVisible();
+  await askTutorButton.click();
+  await expect(tutorPanel).toBeVisible();
   await expect(quizChip).toHaveAttribute('aria-label', 'Lesson quiz, upcoming');
   await page.screenshot({ path: `${quizUiScreenshotDir}/step-row-desktop.png` });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -1200,8 +1205,12 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await page.getByRole('button', { name: 'Start quiz' }).click();
   await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
   await page.screenshot({ path: `${lessonQuizScreenshotDir}/quiz-question.png`, fullPage: true });
+  await expect(tutorPanel).toBeHidden();
   await expect(page.getByRole('button', { name: 'Open tutor' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Ask the tutor' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Ask the tutor' })).toHaveCount(0);
+  await expect(page.getByText('Tutor is unavailable.', { exact: true })).toHaveCount(0);
+  await page.keyboard.press('Control+b');
+  await expect(tutorPanel).toBeHidden();
 
   const answerAttempt = async (wrong: boolean, oneWrong = false) =>
     page.evaluate(
@@ -1467,6 +1476,7 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await expect(passed.getByText(/^\+\d+ XP$/)).toBeVisible();
   await expect(quizChip).toHaveAttribute('aria-label', 'Lesson quiz, passed');
   await expect(quizChip).toContainText('✓ Quiz');
+  await expect(tutorPanel).toBeVisible();
   const seeAnswers = passed.getByRole('button', { name: 'See answers' });
   const retake = passed.getByRole('button', { name: 'Retake quiz' });
   const resultsContinueButton = passed.getByRole('button', { name: 'Continue' });

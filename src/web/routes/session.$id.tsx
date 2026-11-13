@@ -278,14 +278,17 @@ function SessionPage() {
     ),
   );
   const lesson = lessonQuery.data;
-  useEffect(() => {
-    if (
-      activity?.kind === 'learn' &&
+  const lessonRunnerActive = Boolean(
+    activity?.kind === 'learn' &&
+      activity.conceptId &&
       lesson?.knowledge_points?.length &&
-      !activity.progress?.lessonRunnerContinued
-    ) {
-      return;
-    }
+      (!activity.progress?.lessonRunnerContinued ||
+        (activity.progress.lessonRunnerContinued &&
+          activity.progress.finalQuestionContinued &&
+          !activity.progress.quizContinued)),
+  );
+  useEffect(() => {
+    if (lessonRunnerActive) return;
     if (!activity) {
       tutorSidebar.clearContext();
       return;
@@ -312,7 +315,7 @@ function SessionPage() {
     activity,
     exerciseId,
     lesson?.final,
-    lesson?.knowledge_points?.length,
+    lessonRunnerActive,
     sessionQuery.data.tutorEnabled,
     tutorSidebar,
   ]);
@@ -658,15 +661,7 @@ function SessionPage() {
   });
   const finalAnswered =
     !lesson?.final || (activity?.progress?.completedExerciseIds ?? []).includes(lesson.final);
-  if (
-    activity.kind === 'learn' &&
-    activity.conceptId &&
-    lesson?.knowledge_points?.length &&
-    (!activity.progress?.lessonRunnerContinued ||
-      (activity.progress?.lessonRunnerContinued &&
-        activity.progress?.finalQuestionContinued &&
-        !activity.progress?.quizContinued))
-  ) {
+  if (lessonRunnerActive && activity?.kind === 'learn' && activity.conceptId) {
     return (
       <LessonRunner
         conceptId={activity.conceptId}
