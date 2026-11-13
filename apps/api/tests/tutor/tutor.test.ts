@@ -67,6 +67,14 @@ describe('buildTutorInput', () => {
     );
   });
 
+  it('tells the tutor to respond honestly to unsubmitted guesses without inventing flaws', () => {
+    const prompt = buildTutorInput(tutorContext(), 'hint')[0]?.content ?? '';
+    expect(prompt).toContain('say plainly whether their reasoning and their choice are right');
+    expect(prompt).toContain('Never invent a flaw in correct reasoning');
+    expect(prompt).not.toContain('never confirm or deny it');
+    expect(prompt).not.toContain('ask what makes them choose it');
+  });
+
   it('sends context, history, and the latest learner message as separate turns', () => {
     const input = buildTutorInput(
       tutorContext({

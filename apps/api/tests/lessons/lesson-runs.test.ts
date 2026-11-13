@@ -17,6 +17,7 @@ import {
   reviewLogs,
   sessionActivities,
   studySessions,
+  tutorMessages,
   users,
   xpEvents,
 } from '../../src/db/schema.js';
@@ -302,6 +303,72 @@ test('basics counts toward the two-correct streak and the XP award', async () =>
   const events = await db.select().from(xpEvents).where(eq(xpEvents.userId, userId));
   expect(events).toHaveLength(1);
   expect(events[0]).toMatchObject({ kind: 'knowledge_point', amount: 10 });
+});
+
+test('tutor help lowers lesson credit without advancing the streak or carrying to another problem', async () => {
+  let run = (await (await startRun()).json()).run;
+  let pending = run.pending;
+  const firstAnswer = await answerProblem(
+    pending.id,
+    correctAnswer(pending.exerciseId, pending.seed),
+  );
+  expect(firstAnswer.status).toBe(200);
+  run = (await firstAnswer.json()).state;
+  expect(run.points[0]).toMatchObject({ status: 'active', streak: 1 });
+
+  run = (await (await startRun()).json()).run;
+  pending = run.pending;
+  await db.insert(tutorMessages).values({
+    userId,
+    lessonProblemId: pending.id,
+    role: 'user',
+    content: 'Can you explain this question?',
+    createdAt: new Date('2026-01-01T12:00:00.001Z'),
+  });
+  const assistedResponse = await answerProblem(
+    pending.id,
+    correctAnswer(pending.exerciseId, pending.seed),
+    undefined,
+    { ...headers, 'X-Now': '2026-01-01T12:00:01.000Z' },
+  );
+  expect(assistedResponse.status).toBe(200);
+  const assistedBody = await assistedResponse.json();
+  expect(assistedBody.assisted).toBe(true);
+  expect(assistedBody.state.points[0]).toMatchObject({ status: 'active', streak: 1 });
+  expect(assistedBody.state.lastAnsweredProblem.result.assisted).toBe(true);
+  const [assistedProblem] = await db
+    .select()
+    .from(lessonProblems)
+    .where(eq(lessonProblems.id, pending.id));
+  expect(assistedProblem?.assisted).toBe(true);
+  const [assistedAttempt] = await db
+    .select()
+    .from(attempts)
+    .where(eq(attempts.id, assistedProblem?.attemptId ?? ''));
+  expect(assistedAttempt).toMatchObject({ hintsUsed: 1, credit: 0.7 });
+
+  run = (await (await startRun()).json()).run;
+  pending = run.pending;
+  const unassistedResponse = await answerProblem(
+    pending.id,
+    correctAnswer(pending.exerciseId, pending.seed),
+    undefined,
+    { ...headers, 'X-Now': '2026-01-01T12:00:02.000Z' },
+  );
+  expect(unassistedResponse.status).toBe(200);
+  const unassistedBody = await unassistedResponse.json();
+  expect(unassistedBody.assisted).toBe(false);
+  expect(unassistedBody.state.points[0]).toMatchObject({ status: 'passed', streak: 2 });
+  const [unassistedProblem] = await db
+    .select()
+    .from(lessonProblems)
+    .where(eq(lessonProblems.id, pending.id));
+  expect(unassistedProblem?.assisted).toBe(false);
+  const [unassistedAttempt] = await db
+    .select()
+    .from(attempts)
+    .where(eq(attempts.id, unassistedProblem?.attemptId ?? ''));
+  expect(unassistedAttempt).toMatchObject({ hintsUsed: 0 });
 });
 
 test('double-submit returns 409 and records just one attempt', async () => {

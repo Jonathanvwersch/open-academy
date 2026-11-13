@@ -1,4 +1,8 @@
-import type { LessonRunPayload, QuizReviewPayload } from '@academy/contracts/lessons';
+import type {
+  LessonRunAnswerPayload,
+  LessonRunPayload,
+  QuizReviewPayload,
+} from '@academy/contracts/lessons';
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -213,10 +217,7 @@ export function LessonRunner({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ problemId: pending.id, answer, activityId }),
       });
-      const data = (await response.json()) as {
-        state?: NonNullable<LessonRunPayload['run']>;
-        error?: string;
-      };
+      const data = (await response.json()) as LessonRunAnswerPayload & { error?: string };
       if (!response.ok || !data.state) throw new Error(data.error ?? 'Your answer was not saved.');
       await updateState(data.state);
     } catch (cause) {
@@ -590,12 +591,20 @@ export function LessonRunner({
                   }
                 />
                 {showingAnswer && state.lastAnsweredProblem ? (
-                  <FeedbackPanel
-                    result={state.lastAnsweredProblem.result}
-                    hideAnswerLines={['mc', 'debug', 'explain'].includes(
-                      state.lastAnsweredProblem.exercise.type,
-                    )}
-                  />
+                  <>
+                    <FeedbackPanel
+                      result={state.lastAnsweredProblem.result}
+                      hideAnswerLines={['mc', 'debug', 'explain'].includes(
+                        state.lastAnsweredProblem.exercise.type,
+                      )}
+                    />
+                    {state.lastAnsweredProblem.result.correct === 1 &&
+                    state.lastAnsweredProblem.result.assisted ? (
+                      <p className="text-sm text-muted-foreground">
+                        You asked the tutor about this one, so it doesn't count toward 2 in a row.
+                      </p>
+                    ) : null}
+                  </>
                 ) : null}
               </CardContent>
             </Card>
@@ -936,13 +945,21 @@ export function LessonRunner({
                     }
                   />
                   {showingAnswer && state.lastAnsweredProblem ? (
-                    <FeedbackPanel
-                      result={state.lastAnsweredProblem.result}
-                      xp={pointStatus?.status === 'passed' ? pointStatus.xpEarned : undefined}
-                      hideAnswerLines={['mc', 'debug', 'explain'].includes(
-                        state.lastAnsweredProblem.exercise.type,
-                      )}
-                    />
+                    <>
+                      <FeedbackPanel
+                        result={state.lastAnsweredProblem.result}
+                        xp={pointStatus?.status === 'passed' ? pointStatus.xpEarned : undefined}
+                        hideAnswerLines={['mc', 'debug', 'explain'].includes(
+                          state.lastAnsweredProblem.exercise.type,
+                        )}
+                      />
+                      {state.lastAnsweredProblem.result.correct === 1 &&
+                      state.lastAnsweredProblem.result.assisted ? (
+                        <p className="text-sm text-muted-foreground">
+                          You asked the tutor about this one, so it doesn't count toward 2 in a row.
+                        </p>
+                      ) : null}
+                    </>
                   ) : null}
                 </CardContent>
               </Card>

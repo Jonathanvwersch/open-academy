@@ -1,13 +1,19 @@
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { onScreenOptions } from '@academy/shared/shuffle';
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
 import { serializedOptionOrder, serializeExercise } from '../../content/serialize.js';
 import { isTemplate } from '../../content/templates.js';
 import type { IndexedExercise } from '../../content/types.js';
-import { attempts, reviewCards, reviewLogs, sessionActivities } from '../../db/schema.js';
+import {
+  attempts,
+  reviewCards,
+  reviewLogs,
+  sessionActivities,
+  tutorMessages,
+} from '../../db/schema.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
 import { answerOptionsFor } from '../../learning/answer-options.js';
 import { mapReviewRating, reviewActivityRating, scheduleReview } from '../../learning/fsrs.js';
@@ -382,12 +388,36 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
   const now = request.now();
   const attemptId = crypto.randomUUID();
   const gradedBy = result.graded_by ?? 'deterministic';
-  const hintsUsed = await hintsSincePreviousAttempt(
+  const hintCount = await hintsSincePreviousAttempt(
     db,
     request.userId,
     exercise.id,
     body.data.activityId,
   );
+  let previousAttempt: (typeof previousAttempts)[number] | undefined;
+  for (const attempt of previousAttempts) {
+    if (!previousAttempt || attempt.createdAt > previousAttempt.createdAt) {
+      previousAttempt = attempt;
+    }
+  }
+  let tutorAssisted = false;
+  if (body.data.activityId) {
+    const [message] = await db
+      .select({ id: tutorMessages.id })
+      .from(tutorMessages)
+      .where(
+        and(
+          eq(tutorMessages.userId, request.userId),
+          eq(tutorMessages.activityId, body.data.activityId),
+          eq(tutorMessages.exerciseId, exercise.id),
+          eq(tutorMessages.role, 'user'),
+          ...(previousAttempt ? [gt(tutorMessages.createdAt, previousAttempt.createdAt)] : []),
+        ),
+      )
+      .limit(1);
+    tutorAssisted = Boolean(message);
+  }
+  const hintsUsed = Math.max(hintCount, tutorAssisted ? 1 : 0);
   const credit = calculateCredit({
     correct: result.correct,
     hintsUsed,

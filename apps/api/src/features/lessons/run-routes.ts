@@ -18,6 +18,7 @@ import {
   reviewCards,
   reviewLogs,
   sessionActivities,
+  tutorMessages,
   xpEvents,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
@@ -304,6 +305,7 @@ export function registerLessonRunRoutes(
               exercise: serializeExercise(lastInstance, userId),
               result: {
                 correct: lastRow.correct,
+                assisted: lastRow.assisted,
                 feedback,
                 solution: lastInstance.solution,
                 yourAnswer: answerDisplay(lastInstance, lastAttempt?.answer),
@@ -626,12 +628,24 @@ export function registerLessonRunRoutes(
       if (emptyAnswerMessage(exercise.type, body.data.answer)) {
         return { kind: 'invalid' as const };
       }
+      const [tutorMessage] = await tx
+        .select({ id: tutorMessages.id })
+        .from(tutorMessages)
+        .where(
+          and(
+            eq(tutorMessages.userId, userId),
+            eq(tutorMessages.lessonProblemId, joined.problem.id),
+            eq(tutorMessages.role, 'user'),
+          ),
+        )
+        .limit(1);
+      const assisted = Boolean(tutorMessage);
       const graded = await gradeExercise(exercise, body.data.answer);
       if (graded.status !== 'graded') return { kind: 'invalid' as const, graded };
       const attemptId = crypto.randomUUID();
       const credit = calculateCredit({
         correct: graded.correct,
-        hintsUsed: 0,
+        hintsUsed: assisted ? 1 : 0,
         attemptNo: 1,
         gradedBy: graded.graded_by ?? 'deterministic',
       });
@@ -649,7 +663,7 @@ export function registerLessonRunRoutes(
         answer: body.data.answer,
         correct: graded.correct,
         credit,
-        hintsUsed: 0,
+        hintsUsed: assisted ? 1 : 0,
         attemptNo: 1,
         gradedBy: graded.graded_by ?? 'deterministic',
         feedback: { message: graded.feedback },
@@ -664,7 +678,7 @@ export function registerLessonRunRoutes(
         attemptId,
         correct: graded.correct,
         credit,
-        hintsUsed: 0,
+        hintsUsed: assisted ? 1 : 0,
         attemptNo: 1,
         mode: 'practice',
         gradedBy: graded.graded_by ?? 'deterministic',
@@ -674,7 +688,7 @@ export function registerLessonRunRoutes(
       });
       await tx
         .update(lessonProblems)
-        .set({ answeredAt: now, correct: graded.correct, attemptId })
+        .set({ answeredAt: now, correct: graded.correct, attemptId, assisted })
         .where(eq(lessonProblems.id, joined.problem.id));
       const problems = await tx
         .select()
@@ -728,6 +742,7 @@ export function registerLessonRunRoutes(
         kind: 'answered' as const,
         runId: joined.run.id,
         correct: graded.correct,
+        assisted,
         feedback: graded.feedback,
         solution: exercise.solution,
         xpAwarded,
@@ -760,6 +775,7 @@ export function registerLessonRunRoutes(
       run && resolved ? await runState(context, resolved.lesson, resolved.index, run) : null;
     return context.json({
       correct: result.correct,
+      assisted: result.assisted,
       feedback: result.feedback,
       solution: result.solution,
       xpAwarded: result.xpAwarded,

@@ -16,7 +16,13 @@ const point = (id: string, problems: string[]) => ({
 });
 const lesson = { knowledge_points: [point('kp', ['a', 'b', 'c', 'd', 'e'])] };
 
-function row(position: number, correct: number | null, kpId = 'kp', round = 1): LessonProblemRow {
+function row(
+  position: number,
+  correct: number | null,
+  kpId = 'kp',
+  round = 1,
+  assisted = false,
+): LessonProblemRow {
   const servedAt = new Date(position * 1000 + round * 100_000);
   return {
     knowledgePointId: kpId,
@@ -27,6 +33,7 @@ function row(position: number, correct: number | null, kpId = 'kp', round = 1): 
     servedAt,
     answeredAt: correct === null ? null : servedAt,
     correct,
+    assisted,
   };
 }
 
@@ -106,6 +113,25 @@ test('basics answers count toward the streak and can finish the step', () => {
 
   const correctBasics = derive(lesson, [row(1, 1), row(2, 1)]);
   expect(correctBasics.points[0]).toMatchObject({
+    status: 'passed',
+    answered: 2,
+    streak: 2,
+  });
+});
+
+test('assisted correct answers preserve but do not advance the streak', () => {
+  const assisted = row(2, 1, 'kp', 1, true);
+  expect(derive(lesson, [row(1, 1), assisted]).points[0]).toMatchObject({
+    status: 'active',
+    answered: 2,
+    streak: 1,
+  });
+  expect(derive(lesson, [row(1, 1), assisted, row(3, 1)]).points[0]).toMatchObject({
+    status: 'passed',
+    answered: 3,
+    streak: 2,
+  });
+  expect(derive(lesson, [row(1, 1), row(2, 1)]).points[0]).toMatchObject({
     status: 'passed',
     answered: 2,
     streak: 2,
@@ -323,6 +349,31 @@ test('basics is served first and exhausted fixed pools reuse a previously served
       11,
     ),
   ).toMatchObject({ exerciseId: 'a', position: 7 });
+});
+
+test('an exhausted basics-only pool still serves another question', () => {
+  const basics = ExerciseSchema.parse({
+    id: 'kp-basics',
+    dimension: 'conceptual',
+    type: 'mc',
+    role: 'basics',
+    difficulty: 1,
+    est_minutes: 1,
+    prompt: 'What is the idea?',
+    hints: [],
+    solution: 'The idea is defined.',
+    options: [
+      { id: 'yes', text: 'The idea', correct: true, feedback: 'This matches the definition.' },
+      { id: 'no', text: 'Another idea', correct: false, feedback: 'That describes another idea.' },
+    ],
+  });
+  const selected = selectNextProblem(
+    point('kp', [basics.id]),
+    new Map([[basics.id, basics]]),
+    [{ ...selectionRow(basics.id, 1), correct: 1 }],
+    10,
+  );
+  expect(selected).toEqual({ exerciseId: basics.id, seed: null, position: 2 });
 });
 
 test('a correct answer at difficulty one or two moves to the next higher level', () => {
