@@ -306,6 +306,7 @@ export function registerLessonRunRoutes(
               result: {
                 correct: lastRow.correct,
                 assisted: lastRow.assisted,
+                attemptNo: lastAttempt?.attemptNo ?? 1,
                 feedback,
                 solution: lastInstance.solution,
                 yourAnswer: answerDisplay(lastInstance, lastAttempt?.answer),

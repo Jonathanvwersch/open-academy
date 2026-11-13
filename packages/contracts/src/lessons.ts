@@ -94,6 +94,7 @@ export interface LessonRunPayload {
       result: {
         correct: number | null;
         assisted: boolean;
+        attemptNo: number;
         feedback: string;
         solution: string;
         yourAnswer: string;

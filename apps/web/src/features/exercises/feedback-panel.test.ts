@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, test } from 'vitest';
-import { FeedbackPanel } from './feedback-panel.js';
+import { FeedbackPanel, isFinalRetryResult } from './feedback-panel.js';
 
 function renderFeedback(result: Record<string, unknown>, xp?: number) {
   return renderToStaticMarkup(
@@ -23,6 +23,21 @@ test('generic correct feedback does not repeat the XP title and shows the soluti
   expect(html.match(/Correct/g) ?? []).toHaveLength(1);
   expect(html).not.toContain('Correct.');
   expect(html).toContain('The score is 0.5, so the output is 1.');
+});
+
+test('only an incorrect, locked retry is a final retry result', () => {
+  expect(isFinalRetryResult({ attemptNo: 2, retryAllowed: false, correct: 0.5 })).toBe(true);
+  expect(isFinalRetryResult({ attemptNo: 1, retryAllowed: false, correct: 0.5 })).toBe(false);
+  expect(isFinalRetryResult({ attemptNo: 2, retryAllowed: false, correct: 1 })).toBe(false);
+  expect(isFinalRetryResult({ attemptNo: 2, retryAllowed: true, correct: 0.5 })).toBe(false);
+  expect(
+    isFinalRetryResult({
+      attemptNo: 2,
+      retryAllowed: false,
+      correct: 0.5,
+      status: 'invalid',
+    }),
+  ).toBe(false);
 });
 
 test('generic grader feedback matching other headings is case-insensitive', () => {

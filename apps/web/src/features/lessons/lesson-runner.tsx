@@ -14,7 +14,7 @@ import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
 import { Skeleton } from '../../components/ui/skeleton.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
-import { FeedbackPanel } from '../exercises/feedback-panel.js';
+import { FeedbackPanel, FinalRetryNote, isFinalRetryResult } from '../exercises/feedback-panel.js';
 import { sessionQueryOptions } from '../sessions/queries.js';
 import { SessionActivityHeader } from '../sessions/session-activity-header.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/tutor-sidebar.js';
@@ -598,8 +598,10 @@ export function LessonRunner({
                         state.lastAnsweredProblem.exercise.type,
                       )}
                     />
-                    {state.lastAnsweredProblem.result.correct === 1 &&
-                    state.lastAnsweredProblem.result.assisted ? (
+                    {isFinalRetryResult(state.lastAnsweredProblem.result) ? (
+                      <FinalRetryNote />
+                    ) : state.lastAnsweredProblem.result.correct === 1 &&
+                      state.lastAnsweredProblem.result.assisted ? (
                       <p className="text-sm text-muted-foreground">
                         You asked the tutor about this one, so it doesn't count toward 2 in a row.
                       </p>
@@ -953,8 +955,10 @@ export function LessonRunner({
                           state.lastAnsweredProblem.exercise.type,
                         )}
                       />
-                      {state.lastAnsweredProblem.result.correct === 1 &&
-                      state.lastAnsweredProblem.result.assisted ? (
+                      {isFinalRetryResult(state.lastAnsweredProblem.result) ? (
+                        <FinalRetryNote />
+                      ) : state.lastAnsweredProblem.result.correct === 1 &&
+                        state.lastAnsweredProblem.result.assisted ? (
                         <p className="text-sm text-muted-foreground">
                           You asked the tutor about this one, so it doesn't count toward 2 in a row.
                         </p>
