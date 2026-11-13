@@ -491,6 +491,9 @@ export const lessonRunQueryOptions = (conceptId: string | null) =>
 export const exerciseQueryOptions = (exerciseId: string | null) =>
   queryOptions({
     queryKey: ['exercise', exerciseId] as const,
+    // Exercise content is static for a given user and deployment; retain loader-prefetched questions.
+    staleTime: Infinity,
+    gcTime: Infinity,
     queryFn: () =>
       exerciseId
         ? getJson<ExercisePayload>(
