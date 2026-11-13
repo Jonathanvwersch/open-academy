@@ -43,6 +43,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from '../../components/ui/sidebar.js';
+import { Skeleton } from '../../components/ui/skeleton.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip.js';
 import { useIsMobile } from '../../hooks/use-mobile.js';
 import {
@@ -82,13 +83,21 @@ interface TutorContextValue {
 const LazyMarkdown = lazy(() =>
   import('../../components/markdown.js').then((module) => ({ default: module.Markdown })),
 );
+function MessageSkeleton() {
+  return (
+    <div role="status" aria-label="Tutor is responding" className="w-72 max-w-full space-y-3 py-1">
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-2/3" />
+    </div>
+  );
+}
+
 function TutorMarkdown({ children }: { children: string }) {
   return (
     <Suspense
       fallback={
-        <span role="status" aria-label="Loading message">
-          <Loader size={16} aria-hidden="true" />
-        </span>
+        <div className="whitespace-pre-wrap break-words text-base leading-7">{children}</div>
       }
     >
       <LazyMarkdown wrapDisplayMath>{children}</LazyMarkdown>
@@ -804,18 +813,8 @@ export function TutorContextProvider({
                                 <p className="w-full text-xs font-medium text-muted-foreground">
                                   Tutor
                                 </p>
-                                <MessageContent
-                                  className="rounded-lg bg-muted px-4 py-3"
-                                  style={{ '--katex-cover': 'var(--muted)' } as React.CSSProperties}
-                                >
-                                  <div
-                                    role="status"
-                                    aria-label="Tutor is responding"
-                                    className="flex items-center gap-2 text-sm text-muted-foreground"
-                                  >
-                                    <Loader size={16} aria-hidden="true" />
-                                    Tutor is responding…
-                                  </div>
+                                <MessageContent className="w-full">
+                                  <MessageSkeleton />
                                 </MessageContent>
                               </Message>
                             ) : null}
