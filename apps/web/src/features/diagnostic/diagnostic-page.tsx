@@ -4,7 +4,7 @@ import { Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Markdown } from '../../components/markdown.js';
-import { DiagnosticQuestionSkeleton } from '../../components/skeletons.js';
+import { ThinkingIndicator } from '../../components/thinking-indicator.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
@@ -213,9 +213,7 @@ export function DiagnosticPage() {
           </Button>
         </div>
       ) : (
-        <div role="status" aria-busy="true" aria-label="Preparing diagnostic">
-          <DiagnosticQuestionSkeleton />
-        </div>
+        <ThinkingIndicator />
       )}
     </section>
   );

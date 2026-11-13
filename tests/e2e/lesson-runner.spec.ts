@@ -424,7 +424,9 @@ test('lesson session header shows the active step title', async ({ page }) => {
   }
 });
 
-test('lesson runner loading state reserves the subtitle slot', async ({ page }) => {
+test('lesson runner shows pulsing Thinking while preparing a question', async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   let releaseRun = () => {};
   const requestGate = new Promise<void>((resolve) => {
@@ -436,7 +438,17 @@ test('lesson runner loading state reserves the subtitle slot', async ({ page }) 
   });
   try {
     await createSession(page, true, false);
-    await expect(page.getByTestId('lesson-subtitle-skeleton')).toBeVisible();
+    const thinking = page.getByRole('status', { name: 'Thinking', exact: true });
+    await expect(thinking).toBeVisible();
+    await expect(thinking.getByText('Thinking…')).toHaveCSS('animation-name', 'pulse');
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(thinking.getByText('Thinking…')).toHaveCSS('animation-name', 'none');
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await expect(page.getByTestId('route-skeleton')).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath('question-loading-desktop.png') });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(thinking).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('question-loading-mobile.png') });
     if (process.env.TITLES_LOADING_SCREENSHOT) {
       await page.screenshot({ path: process.env.TITLES_LOADING_SCREENSHOT });
     }
