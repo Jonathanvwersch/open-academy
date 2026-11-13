@@ -321,7 +321,7 @@ test('basics counts toward the two-correct streak and the XP award', async () =>
   expect(events[0]).toMatchObject({ kind: 'knowledge_point', amount: 10 });
 });
 
-test('tutor help lowers lesson credit without advancing the streak or carrying to another problem', async () => {
+test('correct answers with tutor help advance practice while assistance stays question-specific', async () => {
   let run = (await (await startRun()).json()).run;
   let pending = run.pending;
   const firstAnswer = await answerProblem(
@@ -350,7 +350,7 @@ test('tutor help lowers lesson credit without advancing the streak or carrying t
   expect(assistedResponse.status).toBe(200);
   const assistedBody = await assistedResponse.json();
   expect(assistedBody.assisted).toBe(true);
-  expect(assistedBody.state.points[0]).toMatchObject({ status: 'active', streak: 1 });
+  expect(assistedBody.state.points[0]).toMatchObject({ status: 'passed', streak: 2 });
   expect(assistedBody.state.lastAnsweredProblem.result.assisted).toBe(true);
   const [assistedProblem] = await db
     .select()
@@ -375,6 +375,7 @@ test('tutor help lowers lesson credit without advancing the streak or carrying t
   const unassistedBody = await unassistedResponse.json();
   expect(unassistedBody.assisted).toBe(false);
   expect(unassistedBody.state.points[0]).toMatchObject({ status: 'passed', streak: 2 });
+  expect(unassistedBody.state.points[1]).toMatchObject({ status: 'active', streak: 1 });
   const [unassistedProblem] = await db
     .select()
     .from(lessonProblems)
@@ -385,6 +386,56 @@ test('tutor help lowers lesson credit without advancing the streak or carrying t
     .from(attempts)
     .where(eq(attempts.id, unassistedProblem?.attemptId ?? ''));
   expect(unassistedAttempt).toMatchObject({ hintsUsed: 0 });
+});
+
+test('historical correct answers recover a blocked step without duplicate XP or replacing old awards', async () => {
+  const initial = (await (await startRun()).json()).run;
+  const problem = initial.pending;
+  const [first] = await db.select().from(lessonProblems).where(eq(lessonProblems.id, problem.id));
+  if (!first) throw new Error('Expected a served problem');
+  await db
+    .update(lessonProblems)
+    .set({ correct: 1, answeredAt: new Date('2026-01-01T12:00:01Z') })
+    .where(eq(lessonProblems.id, first.id));
+  await db.insert(lessonProblems).values(
+    [2, 3, 4].map((position) => ({
+      runId: first.runId,
+      knowledgePointId: first.knowledgePointId,
+      round: first.round,
+      position,
+      exerciseId: first.exerciseId,
+      seed: first.seed,
+      assisted: true,
+      correct: position < 4 ? 1 : null,
+      servedAt: new Date(`2026-01-01T12:00:0${position}Z`),
+      answeredAt: position < 4 ? new Date(`2026-01-01T12:00:0${position}Z`) : null,
+    })),
+  );
+  const before = await (await getRun()).json();
+  expect(before.run.points[0]).toMatchObject({ status: 'passed', streak: 2 });
+  expect(before.run.needsProgressSync).toBe(true);
+  expect(await db.select().from(xpEvents).where(eq(xpEvents.userId, userId))).toHaveLength(0);
+  const reconcile = () =>
+    app.request(`/api/lessons/${conceptId}/run`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ reconcileProgress: true }),
+    });
+  const recoveredResponse = await reconcile();
+  expect(recoveredResponse.status).toBe(200);
+  const recovered = (await recoveredResponse.json()).run;
+  expect(recovered.needsProgressSync).toBeUndefined();
+  expect(recovered.currentPointId).not.toBe(first.knowledgePointId);
+  expect(recovered.points[0].xpEarned).toBe(10);
+  await reconcile();
+  const awards = await db.select().from(xpEvents).where(eq(xpEvents.userId, userId));
+  expect(awards).toHaveLength(1);
+  expect(awards[0].amount).toBe(10);
+  expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(0);
+  await db.update(xpEvents).set({ amount: 7 }).where(eq(xpEvents.id, awards[0].id));
+  const preserved = (await (await reconcile()).json()).run;
+  expect(preserved.points[0].xpEarned).toBe(7);
+  expect(preserved.xpEarned).toBe(7);
 });
 
 test('double-submit returns 409 and records just one attempt', async () => {

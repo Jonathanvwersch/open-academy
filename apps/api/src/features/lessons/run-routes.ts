@@ -139,9 +139,24 @@ export function registerLessonRunRoutes(
         : (attemptFeedback ??
           (lastRow?.correct === 1 ? 'Correct.' : MULTIPLE_CHOICE_FALLBACK_FEEDBACK));
     const earnedEvents = await deps.db
-      .select({ amount: xpEvents.amount })
+      .select({ amount: xpEvents.amount, sourceKey: xpEvents.sourceKey })
       .from(xpEvents)
       .where(and(eq(xpEvents.userId, userId), like(xpEvents.sourceKey, `kp:${run.id}:%`)));
+    const earnedByPoint = new Map(earnedEvents.map((event) => [event.sourceKey, event.amount]));
+    const needsProgressSync = derived.points.some(
+      (point) =>
+        point.status === 'passed' &&
+        !earnedByPoint.has(`kp:${run.id}:${point.id}`) &&
+        rows.some(
+          (row) =>
+            !row.practiceOnly &&
+            row.assisted &&
+            row.knowledgePointId === point.id &&
+            row.round === point.round &&
+            row.answeredAt !== null &&
+            row.position <= (point.passedOn?.position ?? 0),
+        ),
+    );
     const practicePending = rows.find((row) => row.practiceOnly && row.answeredAt === null);
     const practiceExercise = practicePending
       ? index.exercisesById.get(practicePending.exerciseId)
@@ -276,12 +291,16 @@ export function registerLessonRunRoutes(
     };
     return {
       id: run.id,
+      ...(needsProgressSync ? { needsProgressSync: true } : {}),
       status: derived.status,
       where_this_fits: lesson.where_this_fits,
       prerequisites: getLessonPrerequisites(index, lesson.concept),
       points: derived.points.map((point) => ({
         ...point,
-        xpEarned: point.status === 'passed' ? xpForPassedPoint(point.answered) : 0,
+        xpEarned:
+          point.status === 'passed'
+            ? (earnedByPoint.get(`kp:${run.id}:${point.id}`) ?? xpForPassedPoint(point.answered))
+            : 0,
       })),
       currentPointId: derived.currentPointId,
       currentPoint: point
@@ -360,7 +379,10 @@ export function registerLessonRunRoutes(
     const resolved = await lessonFor(conceptId);
     if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
     const body = z
-      .object({ activityId: z.string().uuid().optional() })
+      .object({
+        activityId: z.string().uuid().optional(),
+        reconcileProgress: z.boolean().optional(),
+      })
       .safeParse(await context.req.json().catch(() => ({})));
     if (!body.success) return context.json({ error: 'Invalid lesson run request' }, 400);
     const activity = await verifyActivity(context, body.data.activityId, conceptId);
@@ -401,6 +423,25 @@ export function registerLessonRunRoutes(
         resolved.index.exercisesById,
         existing.quizPassedAt,
       );
+      // Repair completion earned under the old tutor-exclusion rule only on an explicit write.
+      // Unique source keys retain historical awards and make repeated recovery safe.
+      const passedPoints = state.points.filter((point) => point.status === 'passed');
+      if (body.data.reconcileProgress && passedPoints.length) {
+        await tx
+          .insert(xpEvents)
+          .values(
+            passedPoints.map((point) => ({
+              userId,
+              kind: 'knowledge_point' as const,
+              sourceKey: `kp:${existing.id}:${point.id}`,
+              conceptId,
+              amount: xpForPassedPoint(point.answered),
+              earnedAt: now,
+              localDate: localDate(now, context.get('timeZone')),
+            })),
+          )
+          .onConflictDoNothing();
+      }
       if (state.status !== 'in_progress') {
         if (existing.status !== state.status) {
           [existing] = await tx
