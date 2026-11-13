@@ -14,44 +14,49 @@ export const Route = createFileRoute('/session/$id')({
   validateSearch: z.object({ activity: z.string().optional() }),
   loader: async ({ context, params }) => {
     const session = await context.queryClient.ensureQueryData(sessionQueryOptions(params.id));
+    const queryClient = context.queryClient;
+    const loadLessons = session.activities.map(async (activity) => {
+      if (
+        !['learn', 'practice', 'remediate', 'transfer'].includes(activity.kind) ||
+        !activity.conceptId ||
+        !activity.lessonAvailable
+      )
+        return;
+      // Run state does not depend on the lesson response. Start both requests together.
+      const [lesson] = await Promise.all([
+        queryClient.ensureQueryData(lessonQueryOptions(activity.conceptId)),
+        activity.kind === 'learn'
+          ? queryClient.ensureQueryData(lessonRunQueryOptions(activity.conceptId))
+          : Promise.resolve(null),
+      ]);
+      await Promise.all([
+        // Knowledge-point runs already include their current question. Legacy blocks still need exercise data.
+        ...(lesson?.knowledge_points?.length
+          ? []
+          : (lesson?.blocks.flatMap((block) =>
+              block.exercise
+                ? [queryClient.ensureQueryData(exerciseQueryOptions(block.exercise))]
+                : [],
+            ) ?? [])),
+      ]);
+    });
     await Promise.all([
-      context.queryClient.ensureQueryData(papersQueryOptions()),
-      context.queryClient.ensureQueryData(todayQueryOptions()),
+      ...loadLessons,
       ...session.activities
         .filter((activity) => activity.kind === 'lab' && activity.projectId)
         .map((activity) =>
-          context.queryClient.ensureQueryData(projectQueryOptions(activity.projectId ?? '')),
+          queryClient.ensureQueryData(projectQueryOptions(activity.projectId ?? '')),
         ),
+      ...[...new Set(session.activities.flatMap((activity) => activity.exerciseIds))].map(
+        (exerciseId) => queryClient.ensureQueryData(exerciseQueryOptions(exerciseId)),
+      ),
+      ...(session.activities.some((activity) => activity.kind === 'paper')
+        ? [
+            queryClient.ensureQueryData(papersQueryOptions()),
+            queryClient.ensureQueryData(todayQueryOptions()),
+          ]
+        : []),
     ]);
-    const lessons = await Promise.all(
-      session.activities.map((activity) =>
-        ['learn', 'practice', 'remediate', 'transfer'].includes(activity.kind) &&
-        activity.conceptId &&
-        activity.lessonAvailable
-          ? context.queryClient.ensureQueryData(lessonQueryOptions(activity.conceptId))
-          : Promise.resolve(null),
-      ),
-    );
-    await Promise.all(
-      lessons.map((lesson, index) =>
-        lesson?.knowledge_points?.length
-          ? context.queryClient.ensureQueryData(
-              lessonRunQueryOptions(session.activities[index]?.conceptId ?? null),
-            )
-          : Promise.resolve(null),
-      ),
-    );
-    const exerciseIds = new Set(session.activities.flatMap((activity) => activity.exerciseIds));
-    for (const lesson of lessons) {
-      for (const block of lesson?.blocks ?? []) {
-        if (block.exercise) exerciseIds.add(block.exercise);
-      }
-    }
-    await Promise.all(
-      [...exerciseIds].map((exerciseId) =>
-        context.queryClient.ensureQueryData(exerciseQueryOptions(exerciseId)),
-      ),
-    );
   },
   errorComponent: () => (
     <RouteLoadError

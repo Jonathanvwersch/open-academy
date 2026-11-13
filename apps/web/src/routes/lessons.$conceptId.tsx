@@ -11,10 +11,10 @@ export const Route = createFileRoute('/lessons/$conceptId')({
     from: typeof search.from === 'string' ? search.from : undefined,
   }),
   loader: async ({ context, params }) => {
-    const payload = await context.queryClient.ensureQueryData(
-      lessonReviewQueryOptions(params.conceptId),
-    );
-    await context.queryClient.ensureQueryData(lessonRunQueryOptions(params.conceptId));
+    const [payload] = await Promise.all([
+      context.queryClient.ensureQueryData(lessonReviewQueryOptions(params.conceptId)),
+      context.queryClient.ensureQueryData(lessonRunQueryOptions(params.conceptId)),
+    ]);
     await Promise.all(
       payload.lesson.blocks.flatMap((block) =>
         block.exercise

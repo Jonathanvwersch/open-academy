@@ -1,5 +1,5 @@
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowRight } from 'lucide-react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Badge } from '../../components/ui/badge.js';
@@ -10,6 +10,22 @@ import { todayQueryOptions } from '../sessions/queries.js';
 import { learnQueryOptions } from './queries.js';
 
 export function LearnPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const enterSession = async ({ id }: { id: string }) => {
+    queryClient.setQueryData(learnQueryOptions().queryKey, (current) =>
+      current ? { ...current, activeSessionId: id } : current,
+    );
+    queryClient.setQueryData(todayQueryOptions().queryKey, (current) =>
+      current ? { ...current, activeSessionId: id } : current,
+    );
+    await navigate({ to: '/session/$id', params: { id } });
+    // Revalidate the plan on the next Home visit without competing with lesson loading.
+    await queryClient.invalidateQueries({
+      queryKey: learnQueryOptions().queryKey,
+      refetchType: 'none',
+    });
+  };
   const { data } = useSuspenseQuery(learnQueryOptions());
   const { data: today } = useSuspenseQuery(todayQueryOptions());
   const startSession = useMutation({
@@ -22,9 +38,7 @@ export function LearnPage() {
       if (!response.ok) throw new Error('Could not start session');
       return response.json() as Promise<{ id: string }>;
     },
-    onSuccess: ({ id }) => {
-      window.location.href = `/session/${id}`;
-    },
+    onSuccess: enterSession,
   });
   const startChoice = useMutation({
     mutationFn: async (focusConceptId: string) => {
@@ -36,9 +50,7 @@ export function LearnPage() {
       if (!response.ok) throw new Error('Could not start the selected lesson');
       return response.json() as Promise<{ id: string }>;
     },
-    onSuccess: ({ id }) => {
-      window.location.href = `/session/${id}`;
-    },
+    onSuccess: enterSession,
   });
   const maxXp = Math.max(1, ...data.xp.week.flatMap((day) => [day.xp, day.goal]));
   const dayTotal = data.xp.week.reduce((total, day) => total + day.xp, 0);

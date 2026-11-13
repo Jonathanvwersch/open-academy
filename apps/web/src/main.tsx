@@ -30,8 +30,9 @@ const router = createRouter({
   context: { queryClient },
   defaultPreload: 'intent',
   defaultPreloadStaleTime: 0,
-  defaultPendingMs: 1_000,
-  defaultPendingMinMs: 300,
+  defaultPendingMs: 150,
+  // Reveal ready content immediately instead of holding it behind a minimum loading duration.
+  defaultPendingMinMs: 0,
   defaultPendingComponent: PageSkeleton,
   defaultErrorComponent: DefaultRouteError,
 });

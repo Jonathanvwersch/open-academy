@@ -54,7 +54,7 @@ function rehypeWrapTutorDisplayMath() {
   };
 }
 
-export function Markdown({
+export const Markdown = React.memo(function Markdown({
   children,
   inline = false,
   className,
@@ -126,7 +126,7 @@ export function Markdown({
       {content}
     </div>
   );
-}
+});
 
 function plainText(children: ReactNode): string {
   if (typeof children === 'string' || typeof children === 'number') return String(children);

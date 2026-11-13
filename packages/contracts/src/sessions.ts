@@ -1,6 +1,7 @@
 import type { AnswerOptions } from '@academy/contracts/exercises';
 
 export interface TodayPayload {
+  tutorEnabled: boolean;
   needsDiagnostic: boolean;
   diagnosticActive: boolean;
   diagnosticRunId: string | null;

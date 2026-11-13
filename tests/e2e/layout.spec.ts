@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
-import { diagnosticRuns, users } from '../../apps/api/src/db/schema.js';
+import { diagnosticRuns, studySessions, users } from '../../apps/api/src/db/schema.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 let userId = '';
@@ -194,4 +194,108 @@ test('first visits wait for real layout data without inventing placeholder cards
     release();
   }
   await expect(page.locator('[data-page-frame] [data-slot="card"]').first()).toBeVisible();
+});
+
+test('session loading starts lesson metadata and run state together without fetching papers', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const session = await page.evaluate(async () =>
+    (
+      await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ budgetMinutes: 60, focusConceptId: 'supervised-learning' }),
+      })
+    ).json(),
+  );
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let runStarted = false;
+  const requests: string[] = [];
+  await page.route('**/api/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    requests.push(path);
+    if (path === '/api/lessons/supervised-learning/run') runStarted = true;
+    if (path === '/api/lessons/supervised-learning') await gate;
+    await route.continue();
+  });
+  const navigation = page.goto(`/session/${session.id}`);
+  try {
+    await expect.poll(() => runStarted).toBe(true);
+  } finally {
+    release();
+  }
+  await navigation;
+  await expect(page.getByTestId('lesson-problem')).toBeVisible();
+  expect(requests).not.toContain('/api/papers');
+});
+
+test('Home and the tutor share one Today request', async ({ page }) => {
+  let todayRequests = 0;
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/today') todayRequests += 1;
+  });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open tutor' })).toBeVisible();
+  expect(todayRequests).toBe(1);
+});
+
+test('plain Settings and Course pages do not load the Markdown and math renderer', async ({
+  page,
+}) => {
+  const markdownRequests: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.includes('/src/components/markdown.'))
+      markdownRequests.push(request.url());
+  });
+  await page.goto('/settings');
+  await expect(page.getByRole('button', { name: 'Save settings' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open tutor' })).toBeVisible();
+  expect(markdownRequests).toEqual([]);
+  await page.getByRole('link', { name: 'Course', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Week 1 · ML fundamentals' })).toBeVisible();
+  expect(markdownRequests).toEqual([]);
+});
+
+test('finishing a session returns Home without a reload or a stale Resume action', async ({
+  page,
+}) => {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 20,
+      status: 'active',
+      startedAt: new Date('2026-01-01T12:00:00Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Expected a session');
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Resume session', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Session complete', exact: true })).toBeVisible();
+  const documentStartedAt = await page.evaluate(() => performance.timeOrigin);
+  await page.getByRole('button', { name: 'Finish session', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Resume session', exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentStartedAt);
+});
+
+test('Course still renders formatted metadata when it needs Markdown and math', async ({
+  page,
+}) => {
+  await page.route('**/api/course', async (route) => {
+    const response = await route.fetch();
+    const data = await response.json();
+    data.weeks[0].papers[0].title = '$x^2$';
+    data.weeks[0].project.title = '**Linear model**';
+    await route.fulfill({ response, json: data });
+  });
+  await page.goto('/course');
+  await expect(page.locator('.katex').first()).toBeVisible();
+  await expect(page.locator('strong').filter({ hasText: 'Linear model' })).toBeVisible();
 });
