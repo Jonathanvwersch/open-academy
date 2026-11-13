@@ -189,6 +189,8 @@ test('settings edits stay accessible and the save spinner keeps its geometry', a
   await save.click();
   try {
     await expect(save).toHaveAttribute('aria-busy', 'true');
+    await expect(page.getByLabel('Daily study time', { exact: true })).toBeDisabled();
+    await expect(page.getByLabel('Learning start date')).toBeDisabled();
     const during = await save.boundingBox();
     const spinner = await save.getByTestId('button-spinner').locator('svg').boundingBox();
     expect(during).toEqual(before);
@@ -200,6 +202,12 @@ test('settings edits stay accessible and the save spinner keeps its geometry', a
     releaseSave();
   }
   await expect(page.getByRole('status')).toContainText('Saved');
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Settings', exact: true }).click();
+  await expect(page.getByLabel('Daily study time', { exact: true })).toHaveValue('90');
+  await expect(page.getByLabel('Saturday study time', { exact: true })).toHaveValue('120');
+  await expect(page.getByLabel('Sunday study time', { exact: true })).toHaveValue('90');
   await page.reload();
   await expect(page.getByLabel('Daily study time', { exact: true })).toHaveValue('90');
   await expect(page.getByLabel('Saturday study time', { exact: true })).toHaveValue('120');
@@ -425,6 +433,55 @@ test('finishing a session returns Home without a reload or a stale Resume action
   await expect(page.getByRole('link', { name: 'Resume session', exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentStartedAt);
 });
+
+for (const failure of ['save response', 'save network', 'Home refresh'] as const) {
+  test(`finishing a session reports a failed ${failure} and can retry`, async ({ page }) => {
+    const [session] = await db
+      .insert(studySessions)
+      .values({
+        userId,
+        kind: 'weekday',
+        plannedMinutes: 20,
+        status: 'active',
+        startedAt: new Date('2026-01-01T12:00:00Z'),
+      })
+      .returning();
+    if (!session) throw new Error('Expected a session');
+    await page.goto('/');
+    await page.getByRole('link', { name: 'Resume session', exact: true }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Session complete', exact: true }),
+    ).toBeVisible();
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    const failedPath =
+      failure === 'Home refresh' ? '**/api/learn' : `**/api/sessions/${session.id}/end`;
+    await page.route(failedPath, (route) =>
+      failure === 'save network'
+        ? route.abort('failed')
+        : route.fulfill({ status: 503, json: { error: 'Temporarily unavailable' } }),
+    );
+    const finish = page.getByRole('button', { name: 'Finish session', exact: true });
+    await finish.click();
+    await expect(page.getByRole('alert')).toContainText('Please try again.', { timeout: 15_000 });
+    await expect(page).toHaveURL(`/session/${session.id}`);
+    await expect(finish).toBeEnabled();
+    expect(pageErrors).toEqual([]);
+    if (failure === 'save response') {
+      for (const width of [1280, 390]) {
+        await page.setViewportSize({ width, height: 844 });
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+        ).toBe(true);
+        await page.screenshot({ path: `test-results/session-finish-error-${width}.png` });
+      }
+    }
+    await page.unroute(failedPath);
+    await finish.click();
+    await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Resume session', exact: true })).toHaveCount(0);
+  });
+}
 
 test('Course still renders formatted metadata when it needs Markdown and math', async ({
   page,

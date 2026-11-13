@@ -28,24 +28,33 @@ export function DiagnosticPage() {
   const [domainTitle, setDomainTitle] = useState('');
   const [exercise, setExercise] = useState<DiagnosticItem | null>(null);
   const [feedback, setFeedback] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [busy, setBusy] = useState<'submit' | 'unknown' | 'skip' | null>(null);
   const runPromise = useRef<Promise<{ id: string }> | null>(null);
 
   const loadNext = useCallback(
     async (id: string) => {
-      const response = await apiFetch(`/api/diagnostic/${id}/next`);
-      const data = await response.json();
-      setFeedback('');
-      if (data.complete) {
-        window.sessionStorage.setItem('diagnosticRunId', id);
-        queryClient.removeQueries({ queryKey: ['today'] });
-        await queryClient.invalidateQueries();
-        await navigate({ to: '/diagnostic/results', search: { id } });
-        return;
+      try {
+        const response = await apiFetch(`/api/diagnostic/${id}/next`);
+        if (!response.ok) throw new Error('Could not load the next question.');
+        const data = await response.json();
+        setFeedback('');
+        if (data.complete) {
+          window.sessionStorage.setItem('diagnosticRunId', id);
+          queryClient.removeQueries({ queryKey: ['today'] });
+          await queryClient.invalidateQueries();
+          await navigate({ to: '/diagnostic/results', search: { id } });
+          return;
+        }
+        setDomain(data.domainId ?? data.domain ?? '');
+        setDomainTitle(data.domainTitle ?? data.domain ?? '');
+        setExercise(data.exercise);
+      } catch (cause) {
+        setExercise(null);
+        setLoadError('The next diagnostic question could not load. Please try again.');
+        throw cause;
       }
-      setDomain(data.domainId ?? data.domain ?? '');
-      setDomainTitle(data.domainTitle ?? data.domain ?? '');
-      setExercise(data.exercise);
     },
     [queryClient, navigate],
   );
@@ -53,22 +62,37 @@ export function DiagnosticPage() {
   useEffect(() => {
     if (pathname !== '/diagnostic') return;
     let active = true;
+    if (loadAttempt > 0) setLoadError('');
     const activeRunId = new URLSearchParams(window.location.search).get('runId');
     if (!runPromise.current) {
       runPromise.current = activeRunId
         ? Promise.resolve({ id: activeRunId })
-        : apiFetch('/api/diagnostic', { method: 'POST' }).then((response) => response.json());
+        : apiFetch('/api/diagnostic', { method: 'POST' })
+            .then(async (response) => {
+              if (!response.ok) throw new Error('Could not start diagnostic.');
+              const run = (await response.json()) as { id?: unknown };
+              if (typeof run.id !== 'string' || !run.id) throw new Error('Missing diagnostic ID.');
+              return { id: run.id };
+            })
+            .catch((cause: unknown) => {
+              runPromise.current = null;
+              throw cause;
+            });
     }
-    void runPromise.current.then((run) => {
-      if (active) {
-        setRunId(run.id);
-        void loadNext(run.id);
-      }
-    });
+    void runPromise.current
+      .then(async (run) => {
+        if (active) {
+          setRunId(run.id);
+          await loadNext(run.id);
+        }
+      })
+      .catch(() => {
+        if (active) setLoadError('The diagnostic could not load. Please try again.');
+      });
     return () => {
       active = false;
     };
-  }, [loadNext, pathname]);
+  }, [loadNext, pathname, loadAttempt]);
 
   const submit = async (answer: unknown, dontKnow = false) => {
     if (!exercise || !runId) return;
@@ -179,6 +203,15 @@ export function DiagnosticPage() {
             ) : null}
           </CardContent>
         </Card>
+      ) : loadError ? (
+        <div className="space-y-4">
+          <p role="alert" className="text-sm text-destructive">
+            {loadError}
+          </p>
+          <Button type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>
+            Retry
+          </Button>
+        </div>
       ) : (
         <ThinkingIndicator />
       )}

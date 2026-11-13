@@ -1,4 +1,4 @@
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { Check, LogOut } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
@@ -8,9 +8,12 @@ import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { Input } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
+import { courseQueryOptions, learnQueryOptions } from '../course/queries.js';
+import { todayQueryOptions } from '../sessions/queries.js';
 import { settingsQueryOptions } from './queries.js';
 
 export function SettingsPage() {
+  const queryClient = useQueryClient();
   const { data: settings } = useSuspenseQuery(settingsQueryOptions());
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -23,16 +26,23 @@ export function SettingsPage() {
     setError('');
     setSaved(false);
     setSaving(true);
+    const submittedSettings = { ...draft };
     try {
       const response = await apiFetch('/api/settings', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(draft),
+        body: JSON.stringify(submittedSettings),
       });
       if (!response.ok) {
         setError('Settings could not be saved.');
         return;
       }
+      queryClient.setQueryData(settingsQueryOptions().queryKey, submittedSettings);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: todayQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: courseQueryOptions().queryKey }),
+      ]);
       setSaved(true);
     } catch {
       setError('Settings could not be saved. Check your connection and try again.');
@@ -80,6 +90,7 @@ export function SettingsPage() {
                     <Input
                       id={key}
                       aria-label={label}
+                      disabled={saving}
                       type="number"
                       min={5}
                       max={600}
@@ -102,6 +113,7 @@ export function SettingsPage() {
               <Label htmlFor="startDate">Start date</Label>
               <Input
                 id="startDate"
+                disabled={saving}
                 type="date"
                 aria-label="Learning start date"
                 value={draft.startDate}

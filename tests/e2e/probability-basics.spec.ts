@@ -110,7 +110,7 @@ test.describe('Probability basics real-content rendering', () => {
       correctIds.includes(option.id),
     );
     expect(correctOption).toBeDefined();
-    await page.getByRole('radio', { name: correctOption.text, exact: true }).click();
+    await page.locator(`[id="${firstRun.pendingProblem.exercise.id}-${correctOption.id}"]`).click();
     const basicsResponse = page.waitForResponse(
       (response) =>
         response.url().endsWith(`/api/lessons/${conceptId}/run/answer`) &&
@@ -130,7 +130,7 @@ test.describe('Probability basics real-content rendering', () => {
       option.text.includes('equal chances of one half'),
     );
     expect(equalChancesOption).toBeDefined();
-    await page.getByRole('radio', { name: equalChancesOption.text, exact: true }).click();
+    await page.locator(`[id="${selfExplanation.exercise.id}-${equalChancesOption.id}"]`).click();
     const selfExplanationResponse = page.waitForResponse(
       (response) =>
         response.url().endsWith(`/api/lessons/${conceptId}/run/answer`) &&

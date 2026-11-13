@@ -20,13 +20,17 @@ export function PaperActivity({
   onSkip: () => Promise<void>;
 }) {
   const [skipping, setSkipping] = useState(false);
+  const [error, setError] = useState('');
   const { data: papersData } = useSuspenseQuery(papersQueryOptions());
   const { data: today } = useSuspenseQuery(todayQueryOptions());
   const papers = papersData.weeks.find((week) => week.week === today.week)?.papers ?? [];
   const skip = async () => {
     setSkipping(true);
+    setError('');
     try {
       await onSkip();
+    } catch {
+      setError('Could not skip this paper. Please try again.');
     } finally {
       setSkipping(false);
     }
@@ -67,6 +71,11 @@ export function PaperActivity({
           </li>
         ))}
       </ul>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
       <Button type="button" variant="outline" loading={skipping} onClick={() => void skip()}>
         Skip for today
       </Button>

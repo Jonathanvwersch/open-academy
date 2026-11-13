@@ -27,6 +27,8 @@ pnpm build
 ```
 
 Vitest uses the separate `academy_test` database. `pnpm test:e2e` starts the local dev stack through Playwright's web server configuration.
+Concurrent browser runs can isolate learner and login state with separate `TEST_DATABASE_URL`,
+`PLAYWRIGHT_API_PORT`, `PLAYWRIGHT_WEB_PORT`, and `PLAYWRIGHT_STORAGE_STATE_PATH` values.
 `pnpm db:reset` truncates learner state in the development database and reseeds the default learner.
 
 `pnpm check` runs structure/import checks, Biome, TypeScript, curriculum validation and the
