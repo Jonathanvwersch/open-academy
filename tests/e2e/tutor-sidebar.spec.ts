@@ -507,7 +507,7 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   await expect(sendButton).toHaveAttribute('aria-busy', 'true');
   await expect(sendButton).toHaveAttribute('data-loading', 'true');
   await expect(sendButton.getByTestId('button-spinner')).toBeVisible();
-  await expect(sendButton.getByText('Send', { exact: true })).not.toBeVisible();
+  await expect(sendButton.getByText('Send', { exact: true })).toHaveCSS('opacity', '0');
   const sendButtonAfter = await sendButton.boundingBox();
   if (!sendButtonAfter) throw new Error('Loading Tutor Send button is not visible');
   expect(Math.abs(sendButtonAfter.width - sendButtonBefore.width)).toBeLessThanOrEqual(0.5);

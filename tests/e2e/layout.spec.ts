@@ -40,7 +40,7 @@ test.afterAll(async () => {
 test('routes fit mobile viewports without horizontal page or navigation overflow', async ({
   page,
 }) => {
-  for (const width of [390, 360]) {
+  for (const width of [320, 390, 768]) {
     await page.setViewportSize({ width, height: 844 });
     for (const route of [
       '/',
@@ -52,6 +52,22 @@ test('routes fit mobile viewports without horizontal page or navigation overflow
     ]) {
       await page.goto(route);
       await expect(page.locator('h1').first()).toBeAttached();
+      if (route === '/progress') {
+        const masteredValue = page
+          .getByText('Concepts mastered', { exact: true })
+          .locator('..')
+          .locator('p')
+          .nth(1);
+        const studyValue = page
+          .getByText('Study time', { exact: true })
+          .locator('..')
+          .locator('p')
+          .nth(1);
+        for (const value of [masteredValue, studyValue]) {
+          const bounds = await value.boundingBox();
+          expect(bounds?.height, `progress value wraps at ${width}px`).toBeLessThanOrEqual(32);
+        }
+      }
       const dimensions = await page.evaluate(() => ({
         documentWidth: document.documentElement.scrollWidth,
         viewportWidth: window.innerWidth,
@@ -115,6 +131,44 @@ test('root auth pending renders the app-shell skeleton', async ({ page }) => {
   await expect(shell).toBeVisible();
   await expect(shell.locator('header')).toBeVisible();
   await expect(shell.getByTestId('route-skeleton')).toBeVisible();
-  await expect(shell.locator('nav > *')).toHaveCount(4);
+  await expect(shell.locator('nav > *')).toHaveCount(5);
   await expect(shell).toBeHidden();
+});
+
+test('settings edits stay accessible and the save spinner keeps its geometry', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/settings');
+  await page.getByLabel('Daily study time', { exact: true }).fill('90');
+  await page.getByLabel('Saturday study time', { exact: true }).fill('120');
+  await page.getByLabel('Sunday study time', { exact: true }).fill('90');
+  await expect(page.getByText('11 hours / week')).toBeVisible();
+  let releaseSave: () => void = () => {};
+  const waiting = new Promise<void>((resolve) => {
+    releaseSave = resolve;
+  });
+  await page.route('**/api/settings', async (route) => {
+    if (route.request().method() === 'PUT') await waiting;
+    await route.continue();
+  });
+  const save = page.getByRole('button', { name: 'Save settings' });
+  await save.scrollIntoViewIfNeeded();
+  const before = await save.boundingBox();
+  await save.click();
+  try {
+    await expect(save).toHaveAttribute('aria-busy', 'true');
+    const during = await save.boundingBox();
+    const spinner = await save.getByTestId('button-spinner').locator('svg').boundingBox();
+    expect(during).toEqual(before);
+    expect(spinner).not.toBeNull();
+    if (!during || !spinner) throw new Error('Expected visible save control and spinner');
+    expect(Math.abs(spinner.x + spinner.width / 2 - during.x - during.width / 2)).toBeLessThan(1);
+    expect(Math.abs(spinner.y + spinner.height / 2 - during.y - during.height / 2)).toBeLessThan(1);
+  } finally {
+    releaseSave();
+  }
+  await expect(page.getByRole('status')).toContainText('Saved');
+  await page.reload();
+  await expect(page.getByLabel('Daily study time', { exact: true })).toHaveValue('90');
+  await expect(page.getByLabel('Saturday study time', { exact: true })).toHaveValue('120');
+  await expect(page.getByLabel('Sunday study time', { exact: true })).toHaveValue('90');
 });

@@ -26,25 +26,35 @@ export function ProgressPage() {
         <CardHeader className="gap-0">
           <div className="grid grid-cols-3 divide-x">
             <div className="min-w-0 px-3 first:pl-0">
-              <p className="text-xs text-muted-foreground">Concepts mastered</p>
-              <p className="text-2xl font-semibold tabular-nums">
+              <p className="min-h-8 text-xs leading-4 text-muted-foreground sm:min-h-4">
+                Concepts mastered
+              </p>
+              <p className="mt-1 whitespace-nowrap text-xl leading-8 font-semibold tabular-nums max-[360px]:text-lg sm:text-2xl">
                 {data.goal.mastered} / {data.goal.total}
               </p>
-              <Progress
-                aria-label="Concepts mastered"
-                className="mt-2 h-1.5"
-                value={data.goal.total ? (data.goal.mastered / data.goal.total) * 100 : 0}
-              />
+              <div className="mt-1 flex h-5 items-center">
+                <Progress
+                  aria-label="Concepts mastered"
+                  className="h-1.5"
+                  value={data.goal.total ? (data.goal.mastered / data.goal.total) * 100 : 0}
+                />
+              </div>
             </div>
             <div className="min-w-0 px-3">
-              <p className="text-xs text-muted-foreground">Study time</p>
-              <p className="text-2xl font-semibold tabular-nums">{data.hours.toFixed(1)} h</p>
-              <p className="text-sm text-muted-foreground">of {data.planHours} h</p>
+              <p className="min-h-8 text-xs leading-4 text-muted-foreground sm:min-h-4">
+                Study time
+              </p>
+              <p className="mt-1 whitespace-nowrap text-xl leading-8 font-semibold tabular-nums max-[360px]:text-lg sm:text-2xl">
+                {data.hours.toFixed(1)} h
+              </p>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">of {data.planHours} h</p>
             </div>
             <div className="min-w-0 px-3 last:pr-0">
-              <p className="text-xs text-muted-foreground">Streak</p>
-              <p className="text-2xl font-semibold tabular-nums">{data.streakDays}</p>
-              <p className="text-sm text-muted-foreground">days</p>
+              <p className="min-h-8 text-xs leading-4 text-muted-foreground sm:min-h-4">Streak</p>
+              <p className="mt-1 whitespace-nowrap text-xl leading-8 font-semibold tabular-nums max-[360px]:text-lg sm:text-2xl">
+                {data.streakDays}
+              </p>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">days</p>
             </div>
           </div>
         </CardHeader>

@@ -20,6 +20,13 @@ test('password login remembers the session and logout requires login again', asy
   });
 
   const password = page.getByLabel('Password');
+  const labelBounds = await page.locator('label[for="password"]').boundingBox();
+  const inputBounds = await password.boundingBox();
+  expect(labelBounds).not.toBeNull();
+  expect(inputBounds).not.toBeNull();
+  if (!labelBounds || !inputBounds) throw new Error('Expected the password field and label');
+  expect(inputBounds.y - labelBounds.y - labelBounds.height).toBeGreaterThanOrEqual(8);
+  await expect(page.getByText('Enter your password to continue.')).toHaveCount(0);
   await password.fill('wrong-password');
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page.getByRole('alert')).toContainText('Wrong password');
@@ -34,17 +41,9 @@ test('password login remembers the session and logout requires login again', asy
   await page.getByRole('link', { name: 'Settings' }).click();
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
   await page.getByLabel('Daily study time').fill('30');
-  await expect(
-    page.getByText('Daily goal: 30 XP · 1 XP ≈ 1 minute', { exact: true }),
-  ).toBeVisible();
   await page.getByLabel('Saturday study time').fill('45');
-  await expect(
-    page.getByText('Daily goal: 45 XP · 1 XP ≈ 1 minute', { exact: true }),
-  ).toBeVisible();
   await page.getByLabel('Sunday study time').fill('75');
-  await expect(
-    page.getByText('Daily goal: 75 XP · 1 XP ≈ 1 minute', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText('4.5 hours / week', { exact: true })).toBeVisible();
   await page.screenshot({
     path: `${xpFinishScreenshotDir}/settings-goal-hints.png`,
     fullPage: true,

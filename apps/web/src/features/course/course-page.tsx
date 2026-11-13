@@ -31,23 +31,10 @@ export function CoursePage() {
               <CardTitle>
                 Week {week.week} · {week.title}
               </CardTitle>
-              {week.intro ? <p className="text-sm text-muted-foreground">{week.intro}</p> : null}
             </CardHeader>
             <CardContent className="p-0 last:pb-0">
               <ol className="divide-y">
                 {week.topics.map((topic) => {
-                  const contextLine = [
-                    topic.status !== 'locked' && topic.buildsOn.length > 0
-                      ? `Builds on: ${topic.buildsOn.map((item) => item.title).join(', ')}`
-                      : null,
-                    topic.leadsTo.length > 0
-                      ? `Leads to: ${topic.leadsTo.map((item) => item.title).join(', ')}${
-                          topic.leadsToMore > 0 ? ` +${topic.leadsToMore} more` : ''
-                        }`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ');
                   const row = (
                     <>
                       <div className="flex min-w-0 items-start gap-3">
@@ -60,9 +47,6 @@ export function CoursePage() {
                           >
                             {topic.title}
                           </p>
-                          {contextLine ? (
-                            <p className="text-xs text-muted-foreground">{contextLine}</p>
-                          ) : null}
                           <div className="flex flex-wrap items-center gap-2">
                             {topic.hasLesson ? (
                               <>
@@ -150,7 +134,7 @@ export function CoursePage() {
                       ) : null}
                     </>
                   );
-                  const rowClassName = `flex items-center justify-between gap-3 px-4 py-3 ${
+                  const rowClassName = `flex items-center justify-between gap-3 px-(--card-spacing) py-3 ${
                     topic.status === 'locked' && topic.hasLesson
                       ? 'text-muted-foreground opacity-60'
                       : topic.status === 'complete'
@@ -179,7 +163,7 @@ export function CoursePage() {
               </ol>
               {week.papers.length > 0 ? (
                 <section className="border-t" aria-label="Papers">
-                  <h3 className="px-4 pt-4 pb-1 text-sm font-medium text-muted-foreground">
+                  <h3 className="px-(--card-spacing) pt-4 pb-1 text-sm font-medium text-muted-foreground">
                     Papers
                   </h3>
                   <ul className="divide-y">
@@ -188,7 +172,7 @@ export function CoursePage() {
                         <Link
                           to="/papers/$paperId"
                           params={{ paperId: paper.id }}
-                          className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/60"
+                          className="flex items-center justify-between gap-3 px-(--card-spacing) py-3 hover:bg-muted/60"
                         >
                           <span className="flex w-9 shrink-0 items-center">
                             <FileText aria-hidden="true" className="size-4 text-muted-foreground" />
@@ -226,7 +210,7 @@ export function CoursePage() {
               ) : null}
               {week.project ? (
                 <section className="border-t" aria-label="Project">
-                  <h3 className="px-4 pt-4 pb-1 text-sm font-medium text-muted-foreground">
+                  <h3 className="px-(--card-spacing) pt-4 pb-1 text-sm font-medium text-muted-foreground">
                     Project
                   </h3>
                   <ul className="divide-y">
@@ -235,7 +219,7 @@ export function CoursePage() {
                         <Link
                           to="/projects/$projectId"
                           params={{ projectId: week.project.id }}
-                          className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-muted/60"
+                          className="flex items-center justify-between gap-3 px-(--card-spacing) py-3 hover:bg-muted/60"
                         >
                           <span className="flex w-9 shrink-0 items-center">
                             <Wrench aria-hidden="true" className="size-4 text-muted-foreground" />
@@ -263,7 +247,7 @@ export function CoursePage() {
                           />
                         </Link>
                       ) : (
-                        <div className="flex items-center justify-between gap-3 px-4 py-3">
+                        <div className="flex items-center justify-between gap-3 px-(--card-spacing) py-3">
                           <span className="flex w-9 shrink-0 items-center">
                             <Wrench aria-hidden="true" className="size-4 text-muted-foreground" />
                           </span>

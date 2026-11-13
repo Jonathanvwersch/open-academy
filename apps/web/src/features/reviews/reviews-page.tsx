@@ -28,12 +28,10 @@ export function ReviewsPage() {
   const { data } = useSuspenseQuery(reviewsQueryOptions());
   return (
     <section className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Reviews</h1>
-        <p className="mt-1 text-muted-foreground">
-          {data.dueNow > 0 ? `${data.dueNow} due now` : 'Nothing due'}
-        </p>
-      </div>
+      <h1 className="sr-only">Reviews</h1>
+      <p className="text-sm text-muted-foreground">
+        {data.dueNow > 0 ? `${data.dueNow} due now` : 'Nothing due'}
+      </p>
       <fieldset
         className="grid grid-cols-7 gap-2"
         aria-label="Upcoming reviews for the next seven days"
@@ -45,7 +43,7 @@ export function ReviewsPage() {
           >
             <span className="text-xs text-muted-foreground">{dayLabel(day.date)}</span>
             <span
-              className={`text-sm font-medium ${day.count === 0 ? 'text-muted-foreground' : ''}`}
+              className={`text-xl font-semibold tabular-nums ${day.count === 0 ? 'text-muted-foreground' : ''}`}
             >
               {day.count}
             </span>
@@ -60,7 +58,10 @@ export function ReviewsPage() {
           {data.topics.length > 0 ? (
             <ul className="divide-y">
               {data.topics.map((topic) => (
-                <li key={`${topic.conceptId}:${topic.dimension}`} className="px-4 py-4">
+                <li
+                  key={`${topic.conceptId}:${topic.dimension}`}
+                  className="px-(--card-spacing) py-4"
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-medium">{topic.title}</h2>
                     <Badge variant="outline">
@@ -79,7 +80,9 @@ export function ReviewsPage() {
               ))}
             </ul>
           ) : (
-            <p className="px-4 pb-4 text-sm text-muted-foreground">No review topics yet.</p>
+            <p className="px-(--card-spacing) pb-(--card-spacing) text-sm text-muted-foreground">
+              No review topics yet.
+            </p>
           )}
         </CardContent>
       </Card>
