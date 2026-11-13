@@ -7,6 +7,7 @@ import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import { cn } from '../lib/utils.js';
+import { normalizeUnicodeMath } from './math-unicode.js';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/github.css';
 
@@ -17,6 +18,21 @@ type DisplayMathNode = {
   children?: DisplayMathNode[];
   value?: string;
 };
+
+function rehypeNormalizeUnicodeMath() {
+  return (tree: DisplayMathNode) => {
+    const visit = (node: DisplayMathNode) => {
+      const classes = node.properties?.className;
+      if (node.tagName === 'code' && Array.isArray(classes) && classes.includes('language-math')) {
+        for (const child of node.children ?? []) {
+          if (child.type === 'text' && child.value) child.value = normalizeUnicodeMath(child.value);
+        }
+      }
+      for (const child of node.children ?? []) visit(child);
+    };
+    visit(tree);
+  };
+}
 
 function rehypeWrapTutorDisplayMath() {
   return (tree: DisplayMathNode) => {
@@ -112,8 +128,8 @@ export const Markdown = React.memo(function Markdown({
       remarkPlugins={[remarkGfm, remarkMath]}
       rehypePlugins={
         wrapDisplayMath
-          ? [rehypeWrapTutorDisplayMath, rehypeKatex, rehypeHighlight]
-          : [rehypeKatex, rehypeHighlight]
+          ? [rehypeNormalizeUnicodeMath, rehypeWrapTutorDisplayMath, rehypeKatex, rehypeHighlight]
+          : [rehypeNormalizeUnicodeMath, rehypeKatex, rehypeHighlight]
       }
     >
       {normalizeDisplayMath(children)}

@@ -1415,3 +1415,32 @@ test('long tutor drafts keep the composer controls in view on desktop and mobile
     await sendButton.click({ trial: true });
   }
 });
+
+test('Unicode-accented predictions render without red errors and preserve code examples', async ({
+  page,
+}, testInfo) => {
+  const reply =
+    'Model output: $ŷ$ or $ŷ_i$. Other notation: $y\u0305$ or $y\u0305_i$. Real target: $y$ or $y_i$.\n\n$$y = \\hat{y} + \\text{noise}$$\n\nLiteral code: `y\u0305_i`.';
+  const { assistantMessage } = await openMockedTutorReply(
+    page,
+    '00000000-0000-4000-8000-000000000088',
+    'Explain the predicted and real target values.',
+    reply,
+  );
+  await expect(assistantMessage.locator('.katex')).toHaveCount(7);
+  await expect(assistantMessage.locator('.katex-error')).toHaveCount(0);
+  await expect(assistantMessage.locator('.katex .accent-body')).toHaveCount(5);
+  await expect(assistantMessage.locator('code').filter({ hasText: 'y\u0305_i' })).toHaveText(
+    'y\u0305_i',
+  );
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const message =
+      width === 390
+        ? page.locator('[data-mobile="true"] [data-testid="tutor-assistant-message"]').last()
+        : assistantMessage;
+    await expect(message.locator('.katex')).toHaveCount(7);
+    await expect(message.locator('.katex-error')).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath(`prediction-notation-${width}.png`) });
+  }
+});
