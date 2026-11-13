@@ -183,7 +183,8 @@ concepts:
       week: 6,
       goal_weight: 2,
       dimensions: [conceptual, transfer],
-      prereqs: [{ id: kv-cache }, { id: inference-metrics }, { id: mixture-of-experts, strength: soft }],
+      prereqs:
+        [{ id: kv-cache }, { id: inference-metrics }, { id: mixture-of-experts, strength: soft }],
       objectives:
         [
           { text: "Explain how continuous batching raises throughput", dimension: conceptual },

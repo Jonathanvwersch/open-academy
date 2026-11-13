@@ -2,7 +2,7 @@ id: fixture-paper-two
 title: "Fixture Paper Two"
 authors: "Fixture Researchers"
 year: 2025
-week: 1
+week: 2
 est_minutes: 45
 source: { url: "https://arxiv.org/pdf/2501.12345.pdf" }
 concepts: [derivatives]

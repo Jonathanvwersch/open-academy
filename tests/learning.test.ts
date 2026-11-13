@@ -31,11 +31,17 @@ import {
   prerequisiteMet,
 } from '../src/server/learning/prerequisites.js';
 import type { PlannedActivity, SchedulerState } from '../src/server/learning/scheduler.js';
-import { planSession, replan, SCHEDULER_CONFIG } from '../src/server/learning/scheduler.js';
+import {
+  currentLearnerWeek,
+  planSession,
+  replan,
+  SCHEDULER_CONFIG,
+} from '../src/server/learning/scheduler.js';
 import { initialMastery } from '../src/server/learning/types.js';
 
 const now = new Date('2026-01-14T12:00:00.000Z');
 let content: ContentIndex;
+let courseContent: ContentIndex;
 
 function required<T>(value: T | undefined, label: string): T {
   if (value === undefined) {
@@ -46,6 +52,7 @@ function required<T>(value: T | undefined, label: string): T {
 
 beforeAll(async () => {
   content = await loadContent('tests/fixtures/content');
+  courseContent = await loadContent('content');
 });
 
 function emptyState(): SchedulerState {
@@ -1208,8 +1215,64 @@ test('Saturday skips a completed project when no extension exercise exists', () 
   expect(plan.activities.some((activity) => activity.kind === 'remediate')).toBe(false);
 });
 
+test('fresh learners start in week 1', () => {
+  expect(currentLearnerWeek(emptyState(), courseContent)).toBe(1);
+});
+
+test('completed learnable week-1 concepts advance past the unmet reading-papers stub', () => {
+  const week1 = courseContent.curriculum?.weeks.find((week) => week.week === 1);
+  expect(week1?.concepts).toContain('reading-papers');
+  const state = emptyState();
+  state.lessonRuns = (week1?.concepts ?? [])
+    .filter((id) => id !== 'reading-papers')
+    .map((conceptId) => ({ conceptId, status: 'completed' as const }));
+  expect(currentLearnerWeek(state, courseContent)).toBe(2);
+});
+
+test('an incomplete week-1 concept remains current when later concepts are complete', () => {
+  const conceptIds = courseContent.curriculum?.weeks.flatMap((week) => week.concepts) ?? [];
+  const state = emptyState();
+  state.lessonRuns = conceptIds
+    .filter((conceptId) => conceptId !== 'what-is-ml')
+    .map((conceptId) => ({ conceptId, status: 'completed' as const }));
+  expect(currentLearnerWeek(state, courseContent)).toBe(1);
+});
+
+test('all completed concepts put the learner in the last curriculum week', () => {
+  const weeks = courseContent.curriculum?.weeks ?? [];
+  const state = emptyState();
+  state.lessonRuns = weeks.flatMap((week) =>
+    week.concepts.map((conceptId) => ({ conceptId, status: 'completed' as const })),
+  );
+  expect(currentLearnerWeek(state, courseContent)).toBe(weeks.at(-1)?.week);
+});
+
+test('diagnostic-inferred mastery counts as met for the current week', () => {
+  const week1 = courseContent.curriculum?.weeks.find((week) => week.week === 1);
+  const state = emptyState();
+  state.lessonRuns = (week1?.concepts ?? [])
+    .filter((id) => id !== 'what-is-ml')
+    .map((conceptId) => ({ conceptId, status: 'completed' as const }));
+  state.mastery = [{ ...initialMastery('what-is-ml', 'conceptual'), inferred: true }];
+  expect(currentLearnerWeek(state, courseContent)).toBe(2);
+});
+
+test('Saturday uses progress for a week-2 paper regardless of start date', () => {
+  const week1Concepts = content.curriculum?.weeks.find((week) => week.week === 1)?.concepts ?? [];
+  const lessonRuns = week1Concepts.map((conceptId) => ({
+    conceptId,
+    status: 'completed' as const,
+  }));
+  for (const startDate of ['2000-01-01T00:00:00.000Z', '2026-01-15T00:00:00.000Z']) {
+    const state = { ...emptyState(), startDate, lessonRuns };
+    const plan = planSession(state, content, now, 200, 'saturday');
+    const paper = plan.activities.find((activity) => activity.kind === 'paper');
+    expect(paper?.reason.summary).toBe('Saturday paper reading for week 2.');
+  }
+});
+
 test('Saturday reserves up to 90 minutes for the current week paper', () => {
-  const state = { ...emptyState(), startDate: '2026-01-12T00:00:00.000Z' };
+  const state = emptyState();
   const plan = planSession(state, content, now, 200, 'saturday');
   const paper = plan.activities.find((activity) => activity.kind === 'paper');
   expect(paper?.plannedMinutes).toBe(90);
@@ -1220,7 +1283,6 @@ test('Saturday reserves up to 90 minutes for the current week paper', () => {
 test('Saturday omits paper reading when all current-week papers are completed', () => {
   const state = {
     ...emptyState(),
-    startDate: '2026-01-12T00:00:00.000Z',
     completedPaperIds: (content.papersByWeek.get(1) ?? []).map((paper) => paper.id),
   };
   const plan = planSession(state, content, now, 200, 'saturday');
@@ -1228,7 +1290,7 @@ test('Saturday omits paper reading when all current-week papers are completed', 
 });
 
 test('Saturday omits paper reading when less than 30 minutes remain', () => {
-  const state = { ...emptyState(), startDate: '2026-01-12T00:00:00.000Z' };
+  const state = emptyState();
   const plan = planSession(state, content, now, 35, 'saturday');
   expect(plan.activities.some((activity) => activity.kind === 'paper')).toBe(false);
 });

@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { eq } from 'drizzle-orm';
 import { createDb } from '../../src/server/db/client.js';
-import { users } from '../../src/server/db/schema.js';
+import { lessonRuns, users } from '../../src/server/db/schema.js';
 import { env } from '../../src/server/env.js';
 
 declare global {
@@ -319,6 +319,16 @@ test('scrolling through PDF pages does not show the route loading skeleton', asy
 });
 
 test('Saturday session offers the current week papers and a skip action', async ({ page }) => {
+  await db.insert(lessonRuns).values(
+    ['vectors', 'derivatives', 'linear-algebra', 'supervised-learning', 'linear-models'].map(
+      (conceptId) => ({
+        userId,
+        conceptId,
+        status: 'completed' as const,
+        completedAt: new Date('2026-01-01T11:00:00.000Z'),
+      }),
+    ),
+  );
   const response = await page.request.post('/api/sessions', {
     headers: { 'X-Now': '2026-01-01T12:00:00.000Z' },
     data: { kind: 'saturday', budgetMinutes: 300 },
@@ -332,9 +342,9 @@ test('Saturday session offers the current week papers and a skip action', async 
   await page.goto(`/session/${sessionId}`);
   await expect(page.getByRole('heading', { name: 'Paper reading' })).toBeVisible();
   await expect(page.getByText("Pick one of this week's papers to read.")).toBeVisible();
-  const sessionPaper = page.getByRole('link', { name: /Fixture Paper One/ });
+  const sessionPaper = page.getByRole('link', { name: /Fixture Paper Two/ });
   await expect(sessionPaper).toBeVisible();
   await expect(sessionPaper).toContainText('Not started');
-  await expect(page.getByRole('link', { name: /Fixture Paper Two/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Fixture Paper One/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Skip for today' }).click();
 });

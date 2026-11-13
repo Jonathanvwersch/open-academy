@@ -119,9 +119,57 @@ const noTerms = (): PriorityTerms => ({
   cost: 0,
 });
 
-export function currentCurriculumWeek(startDate: string, now: Date): number {
-  const elapsedDays = Math.max(0, now.getTime() - Date.parse(startDate)) / 86_400_000;
-  return Math.floor(elapsedDays / 7) + 1;
+function hasKnowledgePointLessonContent(conceptId: string, content: ContentIndex): boolean {
+  return (content.lessonsByConcept.get(conceptId)?.knowledge_points?.length ?? 0) > 0;
+}
+
+function hasCoreExercise(
+  conceptId: string,
+  dimension: IndexedConcept['dimensions'][number],
+  content: ContentIndex,
+): boolean {
+  return (content.exercisesByConcept.get(conceptId) ?? []).some(
+    (exercise) =>
+      exercise.dimension === dimension && (exercise.role === 'core' || exercise.role === 'check'),
+  );
+}
+
+function isLearnableConcept(concept: IndexedConcept, content: ContentIndex): boolean {
+  return (
+    concept.status !== 'stub' &&
+    (hasKnowledgePointLessonContent(concept.id, content) ||
+      concept.dimensions.some((dimension) => hasCoreExercise(concept.id, dimension, content)))
+  );
+}
+
+export function currentLearnerWeek(
+  state: Pick<SchedulerState, 'mastery' | 'lessonRuns'>,
+  content: ContentIndex,
+): number {
+  const weeks = content.curriculum?.weeks;
+  if (!weeks?.length) return 1;
+  const masteryByKey = new Map(
+    state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
+  const lessonRuns = state.lessonRuns ?? [];
+  for (const week of weeks) {
+    for (const conceptId of week.concepts) {
+      const concept = content.conceptsById.get(conceptId);
+      if (
+        concept &&
+        isLearnableConcept(concept, content) &&
+        !prerequisiteMet(conceptId, masteryByKey, lessonRuns, content)
+      ) {
+        return week.week;
+      }
+    }
+  }
+  for (const week of weeks) {
+    for (const conceptId of week.concepts) {
+      if (!prerequisiteMet(conceptId, masteryByKey, lessonRuns, content)) return week.week;
+    }
+  }
+  return weeks.at(-1)?.week ?? 1;
 }
 
 export function planSession(
@@ -301,7 +349,7 @@ function packWeekday(
 
 function generateCandidates(state: SchedulerState, content: ContentIndex, now: Date): Candidate[] {
   const candidates: Candidate[] = [];
-  const week = currentCurriculumWeek(state.startDate, now);
+  const week = currentLearnerWeek(state, content);
   const weekProjectId = content.curriculum?.weeks.find((entry) => entry.week === week)?.project;
   const project = weekProjectId ? content.projectsById.get(weekProjectId) : undefined;
   const masteryByKey = new Map(
@@ -333,8 +381,7 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     const isContinuing = states.some(
       (record) => record?.state === 'introduced' || record?.state === 'assisted',
     );
-    const hasKnowledgePointLesson =
-      (content.lessonsByConcept.get(concept.id)?.knowledge_points?.length ?? 0) > 0;
+    const hasKnowledgePointLesson = hasKnowledgePointLessonContent(concept.id, content);
     const lessonRunStatus = state.lessonRuns?.find((run) => run.conceptId === concept.id)?.status;
     const shouldResumeLesson =
       hasKnowledgePointLesson &&
@@ -355,11 +402,7 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     } else if (!completedKnowledgePointLesson && (isNew || isContinuing)) {
       const dimension = concept.dimensions.find((candidate) => {
         const state = masteryByKey.get(masteryKey(concept.id, candidate))?.state ?? 'not_assessed';
-        const hasCoreItem = (content.exercisesByConcept.get(concept.id) ?? []).some(
-          (exercise) =>
-            exercise.dimension === candidate &&
-            (exercise.role === 'core' || exercise.role === 'check'),
-        );
+        const hasCoreItem = hasCoreExercise(concept.id, candidate, content);
         return (
           hasCoreItem &&
           (state === 'introduced' || state === 'assisted' || state === 'not_assessed')
@@ -660,7 +703,7 @@ function planSaturday(
   }
   const warmupMinutes = dueReview ? Math.min(10, budget) : 0;
   const reflectionMinutes = budget >= 20 ? 10 : 0;
-  const week = currentCurriculumWeek(state.startDate, now);
+  const week = currentLearnerWeek(state, content);
   const remainingMinutes = Math.max(0, budget - warmupMinutes - reflectionMinutes);
   const hasUnreadPaper = (content.papersByWeek.get(week) ?? []).some(
     (paper) => !state.completedPaperIds.includes(paper.id),
@@ -832,9 +875,8 @@ function planSunday(
   if (budget > 50) {
     const currentProject =
       state.currentProjectId ??
-      content.curriculum?.weeks.find(
-        (entry) => entry.week === currentCurriculumWeek(state.startDate, now),
-      )?.project;
+      content.curriculum?.weeks.find((entry) => entry.week === currentLearnerWeek(state, content))
+        ?.project;
     const reflection = content.projectsById
       .get(currentProject ?? '')
       ?.reflection.map((id) => content.exercisesById.get(id))

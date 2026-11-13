@@ -313,13 +313,7 @@ weeks:
       title: End-to-end robot learning and capstone,
       project: capstone,
       intro: "Running a robot-learning project properly from data to deployed policy: data pipelines, failure analysis, system design and judging results critically, in a full capstone.",
-      concepts:
-        [
-          data-pipelines-robotics,
-          failure-analysis,
-          system-design-ml,
-          critical-evaluation,
-        ],
+      concepts: [data-pipelines-robotics, failure-analysis, system-design-ml, critical-evaluation],
     }
 goals:
   - {
