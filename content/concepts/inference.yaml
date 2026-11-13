@@ -195,3 +195,30 @@ concepts:
         ],
       status: stub,
     }
+  - {
+      id: ml-compilers,
+      title: ML compilers,
+      description: "How compilers such as XLA, TVM, tinygrad and Luminal make models fast: recording a model as a computation graph instead of running it op by op, lowering it to a few primitive ops, fusing kernels with graph rewrites, e-graphs and search, and autotuning for a specific GPU and shape.",
+      difficulty: 4,
+      est_minutes: 30,
+      week: 6,
+      goal_weight: 2,
+      dimensions: [conceptual, implementation],
+      prereqs: [{ id: fast-attention }, { id: gpu-inference-basics }, { id: computational-graphs }],
+      objectives:
+        [
+          {
+            text: "Explain why recording the whole computation graph lets a compiler fuse operations that eager execution runs one at a time",
+            dimension: conceptual,
+          },
+          {
+            text: "Fuse a chain of elementwise operations in a small graph and measure the memory traffic and time saved",
+            dimension: implementation,
+          },
+          {
+            text: "Explain how an e-graph keeps many equivalent versions of a graph so a search can pick the fastest",
+            dimension: conceptual,
+          },
+        ],
+      status: stub,
+    }

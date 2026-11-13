@@ -1,0 +1,45 @@
+id: tvm
+title: "TVM: An Automated End-to-End Optimizing Compiler for Deep Learning"
+authors: Chen et al.
+year: 2018
+week: 6
+est_minutes: 60
+source:
+  arxiv: 1802.04799v3
+concepts:
+  - ml-compilers
+why_this_week: "This week adds the compiler layer between a model and GPU kernels. TVM shows how a model from a deep learning framework can be represented as a computation graph, fused and lowered, while a search chooses schedules for the target device."
+how_to_read: "Read Section 1, Introduction and Section 2, Overview for the end-to-end flow. Read Section 3, Optimizing Computational Graphs, for graph rewrites and operator fusion. Then read Section 4, Generating Tensor Operations, especially Section 4.1, Tensor Expression and Schedule Space, to see how an operator's computation is separated from its execution schedule. Read Sections 5.2, ML-Based Cost Model, and 5.3, Schedule Exploration, for how TVM searches for fast schedules. For evidence, focus on Section 6.1, Server-Class GPU Evaluation, and Section 6.3, Embedded GPU Evaluation."
+questions:
+  - id: claim
+    kind: claim
+    prompt: What gap did TVM set out to fill, and what does it take as input and produce for different hardware?
+  - id: method
+    kind: method
+    prompt: How do graph-level optimizations such as operator fusion work with the tensor-expression schedules TVM generates for a target device?
+  - id: evidence
+    kind: evidence
+    prompt: Choose one of the GPU evaluations. What hardware and baseline did the authors use, and what speedup did they report?
+  - id: limitations
+    kind: limitations
+    prompt: TVM specializes schedules for input shapes and hardware. What does that mean for tuning cost, and how far can the paper's tested workloads support a general performance claim?
+summary:
+  prompt: In about five sentences, explain what TVM compiles, how its optimizations work, what evidence the paper gives, and one limitation.
+  rubric:
+    - id: r1
+      criterion: Explains that TVM compiles high-level deep learning models into hardware-specific code across diverse backends
+      weight: 2
+      required: true
+    - id: r2
+      criterion: Explains both graph-level optimization such as operator fusion and operator-level schedule search guided by an ML-based cost model
+      weight: 2
+      required: true
+    - id: r3
+      criterion: Gives a correct evaluation example, such as 1.6×–3.8× speedups on the server GPU or 1.2×–1.6× on the embedded GPU
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Notes that results are tied to the tested models, backends and shape-specific tuning, rather than guaranteed for every model or device
+      weight: 1
+      required: false
+  exemplar: "TVM takes a model from a deep learning framework, represents it as a computation graph and generates code for a range of hardware backends. It rewrites the graph, including fusing compatible operators so intermediate results need not be written to memory, then lowers operators into tensor expressions with schedules for a particular target. An ML-based cost model and schedule explorer use measured trials to find fast operator implementations. The paper reports 1.6×–3.8× speedups over its baselines on a server GPU and 1.2×–1.6× on an embedded GPU. Those results come from specific models, hardware and shape-specialized searches, so they do not guarantee the same gains for every workload."
