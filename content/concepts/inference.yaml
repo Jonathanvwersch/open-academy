@@ -1,0 +1,196 @@
+domain: inference
+concepts:
+  - {
+      id: inference-metrics,
+      title: Measuring inference,
+      description: "Latency vs throughput, time to first token, tokens per second, inter-token latency and latency percentiles.",
+      difficulty: 2,
+      est_minutes: 20,
+      week: 5,
+      goal_weight: 2,
+      dimensions: [conceptual, math],
+      prereqs: [{ id: autoregressive-lm }],
+      objectives:
+        [
+          {
+            text: "Compute time to first token, tokens per second and end-to-end latency from a request trace",
+            dimension: math,
+          },
+          { text: "Explain the latency–throughput trade-off of batching", dimension: conceptual },
+        ],
+      projects: [inference-engine],
+      status: stub,
+    }
+  - {
+      id: prefill-decode,
+      title: Prefill and decode,
+      description: "How an LLM serves a request: a parallel prefill over the prompt, then decoding one token at a time; greedy, temperature, top-k and top-p sampling.",
+      difficulty: 3,
+      est_minutes: 25,
+      week: 5,
+      goal_weight: 3,
+      dimensions: [conceptual, implementation],
+      prereqs: [{ id: autoregressive-lm }, { id: inference-metrics }],
+      objectives:
+        [
+          {
+            text: "Explain why prefill sets time to first token and decode sets tokens per second",
+            dimension: conceptual,
+          },
+          { text: "Implement temperature, top-k and top-p sampling", dimension: implementation },
+        ],
+      status: stub,
+    }
+  - {
+      id: arithmetic-intensity,
+      title: Memory-bound vs compute-bound,
+      description: "Arithmetic intensity, a GPU's ops:byte ratio and the roofline model; why decode is memory-bound and prefill is compute-bound.",
+      difficulty: 3,
+      est_minutes: 30,
+      week: 5,
+      goal_weight: 3,
+      dimensions: [conceptual, math],
+      prereqs: [{ id: prefill-decode }, { id: matrices }],
+      objectives:
+        [
+          {
+            text: "Compute the arithmetic intensity of a matrix multiply and compare it with a GPU's ops:byte ratio",
+            dimension: math,
+          },
+          {
+            text: "Predict from the roofline whether an operation is memory-bound or compute-bound",
+            dimension: conceptual,
+          },
+        ],
+      status: stub,
+    }
+  - {
+      id: gpu-inference-basics,
+      title: GPUs for inference,
+      description: "GPU compute units, the memory hierarchy (HBM, on-chip SRAM, caches), memory bandwidth, and whether a model fits in GPU memory at a given precision.",
+      difficulty: 3,
+      est_minutes: 30,
+      week: 5,
+      goal_weight: 2,
+      dimensions: [conceptual, math],
+      prereqs: [{ id: arithmetic-intensity }, { id: pytorch-basics }],
+      objectives:
+        [
+          { text: "Estimate a model's memory at fp32, fp16 and int8", dimension: math },
+          { text: "Explain why memory bandwidth bounds decode speed", dimension: conceptual },
+        ],
+      status: stub,
+    }
+  - {
+      id: kv-cache,
+      title: KV cache,
+      description: "Caching keys and values so decoding doesn't recompute earlier tokens; cache size, multi-query and grouped-query attention, and prefix caching.",
+      difficulty: 3,
+      est_minutes: 30,
+      week: 5,
+      goal_weight: 3,
+      dimensions: [conceptual, math, implementation],
+      prereqs: [{ id: prefill-decode }, { id: multi-head-attention }],
+      objectives:
+        [
+          {
+            text: "Compute KV-cache size from layers, heads, head size, sequence length and precision",
+            dimension: math,
+          },
+          { text: "Add a KV cache to a decoder's generation loop", dimension: implementation },
+          { text: "Explain when prefix caching saves prefill work", dimension: conceptual },
+        ],
+      projects: [inference-engine],
+      status: stub,
+    }
+  - {
+      id: fast-attention,
+      title: Fast attention kernels,
+      description: "Kernel fusion and FlashAttention: computing attention in on-chip memory instead of writing the full score matrix to GPU memory.",
+      difficulty: 4,
+      est_minutes: 25,
+      week: 5,
+      goal_weight: 2,
+      dimensions: [conceptual, math],
+      prereqs: [{ id: arithmetic-intensity }, { id: gpu-inference-basics }, { id: attention }],
+      objectives:
+        [
+          {
+            text: "Count the memory traffic of standard attention and of a fused kernel",
+            dimension: math,
+          },
+          { text: "Explain how tiling lets FlashAttention stay exact", dimension: conceptual },
+        ],
+      status: stub,
+    }
+  - {
+      id: quantization,
+      title: Quantisation,
+      description: "Number formats (FP16, BF16, FP8, INT8, INT4), weight-only vs weight-and-activation quantisation, and measuring quality loss.",
+      difficulty: 3,
+      est_minutes: 30,
+      week: 5,
+      goal_weight: 3,
+      dimensions: [conceptual, math, implementation],
+      prereqs: [{ id: gpu-inference-basics }],
+      objectives:
+        [
+          {
+            text: "Quantise a tensor to INT8 with a scale and measure the error",
+            dimension: implementation,
+          },
+          {
+            text: "Estimate the memory and speed gain of a lower-precision format",
+            dimension: math,
+          },
+          {
+            text: "Choose an evaluation that detects quality loss from quantisation",
+            dimension: conceptual,
+          },
+        ],
+      projects: [inference-engine],
+      status: stub,
+    }
+  - {
+      id: speculative-decoding,
+      title: Speculative decoding,
+      description: "Draft-and-verify decoding: a cheap draft proposes tokens that the target model checks in one pass; acceptance rate, Medusa, EAGLE and n-gram speculation.",
+      difficulty: 4,
+      est_minutes: 25,
+      week: 5,
+      goal_weight: 2,
+      dimensions: [conceptual, math],
+      prereqs: [{ id: prefill-decode }, { id: arithmetic-intensity }],
+      objectives:
+        [
+          {
+            text: "Compute the expected speed-up from draft length and acceptance rate",
+            dimension: math,
+          },
+          {
+            text: "Explain why verification keeps the target model's output distribution",
+            dimension: conceptual,
+          },
+        ],
+      status: stub,
+    }
+  - {
+      id: llm-serving,
+      title: Serving LLMs,
+      description: "Static vs continuous batching, PagedAttention and inference engines such as vLLM, tensor and expert parallelism, and splitting prefill from decode.",
+      difficulty: 4,
+      est_minutes: 30,
+      week: 5,
+      goal_weight: 2,
+      dimensions: [conceptual, transfer],
+      prereqs: [{ id: kv-cache }, { id: inference-metrics }],
+      objectives:
+        [
+          { text: "Explain how continuous batching raises throughput", dimension: conceptual },
+          {
+            text: "Choose a batching and parallelism setup for a given latency target",
+            dimension: transfer,
+          },
+        ],
+      status: stub,
+    }

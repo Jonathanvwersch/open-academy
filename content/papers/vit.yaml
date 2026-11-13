@@ -2,7 +2,7 @@ id: vit
 title: "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale"
 authors: Dosovitskiy et al.
 year: 2020
-week: 9
+week: 10
 est_minutes: 75
 source:
   arxiv: 2010.11929v2

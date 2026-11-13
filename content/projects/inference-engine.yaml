@@ -1,0 +1,8 @@
+id: inference-engine
+title: "Fast inference for your transformer"
+week: 5
+status: stub
+est_hours: 5
+objective: "Add a KV cache to your week 4 character-level transformer, measure time to first token and tokens per second with and without it, then quantise its weights to INT8 and compare speed and quality."
+background: ""
+prereqs: [kv-cache, quantization, inference-metrics]

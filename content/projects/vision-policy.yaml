@@ -1,6 +1,6 @@
 id: vision-policy
 title: "Vision-conditioned policy"
-week: 9
+week: 10
 status: stub
 est_hours: 5
 objective: "Train a small policy mapping rendered images to actions and compare it with a state-based policy."

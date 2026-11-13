@@ -170,7 +170,7 @@ concepts:
     description: 2D/3D rotations as orthonormal matrices; composition.
     difficulty: 2
     est_minutes: 30
-    week: 5
+    week: 6
     goal_weight: 2
     dimensions: [conceptual, math, implementation]
     prereqs: [{ id: matrices }]
@@ -182,7 +182,7 @@ concepts:
     description: Directions a matrix only stretches, SVD as rotate–stretch–rotate, and low-rank approximation.
     difficulty: 3
     est_minutes: 35
-    week: 5
+    week: 6
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: matrices }, { id: rotation-matrices }]

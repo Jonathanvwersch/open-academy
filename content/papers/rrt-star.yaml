@@ -2,7 +2,7 @@ id: rrt-star
 title: Sampling-based Algorithms for Optimal Motion Planning
 authors: Karaman and Frazzoli
 year: 2011
-week: 5
+week: 6
 est_minutes: 90
 source:
   arxiv: 1105.1186v1

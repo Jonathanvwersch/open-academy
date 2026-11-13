@@ -137,7 +137,7 @@ concepts:
       description: "Supervised fine-tuning, preference optimisation, RLHF.",
       difficulty: 3,
       est_minutes: 25,
-      week: 9,
+      week: 10,
       goal_weight: 2,
       dimensions: [conceptual],
       prereqs: [{ id: pretraining }, { id: policy-gradients, strength: soft }],
