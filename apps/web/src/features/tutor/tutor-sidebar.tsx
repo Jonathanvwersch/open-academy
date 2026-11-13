@@ -620,7 +620,11 @@ export function TutorContextProvider({
                   </SidebarHeader>
                   <SidebarContent className="min-h-0 flex-1 p-2">
                     {threads.isPending ? (
-                      <div className="flex items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
+                      <div
+                        role="status"
+                        aria-label="Loading chats"
+                        className="flex flex-1 items-center justify-center gap-2 p-6 text-sm text-muted-foreground"
+                      >
                         <Loader size={16} aria-hidden="true" />
                         Loading chats…
                       </div>
@@ -912,7 +916,7 @@ export function TutorContextProvider({
                     <div
                       role="status"
                       aria-label="Loading tutor"
-                      className="flex items-center justify-center gap-2 p-6 text-sm text-muted-foreground"
+                      className="flex flex-1 items-center justify-center gap-2 p-6 text-sm text-muted-foreground"
                     >
                       <Loader size={16} aria-hidden="true" />
                       Loading tutor…

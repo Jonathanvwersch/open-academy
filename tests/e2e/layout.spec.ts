@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
@@ -10,6 +10,33 @@ import {
 
 const db = createDb(env.TEST_DATABASE_URL);
 let userId = '';
+
+async function expectCenteredPageLoader(page: Page) {
+  const indicator = page.getByTestId('page-loading-indicator');
+  await expect(indicator).toBeVisible();
+  const geometry = await indicator.evaluate((element) => {
+    const frame = element.closest('[data-page-frame]');
+    if (!frame) throw new Error('Expected a page frame');
+    const bounds = frame.getBoundingClientRect();
+    const style = getComputedStyle(frame);
+    const left = Number.parseFloat(style.paddingLeft);
+    const right = Number.parseFloat(style.paddingRight);
+    const top = Number.parseFloat(style.paddingTop);
+    const bottom = Number.parseFloat(style.paddingBottom);
+    const spinner = element.getBoundingClientRect();
+    return {
+      x: spinner.x + spinner.width / 2,
+      y: spinner.y + spinner.height / 2,
+      centerX: bounds.x + left + (bounds.width - left - right) / 2,
+      centerY: bounds.y + top + (bounds.height - top - bottom) / 2,
+      bottom: bounds.bottom,
+      viewport: window.innerHeight,
+    };
+  });
+  expect(Math.abs(geometry.x - geometry.centerX)).toBeLessThan(1);
+  expect(Math.abs(geometry.y - geometry.centerY)).toBeLessThan(1);
+  expect(geometry.bottom).toBeGreaterThanOrEqual(geometry.viewport - 1);
+}
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/**', (route) =>
@@ -137,6 +164,7 @@ test('root auth pending renders the app-shell skeleton', async ({ page }) => {
   await expect(shell.locator('header')).toBeVisible();
   await expect(shell.getByTestId('route-skeleton')).toBeVisible();
   await expect(shell.locator('nav > *')).toHaveCount(5);
+  await expectCenteredPageLoader(page);
   await expect(shell).toBeHidden();
 });
 
@@ -195,10 +223,51 @@ test('first visits wait for real layout data without inventing placeholder cards
     await expect(pending).toBeVisible();
     await expect(pending.locator('[data-layout-shape]')).toHaveCount(0);
     await expect(page.locator('[data-page-frame] [data-slot="card"]')).toHaveCount(0);
+    await expectCenteredPageLoader(page);
+    await page.screenshot({ path: '/tmp/academy-loading-desktop.png' });
   } finally {
     release();
   }
   await expect(page.locator('[data-page-frame] [data-slot="card"]').first()).toBeVisible();
+});
+
+test('first-visit loaders stay centered on mobile during auth and page loading', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let releaseAuth: () => void = () => {};
+  let releasePage: () => void = () => {};
+  const authGate = new Promise<void>((resolve) => {
+    releaseAuth = resolve;
+  });
+  const pageGate = new Promise<void>((resolve) => {
+    releasePage = resolve;
+  });
+  await page.route('**/api/auth/me', async (route) => {
+    await authGate;
+    await route.continue();
+  });
+  await page.route('**/api/course', async (route) => {
+    await pageGate;
+    await route.continue();
+  });
+  await page.goto('/settings');
+  let navigation: Promise<void> | undefined;
+  try {
+    await expect(page.getByTestId('app-shell-skeleton')).toBeVisible();
+    await expectCenteredPageLoader(page);
+    releaseAuth();
+    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
+    await page.getByRole('button', { name: 'Save settings' }).waitFor();
+    navigation = page.getByRole('link', { name: 'Course', exact: true }).click();
+    await expectCenteredPageLoader(page);
+    await page.screenshot({ path: '/tmp/academy-loading-mobile.png' });
+  } finally {
+    releaseAuth();
+    releasePage();
+  }
+  await navigation;
+  await expect(page.getByRole('heading', { name: /Week 1/ })).toBeVisible();
 });
 
 test('session loading starts lesson metadata and run state together without fetching papers', async ({
