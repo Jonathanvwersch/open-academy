@@ -15,6 +15,8 @@ import {
 
 export type TutorPromptId = 'tutor-system' | 'rubric-grader';
 
+const promptCache = new Map<TutorPromptId, string>();
+
 function promptPath(name: string): URL | string {
   const local = new URL(`./prompts/${name}`, import.meta.url);
   if (existsSync(local)) return local;
@@ -25,7 +27,12 @@ function promptPath(name: string): URL | string {
 }
 
 function readPrompt(id: TutorPromptId): string {
-  return readFileSync(promptPath(`${id}.md`), 'utf8');
+  let prompt = promptCache.get(id);
+  if (prompt === undefined) {
+    prompt = readFileSync(promptPath(`${id}.md`), 'utf8');
+    promptCache.set(id, prompt);
+  }
+  return prompt;
 }
 
 function promptVersion(id: TutorPromptId): string {
