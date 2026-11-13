@@ -1,0 +1,181 @@
+domain: llm-post-training
+concepts:
+  - {
+      id: sft,
+      title: Supervised fine-tuning,
+      description: "Turning a pretrained model into an assistant by training on prompt–response pairs; chat templates and masking the loss to the response.",
+      difficulty: 3,
+      est_minutes: 25,
+      week: 7,
+      goal_weight: 3,
+      dimensions: [conceptual, implementation],
+      prereqs: [{ id: pretraining }],
+      objectives:
+        [
+          {
+            text: "Explain what supervised fine-tuning changes about a pretrained model's behaviour",
+            dimension: conceptual,
+          },
+          { text: "Mask the loss so only response tokens are trained", dimension: implementation },
+        ],
+      projects: [llm-post-training],
+      status: stub,
+    }
+  - {
+      id: lora,
+      title: LoRA and parameter-efficient fine-tuning,
+      description: "Freezing the pretrained weights and training a small low-rank update instead; why it cuts memory and how adapters are merged.",
+      difficulty: 3,
+      est_minutes: 25,
+      week: 7,
+      goal_weight: 2,
+      dimensions: [conceptual, math],
+      prereqs: [{ id: sft }, { id: matrices }],
+      objectives:
+        [
+          {
+            text: "Count the trainable parameters of a rank-r LoRA update to a d×k weight matrix",
+            dimension: math,
+          },
+          { text: "Explain why a low-rank update can adapt a large model", dimension: conceptual },
+        ],
+      status: stub,
+    }
+  - {
+      id: reward-models,
+      title: Reward models from preferences,
+      description: "Learning a scalar score from pairs of responses a person compared, with the Bradley–Terry preference loss.",
+      difficulty: 3,
+      est_minutes: 30,
+      week: 7,
+      goal_weight: 3,
+      dimensions: [conceptual, math],
+      prereqs: [{ id: sft }, { id: logistic-regression }],
+      objectives:
+        [
+          {
+            text: "Compute the Bradley–Terry probability and loss for a preference pair",
+            dimension: math,
+          },
+          {
+            text: "Explain why preferences are collected as comparisons rather than scores",
+            dimension: conceptual,
+          },
+        ],
+      status: stub,
+    }
+  - {
+      id: rlhf,
+      title: RLHF,
+      description: "Optimising a language model against a reward model with PPO, with a KL penalty that keeps it close to the starting model.",
+      difficulty: 4,
+      est_minutes: 35,
+      week: 7,
+      goal_weight: 3,
+      dimensions: [conceptual, math],
+      prereqs: [{ id: reward-models }, { id: ppo }],
+      objectives:
+        [
+          {
+            text: "Map RLHF onto RL terms: state, action, policy and reward for a language model",
+            dimension: conceptual,
+          },
+          { text: "Compute the KL-penalised reward for a generated response", dimension: math },
+        ],
+      status: stub,
+    }
+  - {
+      id: dpo,
+      title: Direct preference optimisation,
+      description: "Training directly on preference pairs with a classification-style loss, with no separate reward model or RL loop.",
+      difficulty: 4,
+      est_minutes: 30,
+      week: 7,
+      goal_weight: 3,
+      dimensions: [conceptual, math],
+      prereqs: [{ id: rlhf }],
+      objectives:
+        [
+          {
+            text: "Compute the DPO loss for one preference pair from policy and reference log-probabilities",
+            dimension: math,
+          },
+          {
+            text: "Contrast DPO with RLHF: what each needs and what each can go wrong on",
+            dimension: conceptual,
+          },
+        ],
+      status: stub,
+    }
+  - {
+      id: rl-verifiable-rewards,
+      title: RL with verifiable rewards,
+      description: "Reinforcement learning on problems whose answers can be checked automatically, such as maths and code; GRPO's group-relative advantages and how reasoning models are trained.",
+      difficulty: 4,
+      est_minutes: 35,
+      week: 7,
+      goal_weight: 3,
+      dimensions: [conceptual, math, implementation],
+      prereqs: [{ id: sft }, { id: policy-gradients }, { id: rlhf }],
+      objectives:
+        [
+          {
+            text: "Compute group-relative advantages for a group of sampled answers",
+            dimension: math,
+          },
+          {
+            text: "Write a reward function that checks a model's final answer",
+            dimension: implementation,
+          },
+          {
+            text: "Explain why verifiable rewards avoid needing a learned reward model",
+            dimension: conceptual,
+          },
+        ],
+      projects: [llm-post-training],
+      status: stub,
+    }
+  - {
+      id: reward-hacking,
+      title: Reward hacking and over-optimisation,
+      description: "How a policy exploits flaws in a learned or hand-written reward, why reward-model scores rise while true quality falls, and how to detect it.",
+      difficulty: 3,
+      est_minutes: 20,
+      week: 7,
+      goal_weight: 2,
+      dimensions: [conceptual, transfer],
+      prereqs: [{ id: rlhf }, { id: reward-design }],
+      objectives:
+        [
+          {
+            text: "Explain why optimising a proxy reward too hard lowers true quality",
+            dimension: conceptual,
+          },
+          {
+            text: "Spot signs of reward hacking in training curves and sample outputs",
+            dimension: transfer,
+          },
+        ],
+      status: stub,
+    }
+  - {
+      id: llm-evaluation,
+      title: Evaluating LLMs,
+      description: "Benchmarks and contamination, pairwise win rates, and using an LLM as a judge, with its biases.",
+      difficulty: 3,
+      est_minutes: 25,
+      week: 7,
+      goal_weight: 2,
+      dimensions: [conceptual, transfer],
+      prereqs: [{ id: sft }, { id: evaluation-metrics }],
+      objectives:
+        [
+          { text: "Explain how benchmark contamination inflates scores", dimension: conceptual },
+          {
+            text: "Design a pairwise evaluation that controls for position bias in an LLM judge",
+            dimension: transfer,
+          },
+        ],
+      projects: [llm-post-training],
+      status: stub,
+    }

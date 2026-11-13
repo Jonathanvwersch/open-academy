@@ -2,7 +2,7 @@ id: dqn-atari
 title: Playing Atari with Deep Reinforcement Learning
 authors: Mnih et al.
 year: 2013
-week: 9
+week: 6
 est_minutes: 60
 source:
   arxiv: 1312.5602v1

@@ -282,7 +282,7 @@ knowledge_points:
 
       5. **Train.** The policy's output was 4° too little. Training changes the network's weights to shrink misses like this one across all the recorded moments.
 
-      Copying demonstrations with this supervised cycle is called **behavioral cloning**, and Week 8 teaches it.
+      Copying demonstrations with this supervised cycle is called **behavioral cloning**, and Week 10 teaches it.
     problems:
       - ml-to-robots-basics
       - ml-robot-self-explain

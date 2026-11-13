@@ -2,7 +2,7 @@ id: clip
 title: Learning Transferable Visual Models From Natural Language Supervision
 authors: Radford et al.
 year: 2021
-week: 10
+week: 11
 est_minutes: 90
 source:
   arxiv: 2103.00020v1
