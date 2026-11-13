@@ -1068,7 +1068,7 @@ test.describe('learner timezone header', () => {
   test.use({ timezoneId: 'America/Los_Angeles' });
 
   test('sends the browser timezone with API requests', async ({ page }) => {
-    const request = page.waitForRequest((candidate) => candidate.url().endsWith('/api/today'));
+    const request = page.waitForRequest((candidate) => candidate.url().endsWith('/api/learn'));
     await page.goto('/');
     expect((await request).headers()['x-time-zone']).toBe('America/Los_Angeles');
   });

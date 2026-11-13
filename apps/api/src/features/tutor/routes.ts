@@ -86,6 +86,9 @@ export function registerTutorThreadRoutes(
   },
 ) {
   const { db } = deps;
+  api.get('/tutor/status', (context) =>
+    context.json({ tutorEnabled: deps.tutor(context) !== null }),
+  );
   api.get('/tutor/threads', async (c) => {
     const rows = await db
       .select({

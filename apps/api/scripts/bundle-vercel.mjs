@@ -1,13 +1,19 @@
-import { cp, mkdir, rm } from 'node:fs/promises';
+import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { serialize } from 'node:v8';
 import { build } from 'esbuild';
+import { loadContent } from '../dist/content/load.js';
 
 const apiRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const outputDirectory = resolve(apiRoot, 'dist-vercel');
 
 await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });
+
+// Validate and index authored YAML at build time instead of on every function cold start.
+// V8 serialization preserves the Maps and shared object references in ContentIndex.
+await writeFile(resolve(outputDirectory, 'content.bin'), serialize(await loadContent()));
 
 await build({
   entryPoints: [resolve(apiRoot, 'src/vercel.ts')],

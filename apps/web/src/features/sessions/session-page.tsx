@@ -457,7 +457,10 @@ export function SessionPage() {
       await apiFetch(`/api/sessions/${id}/end`, { method: 'POST' });
       await Promise.all([
         queryClient.fetchQuery({ ...learnQueryOptions(), staleTime: 0 }),
-        queryClient.fetchQuery({ ...todayQueryOptions(), staleTime: 0 }),
+        queryClient.invalidateQueries({
+          queryKey: todayQueryOptions().queryKey,
+          refetchType: 'none',
+        }),
       ]);
       await navigate({ to: '/' });
     } finally {

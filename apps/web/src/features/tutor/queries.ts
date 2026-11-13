@@ -1,6 +1,13 @@
-import type { TutorThreadDetail, TutorThreadSummary } from '@academy/contracts/tutor';
+import type { TutorStatus, TutorThreadDetail, TutorThreadSummary } from '@academy/contracts/tutor';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
+export const tutorStatusQueryOptions = () =>
+  queryOptions({
+    queryKey: ['tutor', 'status'] as const,
+    queryFn: () => getJson<TutorStatus>('/api/tutor/status', 'Tutor availability unavailable'),
+    staleTime: Infinity,
+  });
+
 export const tutorThreadsQueryOptions = () =>
   queryOptions({
     queryKey: ['tutor', 'threads'] as const,

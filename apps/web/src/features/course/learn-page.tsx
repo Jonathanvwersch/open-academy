@@ -27,7 +27,7 @@ export function LearnPage() {
     });
   };
   const { data } = useSuspenseQuery(learnQueryOptions());
-  const { data: today } = useSuspenseQuery(todayQueryOptions());
+  const today = data.today;
   const startSession = useMutation({
     mutationFn: async () => {
       const response = await apiFetch('/api/sessions', {

@@ -28,9 +28,12 @@ export class LearnerRepository {
   constructor(
     readonly db: Database,
     readonly userId: string,
+    private readonly requestUser?: typeof users.$inferSelect,
   ) {}
 
   async user() {
+    // HTTP middleware has already read this row. Reuse it only within that request.
+    if (this.requestUser) return this.requestUser;
     const [user] = await this.db.select().from(users).where(eq(users.id, this.userId)).limit(1);
     return user;
   }
@@ -102,11 +105,14 @@ export class LearnerRepository {
       });
   }
 
-  async schedulerState(now: Date): Promise<SchedulerState> {
-    const [user] = await this.db.select().from(users).where(eq(users.id, this.userId)).limit(1);
+  async schedulerState(
+    now: Date,
+    loaded: Pick<Partial<SchedulerState>, 'mastery' | 'lessonRuns' | 'projectProgress'> = {},
+  ): Promise<SchedulerState> {
+    const user = await this.user();
     const [masteryRows, cards, recentAttempts, flags, projects, lessonRunRows, paperRows] =
       await Promise.all([
-        this.masteryRecords(),
+        loaded.mastery ?? this.masteryRecords(),
         this.db.select().from(reviewCards).where(eq(reviewCards.userId, this.userId)),
         this.db
           .select()
@@ -120,8 +126,16 @@ export class LearnerRepository {
           .where(
             and(eq(remediationFlags.userId, this.userId), eq(remediationFlags.status, 'open')),
           ),
-        this.db.select().from(projectProgress).where(eq(projectProgress.userId, this.userId)),
-        this.db.select().from(lessonRuns).where(eq(lessonRuns.userId, this.userId)),
+        loaded.projectProgress ??
+          this.db
+            .select({ projectId: projectProgress.projectId, status: projectProgress.status })
+            .from(projectProgress)
+            .where(eq(projectProgress.userId, this.userId)),
+        loaded.lessonRuns ??
+          this.db
+            .select({ conceptId: lessonRuns.conceptId, status: lessonRuns.status })
+            .from(lessonRuns)
+            .where(eq(lessonRuns.userId, this.userId)),
         this.db.select().from(paperProgress).where(eq(paperProgress.userId, this.userId)),
       ]);
     return {
@@ -193,7 +207,7 @@ export class LearnerRepository {
   }
 
   async activeSession(now: Date) {
-    const [user] = await this.db.select().from(users).where(eq(users.id, this.userId)).limit(1);
+    const user = await this.user();
     const timezone = user?.timezone ?? 'UTC';
     const today = localDateKey(now, timezone);
     const sessions = await this.db

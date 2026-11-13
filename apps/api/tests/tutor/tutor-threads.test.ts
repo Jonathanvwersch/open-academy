@@ -87,6 +87,16 @@ async function send(question: string, threadId?: string, extra: Record<string, u
   });
 }
 
+test('tutor availability needs neither curriculum loading nor a provider call', async () => {
+  const target = createApp({ db, tutorProvider: provider });
+  const response = await target.request('/api/tutor/status');
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ tutorEnabled: true });
+  expect(captured).toEqual([]);
+  const disabled = await createApp({ db, tutorProvider: null }).request('/api/tutor/status');
+  expect(await disabled.json()).toEqual({ tutorEnabled: false });
+});
+
 test('tutor request body normalizes null optional context fields', () => {
   const parsed = tutorThreadBodySchema.parse({
     question: 'Help me understand this practice question.',
