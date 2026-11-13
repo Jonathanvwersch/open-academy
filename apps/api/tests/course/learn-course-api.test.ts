@@ -247,6 +247,13 @@ test('session creation matches the local-day preview kind and activities', async
     expect(previewResponse.status).toBe(200);
     const preview = await previewResponse.json();
     expect(preview.sessionKind).toBe(expectedKind);
+    const home = await (await app.request('/api/learn', { headers })).json();
+    expect(home.today).toEqual({
+      sessionKind: preview.sessionKind,
+      needsDiagnostic: preview.needsDiagnostic,
+      diagnosticActive: preview.diagnosticActive,
+      diagnosticRunId: preview.diagnosticRunId,
+    });
 
     const createdResponse = await app.request('/api/sessions', {
       method: 'POST',

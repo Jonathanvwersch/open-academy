@@ -38,7 +38,7 @@ async function waitForTutorSidebarToSettle(page: Page, panelSelector: string) {
       );
       return Math.abs(wrapperRight - panelRight);
     })
-    .toBeLessThanOrEqual(1);
+    .toBeLessThanOrEqual(0.25);
 }
 
 test.beforeEach(async () => {
@@ -296,7 +296,7 @@ test('restored tutor sidebar loads while the tutor flag is pending', async ({ pa
     localStorage.removeItem('academy.tutor.thread');
     localStorage.setItem('academy.tutor.open', 'true');
   });
-  await page.route('**/api/today', async (route) => {
+  await page.route('**/api/tutor/status', async (route) => {
     startTodayRequest();
     await todayResponseGate;
     await route.continue();

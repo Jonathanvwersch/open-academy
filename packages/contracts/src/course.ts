@@ -1,4 +1,10 @@
+import type { TodayPayload } from './sessions.js';
+
 export interface LearnPayload {
+  today: Pick<
+    TodayPayload,
+    'needsDiagnostic' | 'diagnosticActive' | 'diagnosticRunId' | 'sessionKind'
+  >;
   xp: {
     total: number;
     today: number;

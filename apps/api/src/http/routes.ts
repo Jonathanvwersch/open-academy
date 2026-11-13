@@ -2,7 +2,6 @@ import { asc, eq } from 'drizzle-orm';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { env } from '../config.js';
-import { loadContent } from '../content/load.js';
 import type { ContentIndex } from '../content/types.js';
 import type { Database } from '../db/client.js';
 import { LearnerRepository } from '../db/repository.js';
@@ -40,7 +39,9 @@ export function createApiRoutes(deps: {
   const api = new Hono<ApiEnv>();
   let contentPromise: Promise<ContentIndex> | undefined;
   const content = () => {
-    contentPromise ??= deps.content ? Promise.resolve(deps.content) : loadContent();
+    contentPromise ??= deps.content
+      ? Promise.resolve(deps.content)
+      : import('../content/load.js').then(({ loadContent }) => loadContent());
     return contentPromise;
   };
   const db = deps.db;
@@ -78,9 +79,11 @@ export function createApiRoutes(deps: {
     }
     context.set('userId', user.id);
     context.set('timeZone', timeZone);
+    context.set('user', { ...user, timezone: timeZone });
     await next();
   });
-  const withRepo = (context: Context<ApiEnv>) => new LearnerRepository(db, context.get('userId'));
+  const withRepo = (context: Context<ApiEnv>) =>
+    new LearnerRepository(db, context.get('userId'), context.get('user'));
   const tutor = (context: Context<ApiEnv>) =>
     tutorProvider &&
     new TutorService(

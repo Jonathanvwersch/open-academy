@@ -1,3 +1,7 @@
+export interface TutorStatus {
+  tutorEnabled: boolean;
+}
+
 export interface TutorThreadSummary {
   id: string;
   conceptId: string | null;

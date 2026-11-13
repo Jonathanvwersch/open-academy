@@ -233,15 +233,18 @@ test('session loading starts lesson metadata and run state together without fetc
   expect(requests).not.toContain('/api/papers');
 });
 
-test('Home and the tutor share one Today request', async ({ page }) => {
+test('Home and tutor availability avoid building a second learning plan', async ({ page }) => {
   let todayRequests = 0;
+  let statusRequests = 0;
   page.on('request', (request) => {
     if (new URL(request.url()).pathname === '/api/today') todayRequests += 1;
+    if (new URL(request.url()).pathname === '/api/tutor/status') statusRequests += 1;
   });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open tutor' })).toBeVisible();
-  expect(todayRequests).toBe(1);
+  expect(todayRequests).toBe(0);
+  expect(statusRequests).toBe(1);
 });
 
 test('plain Settings and Course pages do not load the Markdown and math renderer', async ({

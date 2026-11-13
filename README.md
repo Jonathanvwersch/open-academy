@@ -53,3 +53,7 @@ Set `ACADEMY_PASSWORD` as a deployment secret before starting the public app. Pr
 requires a password of at least 12 characters. The Ample service declares this secret in
 `ample.toml`; configure its value through Ample's secret management, not in the repository.
 Locally, leaving it unset disables login and prints a warning from `pnpm dev`.
+
+The Vercel build validates the curriculum and serializes its indexed data beside the API bundle.
+Cold functions load this artifact instead of parsing and validating every YAML file again.
+Keep the Node 24 build and runtime versions aligned; curriculum changes require a new deployment.

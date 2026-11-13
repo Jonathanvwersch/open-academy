@@ -45,8 +45,11 @@ import {
 } from '../../components/ui/sidebar.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip.js';
 import { useIsMobile } from '../../hooks/use-mobile.js';
-import { todayQueryOptions } from '../sessions/queries.js';
-import { tutorThreadQueryOptions, tutorThreadsQueryOptions } from './queries.js';
+import {
+  tutorStatusQueryOptions,
+  tutorThreadQueryOptions,
+  tutorThreadsQueryOptions,
+} from './queries.js';
 
 export interface TutorRequestContext {
   conceptId?: string;
@@ -237,7 +240,7 @@ export function TutorContextProvider({
   } | null>(null);
   const conversationContextRef = useRef<StickToBottomContext | null>(null);
   const sidebarWidthMax = maxSidebarWidth(viewportWidth);
-  const tutorFlag = useQuery(todayQueryOptions());
+  const tutorFlag = useQuery(tutorStatusQueryOptions());
   const enabled = context.enabled || tutorFlag.data?.tutorEnabled === true;
   const visibleOpen = open && routeAllowed && context.allowed;
   const loadingTutor = !context.enabled && tutorFlag.isPending && context.allowed;

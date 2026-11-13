@@ -29,6 +29,7 @@ import {
   estimatedFinishDate,
   estimateTaskXp,
   localDateKey,
+  sessionKindForDate,
   weekXp,
   xpGoalFor,
 } from '../../learning/xp.js';
@@ -52,19 +53,6 @@ export function registerLearnCourseRoutes(
     const userId = context.get('userId');
     const timeZone = context.get('timeZone');
     const now = deps.requestNow(context);
-    const [state, user, events, active] = await Promise.all([
-      repo.schedulerState(now),
-      repo.user(),
-      deps.db.select().from(xpEvents).where(eq(xpEvents.userId, userId)),
-      repo.activeSession(now),
-    ]);
-    const prefs = (user?.prefs ?? {}) as SessionPreferences;
-    const todayLocal = localDateKey(now, timeZone);
-    const totalXp = events.reduce((total, event) => total + event.amount, 0);
-    const todayXp = events
-      .filter((event) => event.localDate === todayLocal)
-      .reduce((total, event) => total + event.amount, 0);
-
     const [runRows, completedRows, projectRows] = await Promise.all([
       deps.db.select().from(lessonRuns).where(eq(lessonRuns.userId, userId)),
       deps.db
@@ -77,14 +65,27 @@ export function registerLearnCourseRoutes(
         .from(projectProgress)
         .where(eq(projectProgress.userId, userId)),
     ]);
+    const [mastery, user, events, active, diagnostic] = await Promise.all([
+      repo.masteryRecords(),
+      repo.user(),
+      deps.db.select().from(xpEvents).where(eq(xpEvents.userId, userId)),
+      repo.activeSession(now),
+      repo.latestDiagnosticRun(),
+    ]);
+    const prefs = (user?.prefs ?? {}) as SessionPreferences;
+    const todayLocal = localDateKey(now, timeZone);
+    const totalXp = events.reduce((total, event) => total + event.amount, 0);
+    const todayXp = events
+      .filter((event) => event.localDate === todayLocal)
+      .reduce((total, event) => total + event.amount, 0);
     const projectStatuses = new Map(projectRows.map((row) => [row.projectId, row.status]));
     const runsByConcept = new Map(runRows.map((run) => [run.conceptId, run]));
     const problemsByRun = await getProblemsByRun(
       deps.db,
       runRows.map((run) => run.id),
     );
-    const masteryByConcept = new Map<string, typeof state.mastery>();
-    for (const record of state.mastery) {
+    const masteryByConcept = new Map<string, typeof mastery>();
+    for (const record of mastery) {
       const conceptRecords = masteryByConcept.get(record.conceptId) ?? [];
       conceptRecords.push(record);
       masteryByConcept.set(record.conceptId, conceptRecords);
@@ -106,7 +107,17 @@ export function registerLearnCourseRoutes(
       ? activeSession.activities.filter(
           (activity) => activity.status === 'planned' || activity.status === 'in_progress',
         )
-      : plannedActivities(state, index, prefs, timeZone, now);
+      : plannedActivities(
+          await repo.schedulerState(now, {
+            mastery,
+            lessonRuns: runRows,
+            projectProgress: projectRows,
+          }),
+          index,
+          prefs,
+          timeZone,
+          now,
+        );
 
     const tasks = activities.map((activity, taskIndex) => {
       const conceptId = activity.conceptId;
@@ -141,7 +152,7 @@ export function registerLearnCourseRoutes(
 
     const recommendedConceptId = tasks.find((task) => task.activityKind === 'learn')?.conceptId;
     const masteryByKey = new Map(
-      state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+      mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
     );
     const lessonRunState = runRows.map(({ conceptId, status }) => ({ conceptId, status }));
     const outlineConceptIds = Array.from(
@@ -243,7 +254,7 @@ export function registerLearnCourseRoutes(
       };
     });
 
-    const weeks = buildCourseWeeks(index, state.mastery, runRows, new Map(), projectStatuses);
+    const weeks = buildCourseWeeks(index, mastery, runRows, new Map(), projectStatuses);
     const topics = weeks.flatMap((week) => week.topics);
     const topicsDone = topics.filter((topic) => topic.status === 'complete').length;
     const estimatedFinish =
@@ -260,6 +271,13 @@ export function registerLearnCourseRoutes(
         ? estimatedFinishDate(topics.length - topicsDone, 0, todayLocal, prefs)
         : null;
     return context.json({
+      today: {
+        needsDiagnostic:
+          (!diagnostic || diagnostic.status === 'active') && Boolean(index.diagnostic),
+        diagnosticActive: diagnostic?.status === 'active',
+        diagnosticRunId: diagnostic?.status === 'active' ? diagnostic.id : null,
+        sessionKind: sessionKindForDate(todayLocal),
+      },
       xp: {
         total: totalXp,
         today: todayXp,
@@ -282,8 +300,8 @@ export function registerLearnCourseRoutes(
 
   api.get('/course', async (context) => {
     const index = await deps.content();
-    const state = await deps.withRepo(context).schedulerState(deps.requestNow(context));
-    const [runs, paperRows, projectRows] = await Promise.all([
+    const [mastery, runs, paperRows, projectRows] = await Promise.all([
+      deps.withRepo(context).masteryRecords(),
       deps.db
         .select()
         .from(lessonRuns)
@@ -302,8 +320,8 @@ export function registerLearnCourseRoutes(
     );
     const projectStatuses = new Map(projectRows.map((row) => [row.projectId, row.status]));
     return context.json({
-      currentWeek: currentLearnerWeek(state, index),
-      weeks: buildCourseWeeks(index, state.mastery, runs, paperStatuses, projectStatuses),
+      currentWeek: currentLearnerWeek({ mastery, lessonRuns: runs }, index),
+      weeks: buildCourseWeeks(index, mastery, runs, paperStatuses, projectStatuses),
     });
   });
 }
