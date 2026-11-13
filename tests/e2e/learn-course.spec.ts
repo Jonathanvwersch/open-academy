@@ -169,6 +169,46 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentStartedAt);
 });
 
+test('Course weeks default to the current week and remember toggles', async ({ page }) => {
+  await page.goto('/course');
+  const weekOneCard = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByRole('heading', { name: 'Week 1 · ML fundamentals' }) });
+  const weekTwoCard = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByRole('heading', { name: 'Week 2 · Optimization' }) });
+  await expect(weekOneCard.getByRole('button', { name: 'Collapse week 1' })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
+  await expect(weekOneCard.locator('ol')).toBeVisible();
+  await expect(weekTwoCard.getByRole('button', { name: 'Expand week 2' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+  await expect(weekTwoCard.locator('ol')).toBeHidden();
+  await expect(weekTwoCard.getByText('Project coming soon')).toBeHidden();
+
+  await weekTwoCard.getByRole('button', { name: 'Expand week 2' }).click();
+  await expect(weekTwoCard.locator('ol')).toBeVisible();
+  await weekTwoCard.getByRole('heading', { name: 'Week 2 · Optimization' }).click();
+  await expect(weekTwoCard.locator('ol')).toBeHidden();
+  await weekTwoCard.getByRole('button', { name: 'Expand week 2' }).click();
+  await weekOneCard.getByRole('button', { name: 'Collapse week 1' }).click();
+
+  await page.reload();
+  await expect(weekOneCard.getByRole('button', { name: 'Expand week 1' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+  await expect(weekOneCard.locator('ol')).toBeHidden();
+  await expect(weekTwoCard.getByRole('button', { name: 'Collapse week 2' })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
+  await expect(weekTwoCard.locator('ol')).toBeVisible();
+});
+
 test('completed activity deep links can continue or show the session finish screen', async ({
   page,
 }) => {
@@ -597,6 +637,7 @@ test('navigation cleanup pages render at desktop and mobile widths', async ({ pa
     .locator('[data-slot="card"]')
     .filter({ has: page.getByRole('heading', { name: 'Week 2 · Optimization' }) });
   await expect(weekOneCard).toContainText('Linear regression in NumPy');
+  await weekTwoCard.getByRole('button', { name: 'Expand week 2' }).click();
   await expect(weekTwoCard).toContainText('Project coming soon');
   await weekOneCard.screenshot({
     path: `${navCleanupScreenshotDir}/course-week-1-desktop.png`,
@@ -886,6 +927,10 @@ test('a fresh post-diagnostic learner sees outline order and prerequisite needs'
   await page.goto('/course');
   const secondTopic = page.locator('li').filter({ hasText: '1.2' });
   await expect(secondTopic).toContainText('Needs Vectors');
+  const weekTwoCard = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByRole('heading', { name: 'Week 2 · Optimization' }) });
+  await weekTwoCard.getByRole('button', { name: 'Expand week 2' }).click();
   const noLessonRow = page.getByRole('listitem').filter({
     has: page.getByText('Matrix products', { exact: true }),
   });

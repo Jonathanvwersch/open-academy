@@ -406,6 +406,7 @@ test('Course project status reflects the learner project-progress row', async ()
   const response = await get('/course');
   expect(response.status).toBe(200);
   const course = await response.json();
+  expect(course.currentWeek).toBe(1);
   expect(course.weeks[0].project).toMatchObject({
     id: 'linreg-numpy',
     available: true,

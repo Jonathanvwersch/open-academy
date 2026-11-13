@@ -38,6 +38,7 @@ export interface LearnPayload {
 }
 
 export interface CoursePayload {
+  currentWeek: number;
   weeks: Array<{
     week: number;
     title: string;

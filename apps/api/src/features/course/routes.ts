@@ -17,7 +17,12 @@ import { topicIsComplete } from '../../learning/course-status.js';
 import { deriveLessonState } from '../../learning/lesson-runner.js';
 import { masteryKey, prerequisiteMet } from '../../learning/prerequisites.js';
 import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
-import { planSession, type SessionKind, sessionBudget } from '../../learning/scheduler.js';
+import {
+  currentLearnerWeek,
+  planSession,
+  type SessionKind,
+  sessionBudget,
+} from '../../learning/scheduler.js';
 import {
   averageDailyXp,
   coursePercent,
@@ -297,6 +302,7 @@ export function registerLearnCourseRoutes(
     );
     const projectStatuses = new Map(projectRows.map((row) => [row.projectId, row.status]));
     return context.json({
+      currentWeek: currentLearnerWeek(state, index),
       weeks: buildCourseWeeks(index, state.mastery, runs, paperStatuses, projectStatuses),
     });
   });
