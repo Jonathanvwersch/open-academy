@@ -1,6 +1,6 @@
 import { useQueries, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { Alert, AlertDescription } from '@/ui/alert.js';
 import { Badge } from '@/ui/badge.js';
@@ -219,6 +219,7 @@ function SessionPage() {
     : activity?.exerciseIds.find(
         (candidate) => !(activity.progress?.completedExerciseIds ?? []).includes(candidate),
       );
+  const currentResult = exerciseId && result?.exerciseId === exerciseId ? result : null;
   const exerciseQuery = useSuspenseQuery(exerciseQueryOptions(exerciseId ?? null));
   const activityScrollKey = activity
     ? `${activity.id}:${activity.progress?.lessonViewed ?? ''}`
@@ -228,12 +229,13 @@ function SessionPage() {
   }, [activityScrollKey]);
   useEffect(() => {
     if (activity?.id && exerciseId) {
-      const lastAttempt = activity.lastAttempt;
-      setResult(
-        lastAttempt && lastAttempt.exerciseId === exerciseId
+      setResult((current) => {
+        if (current?.exerciseId === exerciseId) return current;
+        const lastAttempt = activity.lastAttempt;
+        return lastAttempt && lastAttempt.exerciseId === exerciseId
           ? { ...lastAttempt, status: lastAttempt.status ?? 'graded' }
-          : null,
-      );
+          : null;
+      });
       setHints([]);
       setTutorUnavailable(false);
       setSubmitError('');
@@ -266,29 +268,6 @@ function SessionPage() {
       }).then(() => queryClient.invalidateQueries({ queryKey: ['session', id] }));
     }
   }, [clock, id, queryClient, sessionQuery.data, timeAnchor]);
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target;
-      if (
-        target instanceof HTMLElement &&
-        (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
-          ['radio', 'checkbox', 'combobox'].includes(target.getAttribute('role') ?? ''))
-      ) {
-        return;
-      }
-      if (event.key.toLowerCase() === 'h') {
-        event.preventDefault();
-        hintButton.current?.click();
-      } else if (event.key.toLowerCase() === 'n' || event.key === 'ArrowRight') {
-        if (result && result.status !== 'invalid' && !result.retryAllowed) {
-          event.preventDefault();
-          void queryClient.invalidateQueries({ queryKey: ['session', id] });
-        }
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [id, queryClient, result]);
   const lessonQuery = useSuspenseQuery(
     lessonQueryOptions(
       activity &&
@@ -424,16 +403,68 @@ function SessionPage() {
     }
     setTutorUnavailable(Boolean(nextHint.tutorUnavailable));
   };
-  const continueNext = async () => {
+  const continueNext = useCallback(async () => {
+    if (!activity) return;
     setContinuing(true);
     try {
-      const currentActivityId = activity?.id;
       const currentExerciseId = exerciseId;
+      if (activity.kind !== 'learn' && currentExerciseId) {
+        const completedExerciseIds = new Set([
+          ...(activity.progress?.completedExerciseIds ?? []),
+          currentExerciseId,
+        ]);
+        const hasNextExercise = activity.exerciseIds.some(
+          (candidate) => !completedExerciseIds.has(candidate),
+        );
+        if (hasNextExercise) {
+          const currentOutcome: 'correct' | 'incorrect' | undefined =
+            currentResult &&
+            currentResult.status !== 'invalid' &&
+            currentResult.status !== 'self_check_required'
+              ? Number(currentResult.correct) > 0
+                ? 'correct'
+                : 'incorrect'
+              : undefined;
+          queryClient.setQueryData(sessionQueryOptions(id).queryKey, (session) => {
+            if (!session) return session;
+            return {
+              ...session,
+              activities: session.activities.map((item) =>
+                item.id === activity.id
+                  ? {
+                      ...item,
+                      progress: {
+                        ...item.progress,
+                        completedExerciseIds: [
+                          ...new Set([
+                            ...(item.progress?.completedExerciseIds ?? []),
+                            currentExerciseId,
+                          ]),
+                        ],
+                        ...(currentOutcome
+                          ? {
+                              outcomes: {
+                                ...(item.progress?.outcomes ?? {}),
+                                [currentExerciseId]: currentOutcome,
+                              },
+                            }
+                          : {}),
+                      },
+                    }
+                  : item,
+              ),
+            };
+          });
+          void queryClient.invalidateQueries({ queryKey: ['session', id] });
+          return;
+        }
+      }
       const freshSession = await queryClient.fetchQuery({
         ...sessionQueryOptions(id),
         staleTime: 0,
       });
-      const freshActivity = freshSession.activities.find((item) => item.id === currentActivityId);
+      const freshActivity = freshSession.activities.find((item) => item.id === activity.id);
+      let finalQuestionContinued = false;
       if (
         currentExerciseId &&
         freshActivity?.kind === 'learn' &&
@@ -449,12 +480,38 @@ function SessionPage() {
             finalQuestionContinued: true,
           }),
         });
+        finalQuestionContinued = true;
       }
-      await queryClient.invalidateQueries({ queryKey: ['session', id] });
+      if (finalQuestionContinued) {
+        await queryClient.invalidateQueries({ queryKey: ['session', id] });
+      }
     } finally {
       setContinuing(false);
     }
-  };
+  }, [activity, currentResult, exerciseId, id, queryClient]);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+          ['radio', 'checkbox', 'combobox'].includes(target.getAttribute('role') ?? ''))
+      ) {
+        return;
+      }
+      if (event.key.toLowerCase() === 'h') {
+        event.preventDefault();
+        hintButton.current?.click();
+      } else if (event.key.toLowerCase() === 'n' || event.key === 'ArrowRight') {
+        if (currentResult && currentResult.status !== 'invalid' && !currentResult.retryAllowed) {
+          event.preventDefault();
+          void continueNext();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [continueNext, currentResult]);
   const continueLessonRunner = async (_status: 'quiz' | 'completed', stage: 'final' | 'done') => {
     if (!activity) return;
     const finalQuestionPending =
@@ -536,12 +593,12 @@ function SessionPage() {
       ? `/lessons/${encodeURIComponent(activity.conceptId)}?from=${encodeURIComponent(id)}`
       : undefined;
   const canSubmitAnswer =
-    !result ||
-    result.status === 'invalid' ||
-    result.status === 'self_check_required' ||
-    (result.followUp === true && result.retryAllowed === true) ||
-    (Number(result?.correct) === 0 && result?.retryAllowed === true);
-  const triesLeft = Math.max(0, 2 - Number(result?.attemptNo ?? 1));
+    !currentResult ||
+    currentResult.status === 'invalid' ||
+    currentResult.status === 'self_check_required' ||
+    (currentResult.followUp === true && currentResult.retryAllowed === true) ||
+    (Number(currentResult.correct) === 0 && currentResult.retryAllowed === true);
+  const triesLeft = Math.max(0, 2 - Number(currentResult?.attemptNo ?? 1));
   const helpActions =
     mode !== 'assessment' ? (
       <div className="flex flex-wrap gap-2">
@@ -565,7 +622,7 @@ function SessionPage() {
               enabled: sessionQuery.data.tutorEnabled,
             }}
             greeting={
-              result && result.status !== 'invalid'
+              currentResult && currentResult.status !== 'invalid'
                 ? 'What would you like to know about this answer?'
                 : undefined
             }
@@ -574,19 +631,18 @@ function SessionPage() {
       </div>
     ) : null;
   const submitLabel =
-    result?.status === 'self_check_required'
+    currentResult?.status === 'self_check_required'
       ? 'Submit self-check'
-      : result?.followUp === true && result.retryAllowed === true
+      : currentResult?.followUp === true && currentResult.retryAllowed === true
         ? 'Submit again'
-        : Number(result?.correct) === 0 && result?.retryAllowed === true
+        : Number(currentResult?.correct) === 0 && currentResult?.retryAllowed === true
           ? `Try again · ${triesLeft} ${triesLeft === 1 ? 'try' : 'tries'} left`
           : 'Submit answer';
   const currentResultOutcome =
-    result &&
-    result.exerciseId === exerciseId &&
-    result.status !== 'invalid' &&
-    result.status !== 'self_check_required'
-      ? Number(result.correct) > 0
+    currentResult &&
+    currentResult.status !== 'invalid' &&
+    currentResult.status !== 'self_check_required'
+      ? Number(currentResult.correct) > 0
         ? 'correct'
         : 'incorrect'
       : null;
@@ -733,13 +789,15 @@ function SessionPage() {
               key={`${activity.id}:${exerciseId}`}
               exercise={exerciseQuery.data}
               onSubmit={submitAnswer}
-              explainStep={result?.status === 'self_check_required' ? 'self-check' : 'answer'}
-              readOnlyAnswer={
-                typeof result?.yourAnswer === 'string' ? result.yourAnswer : undefined
+              explainStep={
+                currentResult?.status === 'self_check_required' ? 'self-check' : 'answer'
               }
-              submittedAnswer={result?.yourAnswer}
-              answerOptions={result?.answerOptions as AnswerOptions | undefined}
-              locked={!canSubmitAnswer && result?.status !== 'invalid'}
+              readOnlyAnswer={
+                typeof currentResult?.yourAnswer === 'string' ? currentResult.yourAnswer : undefined
+              }
+              submittedAnswer={currentResult?.yourAnswer}
+              answerOptions={currentResult?.answerOptions as AnswerOptions | undefined}
+              locked={!canSubmitAnswer && currentResult?.status !== 'invalid'}
               submitLabel={submitLabel}
               primaryAction={
                 !canSubmitAnswer
@@ -754,16 +812,16 @@ function SessionPage() {
                 {submitError}
               </p>
             ) : null}
-            {result && result.status !== 'invalid' ? (
+            {currentResult && currentResult.status !== 'invalid' ? (
               <FeedbackPanel
-                result={result}
+                result={currentResult}
                 hideAnswerLines={['mc', 'debug', 'explain'].includes(exerciseQuery.data.type)}
               />
             ) : null}
-            {result?.status === 'invalid' ? (
+            {currentResult?.status === 'invalid' ? (
               <Alert variant="destructive">
                 <AlertDescription>
-                  <Markdown inline>{String(result.feedback)}</Markdown>
+                  <Markdown inline>{String(currentResult.feedback)}</Markdown>
                 </AlertDescription>
               </Alert>
             ) : null}
