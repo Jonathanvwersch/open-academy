@@ -9,16 +9,17 @@
     "ignoreUnknown": true,
     "includes": [
       "**",
+      "!**/node_modules",
+      "!**/dist",
       "!.ample",
-      "!dist",
       "!playwright-report",
       "!test-results",
       "!tests/e2e/.auth",
       "!docs",
-      "!drizzle/meta",
-      "!src/server/tutor/prompts",
-      "!src/web/ui",
-      "!src/web/routeTree.gen.ts"
+      "!apps/api/drizzle/meta",
+      "!apps/api/src/features/tutor/prompts",
+      "!apps/web/src/components/ui",
+      "!apps/web/src/routeTree.gen.ts"
     ]
   },
   "formatter": {

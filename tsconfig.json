@@ -1,31 +1,15 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
     "jsx": "react-jsx",
-    "strict": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-    "paths": {
-      "@/*": ["./src/web/*"]
-    },
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
     "types": ["node", "vite/client"]
   },
   "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
     "api/**/*.ts",
     "tests/**/*.ts",
-    "tests/**/*.tsx",
-    "scripts/**/*.ts",
-    "vite.config.ts",
-    "vitest.config.ts",
+    "labs/**/*.test.ts",
     "playwright.config.ts",
-    "drizzle.config.ts"
-  ],
-  "exclude": ["node_modules", "dist", "src/web/routeTree.gen.ts"]
+    "vitest.config.ts"
+  ]
 }

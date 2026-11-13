@@ -1,11 +1,11 @@
 import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { createDb } from '../../src/server/db/client.js';
-import { sessionActivities, studySessions, users } from '../../src/server/db/schema.js';
-import { env } from '../../src/server/env.js';
+import { env } from '../../apps/api/src/config.js';
+import { createDb } from '../../apps/api/src/db/client.js';
+import { sessionActivities, studySessions, users } from '../../apps/api/src/db/schema.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
-const screenshotDir = '/home/ubuntu/lesson-review';
+const screenshotDir = 'test-results/screenshots/lesson-review';
 mkdirSync(screenshotDir, { recursive: true });
 let userId = '';
 

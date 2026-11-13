@@ -1,0 +1,17 @@
+export function sessionActivityLabel(kind: string) {
+  const labels: Record<string, string> = {
+    learn: 'New lesson',
+    practice: 'Practice',
+    remediate: 'Remediation',
+    transfer: 'Transfer',
+    review: 'Review',
+    quick_check: 'Quiz',
+    diagnostic: 'Quiz',
+    assessment: 'Assessment',
+    lab: 'Project',
+    teachback: 'Teach-back',
+    reflect: 'Reflection',
+    paper: 'Paper',
+  };
+  return labels[kind] ?? kind.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase());
+}

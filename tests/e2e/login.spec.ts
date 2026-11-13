@@ -3,8 +3,8 @@ import { expect, test } from '@playwright/test';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-const brandScreenshotDir = '/home/ubuntu/screenshots/brand';
-const xpFinishScreenshotDir = '/home/ubuntu/screenshots/xp-finish';
+const brandScreenshotDir = 'test-results/screenshots/screenshots/brand';
+const xpFinishScreenshotDir = 'test-results/screenshots/screenshots/xp-finish';
 mkdirSync(brandScreenshotDir, { recursive: true });
 mkdirSync(xpFinishScreenshotDir, { recursive: true });
 

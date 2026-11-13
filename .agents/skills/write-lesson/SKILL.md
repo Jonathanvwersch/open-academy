@@ -161,7 +161,7 @@ Every step whose idea is spatial (directions, slopes, surfaces, arrows, splits, 
 
 ## 7. Review before it ships
 
-1. Run `pnpm content:check` and the content tests (`pnpm exec vitest run tests/content*.test.ts` or the full `pnpm test`).
+1. Run `pnpm content:check` and the content tests (`pnpm exec vitest run apps/api/tests/content/*.test.ts` or the full `pnpm test`).
 2. **Self-check** against §1–§4. The recap gives facts. The opening says what the idea is in its first sentence, then why it's useful. Each step follows the order above, with content headings, a general definition, clean numbers and a correct diagram. Limitations appear where they exist. There are no part labels, and each `explain` is ≤380 words.
 3. **Cold-reader review.** The reader is a new subagent or child Devin session that has seen neither your plan nor any earlier round. Never use the app's own API keys (such as `OPENAI_API_KEY`, the learner's tutor key) to run a reviewer. If you have no way to start a separate agent, stop and tell whoever gave you the task rather than reviewing the lesson yourself. Give the reader:
    - only the rendered lesson text: recap, `where_this_fits`, each step's `explain` and `worked`, `summary`, and the first two problems of each step. "First two problems" means the first two IDs in the knowledge point's `problems` list, with their prompts and options. Replace each diagram with its `aria-label`;

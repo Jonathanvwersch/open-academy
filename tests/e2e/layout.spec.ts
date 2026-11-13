@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { createDb } from '../../src/server/db/client.js';
-import { diagnosticRuns, users } from '../../src/server/db/schema.js';
-import { env } from '../../src/server/env.js';
+import { env } from '../../apps/api/src/config.js';
+import { createDb } from '../../apps/api/src/db/client.js';
+import { diagnosticRuns, users } from '../../apps/api/src/db/schema.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 let userId = '';

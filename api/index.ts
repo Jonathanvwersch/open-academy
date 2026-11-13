@@ -1,6 +1,6 @@
-import { createApp } from '../src/server/app.js';
-import { createDb } from '../src/server/db/client.js';
-import { env } from '../src/server/env.js';
+import { createApp } from '../apps/api/src/app.js';
+import { env } from '../apps/api/src/config.js';
+import { createDb } from '../apps/api/src/db/client.js';
 
 const academyPassword = env.ACADEMY_PASSWORD;
 if (!academyPassword || academyPassword.length < 12) {
