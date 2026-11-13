@@ -2,7 +2,7 @@ id: adam
 title: "Adam: A Method for Stochastic Optimization"
 authors: Kingma and Ba
 year: 2014
-week: 3
+week: 4
 est_minutes: 60
 source:
   arxiv: 1412.6980v9

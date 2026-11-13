@@ -2,7 +2,7 @@ id: dope-pose-estimation
 title: Deep Object Pose Estimation for Semantic Robotic Grasping of Household Objects
 authors: Tremblay et al.
 year: 2018
-week: 9
+week: 11
 est_minutes: 60
 source:
   arxiv: 1809.10790v1

@@ -2,7 +2,7 @@ domain: classical-ml
 concepts:
   - id: what-is-ml
     title: What machine learning is, and how this course fits together
-    description: What learning from examples means, the house-price problem behind Weeks 1–2, and how the course leads to robot learning.
+    description: What learning from examples means, the house-price problem behind Weeks 1–4, and how the course leads to robot learning.
     difficulty: 1
     est_minutes: 15
     week: 1
@@ -115,7 +115,7 @@ concepts:
     description: Bias/variance intuition; diagnosing from train vs validation curves.
     difficulty: 2
     est_minutes: 25
-    week: 3
+    week: 4
     goal_weight: 3
     dimensions: [conceptual, transfer]
     prereqs: [{ id: train-test-split }]
@@ -127,7 +127,7 @@ concepts:
     description: L2/L1 penalties, weight decay, dropout, early stopping.
     difficulty: 3
     est_minutes: 30
-    week: 3
+    week: 4
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: overfitting }, { id: loss-functions }]
@@ -139,7 +139,7 @@ concepts:
     description: What it means for a model to work on unseen data; distribution assumptions.
     difficulty: 3
     est_minutes: 20
-    week: 3
+    week: 4
     goal_weight: 3
     dimensions: [conceptual, transfer]
     prereqs: [{ id: overfitting }]
@@ -151,7 +151,7 @@ concepts:
     description: Accuracy, precision/recall, confusion matrices, regression metrics.
     difficulty: 2
     est_minutes: 25
-    week: 3
+    week: 2
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: train-test-split }]

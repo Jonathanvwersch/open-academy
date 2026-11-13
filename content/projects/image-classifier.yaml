@@ -1,6 +1,6 @@
 id: image-classifier
 title: "Train and debug an image classifier"
-week: 3
+week: 4
 status: stub
 est_hours: 5
 objective: "Train a small CNN on a provided image dataset in PyTorch, diagnose overfitting, and compare regularisation strategies."

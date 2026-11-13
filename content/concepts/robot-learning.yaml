@@ -6,7 +6,7 @@ concepts:
       description: "Joint vs end-effector, absolute vs delta, discretised tokens vs continuous.",
       difficulty: 3,
       est_minutes: 25,
-      week: 11,
+      week: 12,
       goal_weight: 3,
       dimensions: [conceptual, transfer],
       prereqs: [{ id: robot-state-observation-action }],
@@ -19,12 +19,12 @@ concepts:
       description: "Policies that map images (and state) to actions.",
       difficulty: 3,
       est_minutes: 30,
-      week: 11,
+      week: 12,
       goal_weight: 3,
       dimensions: [conceptual, implementation],
       prereqs: [{ id: behavioral-cloning }, { id: convolutions }],
       objectives: [{ text: "Build a small image-to-action policy", dimension: implementation }],
-      projects: [vision-policy],
+      projects: [bc-policy],
       status: stub,
     }
   - {
@@ -33,7 +33,7 @@ concepts:
       description: "Predicting a short sequence of future actions at once (ACT, Zhao et al. 2023, trained on the ALOHA arms); temporal ensembling.",
       difficulty: 3,
       est_minutes: 30,
-      week: 12,
+      week: 13,
       goal_weight: 3,
       dimensions: [conceptual, implementation],
       prereqs: [{ id: behavioral-cloning }, { id: action-representations }],
@@ -48,10 +48,10 @@ concepts:
       description: "Denoising diffusion over action sequences; multimodal action distributions (Diffusion Policy, Chi et al. 2023).",
       difficulty: 4,
       est_minutes: 40,
-      week: 12,
+      week: 13,
       goal_weight: 3,
       dimensions: [conceptual, math],
-      prereqs: [{ id: action-chunking }, { id: gaussian-distribution }],
+      prereqs: [{ id: action-chunking }, { id: diffusion-models }],
       objectives:
         [
           {
@@ -64,13 +64,13 @@ concepts:
   - {
       id: flow-matching,
       title: Flow matching,
-      description: "Learning a velocity field that carries noise to data along near-straight paths; fewer sampling steps than diffusion for continuous actions (Lipman et al. 2023).",
+      description: "Learning a velocity field that carries noise to data along near-straight paths, with fewer sampling steps than diffusion (Lipman et al. 2023); robot policies such as π0 use it to generate continuous actions.",
       difficulty: 4,
       est_minutes: 35,
-      week: 12,
+      week: 9,
       goal_weight: 2,
       dimensions: [conceptual, math],
-      prereqs: [{ id: diffusion-policies }],
+      prereqs: [{ id: diffusion-models }],
       objectives:
         [
           {
@@ -79,6 +79,7 @@ concepts:
           },
           { text: "Interpret a velocity vector along a flow-matching path", dimension: math },
         ],
+      projects: [generative-toy],
       status: stub,
     }
   - {
@@ -87,11 +88,34 @@ concepts:
       description: "Sequence models over observations and actions.",
       difficulty: 3,
       est_minutes: 25,
-      week: 12,
+      week: 13,
       goal_weight: 2,
       dimensions: [conceptual],
       prereqs: [{ id: transformer-block }, { id: behavioral-cloning }],
       objectives: [{ text: "Describe tokenising observations and actions", dimension: conceptual }],
+      status: stub,
+    }
+  - {
+      id: sim-to-real,
+      title: Sim-to-real transfer,
+      description: "Training a policy in simulation and running it on a real robot: the reality gap, domain randomization, system identification and fine-tuning on real data (OpenAI's dexterous hand, 2018).",
+      difficulty: 3,
+      est_minutes: 25,
+      week: 13,
+      goal_weight: 2,
+      dimensions: [conceptual, transfer],
+      prereqs: [{ id: simulation-for-rl }, { id: robot-state-observation-action }, { id: sensors }],
+      objectives:
+        [
+          {
+            text: "Explain where the reality gap comes from and how domain randomization narrows it",
+            dimension: conceptual,
+          },
+          {
+            text: "Choose between domain randomization, system identification and real-world fine-tuning for a given task",
+            dimension: transfer,
+          },
+        ],
       status: stub,
     }
   - {
@@ -100,7 +124,7 @@ concepts:
       description: "Turning a pretrained vision-language model into a robot policy by writing actions as tokens (RT-2, 2023; OpenVLA, 2024).",
       difficulty: 4,
       est_minutes: 35,
-      week: 12,
+      week: 14,
       goal_weight: 3,
       dimensions: [conceptual],
       prereqs:
@@ -118,7 +142,7 @@ concepts:
       description: "Continuous actions from a flow-matching action expert (π0, 2024; π0.5, 2025) and co-training on robot, web and human data.",
       difficulty: 4,
       est_minutes: 35,
-      week: 12,
+      week: 14,
       goal_weight: 3,
       dimensions: [conceptual, transfer],
       prereqs: [{ id: vla-models }, { id: flow-matching }],
@@ -141,7 +165,7 @@ concepts:
       description: "Cross-embodiment pretraining, scaling robot data and generalist policies (RT-1, 2022; Open X-Embodiment and RT-X, 2023; Octo, 2024; DROID, 2024; GR00T N1, 2025).",
       difficulty: 4,
       est_minutes: 25,
-      week: 12,
+      week: 14,
       goal_weight: 2,
       dimensions: [conceptual],
       prereqs: [{ id: vla-models }, { id: vla-action-heads, strength: soft }],
@@ -154,10 +178,10 @@ concepts:
       description: "Models trained on video that predict what happens next given an action, either as future camera frames (Genie, 2024; NVIDIA Cosmos, 2025) or as future embeddings (V-JEPA 2-AC, 2025), used as learned simulators, for planning and to evaluate policies.",
       difficulty: 4,
       est_minutes: 35,
-      week: 12,
+      week: 14,
       goal_weight: 2,
       dimensions: [conceptual, transfer],
-      prereqs: [{ id: world-models }, { id: diffusion-policies }, { id: jepa }],
+      prereqs: [{ id: world-models }, { id: diffusion-models }, { id: jepa }],
       objectives:
         [
           {
@@ -177,7 +201,7 @@ concepts:
       description: "One model that predicts both the robot's future camera video and its actions, built on a pretrained video-generation model, so the policy learns how the world moves from video (UVA, 2025; Genie Envisioner, 2025; DreamZero, 2026).",
       difficulty: 4,
       est_minutes: 35,
-      week: 12,
+      week: 14,
       goal_weight: 3,
       dimensions: [conceptual, transfer],
       prereqs: [{ id: video-world-models }, { id: vla-action-heads, strength: soft }],
@@ -200,7 +224,7 @@ concepts:
       description: "Kinematic differences, retargeting, learning from human video (Mobile ALOHA, 2024; UMI, 2024).",
       difficulty: 3,
       est_minutes: 25,
-      week: 12,
+      week: 14,
       goal_weight: 3,
       dimensions: [conceptual, transfer],
       prereqs: [{ id: demonstrations }, { id: forward-kinematics, strength: soft }],
@@ -219,7 +243,7 @@ concepts:
       description: "A timeline of the papers behind modern robot learning: what each solved, its key idea and what built on it (RT-1, SayCan, Diffusion Policy, ACT, RT-2, Open X-Embodiment, Octo, OpenVLA, DROID, π0, Genie, V-JEPA 2, GR00T N1, Gemini Robotics, UVA, Genie Envisioner, DreamZero).",
       difficulty: 4,
       est_minutes: 45,
-      week: 12,
+      week: 14,
       goal_weight: 3,
       dimensions: [conceptual],
       prereqs:
@@ -245,7 +269,7 @@ concepts:
       description: "Control-loop latency budgets, on-robot vs remote inference, and how inference speed limits policy size and motivates action chunking.",
       difficulty: 3,
       est_minutes: 20,
-      week: 12,
+      week: 13,
       goal_weight: 2,
       dimensions: [conceptual, transfer],
       prereqs: [{ id: gpu-inference-basics }],
@@ -265,7 +289,7 @@ concepts:
       description: "Collection, cleaning, synchronisation, quality assurance, data efficiency.",
       difficulty: 3,
       est_minutes: 30,
-      week: 13,
+      week: 15,
       goal_weight: 3,
       dimensions: [conceptual, implementation, transfer],
       prereqs: [{ id: obs-action-datasets }],
@@ -278,7 +302,7 @@ concepts:
       description: "Categorising rollout failures and tracing them to data or model causes.",
       difficulty: 3,
       est_minutes: 25,
-      week: 13,
+      week: 15,
       goal_weight: 3,
       dimensions: [transfer],
       prereqs: [{ id: policy-evaluation }, { id: distribution-shift }],

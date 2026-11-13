@@ -11,7 +11,7 @@ concepts:
   - loss-functions
   - gradients
 why_this_week: "This week ends with gradient descent: repeatedly moving the weights a small step against the gradient of the loss. Ruder's overview shows how that one idea is used in practice, why the plain version struggles, and the family of variants (momentum, Adam and others) that nearly every model is trained with."
-how_to_read: "Read the introduction and the section on the three gradient descent variants (batch, stochastic and mini-batch) closely; they follow directly from this week. Read the section on challenges. Skim the list of algorithms: for now, aim to understand momentum, and come back to the rest in Week 3 when you study Adam. Skip the parallel and distributed training section."
+how_to_read: "Read the introduction and the section on the three gradient descent variants (batch, stochastic and mini-batch) closely; they follow directly from this week. Read the section on challenges. Skim the list of algorithms: for now, aim to understand momentum, and come back to the rest in Week 4 when you study Adam. Skip the parallel and distributed training section."
 questions:
   - id: claim
     kind: claim

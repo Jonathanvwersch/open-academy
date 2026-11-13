@@ -2,7 +2,7 @@ id: pytorch-paper
 title: "PyTorch: An Imperative Style, High-Performance Deep Learning Library"
 authors: Paszke et al.
 year: 2019
-week: 2
+week: 3
 est_minutes: 60
 source:
   arxiv: 1912.01703v1

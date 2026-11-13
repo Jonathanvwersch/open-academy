@@ -1,0 +1,8 @@
+id: generative-toy
+title: "Diffusion and flow matching on toy data"
+week: 9
+status: stub
+est_hours: 4
+objective: "Train a small diffusion model and a flow-matching model on a 2D toy dataset in PyTorch, then compare sample quality as the number of sampling steps falls."
+background: ""
+prereqs: [diffusion-models, flow-matching]

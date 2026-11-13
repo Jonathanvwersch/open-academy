@@ -81,11 +81,28 @@ weeks:
           gradients,
           gradient-descent,
           train-test-split,
-          probability-basics,
+          reading-papers,
         ],
     }
   - {
       week: 2,
+      title: Probability and classification,
+      project: classifier-numpy,
+      intro: "Probability as the language of uncertainty, and using it to classify: the Gaussian, maximum likelihood, logistic regression, cross-entropy and softmax, and how to measure a classifier.",
+      concepts:
+        [
+          probability-basics,
+          gaussian-distribution,
+          maximum-likelihood,
+          logistic-regression,
+          information-theory,
+          classification-softmax,
+          evaluation-metrics,
+          descriptive-statistics,
+        ],
+    }
+  - {
+      week: 3,
       title: Neural networks,
       project: nn-from-scratch,
       intro: "A straight-line model can't capture every pattern. You'll build a neural network from neurons and layers, and learn backpropagation, the method that trains every modern network.",
@@ -98,36 +115,30 @@ weeks:
           backpropagation,
           autodiff,
           pytorch-basics,
-          logistic-regression,
-        ],
-    }
-  - {
-      week: 3,
-      title: Deep learning practice,
-      project: image-classifier,
-      intro: "Training real networks well: faster optimisers, avoiding overfitting, measuring results honestly, and recognising images with convolutional networks.",
-      concepts:
-        [
-          sgd-minibatch,
-          momentum-adam,
-          overfitting,
-          regularization,
-          generalization,
-          evaluation-metrics,
-          descriptive-statistics,
-          information-theory,
-          classification-softmax,
-          weight-init-normalization,
-          debugging-training,
-          images-as-tensors,
-          convolutions,
-          autoencoders,
-          gaussian-distribution,
-          maximum-likelihood,
         ],
     }
   - {
       week: 4,
+      title: Deep learning practice,
+      project: image-classifier,
+      intro: "Training deep networks that work: minibatches and Adam, initialisation and normalisation, overfitting and regularisation, debugging and fair experiments, then convolutional networks and autoencoders for images.",
+      concepts:
+        [
+          sgd-minibatch,
+          momentum-adam,
+          weight-init-normalization,
+          overfitting,
+          regularization,
+          generalization,
+          debugging-training,
+          experimental-design,
+          images-as-tensors,
+          convolutions,
+          autoencoders,
+        ],
+    }
+  - {
+      week: 5,
       title: Transformers and LLMs,
       project: char-transformer,
       intro: "The model design behind ChatGPT and many robot models: tokens, embeddings and attention, built up into a small language model.",
@@ -141,11 +152,12 @@ weeks:
           transformer-block,
           causal-masking,
           autoregressive-lm,
+          mixture-of-experts,
           pretraining,
         ],
     }
   - {
-      week: 5,
+      week: 6,
       title: Inference,
       project: inference-engine,
       intro: "A trained model is only useful if it runs fast enough. You'll learn what makes inference slow, from memory bandwidth to the KV cache, and the techniques serving systems use to speed it up: caching, quantisation, speculative decoding and batching.",
@@ -163,7 +175,7 @@ weeks:
         ],
     }
   - {
-      week: 6,
+      week: 7,
       title: Reinforcement learning,
       project: rl-sim,
       intro: "Learning by trial and error from rewards: decision problems, value functions, Q-learning, policy gradients and PPO, the algorithm behind RLHF.",
@@ -174,6 +186,7 @@ weeks:
           value-functions,
           q-learning,
           exploration,
+          deep-q-learning,
           policy-gradients,
           ppo,
           reward-design,
@@ -181,13 +194,14 @@ weeks:
         ],
     }
   - {
-      week: 7,
+      week: 8,
       title: Post-training LLMs,
       project: llm-post-training,
       intro: "Turning a pretrained language model into a useful assistant: supervised fine-tuning, learning rewards from human preferences, RLHF and DPO, and reinforcement learning on problems with checkable answers, the recipe behind reasoning models.",
       concepts:
         [
           sft,
+          eigen-svd,
           lora,
           reward-models,
           rlhf,
@@ -198,7 +212,22 @@ weeks:
         ],
     }
   - {
-      week: 8,
+      week: 9,
+      title: Multimodal and generative models,
+      project: generative-toy,
+      intro: "Models that see and generate: vision transformers, CLIP, vision-language models and self-supervised JEPA, then diffusion and flow matching, which later generate robot actions and video.",
+      concepts:
+        [
+          vision-encoders,
+          image-text-alignment,
+          jepa,
+          vision-language-models,
+          diffusion-models,
+          flow-matching,
+        ],
+    }
+  - {
+      week: 10,
       title: Robotics foundations,
       project: planar-arm,
       intro: "How robots describe where things are: coordinate frames, rotations and transforms, then working out where an arm's hand is from its joint angles, and back.",
@@ -206,7 +235,6 @@ weeks:
         [
           coordinate-frames,
           rotation-matrices,
-          eigen-svd,
           rigid-transforms,
           homogeneous-transforms,
           robot-joints,
@@ -216,7 +244,7 @@ weeks:
         ],
     }
   - {
-      week: 9,
+      week: 11,
       title: Robotics control and perception,
       project: control-sim,
       intro: "How a robot senses the world and acts on it: sensors, cameras, feedback control and basic dynamics.",
@@ -231,72 +259,67 @@ weeks:
         ],
     }
   - {
-      week: 10,
+      week: 12,
       title: Imitation learning,
       project: bc-policy,
-      intro: "Teaching a robot by showing it: learning a policy from human demonstrations, why it breaks when the robot drifts off course, and how to fix that.",
+      intro: "Teaching a robot by showing it: action representations, learning a policy from demonstrations by state or by camera, why it breaks when the robot drifts off course, how to fix that, and how to measure success honestly.",
       concepts:
         [
           demonstrations,
           obs-action-datasets,
+          action-representations,
           behavioral-cloning,
           distribution-shift,
           dagger,
+          vision-conditioned-policies,
           policy-evaluation,
+          statistical-evaluation,
           bc-vs-rl,
         ],
     }
   - {
-      week: 11,
-      title: Modern multimodal AI,
-      project: vision-policy,
-      intro: "Models that connect images and text, and how they let a robot act on what its camera sees.",
-      concepts:
-        [
-          vision-encoders,
-          image-text-alignment,
-          jepa,
-          vision-language-models,
-          action-representations,
-          vision-conditioned-policies,
-        ],
-    }
-  - {
-      week: 12,
-      title: Advanced robot learning,
+      week: 13,
+      title: Robot policies,
       project: chunking-policy,
-      intro: "The methods behind current robot foundation models: action chunking, diffusion policies, transformer policies and vision-language-action models.",
+      intro: "The policy designs behind today's robot learning: action chunking, diffusion and transformer policies, getting a policy trained in simulation to work on a real robot, and running it fast enough.",
       concepts:
         [
           action-chunking,
           diffusion-policies,
-          flow-matching,
           transformer-policies,
+          sim-to-real,
           robot-inference-latency,
+        ],
+    }
+  - {
+      week: 14,
+      title: Robot foundation models and world models,
+      project: robot-policy-finetune,
+      intro: "Large pretrained robot models: vision-language-action models, their action heads and training data across many robots, and world models that predict what happens next, from model-based RL to video world models.",
+      concepts:
+        [
           vla-models,
           vla-action-heads,
           robot-foundation-models,
+          embodiment-gap,
           world-models,
           video-world-models,
           world-action-models,
-          embodiment-gap,
           landmark-robot-learning-papers,
         ],
     }
   - {
-      week: 13,
-      title: End-to-end robot learning,
+      week: 15,
+      title: End-to-end robot learning and capstone,
       project: capstone,
-      intro: "Running a robot-learning project properly: data pipelines, evaluation, failure analysis and statistics.",
+      intro: "Running a robot-learning project properly from data to deployed policy: data pipelines, failure analysis, system design and judging results critically, in a full capstone.",
       concepts:
-        [data-pipelines-robotics, failure-analysis, experimental-design, statistical-evaluation],
-    }
-  - {
-      week: 14,
-      title: Capstone and final assessment,
-      project: capstone,
-      intro: "Designing a complete ML system, reading research papers and judging models critically.",
-      concepts: [system-design-ml, reading-papers, critical-evaluation],
+        [
+          data-pipelines-robotics,
+          failure-analysis,
+          system-design-ml,
+          critical-evaluation,
+        ],
     }
 goals:
   - {

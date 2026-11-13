@@ -1,8 +1,0 @@
-id: vision-policy
-title: "Vision-conditioned policy"
-week: 11
-status: stub
-est_hours: 5
-objective: "Train a small policy mapping rendered images to actions and compare it with a state-based policy."
-background: ""
-prereqs: [vision-conditioned-policies]

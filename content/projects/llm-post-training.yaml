@@ -1,6 +1,6 @@
 id: llm-post-training
 title: "Post-train a small language model"
-week: 7
+week: 8
 status: stub
 est_hours: 6
 objective: "Fine-tune a small pretrained language model with supervised fine-tuning, then train it with GRPO on arithmetic problems with automatically checked answers, and measure how much accuracy improves."

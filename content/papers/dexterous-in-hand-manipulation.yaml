@@ -2,7 +2,7 @@ id: dexterous-in-hand-manipulation
 title: Learning Dexterous In-Hand Manipulation
 authors: OpenAI (Andrychowicz et al.)
 year: 2018
-week: 8
+week: 10
 est_minutes: 75
 source:
   arxiv: 1808.00177v5
@@ -10,8 +10,8 @@ concepts:
   - robot-joints
   - coordinate-frames
   - rotation-matrices
-why_this_week: This week is about describing robots with coordinate frames, rotations and joints. In this paper a five-fingered robot hand with 24 joints learns to turn a block to any target orientation. Reading it shows why orientations and joint angles matter, and builds on the simulation and reinforcement learning ideas from Week 6.
-how_to_read: "Read the introduction and the task description: how the hand, the block and the target orientation are represented. Read the overview of the system and its figure. Skim the reinforcement learning details from Week 6. Read the results on the real robot and the section on behaviours the policy learned."
+why_this_week: This week is about describing robots with coordinate frames, rotations and joints. In this paper a five-fingered robot hand with 24 joints learns to turn a block to any target orientation. Reading it shows why orientations and joint angles matter, and builds on the simulation and reinforcement learning ideas from Week 7.
+how_to_read: "Read the introduction and the task description: how the hand, the block and the target orientation are represented. Read the overview of the system and its figure. Skim the reinforcement learning details from Week 7. Read the results on the real robot and the section on behaviours the policy learned."
 questions:
   - id: claim
     kind: claim

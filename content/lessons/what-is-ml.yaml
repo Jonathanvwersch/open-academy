@@ -225,7 +225,7 @@ knowledge_points:
           <text x="24" y="119" font-weight="700">Model</text>
           <text x="140" y="119">weighted sum (Week 1)</text>
           <path d="M352 114 H380" stroke="#737373" stroke-width="2"/>
-          <text x="392" y="119">neural network (Week 2)</text>
+          <text x="392" y="119">neural network (Week 3)</text>
           <rect x="12" y="144" width="616" height="40" rx="8" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
           <text x="24" y="169" font-weight="700">Output</text>
           <text x="140" y="169">a predicted price</text>
@@ -275,14 +275,14 @@ knowledge_points:
 
       2. **Name the target.** The answer to copy is what the person did at that moment, which was to turn the elbow by 10° (degrees).
 
-      3. **Predict.** The policy is a neural network, a bigger model built from many weighted sums, which Week 2 teaches. It outputs an elbow turn of 6°.
+      3. **Predict.** The policy is a neural network, a bigger model built from many weighted sums, which Week 3 teaches. It outputs an elbow turn of 6°.
 
       4. **Measure the miss.** As with house prices, we subtract the target from the prediction.
          $$6-10=-4$$
 
       5. **Train.** The policy's output was 4° too little. Training changes the network's weights to shrink misses like this one across all the recorded moments.
 
-      Copying demonstrations with this supervised cycle is called **behavioral cloning**, and Week 10 teaches it.
+      Copying demonstrations with this supervised cycle is called **behavioral cloning**, and Week 12 teaches it.
     problems:
       - ml-to-robots-basics
       - ml-robot-self-explain
