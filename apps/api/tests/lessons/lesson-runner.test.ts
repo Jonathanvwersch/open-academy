@@ -119,22 +119,44 @@ test('basics answers count toward the streak and can finish the step', () => {
   });
 });
 
-test('assisted correct answers preserve but do not advance the streak', () => {
+test('correct answers advance the streak whether or not the tutor helped', () => {
   const assisted = row(2, 1, 'kp', 1, true);
   expect(derive(lesson, [row(1, 1), assisted]).points[0]).toMatchObject({
-    status: 'active',
+    status: 'passed',
     answered: 2,
-    streak: 1,
+    streak: 2,
   });
   expect(derive(lesson, [row(1, 1), assisted, row(3, 1)]).points[0]).toMatchObject({
     status: 'passed',
-    answered: 3,
+    answered: 2,
     streak: 2,
   });
   expect(derive(lesson, [row(1, 1), row(2, 1)]).points[0]).toMatchObject({
     status: 'passed',
     answered: 2,
     streak: 2,
+  });
+  const helpedSequence = [
+    row(1, 1),
+    row(2, 1, 'kp', 1, true),
+    row(3, 1, 'kp', 1, true),
+    row(4, 1, 'kp', 1, true),
+  ];
+  expect(derive(lesson, helpedSequence).points[0]).toMatchObject({
+    status: 'passed',
+    answered: 2,
+    streak: 2,
+  });
+  expect(derive(lesson, [...helpedSequence, row(5, 1)]).points[0]).toMatchObject({
+    status: 'passed',
+    streak: 2,
+  });
+  expect(
+    derive(lesson, [row(1, 1, 'kp', 1, true), row(2, 1, 'kp', 1, true)]).points[0],
+  ).toMatchObject({ status: 'passed', streak: 2 });
+  expect(derive(lesson, [row(1, 1, 'kp', 1, true), row(2, 0), row(3, 1)]).points[0]).toMatchObject({
+    status: 'active',
+    streak: 1,
   });
 });
 

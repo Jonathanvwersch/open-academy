@@ -22,6 +22,7 @@ import { LessonBlock } from './lesson-block.js';
 import { LessonSteps } from './lesson-steps.js';
 import { lessonQueryOptions, lessonRunQueryOptions } from './queries.js';
 import { QuizReview } from './quiz-review.js';
+import { StepProgress } from './step-progress.js';
 
 function problemLabel(problem: { position: number }) {
   return `Question ${problem.position}`;
@@ -199,13 +200,13 @@ export function LessonRunner({
   );
 
   useEffect(() => {
-    if (!state && !starting.current) {
+    if ((!state || state.needsProgressSync) && !starting.current) {
       starting.current = true;
       setBusy(true);
       void apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/run`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ activityId }),
+        body: JSON.stringify({ activityId, reconcileProgress: state?.needsProgressSync === true }),
       })
         .then(async (response) => {
           const data = (await response.json()) as LessonRunPayload;
@@ -553,25 +554,7 @@ export function LessonRunner({
               <CardContent className="space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h3 className="text-sm font-medium">{problemLabel(shownProblem)}</h3>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div
-                      role="img"
-                      aria-label={`${pointStatus?.streak ?? 0} correct in a row`}
-                      className="flex gap-2"
-                    >
-                      {[0, 1].map((index) => (
-                        <span
-                          key={index}
-                          className={`h-3 w-3 rounded-full border ${
-                            index < (pointStatus?.streak ?? 0)
-                              ? 'border-green-600 bg-green-500'
-                              : 'border-border bg-background'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <span>2 in a row to finish this step</span>
-                  </div>
+                  <StepProgress point={pointStatus} />
                 </div>
                 <div data-testid="lesson-problem-prompt">
                   <Markdown>{shownProblem.exercise.prompt}</Markdown>
@@ -614,11 +597,6 @@ export function LessonRunner({
                     />
                     {isFinalRetryResult(state.lastAnsweredProblem.result) ? (
                       <FinalRetryNote />
-                    ) : state.lastAnsweredProblem.result.correct === 1 &&
-                      state.lastAnsweredProblem.result.assisted ? (
-                      <p className="text-sm text-muted-foreground">
-                        You asked the tutor about this one, so it doesn't count toward 2 in a row.
-                      </p>
                     ) : null}
                   </>
                 ) : null}
@@ -894,25 +872,7 @@ export function LessonRunner({
                     className="flex flex-wrap items-center justify-between gap-3"
                   >
                     <h3 className="text-sm font-medium">{problemLabel(shownProblem)}</h3>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div
-                        role="img"
-                        aria-label={`${pointStatus?.streak ?? 0} correct in a row`}
-                        className="flex gap-2"
-                      >
-                        {[0, 1].map((index) => (
-                          <span
-                            key={index}
-                            className={`h-3 w-3 rounded-full border ${
-                              index < (pointStatus?.streak ?? 0)
-                                ? 'border-green-600 bg-green-500'
-                                : 'border-border bg-background'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <span>2 in a row to finish this step</span>
-                    </div>
+                    <StepProgress point={pointStatus} />
                   </div>
                   <div
                     ref={problemPromptRef}
@@ -981,11 +941,6 @@ export function LessonRunner({
                       />
                       {isFinalRetryResult(state.lastAnsweredProblem.result) ? (
                         <FinalRetryNote />
-                      ) : state.lastAnsweredProblem.result.correct === 1 &&
-                        state.lastAnsweredProblem.result.assisted ? (
-                        <p className="text-sm text-muted-foreground">
-                          You asked the tutor about this one, so it doesn't count toward 2 in a row.
-                        </p>
                       ) : null}
                     </>
                   ) : null}

@@ -36,6 +36,7 @@ export interface LessonReviewPayload {
 export interface LessonRunPayload {
   run: null | {
     id: string;
+    needsProgressSync?: boolean;
     status: 'in_progress' | 'needs_retry' | 'quiz' | 'completed';
     where_this_fits?: string;
     prerequisites?: LessonPrerequisite[];

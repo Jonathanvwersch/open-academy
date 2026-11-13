@@ -95,8 +95,7 @@ export function deriveLessonState<Row extends LessonProblemRow>(
     let answeredCount = 0;
     for (const problem of answered) {
       answeredCount += 1;
-      if (problem.correct !== 1) streak = 0;
-      else if (!problem.assisted) streak += 1;
+      streak = problem.correct === 1 ? streak + 1 : 0;
       if (streak === 2) {
         passedOn = problem;
         break;

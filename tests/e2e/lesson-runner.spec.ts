@@ -25,7 +25,7 @@ const lessonQuizScreenshotDir = 'test-results/screenshots/shots/lesson-quiz';
 const quizUiScreenshotDir = 'test-results/screenshots/screenshots/quiz-ui';
 const spacedReviewScreenshotDir = 'test-results/screenshots/screenshots/spaced-review';
 const lastTryScreenshotDir = 'test-results/screenshots/last-try';
-const failedQuizScreenshotDir = '/home/ubuntu/screens/failed-quiz';
+const failedQuizScreenshotDir = 'test-results/screenshots/failed-quiz';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
@@ -550,17 +550,21 @@ test('passes every knowledge point and restores the exact problem and result aft
   await firstDisplayedOption.focus();
   await page.keyboard.press('1');
   await expect(firstDisplayedOption).toHaveAttribute('aria-checked', 'true');
-  await expect(page.getByLabel('0 correct in a row')).toBeVisible();
+  await expect(page.getByLabel('0 of 2 correct in a row')).toBeVisible();
+  await expect(page.getByText('2 correct in a row', { exact: true })).toBeVisible();
   run = await answerAndReload(page, true);
   expect(run.points[0]).toMatchObject({ status: 'active', answered: 1, streak: 1 });
-  await expect(page.getByLabel('1 correct in a row')).toBeVisible();
+  await expect(page.getByLabel('1 of 2 correct in a row')).toBeVisible();
+  await expect(
+    page.getByText('1 more correct to finish', { exact: true }).filter({ visible: true }),
+  ).toBeVisible();
 
   for (let pointIndex = 0; pointIndex < run.points.length; pointIndex += 1) {
     while (run.points[pointIndex].status !== 'passed') {
       if (!run.pendingProblem) run = await nextProblemAndReload(page, conceptId, true);
       run = await answerAndReload(page, true);
       if (pointIndex === 0 && run.points[0].streak === 1) {
-        await expect(page.getByLabel('1 correct in a row')).toBeVisible();
+        await expect(page.getByLabel('1 of 2 correct in a row')).toBeVisible();
         await page.screenshot({
           path: `${screenshotDir}/correct-answer-streak.png`,
           fullPage: true,
@@ -967,7 +971,9 @@ test('typing a question mark in the tutor composer does not show shortcut help',
   await expect(exercise.getByText(/Enter submits/)).toHaveCount(0);
 });
 
-test('a tutor-assisted correct answer does not advance the streak', async ({ page }) => {
+test('asking the tutor does not block a correct answer from completing the step', async ({
+  page,
+}) => {
   await createSession(page);
   let run = await answerAndReload(page, true);
   expect(run.points[0]).toMatchObject({ status: 'active', streak: 1 });
@@ -984,13 +990,68 @@ test('a tutor-assisted correct answer does not advance the streak', async ({ pag
   ).toBeVisible();
 
   run = await answerAndReload(page, true);
-  expect(run.points[0]).toMatchObject({ status: 'active', streak: 1 });
+  expect(run.points[0]).toMatchObject({ status: 'passed', streak: 2 });
   expect(run.lastAnsweredProblem.result.assisted).toBe(true);
+  await expect(page.getByTestId('lesson-problem').getByRole('status')).toContainText('Correct');
+  await expect(page.getByText(/doesn't count|without help|with help/)).toHaveCount(0);
+  await expect(page.getByText('Step complete', { exact: true })).toBeVisible();
   await expect(
-    page.getByText("You asked the tutor about this one, so it doesn't count toward 2 in a row.", {
-      exact: true,
-    }),
+    tutor.getByTestId('tutor-assistant-message').filter({ hasText: `Tutor reply to: ${question}` }),
   ).toBeVisible();
+  await page.getByText('Step complete', { exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: '/tmp/academy-streak-assisted.png', fullPage: false });
+  run = await nextProblemAndReload(page);
+  run = await answerAndReload(page, true);
+  expect(run.points[0]).toMatchObject({ status: 'passed', streak: 2 });
+  expect(run.lastAnsweredProblem.result.assisted).toBe(false);
+  expect(run.points[1]).toMatchObject({ status: 'active', streak: 1 });
+});
+
+test('reloading restores progress earned before tutor-assisted answers counted', async ({
+  page,
+}) => {
+  await createSession(page);
+  const initial = await currentRun(page);
+  const first = initial.pending;
+  const db = createDb(env.TEST_DATABASE_URL);
+  try {
+    await db
+      .update(lessonProblems)
+      .set({ correct: 1, answeredAt: new Date('2026-01-01T12:00:01Z') })
+      .where(eq(lessonProblems.id, first.id));
+    await db.insert(lessonProblems).values(
+      [2, 3, 4].map((position) => ({
+        runId: initial.id,
+        knowledgePointId: first.knowledgePointId,
+        round: first.round,
+        position,
+        exerciseId: first.exerciseId,
+        seed: first.seed,
+        assisted: true,
+        correct: position < 4 ? 1 : null,
+        servedAt: new Date(`2026-01-01T12:00:0${position}Z`),
+        answeredAt: position < 4 ? new Date(`2026-01-01T12:00:0${position}Z`) : null,
+      })),
+    );
+  } finally {
+    await db.$client.end();
+  }
+  const synchronized = page.waitForResponse(
+    (response) => response.url().endsWith('/run') && response.request().method() === 'POST',
+  );
+  await page.reload();
+  expect((await synchronized).status()).toBe(200);
+  const recovered = await currentRun(page);
+  expect(recovered.needsProgressSync).toBeUndefined();
+  expect(recovered.points[0]).toMatchObject({ status: 'passed', streak: 2 });
+  expect(recovered.pending.knowledgePointId).not.toBe(first.knowledgePointId);
+  expect(recovered.xpEarned).toBe(10);
+  await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
+    'data-problem-id',
+    recovered.pending.id,
+  );
+  await page.reload();
+  expect((await currentRun(page)).xpEarned).toBe(10);
 });
 
 test('explains when a final explain question is locked after the last try', async ({ page }) => {
