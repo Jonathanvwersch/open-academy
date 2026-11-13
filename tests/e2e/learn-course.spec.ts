@@ -929,6 +929,8 @@ async function mockLessonReview(
           blocks: lesson.blocks,
           knowledge_points: lesson.knowledge_points,
         },
+        checks: {},
+        runStatus: null,
         checkAnswers: {},
         conceptTitle,
       }),

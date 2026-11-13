@@ -342,6 +342,8 @@ test('legacy lesson review presents labelled blocks as cards with checks inside'
             { kind: 'summary', md: 'Train to fit, validate to choose, test once to report.' },
           ],
         },
+        checks: {},
+        runStatus: null,
         checkAnswers: {
           'tts-check-purpose': 'Hyperparameter selection uses validation data.',
         },
