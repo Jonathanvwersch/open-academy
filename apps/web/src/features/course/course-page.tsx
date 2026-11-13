@@ -3,7 +3,6 @@ import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, FileText, Wrench } from 'lucide-react';
 import { Collapsible } from 'radix-ui';
 import { useEffect, useState } from 'react';
-import { Markdown } from '../../components/markdown.js';
 import { Badge } from '../../components/ui/badge.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { paperStatusLabel } from '../papers/queries.js';
@@ -220,10 +219,11 @@ export function CoursePage() {
                                 </span>
                                 <span className="min-w-0 flex-1">
                                   <span className="block font-medium">
-                                    <Markdown inline>{paper.title}</Markdown>
+                                    <CourseMetadata>{paper.title}</CourseMetadata>
                                   </span>
                                   <span className="block text-xs text-muted-foreground">
-                                    <Markdown inline>{paper.authors}</Markdown> · {paper.year} · ~
+                                    <CourseMetadata>{paper.authors}</CourseMetadata> · {paper.year}
+                                    {' · ~'}
                                     {paper.estMinutes} min
                                   </span>
                                 </span>
@@ -270,7 +270,7 @@ export function CoursePage() {
                                 </span>
                                 <span className="min-w-0 flex-1">
                                   <span className="block font-medium">
-                                    <Markdown inline>{week.project.title}</Markdown>
+                                    <CourseMetadata>{week.project.title}</CourseMetadata>
                                   </span>
                                 </span>
                                 {week.project.status !== 'not_started' ? (
@@ -302,7 +302,7 @@ export function CoursePage() {
                                 </span>
                                 <span className="min-w-0 flex-1">
                                   <span className="block font-medium text-muted-foreground">
-                                    <Markdown inline>{week.project.title}</Markdown>
+                                    <CourseMetadata>{week.project.title}</CourseMetadata>
                                   </span>
                                   <span className="block text-xs text-muted-foreground">
                                     Project coming soon
