@@ -30,6 +30,7 @@ const courseComingSoonScreenshotDir = 'test-results/screenshots/screenshots/cour
 const navCleanupScreenshotDir = 'test-results/screenshots/screenshots/nav-cleanup';
 const xpFinishScreenshotDir = 'test-results/screenshots/screenshots/xp-finish';
 const chooseLessonScreenshotDir = 'test-results/screenshots/screenshots/choose-lesson';
+const failedQuizScreenshotDir = '/home/ubuntu/screens/failed-quiz';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(brandScreenshotDir, { recursive: true });
 mkdirSync(courseStructureScreenshotDir, { recursive: true });
@@ -41,6 +42,7 @@ mkdirSync(courseComingSoonScreenshotDir, { recursive: true });
 mkdirSync(navCleanupScreenshotDir, { recursive: true });
 mkdirSync(xpFinishScreenshotDir, { recursive: true });
 mkdirSync(chooseLessonScreenshotDir, { recursive: true });
+mkdirSync(failedQuizScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async ({ page }) => {
@@ -174,6 +176,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
 });
 
 test('Course weeks default to the current week and remember toggles', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/course');
   const weekOneCard = page
     .locator('[data-slot="card"]')
@@ -186,6 +189,22 @@ test('Course weeks default to the current week and remember toggles', async ({ p
     'true',
   );
   await expect(weekOneCard.locator('ol')).toBeVisible();
+  const weekOneTrigger = weekOneCard.getByRole('button', { name: 'Collapse week 1' });
+  await expect(weekOneTrigger.locator('svg')).toHaveCSS('rotate', '180deg');
+  const weekOneIntro = weekOneCard.locator('p').first();
+  await expect(weekOneIntro).toContainText("You'll build the simplest model that learns:");
+  const weekOneTitleBounds = await weekOneTrigger.locator('span').first().boundingBox();
+  const weekOneIntroBounds = await weekOneIntro.boundingBox();
+  if (!weekOneTitleBounds || !weekOneIntroBounds) {
+    throw new Error('Expected the open Week 1 header and intro');
+  }
+  const weekOneIntroGap = weekOneIntroBounds.y - (weekOneTitleBounds.y + weekOneTitleBounds.height);
+  expect(weekOneIntroGap).toBeGreaterThanOrEqual(8);
+  expect(weekOneIntroGap).toBeLessThanOrEqual(12);
+  await page.screenshot({
+    path: `${failedQuizScreenshotDir}/course-week1-open-with-intro-desktop.png`,
+    fullPage: true,
+  });
   await expect(weekTwoCard.getByRole('button', { name: 'Expand week 2' })).toHaveAttribute(
     'aria-expanded',
     'false',
@@ -199,6 +218,42 @@ test('Course weeks default to the current week and remember toggles', async ({ p
   await expect(weekTwoCard.locator('ol')).toBeHidden();
   await weekTwoCard.getByRole('button', { name: 'Expand week 2' }).click();
   await weekOneCard.getByRole('button', { name: 'Collapse week 1' }).click();
+  await expect(weekOneCard.getByRole('button', { name: 'Expand week 1' }).locator('svg')).toHaveCSS(
+    'rotate',
+    'none',
+  );
+  await expect(
+    weekTwoCard.getByRole('button', { name: 'Collapse week 2' }).locator('svg'),
+  ).toHaveCSS('rotate', '180deg');
+  const weekOnePadding = await weekOneCard
+    .getByRole('button', { name: 'Expand week 1' })
+    .evaluate((element) => {
+      const style = getComputedStyle(element);
+      return [style.paddingTop, style.paddingBottom];
+    });
+  expect(weekOnePadding[0]).toBe(weekOnePadding[1]);
+  const weekTwoTitle = await weekTwoCard
+    .getByRole('button', { name: 'Collapse week 2' })
+    .locator('span')
+    .first()
+    .boundingBox();
+  const weekTwoContent = await weekTwoCard.locator('ol').boundingBox();
+  if (!weekTwoTitle || !weekTwoContent) {
+    throw new Error('Expected the open Week 2 header and first content row');
+  }
+  const contentGap = weekTwoContent.y - (weekTwoTitle.y + weekTwoTitle.height);
+  expect(contentGap).toBeGreaterThanOrEqual(8);
+  expect(contentGap).toBeLessThanOrEqual(12);
+  await page.screenshot({
+    path: `${failedQuizScreenshotDir}/course-week1-collapsed-week2-open-desktop.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${failedQuizScreenshotDir}/course-week1-collapsed-week2-open-mobile.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
 
   await page.reload();
   await expect(weekOneCard.getByRole('button', { name: 'Expand week 1' })).toHaveAttribute(

@@ -44,12 +44,12 @@ export function CoursePage() {
                 writeCourseWeekOpenOverrides(next);
               }}
             >
-              <Card>
+              <Card className="gap-0">
                 <CardHeader className="p-0">
                   <CardTitle aria-label={`Week ${week.week} · ${week.title}`} className="w-full">
                     <Collapsible.Trigger
                       aria-label={`${open ? 'Collapse' : 'Expand'} week ${week.week}`}
-                      className="flex w-full items-center justify-between gap-3 rounded-t-xl px-(--card-spacing) pt-(--card-spacing) text-left data-[state=closed]:pb-(--card-spacing) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                      className="flex w-full items-center justify-between gap-3 rounded-t-xl px-(--card-spacing) pt-(--card-spacing) text-left data-[state=open]:pb-3 data-[state=closed]:pb-(--card-spacing) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                     >
                       <span>
                         Week {week.week} · {week.title}
@@ -62,7 +62,7 @@ export function CoursePage() {
                   </CardTitle>
                 </CardHeader>
                 <Collapsible.Content>
-                  <CardContent className="p-0 last:pb-0">
+                  <CardContent className="first:pt-0 p-0 last:pb-0">
                     {week.intro ? (
                       <p className="px-(--card-spacing) pb-4 text-sm text-muted-foreground">
                         {week.intro}

@@ -1,6 +1,17 @@
-import type { SessionPayload, TodayPayload } from '@academy/contracts/sessions';
+import type {
+  ActiveSessionPayload,
+  SessionPayload,
+  TodayPayload,
+} from '@academy/contracts/sessions';
 import { queryOptions } from '@tanstack/react-query';
 import { getJson } from '../../api/query-client.js';
+export const activeSessionQueryOptions = () =>
+  queryOptions({
+    queryKey: ['session', 'active'] as const,
+    queryFn: () =>
+      getJson<ActiveSessionPayload | null>('/api/sessions/active', 'Could not load active session'),
+  });
+
 export const todayQueryOptions = () =>
   queryOptions({
     queryKey: ['today'] as const,
