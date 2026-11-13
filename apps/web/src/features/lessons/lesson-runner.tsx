@@ -8,11 +8,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Markdown } from '../../components/markdown.js';
-import { SessionSkeleton } from '../../components/skeletons.js';
+import { ThinkingIndicator } from '../../components/thinking-indicator.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
-import { Skeleton } from '../../components/ui/skeleton.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
 import { FeedbackPanel, FinalRetryNote, isFinalRetryResult } from '../exercises/feedback-panel.js';
 import { sessionQueryOptions } from '../sessions/queries.js';
@@ -446,25 +445,10 @@ export function LessonRunner({
 
   if (!state)
     return (
-      <SessionSkeleton
-        fallback={
-          <section className="space-y-6">
-            <SessionActivityHeader
-              title={title}
-              label={activityLabel}
-              lessonLink={lessonLink}
-              subtitleSkeleton
-            />
-            <div className="flex flex-wrap gap-2" aria-hidden="true">
-              {[...(lesson?.knowledge_points?.map((point) => point.id) ?? []), 'quiz'].map(
-                (step) => (
-                  <Skeleton key={step} className="h-9 w-16 rounded-lg" />
-                ),
-              )}
-            </div>
-          </section>
-        }
-      />
+      <section className="space-y-6">
+        <SessionActivityHeader title={title} label={activityLabel} lessonLink={lessonLink} />
+        <ThinkingIndicator />
+      </section>
     );
 
   const pointStatus = state.points.find((item) => item.id === displayedPoint?.id);

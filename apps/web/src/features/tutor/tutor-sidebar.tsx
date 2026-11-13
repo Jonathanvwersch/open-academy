@@ -19,6 +19,7 @@ import {
 } from 'react';
 import type { StickToBottomContext } from 'use-stick-to-bottom';
 import { apiFetch } from '../../api/authenticated-fetch.js';
+import { ThinkingIndicator } from '../../components/thinking-indicator.js';
 import {
   Conversation,
   ConversationContent,
@@ -43,7 +44,6 @@ import {
   SidebarInset,
   SidebarProvider,
 } from '../../components/ui/sidebar.js';
-import { Skeleton } from '../../components/ui/skeleton.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip.js';
 import { useIsMobile } from '../../hooks/use-mobile.js';
 import {
@@ -83,15 +83,6 @@ interface TutorContextValue {
 const LazyMarkdown = lazy(() =>
   import('../../components/markdown.js').then((module) => ({ default: module.Markdown })),
 );
-function MessageSkeleton() {
-  return (
-    <div role="status" aria-label="Tutor is responding" className="w-72 max-w-full space-y-3 py-1">
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-2/3" />
-    </div>
-  );
-}
 
 function TutorMarkdown({ children }: { children: string }) {
   return (
@@ -814,7 +805,7 @@ export function TutorContextProvider({
                                   Tutor
                                 </p>
                                 <MessageContent className="w-full">
-                                  <MessageSkeleton />
+                                  <ThinkingIndicator />
                                 </MessageContent>
                               </Message>
                             ) : null}
