@@ -178,6 +178,27 @@ test('expression grading accepts implicit multiplication and Unicode notation', 
   });
 });
 
+test('expression grading accepts the y-hat variable in Unicode and typed forms', async () => {
+  const exercise = expressionExercise('2*(yhat-y)', {
+    yhat: [-3, 3],
+    y: [-3, 3],
+  });
+  const random = () => {
+    let draw = 0;
+    return () => (draw++ % 2 === 0 ? 0.25 : 0.75);
+  };
+  for (const answer of ['2(ŷ - y)', '2*(y\u0302 - y)', '2*(yhat-y)']) {
+    expect(await gradeExercise(exercise, answer, { random: random() }), answer).toMatchObject({
+      status: 'graded',
+      correct: 1,
+    });
+  }
+  expect(await gradeExercise(exercise, '2(y - ŷ)', { random: random() })).toMatchObject({
+    status: 'graded',
+    correct: 0,
+  });
+});
+
 test('expression normalization handles function adjacency, Greek sigma, and natural logs', async () => {
   const exponential = expressionExercise('2*b*exp(a) + a', {
     a: [-2, 2],

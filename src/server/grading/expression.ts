@@ -34,7 +34,9 @@ export function normalizeLearnerExpression(input: string, variables: string[]): 
     .replaceAll('³', '^3')
     .replace(/[−–]/g, '-')
     .replace(/[×·⋅]/g, '*')
-    .replaceAll('σ', variableSet.has('sigma') ? 'sigma' : 'σ');
+    .replaceAll('σ', variableSet.has('sigma') ? 'sigma' : 'σ')
+    .replaceAll('ŷ', variableSet.has('yhat') ? 'yhat' : 'ŷ')
+    .replaceAll('y\u0302', variableSet.has('yhat') ? 'yhat' : 'y\u0302');
 
   return normalized.replace(/[A-Za-z_][A-Za-z0-9_]*/g, (identifier, offset, source: string) => {
     if (identifier === 'ln') return 'log';

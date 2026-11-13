@@ -193,7 +193,7 @@ exercises:
     role: review
     difficulty: 2
     est_minutes: 2
-    prompt: "For one example, $\\ell(\\hat y) = (\\hat y - y)^2$. Give $d\\ell/d\\hat y$ in terms of `yhat` and `y`."
+    prompt: "For one example, $\\ell(\\hat y) = (\\hat y - y)^2$. Give $d\\ell/d\\hat y$ in terms of $\\hat y$ and $y$ (type `yhat` for $\\hat y$)."
     answer: "2*(yhat - y)"
     variables: { yhat: [-3, 3], y: [-3, 3] }
     solution: "$2(\\hat y - y)$."
