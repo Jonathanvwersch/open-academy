@@ -19,6 +19,8 @@ const SVG_COLOR_PROPERTIES = new Set([
   'background-color',
 ]);
 const REVIEWABLE_EXERCISE_ROLES = new Set(['review', 'core', 'practice', 'transfer', 'basics']);
+const LESSON_CONTEXT_PROMPT =
+  /worked example|\bin steps? \d|\bthis step\b|\bin the picture\b|\bin the table\b|\bthe lesson'?s?\b|\bin the lesson\b|taught in the lesson|the car example/i;
 const MATH_PROSE_KEYS = new Set([
   'criterion',
   'exemplar',
@@ -475,6 +477,7 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
         (entry) =>
           entry.value.dimension === dimension &&
           REVIEWABLE_EXERCISE_ROLES.has(entry.value.role) &&
+          !entry.value.lesson_only &&
           !isTemplate(entry.value),
       );
       if (!hasReviewableExercise) {
@@ -912,6 +915,18 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
   }
 
   for (const { value: exercise, file } of data.exercises) {
+    if (
+      exercise.role !== 'diagnostic' &&
+      !exercise.lesson_only &&
+      LESSON_CONTEXT_PROMPT.test(exercise.prompt)
+    ) {
+      addIssue(
+        issues,
+        file,
+        exercise.id,
+        'exercise prompt references lesson-only context; set lesson_only: true or make it stand alone',
+      );
+    }
     if (containsPlainTextMath(exercise)) {
       addIssue(issues, file, exercise.id, 'plain-text maths; wrap in $…$');
     }

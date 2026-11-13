@@ -1055,6 +1055,7 @@ exercises:
       input choice is a hyperparameter because it is chosen outside the fitted
       weights.
   - id: ttsp-hold-out-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -1083,6 +1084,7 @@ exercises:
         feedback: "Two houses keep the picture small, but the memoriser's misses of 40 are real errors on unseen houses."
     solution: "The memoriser is exact on training houses only because it stored their prices. The test houses were never stored, so they reveal that it prices new houses badly, while the line model stays within 20."
   - id: ttsp-splits-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -1111,6 +1113,7 @@ exercises:
         feedback: "Only the 700 training sales fit the weights; validation sales were used to choose between models."
     solution: "B won because its validation error was lowest, and the lowest of several scores tends to be a little lucky. The 150 test sales played no part in fitting or choosing, so their error of 480 is the fair estimate."
   - id: ttsp-hyper-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -1139,6 +1142,7 @@ exercises:
         feedback: "A low training error is expected when more inputs let the weights fit those particular houses closely."
     solution: "The 14 inputs let the weights fit the training houses closely, which lowers training error without helping on new houses. Validation sales were not used for fitting, so their errors, 620, 460 and 510, pick size and bedrooms."
   - id: ttsp-leakage-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

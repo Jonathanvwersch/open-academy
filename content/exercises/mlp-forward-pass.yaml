@@ -192,7 +192,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 4
-    prompt: "Using the lesson's 2 → 2 → 1 network or one of your own, explain in 2–4 sentences what a two-layer multilayer perceptron computes from an input $x$, and how the array shapes change when you feed it a batch of $B$ examples."
+    prompt: "Using a 2 → 2 → 1 network of your choice, explain in 2–4 sentences what a two-layer multilayer perceptron computes from an input $x$, and how the array shapes change when you feed it a batch of $B$ examples."
     rubric:
       - {
           id: r1,
@@ -289,6 +289,7 @@ exercises:
           feedback: "That's neuron 1's score. Neuron 2 uses row 2 of $W$.",
         }
   - id: mlpp-layer-why-zero
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -513,7 +514,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Using the lesson's network ($W_1 = \\begin{pmatrix}1 & 1\\\\ -1 & 1\\end{pmatrix}$, $b_1 = (-1, 0)$, ReLU, $W_2 = \\begin{pmatrix}3 & 2\\end{pmatrix}$, $b_2 = 1$), compute $\\hat y$ for $x = (4, 1)$."
+    prompt: "For the network with $W_1 = \\begin{pmatrix}1 & 1\\\\ -1 & 1\\end{pmatrix}$, $b_1 = (-1, 0)$, ReLU, $W_2 = \\begin{pmatrix}3 & 2\\end{pmatrix}$, and $b_2 = 1$, compute $\\hat y$ for $x = (4, 1)$."
     answer: 13
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -609,6 +610,7 @@ exercises:
     hints: ["Score each hidden neuron, apply ReLU, then combine with the output weights."]
     solution: "Scores: $2 \\cdot 0.25 - 1 = -0.5$ and $-0.25 + 1 = 0.75$. ReLU gives $h = (0, 0.75)$. Output: $1 \\cdot 0 + 2 \\cdot 0.75 + 0 = 1.5$."
   - id: mlpp-forward-why-h
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -818,6 +820,7 @@ exercises:
         }
     solution: "$(20 \\times 64) \\to (20 \\times 32) \\to (20 \\times 4)$: one row of 4 motor commands for each of the 20 frames."
   - id: mlpp-shapes-why-column
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

@@ -6,7 +6,7 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: Which statement best describes the main idea in this step?
+    prompt: Which statement best describes the main idea of this concept?
     hints: []
     solution: The main idea of this step is Calculate a loss.
     options:
@@ -32,7 +32,7 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: Which statement best describes the main idea in this step?
+    prompt: Which statement best describes the main idea of this concept?
     hints: []
     solution: The main idea of this step is Average losses.
     options:

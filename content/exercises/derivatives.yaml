@@ -911,6 +911,7 @@ exercises:
 
       Below $w = 4$ the slope is negative and above it the slope is positive, so the loss is lowest there.
   - id: derp-why-shrink
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -939,6 +940,7 @@ exercises:
         feedback: "The steps are not averaged together; the answer is the value the average slope approaches as the step shrinks."
     solution: "The average over a long step mixes in the speed at later times. As the step shrinks, the average speed (7, 6.1, 6.01) approaches the speed at the instant $t = 3$, which is 6 m/s."
   - id: derp-why-keep-constant
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -967,6 +969,7 @@ exercises:
         feedback: "Only an added constant disappears. A multiplied constant stays and multiplies the slope."
     solution: "$3x^2$ is 3 times $x^2$. Tripling every height triples every slope, so $(3x^2)' = 3 \\cdot 2x = 6x$."
   - id: derp-why-six-over-x
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -1017,6 +1020,7 @@ exercises:
     hints: ["$(e^x)' = e^x$, and $e^0 = 1$."]
     solution: "$f'(x) = 3e^x - 2$, so $f'(0) = 3 \\cdot 1 - 2 = 1$."
   - id: derp-why-two-parts
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

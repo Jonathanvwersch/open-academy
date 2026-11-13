@@ -66,6 +66,7 @@ exercises:
         category: incorrect_reasoning
     solution: If the parameters never change, predictions and loss stay unchanged too.
   - id: dbt-floor-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -432,6 +433,7 @@ exercises:
         category: incorrect_reasoning
     solution: Both describe how the same loss changes with that parameter, which makes disagreement useful.
   - id: dbt-check-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -638,6 +640,7 @@ exercises:
       The model is fitting training examples more closely while predicting held-out examples less
       well.
   - id: dbt-halve-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

@@ -229,6 +229,7 @@ exercises:
           feedback: "Only a zero age weight would ignore the extra year.",
         }
   - id: dotp-why-total
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -262,6 +263,7 @@ exercises:
           feedback: "The points already set how much each kind counts; adding just totals the contributions.",
         }
   - id: dotp-why-shadow
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -467,6 +469,7 @@ exercises:
     tolerance: { abs: 0.000001 }
     answer: 3
   - id: dotp-scaling
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

@@ -30,6 +30,7 @@ exercises:
         }
     solution: Standard deviation is the square root of sample variance. It measures how spread out individual observations are, in their original units.
   - id: ds-squares-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -157,6 +158,7 @@ exercises:
         }
     solution: Standard error measures the spread of an estimate across repeated samples of the same size. It describes uncertainty in the mean, not the spread of individual observations.
   - id: ds-se-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -303,6 +305,7 @@ exercises:
         }
     solution: A confidence interval expresses uncertainty about a long-run average or success chance. It is not a range for individual outcomes or a promise about the next sample.
   - id: ds-interval-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -551,6 +554,7 @@ exercises:
         }
     solution: A positive interval excludes no improvement while pointing toward a higher success chance. This supports a real improvement when the assumptions hold, but it is not a guarantee.
   - id: ds-difference-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

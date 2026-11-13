@@ -32,6 +32,7 @@ exercises:
         feedback: Vanishing can happen gradually with nonzero weights below 1.
         category: incorrect_reasoning
   - id: wip-chain-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -481,7 +482,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: For the lesson's outputs 1, 7, 9, 15, why does LayerNorm divide the centred values by 5?
+    prompt: For outputs 1, 7, 9, 15, why does LayerNorm divide the centred values by 5?
     solution:
       The centred values have average square $(49+1+1+49)/4=25$, so their standard deviation is
       5. Dividing by 5 gives typical size 1.
@@ -704,6 +705,7 @@ exercises:
         feedback: LayerNorm groups within one example and also uses gain and shift.
         category: incorrect_reasoning
   - id: wip-bn-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

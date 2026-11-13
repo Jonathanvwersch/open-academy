@@ -26,6 +26,7 @@ exercises:
         feedback: A matrix is the grid itself. Multiplying it by a vector gives one total per row, not one total overall.
     solution: A matrix is a rectangular grid of numbers; its shape lists the number of rows and then columns.
   - id: matp-rows-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -222,6 +223,7 @@ exercises:
         feedback: A product doesn't look for shared entries; each output entry is one left row dotted with one right column.
     solution: A matrix product combines two number grids, with each output entry formed from a left row and right column.
   - id: matp-products-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -393,6 +395,7 @@ exercises:
         feedback: A column sum combines houses; `X @ w` instead takes a weighted sum within each house row.
     solution: "`X @ w` takes each house row's dot product with the measurement weights, producing one prediction per row."
   - id: matp-batch-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

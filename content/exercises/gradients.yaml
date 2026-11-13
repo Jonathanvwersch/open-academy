@@ -216,6 +216,7 @@ exercises:
         }
     exemplar: "The gradient at a point collects the partial derivatives, here $(3, 4)$. As an arrow it points in the direction where $f$ rises fastest, and its length, $5$, is that fastest slope. To get the slope in any other direction, take a unit vector $u$ for that direction and compute $\\nabla f\\cdot u$: for $u=(0.6, 0.8)$ it is $5$, for $(0.8, -0.6)$ it is $0$, and for $(-0.6, -0.8)$ it is $-5$. Because $\\nabla f\\cdot u = \\|\\nabla f\\|\\cos\\theta$, the slope is most negative when $u$ points opposite the gradient, so stepping along $-\\nabla f$ lowers $f$ fastest for a small step, which is what gradient descent does."
   - id: gradp-why-vector
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -349,6 +350,7 @@ exercises:
         feedback: "The position gives the input coordinates; the gradient contains the surface's partial derivatives."
     solution: "The partial derivatives are $(2x,6y)$, which equal $(2,12)$ at $(1,2)$."
   - id: gradp-approx
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -494,6 +496,7 @@ exercises:
     hints: ["At $(1,1)$, the gradient is $(2,6)$. Take its dot product with the walking direction."]
     solution: "The gradient is $(2,6)$, so the slope is $(2,6)\\cdot(0.6,0.8)=1.2+4.8=6$."
   - id: gradp-steepest-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

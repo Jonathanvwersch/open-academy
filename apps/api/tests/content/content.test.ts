@@ -42,6 +42,7 @@ test('loads the fixture graph and builds lookup indexes', async () => {
     strength: 'hard',
   });
   expect(content.exercisesByConcept.get('vectors')).toHaveLength(15);
+  expect(content.exercisesById.get('vectors-magnitude')?.lesson_only).toBe(false);
   expect(content.exercisesByDimension.get('math')?.length).toBeGreaterThan(0);
   expect(content.exercisesByRole.get('diagnostic')?.length).toBe(8);
   expect(new Set(content.exercises.map((exercise) => exercise.type))).toEqual(
@@ -1367,6 +1368,48 @@ test('lesson review dimensions require a non-template schedulable exercise', asy
       }),
     ]),
   );
+});
+
+test('non-diagnostic exercise prompts must be standalone or lesson-only', async () => {
+  const invalid = await notationFixture();
+  const invalidExercise = invalid.exercises.find((entry) => entry.value.id === 'vectors-magnitude');
+  if (!invalidExercise) throw new Error('Missing vector magnitude exercise');
+  invalidExercise.value.prompt = 'In the worked example, why does this calculation work?';
+  expect(validateContent(invalid)).toContainEqual(
+    expect.objectContaining({
+      id: invalidExercise.value.id,
+      message:
+        'exercise prompt references lesson-only context; set lesson_only: true or make it stand alone',
+    }),
+  );
+
+  const lessonOnly = await notationFixture();
+  const lessonOnlyExercise = lessonOnly.exercises.find(
+    (entry) => entry.value.id === 'vectors-magnitude',
+  );
+  if (!lessonOnlyExercise) throw new Error('Missing vector magnitude exercise');
+  lessonOnlyExercise.value.prompt = 'In the worked example, why does this calculation work?';
+  lessonOnlyExercise.value.lesson_only = true;
+  expect(
+    validateContent(lessonOnly).some(
+      (issue) =>
+        issue.id === lessonOnlyExercise.value.id && issue.message.includes('lesson-only context'),
+    ),
+  ).toBe(false);
+
+  const diagnostic = await notationFixture();
+  const diagnosticExercise = diagnostic.exercises.find(
+    (entry) => entry.value.id === 'vectors-magnitude',
+  );
+  if (!diagnosticExercise) throw new Error('Missing vector magnitude exercise');
+  diagnosticExercise.value.prompt = 'In the worked example, why does this calculation work?';
+  diagnosticExercise.value.role = 'diagnostic';
+  expect(
+    validateContent(diagnostic).some(
+      (issue) =>
+        issue.id === diagnosticExercise.value.id && issue.message.includes('lesson-only context'),
+    ),
+  ).toBe(false);
 });
 
 test('SVG fences reject malformed, unsafe, inaccessible, and non-hex SVG', async () => {

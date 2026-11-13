@@ -26,6 +26,7 @@ exercises:
         feedback: The inputs are data that training can't change; the penalty charges the weights.
     solution: The L2 penalty adds $\lambda\sum_j w_j^2$, so training only makes a weight large when that lowers the data loss by more than the extra charge.
   - id: rgp-penalty-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -205,6 +206,7 @@ exercises:
         feedback: Weight decay changes the weights, not the loss value; it comes from the slope of the penalty.
     solution: Weight decay is what the L2 penalty does to the update. Each step multiplies every weight by $1-2\eta\lambda$, then adds the usual data step.
   - id: rgp-decay-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -383,6 +385,7 @@ exercises:
         feedback: The test examples are kept for one final score; choosing with them makes that score too hopeful.
     solution: $\lambda$ is a hyperparameter, so we train once for each of several values and keep the one with the lowest validation error, saving the test examples for the end.
   - id: rgp-strength-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -602,6 +605,7 @@ exercises:
         feedback: The L1 penalty is $\lambda\sum_j|w_j|$.
     solution: The L1 penalty is $\lambda\sum_j|w_j|$, so each weight is charged by its absolute size.
   - id: rgp-l1-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

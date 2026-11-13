@@ -402,6 +402,7 @@ exercises:
         }
     solution: After the validation minimum, falling training error with rising validation error suggests the model is increasingly fitting training-specific details.
   - id: ovf-epoch-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

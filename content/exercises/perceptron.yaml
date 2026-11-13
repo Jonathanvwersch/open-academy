@@ -1,6 +1,7 @@
 concept: perceptron
 exercises:
   - id: percp-score-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

@@ -29,6 +29,7 @@ exercises:
         feedback: "That describes a random variable, which comes in the next step."
     solution: "An event is a set of outcomes picked out by a condition, such as rolling at least 5 or a sale going above asking."
   - id: pb-complement-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -487,6 +488,7 @@ exercises:
         feedback: "The top of the fraction counts outcomes in both $A$ and $B$, not all of $A$."
     solution: "$P(A\\mid B)$ is the probability of $A$ given $B$: keep only the outcomes where $B$ happened, then find the fraction of them that are also in $A$."
   - id: pb-conditional-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

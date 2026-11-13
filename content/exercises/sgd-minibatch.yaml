@@ -34,6 +34,7 @@ exercises:
         }
     solution: "A minibatch uses the average of its examples' gradients, all calculated at the same current parameter setting. That average estimates the full-data gradient."
   - id: sgm-average-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -193,6 +194,7 @@ exercises:
         }
     solution: "An epoch is one complete pass through the training dataset. With minibatches it usually includes several parameter updates."
   - id: sgm-epoch-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -349,6 +351,7 @@ exercises:
         }
     solution: "Gradient noise is the difference between a batch gradient and the full-data gradient at the same parameter setting. The selected examples need not represent the whole dataset exactly."
   - id: sgm-noise-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

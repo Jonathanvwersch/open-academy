@@ -30,6 +30,7 @@ exercises:
       ]
     solution: "A filter multiplies matching pixels and weights, adds them and a bias, then repeats at another position."
   - id: conv-slide-why-zero
+    lesson_only: true
     dimension: "conceptual"
     type: "mc"
     role: "practice"
@@ -196,6 +197,7 @@ exercises:
       ]
     solution: "Stride controls how far the patch moves before computing the next output."
   - id: conv-size-why-floor
+    lesson_only: true
     dimension: "conceptual"
     type: "mc"
     role: "practice"
@@ -522,6 +524,7 @@ exercises:
       ]
     solution: "Max pooling selects the maximum independently in each channel. It has no weights or biases."
   - id: conv-pool-why-four
+    lesson_only: true
     dimension: "conceptual"
     type: "mc"
     role: "practice"

@@ -240,6 +240,32 @@ test('problem selection keeps authored order for equal difficulty and continues 
   });
 });
 
+test('step practice can serve a lesson-only exercise', () => {
+  const lessonOnly = ExerciseSchema.parse({
+    id: 'lesson-only',
+    dimension: 'math',
+    type: 'numeric',
+    role: 'practice',
+    lesson_only: true,
+    difficulty: 2,
+    est_minutes: 1,
+    prompt: 'Why does the worked example use this value?',
+    hints: [],
+    solution: 'It is used in the worked example.',
+    answer: 1,
+    tolerance: { abs: 0.001 },
+  });
+
+  expect(
+    selectNextProblem(
+      { problems: [lessonOnly.id] },
+      new Map([[lessonOnly.id, lessonOnly]]),
+      [],
+      10,
+    ),
+  ).toEqual({ exerciseId: lessonOnly.id, seed: null, position: 1 });
+});
+
 test('basics is served first and exhausted fixed pools reuse a previously served item', () => {
   const basics = ExerciseSchema.parse({
     id: 'kp-basics',

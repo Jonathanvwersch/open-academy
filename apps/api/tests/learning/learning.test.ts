@@ -995,6 +995,34 @@ test('due reviews use non-template practice exercises when no higher-priority ro
   ).toBe(true);
 });
 
+test('due reviews skip lesson-only exercises even when they are the only practice item', () => {
+  const practiceExercise = required(
+    (content.exercisesByConcept.get('vectors') ?? []).find(
+      (exercise) => exercise.dimension === 'math' && !isTemplate(exercise),
+    ),
+    'vector math practice exercise',
+  );
+  const exercisesByConcept = new Map(content.exercisesByConcept);
+  exercisesByConcept.set('vectors', [
+    { ...practiceExercise, role: 'practice' as const, lesson_only: true },
+  ]);
+  const reviewContent: ContentIndex = { ...content, exercisesByConcept };
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: '2026-01-13T00:00:00.000Z',
+      retrievability: 0.7,
+    },
+  ];
+
+  const review = planSession(state, reviewContent, now, 60).activities.find(
+    (activity) => activity.kind === 'review' && activity.conceptId === 'vectors',
+  );
+  expect(review).toBeUndefined();
+});
+
 test('Project prerequisites receive a priority term', () => {
   const state = emptyState();
   const vectors = required(content.conceptsById.get('vectors'), 'vectors concept');

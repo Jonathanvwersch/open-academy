@@ -2,6 +2,7 @@ export interface ClientExercise {
   id: string;
   type: string;
   multi?: boolean;
+  lesson_only?: boolean;
   hintCount?: number;
   prompt: string;
   options?: Array<{ id: string; text: string }>;

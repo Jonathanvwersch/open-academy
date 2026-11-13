@@ -24,6 +24,7 @@ exercises:
       A confusion matrix compares what parts actually are with what the camera says. It shows
       both correct answers and each kind of mistake.
   - id: evm-count-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -179,6 +180,7 @@ exercises:
         feedback: That includes correctly cleared fine parts and measures accuracy.
     solution: Recall asks how many actually faulty parts were flagged, so it divides TP by TP + FN.
   - id: evm-catch-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -332,6 +334,7 @@ exercises:
         feedback: That is accuracy for category predictions, not a price-error score.
     solution: MAE averages how far predicted prices are from actual prices, in the same units as the prices.
   - id: evm-numbers-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

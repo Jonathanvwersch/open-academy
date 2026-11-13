@@ -22,6 +22,7 @@ exercises:
         feedback: Each row contains many separate pixels.
     solution: A grayscale image is a matrix with one brightness number at each pixel.
   - id: iat-grid-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -175,6 +176,7 @@ exercises:
         feedback: H comes before W.
     solution: CHW lists the channel axis first, followed by height and width.
   - id: iat-layout-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -332,6 +334,7 @@ exercises:
         feedback: Rescaling alone does not centre the values.
     solution: Values from 0 through 255 become values from 0 through 1.
   - id: iat-scale-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

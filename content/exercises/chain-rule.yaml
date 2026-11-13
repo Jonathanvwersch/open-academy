@@ -184,6 +184,7 @@ exercises:
       - { id: r3, criterion: "Gives or references a concrete example", weight: 1 }
     exemplar: "Multiply kilometres per hour by litres per kilometre to find litres per hour, because every extra kilometre uses fuel. More generally, multiply the derivatives of successive calculations to find how the final result changes. When an extra kilometre adds both fuel costs and wages, calculate each added cost separately and add them, since both appear on the bill."
   - id: crp-why-multiply
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -271,6 +272,7 @@ exercises:
       ]
     solution: '$\frac{dh}{dt}=0.5\times0.2\times3=0.3$ cm per second.'
   - id: crp-why-inner-factor
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -379,6 +381,7 @@ exercises:
       ]
     solution: '$u=16+9=25$, outer rate $\frac{1}{2\times5}=0.1$, inner rate $2\times4=8$, so the slope is $0.1\times8=0.8$.'
   - id: crp-why-both-routes
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

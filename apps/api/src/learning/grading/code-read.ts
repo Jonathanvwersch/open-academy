@@ -10,6 +10,7 @@ export function gradeCodeRead(exercise: CodeReadExercise, answer: unknown): Grad
           type: 'numeric',
           dimension: exercise.dimension,
           role: exercise.role,
+          lesson_only: exercise.lesson_only,
           difficulty: exercise.difficulty,
           est_minutes: exercise.est_minutes,
           prompt: exercise.prompt,
