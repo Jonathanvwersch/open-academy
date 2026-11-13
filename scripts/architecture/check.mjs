@@ -167,7 +167,9 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
       }
       request = request.replace(/\?(?:url|raw)$/, '');
       let target;
-      if (request.startsWith('.') || request.startsWith('@/')) {
+      if (file === 'api/index.ts' && request === '../apps/api/dist-vercel/server.mjs') {
+        target = 'apps/api/dist-vercel/server.mjs';
+      } else if (request.startsWith('.') || request.startsWith('@/')) {
         if (!resolvers.has(own))
           resolvers.set(
             own,

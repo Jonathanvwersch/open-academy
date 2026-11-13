@@ -44,6 +44,16 @@ test('permits feature-owned code, query entry points, aliases, and explicit pack
   );
 });
 
+test('permits the API Vercel entry point and generated deployment adapter', () => {
+  fixture(
+    {
+      'apps/api/src/vercel.ts': 'export default 1;',
+      'api/index.ts': "export {default} from '../apps/api/dist-vercel/server.mjs';",
+    },
+    (errors) => assert.deepEqual(errors, []),
+  );
+});
+
 for (const [label, source] of [
   ['type-only import', "import type {Secret} from '../../../../../apps/api/src/config.js';"],
   ['dynamic import', "export const value=import('../../../../../apps/api/src/config.js');"],

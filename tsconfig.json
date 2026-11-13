@@ -11,5 +11,6 @@
     "labs/**/*.test.ts",
     "playwright.config.ts",
     "vitest.config.ts"
-  ]
+  ],
+  "exclude": ["api"]
 }

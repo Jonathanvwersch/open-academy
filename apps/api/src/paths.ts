@@ -14,6 +14,7 @@ export function findRepositoryRoot(start: string): string | undefined {
 
 // Serverless bundlers relocate modules; discover the included content instead of assuming source depth.
 const repositoryRoot =
-  findRepositoryRoot(dirname(fileURLToPath(import.meta.url))) ?? findRepositoryRoot(process.cwd());
-if (!repositoryRoot) throw new Error('Could not locate the Academy content directory.');
+  findRepositoryRoot(dirname(fileURLToPath(import.meta.url))) ??
+  findRepositoryRoot(process.cwd()) ??
+  process.cwd();
 export const repositoryPath = (...parts: string[]) => resolve(repositoryRoot, ...parts);

@@ -28,7 +28,7 @@
     "check": "pnpm boundaries && pnpm lint && pnpm typecheck && pnpm content:check && pnpm test:architecture",
     "build": "pnpm --filter @academy/web build && pnpm --filter @academy/api build",
     "start": "pnpm --filter @academy/api start",
-    "vercel-build": "pnpm build && pnpm --filter @academy/api vercel:migrate"
+    "vercel-build": "pnpm build && pnpm --filter @academy/api vercel:bundle && pnpm --filter @academy/api vercel:migrate"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.4",
@@ -41,12 +41,21 @@
     "typescript": "7.0.2",
     "vite": "8.3.5",
     "vitest": "5.1.0",
-    "dotenv": "18.0.9",
-    "drizzle-orm": "0.45.4",
     "tsx": "4.23.15",
-    "yaml": "2.9.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "@academy/shared": "workspace:*"
+  },
+  "dependencies": {
+    "dotenv": "18.0.9",
+    "drizzle-orm": "0.45.4",
+    "hono": "4.13.16",
+    "mathjs": "15.2.0",
+    "openai": "7.47.0",
+    "pdfjs-dist": "6.3.289",
+    "postgres": "4.0.0",
+    "ts-fsrs": "6.0.0",
+    "yaml": "2.9.1",
+    "zod": "4.6.7"
   }
 }
