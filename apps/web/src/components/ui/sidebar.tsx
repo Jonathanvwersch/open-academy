@@ -203,7 +203,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="w-(--sidebar-width) max-w-none sm:max-w-none data-[side=left]:w-full data-[side=right]:w-full data-[side=left]:sm:max-w-none data-[side=right]:sm:max-w-none bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+          className="w-(--sidebar-width) max-w-none sm:max-w-none data-[side=left]:w-(--sidebar-width) data-[side=right]:w-(--sidebar-width) data-[side=right]:left-0 data-[side=right]:right-auto data-[side=left]:sm:max-w-none data-[side=right]:sm:max-w-none bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,

@@ -33,10 +33,11 @@ async function waitForTutorSidebarToSettle(page: Page, panelSelector: string) {
   await expect
     .poll(async () => {
       const panelRight = await panel.evaluate((element) => element.getBoundingClientRect().right);
-      const wrapperRight = await wrapper.evaluate(
-        (element) => element.getBoundingClientRect().right,
-      );
-      return Math.abs(wrapperRight - panelRight);
+      const expectedRight =
+        (await panel.getAttribute('data-mobile')) === 'true'
+          ? await page.evaluate(() => window.innerWidth)
+          : await wrapper.evaluate((element) => element.getBoundingClientRect().right);
+      return Math.abs(expectedRight - panelRight);
     })
     .toBeLessThanOrEqual(0.25);
 }
@@ -766,13 +767,15 @@ test('Chat lists expose one New chat action and focus the composer', async ({ pa
     .getByRole('button', { name: 'New chat', exact: true })
     .click();
   await expect(composer).toBeFocused();
-  await page.setViewportSize({ width: 390, height: 844 });
   const mobileTutor = page.locator('[data-slot="sidebar"][data-mobile="true"]');
-  await expect(mobileTutor).toBeVisible();
-  await waitForTutorSidebarToSettle(page, '[data-slot="sidebar"][data-mobile="true"]');
-  const panel = await mobileTutor.boundingBox();
-  expect(panel?.width).toBeGreaterThanOrEqual(389);
-  expect(Math.abs(panel?.x ?? 100)).toBeLessThan(1);
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(mobileTutor).toBeVisible();
+    await waitForTutorSidebarToSettle(page, '[data-slot="sidebar"][data-mobile="true"]');
+    const panel = await mobileTutor.boundingBox();
+    expect(panel?.width).toBeGreaterThanOrEqual(width - 1);
+    expect(Math.abs(panel?.x ?? 100)).toBeLessThan(1);
+  }
 });
 
 test('tutor send failure restores the draft and removes the optimistic message', async ({

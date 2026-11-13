@@ -35,10 +35,10 @@ export function AppShellSkeleton() {
             {navigation.map((item) => (
               <span
                 key={item.to}
-                className="relative inline-flex h-7 items-center px-1.5 text-xs sm:px-3 sm:text-[0.8rem]"
+                className="relative inline-flex h-7 items-center px-1.5 text-xs max-[360px]:px-1 sm:px-3 sm:text-[0.8rem]"
               >
                 <span className="invisible">{item.label}</span>
-                <Skeleton className="absolute inset-x-1.5 h-4 sm:inset-x-3" />
+                <Skeleton className="absolute inset-x-1.5 h-4 max-[360px]:inset-x-1 sm:inset-x-3" />
               </span>
             ))}
           </nav>
@@ -113,7 +113,7 @@ export function RootLayout() {
                     key={item.to}
                     asChild
                     size="sm"
-                    className="px-1.5 text-xs sm:px-3 sm:text-[0.8rem]"
+                    className="px-1.5 text-xs max-[360px]:px-1 sm:px-3 sm:text-[0.8rem]"
                     variant={
                       pathname === item.to || (item.to !== '/' && pathname.startsWith(item.to))
                         ? 'secondary'
