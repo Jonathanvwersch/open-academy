@@ -63,6 +63,11 @@ export function CoursePage() {
                 </CardHeader>
                 <Collapsible.Content>
                   <CardContent className="p-0 last:pb-0">
+                    {week.intro ? (
+                      <p className="px-(--card-spacing) pb-4 text-sm text-muted-foreground">
+                        {week.intro}
+                      </p>
+                    ) : null}
                     <ol className="divide-y">
                       {week.topics.map((topic) => {
                         const row = (

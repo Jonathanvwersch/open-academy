@@ -127,6 +127,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
 
   await page.getByRole('link', { name: 'View course' }).click();
   await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();
+  await expect(page.getByText(/You'll build the simplest model that learns:/)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Optional reading' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Optional reading', exact: true })).toBeVisible();
   await expect(page.getByText('Reading ML papers', { exact: true })).toHaveCount(0);
