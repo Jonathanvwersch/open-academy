@@ -189,6 +189,22 @@ test('Course weeks default to the current week and remember toggles', async ({ p
     'true',
   );
   await expect(weekOneCard.locator('ol')).toBeVisible();
+  const weekOneTrigger = weekOneCard.getByRole('button', { name: 'Collapse week 1' });
+  await expect(weekOneTrigger.locator('svg')).toHaveCSS('rotate', '180deg');
+  const weekOneIntro = weekOneCard.locator('p').first();
+  await expect(weekOneIntro).toContainText("You'll build the simplest model that learns:");
+  const weekOneTitleBounds = await weekOneTrigger.locator('span').first().boundingBox();
+  const weekOneIntroBounds = await weekOneIntro.boundingBox();
+  if (!weekOneTitleBounds || !weekOneIntroBounds) {
+    throw new Error('Expected the open Week 1 header and intro');
+  }
+  const weekOneIntroGap = weekOneIntroBounds.y - (weekOneTitleBounds.y + weekOneTitleBounds.height);
+  expect(weekOneIntroGap).toBeGreaterThanOrEqual(8);
+  expect(weekOneIntroGap).toBeLessThanOrEqual(12);
+  await page.screenshot({
+    path: `${failedQuizScreenshotDir}/course-week1-open-with-intro-desktop.png`,
+    fullPage: true,
+  });
   await expect(weekTwoCard.getByRole('button', { name: 'Expand week 2' })).toHaveAttribute(
     'aria-expanded',
     'false',
@@ -221,11 +237,13 @@ test('Course weeks default to the current week and remember toggles', async ({ p
     .locator('span')
     .first()
     .boundingBox();
-  const weekTwoIntro = await weekTwoCard.locator('p').first().boundingBox();
-  if (!weekTwoTitle || !weekTwoIntro) throw new Error('Expected the open week header and intro');
-  const introGap = weekTwoIntro.y - (weekTwoTitle.y + weekTwoTitle.height);
-  expect(introGap).toBeGreaterThanOrEqual(8);
-  expect(introGap).toBeLessThanOrEqual(12);
+  const weekTwoContent = await weekTwoCard.locator('ol').boundingBox();
+  if (!weekTwoTitle || !weekTwoContent) {
+    throw new Error('Expected the open Week 2 header and first content row');
+  }
+  const contentGap = weekTwoContent.y - (weekTwoTitle.y + weekTwoTitle.height);
+  expect(contentGap).toBeGreaterThanOrEqual(8);
+  expect(contentGap).toBeLessThanOrEqual(12);
   await page.screenshot({
     path: `${failedQuizScreenshotDir}/course-week1-collapsed-week2-open-desktop.png`,
     fullPage: true,

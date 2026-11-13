@@ -810,6 +810,12 @@ export function LessonRunner({
                 );
               })}
             </div>
+            {firstPendingStep ? (
+              <p className="text-sm text-muted-foreground">
+                Retake unlocks after {remainingReviewQuestions} more practice question
+                {remainingReviewQuestions === 1 ? '' : 's'}.
+              </p>
+            ) : null}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div />
               <div className="ml-auto flex flex-wrap gap-2">
@@ -832,10 +838,7 @@ export function LessonRunner({
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
-              {firstPendingStep
-                ? `Retake unlocks after ${remainingReviewQuestions} more practice question${remainingReviewQuestions === 1 ? '' : 's'}. `
-                : ''}
-              It&apos;ll come first in your next session.
+              You can come back to it from the lesson&apos;s page on Course.
             </p>
           </CardContent>
         </Card>

@@ -212,6 +212,10 @@ async function expectEnterToAdvance(page: Page, runConceptId: string, problemId:
       nextPostCount += 1;
     }
   };
+  const nextAction = page
+    .getByTestId('lesson-problem')
+    .getByRole('button', { name: /^Next(?: problem| step|: .+)$/ });
+  await expect(nextAction).toBeEnabled();
   page.on('request', onRequest);
   const nextResponse = page.waitForResponse(
     (response) =>
@@ -1430,7 +1434,7 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   const doThisLater = failed.getByRole('button', { name: 'Do this later' });
   await expect(doThisLater).toHaveAttribute('data-variant', 'outline');
   await expect(failed).toContainText(/Retake unlocks after \d+ more practice questions?\./);
-  await expect(failed).toContainText("It'll come first in your next session.");
+  await expect(failed).toContainText("You can come back to it from the lesson's page on Course.");
   await page.screenshot({
     path: `${spacedReviewScreenshotDir}/failed-quiz-pending-desktop.png`,
     fullPage: true,
@@ -1660,6 +1664,10 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   const unlockedRetake = reviewedFailure.getByRole('button', { name: 'Retake quiz' });
   await expect(unlockedRetake).toBeEnabled();
   await expect(unlockedRetake).toHaveAttribute('data-variant', 'default');
+  await expect(reviewedFailure).not.toContainText(/Retake unlocks after/);
+  await expect(reviewedFailure).toContainText(
+    "You can come back to it from the lesson's page on Course.",
+  );
   await page.screenshot({
     path: `${failedQuizScreenshotDir}/failed-results-done.png`,
     fullPage: true,

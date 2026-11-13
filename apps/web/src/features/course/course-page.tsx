@@ -49,7 +49,7 @@ export function CoursePage() {
                   <CardTitle aria-label={`Week ${week.week} · ${week.title}`} className="w-full">
                     <Collapsible.Trigger
                       aria-label={`${open ? 'Collapse' : 'Expand'} week ${week.week}`}
-                      className={`flex w-full items-center justify-between gap-3 rounded-t-xl px-(--card-spacing) pt-(--card-spacing) text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${open ? 'pb-0' : 'pb-(--card-spacing)'}`}
+                      className={`flex w-full items-center justify-between gap-3 rounded-t-xl px-(--card-spacing) pt-(--card-spacing) text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${open ? 'pb-3' : 'pb-(--card-spacing)'}`}
                     >
                       <span>
                         Week {week.week} · {week.title}
