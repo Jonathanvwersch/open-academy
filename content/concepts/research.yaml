@@ -28,20 +28,6 @@ concepts:
       status: stub,
     }
   - {
-      id: reading-papers,
-      title: Reading ML papers,
-      description: "Finding the claim, method, evidence and limitations quickly.",
-      difficulty: 2,
-      est_minutes: 30,
-      week: 1,
-      goal_weight: 3,
-      dimensions: [conceptual, transfer],
-      prereqs: [{ id: what-is-ml }, { id: experimental-design, strength: soft }],
-      objectives:
-        [{ text: "Summarise a paper's contribution and limitations", dimension: transfer }],
-      status: stub,
-    }
-  - {
       id: critical-evaluation,
       title: Critical evaluation of models,
       description: "Spotting confounds, leakage, cherry-picking and weak baselines.",
@@ -50,7 +36,7 @@ concepts:
       week: 15,
       goal_weight: 3,
       dimensions: [transfer],
-      prereqs: [{ id: reading-papers }, { id: statistical-evaluation }],
+      prereqs: [{ id: statistical-evaluation }],
       objectives: [{ text: "Critique an evaluation claim", dimension: transfer }],
       status: stub,
     }

@@ -127,6 +127,9 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
 
   await page.getByRole('link', { name: 'View course' }).click();
   await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Optional reading' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Optional reading', exact: true })).toBeVisible();
+  await expect(page.getByText('Reading ML papers', { exact: true })).toHaveCount(0);
   await expect(page.getByText('1.1', { exact: true })).toBeVisible();
   await expect(page.locator('li').filter({ hasText: '1.2' })).toContainText('Needs Vectors');
   const weekOneProject = page.getByRole('region', { name: 'Project' }).first();

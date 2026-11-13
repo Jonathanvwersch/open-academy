@@ -40,7 +40,7 @@ export function estimateTaskXp(
   if (activity.kind === 'learn' && lessonState) {
     return lessonState.points.filter((point) => point.status !== 'passed').length * 10;
   }
-  if (activity.kind === 'lab') return 0;
+  if (activity.kind === 'lab' || activity.kind === 'paper') return 0;
   return activity.plannedMinutes;
 }
 

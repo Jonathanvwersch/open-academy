@@ -1,7 +1,8 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { ArrowLeft, Minus, Plus } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Minus, Plus } from 'lucide-react';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { Collapsible } from 'radix-ui';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -18,6 +19,30 @@ import { paperQueryOptions } from './queries.js';
 
 const Route = getRouteApi('/papers/$paperId');
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+const paperGuideStorageKey = 'papers:guide-open';
+const paperReadingGuide = `1. **First pass, about 10 minutes.** Read the title, abstract, introduction, section headings, figures and conclusion. Work out what the paper claims and whether it matters to you.
+2. **Second pass.** Read the method and the experiments. For each result, ask what it is compared against, on which data, with which metric, and whether the gap is bigger than run-to-run noise.
+3. **Third pass, only if you need it.** Work through the maths and details until you could reimplement the idea.
+
+Skip what you don't understand yet; later weeks often explain it. Then answer the four questions below: claim, method, evidence and limitations.`;
+
+function readPaperGuideOpen(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    return window.localStorage.getItem(paperGuideStorageKey) !== 'false';
+  } catch {
+    return true;
+  }
+}
+
+function writePaperGuideOpen(open: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(paperGuideStorageKey, String(open));
+  } catch {
+    return;
+  }
+}
 
 type PaperSummaryJudgement = {
   feedback_md?: string;
@@ -116,6 +141,7 @@ export function PaperReaderPage() {
   const [pageAspectRatios, setPageAspectRatios] = useState<Record<number, number>>({});
   const [pageWidth, setPageWidth] = useState(0);
   const [pageNumber, setPageNumber] = useState(data.progress?.lastPage ?? 1);
+  const [readingGuideOpen, setReadingGuideOpen] = useState(readPaperGuideOpen);
   const [zoom, setZoom] = useState(100);
   const [guideOpen, setGuideOpen] = useState(() => window.matchMedia('(min-width: 768px)').matches);
   const [pdfError, setPdfError] = useState(false);
@@ -499,6 +525,28 @@ export function PaperReaderPage() {
             id="paper-guide"
             className="min-h-0 w-full shrink-0 space-y-6 overflow-y-auto pt-4 pb-6 pr-1 md:w-[380px] md:border-l md:pl-4"
           >
+            <Collapsible.Root
+              open={readingGuideOpen}
+              onOpenChange={(open) => {
+                setReadingGuideOpen(open);
+                writePaperGuideOpen(open);
+              }}
+            >
+              <section className="rounded-lg border px-4 py-3">
+                <h2 className="text-sm font-semibold">
+                  <Collapsible.Trigger className="flex w-full items-center justify-between gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">
+                    <span>How to read any paper</span>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${readingGuideOpen ? 'rotate-180' : ''}`}
+                    />
+                  </Collapsible.Trigger>
+                </h2>
+                <Collapsible.Content className="pt-3">
+                  <Markdown className="text-sm leading-6">{paperReadingGuide}</Markdown>
+                </Collapsible.Content>
+              </section>
+            </Collapsible.Root>
             <section>
               <h2 className="text-sm font-semibold">Why this paper</h2>
               <Markdown className="text-sm leading-6">{data.paper.why_this_week}</Markdown>

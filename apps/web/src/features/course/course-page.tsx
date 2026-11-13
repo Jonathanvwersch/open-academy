@@ -199,9 +199,9 @@ export function CoursePage() {
                       })}
                     </ol>
                     {week.papers.length > 0 ? (
-                      <section className="border-t" aria-label="Papers">
+                      <section className="border-t" aria-label="Optional reading">
                         <h3 className="px-(--card-spacing) pt-4 pb-1 text-sm font-medium text-muted-foreground">
-                          Papers
+                          Optional reading
                         </h3>
                         <ul className="divide-y">
                           {week.papers.map((paper) => (

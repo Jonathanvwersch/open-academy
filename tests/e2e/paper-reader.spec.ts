@@ -61,6 +61,24 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
   await expect(paperLink.locator('[data-slot="badge"]')).toHaveCount(0);
   await paperLink.click();
   await expect(page).toHaveURL(/\/papers\/fixture-paper-one/);
+  await expect(page.getByRole('heading', { name: 'How to read any paper' })).toBeVisible();
+  await expect(page.getByText('First pass, about 10 minutes.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'How to read any paper' })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
+  await page.getByRole('button', { name: 'How to read any paper' }).click();
+  await expect(page.getByRole('button', { name: 'How to read any paper' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+  await expect(page.getByText('First pass, about 10 minutes.')).toBeHidden();
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'How to read any paper' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+  await expect(page.getByText('First pass, about 10 minutes.')).toBeHidden();
   await expect(page.locator('.react-pdf__Page__canvas').first()).toBeVisible();
   await expect(page.locator('.react-pdf__Page__textContent').first()).toContainText(
     'Fixture page one',

@@ -13,6 +13,7 @@ import {
   sessionActivities,
   studySessions,
   users,
+  xpEvents,
 } from '../../src/db/schema.js';
 import type { PaperFetcher } from '../../src/features/papers/fetcher.js';
 import { extractPaperPages } from '../../src/features/papers/service.js';
@@ -207,6 +208,7 @@ test('summary grading stores judgement, completes a linked activity, and disable
     .from(sessionActivities)
     .where(eq(sessionActivities.id, activity.id));
   expect(completedActivity?.status).toBe('completed');
+  expect(await db.select().from(xpEvents).where(eq(xpEvents.userId, userId))).toHaveLength(0);
 
   const unavailable = await noTutorApp.request('/api/papers/fixture-paper-two/summary', {
     method: 'POST',

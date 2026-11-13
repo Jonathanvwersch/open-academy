@@ -7,7 +7,6 @@ est_minutes: 45
 source:
   arxiv: 1807.03341v2
 concepts:
-  - reading-papers
   - critical-evaluation
 why_this_week: This week you practise reading papers and judging their claims. This essay names four common habits in machine learning papers that make results look stronger or clearer than they are. Knowing them makes every other paper on this list easier to read critically, including ones you have already read.
 how_to_read: Read the whole essay; it is short and has no maths. For each of the four trends, note the definition and one of the examples. Then think back to a paper you read earlier in the course and look for any of the four habits in it.

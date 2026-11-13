@@ -80,6 +80,10 @@ describe('XP calculations', () => {
     expect(estimateTaskXp({ kind: 'lab', plannedMinutes: 190 })).toBe(0);
   });
 
+  test('does not advertise XP for optional paper suggestions', () => {
+    expect(estimateTaskXp({ kind: 'paper', plannedMinutes: 90 })).toBe(0);
+  });
+
   test('calculates course percentage and handles an empty course', () => {
     expect(coursePercent(1, 3)).toBe(33);
     expect(coursePercent(3, 3)).toBe(100);
