@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { RouteLoadError } from './route-error.js';
 import { routeTree } from './routeTree.gen.js';
 import { PageSkeleton } from './skeletons.js';
+import 'katex/contrib/copy-tex';
 import './styles.css';
 
 function DefaultRouteError() {

@@ -23,7 +23,6 @@ import { Label } from './ui/label.js';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group.js';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select.js';
 import { Textarea } from './ui/textarea.js';
-import 'katex/contrib/copy-tex';
 import 'katex/dist/katex.min.css';
 import 'highlight.js/styles/github.css';
 
