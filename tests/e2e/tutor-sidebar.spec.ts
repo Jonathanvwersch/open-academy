@@ -467,7 +467,9 @@ test('chat text stays visible while Markdown loads', async ({ page }) => {
   await expect(tutor.getByTestId('tutor-assistant-message').locator('.markdown')).toBeVisible();
 });
 
-test('pending tutor reply uses a skeleton within the mobile conversation', async ({ page }) => {
+test('pending tutor reply shows pulsing Thinking within the mobile conversation', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   let releaseReply!: () => void;
   const replyGate = new Promise<void>((resolve) => {
@@ -485,11 +487,12 @@ test('pending tutor reply uses a skeleton within the mobile conversation', async
     await conversation.fill('Explain this topic');
     await conversation.press('Enter');
     await expect(page.getByTestId('tutor-user-message')).toContainText('Explain this topic');
-    const loading = page.getByRole('status', { name: 'Tutor is responding' });
+    const loading = page.getByRole('status', { name: 'Thinking', exact: true });
     await expect(loading).toBeVisible();
-    await expect(loading.locator('[data-slot="skeleton"]')).toHaveCount(3);
+    await expect(loading.getByText('Thinking…')).toHaveCSS('animation-name', 'pulse');
+    await expect(loading.locator('[data-slot="skeleton"]')).toHaveCount(0);
     const bounds = await loading.boundingBox();
-    if (!bounds) throw new Error('Reply skeleton is not visible');
+    if (!bounds) throw new Error('Thinking indicator is not visible');
     expect(bounds.x).toBeGreaterThanOrEqual(0);
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
     await page.screenshot({ path: `${screenshotDir}/tutor-pending-mobile.png` });
@@ -583,11 +586,11 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   await expect(
     tutor.getByTestId('tutor-user-message').filter({ hasText: 'Explain the first step' }),
   ).toHaveCount(1);
-  await expect(tutor.getByRole('status', { name: 'Tutor is responding' })).toBeVisible();
+  await expect(tutor.getByRole('status', { name: 'Thinking', exact: true })).toBeVisible();
   await expect(tutor.getByTestId('tutor-thinking-bubble')).toBeVisible();
   await expect(
     tutor.getByTestId('tutor-thinking-bubble').locator('[data-slot="skeleton"]'),
-  ).toHaveCount(3);
+  ).toHaveCount(0);
   await expect(tutor.getByTestId('tutor-thinking-bubble').locator('svg')).toHaveCount(0);
   await expect(sendButton).toHaveAttribute('aria-busy', 'true');
   await expect(sendButton).toHaveAttribute('data-loading', 'true');
