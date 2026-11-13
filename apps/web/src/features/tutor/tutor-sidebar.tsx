@@ -8,6 +8,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Eye, Plus, Sparkles, X } from 'lucide-react';
 import {
   createContext,
+  lazy,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -17,7 +19,6 @@ import {
 } from 'react';
 import type { StickToBottomContext } from 'use-stick-to-bottom';
 import { apiFetch } from '../../api/authenticated-fetch.js';
-import { Markdown } from '../../components/markdown.js';
 import {
   Conversation,
   ConversationContent,
@@ -44,6 +45,7 @@ import {
 } from '../../components/ui/sidebar.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip.js';
 import { useIsMobile } from '../../hooks/use-mobile.js';
+import { todayQueryOptions } from '../sessions/queries.js';
 import { tutorThreadQueryOptions, tutorThreadsQueryOptions } from './queries.js';
 
 export interface TutorRequestContext {
@@ -72,6 +74,23 @@ interface TutorContextValue {
   openConversation: (context?: Partial<TutorRequestContext>) => void;
   startChat: (context: Partial<TutorRequestContext>, greeting: string) => void;
   isOpen: boolean;
+}
+
+const LazyMarkdown = lazy(() =>
+  import('../../components/markdown.js').then((module) => ({ default: module.Markdown })),
+);
+function TutorMarkdown({ children }: { children: string }) {
+  return (
+    <Suspense
+      fallback={
+        <span role="status" aria-label="Loading message">
+          <Loader size={16} aria-hidden="true" />
+        </span>
+      }
+    >
+      <LazyMarkdown wrapDisplayMath>{children}</LazyMarkdown>
+    </Suspense>
+  );
 }
 
 const TutorContext = createContext<TutorContextValue | null>(null);
@@ -165,12 +184,6 @@ function relativeThreadTime(value: string): string {
   return formatter.format(-Math.max(1, daysAgo), 'day');
 }
 
-async function getJson<T>(url: string): Promise<T> {
-  const response = await apiFetch(url);
-  if (!response.ok) throw new Error('Tutor conversations could not be loaded.');
-  return (await response.json()) as T;
-}
-
 function ContextLine({ pageLabel }: { pageLabel?: string }) {
   return pageLabel ? (
     <div
@@ -224,10 +237,7 @@ export function TutorContextProvider({
   } | null>(null);
   const conversationContextRef = useRef<StickToBottomContext | null>(null);
   const sidebarWidthMax = maxSidebarWidth(viewportWidth);
-  const tutorFlag = useQuery({
-    queryKey: ['tutor', 'enabled'],
-    queryFn: () => getJson<{ tutorEnabled: boolean }>('/api/today'),
-  });
+  const tutorFlag = useQuery(todayQueryOptions());
   const enabled = context.enabled || tutorFlag.data?.tutorEnabled === true;
   const visibleOpen = open && routeAllowed && context.allowed;
   const loadingTutor = !context.enabled && tutorFlag.isPending && context.allowed;
@@ -727,9 +737,7 @@ export function TutorContextProvider({
                             <MessageContent
                               style={{ '--katex-cover': 'var(--sidebar)' } as React.CSSProperties}
                             >
-                              <Markdown wrapDisplayMath>
-                                {repairTutorMarkdown(greeting.text)}
-                              </Markdown>
+                              <TutorMarkdown>{repairTutorMarkdown(greeting.text)}</TutorMarkdown>
                             </MessageContent>
                           </Message>
                         ) : null}
@@ -758,11 +766,11 @@ export function TutorContextProvider({
                                 } as React.CSSProperties
                               }
                             >
-                              <Markdown wrapDisplayMath>
+                              <TutorMarkdown>
                                 {message.role === 'assistant'
                                   ? repairTutorMarkdown(message.content)
                                   : message.content}
-                              </Markdown>
+                              </TutorMarkdown>
                             </MessageContent>
                           </Message>
                         ))}
@@ -781,7 +789,7 @@ export function TutorContextProvider({
                                   { '--katex-cover': 'var(--secondary)' } as React.CSSProperties
                                 }
                               >
-                                <Markdown wrapDisplayMath>{visiblePendingSend.content}</Markdown>
+                                <TutorMarkdown>{visiblePendingSend.content}</TutorMarkdown>
                               </MessageContent>
                             </Message>
                             {mutation.isPending ? (

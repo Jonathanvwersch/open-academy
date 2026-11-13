@@ -1,6 +1,6 @@
 import type { AnswerOptions } from '@academy/contracts/exercises';
 import { useQueries, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
-import { getRouteApi, Link } from '@tanstack/react-router';
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Markdown } from '../../components/markdown.js';
@@ -8,6 +8,7 @@ import { SessionSkeleton } from '../../components/skeletons.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
+import { learnQueryOptions } from '../course/queries.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
 import { FeedbackPanel } from '../exercises/feedback-panel.js';
 import { HintLadder } from '../exercises/hint-ladder.js';
@@ -20,7 +21,7 @@ import { TutorLauncher, useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { sessionActivityLabel } from './activity-label.js';
 import { InlineLessonCheck } from './inline-lesson-check.js';
 import { PaperActivity } from './paper-activity.js';
-import { sessionQueryOptions } from './queries.js';
+import { sessionQueryOptions, todayQueryOptions } from './queries.js';
 import { QuestionProgress, type QuestionState } from './question-progress.js';
 import { SessionActivityHeader } from './session-activity-header.js';
 import { SessionCompletion } from './session-completion.js';
@@ -28,6 +29,7 @@ import { SessionCompletion } from './session-completion.js';
 const Route = getRouteApi('/session/$id');
 
 export function SessionPage() {
+  const navigate = useNavigate();
   const { id } = Route.useParams();
   const { activity: requestedActivityId } = Route.useSearch();
   const queryClient = useQueryClient();
@@ -453,7 +455,11 @@ export function SessionPage() {
     setEndingSession(true);
     try {
       await apiFetch(`/api/sessions/${id}/end`, { method: 'POST' });
-      window.location.href = '/';
+      await Promise.all([
+        queryClient.fetchQuery({ ...learnQueryOptions(), staleTime: 0 }),
+        queryClient.fetchQuery({ ...todayQueryOptions(), staleTime: 0 }),
+      ]);
+      await navigate({ to: '/' });
     } finally {
       setEndingSession(false);
     }

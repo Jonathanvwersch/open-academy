@@ -162,9 +162,11 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
     }
     await route.continue();
   });
+  const documentStartedAt = await page.evaluate(() => performance.timeOrigin);
   await page.getByRole('button', { name: 'Start learning' }).click();
   await expect(page).toHaveURL(/\/session\//);
   expect(createdSessionRequest).toEqual({ kind: 'weekday' });
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentStartedAt);
 });
 
 test('completed activity deep links can continue or show the session finish screen', async ({
@@ -442,6 +444,11 @@ test('Home offers alternative lessons and starts the selected lesson', async ({ 
       (activity) => activity.kind === 'learn' && activity.conceptId === chosen.conceptId,
     ),
   ).toBe(true);
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Resume session', exact: true })).toHaveAttribute(
+    'href',
+    `/session/${sessionId}`,
+  );
 });
 
 test('stub projects have no lab link or results form', async ({ page }) => {
