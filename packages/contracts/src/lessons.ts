@@ -93,6 +93,7 @@ export interface LessonRunPayload {
       exercise: ClientExercise;
       result: {
         correct: number | null;
+        assisted: boolean;
         feedback: string;
         solution: string;
         yourAnswer: string;
@@ -134,6 +135,16 @@ export interface LessonRunPayload {
     };
   };
 }
+
+export interface LessonRunAnswerPayload {
+  assisted: boolean;
+  correct: number;
+  feedback: string;
+  solution: string;
+  xpAwarded: number;
+  state: NonNullable<LessonRunPayload['run']>;
+}
+
 export type LessonPrerequisite = { id: string; title: string; recap?: string };
 
 export type QuizReviewPayload = {

@@ -956,6 +956,32 @@ test('typing a question mark in the tutor composer does not show shortcut help',
   await expect(exercise.getByText(/Enter submits/)).toHaveCount(0);
 });
 
+test('a tutor-assisted correct answer does not advance the streak', async ({ page }) => {
+  await createSession(page);
+  let run = await answerAndReload(page, true);
+  expect(run.points[0]).toMatchObject({ status: 'active', streak: 1 });
+
+  run = await nextProblemAndReload(page);
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const question = 'Can you explain the reasoning for this question?';
+  await tutor.getByLabel('Ask the tutor').fill(question);
+  await tutor.getByLabel('Ask the tutor').press('Enter');
+  await expect(tutor.getByTestId('tutor-user-message').filter({ hasText: question })).toBeVisible();
+  await expect(
+    tutor.getByTestId('tutor-assistant-message').filter({ hasText: `Tutor reply to: ${question}` }),
+  ).toBeVisible();
+
+  run = await answerAndReload(page, true);
+  expect(run.points[0]).toMatchObject({ status: 'active', streak: 1 });
+  expect(run.lastAnsweredProblem.result.assisted).toBe(true);
+  await expect(
+    page.getByText("You asked the tutor about this one, so it doesn't count toward 2 in a row.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+});
+
 test('a legacy v1 learn activity resumes through the KP runner and final question', async ({
   page,
 }) => {

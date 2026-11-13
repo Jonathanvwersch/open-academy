@@ -10,6 +10,7 @@ export interface LessonProblemRow {
   exerciseId: string;
   attemptId?: string | null;
   practiceOnly?: boolean;
+  assisted: boolean;
   seed: number | null;
   servedAt: Date;
   answeredAt: Date | null;
@@ -94,7 +95,8 @@ export function deriveLessonState<Row extends LessonProblemRow>(
     let answeredCount = 0;
     for (const problem of answered) {
       answeredCount += 1;
-      streak = problem.correct === 1 ? streak + 1 : 0;
+      if (problem.correct !== 1) streak = 0;
+      else if (!problem.assisted) streak += 1;
       if (streak === 2) {
         passedOn = problem;
         break;
@@ -227,14 +229,18 @@ export function selectNextProblem(
   }
 
   if (templates.length === 0) {
+    const sortByServedTime = (left: RoundProblem, right: RoundProblem) =>
+      (left.servedAt?.getTime() ?? left.position) - (right.servedAt?.getTime() ?? right.position) ||
+      left.position - right.position;
     const reusable = roundProblems
       .filter((problem) => exercises.get(problem.exerciseId)?.role !== 'basics')
-      .sort(
-        (left, right) =>
-          (left.servedAt?.getTime() ?? left.position) -
-            (right.servedAt?.getTime() ?? right.position) || left.position - right.position,
-      )[0];
-    return reusable ? { exerciseId: reusable.exerciseId, seed: null, position } : undefined;
+      .sort(sortByServedTime)[0];
+    const fallback =
+      reusable ??
+      roundProblems
+        .filter((problem) => exercises.get(problem.exerciseId)?.role === 'basics')
+        .sort(sortByServedTime)[0];
+    return fallback ? { exerciseId: fallback.exerciseId, seed: null, position } : undefined;
   }
   const difficulty = nextDifficulty(
     templates.map((template) => template.difficulty),

@@ -206,6 +206,7 @@ export const lessonProblems = pgTable(
     exerciseId: text('exercise_id').notNull(),
     seed: integer('seed'),
     practiceOnly: boolean('practice_only').notNull().default(false),
+    assisted: boolean('assisted').notNull().default(false),
     servedAt: timestamp('served_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     answeredAt: timestamp('answered_at', { withTimezone: true, mode: 'date' }),
     correct: real('correct'),

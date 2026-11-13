@@ -1,0 +1,1 @@
+ALTER TABLE "lesson_problems" ADD COLUMN "assisted" boolean DEFAULT false NOT NULL;--> statement-breakpoint
