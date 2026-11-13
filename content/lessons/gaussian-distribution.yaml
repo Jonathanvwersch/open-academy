@@ -185,7 +185,9 @@ knowledge_points:
     explain: |
       ### Adding independent changes
 
-      Each die stands for one small effect, like electrical noise or vibration, inside a reading. We count sums to see why they cluster in the middle. Our fair dice are independent, so one result tells us nothing about another.
+      Why might our sensor's readings form a bell shape? Electrical noise and vibration can each change a reading slightly, and those changes add together. To see what adding random contributions does, let's roll two fair six-sided dice and add their results. Why is a total of 7 more likely than 2?
+
+      The dice give us a simple example whose results we can count. They are independent: one die's result tells us nothing about the other.
 
       An **ordered pair** records each die separately. The pair $(1,6)$ means first die 1, second die 6, so it differs from $(6,1)$ even though both sum to 7.
 
