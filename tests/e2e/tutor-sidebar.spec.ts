@@ -1192,6 +1192,54 @@ test('wide tutor fractions stay within their message and panel', async ({ page }
   await measure('mobile', true);
 });
 
+test('tutor fraction numerators and denominators are not clipped by the scrollport', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { assistantMessage } = await openMockedTutorReply(
+    page,
+    '00000000-0000-4000-8000-000000000014',
+    'Show the mean of 2, 4, and 6.',
+    String.raw`The mean is easy to compute as $$\mu=\frac{2+4+6}{3}=4.$$`,
+  );
+
+  for (const mobile of [false, true]) {
+    if (mobile) {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await waitForTutorSidebarToSettle(page, '[data-slot="sidebar"][data-mobile="true"]');
+    }
+    const message = mobile
+      ? page.locator(
+          '[data-slot="sidebar"][data-mobile="true"] [data-testid="tutor-assistant-message"]',
+        )
+      : assistantMessage;
+    const display = message.locator('.tutor-display-math');
+    await expect(display).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    const geometry = await display.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const glyphs = [...element.querySelectorAll('.katex-html .mord')]
+        .filter((glyph) => glyph.children.length === 0)
+        .map((glyph) => {
+          const range = document.createRange();
+          range.selectNodeContents(glyph);
+          const rect = range.getBoundingClientRect();
+          return { top: rect.top, bottom: rect.bottom };
+        });
+      return { top: box.top, bottom: box.bottom, glyphs };
+    });
+    expect(geometry.glyphs.length).toBeGreaterThan(0);
+    for (const glyph of geometry.glyphs) {
+      expect(glyph.top).toBeGreaterThanOrEqual(geometry.top);
+      expect(glyph.bottom).toBeLessThanOrEqual(geometry.bottom);
+    }
+    await message.screenshot({
+      path: `${tutorMathScreenshotDir}/fraction-${mobile ? 'mobile' : 'desktop'}.png`,
+      animations: 'disabled',
+    });
+  }
+});
+
 test('short tutor display math fits without scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const { tutor, assistantMessage } = await openMockedTutorReply(
