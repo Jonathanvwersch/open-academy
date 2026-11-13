@@ -1,5 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { expect, type Page, test } from '@playwright/test';
+import { eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
@@ -1434,6 +1435,12 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
     path: `${spacedReviewScreenshotDir}/failed-quiz-pending-desktop.png`,
     fullPage: true,
   });
+  const db = createDb(env.TEST_DATABASE_URL);
+  await db
+    .update(sessionActivities)
+    .set({ status: 'planned' })
+    .where(eq(sessionActivities.id, prepared.activityId));
+  await db.$client.end();
   await page.goto(`/lessons/${conceptId}`);
   const failedLessonEntry = page.getByTestId('lesson-quiz-entry');
   await expect(failedLessonEntry).toContainText(
@@ -1444,6 +1451,7 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
     fullPage: true,
   });
   await failedLessonEntry.getByRole('button', { name: 'Go to the quiz' }).click();
+  await expect(page).toHaveURL(new RegExp(`/session/${sessionId}$`));
   await expect(page).toHaveURL(/\/session\/[^/]+$/);
   const failedSessionId = new URL(page.url()).pathname.split('/').at(-1);
   if (!failedSessionId) throw new Error('Expected an active quiz session');

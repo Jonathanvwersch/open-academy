@@ -49,7 +49,7 @@ export function LessonReviewPage() {
         (activity) =>
           activity.kind === 'learn' &&
           activity.conceptId === conceptId &&
-          activity.status === 'in_progress',
+          (activity.status === 'in_progress' || activity.status === 'planned'),
       );
       if (activeSession && activeLesson) {
         await navigate({ to: '/session/$id', params: { id: activeSession.id } });
