@@ -12,10 +12,22 @@ test('repairs control-character escapes for Greek symbols', () => {
 });
 
 test.each([
+  ['`$28$` is only the `$u$` route', '$28$ is only the $u$ route'],
+  ['`$0,1,\\dots,9$`', '$0,1,\\dots,9$'],
+])('unwraps backtick-wrapped inline math: %s', (markdown, expected) => {
+  expect(repairTutorMarkdown(markdown)).toBe(expected);
+});
+
+test.each([
   '$$a=b$$',
   '$$\n\\begin{aligned} a&=b \\\\ c&=d \\end{aligned}\n$$',
   '$a$ and $b$',
   'costs $5 today',
+  '`x = 1`',
+  'the `$` sign',
+  '`cost $5`',
+  '``$x$``',
+  '```\nprint(1)\n```',
   'line one\nline two\tend',
 ])('leaves valid or unrelated Markdown unchanged: %s', (markdown) => {
   expect(repairTutorMarkdown(markdown)).toBe(markdown);
