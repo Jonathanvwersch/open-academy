@@ -87,7 +87,7 @@ concepts:
     description: Derivative of composed functions, single and multivariable.
     difficulty: 2
     est_minutes: 25
-    week: 2
+    week: 1
     goal_weight: 3
     dimensions: [conceptual, math]
     prereqs: [{ id: derivatives }, { id: partial-derivatives }]
