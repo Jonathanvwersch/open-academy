@@ -704,6 +704,7 @@ exercises:
 
       Raising the gain a little would lower the error, because the sensor currently reads short.
   - id: pdp-freeze-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -732,6 +733,7 @@ exercises:
         feedback: "Size has nothing to do with it; in fact $2.25$ is larger than $2y^2=2$ at $P$. What matters is whether the term changes as $y$ moves."
     solution: "With $x$ frozen at $1.5$, $x^2$ is the constant $2.25$. A constant does not change as $y$ moves, so its derivative is $0$."
   - id: pdp-constant-factor-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -760,6 +762,7 @@ exercises:
         feedback: "Terms can lose inputs: $5y$ gives $0$ in $x$ and $x^3$ gives $3x^2$. The $y$ stays only because it was a factor already."
     solution: "With $y$ held fixed, $x^2y$ is a constant $y$ times $x^2$. The constant factor stays, so the partial in $x$ is $2x\\cdot y=2xy$."
   - id: pdp-error-rate-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

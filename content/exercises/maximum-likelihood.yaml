@@ -23,6 +23,7 @@ exercises:
     solution: The likelihood of $p$ is the probability of the observed data if the chance of heads
       were $p$. Maximum likelihood picks the $p$ that makes it largest.
   - id: mle-likelihood-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -171,6 +172,7 @@ exercises:
     solution: The slope of $\ln x$ is $1/x$, which is positive, so $\ln$ always rises. Larger
       likelihoods give larger log-likelihoods, and both peak at the same guess.
   - id: mle-log-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -245,8 +247,8 @@ exercises:
     difficulty: 2
     est_minutes: 2
     prompt:
-      For the same data, guess A has log-likelihood $-67.3$ and guess B has $-69.3$. Which guess
-      fits the data better?
+      For 100 coin flips with 60 heads and 40 tails, guess A has log-likelihood $-67.3$ and guess
+      B has $-69.3$. Which guess fits the data better?
     options:
       - id: a
         text: A, because $-67.3$ is larger, so A's likelihood is larger.
@@ -327,6 +329,7 @@ exercises:
     solution: $\ln L(\mu)$ is a constant minus the sum of squared distances over $2\sigma^2$. It is
       largest where that sum is smallest, at the mean of the readings.
   - id: mle-centre-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -489,6 +492,7 @@ exercises:
       With Gaussian noise of fixed spread, the log-likelihood falls exactly as the sum of squared
       errors grows, so the lowest MSE gives the highest likelihood.
   - id: mle-mse-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

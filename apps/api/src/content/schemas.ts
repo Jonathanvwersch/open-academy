@@ -260,6 +260,7 @@ const CommonExerciseSchema = z.object({
   id: IdSchema,
   dimension: DimensionSchema,
   role: ExerciseRoleSchema,
+  lesson_only: z.boolean().default(false),
   difficulty: z.number().int().min(1).max(5),
   est_minutes: z.number().positive(),
   prompt: z.string().min(1),

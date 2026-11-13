@@ -26,6 +26,7 @@ exercises:
         feedback: "A feature vector can mix units, such as square metres, bedrooms and years."
     solution: "A vector is an ordered list of numbers. Each position has a fixed meaning, so swapping entries changes the vector."
   - id: vecp-add-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -198,6 +199,7 @@ exercises:
         feedback: "The result is still a vector with the same number of components."
     solution: "Scaling multiplies every component by the same number. The arrow stays on its line, changing length and, for a negative scalar, direction."
   - id: vecp-scale-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -369,6 +371,7 @@ exercises:
         feedback: "For $(3,4)$ that gives 4, but the straight-line length is 5."
     solution: "The L2 norm squares each component, adds the squares and takes the square root. It is the vector's straight-line length."
   - id: vecp-distance-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

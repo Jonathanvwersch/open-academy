@@ -26,6 +26,7 @@ exercises:
         feedback: "A graph records dependencies, not a ranking of slopes."
     solution: "A computational graph connects inputs and simple operations with arrows showing which values each operation uses."
   - id: cgp-why-order
+    lesson_only: true
     dimension: "conceptual"
     type: "mc"
     role: "practice"
@@ -175,6 +176,7 @@ exercises:
         feedback: "Counting dependencies does not give a derivative."
     solution: "A local derivative concerns one operation's output and one of its own inputs, holding its other inputs fixed."
   - id: cgp-why-store-values
+    lesson_only: true
     dimension: "conceptual"
     type: "mc"
     role: "practice"
@@ -322,6 +324,7 @@ exercises:
         feedback: "Forward values are not derivatives."
     solution: "Multiply local derivatives along every path from the input to the output, then add those path products."
   - id: cgp-why-multiply-path
+    lesson_only: true
     dimension: "conceptual"
     type: "mc"
     role: "practice"

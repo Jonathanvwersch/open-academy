@@ -28,6 +28,7 @@ exercises:
         }
     solution: Softmax divides positive e-powers by their shared total, so all probabilities are positive and add up to one.
   - id: sm-softmax-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -181,6 +182,7 @@ exercises:
         }
     solution: For one labelled example, cross-entropy is $-\ln p_{\text{true}}$, so a ball label selects the ball probability.
   - id: sm-ce-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -329,6 +331,7 @@ exercises:
         }
     solution: The slope is $p_k-y_k$, negative for the true class and positive for every other class with finite scores.
   - id: sm-grad-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

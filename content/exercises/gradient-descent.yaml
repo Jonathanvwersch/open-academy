@@ -101,6 +101,7 @@ exercises:
         feedback: Repeating these stages recalculates slopes after each parameter update.
     solution: A training loop repeatedly predicts, measures loss, calculates gradients, and updates parameters.
   - id: gdp-downhill-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -262,6 +263,7 @@ exercises:
         feedback: Gradient descent moves every input at once, each by its own slope.
     solution: "The update is $-0.1\\times(2,-1)=(-0.2,+0.1)$: turn joint 1 back by $0.2$ radians and joint 2 forward by $0.1$."
   - id: gdp-step-size-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -428,6 +430,7 @@ exercises:
         feedback: $0.1$ already works; going ten times smaller only makes training slower.
     solution: $\eta=0.1$ falls steadily but slowly, and $\eta=0.6$ grows every step. Try a rate in between, closer to the stable one, and keep it only if the error keeps falling.
   - id: gdp-gradient-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -566,7 +569,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: For the lesson's example $x=2$, $y=7$, starting at $w=b=1$ with `lr = 0.05`, a coder computes the error as `e = y - y_hat` but keeps the update `w = w - lr * 2 * e * x` (and subtracts `lr * 2 * e` from `b`). What happens to the training loss as this loop repeats?
+    prompt: For one training example with $x=2$, $y=7$, starting at $w=b=1$ with `lr = 0.05`, a coder computes the error as `e = y - y_hat` but keeps the update `w = w - lr * 2 * e * x` (and subtracts `lr * 2 * e` from `b`). What happens to the training loss as this loop repeats?
     options:
       - id: a
         text: It grows, because every slope has the wrong sign, so each step goes uphill.
@@ -584,6 +587,7 @@ exercises:
         feedback: The step sizes are unchanged; only their direction flips.
     solution: The loss slope is $2(\hat y-y)x$. Using $y-\hat y$ negates it, so the update adds the true gradient and the loss rises every step.
   - id: gdp-loop-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -649,7 +653,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: Continue the lesson's loop for $x=2$, $y=7$. Pass 4 starts at $w=2.4$, $b=1.7$ with slopes $(-2,-1)$ and uses $\eta=0.05$. What is $w$ after pass 4's update?
+    prompt: Continue a gradient-descent loop for $x=2$, $y=7$. Pass 4 starts at $w=2.4$, $b=1.7$ with slopes $(-2,-1)$ and uses $\eta=0.05$. What is $w$ after pass 4's update?
     answer: 2.5
     tolerance:
       abs: 0.001

@@ -32,6 +32,7 @@ exercises:
       ]
     solution: "It applies the chain rule backwards to calculate parameter derivatives; it does not undo the prediction or update the parameters."
   - id: "bp-reuse-reason"
+    lesson_only: true
     dimension: "conceptual"
     type: "mc"
     role: "practice"
@@ -156,6 +157,7 @@ exercises:
       ]
     solution: "The chain rule multiplies the arriving loss slope by the local derivative of the operation."
   - id: "bp-hand-reason"
+    lesson_only: true
     dimension: "conceptual"
     type: "mc"
     role: "practice"
@@ -259,6 +261,7 @@ exercises:
       ]
     solution: "Shared parameters receive the sum of contributions from all examples; averaging, if required by the loss, is included once."
   - id: "bp-array-reason"
+    lesson_only: true
     dimension: "conceptual"
     type: "mc"
     role: "practice"
@@ -383,6 +386,7 @@ exercises:
       ]
     solution: "Finite differences estimate the same loss derivative independently by evaluating nearby parameter values."
   - id: "bp-check-reason"
+    lesson_only: true
     dimension: "conceptual"
     type: "mc"
     role: "practice"

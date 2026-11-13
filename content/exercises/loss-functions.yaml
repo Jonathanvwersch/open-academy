@@ -680,6 +680,7 @@ exercises:
     solution: The median remains at the typical short trip, while the mean is (10 + 10 + 60)/3, so
       squared error favours a larger constant.
   - id: lossp-measure-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -725,6 +726,7 @@ exercises:
         feedback: "MAE is an average: the two sizes must add to $2\\times5=10$."
     solution: "The two sizes must add to $2\\times5=10$. The first size is $|-2|=2$, so the positive error is $10-2=8$."
   - id: lossp-large-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -753,6 +755,7 @@ exercises:
         feedback: "The corner is at an error of $0$. At $-6$ the absolute-error slope is $-1$."
     solution: "For a small nudge, change is about slope times nudge. The squared-error slope at $-6$ is $-12$, giving about $-1.2$; the absolute-error slope is $-1$, giving $-0.1$."
   - id: lossp-constant-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

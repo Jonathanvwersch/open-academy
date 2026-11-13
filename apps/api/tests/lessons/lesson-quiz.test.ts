@@ -130,6 +130,34 @@ test('returns the available fixed questions when a step pool is smaller than its
   expect(select(lesson, exercises)).toHaveLength(4);
 });
 
+test('lesson-only problems are not included in the lesson quiz', () => {
+  const lessonOnly = ExerciseSchema.parse({
+    id: 'lesson-only',
+    dimension: 'math',
+    type: 'numeric',
+    role: 'practice',
+    lesson_only: true,
+    difficulty: 2,
+    est_minutes: 1,
+    prompt: 'Why does the worked example use this value?',
+    hints: [],
+    solution: 'It is used in the worked example.',
+    answer: 1,
+    tolerance: { abs: 0.001 },
+  });
+  const quizEligible = exercise('quiz-eligible', 2);
+  const lesson = { knowledge_points: [point('p1', [lessonOnly.id, quizEligible.id])] };
+  const items = select(
+    lesson,
+    new Map([
+      [lessonOnly.id, lessonOnly],
+      [quizEligible.id, quizEligible],
+    ]),
+  );
+
+  expect(items.map((item) => item.exerciseId)).toEqual([quizEligible.id]);
+});
+
 test('is deterministic for a fixed seed', () => {
   const { lesson, exercises } = makeSteps(1);
   expect(select(lesson, exercises, { seed: 77 })).toEqual(select(lesson, exercises, { seed: 77 }));

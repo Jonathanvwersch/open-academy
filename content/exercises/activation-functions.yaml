@@ -758,6 +758,7 @@ exercises:
         }
     solution: "With every score negative, ReLU outputs 0 with slope 0, so nudging the neuron's weights or bias doesn't move its output. It's a dead unit."
   - id: actp-stack-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -814,6 +815,7 @@ exercises:
         feedback: "Straight lines can be negative: $y=6x-1$ gives $-1$ at $x=0$. The real sign is the unequal rises."
     solution: "The rises are $1-(-2)=3$, $4-1=3$ and $10-4=6$. Stacked linear layers equal one straight line, which rises equally per step, so this model must have an activation between its layers."
   - id: actp-squash-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -842,6 +844,7 @@ exercises:
         feedback: "There is no cap below 1: larger scores get closer to 1, for example $\\sigma(4)\\approx0.982$."
     solution: "$\\sigma(2)=1/(1+e^{-2})$ and $e^{-2}\\approx0.135$ is still clearly above 0, so the result is $1/1.135\\approx0.881$. The output approaches 1 only as the score grows further."
   - id: actp-nudge-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

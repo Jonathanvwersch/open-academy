@@ -768,6 +768,7 @@ exercises:
       use X @ w + b to get one price per row. Alternatively, I add a column containing 1 for every
       house and give that column weight 50. This already adds the bias, so I do not add it again.
   - id: lrp-add-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -796,6 +797,7 @@ exercises:
         feedback: The bias is added once to the whole total, not to any one feature.
     solution: The dot product multiplies the first entries together and the second entries together. With $w=(3,10)$, area must be first so that it is multiplied by $3$ and the bedrooms by $10$, giving $270+40=310$ before the bias.
   - id: lrp-weights-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -852,6 +854,7 @@ exercises:
         feedback: Extra bedrooms add to the price; they can't make each extra square metre worth less.
     solution: The area piece is always $3\times\text{area}$, so going from $50$ to $51$ m² adds $3$, and so does going from $150$ to $151$ m². A pattern where early square metres are worth more needs a model whose predictions can bend.
   - id: lrp-batch-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

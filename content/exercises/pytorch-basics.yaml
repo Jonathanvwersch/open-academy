@@ -34,6 +34,7 @@ exercises:
         }
     solution: "Shape lists dimension sizes, so `(2, 1)` means two rows and one column."
   - id: ptb-tensors-why
+    lesson_only: true
     dimension: implementation
     type: mc
     role: practice
@@ -72,7 +73,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Fill the blank with the floating-point data type taught in the lesson."
+    prompt: "Fill the blank with PyTorch's default floating-point type."
     code: |
       import torch
       x = torch.tensor([[1.0], [2.0]], dtype=____)
@@ -197,6 +198,7 @@ exercises:
         }
     solution: "A linear module packages weighted sums and biases with the trainable tensors that implement them."
   - id: ptb-linear-why
+    lesson_only: true
     dimension: implementation
     type: mc
     role: practice
@@ -373,6 +375,7 @@ exercises:
         }
     solution: "An optimiser step changes parameters using gradients that backward has already stored."
   - id: ptb-loss-why
+    lesson_only: true
     dimension: implementation
     type: mc
     role: practice
@@ -549,6 +552,7 @@ exercises:
         }
     solution: "Clear old gradients first, then calculate predictions, loss and gradients before applying the update."
   - id: ptb-loop-why
+    lesson_only: true
     dimension: implementation
     type: mc
     role: practice

@@ -28,6 +28,7 @@ exercises:
         }
     solution: Binary classification predicts one of two categories; the number of input features can vary.
   - id: lr-classification-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -143,6 +144,7 @@ exercises:
         }
     solution: The sigmoid maps a freely ranging score to a probability; thresholding is a separate decision step.
   - id: lr-sigmoid-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -256,6 +258,7 @@ exercises:
         }
     solution: Cross-entropy is the negative logarithm of the probability of the true label, so little support for that label incurs a large penalty.
   - id: lr-bce-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

@@ -530,7 +530,7 @@ test('passes every knowledge point and restores the exact problem and result aft
   await expect(page.getByText('Question 1', { exact: true })).toBeVisible();
   await page.screenshot({ path: `${lessonQuizScreenshotDir}/step-question.png`, fullPage: true });
   await expect(page.getByTestId('lesson-problem-prompt')).toContainText(
-    'Which statement best describes the main idea in this step?',
+    'Which statement best describes the main idea of this concept?',
   );
   await page.getByTestId('lesson-problem').screenshot({
     path: `${mcShuffleScreenshotDir}/mc.png`,

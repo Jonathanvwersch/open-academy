@@ -669,7 +669,8 @@ function chooseExercise(
     (exercise) =>
       (!dimension || exercise.dimension === dimension) &&
       !used.has(exercise.id) &&
-      !isTemplate(exercise),
+      !isTemplate(exercise) &&
+      !exercise.lesson_only,
   );
   const leastRecentlySeen = (exercises: IndexedExercise[]) =>
     exercises.sort((left, right) => lastSeen(left.id, state) - lastSeen(right.id, state))[0];

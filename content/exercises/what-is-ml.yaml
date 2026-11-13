@@ -26,6 +26,7 @@ exercises:
         feedback: "Machine learning depends on examples: they are what the rule is fitted to."
     solution: "Machine learning fits a rule, the model, to examples so it can make predictions on new inputs."
   - id: ml-fit-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -207,6 +208,7 @@ exercises:
         feedback: "That is the prediction; the loss measures how far it is from the target."
     solution: "The target is the known sale price. The measurements are inputs, the multipliers are weights, and the model's output is the prediction."
   - id: ml-weight-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -296,7 +298,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "With the worked example's weights (25, 10, −1), in £ thousands per unit, what price does the model predict for a 90 m², 2-bedroom house that is 10 years old? Record area in tens of square metres. Answer in £ thousands."
+    prompt: "A model uses weights (25, 10, −1), in £ thousands per unit. What price does it predict for a 90 m², 2-bedroom house that is 10 years old? Record area in tens of square metres. Answer in £ thousands."
     answer: 235
     tolerance: { abs: 0 }
     common_wrong:
@@ -393,6 +395,7 @@ exercises:
         feedback: "Learning uses examples and training rather than one fixed hand-written rule."
     solution: "The learning cycle stays the same: a model has weights, a loss measures its mistakes, and training changes the weights to lower the loss."
   - id: ml-robot-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

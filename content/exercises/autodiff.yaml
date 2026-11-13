@@ -27,6 +27,7 @@ exercises:
     solution: The record keeps how the result was calculated, so each operation's local slope can be
       multiplied in later on the way back.
   - id: ad-record-why-save
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -190,6 +191,7 @@ exercises:
     solution: The backward pass multiplies local slopes in reverse order and adds each leaf's slope
       to its `.grad`, without changing the weights.
   - id: ad-reverse-why-multiply
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -340,6 +342,7 @@ exercises:
       Forward mode shares work for one input's effects on outputs; reverse mode shares work for
       one output's sensitivities to inputs.
   - id: ad-modes-why-two
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

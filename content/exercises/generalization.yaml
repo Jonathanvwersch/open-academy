@@ -28,6 +28,7 @@ exercises:
         }
     solution: Generalization is useful prediction on examples the model did not learn from. Training success alone does not establish it.
   - id: gen-average-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -141,6 +142,7 @@ exercises:
         }
     solution: Distribution shift means the examples in real use come from a different distribution than the examples tested on. House measurements or the prices associated with them can change.
   - id: gen-fixed-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -258,6 +260,7 @@ exercises:
         }
     solution: A group split keeps each house's records together. This prevents a copy of a held-out house's sale from teaching the model the price it is supposed to predict.
   - id: gen-group-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

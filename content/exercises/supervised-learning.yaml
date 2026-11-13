@@ -818,6 +818,7 @@ exercises:
       Separate sales check predictions beyond the examples used to choose
       settings.
   - id: slp-why-price-not-input
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -851,6 +852,7 @@ exercises:
         }
     solution: "An input must be available when you make a prediction. A house on sale today has no sale price yet, so the price is the target, used only to check predictions on past sales."
   - id: slp-why-add-signed
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -884,6 +886,7 @@ exercises:
         }
     solution: "The signed total of $+10$, $-20$ and $+10$ is 0 even though all three predictions miss. That cancellation is the reason the lesson squares each error instead."
   - id: slp-why-every-house
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -917,6 +920,7 @@ exercises:
         }
     solution: "Training scores each setting by its average loss over every example: 200 for Setting A and 1700 for Setting B. One house being closer does not outweigh Setting B's error of 70 on house 1."
   - id: slp-why-held-back
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

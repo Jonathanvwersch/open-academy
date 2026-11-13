@@ -34,6 +34,7 @@ exercises:
         }
     solution: "Momentum combines the current gradient with a stored average of earlier gradients. This lets more than one batch influence the move."
   - id: mad-memory-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -193,6 +194,7 @@ exercises:
         }
     solution: "$v_t$ averages squared gradients over recent updates for a single parameter. Its square root provides that parameter's gradient-size estimate."
   - id: mad-scale-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -352,6 +354,7 @@ exercises:
         }
     solution: "Starting the averages at zero makes their early values too small relative to the gradients they average. Dividing by the weight assigned to real gradients removes that starting effect."
   - id: mad-correction-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -530,6 +533,7 @@ exercises:
         }
     solution: "Adam uses $w_t=w_{t-1}-\\eta\\hat m_t/(\\sqrt{\\hat v_t}+\\epsilon)$. The signed average chooses direction, while the denominator scales the move separately for each parameter."
   - id: mad-adam-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -611,6 +615,7 @@ exercises:
         }
     solution: "The fraction is $0/(0+\\epsilon)=0$. A positive epsilon avoids the undefined division $0/0$ and produces no move in this case."
   - id: mad-adam-store
+    lesson_only: true
     dimension: math
     type: mc
     role: practice

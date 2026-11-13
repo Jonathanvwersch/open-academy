@@ -22,6 +22,7 @@ exercises:
         feedback: An autoencoder doesn't sort inputs into categories; its encoder produces a short summary of the input.
     solution: The encoder turns an input of $n$ numbers into a latent vector of $k$ numbers, with $k$ smaller than $n$. The decoder then rebuilds the input from it.
   - id: aep-encode-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -67,7 +68,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: The lesson's encoder has first row $(0.5,0.5,0,0)$ and bias $0$. What is the first latent number $z_1$ for the image $x=({{= p/10 }},{{= q/10 }},0.2,0.2)$?
+    prompt: An autoencoder for $2\times2$ grayscale images has an encoder with first row $(0.5,0.5,0,0)$ and bias $0$. What is the first latent number $z_1$ for image $x=({{= p/10 }},{{= q/10 }},0.2,0.2)$?
     params:
       p:
         min: 1
@@ -90,7 +91,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: The lesson's decoder has rows $(1,0)$, $(1,0)$, $(0,1)$ and $(0,1)$, and bias $0$. It reads the latent vector $z=(0.3,0.9)$. What is the third rebuilt pixel, $\hat x_3$?
+    prompt: A decoder for $2\times2$ grayscale images has rows $(1,0)$, $(1,0)$, $(0,1)$ and $(0,1)$, and bias $0$. For latent vector $z=(0.3,0.9)$, what is the third rebuilt pixel, $\hat x_3$?
     answer: 0.9
     tolerance: { abs: 0.0001 }
     common_wrong:
@@ -163,6 +164,7 @@ exercises:
         feedback: The latent vector is the short middle, and the output is the rebuilt input.
     solution: An autoencoder is trained to rebuild its input, so the input is its own target and no labels are needed.
   - id: aep-recon-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -208,7 +210,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: Using the lesson's weights, the image $x=({{= a/10 }},{{= b/10 }},0.2,0.2)$ is rebuilt as $\hat x=({{= (a+b)/20 }},{{= (a+b)/20 }},0.2,0.2)$. What is its reconstruction error $E$?
+    prompt: An autoencoder maps image $x=({{= a/10 }},{{= b/10 }},0.2,0.2)$ to reconstruction $\hat x=({{= (a+b)/20 }},{{= (a+b)/20 }},0.2,0.2)$. If $E=\sum_{i=1}^{4}(x_i-\hat x_i)^2$, what is its reconstruction error $E$?
     params:
       a:
         min: 5
@@ -271,7 +273,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: The lesson's network, built for horizontal stripes, is given the vertical-stripe image $x=(0.8,0.2,0.8,0.2)$. What is its reconstruction error $E$?
+    prompt: A $2\times2$ image autoencoder encodes each row by its average and reconstructs both pixels in that row from that average. For the vertical-stripe image $x=(0.8,0.2,0.8,0.2)$, what is its reconstruction error $E$, the sum of squared pixel differences?
     answer: 0.36
     tolerance: { abs: 0.0001 }
     common_wrong:
@@ -324,6 +326,7 @@ exercises:
         feedback: That's the reconstruction error $E$; the factor only compares lengths.
     solution: $n/k$ divides the input length by the latent length, so it says how many input numbers each latent number stands for.
   - id: aep-sizes-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -494,6 +497,7 @@ exercises:
         feedback: Those are the decoder's outputs; latent space holds the short vectors in the middle.
     solution: Latent space has one axis per latent number, so each image's latent vector is a point in it, and similar images usually land close together.
   - id: aep-space-self-explain
+    lesson_only: true
     dimension: math
     type: mc
     role: practice
