@@ -2,7 +2,7 @@ id: ppo
 title: Proximal Policy Optimization Algorithms
 authors: Schulman, Wolski, Dhariwal, Radford and Klimov
 year: 2017
-week: 9
+week: 6
 est_minutes: 60
 source:
   arxiv: 1707.06347v2

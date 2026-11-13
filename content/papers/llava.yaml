@@ -2,13 +2,13 @@ id: llava
 title: Visual Instruction Tuning
 authors: Liu, Li, Wu and Lee
 year: 2023
-week: 10
+week: 11
 est_minutes: 75
 source:
   arxiv: 2304.08485v2
 concepts:
   - vision-language-models
-  - post-training
+  - sft
   - image-text-alignment
 why_this_week: "This week you learn how vision-language models are built and post-trained. LLaVA showed a simple, cheap recipe: connect a pretrained CLIP image encoder to a pretrained language model with a small projection, then fine-tune on instruction-following conversations about images. This is the same pattern VLAs follow next week, with robot actions added."
 how_to_read: Read the introduction and the section on how the instruction data was generated with a text-only GPT-4. Read the architecture section with its figure and the two-stage training procedure. Read the evaluation results, including the Science QA result. Skim the qualitative examples.

@@ -131,16 +131,3 @@ concepts:
         [{ text: "Describe the stages of an LLM training pipeline", dimension: conceptual }],
       status: stub,
     }
-  - {
-      id: post-training,
-      title: Fine-tuning and post-training,
-      description: "Supervised fine-tuning, preference optimisation, RLHF.",
-      difficulty: 3,
-      est_minutes: 25,
-      week: 10,
-      goal_weight: 2,
-      dimensions: [conceptual],
-      prereqs: [{ id: pretraining }, { id: policy-gradients, strength: soft }],
-      objectives: [{ text: "Contrast pretraining with SFT and RLHF", dimension: conceptual }],
-      status: stub,
-    }

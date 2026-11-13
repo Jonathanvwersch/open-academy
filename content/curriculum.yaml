@@ -41,6 +41,11 @@ domains:
       description: "MDPs, value functions, Q-learning and policy gradients.",
     }
   - {
+      id: llm-post-training,
+      title: Post-training LLMs,
+      description: "Supervised fine-tuning, preference learning, RLHF, DPO and reinforcement learning with verifiable rewards.",
+    }
+  - {
       id: imitation,
       title: Imitation learning,
       description: "Demonstrations, behavioral cloning, distribution shift and evaluation.",
@@ -159,6 +164,41 @@ weeks:
     }
   - {
       week: 6,
+      title: Reinforcement learning,
+      project: rl-sim,
+      intro: "Learning by trial and error from rewards: decision problems, value functions, Q-learning, policy gradients and PPO, the algorithm behind RLHF.",
+      concepts:
+        [
+          mdp,
+          policies-returns,
+          value-functions,
+          q-learning,
+          exploration,
+          policy-gradients,
+          ppo,
+          reward-design,
+          simulation-for-rl,
+        ],
+    }
+  - {
+      week: 7,
+      title: Post-training LLMs,
+      project: llm-post-training,
+      intro: "Turning a pretrained language model into a useful assistant: supervised fine-tuning, learning rewards from human preferences, RLHF and DPO, and reinforcement learning on problems with checkable answers, the recipe behind reasoning models.",
+      concepts:
+        [
+          sft,
+          lora,
+          reward-models,
+          rlhf,
+          dpo,
+          rl-verifiable-rewards,
+          reward-hacking,
+          llm-evaluation,
+        ],
+    }
+  - {
+      week: 8,
       title: Robotics foundations,
       project: planar-arm,
       intro: "How robots describe where things are: coordinate frames, rotations and transforms, then working out where an arm's hand is from its joint angles, and back.",
@@ -176,7 +216,7 @@ weeks:
         ],
     }
   - {
-      week: 7,
+      week: 9,
       title: Robotics control and perception,
       project: control-sim,
       intro: "How a robot senses the world and acts on it: sensors, cameras, feedback control and basic dynamics.",
@@ -191,7 +231,7 @@ weeks:
         ],
     }
   - {
-      week: 8,
+      week: 10,
       title: Imitation learning,
       project: bc-policy,
       intro: "Teaching a robot by showing it: learning a policy from human demonstrations, why it breaks when the robot drifts off course, and how to fix that.",
@@ -203,30 +243,11 @@ weeks:
           distribution-shift,
           dagger,
           policy-evaluation,
-        ],
-    }
-  - {
-      week: 9,
-      title: Reinforcement learning,
-      project: rl-sim,
-      intro: "Learning by trial and error from rewards instead of demonstrations: decision problems, value functions, Q-learning and policy gradients.",
-      concepts:
-        [
-          mdp,
-          policies-returns,
-          value-functions,
-          q-learning,
-          exploration,
-          policy-gradients,
-          ppo,
-          world-models,
-          simulation-for-rl,
-          reward-design,
           bc-vs-rl,
         ],
     }
   - {
-      week: 10,
+      week: 11,
       title: Modern multimodal AI,
       project: vision-policy,
       intro: "Models that connect images and text, and how they let a robot act on what its camera sees.",
@@ -238,11 +259,10 @@ weeks:
           vision-language-models,
           action-representations,
           vision-conditioned-policies,
-          post-training,
         ],
     }
   - {
-      week: 11,
+      week: 12,
       title: Advanced robot learning,
       project: chunking-policy,
       intro: "The methods behind current robot foundation models: action chunking, diffusion policies, transformer policies and vision-language-action models.",
@@ -256,6 +276,7 @@ weeks:
           vla-models,
           vla-action-heads,
           robot-foundation-models,
+          world-models,
           video-world-models,
           world-action-models,
           embodiment-gap,
@@ -263,7 +284,7 @@ weeks:
         ],
     }
   - {
-      week: 12,
+      week: 13,
       title: End-to-end robot learning,
       project: capstone,
       intro: "Running a robot-learning project properly: data pipelines, evaluation, failure analysis and statistics.",
@@ -271,7 +292,7 @@ weeks:
         [data-pipelines-robotics, failure-analysis, experimental-design, statistical-evaluation],
     }
   - {
-      week: 13,
+      week: 14,
       title: Capstone and final assessment,
       project: capstone,
       intro: "Designing a complete ML system, reading research papers and judging models critically.",
@@ -303,7 +324,7 @@ goals:
   - {
       id: g-llm-pipeline,
       text: "Understand the components of an LLM training pipeline",
-      concepts: [tokenization, pretraining, post-training],
+      concepts: [tokenization, pretraining, sft],
     }
   - {
       id: g-paradigms,

@@ -9,7 +9,7 @@ source:
 concepts:
   - pretraining
   - autoregressive-lm
-why_this_week: "This week you learn how an autoregressive language model is pretrained. GPT-3 showed what happens when you scale that recipe to 175 billion parameters: the model can do new tasks from a few examples written in the prompt, without any weight updates. That idea, in-context learning, is a foundation of the VLAs in Week 11."
+why_this_week: "This week you learn how an autoregressive language model is pretrained. GPT-3 showed what happens when you scale that recipe to 175 billion parameters: the model can do new tasks from a few examples written in the prompt, without any weight updates. That idea, in-context learning, is a foundation of the VLAs in Week 12."
 how_to_read: The paper is about 75 pages, so be selective. Read the introduction and the approach section closely, especially the figure comparing zero-shot, one-shot and few-shot prompting with fine-tuning. Pick two task families from the results section and read those. Read the limitations section in full. Skip the rest of the results, the broader impacts and the appendices.
 questions:
   - id: claim
