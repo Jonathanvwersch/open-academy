@@ -509,7 +509,7 @@ export function PaperReaderPage() {
             </section>
             {data.paper.questions.map((question) => (
               <section key={question.id} className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="text-sm font-medium text-muted-foreground">
                   {question.kind[0]?.toUpperCase()}
                   {question.kind.slice(1)}
                 </p>

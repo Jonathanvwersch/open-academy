@@ -16,7 +16,10 @@ export function LessonSteps({
   returnToCurrentStep: () => void;
 }) {
   return (
-    <ol aria-label="Lesson steps" className="flex flex-wrap gap-2">
+    <ol
+      aria-label="Lesson steps"
+      className="flex flex-wrap gap-2 [&_[data-slot=badge]]:h-9 [&_[data-slot=badge]]:min-w-16 [&_[data-slot=badge]]:justify-center [&_[data-slot=badge]]:rounded-lg [&_[data-slot=badge]]:px-3 [&_[data-slot=badge]]:text-xs"
+    >
       {state.points.map((item, index) => (
         <li key={item.id}>
           {item.status === 'passed' ||

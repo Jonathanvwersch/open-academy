@@ -3,7 +3,6 @@ export const publicFeatureModules = {
     'features/exercises/exercise-form.tsx',
     'features/exercises/feedback-panel.tsx',
     'features/exercises/hint-ladder.tsx',
-    'features/exercises/mode-badge.tsx',
     'features/lessons/lesson-block.tsx',
     'features/lessons/lesson-runner.tsx',
     'features/sessions/session-activity-header.tsx',

@@ -4,10 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Markdown } from '../../components/markdown.js';
-import { LessonSkeletonBody } from '../../components/skeletons.js';
+import { SessionSkeleton } from '../../components/skeletons.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
+import { Skeleton } from '../../components/ui/skeleton.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
 import { FeedbackPanel } from '../exercises/feedback-panel.js';
 import { sessionQueryOptions } from '../sessions/queries.js';
@@ -427,19 +428,28 @@ export function LessonRunner({
     }
   };
 
-  if (!state) {
+  if (!state)
     return (
-      <section aria-busy="true" className="space-y-6">
-        <SessionActivityHeader
-          title={title}
-          label={activityLabel}
-          lessonHref={lessonHref}
-          subtitleSkeleton
-        />
-        <LessonSkeletonBody />
-      </section>
+      <SessionSkeleton
+        fallback={
+          <section className="space-y-6">
+            <SessionActivityHeader
+              title={title}
+              label={activityLabel}
+              lessonHref={lessonHref}
+              subtitleSkeleton
+            />
+            <div className="flex flex-wrap gap-2" aria-hidden="true">
+              {[...(lesson?.knowledge_points?.map((point) => point.id) ?? []), 'quiz'].map(
+                (step) => (
+                  <Skeleton key={step} className="h-9 w-16 rounded-lg" />
+                ),
+              )}
+            </div>
+          </section>
+        }
+      />
     );
-  }
 
   const pointStatus = state.points.find((item) => item.id === displayedPoint?.id);
   const shownProblem = practiceMode

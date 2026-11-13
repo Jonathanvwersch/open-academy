@@ -172,3 +172,26 @@ test('settings edits stay accessible and the save spinner keeps its geometry', a
   await expect(page.getByLabel('Saturday study time', { exact: true })).toHaveValue('120');
   await expect(page.getByLabel('Sunday study time', { exact: true })).toHaveValue('90');
 });
+
+test('first visits wait for real layout data without inventing placeholder cards', async ({
+  page,
+}) => {
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/api/course', async (route) => {
+    await gate;
+    await route.continue();
+  });
+  await page.goto('/course');
+  try {
+    const pending = page.getByTestId('route-skeleton');
+    await expect(pending).toBeVisible();
+    await expect(pending.locator('[data-layout-shape]')).toHaveCount(0);
+    await expect(page.locator('[data-page-frame] [data-slot="card"]')).toHaveCount(0);
+  } finally {
+    release();
+  }
+  await expect(page.locator('[data-page-frame] [data-slot="card"]').first()).toBeVisible();
+});

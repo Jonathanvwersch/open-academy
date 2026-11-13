@@ -21,7 +21,6 @@ import { Markdown } from '../../components/markdown.js';
 import {
   Conversation,
   ConversationContent,
-  ConversationEmptyState,
   ConversationScrollButton,
 } from '../../components/ui/ai/conversation.js';
 import { Loader } from '../../components/ui/ai/loader.js';
@@ -588,10 +587,12 @@ export function TutorContextProvider({
                     <div className="flex items-center justify-between gap-3">
                       <h2 className="text-base font-medium">Chats</h2>
                       <div className="flex items-center gap-1">
-                        <Button type="button" variant="outline" size="sm" onClick={startNewChat}>
-                          <Plus aria-hidden="true" />
-                          New chat
-                        </Button>
+                        {threads.isPending || threads.isError || threadGroups.length > 0 ? (
+                          <Button type="button" variant="outline" size="sm" onClick={startNewChat}>
+                            <Plus aria-hidden="true" />
+                            New chat
+                          </Button>
+                        ) : null}
                         <Button
                           type="button"
                           aria-label="Close tutor"
@@ -765,9 +766,6 @@ export function TutorContextProvider({
                             </MessageContent>
                           </Message>
                         ))}
-                        {messages.length === 0 && !visiblePendingSend && !showGreeting ? (
-                          <ConversationEmptyState title="Start a conversation" description="" />
-                        ) : null}
                         {visiblePendingSend ? (
                           <>
                             <Message
@@ -833,7 +831,7 @@ export function TutorContextProvider({
                       </div>
                     ) : null}
                     <PromptInput
-                      className="w-full space-y-2"
+                      className="w-full space-y-2 rounded-xl border bg-card p-2 transition-shadow focus-within:ring-2 focus-within:ring-ring/30"
                       onSubmit={(event) => {
                         event.preventDefault();
                         send();
@@ -845,7 +843,7 @@ export function TutorContextProvider({
                         </Alert>
                       ) : null}
                       <PromptInputTextarea
-                        className="max-h-[40vh] min-h-36 resize-none overflow-y-auto"
+                        className="max-h-[min(30dvh,16rem)] min-h-24 resize-none overflow-y-auto rounded-lg border-0 bg-transparent px-2 py-1.5 shadow-none focus-visible:border-transparent focus-visible:ring-0"
                         aria-label="Ask the tutor"
                         value={draft}
                         onChange={(event) => setDraft(event.target.value)}
@@ -856,7 +854,7 @@ export function TutorContextProvider({
                           }
                         }}
                       />
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-end gap-2">
                         <PromptInputSubmit
                           aria-label={mutation.isPending ? undefined : 'Send'}
                           loading={mutation.isPending}
@@ -864,10 +862,10 @@ export function TutorContextProvider({
                         >
                           Send
                         </PromptInputSubmit>
-                        {draftLength > 0 ? (
+                        {draftLength >= TUTOR_QUESTION_MAX_LENGTH * 0.8 ? (
                           <span
                             data-testid="tutor-draft-length"
-                            className={`text-xs ${draftTooLong ? 'text-destructive' : 'text-muted-foreground'}`}
+                            className={`order-first mr-auto text-xs ${draftTooLong ? 'text-destructive' : 'text-muted-foreground'}`}
                           >
                             {draftTooLong
                               ? `Too long by ${(draftLength - TUTOR_QUESTION_MAX_LENGTH).toLocaleString('en-US')} characters`

@@ -36,6 +36,7 @@ export function ExerciseForm({
   inputAreaMinHeight,
   primaryAction,
   actions,
+  compactActions = false,
 }: {
   exercise: ClientExercise;
   onSubmit: (answer: unknown) => void;
@@ -55,6 +56,7 @@ export function ExerciseForm({
     disabled?: boolean;
   };
   actions?: ReactNode;
+  compactActions?: boolean;
 }) {
   const [value, setValue] = useState('');
   const [line, setLine] = useState('');
@@ -160,14 +162,19 @@ export function ExerciseForm({
     if (!locked && isSelected) return undefined;
     return 'muted' as const;
   };
-  const optionClassName = (state: 'correct' | 'incorrect' | 'muted' | undefined) =>
+  const optionClassName = (
+    state: 'correct' | 'incorrect' | 'muted' | undefined,
+    isSelected = false,
+  ) =>
     state === 'correct'
       ? 'border-green-500 bg-green-50 text-green-950 dark:bg-green-950/30 dark:text-green-100'
       : state === 'incorrect'
         ? 'border-red-500 bg-red-50 text-red-950 dark:bg-red-950/30 dark:text-red-100'
         : state === 'muted'
           ? 'border-border bg-muted/50 text-muted-foreground'
-          : 'border-border bg-card';
+          : isSelected
+            ? 'border-foreground/35 bg-muted/70 ring-1 ring-foreground/10'
+            : 'border-border bg-card hover:bg-muted/40';
   const optionControlClassName = (state: 'correct' | 'incorrect' | 'muted' | undefined) =>
     state === 'correct'
       ? 'border-green-600 bg-green-600 text-white data-checked:bg-green-600'
@@ -276,16 +283,16 @@ export function ExerciseForm({
                       key={option.id}
                       htmlFor={optionId}
                       data-option-state={state}
-                      className={`flex items-center gap-3 rounded-lg border p-3 ${
+                      className={`flex min-h-12 items-start gap-3 rounded-lg border px-4 py-3 transition-colors focus-within:border-foreground/40 ${
                         inputsLocked ? 'cursor-default' : 'cursor-pointer'
-                      } ${optionClassName(state)}`}
+                      } ${optionClassName(state, selected.includes(option.id))}`}
                     >
                       <Checkbox
                         id={optionId}
                         checked={selected.includes(option.id)}
                         disabled={inputsLocked}
                         indicator={optionIcon(state)}
-                        className={optionControlClassName(state)}
+                        className={`mt-1 ${optionControlClassName(state) ?? ''}`}
                         onCheckedChange={(checked) =>
                           setSelected((current) =>
                             checked
@@ -294,10 +301,10 @@ export function ExerciseForm({
                           )
                         }
                       />
-                      <span className="w-5 shrink-0 text-sm font-medium text-muted-foreground">
+                      <span className="mt-0.5 w-5 shrink-0 text-sm font-medium text-muted-foreground">
                         {String.fromCharCode(65 + index)}.
                       </span>
-                      <span className="text-base leading-6 font-normal">
+                      <span className="min-w-0 flex-1 text-base leading-6 font-normal">
                         <Markdown inline>{option.text}</Markdown>
                       </span>
                     </Label>
@@ -318,21 +325,21 @@ export function ExerciseForm({
                       key={option.id}
                       htmlFor={optionId}
                       data-option-state={state}
-                      className={`flex items-center gap-3 rounded-lg border p-3 ${
+                      className={`flex min-h-12 items-start gap-3 rounded-lg border px-4 py-3 transition-colors focus-within:border-foreground/40 ${
                         inputsLocked ? 'cursor-default' : 'cursor-pointer'
-                      } ${optionClassName(state)}`}
+                      } ${optionClassName(state, selected.includes(option.id))}`}
                     >
                       <RadioGroupItem
                         id={optionId}
                         value={option.id}
                         disabled={inputsLocked}
                         indicator={optionIcon(state)}
-                        className={optionControlClassName(state)}
+                        className={`mt-1 ${optionControlClassName(state) ?? ''}`}
                       />
-                      <span className="w-5 shrink-0 text-sm font-medium text-muted-foreground">
+                      <span className="mt-0.5 w-5 shrink-0 text-sm font-medium text-muted-foreground">
                         {String.fromCharCode(65 + index)}.
                       </span>
-                      <span className="text-base leading-6 font-normal">
+                      <span className="min-w-0 flex-1 text-base leading-6 font-normal">
                         <Markdown inline>{option.text}</Markdown>
                       </span>
                     </Label>
@@ -344,7 +351,7 @@ export function ExerciseForm({
         ) : null}
         {exercise.type === 'debug' ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className="grid gap-2.5">
               <Label htmlFor={`${exercise.id}-line`}>Buggy line</Label>
               <div className="relative">
                 <Select value={line} onValueChange={setLine} disabled={inputsLocked}>
@@ -373,7 +380,7 @@ export function ExerciseForm({
                 ) : null}
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="grid gap-2.5">
               <Label htmlFor={`${exercise.id}-fix`}>Fix</Label>
               <div className="relative">
                 <Select value={value} onValueChange={setValue} disabled={inputsLocked}>
@@ -413,7 +420,7 @@ export function ExerciseForm({
           exercise.type === 'code_read' ||
           exercise.type === 'text' ? (
             <Input
-              className="w-full"
+              className="h-10 w-full"
               aria-label="Your answer"
               value={value}
               onChange={(event) => setValue(event.target.value)}
@@ -444,9 +451,7 @@ export function ExerciseForm({
           onClick={primaryAction?.onClick}
           disabled={primaryAction?.disabled ?? disabled}
           loading={primaryAction?.loading ?? loading}
-          className={
-            primaryAction ? 'min-w-48 max-w-full h-auto min-h-8 whitespace-normal' : 'min-w-48'
-          }
+          className={`${compactActions ? 'px-3' : 'min-w-48 px-4'} ${primaryAction ? 'max-w-full h-auto min-h-10 whitespace-normal' : 'h-10'}`}
         >
           {primaryAction?.label ?? submitLabel}
         </Button>

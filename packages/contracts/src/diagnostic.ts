@@ -1,3 +1,7 @@
+export type DiagnosticAnswerInput =
+  | { exerciseId: string; answer: unknown; dontKnow?: false }
+  | { exerciseId: string; dontKnow: true };
+
 export interface DiagnosticResultsPayload {
   domains: Array<{
     id: string;
