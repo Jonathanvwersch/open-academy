@@ -1,0 +1,45 @@
+id: egg-equality-saturation
+title: "egg: Fast and Extensible Equality Saturation"
+authors: Willsey et al.
+year: 2021
+week: 6
+est_minutes: 60
+source:
+  arxiv: 2004.03082v3
+concepts:
+  - ml-compilers
+why_this_week: "Luminal builds its compiler on egglog, a successor to egg, so this paper explains the core idea behind Luminal. An e-graph holds many equivalent ways to express a computation while rewrites explore them, then extraction picks a version under a cost function."
+how_to_read: "Read Section 1, Introduction and Section 2, Background, especially Section 2.2, Equality Saturation, for why keeping equivalent rewrites helps with the phase-ordering problem. Read Section 3, Rebuilding: A New Take on E-Graph Invariant Maintenance, and Section 4, Extending E-Graphs with E-Class Analyses, for the paper's two main techniques. Then read Section 5.3, Efficiency, and skim Section 5.1, Ease of Use, and Section 5.2, Extensibility. For examples, focus on Section 6, Case Studies, especially Section 6.2, Spores: Optimizing Linear Algebra."
+questions:
+  - id: claim
+    kind: claim
+    prompt: What problem does equality saturation address, and how does keeping equivalent expressions in an e-graph help with it?
+  - id: method
+    kind: method
+    prompt: What do rebuilding and e-class analyses add to an equality-saturation system?
+  - id: evidence
+    kind: evidence
+    prompt: What evidence do the Herbie, Spores or Szalinski case studies give that egg is useful or faster?
+  - id: limitations
+    kind: limitations
+    prompt: What must a user supply for equality saturation to find a useful result, and what can make the search expensive or limit its guarantees?
+summary:
+  prompt: In about five sentences, explain equality saturation, egg's main contributions, the paper's evidence, and one limitation.
+  rubric:
+    - id: r1
+      criterion: Explains that an e-graph keeps equivalent expressions while rewrites add alternatives, and extraction selects a term using a cost function
+      weight: 2
+      required: true
+    - id: r2
+      criterion: Names rebuilding as deferred invariant maintenance and e-class analyses as a way to attach and propagate semantic facts
+      weight: 2
+      required: true
+    - id: r3
+      criterion: Describes a concrete case-study result, such as over 3000× faster Herbie simplification or Spores rewrites contributing 1.2×–5× end-to-end speedups
+      weight: 1
+      required: false
+    - id: r4
+      criterion: Notes that results depend on user-supplied rewrites and cost functions, while expansive rules can grow the search space and performance is workload-dependent
+      weight: 1
+      required: false
+  exemplar: "Equality saturation helps avoid choosing rewrite order too early: an e-graph stores many equivalent expressions, rewrites add alternatives, and extraction picks a low-cost expression from those represented. egg makes this practical with rebuilding, which defers restoring e-graph invariants, and e-class analyses, which attach facts such as constants or tensor shapes to equivalence classes. The authors demonstrate it in Herbie, Spores and Szalinski; for example, egg's Herbie backend made simplification over 3000× faster, and Spores found rewrites that contributed 1.2×–5× end-to-end speedups. A compiler still needs people to provide its language, valid rewrites and cost function. Expansive rewrites can make the e-graph grow quickly, and the best result is limited to the alternatives and search budget supplied."

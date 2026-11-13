@@ -23,7 +23,7 @@ domains:
   - {
       id: inference,
       title: Inference,
-      description: "A trained model is only useful if it runs fast enough. You'll learn what makes inference slow, from memory bandwidth to the KV cache, and the techniques serving systems use to speed it up: caching, quantisation, speculative decoding and batching.",
+      description: "A trained model is only useful if it runs fast enough. You'll learn what makes inference slow, from memory bandwidth to the KV cache, and the techniques serving systems use to speed it up: caching, quantisation, speculative decoding and batching, and how ML compilers turn a model into fast GPU kernels.",
     }
   - {
       id: vision,
@@ -159,7 +159,7 @@ weeks:
       week: 6,
       title: Inference,
       project: inference-engine,
-      intro: "A trained model is only useful if it runs fast enough. You'll learn what makes inference slow, from memory bandwidth to the KV cache, and the techniques serving systems use to speed it up: caching, quantisation, speculative decoding and batching.",
+      intro: "A trained model is only useful if it runs fast enough. You'll learn what makes inference slow, from memory bandwidth to the KV cache, and the techniques serving systems use to speed it up: caching, quantisation, speculative decoding and batching, and how ML compilers turn a model into fast GPU kernels.",
       concepts:
         [
           inference-metrics,
@@ -171,6 +171,7 @@ weeks:
           quantization,
           speculative-decoding,
           llm-serving,
+          ml-compilers,
         ],
     }
   - {
