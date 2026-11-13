@@ -38,7 +38,11 @@ export function createApiRoutes(deps: {
   paperFetcher?: PaperFetcher;
 }) {
   const api = new Hono<ApiEnv>();
-  const contentPromise = deps.content ? Promise.resolve(deps.content) : loadContent();
+  let contentPromise: Promise<ContentIndex> | undefined;
+  const content = () => {
+    contentPromise ??= deps.content ? Promise.resolve(deps.content) : loadContent();
+    return contentPromise;
+  };
   const db = deps.db;
   const tutorProvider =
     deps.tutorProvider === undefined
@@ -77,7 +81,6 @@ export function createApiRoutes(deps: {
     await next();
   });
   const withRepo = (context: Context<ApiEnv>) => new LearnerRepository(db, context.get('userId'));
-  const content = () => contentPromise;
   const tutor = (context: Context<ApiEnv>) =>
     tutorProvider &&
     new TutorService(

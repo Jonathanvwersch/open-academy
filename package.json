@@ -28,7 +28,7 @@
     "check": "pnpm boundaries && pnpm lint && pnpm typecheck && pnpm content:check && pnpm test:architecture",
     "build": "pnpm --filter @academy/web build && pnpm --filter @academy/api build",
     "start": "pnpm --filter @academy/api start",
-    "vercel-build": "pnpm build && pnpm --filter @academy/api vercel:migrate"
+    "vercel-build": "pnpm build && pnpm --filter @academy/api vercel:bundle && pnpm --filter @academy/api vercel:migrate"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.4",

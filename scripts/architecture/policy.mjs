@@ -26,12 +26,16 @@ export const sourceLayers = {
 
 export const sourceEntries = {
   web: new Set(['main.tsx', 'routeTree.gen.ts', 'katex-contrib.d.ts', 'vite-env.d.ts']),
-  api: new Set(['app.ts', 'index.ts', 'prod.ts', 'config.ts', 'paths.ts', 'service-context.ts']),
+  api: new Set([
+    'app.ts',
+    'index.ts',
+    'prod.ts',
+    'vercel.ts',
+    'config.ts',
+    'paths.ts',
+    'service-context.ts',
+  ]),
 };
 
 // The Vercel entry point is a deployment adapter, not a second application.
-export const deploymentImports = new Set([
-  'apps/api/src/app.ts',
-  'apps/api/src/config.ts',
-  'apps/api/src/db/client.ts',
-]);
+export const deploymentImports = new Set(['apps/api/dist-vercel/server.mjs']);

@@ -7,6 +7,7 @@
     "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
     "start": "tsx src/prod.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "vercel:bundle": "node scripts/bundle-vercel.mjs",
     "db:generate": "drizzle-kit generate --config drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
     "db:seed": "tsx scripts/seed.ts",
@@ -34,6 +35,7 @@
     "drizzle-kit": "0.31.11",
     "vitest": "5.1.0",
     "typescript": "7.0.2",
-    "@types/node": "26.6.6"
+    "@types/node": "26.6.6",
+    "esbuild": "0.28.2"
   }
 }

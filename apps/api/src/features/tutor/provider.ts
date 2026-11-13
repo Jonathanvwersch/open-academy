@@ -13,19 +13,39 @@ import {
   TutorReplySchema,
 } from './schemas.js';
 
-function promptPath(name: string): URL | string {
-  const local = new URL(`./prompts/${name}`, import.meta.url);
-  return existsSync(local) ? local : repositoryPath('apps/api/src/features/tutor/prompts', name);
-}
-
-const tutorPrompt = readFileSync(promptPath('tutor-system.md'), 'utf8');
-const rubricPrompt = readFileSync(promptPath('rubric-grader.md'), 'utf8');
-
 export type TutorPromptId = 'tutor-system' | 'rubric-grader';
 
+const promptCache = new Map<TutorPromptId, string>();
+
+function promptPath(name: string): URL | string {
+  const local = new URL(`./prompts/${name}`, import.meta.url);
+  if (existsSync(local)) return local;
+  const bundled = repositoryPath('apps/api/dist-vercel/prompts', name);
+  return existsSync(bundled)
+    ? bundled
+    : repositoryPath('apps/api/src/features/tutor/prompts', name);
+}
+
+function readPrompt(id: TutorPromptId): string {
+  let prompt = promptCache.get(id);
+  if (prompt === undefined) {
+    prompt = readFileSync(promptPath(`${id}.md`), 'utf8');
+    promptCache.set(id, prompt);
+  }
+  return prompt;
+}
+
+function promptVersion(id: TutorPromptId): string {
+  return createHash('sha256').update(readPrompt(id)).digest('hex').slice(0, 12);
+}
+
 export const TUTOR_PROMPT_VERSIONS: Record<TutorPromptId, string> = {
-  'tutor-system': createHash('sha256').update(tutorPrompt).digest('hex').slice(0, 12),
-  'rubric-grader': createHash('sha256').update(rubricPrompt).digest('hex').slice(0, 12),
+  get 'tutor-system'() {
+    return promptVersion('tutor-system');
+  },
+  get 'rubric-grader'() {
+    return promptVersion('rubric-grader');
+  },
 };
 
 export type TutorInputMessage = {
@@ -36,7 +56,7 @@ export type TutorInputMessage = {
 export function buildTutorInput(ctx: TutorContext, level: TutorLevel): TutorInputMessage[] {
   const { history = [], question, ...rest } = ctx;
   return [
-    { role: 'system', content: tutorPrompt },
+    { role: 'system', content: readPrompt('tutor-system') },
     ...history.map(
       (message): TutorInputMessage => ({
         role: message.role === 'tutor' ? 'assistant' : 'user',
@@ -105,7 +125,7 @@ export class OpenAIProvider implements TutorProvider {
     const response = await this.client.responses.parse({
       model: this.model,
       input: [
-        { role: 'system', content: rubricPrompt },
+        { role: 'system', content: readPrompt('rubric-grader') },
         { role: 'user', content: JSON.stringify(ctx) },
       ],
       text: { format: zodTextFormat(RubricJudgementSchema, 'rubric_judgement') },
