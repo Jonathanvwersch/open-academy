@@ -459,6 +459,7 @@ export function TutorContextProvider({
     setNewChatSelected(true);
     setSelectedId('');
     setView('conversation');
+    setFocusComposerOnOpen(true);
   };
   const openThread = (threadId: string) => {
     setError('');

@@ -712,6 +712,48 @@ test('Ask the tutor starts a fresh greeted chat on each problem launch', async (
   await expect(tutor.getByTestId('tutor-assistant-message')).toHaveCount(0);
 });
 
+test('conversation-header new chat focuses the tutor composer', async ({ page }) => {
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const composer = tutor.getByLabel('Ask the tutor');
+  await expect(composer).toBeFocused();
+  await tutor.getByRole('button', { name: 'New chat' }).click();
+  await expect(composer).toBeFocused();
+  await page.keyboard.type('x');
+  await expect(composer).toHaveValue('x');
+});
+
+test('Chats-list new chat buttons focus the tutor composer', async ({ page }) => {
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  const composer = tutor.getByLabel('Ask the tutor');
+  await tutor.getByRole('button', { name: 'Chats' }).click();
+  await expect(tutor.getByRole('heading', { name: 'Chats' })).toBeVisible();
+  await tutor
+    .locator('[data-slot="sidebar-header"]')
+    .getByRole('button', { name: 'New chat' })
+    .click();
+  await expect(composer).toBeFocused();
+  await page.keyboard.type('x');
+  await expect(composer).toHaveValue('x');
+
+  await tutor.getByRole('button', { name: 'Chats' }).click();
+  const emptyStateNewChat = tutor
+    .getByText('No chats yet')
+    .locator('..')
+    .getByRole('button', { name: 'New chat' });
+  await emptyStateNewChat.click();
+  await expect(composer).toBeFocused();
+  await page.keyboard.type('y');
+  await expect(composer).toHaveValue('y');
+});
+
 test('tutor send failure restores the draft and removes the optimistic message', async ({
   page,
 }) => {
