@@ -4,13 +4,7 @@ import { useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../../components/ui/card.js';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { Input } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
 import { Logo } from '../../components/ui/logo.js';
@@ -57,17 +51,18 @@ export function LoginPage() {
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-background px-4 py-8">
-      <Card className="w-full max-w-sm">
-        <CardHeader>
+      <Card className="w-full max-w-sm gap-6">
+        <CardHeader className="gap-3">
           <Logo className="size-8" />
           <CardTitle className="text-xl">Open Academy</CardTitle>
-          <CardDescription>Enter your password to continue.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={login}>
-            <Label className="block space-y-2">
-              Password
+            <div className="grid gap-2.5">
+              <Label htmlFor="password">Password</Label>
               <Input
+                id="password"
+                className="h-10"
                 aria-label="Password"
                 type="password"
                 autoComplete="current-password"
@@ -75,13 +70,13 @@ export function LoginPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 required
               />
-            </Label>
+            </div>
             {error ? (
               <Alert role="alert" variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             ) : null}
-            <Button className="w-full" type="submit" loading={submitting}>
+            <Button className="h-10 w-full" type="submit" loading={submitting}>
               Log in
             </Button>
           </form>

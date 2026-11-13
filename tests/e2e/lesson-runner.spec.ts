@@ -659,7 +659,7 @@ test('passes every knowledge point and restores the exact problem and result aft
   await expect(submitButton).toHaveAttribute('data-loading', 'true');
   await expect(submitButton).toBeDisabled();
   await expect(submitButton.getByTestId('button-spinner')).toBeVisible();
-  await expect(submitButton.getByText('Submit answer', { exact: true })).not.toBeVisible();
+  await expect(submitButton.getByText('Submit answer', { exact: true })).toHaveCSS('opacity', '0');
   const submitButtonAfter = await submitButton.boundingBox();
   if (!submitButtonAfter) throw new Error('Loading Submit answer button is not visible');
   expect(Math.abs(submitButtonAfter.width - submitButtonBefore.width)).toBeLessThanOrEqual(0.5);

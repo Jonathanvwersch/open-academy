@@ -1,5 +1,6 @@
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { ArrowRight } from 'lucide-react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
@@ -81,19 +82,21 @@ export function LearnPage() {
             </CardHeader>
             <CardContent className="space-y-5">
               {data.activeSessionId ? (
-                <Button asChild className="w-full">
+                <Button asChild className="h-10 w-full justify-between px-4">
                   <Link to="/session/$id" params={{ id: data.activeSessionId }}>
                     Resume session
+                    <ArrowRight className="size-4" aria-hidden="true" />
                   </Link>
                 </Button>
               ) : (
                 <Button
                   type="button"
-                  className="w-full"
+                  className="h-10 w-full justify-between px-4"
                   onClick={() => startSession.mutate()}
                   loading={startSession.isPending}
                 >
                   Start learning
+                  <ArrowRight className="size-4" aria-hidden="true" />
                 </Button>
               )}
               {startSession.isError ? (
@@ -291,7 +294,7 @@ export function LearnPage() {
                         />
                         <div
                           aria-hidden="true"
-                          className="absolute inset-x-0 bottom-0 rounded-sm bg-primary"
+                          className="absolute inset-x-0 bottom-0 rounded-sm bg-emerald-600"
                           style={{ height: `${xpHeight}%` }}
                         />
                       </div>

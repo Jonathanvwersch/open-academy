@@ -1,10 +1,11 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
+import { Check, LogOut } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { Input } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
 import { settingsQueryOptions } from './queries.js';
@@ -33,6 +34,8 @@ export function SettingsPage() {
         return;
       }
       setSaved(true);
+    } catch {
+      setError('Settings could not be saved. Check your connection and try again.');
     } finally {
       setSaving(false);
     }
@@ -47,10 +50,19 @@ export function SettingsPage() {
         return;
       }
       window.location.replace('/login');
+    } catch {
+      setAuthError('Could not log out. Check your connection and try again.');
     } finally {
       setLoggingOut(null);
     }
   }
+  const weeklyMinutes = draft.scheduleMinutes * 5 + draft.saturdayMinutes + draft.sundayMinutes;
+  const weeklyHours = Math.round((weeklyMinutes / 60) * 10) / 10;
+  const studyDays = [
+    { key: 'scheduleMinutes', label: 'Daily study time', title: 'Weekdays' },
+    { key: 'saturdayMinutes', label: 'Saturday study time', title: 'Saturday' },
+    { key: 'sundayMinutes', label: 'Sunday study time', title: 'Sunday' },
+  ] as const;
   return (
     <section className="space-y-6">
       <h1 className="sr-only">Settings</h1>
@@ -59,67 +71,45 @@ export function SettingsPage() {
           <CardHeader>
             <CardTitle>Study schedule</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-3">
-              <div className="grid gap-2">
-                <Label htmlFor="scheduleMinutes">Daily study time</Label>
-                <div className="relative">
-                  <Input
-                    id="scheduleMinutes"
-                    type="number"
-                    min={5}
-                    max={600}
-                    step={5}
-                    value={draft.scheduleMinutes}
-                    onChange={(event) =>
-                      setDraft({ ...draft, scheduleMinutes: Number(event.target.value) })
-                    }
-                    className="w-full pr-12"
-                  />
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    min
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Daily goal: {draft.scheduleMinutes} XP · 1 XP ≈ 1 minute
-                </p>
-              </div>
-              {(['saturdayMinutes', 'sundayMinutes'] as const).map((key) => (
-                <div className="grid gap-2" key={key}>
-                  <Label htmlFor={key}>
-                    {key === 'saturdayMinutes' ? 'Saturday study time' : 'Sunday study time'}
-                  </Label>
+              {studyDays.map(({ key, label, title }) => (
+                <div key={key} className="grid gap-2.5">
+                  <Label htmlFor={key}>{title}</Label>
                   <div className="relative">
                     <Input
                       id={key}
+                      aria-label={label}
                       type="number"
                       min={5}
                       max={600}
                       step={5}
                       value={draft[key]}
-                      onChange={(event) =>
-                        setDraft({ ...draft, [key]: Number(event.target.value) })
-                      }
-                      className="w-full pr-12"
+                      onChange={(event) => {
+                        setSaved(false);
+                        setDraft({ ...draft, [key]: Number(event.target.value) });
+                      }}
+                      className="h-12 bg-background pl-3.5 pr-13 text-xl font-medium tabular-nums md:text-xl"
                     />
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                       min
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Daily goal: {draft[key]} XP · 1 XP ≈ 1 minute
-                  </p>
                 </div>
               ))}
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="startDate">Learning start date</Label>
+            <div className="flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+              <Label htmlFor="startDate">Start date</Label>
               <Input
                 id="startDate"
                 type="date"
+                aria-label="Learning start date"
                 value={draft.startDate}
-                onChange={(event) => setDraft({ ...draft, startDate: event.target.value })}
-                className="w-48"
+                onChange={(event) => {
+                  setSaved(false);
+                  setDraft({ ...draft, startDate: event.target.value });
+                }}
+                className="h-10 w-full bg-background sm:w-44"
               />
             </div>
             {error ? (
@@ -127,15 +117,26 @@ export function SettingsPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             ) : null}
-            {saved ? (
-              <Alert role="status" className="border-green-300 bg-green-50 text-green-950">
-                <AlertDescription className="text-inherit">Settings saved.</AlertDescription>
-              </Alert>
-            ) : null}
-            <Button type="submit" loading={saving}>
-              Save settings
-            </Button>
           </CardContent>
+          <CardFooter className="flex-wrap justify-between gap-3">
+            <p className="text-xs tabular-nums text-muted-foreground">{weeklyHours} hours / week</p>
+            <div className="flex items-center gap-3">
+              <span
+                role="status"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground"
+              >
+                {saved ? (
+                  <>
+                    <Check className="size-3.5" aria-hidden="true" />
+                    Saved
+                  </>
+                ) : null}
+              </span>
+              <Button type="submit" loading={saving} className="h-9 px-4">
+                Save settings
+              </Button>
+            </div>
+          </CardFooter>
         </Card>
       </form>
       <Card>
@@ -148,19 +149,22 @@ export function SettingsPage() {
               <AlertDescription>{authError}</AlertDescription>
             </Alert>
           ) : null}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3">
             <Button
               type="button"
               variant="outline"
+              className="h-9"
               loading={loggingOut === 'logout'}
               disabled={loggingOut === 'logout-all'}
               onClick={() => void logout('logout')}
             >
+              <LogOut className="size-3.5" aria-hidden="true" />
               Log out
             </Button>
             <Button
               type="button"
               variant="outline"
+              className="h-9"
               loading={loggingOut === 'logout-all'}
               disabled={loggingOut === 'logout'}
               onClick={() => void logout('logout-all')}

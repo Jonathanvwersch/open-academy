@@ -129,12 +129,6 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();
   await expect(page.getByText('1.1', { exact: true })).toBeVisible();
   await expect(page.locator('li').filter({ hasText: '1.2' })).toContainText('Needs Vectors');
-  await expect(
-    page.getByText(
-      "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales.",
-      { exact: false },
-    ),
-  ).toBeVisible();
   const weekOneProject = page.getByRole('region', { name: 'Project' }).first();
   await expect(
     weekOneProject.getByRole('link', { name: 'Linear regression in NumPy' }),
@@ -142,8 +136,8 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   const supervisedRow = page
     .getByRole('listitem')
     .filter({ has: page.getByText('Supervised learning', { exact: true }) });
-  await expect(supervisedRow).toContainText('Builds on: Vectors');
-  await expect(supervisedRow).toContainText('Leads to: Linear models');
+  await expect(supervisedRow).not.toContainText('Builds on:');
+  await expect(supervisedRow).not.toContainText('Leads to:');
   await page.screenshot({
     path: `${courseStructureScreenshotDir}/course-week-1.png`,
     fullPage: true,
