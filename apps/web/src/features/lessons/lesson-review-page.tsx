@@ -1,5 +1,5 @@
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
-import { getRouteApi, useNavigate } from '@tanstack/react-router';
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Markdown } from '../../components/markdown.js';
@@ -17,9 +17,18 @@ export function LessonReviewPage() {
   const { from } = Route.useSearch();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data } = useSuspenseQuery(lessonReviewQueryOptions(conceptId));
-  const { data: runData } = useSuspenseQuery(lessonRunQueryOptions(conceptId));
-  const { lesson, checkAnswers, conceptTitle } = data;
+  const reviewQuery = useSuspenseQuery(lessonReviewQueryOptions(conceptId));
+  // Observe newer answers already in the cache without fetching the full run for a read-only page.
+  const cachedRun = useQuery({ ...lessonRunQueryOptions(conceptId), enabled: false });
+  const { lesson, checkAnswers, conceptTitle } = reviewQuery.data;
+  const runStatus =
+    cachedRun.dataUpdatedAt > reviewQuery.dataUpdatedAt
+      ? (cachedRun.data?.run?.status ?? null)
+      : reviewQuery.data.runStatus;
+  const runQuery = useQuery({
+    ...lessonRunQueryOptions(conceptId),
+    enabled: runStatus === 'quiz',
+  });
   const tutorSidebar = useTutorSidebar();
   const [startingQuiz, setStartingQuiz] = useState(false);
   const [quizStartError, setQuizStartError] = useState('');
@@ -78,30 +87,38 @@ export function LessonReviewPage() {
     <section className="space-y-6">
       {from ? (
         <Button asChild variant="link" className="px-0">
-          <a href={`/session/${encodeURIComponent(from)}`}>← Back to session</a>
+          <Link to="/session/$id" params={{ id: from }}>
+            ← Back to session
+          </Link>
         </Button>
       ) : null}
       <h1 className="text-3xl font-semibold">{conceptTitle}</h1>
-      {runData.run?.status === 'completed' ? (
+      {runStatus === 'completed' ? (
         <p className="text-sm text-muted-foreground">Quiz passed</p>
-      ) : runData.run?.status === 'quiz' ? (
-        <Card className="gap-0 border-amber-300 bg-amber-50" data-testid="lesson-quiz-entry">
-          <CardContent className="space-y-4 text-amber-950">
-            <p>
-              {runData.run.quiz.last
-                ? `Quiz not passed yet · ${runData.run.quiz.last.correctCount} of ${runData.run.quiz.last.total}. Practise the steps you missed, then retake it.`
-                : 'Lesson steps done; quiz not taken yet.'}
-            </p>
-            <Button type="button" loading={startingQuiz} onClick={() => void openQuiz()}>
-              {runData.run.quiz.last ? 'Go to the quiz' : 'Take the quiz'}
-            </Button>
-            {quizStartError ? (
-              <p role="alert" className="text-sm text-destructive">
-                {quizStartError}
+      ) : runStatus === 'quiz' ? (
+        runQuery.data?.run?.status === 'quiz' ? (
+          <Card className="gap-0 border-amber-300 bg-amber-50" data-testid="lesson-quiz-entry">
+            <CardContent className="space-y-4 text-amber-950">
+              <p>
+                {runQuery.data.run.quiz.last
+                  ? `Quiz not passed yet · ${runQuery.data.run.quiz.last.correctCount} of ${runQuery.data.run.quiz.last.total}. Practise the steps you missed, then retake it.`
+                  : 'Lesson steps done; quiz not taken yet.'}
               </p>
-            ) : null}
-          </CardContent>
-        </Card>
+              <Button type="button" loading={startingQuiz} onClick={() => void openQuiz()}>
+                {runQuery.data.run.quiz.last ? 'Go to the quiz' : 'Take the quiz'}
+              </Button>
+              {quizStartError ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {quizStartError}
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+        ) : (
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            {runQuery.isError ? 'Could not load quiz details.' : 'Loading quiz details…'}
+          </p>
+        )
       ) : null}
       {lesson.knowledge_points?.length ? (
         <div className="space-y-5">

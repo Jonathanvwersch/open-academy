@@ -23,7 +23,7 @@ export function AppShellSkeleton() {
     <div
       aria-hidden="true"
       data-testid="app-shell-skeleton"
-      className={`min-h-screen bg-background ${isPaperReader ? 'flex flex-col' : ''}`}
+      className="flex min-h-screen flex-col bg-background"
     >
       <header className="h-14 border-b bg-card">
         <div className="mx-auto flex h-full w-full max-w-3xl items-center justify-between gap-4 px-4 sm:px-6">
@@ -49,7 +49,7 @@ export function AppShellSkeleton() {
         className={
           isPaperReader
             ? 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0'
-            : 'mx-auto w-full max-w-3xl px-4 pt-6 pb-20 sm:px-6 sm:py-8'
+            : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
         }
       >
         <PageSkeleton />
@@ -132,7 +132,7 @@ export function RootLayout() {
             className={
               isPaperReader
                 ? 'flex w-full min-h-0 min-w-0 flex-1 px-0 py-0'
-                : 'mx-auto w-full max-w-3xl px-4 pt-6 pb-20 sm:px-6 sm:py-8'
+                : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
             }
           >
             <Outlet />

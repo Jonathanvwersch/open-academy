@@ -274,7 +274,9 @@ async function answerAndReload(page: Page, correct: boolean, runConceptId = conc
   expect(response.status()).toBe(200);
   await page.reload();
   if (body.state.status === 'in_progress') {
-    await expect(page.getByRole('status')).toContainText(correct ? 'Correct' : 'Not quite');
+    await expect(page.getByTestId('lesson-problem').getByRole('status')).toContainText(
+      correct ? 'Correct' : 'Not quite',
+    );
     await expect(page.getByTestId('lesson-problem')).toHaveAttribute('data-problem-id', problem.id);
     await expect(page.getByTestId('lesson-problem-prompt')).toBeVisible();
   } else {
@@ -769,7 +771,7 @@ test('shows a correct lesson-run solution without repeating generic feedback', a
   run = await answerAndReload(page, true, 'loss-functions');
   expect(run.lastAnsweredProblem.exercise.id).toBe('loss-functions-fixture-practice-1');
 
-  const status = page.getByRole('status');
+  const status = page.getByTestId('lesson-problem').getByRole('status');
   await expect(status).toContainText('Correct');
   await expect(status.getByText(/^Correct(?: · \+\d+ XP)?$/)).toHaveCount(1);
   await expect(status.getByText('Correct.', { exact: true })).toHaveCount(0);

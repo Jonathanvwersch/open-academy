@@ -1,5 +1,9 @@
+import { and, eq } from 'drizzle-orm';
 import { getLessonPrerequisites } from '../../content/index.js';
-import { serializeLesson } from '../../content/serialize.js';
+import { serializeExercise, serializeLesson } from '../../content/serialize.js';
+import { isTemplate } from '../../content/templates.js';
+import { lessonProblems, lessonRuns } from '../../db/schema.js';
+import { deriveLessonState } from '../../learning/lesson-runner.js';
 import { masteryRank } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 
@@ -48,12 +52,40 @@ export async function getLessonsByConceptIdReview(deps: FeatureServices, request
         : [],
     ),
   );
+  const visibleChecks = lesson.blocks.filter(
+    (block) =>
+      block.kind === 'check' &&
+      (!lesson.knowledge_points?.length || block.exercise === lesson.final),
+  );
+  const checks = Object.fromEntries(
+    visibleChecks.flatMap((block) => {
+      if (block.kind !== 'check') return [];
+      const exercise = block.exercise ? index.exercisesById.get(block.exercise) : undefined;
+      return exercise && !isTemplate(exercise)
+        ? [[exercise.id, serializeExercise(exercise, request.userId)]]
+        : [];
+    }),
+  );
+  const [run] = lesson.knowledge_points?.length
+    ? await deps.db
+        .select()
+        .from(lessonRuns)
+        .where(and(eq(lessonRuns.userId, request.userId), eq(lessonRuns.conceptId, conceptId)))
+        .limit(1)
+    : [];
+  const rows = run
+    ? await deps.db.select().from(lessonProblems).where(eq(lessonProblems.runId, run.id))
+    : [];
   return serviceResult({
     lesson: serializeLesson({
       ...lesson,
       prerequisites: getLessonPrerequisites(index, conceptId),
     }),
     checkAnswers,
+    checks,
+    runStatus: run
+      ? deriveLessonState(lesson, rows, index.exercisesById, run.quizPassedAt).status
+      : null,
     conceptTitle: index.conceptsById.get(conceptId)?.title ?? conceptId,
   });
 }

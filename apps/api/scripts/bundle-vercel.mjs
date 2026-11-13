@@ -1,12 +1,13 @@
 import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { serialize } from 'node:v8';
 import { build } from 'esbuild';
-import { loadContent } from '../dist/content/load.js';
 
 const apiRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const outputDirectory = resolve(apiRoot, 'dist-vercel');
+// The API build generates this module; source-only checks must not require dist to exist.
+const { loadContent } = await import(pathToFileURL(resolve(apiRoot, 'dist/content/load.js')).href);
 
 await rm(outputDirectory, { recursive: true, force: true });
 await mkdir(outputDirectory, { recursive: true });
