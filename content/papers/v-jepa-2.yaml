@@ -2,14 +2,14 @@ id: v-jepa-2
 title: "V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning"
 authors: Assran et al.
 year: 2025
-week: 12
+week: 14
 est_minutes: 90
 source:
   arxiv: 2506.09985v1
 concepts:
   - jepa
   - video-world-models
-why_this_week: "This week you meet video world models. V-JEPA 2 takes the JEPA idea from Week 11 to video at scale, then adds actions to make a world model that predicts in embedding space instead of generating frames. With under 62 hours of unlabelled robot video, it picks and places objects on robot arms in new labs, with no task-specific training or reward."
+why_this_week: "This week you meet video world models. V-JEPA 2 takes the JEPA idea from Week 9 to video at scale, then adds actions to make a world model that predicts in embedding space instead of generating frames. With under 62 hours of unlabelled robot video, it picks and places objects on robot arms in new labs, with no task-specific training or reward."
 how_to_read: "Read the introduction and the overview figure. Read the pretraining section on learning from over a million hours of video without actions. Skim the understanding and anticipation results, and skip the video question-answering section. Read the V-JEPA 2-AC section closely, focusing on how actions are added, how planning toward a goal image works, and the robot experiments. Read the limitations."
 questions:
   - id: claim

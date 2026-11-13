@@ -457,11 +457,11 @@ exercises:
     prompt: "Which part of the course teaches a robot to learn by trial and error from rewards?"
     options:
       - id: a
-        text: "Week 6, reinforcement learning"
+        text: "Week 7, reinforcement learning"
         correct: true
         feedback: "Reinforcement learning has no answers to copy, only a reward score."
       - id: b
-        text: "Week 10, imitation learning"
+        text: "Week 12, imitation learning"
         correct: false
         category: misunderstood_definition
         feedback: "Imitation learning copies demonstrations instead of using rewards."
@@ -471,11 +471,11 @@ exercises:
         category: misunderstood_definition
         feedback: "Week 1 learns from examples with known answers."
       - id: d
-        text: "Week 4, transformers"
+        text: "Week 5, transformers"
         correct: false
         category: misunderstood_definition
         feedback: "Transformers are a model design, not a way of learning from rewards."
-    solution: "Week 6 covers reinforcement learning, which learns by trial and error from rewards."
+    solution: "Week 7 covers reinforcement learning, which learns by trial and error from rewards."
   - id: ml-why-houses
     dimension: conceptual
     type: mc

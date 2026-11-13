@@ -2,7 +2,7 @@ id: diffusion-policy
 title: "Diffusion Policy: Visuomotor Policy Learning via Action Diffusion"
 authors: Chi et al.
 year: 2023
-week: 12
+week: 13
 est_minutes: 90
 source:
   arxiv: 2303.04137v5

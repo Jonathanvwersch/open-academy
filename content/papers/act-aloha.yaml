@@ -2,7 +2,7 @@ id: act-aloha
 title: Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware
 authors: Zhao, Kumar, Levine and Finn
 year: 2023
-week: 10
+week: 12
 est_minutes: 90
 source:
   arxiv: 2304.13705v1
@@ -10,7 +10,7 @@ concepts:
   - behavioral-cloning
   - demonstrations
   - distribution-shift
-why_this_week: This week you see that behavioural cloning drifts because its errors compound. This paper, which introduced ACT (Action Chunking with Transformers) and the ALOHA robot, cuts the problem down by predicting a short sequence of future actions at once instead of one action at a time. With about 50 demonstrations it learns precise two-arm tasks. You will study action chunking itself in Week 12.
+why_this_week: This week you see that behavioural cloning drifts because its errors compound. This paper, which introduced ACT (Action Chunking with Transformers) and the ALOHA robot, cuts the problem down by predicting a short sequence of future actions at once instead of one action at a time. With about 50 demonstrations it learns precise two-arm tasks. You will study action chunking itself in Week 13.
 how_to_read: "Read the introduction and the ALOHA hardware section for the main idea of cheap teleoperation. Read the ACT method closely: action chunking, temporal ensembling, and the overall architecture figure. You can skim the details of the variational autoencoder for now. Read the task descriptions and the main results table, then the ablations on chunk size."
 questions:
   - id: claim

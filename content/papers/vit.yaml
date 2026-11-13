@@ -2,7 +2,7 @@ id: vit
 title: "An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale"
 authors: Dosovitskiy et al.
 year: 2020
-week: 11
+week: 9
 est_minutes: 75
 source:
   arxiv: 2010.11929v2
@@ -10,7 +10,7 @@ concepts:
   - vision-encoders
   - attention
   - transformer-block
-why_this_week: "This week starts with vision encoders. ViT showed that the transformer from Week 4 works on images almost unchanged: cut the image into patches and treat each patch as a token. The vision encoders in CLIP, in vision-language models and in most VLAs are ViTs."
+why_this_week: "This week starts with vision encoders. ViT showed that the transformer from Week 5 works on images almost unchanged: cut the image into patches and treat each patch as a token. The vision encoders in CLIP, in vision-language models and in most VLAs are ViTs."
 how_to_read: "Read the introduction and the method section with its architecture figure: patches, the linear patch embedding, position embeddings and the class token. Read the results comparing ViT with ResNets at different pretraining dataset sizes. Look at the figures of attention maps and learned position embeddings. Skip the appendices."
 questions:
   - id: claim

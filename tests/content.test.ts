@@ -33,7 +33,8 @@ test('loads the fixture graph and builds lookup indexes', async () => {
   );
   expect(content.conceptsById.get('matrix-products')?.status).toBe('stub');
   expect(content.projectsById.has('linreg-numpy')).toBe(true);
-  expect(content.papersByWeek.get(1)).toHaveLength(2);
+  expect(content.papersByWeek.get(1)).toHaveLength(1);
+  expect(content.papersByWeek.get(2)).toHaveLength(1);
   expect(content.diagnostic?.domains).toHaveLength(2);
   expect(content.edges).toContainEqual({
     conceptId: 'gradient-descent',

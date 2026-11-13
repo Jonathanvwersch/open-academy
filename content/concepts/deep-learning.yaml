@@ -5,7 +5,7 @@ concepts:
     description: A neuron as a weighted sum plus bias passed through a nonlinearity; linear decision boundaries.
     difficulty: 1
     est_minutes: 20
-    week: 2
+    week: 3
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: dot-product }, { id: linear-regression, strength: soft }]
@@ -21,7 +21,7 @@ concepts:
     description: ReLU, sigmoid, tanh; why nonlinearity matters; their derivatives.
     difficulty: 2
     est_minutes: 25
-    week: 2
+    week: 3
     goal_weight: 3
     dimensions: [conceptual, math, transfer]
     prereqs: [{ id: perceptron }, { id: derivatives }]
@@ -37,7 +37,7 @@ concepts:
     description: Stacking layers as matrix multiplies plus activations; shapes through a multilayer perceptron.
     difficulty: 2
     est_minutes: 30
-    week: 2
+    week: 3
     goal_weight: 3
     dimensions: [conceptual, math, implementation]
     prereqs: [{ id: activation-functions }, { id: matrices }]
@@ -50,7 +50,7 @@ concepts:
     description: Representing a computation as a DAG of primitive operations.
     difficulty: 2
     est_minutes: 20
-    week: 2
+    week: 3
     goal_weight: 3
     dimensions: [conceptual, math]
     prereqs: [{ id: chain-rule }]
@@ -63,7 +63,7 @@ concepts:
     description: Reverse-mode application of the chain rule over a computational graph to get all parameter gradients.
     difficulty: 3
     est_minutes: 45
-    week: 2
+    week: 3
     goal_weight: 3
     dimensions: [conceptual, math, implementation, transfer]
     prereqs:
@@ -88,7 +88,7 @@ concepts:
     description: How frameworks record operations and compute gradients; forward vs reverse mode.
     difficulty: 3
     est_minutes: 25
-    week: 2
+    week: 3
     goal_weight: 2
     dimensions: [conceptual, implementation]
     prereqs: [{ id: backpropagation }]
@@ -100,7 +100,7 @@ concepts:
     description: Tensors, modules, optimizers, the standard training loop.
     difficulty: 2
     est_minutes: 40
-    week: 2
+    week: 3
     goal_weight: 3
     dimensions: [implementation]
     prereqs: [{ id: autodiff }, { id: gradient-descent }]
@@ -112,7 +112,7 @@ concepts:
     description: Estimating gradients from batches; noise, epochs, batch size.
     difficulty: 2
     est_minutes: 25
-    week: 3
+    week: 4
     goal_weight: 3
     dimensions: [conceptual, math]
     prereqs: [{ id: gradient-descent }]
@@ -124,7 +124,7 @@ concepts:
     description: Momentum, adaptive learning rates and the Adam update.
     difficulty: 3
     est_minutes: 30
-    week: 3
+    week: 4
     goal_weight: 2
     dimensions: [conceptual, math]
     prereqs: [{ id: sgd-minibatch }]
@@ -136,7 +136,7 @@ concepts:
     description: Why init scale matters; batch norm and layer norm.
     difficulty: 3
     est_minutes: 30
-    week: 3
+    week: 4
     goal_weight: 2
     dimensions: [conceptual]
     prereqs: [{ id: backpropagation }]
@@ -151,7 +151,7 @@ concepts:
     description: Reading loss curves, overfitting a single batch, gradient checks, common bugs.
     difficulty: 3
     est_minutes: 30
-    week: 3
+    week: 4
     goal_weight: 3
     dimensions: [transfer, implementation]
     prereqs: [{ id: sgd-minibatch }, { id: overfitting }]
@@ -163,7 +163,7 @@ concepts:
     description: Turning logits into probabilities; categorical cross-entropy.
     difficulty: 2
     est_minutes: 25
-    week: 3
+    week: 2
     goal_weight: 3
     dimensions: [conceptual, math]
     prereqs: [{ id: logistic-regression }, { id: information-theory }]
@@ -176,7 +176,7 @@ concepts:
       description: "Compressing an input into a short latent vector and reconstructing it; the latent space that world models and policies predict in.",
       difficulty: 3,
       est_minutes: 30,
-      week: 3,
+      week: 4,
       goal_weight: 2,
       dimensions: [conceptual, math],
       prereqs: [{ id: mlp-forward-pass }, { id: images-as-tensors }],

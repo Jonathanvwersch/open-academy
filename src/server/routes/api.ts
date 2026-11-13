@@ -66,12 +66,7 @@ import { compareOutlinePosition, masteryKey, prerequisiteMet } from '../learning
 import { buildProgress } from '../learning/progress.js';
 import { attemptAllowsRetry } from '../learning/retry.js';
 import type { PlannedActivity, SessionPreferences } from '../learning/scheduler.js';
-import {
-  currentCurriculumWeek,
-  planSession,
-  replan,
-  sessionBudget,
-} from '../learning/scheduler.js';
+import { currentLearnerWeek, planSession, replan, sessionBudget } from '../learning/scheduler.js';
 import type { LearningMode, MasteryRecord } from '../learning/types.js';
 import { initialMastery, masteryRank } from '../learning/types.js';
 import { localDateKey, sessionKindForDate, xpGoalFor } from '../learning/xp.js';
@@ -241,7 +236,7 @@ export function createApiRoutes(deps: {
     const plan = planSession(state, index, now, budget, sessionKind);
     const active = await repo.activeSession(now);
     const diagnostic = await repo.latestDiagnosticRun();
-    const week = currentCurriculumWeek(state.startDate, now);
+    const week = currentLearnerWeek(state, index);
     const weekFocus = index.curriculum?.weeks.find((entry) => entry.week === week);
     return context.json({
       needsDiagnostic: (!diagnostic || diagnostic.status === 'active') && Boolean(index.diagnostic),
@@ -1683,10 +1678,8 @@ export function createApiRoutes(deps: {
   api.get('/map', async (context) => {
     const index = await content();
     const requestedDomain = context.req.query('domain');
-    const currentWeek = currentCurriculumWeek(
-      (await withRepo(context).user())?.startDate ?? new Date().toISOString(),
-      requestNow(context),
-    );
+    const state = await withRepo(context).schedulerState(requestNow(context));
+    const currentWeek = currentLearnerWeek(state, index);
     const currentWeekDomain =
       index.curriculum?.weeks
         .find((entry) => entry.week === currentWeek)
@@ -1698,9 +1691,8 @@ export function createApiRoutes(deps: {
     const concepts = domain
       ? index.concepts.filter((concept) => concept.domain === domain)
       : index.concepts;
-    const records = await withRepo(context).masteryRecords();
     const byKey = new Map(
-      records.map((record) => [`${record.conceptId}:${record.dimension}`, record]),
+      state.mastery.map((record) => [`${record.conceptId}:${record.dimension}`, record]),
     );
     const nodes = concepts.map((concept) => {
       const dimensions = Object.fromEntries(

@@ -1,6 +1,6 @@
 id: rl-sim
 title: "RL policy in simulation"
-week: 6
+week: 7
 status: stub
 est_hours: 5
 objective: "Train and evaluate a policy-gradient or PPO agent on a small control environment."

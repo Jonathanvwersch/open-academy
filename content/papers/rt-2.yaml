@@ -2,7 +2,7 @@ id: rt-2
 title: "RT-2: Vision-Language-Action Models Transfer Web Knowledge to Robotic Control"
 authors: Brohan et al. (Google DeepMind)
 year: 2023
-week: 12
+week: 14
 est_minutes: 75
 source:
   arxiv: 2307.15818v1
