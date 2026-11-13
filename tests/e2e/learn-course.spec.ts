@@ -30,7 +30,7 @@ const courseComingSoonScreenshotDir = 'test-results/screenshots/screenshots/cour
 const navCleanupScreenshotDir = 'test-results/screenshots/screenshots/nav-cleanup';
 const xpFinishScreenshotDir = 'test-results/screenshots/screenshots/xp-finish';
 const chooseLessonScreenshotDir = 'test-results/screenshots/screenshots/choose-lesson';
-const failedQuizScreenshotDir = '/home/ubuntu/screens/failed-quiz';
+const failedQuizScreenshotDir = 'test-results/screenshots/failed-quiz';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(brandScreenshotDir, { recursive: true });
 mkdirSync(courseStructureScreenshotDir, { recursive: true });
@@ -307,7 +307,9 @@ test('completed activity deep links can continue or show the session finish scre
   if (!paper || !nextActivity) throw new Error('Could not create activity fixtures');
 
   await page.goto(`/session/${session.id}?activity=${paper.id}`);
-  await expect(page.getByRole('status')).toHaveText('Paper reading complete.');
+  await expect(page.getByRole('status').filter({ hasText: 'Paper reading complete.' })).toHaveText(
+    'Paper reading complete.',
+  );
   await expect(page.getByRole('link', { name: 'Continue' })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('link', { name: 'Continue' })).toBeVisible();

@@ -43,6 +43,8 @@ export function InlineLessonCheck({
         setSubmitError(typeof data.error === 'string' ? data.error : 'Your answer was not saved.');
       }
       if (response.ok && data.status !== 'invalid') onDone();
+    } catch {
+      setSubmitError('Your answer was not saved. Check your connection and try again.');
     } finally {
       setSubmitting(false);
     }

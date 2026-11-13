@@ -1,4 +1,5 @@
 import type { AnswerOptions } from '@academy/contracts/exercises';
+import type { SessionActivity } from '@academy/contracts/sessions';
 import { useQueries, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -33,6 +34,19 @@ import { SessionCompletion } from './session-completion.js';
 
 const Route = getRouteApi('/session/$id');
 
+async function saveActivityProgress(
+  sessionId: string,
+  activityId: string,
+  progress: SessionActivity['progress'] & { complete?: boolean },
+) {
+  const response = await apiFetch(`/api/sessions/${sessionId}/activities/${activityId}/progress`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(progress),
+  }).catch(() => null);
+  if (!response?.ok) throw new Error('Your progress was not saved. Please try again.');
+}
+
 export function SessionPage() {
   const navigate = useNavigate();
   const { id } = Route.useParams();
@@ -41,6 +55,7 @@ export function SessionPage() {
   const tutorSidebar = useTutorSidebar();
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [submitError, setSubmitError] = useState('');
+  const [progressError, setProgressError] = useState('');
   const [hints, setHints] = useState<
     {
       level: number;
@@ -53,6 +68,7 @@ export function SessionPage() {
   const [submittingAnswer, setSubmittingAnswer] = useState(false);
   const [continuing, setContinuing] = useState(false);
   const [endingSession, setEndingSession] = useState(false);
+  const [endSessionError, setEndSessionError] = useState('');
   const [markingLessonViewed, setMarkingLessonViewed] = useState(false);
   const hintButton = useRef<HTMLButtonElement>(null);
   const [timeAnchor, setTimeAnchor] = useState<{ serverTime: number; clientTime: number } | null>(
@@ -207,13 +223,15 @@ export function SessionPage() {
   const markLessonViewed = async () => {
     if (!activity) return;
     setMarkingLessonViewed(true);
+    setProgressError('');
     try {
-      await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...(activity.progress ?? {}), lessonViewed: true }),
+      await saveActivityProgress(id, activity.id, {
+        ...(activity.progress ?? {}),
+        lessonViewed: true,
       });
       await queryClient.invalidateQueries({ queryKey: ['session', id] });
+    } catch {
+      setProgressError('Your progress was not saved. Please try again.');
     } finally {
       setMarkingLessonViewed(false);
     }
@@ -222,13 +240,15 @@ export function SessionPage() {
   const completeActivity = async () => {
     if (!activity) return;
     setContinuing(true);
+    setProgressError('');
     try {
-      await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...(activity.progress ?? {}), complete: true }),
+      await saveActivityProgress(id, activity.id, {
+        ...(activity.progress ?? {}),
+        complete: true,
       });
       await queryClient.invalidateQueries({ queryKey: ['session', id] });
+    } catch {
+      setProgressError('Your progress was not saved. Please try again.');
     } finally {
       setContinuing(false);
     }
@@ -277,6 +297,8 @@ export function SessionPage() {
         setHints([]);
         setTutorUnavailable(false);
       }
+    } catch {
+      setSubmitError('Your answer was not saved. Check your connection and try again.');
     } finally {
       setSubmittingAnswer(false);
     }
@@ -306,6 +328,7 @@ export function SessionPage() {
   const continueNext = useCallback(async () => {
     if (!activity) return;
     setContinuing(true);
+    setProgressError('');
     try {
       const currentExerciseId = exerciseId;
       if (activity.kind !== 'learn' && currentExerciseId) {
@@ -372,19 +395,17 @@ export function SessionPage() {
         !freshActivity.progress.finalQuestionContinued &&
         (freshActivity.progress.completedExerciseIds ?? []).includes(currentExerciseId)
       ) {
-        await apiFetch(`/api/sessions/${id}/activities/${freshActivity.id}/progress`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            ...(freshActivity.progress ?? {}),
-            finalQuestionContinued: true,
-          }),
+        await saveActivityProgress(id, freshActivity.id, {
+          ...(freshActivity.progress ?? {}),
+          finalQuestionContinued: true,
         });
         finalQuestionContinued = true;
       }
       if (finalQuestionContinued) {
         await queryClient.invalidateQueries({ queryKey: ['session', id] });
       }
+    } catch {
+      setProgressError('Could not continue. Please try again.');
     } finally {
       setContinuing(false);
     }
@@ -418,23 +439,21 @@ export function SessionPage() {
       stage === 'final' &&
       !!lesson?.final &&
       !(activity.progress?.completedExerciseIds ?? []).includes(lesson.final);
-    await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ...(activity.progress ?? {}),
-        lessonRunnerContinued: true,
-        ...(finalQuestionPending ? {} : { finalQuestionContinued: true }),
-        ...(stage === 'done' ? { complete: true, quizContinued: true } : {}),
-      }),
+    await saveActivityProgress(id, activity.id, {
+      ...(activity.progress ?? {}),
+      lessonRunnerContinued: true,
+      ...(finalQuestionPending ? {} : { finalQuestionContinued: true }),
+      ...(stage === 'done' ? { complete: true, quizContinued: true } : {}),
     });
     await queryClient.invalidateQueries({ queryKey: ['session', id] });
   };
 
   const endSession = async () => {
     setEndingSession(true);
+    setEndSessionError('');
     try {
-      await apiFetch(`/api/sessions/${id}/end`, { method: 'POST' });
+      const response = await apiFetch(`/api/sessions/${id}/end`, { method: 'POST' });
+      if (!response.ok) throw new Error('Could not finish session');
       await Promise.all([
         queryClient.fetchQuery({ ...learnQueryOptions(), staleTime: 0 }),
         queryClient.invalidateQueries({
@@ -443,6 +462,8 @@ export function SessionPage() {
         }),
       ]);
       await navigate({ to: '/' });
+    } catch {
+      setEndSessionError('Could not return Home. Please try again.');
     } finally {
       setEndingSession(false);
     }
@@ -456,6 +477,7 @@ export function SessionPage() {
         xp={sessionQuery.data.xp}
         onFinish={endSession}
         finishing={endingSession}
+        error={endSessionError}
       />
     );
   }
@@ -590,11 +612,7 @@ export function SessionPage() {
           completed={activity.status === 'completed'}
           tutorEnabled={sessionQuery.data.tutorEnabled}
           onSkip={async () => {
-            await apiFetch(`/api/sessions/${id}/activities/${activity.id}/progress`, {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ complete: true }),
-            });
+            await saveActivityProgress(id, activity.id, { complete: true });
             await queryClient.invalidateQueries({ queryKey: ['session', id] });
           }}
         />
@@ -651,6 +669,11 @@ export function SessionPage() {
             </LessonBlock>
           ))}
         </div>
+        {progressError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {progressError}
+          </p>
+        ) : null}
         <Button
           type="button"
           onClick={markLessonViewed}
@@ -677,6 +700,11 @@ export function SessionPage() {
           activity.kind === 'learn' && lesson?.final === exerciseId ? 'Final question' : undefined
         }
       />
+      {progressError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {progressError}
+        </p>
+      ) : null}
       {exerciseQuery.data ? (
         <Card data-testid="session-exercise" data-exercise-container="">
           <CardContent className="space-y-5">
