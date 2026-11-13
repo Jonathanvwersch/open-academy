@@ -18,5 +18,6 @@ export function repairTutorMarkdown(md: string): string {
         ? ''
         : character;
     })
-    .replace(/(?<!\$)\$\$([^$\n]+)\$(?!\$)/g, (_match, math: string) => `$${math}$`);
+    .replace(/(?<!\$)\$\$([^$\n]+)\$(?!\$)/g, (_match, math: string) => `$${math}$`)
+    .replace(/(?<!`)`(\$[^$`\n]+\$)`(?!`)/g, '$1');
 }

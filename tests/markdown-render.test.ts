@@ -30,6 +30,15 @@ test('repaired tutor Markdown renders malformed inline math without KaTeX errors
   expect(visibleHtml).not.toContain('\\sigma');
 });
 
+test('backtick-wrapped tutor inline math renders as KaTeX, not code', () => {
+  const message =
+    '`$28$` is only the effect through the `$u$` route, and nudging `$x$` also changes `$v$`';
+  const html = renderToStaticMarkup(createElement(Markdown, null, repairTutorMarkdown(message)));
+
+  expect(html).toContain('class="katex"');
+  expect(html).not.toContain('<code>');
+});
+
 test('all authored lesson Markdown and exercise prompts render without errors', async () => {
   const content = await loadContent();
   const samples = [
