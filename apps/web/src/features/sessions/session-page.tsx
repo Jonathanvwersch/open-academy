@@ -10,7 +10,7 @@ import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
 import { learnQueryOptions } from '../course/queries.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
-import { FeedbackPanel } from '../exercises/feedback-panel.js';
+import { FeedbackPanel, FinalRetryNote, isFinalRetryResult } from '../exercises/feedback-panel.js';
 import { HintLadder } from '../exercises/hint-ladder.js';
 import { exerciseQueryOptions } from '../exercises/queries.js';
 import { LessonBlock } from '../lessons/lesson-block.js';
@@ -737,6 +737,7 @@ export function SessionPage() {
                 hideAnswerLines={['mc', 'debug', 'explain'].includes(exerciseQuery.data.type)}
               />
             ) : null}
+            {isFinalRetryResult(currentResult) ? <FinalRetryNote /> : null}
             {currentResult?.status === 'invalid' ? (
               <Alert variant="destructive">
                 <AlertDescription>

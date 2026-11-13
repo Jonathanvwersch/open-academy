@@ -23,6 +23,7 @@ const stepToastScreenshotDir = 'test-results/screenshots/screenshots/step-toast'
 const lessonQuizScreenshotDir = 'test-results/screenshots/shots/lesson-quiz';
 const quizUiScreenshotDir = 'test-results/screenshots/screenshots/quiz-ui';
 const spacedReviewScreenshotDir = 'test-results/screenshots/screenshots/spaced-review';
+const lastTryScreenshotDir = 'test-results/screenshots/last-try';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
@@ -34,6 +35,7 @@ mkdirSync(quizUiScreenshotDir, { recursive: true });
 mkdirSync(stepToastScreenshotDir, { recursive: true });
 mkdirSync(lessonQuizScreenshotDir, { recursive: true });
 mkdirSync(spacedReviewScreenshotDir, { recursive: true });
+mkdirSync(lastTryScreenshotDir, { recursive: true });
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -980,6 +982,77 @@ test('a tutor-assisted correct answer does not advance the streak', async ({ pag
       exact: true,
     }),
   ).toBeVisible();
+});
+
+test('explains when a final explain question is locked after the last try', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const db = createDb(env.TEST_DATABASE_URL);
+  const [learner] = await db.select({ id: users.id }).from(users).limit(1);
+  if (!learner) throw new Error('Missing E2E learner');
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId: learner.id,
+      kind: 'weekday',
+      plannedMinutes: 20,
+      status: 'active',
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create final-question session');
+  const [activity] = await db
+    .insert(sessionActivities)
+    .values({
+      sessionId: session.id,
+      idx: 0,
+      kind: 'learn',
+      conceptId: 'supervised-learning',
+      exerciseIds: ['sl-explain-setup'],
+      plannedMinutes: 10,
+      status: 'in_progress',
+      progress: { lessonRunnerContinued: true },
+    })
+    .returning();
+  await db.$client.end();
+  if (!activity) throw new Error('Could not create final-question activity');
+
+  await page.goto(`/session/${session.id}`);
+  await expect(page.getByText('Final question', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('exercise-prompt')).toBeVisible();
+
+  const answer = page.getByLabel('Your answer');
+  await answer.fill('A model uses inputs to predict a target.');
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByText('Almost', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(
+      'That was your last try at this question. Read the model answer, then press Continue.',
+      { exact: true },
+    ),
+  ).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Submit again' })).toBeVisible();
+
+  await answer.fill('A model uses inputs to predict a target, and loss measures its errors.');
+  await page.getByRole('button', { name: 'Submit again' }).click();
+  await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(
+      'That was your last try at this question. Read the model answer, then press Continue.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      'That was your last try at this question. Read the model answer, then press Continue.',
+      { exact: true },
+    ),
+  ).toHaveCount(1);
+  await expect(answer).toHaveAttribute('readonly', '');
+  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
+  await page.screenshot({
+    path: `${lastTryScreenshotDir}/final-explain-locked.png`,
+    fullPage: true,
+  });
 });
 
 test('a legacy v1 learn activity resumes through the KP runner and final question', async ({

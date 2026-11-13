@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
-import { FeedbackPanel } from '../exercises/feedback-panel.js';
+import { FeedbackPanel, FinalRetryNote, isFinalRetryResult } from '../exercises/feedback-panel.js';
 import { exerciseQueryOptions } from '../exercises/queries.js';
 export function InlineLessonCheck({
   exerciseId,
@@ -70,6 +70,7 @@ export function InlineLessonCheck({
                 />
               )
             ) : null}
+            {isFinalRetryResult(result) ? <FinalRetryNote /> : null}
             {!result || result.status === 'invalid' || result.retryAllowed ? (
               <ExerciseForm
                 key={`${activityId}:${exerciseId}`}

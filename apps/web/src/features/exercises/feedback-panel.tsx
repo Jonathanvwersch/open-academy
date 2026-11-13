@@ -2,6 +2,32 @@ import { Info } from 'lucide-react';
 import type * as React from 'react';
 import { Markdown } from '../../components/markdown.js';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert.js';
+
+export function isFinalRetryResult(
+  result:
+    | { attemptNo?: unknown; retryAllowed?: unknown; correct?: unknown; status?: unknown }
+    | null
+    | undefined,
+) {
+  return Boolean(
+    result &&
+      result.status !== 'invalid' &&
+      result.status !== 'self_check_required' &&
+      typeof result.correct === 'number' &&
+      result.correct !== 1 &&
+      Number(result.attemptNo) >= 2 &&
+      result.retryAllowed !== true,
+  );
+}
+
+export function FinalRetryNote() {
+  return (
+    <p className="text-sm text-muted-foreground">
+      That was your last try at this question. Read the model answer, then press Continue.
+    </p>
+  );
+}
+
 export function FeedbackPanel({
   result,
   xp,
