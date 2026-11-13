@@ -10,6 +10,7 @@ import {
   lessonProblems,
   lessonRuns,
   mastery,
+  paperProgress,
   projectProgress,
   sessionActivities,
   studySessions,
@@ -81,6 +82,47 @@ async function get(path: string) {
     headers: { 'X-Now': '2026-01-07T12:00:00.000Z' },
   });
 }
+
+test('paper completion changes only its reading status, not learner progress', async () => {
+  const paper = content.papers[0];
+  if (!paper) throw new Error('Expected paper content');
+
+  const beforeLearn = await (await get('/learn')).json();
+  const beforeCourse = (await (await get('/course')).json()) as {
+    currentWeek: number;
+    weeks: Array<{
+      papers: Array<{ id: string; status: string }>;
+      topics: Array<{ conceptId: string; status: string }>;
+    }>;
+  };
+  const now = new Date('2026-01-07T12:00:00.000Z');
+  await db.insert(paperProgress).values({
+    userId,
+    paperId: paper.id,
+    completedAt: now,
+    updatedAt: now,
+  });
+  const afterLearn = await (await get('/learn')).json();
+  const afterCourse = (await (await get('/course')).json()) as typeof beforeCourse;
+  const paperStatus = (course: typeof beforeCourse) =>
+    course.weeks
+      .flatMap((week) => week.papers)
+      .find((entry: { id: string }) => entry.id === paper.id)?.status;
+  const topicProgress = (course: typeof beforeCourse) =>
+    course.weeks.flatMap((week) =>
+      week.topics.map((topic: { conceptId: string; status: string }) => [
+        topic.conceptId,
+        topic.status,
+      ]),
+    );
+
+  expect(paperStatus(beforeCourse)).toBe('not_started');
+  expect(paperStatus(afterCourse)).toBe('completed');
+  expect(afterLearn.xp).toEqual(beforeLearn.xp);
+  expect(afterLearn.course).toEqual(beforeLearn.course);
+  expect(afterCourse.currentWeek).toBe(beforeCourse.currentWeek);
+  expect(topicProgress(afterCourse)).toEqual(topicProgress(beforeCourse));
+});
 
 const nnFromScratchTestIds = [
   'test_data_is_seeded_and_split',

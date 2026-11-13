@@ -1247,14 +1247,43 @@ test('fresh learners start in week 1', () => {
   expect(currentLearnerWeek(emptyState(), courseContent)).toBe(1);
 });
 
-test('completed learnable week-1 concepts advance past the unmet reading-papers stub', () => {
-  const week1 = courseContent.curriculum?.weeks.find((week) => week.week === 1);
-  expect(week1?.concepts).toContain('reading-papers');
+test('paper read state does not change the current learner week', () => {
+  const papers = content.papersByWeek.get(1) ?? [];
+  if (papers.length === 0) throw new Error('Expected week-one paper fixture');
+  const unreadState = emptyState();
+  const readState = {
+    ...unreadState,
+    completedPaperIds: papers.map((paper) => paper.id),
+  };
+
+  expect(currentLearnerWeek(readState, content)).toBe(currentLearnerWeek(unreadState, content));
+});
+
+test('an uncompleted trailing stub does not hold back the current learner week', () => {
+  const curriculum = courseContent.curriculum;
+  const sourceStub = courseContent.conceptsById.get('statistical-evaluation');
+  if (!curriculum || !sourceStub) throw new Error('Expected curriculum and stub fixture');
+
+  const stubId = 'week-one-fixture-stub';
+  const stub = { ...sourceStub, id: stubId, week: 1, prereqs: [] };
+  const curriculumWithStub = {
+    ...curriculum,
+    weeks: curriculum.weeks.map((week) =>
+      week.week === 1 ? { ...week, concepts: [...week.concepts, stubId] } : week,
+    ),
+  };
+  const contentWithStub: ContentIndex = {
+    ...courseContent,
+    concepts: [...courseContent.concepts, stub],
+    conceptsById: new Map(courseContent.conceptsById).set(stubId, stub),
+    curriculum: curriculumWithStub,
+  };
   const state = emptyState();
-  state.lessonRuns = (week1?.concepts ?? [])
-    .filter((id) => id !== 'reading-papers')
+  state.lessonRuns = curriculumWithStub.weeks
+    .flatMap((week) => week.concepts)
+    .filter((id) => id !== stubId && contentWithStub.conceptsById.get(id)?.status !== 'stub')
     .map((conceptId) => ({ conceptId, status: 'completed' as const }));
-  expect(currentLearnerWeek(state, courseContent)).toBe(2);
+  expect(currentLearnerWeek(state, contentWithStub)).toBe(curriculum.weeks.at(-1)?.week);
 });
 
 test('an incomplete week-1 concept remains current when later concepts are complete', () => {
@@ -1295,7 +1324,7 @@ test('Saturday uses progress for a week-2 paper regardless of start date', () =>
     const state = { ...emptyState(), startDate, lessonRuns };
     const plan = planSession(state, content, now, 200, 'saturday');
     const paper = plan.activities.find((activity) => activity.kind === 'paper');
-    expect(paper?.reason.summary).toBe('Saturday paper reading for week 2.');
+    expect(paper?.reason.summary).toBe('Optional paper for week 2.');
   }
 });
 
@@ -1304,7 +1333,7 @@ test('Saturday reserves up to 90 minutes for the current week paper', () => {
   const plan = planSession(state, content, now, 200, 'saturday');
   const paper = plan.activities.find((activity) => activity.kind === 'paper');
   expect(paper?.plannedMinutes).toBe(90);
-  expect(paper?.reason.summary).toBe('Saturday paper reading for week 1.');
+  expect(paper?.reason.summary).toBe('Optional paper for week 1.');
   expect(plan.activities.find((activity) => activity.kind === 'lab')?.plannedMinutes).toBe(100);
 });
 

@@ -81,7 +81,6 @@ weeks:
           gradients,
           gradient-descent,
           train-test-split,
-          reading-papers,
         ],
     }
   - {
@@ -392,7 +391,7 @@ goals:
   - {
       id: g-papers,
       text: "Read a modern paper, identify its contributions and limitations",
-      concepts: [reading-papers, critical-evaluation, experimental-design],
+      concepts: [critical-evaluation, experimental-design],
     }
   - {
       id: g-conversations,

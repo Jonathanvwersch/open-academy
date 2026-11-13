@@ -125,9 +125,11 @@ export function LearnPage() {
                           <Badge variant="secondary">{task.label}</Badge>
                           <h2 className="font-medium leading-6">{task.title}</h2>
                         </div>
-                        <span className="shrink-0 text-sm font-medium text-muted-foreground">
-                          +{task.xp} XP
-                        </span>
+                        {task.activityKind !== 'paper' ? (
+                          <span className="shrink-0 text-sm font-medium text-muted-foreground">
+                            +{task.xp} XP
+                          </span>
+                        ) : null}
                       </div>
                       {task.prerequisites.some((prerequisite) => !prerequisite.done) ? (
                         <p className="text-sm text-muted-foreground">

@@ -166,7 +166,12 @@ export function currentLearnerWeek(
   }
   for (const week of weeks) {
     for (const conceptId of week.concepts) {
-      if (!prerequisiteMet(conceptId, masteryByKey, lessonRuns, content)) return week.week;
+      if (
+        content.conceptsById.get(conceptId)?.status !== 'stub' &&
+        !prerequisiteMet(conceptId, masteryByKey, lessonRuns, content)
+      ) {
+        return week.week;
+      }
     }
   }
   return weeks.at(-1)?.week ?? 1;
@@ -715,7 +720,7 @@ function planSaturday(
       kind: 'paper',
       exerciseIds: [],
       plannedMinutes: paperMinutes,
-      reason: staticReason(`Saturday paper reading for week ${week}.`),
+      reason: staticReason(`Optional paper for week ${week}.`),
     });
   }
   const projectMinutes = Math.max(0, remainingMinutes - (paperMinutes >= 30 ? paperMinutes : 0));
