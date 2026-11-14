@@ -160,6 +160,46 @@ describe('academy CLI', () => {
     }
   });
 
+  it('finds concept files by their domain header and topic ID', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'content');
+      cpSync(join(root, 'content'), pack, { recursive: true });
+      const topicId = 'new-post-training-topic';
+      const createdTopic = run([
+        'new',
+        'topic',
+        topicId,
+        '--title',
+        'New post-training topic',
+        '--domain',
+        'llm-post-training',
+        '--pack',
+        pack,
+      ]);
+      expect(createdTopic.status).toBe(0);
+      expect(readFileSync(join(pack, 'concepts/post-training.yaml'), 'utf8')).toContain(
+        `id: ${topicId}`,
+      );
+      expect(existsSync(join(pack, 'concepts/llm-post-training.yaml'))).toBe(false);
+
+      const postTraining = parse(
+        readFileSync(join(pack, 'concepts/post-training.yaml'), 'utf8'),
+      ) as { concepts: Array<{ id: string; status: string }> };
+      const stub = postTraining.concepts.find((concept) => concept.status === 'stub');
+      if (!stub) throw new Error('Expected a stub topic in post-training.yaml');
+      expect(run(['new', 'lesson', stub.id, '--pack', pack]).status).toBe(0);
+
+      const checked = run(['check', pack]);
+      expect(checked.status).toBe(1);
+      const issues = checked.stderr.trim().split('\n').filter(Boolean);
+      expect(issues.length).toBeGreaterThan(0);
+      expect(issues.every((issue) => issue.includes('TODO field at '))).toBe(true);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  }, 60_000);
+
   it('creates a valid unit placeholder when the first domain has no concept file', () => {
     const parent = temporaryDirectory();
     try {

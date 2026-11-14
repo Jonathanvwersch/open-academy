@@ -111,6 +111,53 @@ function walkYaml(directory: string): string[] {
   });
 }
 
+function conceptFileData(file: string): { domain?: unknown; concepts?: unknown } | undefined {
+  const value: unknown = parse(readFileSync(file, 'utf8'));
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return value as { domain?: unknown; concepts?: unknown };
+}
+
+function conceptFileContains(file: string, topicId: string): boolean {
+  const concepts = conceptFileData(file)?.concepts;
+  return (
+    Array.isArray(concepts) &&
+    concepts.some(
+      (concept) =>
+        Boolean(concept) &&
+        typeof concept === 'object' &&
+        !Array.isArray(concept) &&
+        'id' in concept &&
+        concept.id === topicId,
+    )
+  );
+}
+
+function conceptFileForTopic(directory: string, topicId: string, domain: string): string {
+  const conceptDirectory = join(directory, 'concepts');
+  const indexedFile = join(conceptDirectory, `${domain}.yaml`);
+  if (existsSync(indexedFile) && conceptFileContains(indexedFile, topicId)) return indexedFile;
+  for (const file of walkYaml(conceptDirectory)) {
+    if (file !== indexedFile && conceptFileContains(file, topicId)) return file;
+  }
+  fail(`Could not find topic "${topicId}" in concepts/*.yaml.`);
+}
+
+function conceptFileForDomain(directory: string, domain: string): string {
+  const conceptDirectory = join(directory, 'concepts');
+  const indexedFile = join(conceptDirectory, `${domain}.yaml`);
+  const files = existsSync(conceptDirectory) ? walkYaml(conceptDirectory) : [];
+  if (files.includes(indexedFile) && conceptFileData(indexedFile)?.domain === domain) {
+    return indexedFile;
+  }
+  for (const file of files) {
+    if (file !== indexedFile && conceptFileData(file)?.domain === domain) return file;
+  }
+  if (existsSync(indexedFile)) {
+    fail(`Concept file ${indexedFile} does not declare domain "${domain}".`);
+  }
+  return indexedFile;
+}
+
 async function check(directory: string): Promise<number> {
   try {
     const content = await loadContent(directory);
@@ -262,7 +309,7 @@ async function newTopic(
     }
     unit = String(defaultCourse.units.length);
   }
-  const conceptFile = join(directory, 'concepts', `${domain}.yaml`);
+  const conceptFile = conceptFileForDomain(directory, domain);
   const concept = {
     id,
     title,
@@ -309,7 +356,7 @@ async function newLesson(topicId: string, directory: string) {
   const concept = content.conceptsById.get(topicId);
   if (!concept) fail(`Unknown topic "${topicId}".`);
   if (content.lessonsByConcept.has(topicId)) fail(`Lesson for "${topicId}" already exists.`);
-  const conceptFile = join(directory, 'concepts', `${concept.domain}.yaml`);
+  const conceptFile = conceptFileForTopic(directory, topicId, concept.domain);
   const source = editYaml(conceptFile, (document) => {
     const concepts = document.get('concepts', true);
     if (!isSeq(concepts)) fail(`Expected concepts sequence in ${conceptFile}.`);
