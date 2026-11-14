@@ -158,9 +158,20 @@ function conceptFileForDomain(directory: string, domain: string): string {
   return indexedFile;
 }
 
+function requirePack(directory: string): void {
+  if (!existsSync(join(directory, 'curriculum.yaml'))) {
+    fail(`No course pack at ${directory} (missing curriculum.yaml).`);
+  }
+}
+
+async function loadPack(directory: string) {
+  requirePack(directory);
+  return loadContent(directory);
+}
+
 async function check(directory: string): Promise<number> {
   try {
-    const content = await loadContent(directory);
+    const content = await loadPack(directory);
     const issues: string[] = [];
     function scan(value: unknown, file: string, path: string) {
       if (typeof value === 'string' && /\bTODO\b/i.test(value)) {
@@ -277,7 +288,7 @@ async function newTopic(
 ) {
   kebab(id, 'Topic id');
   if (!title.trim()) fail('Pass a non-empty --title.');
-  const content = await loadContent(directory);
+  const content = await loadPack(directory);
   if (content.conceptsById.has(id)) fail(`Topic "${id}" already exists.`);
   const domain = values.domain ?? content.curriculum?.domains[0]?.id;
   if (!domain || !content.curriculum?.domains.some((item) => item.id === domain)) {
@@ -352,7 +363,7 @@ async function newTopic(
 }
 
 async function newLesson(topicId: string, directory: string) {
-  const content = await loadContent(directory);
+  const content = await loadPack(directory);
   const concept = content.conceptsById.get(topicId);
   if (!concept) fail(`Unknown topic "${topicId}".`);
   if (content.lessonsByConcept.has(topicId)) fail(`Lesson for "${topicId}" already exists.`);
@@ -477,7 +488,7 @@ async function newLesson(topicId: string, directory: string) {
 async function newCourse(id: string, title: string, directory: string) {
   kebab(id, 'Course id');
   if (!title.trim()) fail('Pass a non-empty --title.');
-  const content = await loadContent(directory);
+  const content = await loadPack(directory);
   if (content.coursesById.has(id)) fail(`Course "${id}" already exists.`);
   const domain = content.curriculum?.domains[0]?.id;
   if (!domain) fail('The curriculum must define a domain.');
@@ -531,6 +542,7 @@ async function addSource(
   kind: string | undefined,
   directory: string,
 ) {
+  requirePack(directory);
   const sourceFile = resolve(invocationDirectory(), file);
   if (!existsSync(sourceFile) || !statSync(sourceFile).isFile())
     fail(`Source file not found: ${file}`);
@@ -609,7 +621,7 @@ async function main() {
       return addSource(file, parsed.values.title, parsed.values.kind, directory);
     }
     if (command === 'sources' && subcommand === 'list') {
-      const content = await loadContent(directory);
+      const content = await loadPack(directory);
       for (const source of content.sourceIndex?.sources ?? []) {
         const missing = !existsSync(join(directory, 'sources', source.file));
         console.log(`${source.id}\t${source.title}${missing ? '\tmissing' : ''}`);
@@ -634,6 +646,7 @@ async function main() {
     return;
   }
   if (command === 'dev') {
+    requirePack(directory);
     const child = spawn('pnpm', ['dev'], {
       cwd: repoRoot,
       env: { ...process.env, CONTENT_DIR: directory },

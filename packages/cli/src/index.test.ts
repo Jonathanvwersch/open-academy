@@ -370,6 +370,48 @@ describe('academy CLI', () => {
     }
   });
 
+  it('reports the missing curriculum for every command that reads a pack', () => {
+    const parent = temporaryDirectory();
+    try {
+      const missingDirectory = join(parent, 'missing');
+      const emptyDirectory = join(parent, 'without-curriculum');
+      mkdirSync(emptyDirectory);
+      const readers = [
+        (directory: string) => ['check', directory],
+        (directory: string) => ['dev', '--pack', directory],
+        (directory: string) => ['new', 'topic', 'topic', '--title', 'Topic', '--pack', directory],
+        (directory: string) => ['new', 'lesson', 'topic', '--pack', directory],
+        (directory: string) => [
+          'new',
+          'course',
+          'course',
+          '--title',
+          'Course',
+          '--pack',
+          directory,
+        ],
+        (directory: string) => ['sources', 'list', '--pack', directory],
+        (directory: string) => [
+          'sources',
+          'add',
+          join(parent, 'missing.pdf'),
+          '--pack',
+          directory,
+        ],
+      ];
+      for (const directory of [missingDirectory, emptyDirectory]) {
+        const expected = `No course pack at ${directory} (missing curriculum.yaml).`;
+        for (const args of readers) {
+          const result = run(args(directory));
+          expect(result.status).toBe(1);
+          expect(result.stderr).toContain(expected);
+        }
+      }
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  }, 60_000);
+
   it('runs academy dev with the absolute pack directory in CONTENT_DIR', () => {
     const parent = temporaryDirectory();
     try {
