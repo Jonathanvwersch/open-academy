@@ -75,6 +75,8 @@ Use full sentences that follow from each other. Words like "so", "but", "because
 
 Keep paragraphs short, usually one to three sentences, but keep the connecting words so that each paragraph follows from the last. Asking the reader a question and answering it in the next sentence is a good way to move to the next point.
 
+Don't use contrast lines to sound insightful: "X, not Y", "it's not just X, it's Y", "rather than merely…". They read as machine-written. Say what the thing is or does. Contrast only to correct a mistake a learner actually makes, as in a common-confusion section.
+
 Before you keep a paragraph, read it aloud. If a sentence would sound odd said to a friend sitting next to you, rewrite it until it doesn't. Clarity matters more than brevity: an extra sentence that makes a step obvious is worth its words, while a sentence that only restates the last one is not.
 
 These pairs show the difference. Match the "after" versions.

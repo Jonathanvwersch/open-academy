@@ -52,7 +52,7 @@ Put the app behind a reverse proxy with HTTPS (Caddy, nginx, or a Cloudflare tun
 
 ## Switching packs
 
-Progress is stored by topic ID. If you point one database at a different pack, topics that the new pack doesn't have are hidden, not deleted, so switching back restores them. Two packs that use the same topic ID would share progress for it, so give each pack its own database unless their IDs are distinct.
+Progress is stored by topic ID. If you point one database at a different pack, topics that the new pack doesn't have are hidden and kept, so switching back restores them. Two packs that use the same topic ID would share progress for it, so give each pack its own database unless their IDs are distinct.
 
 ## Backups
 
