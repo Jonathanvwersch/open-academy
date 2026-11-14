@@ -23,6 +23,10 @@ units:
   - title: Post-training LLMs
     intro: "Turning a pretrained language model into a useful assistant: supervised fine-tuning, learning rewards from human preferences, RLHF and DPO, and reinforcement learning on problems with checkable answers, the recipe behind reasoning models."
     project: llm-post-training
+    papers:
+      - instructgpt
+      - dpo
+      - lora
     concepts:
       - sft
       - eigen-svd

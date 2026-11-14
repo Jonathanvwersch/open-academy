@@ -1,0 +1,46 @@
+id: alexnet
+title: ImageNet Classification with Deep Convolutional Neural Networks
+authors: Alex Krizhevsky, Ilya Sutskever and Geoffrey E. Hinton
+year: 2012
+est_minutes: 60
+source:
+  url: https://proceedings.neurips.cc/paper_files/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf
+concepts:
+  - convolutions
+  - regularization
+  - images-as-tensors
+why_this_week: This unit brought together image tensors, convolutions and regularization. AlexNet puts these pieces into a large image classifier. Its training choices show how faster learning and control of overfitting helped make a deep network useful on ImageNet.
+how_to_read: Read Sections 1 and 2 for the task, then Sections 3.1 and 3.5 with Figure 2 for the network. Read Section 4 for data augmentation and dropout. Study Tables 1 and 2 in Section 6, keeping single-network results separate from ensembles and extra pretraining. Read Section 7. Skim the GPU split, response-normalization formula and detailed learning schedule on a first pass.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What do the ImageNet results show about learning an image classifier with a large, deep convolutional network?
+  - id: method
+    kind: method
+    prompt: How does dropout change training in the fully connected layers, and why should that reduce overfitting?
+  - id: evidence
+    kind: evidence
+    prompt: What do Tables 1 and 2 show about the network's performance? Explain why the winning 2012 result cannot be attributed to the single network alone.
+  - id: limitations
+    kind: limitations
+    prompt: Using Sections 2 and 5, what data and computing resources did training require? How do these requirements limit who could reproduce the result?
+summary:
+  prompt: In about five sentences, explain the classifier, how it controls overfitting, its main ImageNet evidence, and one practical limit.
+  rubric:
+    - id: contribution
+      criterion: Explains that a large supervised convolutional network substantially improved ImageNet classification results
+      weight: 2
+      required: true
+    - id: method
+      criterion: Describes the convolutional and fully connected layers and how data augmentation or dropout reduces overfitting
+      weight: 2
+      required: true
+    - id: evidence
+      criterion: Uses the ImageNet comparisons and distinguishes the single-network results from the winning 2012 ensemble with extra pretraining
+      weight: 1
+      required: false
+    - id: limitation
+      criterion: Identifies the need for a large labelled dataset and substantial GPU training time as a practical limit
+      weight: 1
+      required: false
+  exemplar: AlexNet learns an ImageNet classifier with five convolutional layers and three fully connected layers. ReLUs help it train quickly, while data augmentation and dropout reduce overfitting. Its single network substantially improves the 2010 comparison in Table 1. The winning 2012 result combines several networks, including networks pretrained on additional ImageNet data. Training the base network required 1.2 million labelled images and five to six days on two GPUs.

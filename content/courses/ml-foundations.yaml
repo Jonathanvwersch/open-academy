@@ -25,6 +25,9 @@ units:
   - title: Probability and classification
     intro: "Probability as the language of uncertainty, and using it to classify: the Gaussian, maximum likelihood, logistic regression, cross-entropy and softmax, and how to measure a classifier."
     project: classifier-numpy
+    papers:
+      - shannon-1948
+      - generative-vs-discriminative
     concepts:
       - probability-basics
       - gaussian-distribution

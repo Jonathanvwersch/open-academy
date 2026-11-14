@@ -1,0 +1,46 @@
+id: matrix-calculus
+title: The Matrix Calculus You Need For Deep Learning
+authors: Terence Parr and Jeremy Howard
+year: 2018
+est_minutes: 60
+source:
+  arxiv: 1802.01528v3
+concepts:
+  - partial-derivatives
+  - chain-rule
+  - gradients
+why_this_week: This unit introduced partial derivatives, the chain rule and gradients. This tutorial shows how those same operations fit into vectors and matrices. Its worked derivatives let you check that the compact notation still describes changing one input at a time.
+how_to_read: Read Sections 2 and 3, then the opening of Section 4 through its first Jacobian example. A Jacobian stacks the gradients of several outputs into a matrix. Read Section 4.5.1 for breaking a nested function into intermediate steps; you can skip its trigonometric examples if those functions are unfamiliar. Skip Sections 4.1 through 4.4, the later chain rules in 4.5.2 and 4.5.3, and the neural-network derivations in Sections 5 and 6 for now. Use Sections 8.1 and 9 as references. Return to the advanced parts after learning neural networks.
+questions:
+  - id: claim
+    kind: claim
+    prompt: How do gradients and Jacobians organise the ordinary partial derivatives used in this tutorial?
+  - id: method
+    kind: method
+    prompt: In Section 4.5.1, why introduce intermediate variables when differentiating a nested expression, and how are the resulting derivatives combined?
+  - id: evidence
+    kind: evidence
+    prompt: For the worked function $f(x,y)=3x^2y$ in Section 3, explain how to obtain each entry of its gradient. What stays fixed in each calculation?
+  - id: limitations
+    kind: limitations
+    prompt: Section 4 describes two Jacobian layouts. What must you check before using a derivative matrix copied from another source?
+summary:
+  prompt: In about five sentences, explain how the tutorial builds vector derivatives from scalar rules, use its worked partial derivatives as evidence, and give one notation caution.
+  rubric:
+    - id: contribution
+      criterion: Explains that gradients collect a scalar function's partial derivatives and Jacobians collect derivatives for multiple outputs
+      weight: 2
+      required: true
+    - id: method
+      criterion: Describes introducing intermediate variables in nested expressions, differentiating the pieces and multiplying derivatives along the single chain
+      weight: 2
+      required: true
+    - id: evidence
+      criterion: Uses the example f(x,y)=3x^2y to obtain partial derivatives 6xy and 3x^2 while holding the other input fixed
+      weight: 1
+      required: false
+    - id: limitation
+      criterion: Notes that numerator and denominator Jacobian layouts are transposes and that the row and column conventions must be checked
+      weight: 1
+      required: false
+  exemplar: The tutorial builds vector and matrix derivatives from scalar differentiation rules. A gradient collects one scalar function's partial derivatives, and a Jacobian collects them for several outputs. For a nested expression with one chain of dependencies, intermediate variables let us differentiate each piece and multiply the results. Its example $f(x,y)=3x^2y$ gives partial derivatives $6xy$ and $3x^2$ by holding the other variable fixed. Jacobian layouts can be transposes of each other, so we must check what the rows and columns represent.
