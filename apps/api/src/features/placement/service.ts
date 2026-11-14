@@ -15,7 +15,9 @@ import {
 } from '../../learning/placement.js';
 import { activeCourseFor, courseFoundations, masteryKey } from '../../learning/prerequisites.js';
 import { planSession, sessionBudget } from '../../learning/scheduler.js';
+import type { SessionPreferences } from '../../learning/session-budget.js';
 import { initialMastery, masteryRank } from '../../learning/types.js';
+import { localDateKey, sessionKindForDate } from '../../learning/xp.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 import { buildCoursePayload } from '../course/service.js';
 
@@ -262,13 +264,16 @@ export async function getPlacementResults(deps: FeatureServices, request: Featur
   if (!courseProgress) return serviceResult({ error: 'Placement course not found' }, 404);
   const user = await request.repo.user();
   const schedulerState = await request.repo.schedulerState(request.now());
-  const prefs = (user?.prefs ?? {}) as { scheduleMinutes?: number };
+  const prefs = (user?.prefs ?? {}) as SessionPreferences;
+  const localDate = localDateKey(request.now(), request.timeZone);
+  const sessionKind = sessionKindForDate(localDate);
   const firstTopic =
     planSession(
       schedulerState,
       content,
       request.now(),
-      sessionBudget('weekday', prefs),
+      sessionBudget(sessionKind, prefs, localDate),
+      sessionKind,
     ).activities.find((activity) => activity.kind === 'learn')?.conceptId ?? null;
   return serviceResult({
     courseId: course.id,

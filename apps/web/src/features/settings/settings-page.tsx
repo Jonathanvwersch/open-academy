@@ -1,3 +1,4 @@
+import { studyDays } from '@academy/contracts/settings';
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { Check, LogOut } from 'lucide-react';
 import type { FormEvent } from 'react';
@@ -5,7 +6,14 @@ import { useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../../components/ui/card.js';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '../../components/ui/card.js';
 import { Input } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
 import { courseQueryOptions, learnQueryOptions } from '../course/queries.js';
@@ -19,7 +27,7 @@ export function SettingsPage() {
   const [error, setError] = useState('');
   const [authError, setAuthError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [loggingOut, setLoggingOut] = useState<'logout' | 'logout-all' | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [draft, setDraft] = useState(settings);
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -50,11 +58,11 @@ export function SettingsPage() {
       setSaving(false);
     }
   };
-  async function logout(endpoint: 'logout' | 'logout-all') {
+  async function logout() {
     setAuthError('');
-    setLoggingOut(endpoint);
+    setLoggingOut(true);
     try {
-      const response = await apiFetch(`/api/auth/${endpoint}`, { method: 'POST' });
+      const response = await apiFetch('/api/auth/logout', { method: 'POST' });
       if (!response.ok) {
         setAuthError('Could not log out.');
         return;
@@ -63,42 +71,47 @@ export function SettingsPage() {
     } catch {
       setAuthError('Could not log out. Check your connection and try again.');
     } finally {
-      setLoggingOut(null);
+      setLoggingOut(false);
     }
   }
-  const weeklyMinutes = draft.scheduleMinutes * 5 + draft.saturdayMinutes + draft.sundayMinutes;
+  const weeklyMinutes = Object.values(draft.dailyMinutes).reduce(
+    (sum, minutes) => sum + minutes,
+    0,
+  );
   const weeklyHours = Math.round((weeklyMinutes / 60) * 10) / 10;
-  const studyDays = [
-    { key: 'scheduleMinutes', label: 'Daily study time', title: 'Weekdays' },
-    { key: 'saturdayMinutes', label: 'Saturday study time', title: 'Saturday' },
-    { key: 'sundayMinutes', label: 'Sunday study time', title: 'Sunday' },
-  ] as const;
   return (
     <section className="space-y-6">
       <h1 className="sr-only">Settings</h1>
       <form onSubmit={save}>
         <Card>
           <CardHeader>
-            <CardTitle>Study schedule</CardTitle>
+            <CardTitle>Weekly study goal</CardTitle>
+            <CardDescription>Set how many minutes you aim to study each day.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-3">
-              {studyDays.map(({ key, label, title }) => (
-                <div key={key} className="grid gap-2.5">
-                  <Label htmlFor={key}>{title}</Label>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {studyDays.map((day) => (
+                <div key={day} className="grid gap-2.5">
+                  <Label htmlFor={day}>{day[0].toUpperCase() + day.slice(1)}</Label>
                   <div className="relative">
                     <Input
-                      id={key}
-                      aria-label={label}
+                      id={day}
                       disabled={saving}
+                      aria-label={`${day[0].toUpperCase() + day.slice(1)} study goal`}
                       type="number"
                       min={5}
                       max={600}
                       step={5}
-                      value={draft[key]}
+                      value={draft.dailyMinutes[day]}
                       onChange={(event) => {
                         setSaved(false);
-                        setDraft({ ...draft, [key]: Number(event.target.value) });
+                        setDraft({
+                          ...draft,
+                          dailyMinutes: {
+                            ...draft.dailyMinutes,
+                            [day]: Number(event.target.value),
+                          },
+                        });
                       }}
                       className="h-12 bg-background pl-3.5 pr-13 text-xl font-medium tabular-nums md:text-xl"
                     />
@@ -108,21 +121,6 @@ export function SettingsPage() {
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-              <Label htmlFor="startDate">Start date</Label>
-              <Input
-                id="startDate"
-                disabled={saving}
-                type="date"
-                aria-label="Learning start date"
-                value={draft.startDate}
-                onChange={(event) => {
-                  setSaved(false);
-                  setDraft({ ...draft, startDate: event.target.value });
-                }}
-                className="h-10 w-full bg-background sm:w-44"
-              />
             </div>
             {error ? (
               <Alert variant="destructive">
@@ -145,7 +143,7 @@ export function SettingsPage() {
                 ) : null}
               </span>
               <Button type="submit" loading={saving} className="h-9 px-4">
-                Save settings
+                Save goal
               </Button>
             </div>
           </CardFooter>
@@ -166,22 +164,11 @@ export function SettingsPage() {
               type="button"
               variant="outline"
               className="h-9"
-              loading={loggingOut === 'logout'}
-              disabled={loggingOut === 'logout-all'}
-              onClick={() => void logout('logout')}
+              loading={loggingOut}
+              onClick={() => void logout()}
             >
               <LogOut className="size-3.5" aria-hidden="true" />
               Log out
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-9"
-              loading={loggingOut === 'logout-all'}
-              disabled={loggingOut === 'logout'}
-              onClick={() => void logout('logout-all')}
-            >
-              Log out of all devices
             </Button>
           </div>
         </CardContent>
