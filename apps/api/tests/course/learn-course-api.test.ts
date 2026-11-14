@@ -1,10 +1,11 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
 import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
+import { LearnerRepository } from '../../src/db/repository.js';
 import {
   attempts,
   courseEnrollments,
@@ -135,6 +136,44 @@ test('learners can switch to a listed course', async () => {
       0,
     ),
   });
+});
+
+test('study set backfill includes started courses and later respects removal', async () => {
+  const courseA = content.coursesById.get('ml-foundations');
+  const courseB = content.coursesById.get('deep-learning');
+  if (!courseA || !courseB) throw new Error('Missing study set test courses');
+  const conceptFor = (course: NonNullable<typeof courseA>, excluded: Set<string> = new Set()) => {
+    const conceptId = course.units
+      .flatMap((unit) => unit.concepts)
+      .find((id) => !excluded.has(id) && content.conceptsById.get(id)?.dimensions[0]);
+    if (!conceptId) throw new Error(`Missing test concept in ${course.id}`);
+    const dimension = content.conceptsById.get(conceptId)?.dimensions[0];
+    if (!dimension) throw new Error(`Missing test dimension for ${conceptId}`);
+    return { conceptId, dimension };
+  };
+  const a = conceptFor(courseA);
+  const b = conceptFor(
+    courseB,
+    new Set(courseA.units.flatMap((unit) => unit.concepts)),
+  );
+  await db.update(users).set({ activeCourseId: courseA.id }).where(eq(users.id, userId));
+  await db.insert(mastery).values([
+    { userId, conceptId: a.conceptId, dimension: a.dimension, state: 'introduced', evidence: {} },
+    { userId, conceptId: b.conceptId, dimension: b.dimension, state: 'introduced', evidence: {} },
+  ]);
+
+  const repository = new LearnerRepository(db, userId);
+  expect(await repository.studyCourseIds(content)).toEqual(
+    (content.curriculum?.courses ?? content.courses.map((course) => course.id)).filter((id) =>
+      [courseA.id, courseB.id].includes(id),
+    ),
+  );
+
+  await db
+    .update(courseEnrollments)
+    .set({ status: 'paused' })
+    .where(and(eq(courseEnrollments.userId, userId), eq(courseEnrollments.courseId, courseB.id)));
+  expect(await repository.studyCourseIds(content)).toEqual([courseA.id]);
 });
 
 test('course query views a requested course without changing the stored active course', async () => {

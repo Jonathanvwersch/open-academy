@@ -1,10 +1,12 @@
 import { and, asc, desc, eq, lte } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import type { Dimension } from '../content/schemas.js';
+import type { ContentIndex } from '../content/types.js';
 import { retrievability } from '../learning/fsrs.js';
 import type { SchedulerState } from '../learning/scheduler.js';
 import type { MasteryRecord, MasteryState } from '../learning/types.js';
 import { initialMastery } from '../learning/types.js';
+import { courseHasEvidence } from '../learning/course-start.js';
 import { localDateKey } from '../learning/xp.js';
 import type { Database } from './client.js';
 import {
@@ -45,6 +47,72 @@ export class LearnerRepository {
 
   async setActiveCourseId(courseId: string): Promise<void> {
     await this.db.update(users).set({ activeCourseId: courseId }).where(eq(users.id, this.userId));
+  }
+
+  async studyCourseIds(content: ContentIndex): Promise<string[]> {
+    const [user] = await this.db
+      .select({
+        activeCourseId: users.activeCourseId,
+        studySetInitializedAt: users.studySetInitializedAt,
+      })
+      .from(users)
+      .where(eq(users.id, this.userId))
+      .limit(1);
+    if (!user) return [];
+
+    if (!user.studySetInitializedAt) {
+      const [enrollments, masteryRows, lessonRunRows] = await Promise.all([
+        this.courseEnrollments(),
+        this.db
+          .select({ conceptId: mastery.conceptId, state: mastery.state })
+          .from(mastery)
+          .where(eq(mastery.userId, this.userId)),
+        this.db
+          .select({ conceptId: lessonRuns.conceptId })
+          .from(lessonRuns)
+          .where(eq(lessonRuns.userId, this.userId)),
+      ]);
+      const startedCourseIds = new Set(enrollments.map((enrollment) => enrollment.courseId));
+      const started = content.courses
+        .filter((course) =>
+          courseHasEvidence(
+            course.units.flatMap((unit) => unit.concepts),
+            masteryRows,
+            lessonRunRows,
+          ),
+        )
+        .map((course) => course.id);
+      if (user.activeCourseId && content.coursesById.has(user.activeCourseId)) {
+        startedCourseIds.add(user.activeCourseId);
+      }
+      for (const courseId of started) startedCourseIds.add(courseId);
+      const courseOrder = content.curriculum?.courses ?? content.courses.map((course) => course.id);
+      const backfill = courseOrder.filter((courseId) => startedCourseIds.has(courseId));
+      if (backfill.length > 0) {
+        await this.db
+          .insert(courseEnrollments)
+          .values(
+            backfill.map((courseId) => ({
+              userId: this.userId,
+              courseId,
+              startMethod: 'beginning' as const,
+            })),
+          )
+          .onConflictDoNothing();
+      }
+      await this.db
+        .update(users)
+        .set({ studySetInitializedAt: new Date() })
+        .where(eq(users.id, this.userId));
+    }
+
+    const activeEnrollments = await this.db
+      .select({ courseId: courseEnrollments.courseId })
+      .from(courseEnrollments)
+      .where(and(eq(courseEnrollments.userId, this.userId), eq(courseEnrollments.status, 'active')));
+    const activeCourseIds = new Set(activeEnrollments.map((enrollment) => enrollment.courseId));
+    const courseOrder = content.curriculum?.courses ?? content.courses.map((course) => course.id);
+    return courseOrder.filter((courseId) => activeCourseIds.has(courseId));
   }
 
   async masteryRecords(): Promise<MasteryRecord[]> {
