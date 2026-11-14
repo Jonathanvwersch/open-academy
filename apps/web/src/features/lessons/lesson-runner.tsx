@@ -510,6 +510,10 @@ export function LessonRunner({
           !state.pendingProblem &&
           state.lastAnsweredProblem.id === shownProblem?.id,
       );
+  const warmupQuestionNumber = Math.min(
+    doneReviewQuestions + (showingAnswer ? 0 : 1),
+    totalReviewQuestions,
+  );
   const quizItems = state.quiz.current?.items ?? [];
   const unansweredQuizIndex = quizItems.findIndex((item) => !item.answered);
   const quizQuestionIndex =
@@ -647,8 +651,7 @@ export function LessonRunner({
       {warmupMode && shownProblem ? (
         <section data-testid="lesson-quiz-warmup" className="space-y-4">
           <p className="text-sm text-muted-foreground" data-testid="quiz-warmup-progress">
-            Warm-up before the retake · {Math.min(doneReviewQuestions + 1, totalReviewQuestions)} of{' '}
-            {totalReviewQuestions}
+            Warm-up before the retake · {warmupQuestionNumber} of {totalReviewQuestions}
           </p>
           {practiceQuestionCard(true)}
           <Button type="button" variant="ghost" disabled={busy} onClick={leaveQuizWarmup}>
@@ -740,7 +743,12 @@ export function LessonRunner({
               Not passed · {state.quiz.last.correctCount} of {state.quiz.last.total} (you need{' '}
               {Math.ceil(state.quiz.passMark * state.quiz.last.total)})
             </h2>
-            <p>You missed questions on: {missedQuizSteps.map((step) => step.title).join(', ')}.</p>
+            <p>You missed questions on:</p>
+            <ul data-testid="quiz-missed-steps" className="list-disc space-y-1 pl-5">
+              {missedQuizSteps.map((step) => (
+                <li key={step.pointId}>{step.title}</li>
+              ))}
+            </ul>
             <div className="flex flex-wrap items-center gap-2">
               <Button type="button" disabled={busy} onClick={continueQuizWarmup}>
                 {hasWarmupAnswers ? 'Continue retry' : 'Retry'}

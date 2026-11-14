@@ -1631,8 +1631,8 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   }>;
   expect(requiredReviews).toHaveLength(2);
   expect(requiredReviews.every((step) => step.answered === 0 && step.needed === 3)).toBe(true);
-  await expect(failed).toContainText(
-    `You missed questions on: ${requiredReviews.map((step) => step.title).join(', ')}.`,
+  await expect(failed.getByTestId('quiz-missed-steps').getByRole('listitem')).toHaveText(
+    requiredReviews.map((step) => step.title),
   );
   await expect(failed.locator('button[data-variant="default"]')).toHaveCount(1);
   await expect(failed.getByRole('button', { name: 'Retry', exact: true })).toBeVisible();
@@ -1640,12 +1640,25 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await expect(failed.getByRole('button', { name: 'Retake quiz' })).toHaveCount(0);
   const doThisLater = failed.getByRole('button', { name: 'Do this later' });
   await expect(doThisLater).toHaveAttribute('data-variant', 'ghost');
+  const prepareQuizRetryScreenshot = async (actionName?: string) => {
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.mouse.move(0, 0);
+    if (actionName) {
+      const action = page.getByRole('button', { name: actionName, exact: true });
+      await expect(action).toBeEnabled();
+      await expect(action).not.toHaveAttribute('data-loading', 'true');
+      await expect(action).toHaveAttribute('data-variant', 'default');
+      await expect(action).toHaveCSS('background-color', 'oklch(0.205 0 0)');
+    }
+  };
+  await prepareQuizRetryScreenshot('Retry');
   await page.screenshot({
     path: `${quizRetryScreenshotDir}/failed-card-desktop.png`,
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await prepareQuizRetryScreenshot('Retry');
   await page.screenshot({ path: `${quizRetryScreenshotDir}/failed-card-390.png`, fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.screenshot({
@@ -1729,6 +1742,13 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
 
   const captureQuizRetryState = async (name: string) => {
     await page.setViewportSize({ width: 1280, height: 900 });
+    const actionName =
+      name === 'warmup-next'
+        ? 'Next'
+        : name === 'warmup-last-answer'
+          ? 'Start the retake'
+          : undefined;
+    await prepareQuizRetryScreenshot(actionName);
     await page.screenshot({
       path: `${quizRetryScreenshotDir}/${name}-desktop.png`,
       fullPage: true,
@@ -1737,6 +1757,7 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       390,
     );
+    await prepareQuizRetryScreenshot(actionName);
     await page.screenshot({
       path: `${quizRetryScreenshotDir}/${name}-390.png`,
       fullPage: true,
@@ -1797,6 +1818,7 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
         .toBe(expectedAnswered);
     }
     await expect(page.getByRole('button', { name: nextAction, exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: nextAction, exact: true })).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toHaveCount(0);
   };
 
@@ -1810,9 +1832,11 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await captureQuizRetryState('warmup-question');
   let practiceRun = await waitForPracticeRun();
   await answerPracticeQuestion(practiceRun.pendingPracticeProblem, false, 'Next', 1);
+  await expect(warmupProgress).toHaveText('Warm-up before the retake · 1 of 6');
   await captureQuizRetryState('warmup-next');
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   practiceRun = await waitForPracticeRun();
+  await expect(warmupProgress).toHaveText('Warm-up before the retake · 2 of 6');
   await answerPracticeQuestion(practiceRun.pendingPracticeProblem, false, 'Next', 2);
 
   await page.reload();
@@ -1848,8 +1872,55 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   practiceRun = await waitForPracticeRun();
   await expect(warmupProgress).toHaveText('Warm-up before the retake · 6 of 6');
   await answerPracticeQuestion(practiceRun.pendingPracticeProblem, false, 'Start the retake', 3);
+  await expect(warmupProgress).toHaveText('Warm-up before the retake · 6 of 6');
   await captureQuizRetryState('warmup-last-answer');
-  await page.getByRole('button', { name: 'Start the retake', exact: true }).click();
+  const completedReviewRun = await currentRun(page);
+  expect(
+    completedReviewRun.quiz.reviewRequired.every(
+      (step: { answered: number }) => step.answered === 3,
+    ),
+  ).toBe(true);
+  await page.getByRole('button', { name: 'Do this later', exact: true }).click();
+  const completedReviewResults = page.getByTestId('lesson-quiz-results');
+  await expect(
+    completedReviewResults.getByRole('button', { name: 'Continue retry' }),
+  ).toBeVisible();
+  const extraPendingPractice = await page.evaluate(
+    async ({ conceptId, pointId, activityId, now }) => {
+      const response = await fetch(`/api/lessons/${conceptId}/run/practice`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-now': now },
+        body: JSON.stringify({ pointId, activityId }),
+      });
+      return { status: response.status, run: (await response.json()).run };
+    },
+    {
+      conceptId,
+      pointId: requiredReviews[0].pointId,
+      activityId: currentActivityId,
+      now: new Date(uiPracticeTime + 1_000).toISOString(),
+    },
+  );
+  expect(extraPendingPractice.status).toBe(200);
+  const extraPendingPracticeId = extraPendingPractice.run.pendingPracticeProblem?.id;
+  if (!extraPendingPracticeId) throw new Error('Expected an extra pending practice question');
+  let completedReviewPracticeRequests = 0;
+  await page.route(`**/api/lessons/${conceptId}/run/practice`, async (route) => {
+    completedReviewPracticeRequests += 1;
+    await route.continue();
+  });
+  await page.reload();
+  const reloadedCompletedReviewResults = page.getByTestId('lesson-quiz-results');
+  await expect(
+    reloadedCompletedReviewResults.getByRole('button', { name: 'Continue retry' }),
+  ).toBeVisible();
+  await reloadedCompletedReviewResults.getByRole('button', { name: 'Continue retry' }).click();
+  await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+  expect(completedReviewPracticeRequests).toBe(0);
+  const cleanupDb = createDb(env.TEST_DATABASE_URL);
+  await cleanupDb.delete(lessonProblems).where(eq(lessonProblems.id, extraPendingPracticeId));
+  await cleanupDb.$client.end();
+  await page.reload();
   await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
   await captureQuizRetryState('quiz-start');
   await answerAttempt(false, true);

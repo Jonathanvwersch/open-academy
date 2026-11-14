@@ -746,11 +746,21 @@ test('quiz start is idempotent and unsubmitted answers disclose no correctness',
     reviewed.quiz.reviewRequired.every((step: { answered: number }) => step.answered === 3),
   ).toBe(true);
   practiceTime += 1_000;
+  const completePointId = reviewed.quiz.reviewRequired[0].pointId;
+  const extraPractice = await app.request(`/api/lessons/${conceptId}/run/practice`, {
+    method: 'POST',
+    headers: { ...headers, 'X-Now': new Date(practiceTime).toISOString() },
+    body: JSON.stringify({ pointId: completePointId }),
+  });
+  expect(extraPractice.status).toBe(200);
+  const extraPracticeProblem = (await extraPractice.json()).run.pendingPracticeProblem;
+  expect(extraPracticeProblem.knowledgePointId).toBe(completePointId);
+  practiceTime += 1_000;
   const extraWarmup = await app.request(`/api/lessons/${conceptId}/run/practice`, {
     method: 'POST',
     headers: { ...headers, 'X-Now': new Date(practiceTime).toISOString() },
     body: JSON.stringify({
-      pointId: reviewed.quiz.reviewRequired[0].pointId,
+      pointId: completePointId,
       warmup: true,
     }),
   });
@@ -759,6 +769,9 @@ test('quiz start is idempotent and unsubmitted answers disclose no correctness',
     error: 'Quiz practice is complete for this step',
   });
   expect((await getCurrentRun()).pendingPracticeProblem).toBeUndefined();
+  expect(
+    await db.select().from(lessonProblems).where(eq(lessonProblems.id, extraPracticeProblem.id)),
+  ).toHaveLength(0);
   expect((await startQuiz()).status).toBe(200);
   const failedReview = await app.request(
     `/api/lessons/${conceptId}/quiz/${firstRun.quiz.current.attemptId}/review`,
