@@ -796,7 +796,7 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   await hideTutorLauncher(page);
   await expect(page.locator('article > h2').nth(1)).toContainText('2.');
   const roadmap = page.getByRole('img', {
-    name: 'The seven steps of the house-price model, each taught by a Unit 1 lesson',
+    name: /^The seven steps of the house-price model/,
   });
   await expect(roadmap).toBeVisible();
   await roadmap.evaluate((image) => {

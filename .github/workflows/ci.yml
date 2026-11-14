@@ -42,6 +42,19 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Run browser tests
         run: pnpm test:e2e
+      - name: Test authored curriculum journeys
+        env:
+          PLAYWRIGHT_CONTENT_DIR: content
+        run: >-
+          pnpm exec playwright test
+          tests/e2e/final-question-repeat.spec.ts
+          tests/e2e/probability-basics.spec.ts
+          tests/e2e/lesson-prerequisites.spec.ts
+          tests/e2e/session-cleanup.spec.ts
+          tests/e2e/lesson-runner.spec.ts
+          tests/e2e/learn-course.spec.ts
+          tests/e2e/placement.spec.ts
+          --grep 'continuing a final question|Probability basics real-content|full lesson shows recap facts|session lesson shows recap facts|course shows an unpassed|loss functions shows its authored|legacy lesson review presents|lesson prose fills|authored course-structure|real-content results keep'
       - name: Test a generated course pack
         run: pnpm test:e2e:generated-pack
       - name: Upload browser failure details

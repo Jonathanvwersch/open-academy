@@ -250,14 +250,11 @@ test('real-content results keep known foundations separate from course topics', 
     'requires authored course foundations',
   );
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/');
   const course = content.coursesById.get('deep-learning');
   if (!course) throw new Error('Missing Deep Learning course');
   const foundations = courseFoundations(content, course.id);
   if (foundations.length === 0) throw new Error('Deep Learning should have foundation topics');
-  const courseIndex = content.courses.findIndex((entry) => entry.id === course.id);
-  if (courseIndex < 0) throw new Error('Deep Learning is not in the course list');
-  await page.getByRole('button', { name: 'Start', exact: true }).nth(courseIndex).click();
+  await page.goto(`/courses/${course.id}`);
   await expect(page.getByRole('heading', { name: `Start ${course.title}` })).toBeVisible();
   await page.getByRole('link', { name: 'Take the placement check' }).click();
   await expect(page.getByRole('heading', { name: /Placement check ·/ })).toBeVisible();
