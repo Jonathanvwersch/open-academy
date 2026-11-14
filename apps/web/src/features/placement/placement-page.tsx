@@ -29,6 +29,7 @@ export function PlacementPage({ initialRunId }: { initialRunId?: string }) {
   const queryClient = useQueryClient();
   const [runId, setRunId] = useState<string | null>(initialRunId ?? null);
   const startRequested = useRef(false);
+  const resultsNavigationRequested = useRef(false);
   const startPlacement = useMutation(startPlacementMutationOptions());
   const nextQuery = useQuery({
     ...placementNextQueryOptions(runId),
@@ -66,10 +67,13 @@ export function PlacementPage({ initialRunId }: { initialRunId?: string }) {
 
   const question = nextQuery.data;
   useEffect(() => {
-    if (!runId || !question?.complete) return;
-    void invalidatePlacementProgress(queryClient);
-    void navigate({ to: '/placement/results', search: { id: runId }, replace: true });
-  }, [navigate, queryClient, question, runId]);
+    if (!runId || !question?.complete || resultsNavigationRequested.current) return;
+    resultsNavigationRequested.current = true;
+    void (async () => {
+      await invalidatePlacementProgress(queryClient);
+      await navigate({ to: '/placement/results', search: { id: runId }, replace: true });
+    })();
+  }, [navigate, queryClient, question?.complete, runId]);
 
   const submit = (answer: unknown, dontKnow = false) => {
     if (!runId || !question || question.complete || answerPlacement.isPending) return;

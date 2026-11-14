@@ -28,8 +28,8 @@ mkdirSync(tutorSidebarScreenshotDir, { recursive: true });
 let sessionId = '';
 
 async function waitForTutorSidebarToSettle(page: Page, panelSelector: string) {
-  const panel = page.locator(panelSelector);
-  const wrapper = page.locator('[data-slot="sidebar-wrapper"]');
+  const panel = page.locator(panelSelector).last();
+  const wrapper = page.locator('[data-slot="sidebar-wrapper"]').last();
   await expect
     .poll(async () => {
       const panelRight = await panel.evaluate((element) => element.getBoundingClientRect().right);
@@ -370,7 +370,7 @@ test('tutor sidebar width resizes, persists, responds to the keyboard, and clamp
   const container = tutor.locator('[data-slot="sidebar-container"]');
   const separator = tutor.getByRole('separator', { name: 'Resize tutor' });
   const width = () => container.evaluate((element) => element.getBoundingClientRect().width);
-  const inset = page.locator('[data-slot="sidebar-inset"]');
+  const inset = page.locator('div[data-slot="sidebar-inset"]');
   const insetWidthBefore = await inset.evaluate((element) => element.getBoundingClientRect().width);
   await expect.poll(width).toBe(448);
 
@@ -489,7 +489,7 @@ test('pending tutor reply shows pulsing Thinking within the mobile conversation'
     await expect(page.getByTestId('tutor-user-message')).toContainText('Explain this topic');
     const loading = page.getByRole('status', { name: 'Thinking', exact: true });
     await expect(loading).toBeVisible();
-    await expect(loading.getByText('Thinking…')).toHaveCSS('animation-name', 'pulse');
+    await expect(loading.locator('span').first()).toHaveCSS('animation-name', 'pulse');
     await expect(loading.locator('[data-slot="skeleton"]')).toHaveCount(0);
     const bounds = await loading.boundingBox();
     if (!bounds) throw new Error('Thinking indicator is not visible');
@@ -539,7 +539,7 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   await page.evaluate(() => {
     window.__layoutShifts = [];
   });
-  const mainContent = page.locator('main').first();
+  const mainContent = page.locator('div[data-slot="sidebar-inset"]');
   const mainWidthBefore = await mainContent.evaluate(
     (element) => element.getBoundingClientRect().width,
   );
@@ -1360,7 +1360,7 @@ test('tutor Context follows the session, lesson, and home pages', async ({ page 
     fullPage: true,
   });
 
-  await page.getByRole('link', { name: 'Home' }).click();
+  await page.getByRole('link', { name: 'Home', exact: true }).click();
   await expect(page).toHaveURL('/');
   await expect(tutor.getByTestId('tutor-reading-context')).toHaveCount(0);
 });

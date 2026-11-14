@@ -651,8 +651,8 @@ test('leaving after a step resumes on the next knowledge point', async ({ page }
   const { sessionId, nextTitle } = await passFirstKnowledgePoint(page);
   await advanceToNextStep(page);
   await page
-    .locator('nav[aria-label="Main navigation"]')
-    .getByRole('link', { name: 'Home' })
+    .locator('[role="navigation"][aria-label="Main navigation"]')
+    .getByRole('link', { name: 'Home', exact: true })
     .click();
   await expect(page).toHaveURL('/');
   const resume = page.getByRole('link', { name: 'Resume session', exact: true });

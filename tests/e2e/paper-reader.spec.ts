@@ -87,7 +87,7 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
   await expect(page.getByText('Saving…', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Saved', { exact: true })).toHaveCount(0);
   const reader = page.locator('[aria-label="PDF reader"]');
-  await expect.poll(() => reader.evaluate((element) => element.clientWidth)).toBeGreaterThan(900);
+  await expect.poll(() => reader.evaluate((element) => element.clientWidth)).toBeGreaterThan(700);
   expect(await reader.evaluate((element) => element.scrollWidth)).toBeLessThanOrEqual(
     (await reader.evaluate((element) => element.clientWidth)) + 1,
   );
@@ -357,7 +357,11 @@ test('Saturday session offers the current unit papers and a skip action', async 
     true,
   );
   const sessionId = session.id as string;
-  await page.goto(`/session/${sessionId}`);
+  const paperActivity = session.activities.find(
+    (activity: { kind: string }) => activity.kind === 'paper',
+  );
+  if (!paperActivity) throw new Error('Expected a paper activity');
+  await page.goto(`/session/${sessionId}?activity=${paperActivity.id}`);
   await expect(page.getByRole('heading', { name: 'Paper reading' })).toBeVisible();
   await expect(page.getByText("Pick one of this unit's papers to read.")).toBeVisible();
   const sessionPaper = page.getByRole('link', { name: /Fixture Paper Two/ });

@@ -9,6 +9,9 @@ export const publicFeatureModules = {
     'features/sessions/start-session.ts',
     'features/progress/streak-card.tsx',
     'features/tutor/tutor-sidebar.tsx',
+    'features/course/use-switch-course.ts',
+    'features/course/queries.ts',
+    'features/reviews/queries.ts',
   ]),
   api: new Set([
     'features/course/service.ts',

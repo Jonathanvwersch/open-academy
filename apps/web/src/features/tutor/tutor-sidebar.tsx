@@ -564,12 +564,19 @@ export function TutorContextProvider({
       onOpenChange={(nextOpen) => {
         if (context.allowed && routeAllowed) setOpen(nextOpen);
       }}
+      openMobile={visibleOpen}
+      onOpenMobileChange={(nextOpen) => {
+        if (context.allowed && routeAllowed) setOpen(nextOpen);
+      }}
       disableKeyboardShortcut={!context.allowed || !routeAllowed}
       data-resizing={isResizing ? 'true' : undefined}
+      className="min-h-0 flex-1"
       style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
     >
       <TutorContext.Provider value={value}>
-        <SidebarInset className="min-w-0">{children}</SidebarInset>
+        <SidebarInset as="div" className="min-w-0">
+          {children}
+        </SidebarInset>
         {routeAllowed && context.allowed && (!shouldPushSidebar || visibleOpen) ? (
           <Sidebar
             side="right"

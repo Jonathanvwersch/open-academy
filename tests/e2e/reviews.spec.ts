@@ -242,7 +242,8 @@ test('Continue reviews resumes the active session without starting another', asy
   });
 
   const continueLink = page.getByRole('link', { name: 'Continue reviews' });
-  await page.goto('/reviews');
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Reviews', exact: true }).click();
   await expect(continueLink).toHaveAttribute('href', `/session/${session.id}`);
   await continueLink.click();
   await expect(page).toHaveURL(`/session/${session.id}`);
