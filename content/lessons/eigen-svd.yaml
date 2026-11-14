@@ -107,7 +107,7 @@ knowledge_points:
       - For $\begin{bmatrix}3&0\\0&-1\end{bmatrix}$ the sum is $2$ and the product is $-3$, so they're $3$ and $-1$.
       - The matrix $\begin{bmatrix}0&-1\\1&0\end{bmatrix}$ sends $(1,0)$ to $(0,1)$ and $(0,1)$ to $(-1,0)$, a quarter turn. Its diagonal adds to $0$ and $ad-bc=1$, and $0^2-4\times1$ is negative, so it has no eigenvalues, which fits a turn that moves every arrow off its line.
 
-      Be careful not to read the eigenvalues off the diagonal. That only works when the entries off the diagonal are $0$, as in the second matrix. The first has $2$ and $2$ on its diagonal but eigenvalues $3$ and $1$.
+      Be careful not to read the eigenvalues off the diagonal. That only works when $b$ or $c$ is $0$, as in the second matrix, where both are. The first has $2$ and $2$ on its diagonal but eigenvalues $3$ and $1$.
     worked: |
       Let's find the eigenvalues and eigenvectors of $A=\begin{bmatrix}2&1\\1&2\end{bmatrix}$ from the equation, and check that we get the directions we found by trying arrows.
 
