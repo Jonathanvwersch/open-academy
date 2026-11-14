@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
+  attempts,
   diagnosticRuns,
   lessonProblems,
   lessonQuizItems,
@@ -2120,4 +2121,134 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await failedRetake.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
   expect(prepared.questionCount).toBeGreaterThan(0);
+});
+
+test('legacy quiz answers can be navigated and submitted without resaving', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.route('**/api/**', (route) =>
+    route.continue({
+      headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
+    }),
+  );
+  const sessionId = await createSession(page);
+  const preparedAttemptId = await page.evaluate(
+    async ({ conceptId, sessionId }) => {
+      const session = await (await fetch(`/api/sessions/${sessionId}`)).json();
+      const activity = session.activities.find(
+        (item: { conceptId?: string }) => item.conceptId === conceptId,
+      );
+      if (!activity) throw new Error('Missing lesson activity');
+      let run = (await (await fetch(`/api/lessons/${conceptId}/run`)).json()).run;
+      for (let count = 0; run.status === 'in_progress' && count < 200; count += 1) {
+        if (!run.pendingProblem) {
+          const response = await fetch(`/api/lessons/${conceptId}/run`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ activityId: activity.id }),
+          });
+          run = (await response.json()).run;
+          continue;
+        }
+        const expected = await (
+          await fetch(`/api/test/lesson-problems/${run.pendingProblem.id}/answer`)
+        ).json();
+        const response = await fetch(`/api/lessons/${conceptId}/run/answer`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            problemId: run.pendingProblem.id,
+            answer: expected.answer,
+            activityId: activity.id,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? 'Could not prepare quiz');
+        run = result.state;
+      }
+      if (run.status !== 'quiz') throw new Error('Lesson steps did not reach the quiz');
+      const response = await fetch(`/api/lessons/${conceptId}/quiz/start`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ activityId: activity.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? 'Could not start quiz');
+      return result.run.quiz.current.attemptId as string;
+    },
+    { conceptId, sessionId },
+  );
+
+  const legacyAnswers = await page.evaluate(
+    async ({ concept, attemptId }) => {
+      const run = (await (await fetch(`/api/lessons/${concept}/run`)).json()).run;
+      if (run.quiz.current.attemptId !== attemptId) throw new Error('Quiz attempt changed');
+      return Promise.all(
+        run.quiz.current.items.map(async (item: { id: string }) => {
+          const response = await fetch(`/api/test/lesson-quiz-items/${item.id}/answer`);
+          return { id: item.id, answer: (await response.json()).answer };
+        }),
+      );
+    },
+    { concept: conceptId, attemptId: preparedAttemptId },
+  );
+  const db = createDb(env.TEST_DATABASE_URL);
+  const [learner] = await db.select({ id: users.id }).from(users).limit(1);
+  if (!learner) throw new Error('Missing E2E learner');
+  const [legacyAttempt] = await db
+    .select({ id: attempts.id })
+    .from(attempts)
+    .where(eq(attempts.userId, learner.id))
+    .limit(1);
+  if (!legacyAttempt) throw new Error('Expected an existing lesson attempt');
+  for (const item of legacyAnswers) {
+    await db
+      .update(lessonQuizItems)
+      .set({
+        answer: item.answer,
+        correct: 1,
+        attemptId: legacyAttempt.id,
+        answeredAt: new Date('2026-01-01T12:00:00.000Z'),
+      })
+      .where(eq(lessonQuizItems.id, item.id));
+  }
+  await db.$client.end();
+
+  await page.reload();
+  await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+  const run = await currentRun(page);
+  const quizItems = run.quiz.current.items;
+  expect(quizItems).toHaveLength(legacyAnswers.length);
+  expect(quizItems.every((item: { locked: boolean }) => item.locked)).toBe(true);
+  const lastItem = quizItems.at(-1);
+  if (!lastItem) throw new Error('Expected legacy quiz items');
+  await expect(
+    page.getByRole('heading', { name: `Question ${quizItems.length} of ${quizItems.length}` }),
+  ).toBeVisible();
+  await expectQuizAnswerPrefilled(page, lastItem, lastItem.answer);
+
+  let answerPosts = 0;
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().endsWith('/quiz/answer')) answerPosts += 1;
+  });
+  await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(
+    page.getByRole('heading', {
+      name: `Question ${quizItems.length - 1} of ${quizItems.length}`,
+    }),
+  ).toBeVisible();
+  const previousItem = quizItems.at(-2);
+  if (!previousItem) throw new Error('Expected a previous quiz item');
+  await expectQuizAnswerPrefilled(page, previousItem, previousItem.answer);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: `Question ${quizItems.length} of ${quizItems.length}` }),
+  ).toBeVisible();
+  const submitResponse = page.waitForResponse(
+    (response) => response.request().method() === 'POST' && response.url().endsWith('/quiz/submit'),
+  );
+  await page.getByRole('button', { name: 'Submit quiz', exact: true }).click();
+  expect((await submitResponse).status()).toBe(200);
+  await expect(page.getByTestId('lesson-quiz-results')).toContainText(/^Quiz passed ·/);
+  expect(answerPosts).toBe(0);
 });

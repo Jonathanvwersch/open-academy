@@ -124,6 +124,7 @@ export interface LessonRunPayload {
           exercise: ClientExercise | null;
           answered: boolean;
           answer?: unknown;
+          locked?: boolean;
         }>;
       };
       last?: {

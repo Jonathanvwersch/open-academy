@@ -298,6 +298,7 @@ export function registerLessonRunRoutes(
                   exercise: instance ? serializeExercise(instance, userId) : null,
                   answered: item.answeredAt !== null,
                   ...(item.answeredAt !== null ? { answer: item.answer } : {}),
+                  locked: item.attemptId !== null,
                 };
               }),
             },

@@ -925,6 +925,16 @@ test('legacy quiz answers stay locked and submission does not duplicate their at
       answeredAt: new Date(headers['X-Now']),
     })
     .where(eq(lessonQuizItems.id, legacyItem.id));
+  const legacyRun = await getCurrentRun();
+  const legacyPayloadItem = legacyRun.quiz.current.items.find(
+    (item: { id: string }) => item.id === legacyItem.id,
+  );
+  expect(legacyPayloadItem).toMatchObject({
+    answered: true,
+    answer: legacyAnswer,
+    locked: true,
+  });
+  expect(legacyPayloadItem).not.toHaveProperty('correct');
   expect(
     (await answerQuizItem(legacyItem.id, wrongAnswer(legacyItem.exerciseId, legacyItem.seed)))
       .status,

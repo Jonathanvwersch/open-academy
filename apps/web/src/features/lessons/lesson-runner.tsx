@@ -300,6 +300,20 @@ export function LessonRunner({
     await queryClient.invalidateQueries({ queryKey: sessionQueryOptions(sessionId).queryKey });
   };
 
+  const submitLockedQuiz = async () => {
+    setBusy(true);
+    setBusyAction('submit');
+    setError('');
+    try {
+      await submitQuizResult();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not submit the quiz.');
+    } finally {
+      setBusyAction(null);
+      setBusy(false);
+    }
+  };
+
   const submitQuizAnswer = async (
     itemId: string,
     answer: unknown,
@@ -526,6 +540,7 @@ export function LessonRunner({
       ? Math.min(quizPosition.index, Math.max(0, quizItems.length - 1))
       : defaultQuizQuestionIndex;
   const currentQuizItem = quizItems[quizQuestionIndex];
+  const lastQuizQuestion = quizQuestionIndex === quizItems.length - 1;
   const stableHeightForCurrentPoint =
     stableCardHeights?.pointId === state.currentPointId ? stableCardHeights : null;
   const backButtonLabel = 'Back';
@@ -707,19 +722,40 @@ export function LessonRunner({
                 key={currentQuizItem.id}
                 exercise={currentQuizItem.exercise}
                 onSubmit={(answer) => {
-                  if (!quizAttemptId) return;
+                  if (!quizAttemptId || currentQuizItem.locked) return;
                   void submitQuizAnswer(
                     currentQuizItem.id,
                     answer,
                     quizAttemptId,
                     quizQuestionIndex,
-                    quizQuestionIndex === quizItems.length - 1,
+                    lastQuizQuestion,
                   );
                 }}
                 loading={busyAction === 'submit'}
                 disabled={busy && busyAction !== 'submit'}
+                locked={currentQuizItem.locked}
                 submittedAnswer={currentQuizItem.answer}
-                submitLabel={quizQuestionIndex === quizItems.length - 1 ? 'Submit quiz' : 'Next'}
+                submitLabel={lastQuizQuestion ? 'Submit quiz' : 'Next'}
+                primaryAction={
+                  currentQuizItem.locked
+                    ? {
+                        label: lastQuizQuestion ? 'Submit quiz' : 'Next',
+                        onClick: () => {
+                          if (!quizAttemptId) return;
+                          if (lastQuizQuestion) {
+                            void submitLockedQuiz();
+                          } else {
+                            setQuizPosition({
+                              attemptId: quizAttemptId,
+                              index: quizQuestionIndex + 1,
+                            });
+                          }
+                        },
+                        loading: busyAction === 'submit',
+                        disabled: busy,
+                      }
+                    : undefined
+                }
                 actions={
                   quizQuestionIndex > 0 && quizAttemptId ? (
                     <Button
