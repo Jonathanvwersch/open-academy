@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -9,6 +9,9 @@ const solution = resolve('labs/linreg-numpy/_solution/linreg.py');
 const buggy = resolve('labs/linreg-numpy/_solution/buggy.py');
 const nnVerifier = resolve('labs/verify.py');
 const nnSolution = resolve('labs/nn-from-scratch/_solution/nn.py');
+
+// PyTorch labs are skipped where torch isn't installed (see each lab's requirements.txt).
+const hasTorch = spawnSync('python3', ['-c', 'import torch']).status === 0;
 
 test.each([
   ['reference', '_solution/pca.py', true, 9],
@@ -173,7 +176,7 @@ test.each([
   }
 });
 
-test.each([
+test.skipIf(!hasTorch).each([
   ['reference', '_solution/classifier.py', true],
   ['starter', 'starter/classifier.py', false],
   ['buggy evaluation', '_solution/buggy.py', false],
