@@ -1,5 +1,33 @@
 concept: overfitting
 exercises:
+  - id: lab-image-classifier-selection
+    dimension: transfer
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 3
+    prompt: "An image classifier has training losses 0.30, 0.12 and 0.04 at epochs 2, 4 and 6. Validation losses are 0.34, 0.20 and 0.29. Which checkpoint would you keep? Explain what the later changes suggest and how you would use a test set after making this choice."
+    rubric:
+      - {
+          id: choice,
+          criterion: "Keeps epoch 4 using the lowest validation loss, 0.20.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: diagnosis,
+          criterion: "Explains that falling training loss with rising validation loss after epoch 4 suggests overfitting.",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: test,
+          criterion: "Reserves test for a final score after choices are fixed, without using it to replace the validation choice.",
+          weight: 1,
+          required: true,
+        }
+    exemplar: "I would keep epoch 4 because its validation loss is lowest at 0.20. From epoch 4 to 6, training improves while validation worsens, which suggests overfitting. After fixing the training choices, I would restore epoch 4 and score it once on the test set. I would keep test results out of checkpoint selection."
+    solution: "Epoch 4 has the smallest validation loss. The later gap suggests overfitting, and test data provides one final independent score."
   - id: ovf-fit-basics
     dimension: conceptual
     type: mc

@@ -173,6 +173,69 @@ test.each([
   }
 });
 
+test.each([
+  ['reference', '_solution/classifier.py', true],
+  ['starter', 'starter/classifier.py', false],
+  ['buggy evaluation', '_solution/buggy.py', false],
+] as const)(
+  'image classifier %s has the expected verifier result',
+  (_name, file, passes) => {
+    const directory = mkdtempSync(join(tmpdir(), 'academy-lab-image-'));
+    try {
+      const output = join(directory, 'results.json');
+      const run = () =>
+        execFileSync(
+          'python3',
+          [
+            nnVerifier,
+            'image-classifier',
+            '--implementation',
+            resolve('labs/image-classifier', file),
+            '--output',
+            output,
+          ],
+          { encoding: 'utf8' },
+        );
+      if (passes) run();
+      else expect(run).toThrow();
+      const result = JSON.parse(readFileSync(output, 'utf8')) as {
+        tests: Array<{ id: string; passed: boolean; message: string }>;
+        metrics: {
+          validation_accuracy: number;
+          test_accuracy: number;
+          test_loss: number;
+          baseline_overfit_rise: number;
+          overfit_rise_ratio: number;
+        };
+      };
+      expect(result.tests).toHaveLength(7);
+      expect(result.tests.every((check) => check.passed)).toBe(passes);
+      if (passes) {
+        expect(result.metrics.validation_accuracy).toBeGreaterThan(0.74);
+        expect(result.metrics.test_accuracy).toBeGreaterThan(0.65);
+        expect(result.metrics.test_loss).toBeLessThan(0.65);
+        expect(result.metrics.baseline_overfit_rise).toBeGreaterThan(0.15);
+        expect(result.metrics.overfit_rise_ratio).toBeLessThan(0.3);
+      } else if (file.includes('buggy')) {
+        const check = result.tests.find((check) => check.id === 'test_evaluation_mode');
+        expect(check?.passed).toBe(false);
+        expect(check?.message).toContain('Call model.eval() and use torch.no_grad()');
+        expect(result.tests.filter((check) => !check.passed).map((check) => check.id)).toEqual([
+          'test_evaluation_mode',
+        ]);
+      } else {
+        expect(
+          result.tests.find((check) => check.id === 'test_train_only_normalization')?.passed,
+        ).toBe(false);
+        expect(result.metrics).toEqual({});
+      }
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  },
+  30_000,
+);
+
 test('reference linear regression solution passes deterministic verifier checks', () => {
   const directory = mkdtempSync(join(tmpdir(), 'academy-lab-'));
   try {
