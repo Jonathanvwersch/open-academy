@@ -215,7 +215,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: 'The in-between value $u$ changes at $\frac{du}{dx}=4$ and the output changes at $\frac{dy}{du}=5$. Use $\frac{dy}{dx}=\frac{dy}{du}\cdot\frac{du}{dx}$ to find $\frac{dy}{dx}$.'
+    prompt: "The in-between value $u$ changes at $\\frac{du}{dx}=4$ and the output changes at $\\frac{dy}{du}=5$. Find $\\frac{dy}{dx}$."
     answer: 20
     tolerance: { abs: 0.001 }
     common_wrong:
@@ -224,7 +224,7 @@ exercises:
         category: misunderstood_definition
         feedback: "You added the rates. Along a chain they multiply."
     hints: ["Multiply the two rates."]
-    solution: '$\frac{dy}{dx}=5\times4=20$.'
+    solution: "Rates along a chain multiply, so $\\frac{dy}{dx}=5\\times4=20$."
   - id: crp-rate-product
     dimension: math
     type: numeric

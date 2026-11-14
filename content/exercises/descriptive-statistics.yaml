@@ -65,13 +65,14 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: "Three grasp times are ${{=m-d}}$, ${{=m}}$ and ${{=m+d}}$ seconds. What is their sample mean in seconds?"
+    prompt: "Three grasp times are ${{=m-2*d}}$, ${{=m-d}}$ and ${{=m+3*d}}$ seconds. What is their sample mean in seconds?"
     params:
       m: { min: 5, max: 9, step: 1 }
       d: { min: 1, max: 3, step: 1 }
     answer_expr: m
     tolerance: { abs: 0.001 }
-    solution: "Add the three times and divide by 3. The equal distances on either side cancel, giving $({{=m-d}}+{{=m}}+{{=m+d}})/3={{=m}}$ seconds."
+    solution: "The sample mean adds the observations and divides by their count: $({{=m-2*d}}+{{=m-d}}+{{=m+3*d}})/3={{=m}}$ seconds."
+    constraints: ["m > 2*d"]
   - id: ds-variance-template
     dimension: math
     type: numeric
@@ -252,29 +253,23 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: A vision model is tested on 100 copies of one camera frame. An engineer treats the copies as 100 independent observations when estimating standard error. What is wrong?
+    prompt: "An engineer estimates standard error after evaluating a vision model on 100 copies of one camera frame. How should the sample size be treated?"
     options:
-      - {
-          id: a,
-          text: "Copies provide no new independent evidence, so the uncertainty estimate can be misleading.",
-          correct: true,
-          feedback: Repetition of the same observation does not create a new sample.,
-        }
-      - {
-          id: b,
-          text: The formula requires the trial count to be larger than 100 in every setting.,
-          correct: false,
-          feedback: "Independence is the problem here, not a universal minimum sample size.",
-          category: misapplied_technique,
-        }
-      - {
-          id: c,
-          text: "Standard error measures individual frame brightness, so it cannot describe model performance.",
-          correct: false,
-          feedback: Standard error can describe uncertainty in average performance when the data justify it.,
-          category: misunderstood_definition,
-        }
-    solution: Copies share the same information and do not behave like separate trials. Dividing by the square root of 100 as though they were independent can make uncertainty look much smaller than it is.
+      - id: a
+        text: "The copies provide only one independent frame's evidence."
+        correct: true
+        feedback: "Repeating the same frame supplies no additional independently sampled frames."
+      - id: b
+        text: "The copies provide 100 independent observations from 100 model runs."
+        correct: false
+        category: misapplied_technique
+        feedback: "Separate model runs on copies of the same observation do not create independent samples of frames."
+      - id: c
+        text: "The copies provide 10 independent observations after taking a square root."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The square root controls how standard error scales with an independent sample count; it cannot create independence."
+    solution: "The copies share the information in one frame. Treating them as 100 independent frames would shrink the estimated standard error without adding independent evidence."
   - id: ds-interval-basics
     dimension: conceptual
     type: mc
@@ -340,7 +335,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: "An experiment has enough independent trials for the approximate 95% interval rule to apply. Its mean grasp time is ${{=m}}$ seconds and its estimated standard error is ${{=e/10}}$ seconds. What is the upper endpoint in seconds, using twice the standard error?"
+    prompt: "An experiment has enough independent trials for the approximate 95% interval rule to apply. Its mean grasp time is ${{=m}}$ seconds and its estimated standard error is ${{=e/10}}$ seconds. Estimate the upper endpoint of its approximate 95% confidence interval in seconds."
     params:
       m: { min: 3, max: 7, step: 1 }
       e: { min: 1, max: 4, step: 1 }
@@ -386,29 +381,23 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: Two robot versions achieve 7 successes in 10 independent trials and 9 successes in 10 other independent trials. What is justified by these observed rates alone?
+    prompt: "Two robot versions achieve 7 successes in 10 independent trials and 9 successes in 10 other independent trials. What is justified by these observed rates alone?"
     options:
-      - {
-          id: a,
-          text: The second version certainly has a higher long-run success chance.,
-          correct: false,
-          feedback: A larger observed rate in a tiny sample can arise from chance.,
-          category: incorrect_reasoning,
-        }
-      - {
-          id: b,
-          text: "The second version scored higher, but more independent trials are needed before deciding.",
-          correct: true,
-          feedback: Neither sample has the 10 successes and 10 failures needed for our interval rule.,
-        }
-      - {
-          id: c,
-          text: The two versions certainly have exactly the same long-run success chance.,
-          correct: false,
-          feedback: Insufficient evidence of a difference is not proof of equality.,
-          category: incorrect_reasoning,
-        }
-    solution: The observed rates differ by $0.9-0.7=0.2$, or 20 percentage points, but both samples are too small for our approximation. Even the rough difference interval includes zero, so collect more independent trials rather than declaring improvement or equality.
+      - id: a
+        text: "The observed improvement is 0.2; these small samples leave the long-run difference uncertain."
+        correct: true
+        category: incorrect_reasoning
+        feedback: "The rate difference is 0.9 minus 0.7, but the samples are too small for the interval approximation."
+      - id: b
+        text: "The observed improvement is 0.2; comparing these rates establishes a positive long-run difference."
+        correct: false
+        feedback: "A higher observed rate in a small sample can arise through sampling variation."
+      - id: c
+        text: "The observed improvement is 2/9; comparing the success counts establishes a positive long-run difference."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Subtract rates with the trial counts as denominators: 9/10 minus 7/10 is 0.2. Success counts alone also cannot establish improvement."
+    solution: "The observed difference is $0.9-0.7=0.2$. Each sample has fewer than 10 successes and 10 failures, so the approximate interval rule is unreliable; more independent trials are needed to judge a long-run improvement."
   - id: ds-new-setting
     dimension: conceptual
     type: mc
@@ -531,29 +520,23 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: An approximate 95% interval for updated minus original success chance is entirely positive, and the independent tests have enough successes and failures. What does this support?
+    prompt: "Independent tests have enough successes and failures for the approximate 95% interval rule to apply. The interval for updated minus original success chance is 0.02 to 0.08. What does it support?"
     options:
-      - {
-          id: a,
-          text: The update probably improves the long-run success chance under the tested conditions.,
-          correct: true,
-          feedback: The plausible difference range excludes zero and favours the update.,
-        }
-      - {
-          id: b,
-          text: The update must succeed on every future grasp under the tested conditions.,
-          correct: false,
-          feedback: Evidence of a higher chance is not certainty of success on each trial.,
-          category: incorrect_reasoning,
-        }
-      - {
-          id: c,
-          text: The original and update have equal long-run success chances under the tested conditions.,
-          correct: false,
-          feedback: Equality means zero difference and zero is outside this range.,
-          category: misunderstood_definition,
-        }
-    solution: A positive interval excludes no improvement while pointing toward a higher success chance. This supports a real improvement when the assumptions hold, but it is not a guarantee.
+      - id: a
+        text: "Evidence that the update improves the long-run success chance under the tested conditions."
+        correct: true
+        feedback: "The interval lies entirely above zero, supporting a positive updated-minus-original difference."
+      - id: b
+        text: "Evidence of improvement only if the interval also contains a difference of zero."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Including zero would leave no improvement among the plausible differences; this interval excludes it."
+      - id: c
+        text: "Evidence that the updated version's own success chance lies between 0.02 and 0.08."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The interval describes the difference between the chances, so it does not give either individual chance."
+    solution: "Every difference in the interval is positive, supporting a higher long-run success chance for the update under the tested conditions. Sampling uncertainty remains."
   - id: ds-difference-why
     lesson_only: true
     dimension: conceptual
