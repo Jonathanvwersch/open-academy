@@ -244,8 +244,9 @@ async function newTopic(
     kebab(prerequisite, 'Prerequisite id');
     if (!content.conceptsById.has(prerequisite)) fail(`Unknown prerequisite "${prerequisite}".`);
   }
-  const courseId = values.course;
-  const unit = values.unit;
+  let courseId = values.course;
+  let unit = values.unit;
+  let defaultCourse: Awaited<ReturnType<typeof loadContent>>['courses'][number] | undefined;
   if (courseId || unit) {
     if (!courseId || !unit) fail('Use --course and --unit together.');
     const course = content.coursesById.get(courseId);
@@ -253,6 +254,13 @@ async function newTopic(
     if (!Number.isInteger(index) || index < 0 || !course?.units[index]) {
       fail(`Unknown course unit "${courseId}" #${unit}.`);
     }
+  } else {
+    courseId = content.curriculum?.default_course;
+    defaultCourse = courseId ? content.coursesById.get(courseId) : undefined;
+    if (!courseId || !defaultCourse?.units.length) {
+      fail('The curriculum must define a default course with at least one unit.');
+    }
+    unit = String(defaultCourse.units.length);
   }
   const conceptFile = join(directory, 'concepts', `${domain}.yaml`);
   const concept = {
@@ -293,6 +301,7 @@ async function newTopic(
     });
     writeFileSync(courseFile, source);
   }
+  if (defaultCourse) console.log(`Added ${id} to ${defaultCourse.title}, unit ${unit}.`);
 }
 
 async function newLesson(topicId: string, directory: string) {

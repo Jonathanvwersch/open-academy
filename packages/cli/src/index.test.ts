@@ -142,6 +142,24 @@ describe('academy CLI', () => {
     }
   });
 
+  it('adds a topic without course options to the default course', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
+      const created = run(['new', 'topic', 'second-topic', '--title', 'Second topic', '--pack', pack]);
+      expect(created.status).toBe(0);
+      expect(created.stdout).toContain('Added second-topic to Applied Science basics, unit 1.');
+      const course = parse(
+        readFileSync(join(pack, 'courses/applied-science-basics.yaml'), 'utf8'),
+      ) as { units: Array<{ concepts: string[] }> };
+      expect(course.units[0]?.concepts).toContain('second-topic');
+      expect(run(['check', pack]).status).toBe(0);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
   it('creates a valid unit placeholder when the first domain has no concept file', () => {
     const parent = temporaryDirectory();
     try {
