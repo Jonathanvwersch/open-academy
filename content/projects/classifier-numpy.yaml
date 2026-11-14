@@ -1,7 +1,95 @@
 id: classifier-numpy
 title: "Classifier from scratch"
-status: stub
+status: authored
 est_hours: 4
 objective: "Implement logistic regression and softmax regression in NumPy trained with cross-entropy, then evaluate them on held-out data with accuracy, precision, recall and a confusion matrix."
-background: ""
+background: |
+  Logistic regression turns a score into a binary probability. Softmax extends this to several classes. In this project you will connect these probabilities to cross-entropy, gradient descent and held-out evaluation.
+
+  You will build both classifiers in NumPy. Fixed-seed Gaussian data and the split are provided. Each example has two features. The binary dataset has 400 examples and the three-class dataset has 600. Train on 80% and reserve 20% for validation.
+
+  Your code runs locally on a CPU. Once NumPy is installed, the lab works offline.
+
+  **Setup from the repository root**
+  ```bash
+  python3 -m pip install -r labs/classifier-numpy/requirements.txt
+  python3 labs/classifier-numpy/setup.py
+  # edit labs/classifier-numpy/work/classifier.py
+  python3 labs/verify.py classifier-numpy
+  ```
+  Upload `labs/classifier-numpy/work/results.json` here. See `labs/classifier-numpy/README.md` for function contracts and formulas.
 prereqs: [logistic-regression, classification-softmax, evaluation-metrics]
+tasks:
+  - id: t-sigmoid
+    title: Turn a binary score into a probability
+    md: |
+      Implement `sigmoid(z)`. Preserve the input shape. A score of zero should give 0.5.
+      Use a sign-aware expression or `np.logaddexp` so scores of -1000 and 1000 stay finite.
+      Done means `test_sigmoid` passes.
+  - id: t-softmax
+    title: Make probabilities for three classes
+    md: |
+      Implement `softmax(z)` for an array of shape `(n, k)`.
+      Subtract each row's largest score before taking exponentials. Divide by the sum within that row.
+      Done means each row sums to one and adding 9000 to every score leaves the probabilities unchanged.
+  - id: t-binary
+    title: Measure binary loss and its slopes
+    md: |
+      Implement `binary_loss_grad(X, y, w, b)`. Return mean binary cross-entropy and the gradients for weights and bias.
+      Labels and probabilities have shape `(n,)`. Use the residual `sigmoid(X @ w + b) - y`.
+      Average across examples. Done means the loss matches the reference and both gradients match finite differences.
+  - id: t-multiclass
+    title: Measure multiclass loss and its slopes
+    md: |
+      Implement `multiclass_loss_grad(X, y, w, b)`. Labels are integers from zero to `k - 1`.
+      Compute cross-entropy from shifted logits using log-sum-exp. For the gradient, copy the probability array and subtract one at each true class.
+      Done means the gradients match finite differences and `test_stable_softmax_logsumexp` passes.
+  - id: t-train
+    title: Learn from the training split
+    md: |
+      Implement `train`. Start weights and biases at zero. On each step, compute the loss gradients and subtract learning rate times gradient.
+      Return weights, bias and a history containing the initial loss and the loss after each update. Zero steps should return the initial parameters and one loss.
+      Done means the one-step check passes for both classifiers. Use learning rate 0.1 and 600 steps for the supplied data.
+  - id: t-confusion
+    title: Count held-out predictions
+    md: |
+      Implement `confusion_matrix(y, predicted, classes)` with true labels in rows and predicted labels in columns.
+      Use a probability threshold of 0.5 for binary predictions and the largest softmax probability for multiclass predictions.
+      Done means the count check passes, including an empty input.
+  - id: t-metrics
+    title: Report what the classifiers get right
+    md: |
+      Implement `metrics(matrix)`. Return accuracy and one precision and recall value per class.
+      Use zero when a denominator is zero. The README provides a reporting script that prints the held-out matrix and all three scores for both models.
+      Done means the asymmetric-matrix and empty-matrix checks pass, and both held-out accuracies exceed 0.90.
+acceptance:
+  - All nine public checks pass.
+  - Binary and multiclass cross-entropy gradients match numerical differences.
+  - Softmax and multiclass loss remain finite for large positive and negative logits.
+  - Binary and three-class held-out accuracy each exceed 0.90.
+  - Report held-out accuracy, per-class precision and recall, and a confusion matrix for both models.
+tests:
+  - { id: test_sigmoid, concepts: [logistic-regression], dimension: implementation }
+  - { id: test_stable_softmax_logsumexp, concepts: [classification-softmax], dimension: math }
+  - { id: test_binary_loss_gradient, concepts: [logistic-regression], dimension: implementation }
+  - { id: test_multiclass_loss_gradient, concepts: [classification-softmax], dimension: math }
+  - { id: test_training_step, concepts: [logistic-regression], dimension: implementation }
+  - { id: test_confusion_matrix, concepts: [evaluation-metrics], dimension: math }
+  - { id: test_precision_recall, concepts: [evaluation-metrics], dimension: math }
+  - { id: test_binary_held_out, concepts: [logistic-regression], dimension: implementation }
+  - { id: test_multiclass_held_out, concepts: [classification-softmax], dimension: math }
+metrics:
+  - { id: binary_accuracy, label: Binary held-out accuracy, threshold: 0.90, direction: above }
+  - {
+      id: multiclass_accuracy,
+      label: Three-class held-out accuracy,
+      threshold: 0.90,
+      direction: above,
+    }
+reflection:
+  - lab-classifier-shift
+  - lab-classifier-precision
+  - lab-classifier-recall
+follow_up:
+  - Change the Gaussian spread and record how the held-out confusion matrices change.
+  - Try binary thresholds of 0.2 and 0.8. Compare precision and recall for class 1.

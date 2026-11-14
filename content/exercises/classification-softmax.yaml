@@ -1,5 +1,26 @@
 concept: classification-softmax
 exercises:
+  - id: lab-classifier-shift
+    dimension: conceptual
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: A classifier gives logits [1000, 1001, 1002]. A programmer subtracts 1002 from each score before computing softmax. How do the resulting probabilities compare with the exact mathematical probabilities of the original logits?
+    options:
+      - id: a
+        text: They stay the same for all three classes.
+        correct: true
+        feedback: A common shift cancels between the numerator and denominator.
+      - id: b
+        text: They become equal for all three classes.
+        correct: false
+        feedback: The score gaps remain, so the three probabilities differ.
+      - id: c
+        text: They reverse the order of the three classes.
+        correct: false
+        feedback: Subtracting a common value preserves the score order.
+    solution: Each exponential gains the same factor, which cancels in the ratio. The shifted scores avoid overflow while preserving the probabilities.
   - id: sm-softmax-basics
     dimension: conceptual
     type: mc
