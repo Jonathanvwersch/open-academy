@@ -4,7 +4,12 @@ import type { IndexedPaper } from '../../content/types.js';
 import { repositoryPath } from '../../paths.js';
 
 const MAX_PDF_BYTES = 40 * 1024 * 1024;
-const ALLOWED_HOSTS = new Set(['arxiv.org', 'homes.cs.washington.edu']);
+const ALLOWED_HOSTS = new Set([
+  'arxiv.org',
+  'homes.cs.washington.edu',
+  'proceedings.neurips.cc',
+  'people.math.harvard.edu',
+]);
 
 export interface PaperFetcher {
   fetch(paper: IndexedPaper): Promise<Uint8Array>;

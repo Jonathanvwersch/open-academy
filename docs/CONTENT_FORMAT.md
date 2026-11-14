@@ -215,4 +215,4 @@ summary:
     - { id: limitation, criterion: "...", weight: 1, required: false }
   exemplar: "..."
 ```
-Paper IDs and concepts must exist, and each paper must be assigned to a course unit. Each paper has exactly one question of each kind. URLs must be HTTPS PDFs hosted on `arxiv.org` or `homes.cs.washington.edu`; arXiv identifiers include a version suffix. Summary rubrics contain 3–5 uniquely identified criteria.
+Paper IDs and concepts must exist, and each paper must be assigned to at least one course unit. A paper can appear in several units. Each paper has exactly one question of each kind. URLs must be HTTPS PDFs hosted on `arxiv.org`, `homes.cs.washington.edu`, `proceedings.neurips.cc` or `people.math.harvard.edu`; arXiv identifiers include a version suffix. The PDF fetcher checks the host of every redirect and requires a PDF content type and PDF bytes. Summary rubrics contain 3–5 uniquely identified criteria.

@@ -4,6 +4,8 @@ description: The linear algebra, calculus and probability that machine learning 
 units:
   - title: Linear algebra
     intro: "Vectors, dot products and matrices: how models store and combine numbers, plus eigenvalues and the SVD."
+    papers:
+      - pca-tutorial
     concepts:
       - vectors
       - dot-product
@@ -11,6 +13,8 @@ units:
       - eigen-svd
   - title: Calculus
     intro: "Derivatives, partial derivatives, the chain rule and gradients: the tools that tell a model which way to change."
+    papers:
+      - matrix-calculus
     concepts:
       - derivatives
       - partial-derivatives
@@ -18,6 +22,8 @@ units:
       - gradients
   - title: Probability and statistics
     intro: "Probability, the Gaussian, statistics, maximum likelihood and information theory: the language of uncertainty that losses are built on."
+    papers:
+      - shannon-1948
     concepts:
       - probability-basics
       - descriptive-statistics

@@ -23,6 +23,7 @@ units:
       - adam
       - batch-normalization
       - resnet
+      - alexnet
     concepts:
       - sgd-minibatch
       - momentum-adam
