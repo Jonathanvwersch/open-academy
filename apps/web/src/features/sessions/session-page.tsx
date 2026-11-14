@@ -9,6 +9,7 @@ import { SessionSkeleton } from '../../components/skeletons.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
+import { Skeleton } from '../../components/ui/skeleton.js';
 import { invalidateSidebarQueries, learnQueryOptions } from '../course/queries.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
 import { FeedbackPanel, FinalRetryNote, isFinalRetryResult } from '../exercises/feedback-panel.js';
@@ -116,6 +117,22 @@ export function SessionPage() {
     Boolean(activity.conceptId) &&
     !activity.progress?.quizContinued &&
     lessonRunsByConcept.get(activity.conceptId ?? '')?.status === 'quiz';
+  useEffect(() => {
+    if (!activity) return;
+    const nextActivity = activities
+      .filter((item) => item.idx > activity.idx && item.status === 'planned')
+      .sort((a, b) => a.idx - b.idx)[0];
+    for (const item of [activity, nextActivity]) {
+      if (!item) continue;
+      for (const exerciseId of item.exerciseIds) {
+        void queryClient.prefetchQuery(exerciseQueryOptions(exerciseId));
+      }
+    }
+    if (nextActivity?.kind === 'learn' && nextActivity.lessonAvailable && nextActivity.conceptId) {
+      void queryClient.prefetchQuery(lessonQueryOptions(nextActivity.conceptId));
+      void queryClient.prefetchQuery(lessonRunQueryOptions(nextActivity.conceptId));
+    }
+  }, [activities, activity, queryClient]);
   const showingRequestedCompletedActivity = Boolean(
     activity && activity.id === requestedCompletedActivity?.id && !showingLessonQuiz,
   );
@@ -144,9 +161,10 @@ export function SessionPage() {
   );
   const lesson = lessonQuery.data;
   const lessonRunnerActive = usesLessonRunner(activity, lesson);
-  const exerciseQuery = useSuspenseQuery(
-    exerciseQueryOptions(lessonRunnerActive ? null : (exerciseId ?? null)),
-  );
+  const exerciseQuery = useQuery({
+    ...exerciseQueryOptions(lessonRunnerActive ? null : (exerciseId ?? null)),
+    throwOnError: true,
+  });
   const activityScrollKey = activity
     ? `${activity.id}:${activity.progress?.lessonViewed ?? ''}`
     : '';
@@ -738,7 +756,26 @@ export function SessionPage() {
           {progressError}
         </p>
       ) : null}
-      {exerciseQuery.data ? (
+      {exerciseId && exerciseQuery.isPending ? (
+        <Card
+          data-testid="question-loading"
+          role="status"
+          aria-label="Loading question"
+          aria-busy="true"
+        >
+          <CardContent className="flex min-h-[36rem] flex-col gap-5 sm:min-h-[26rem]">
+            <QuestionProgress states={questionStates} />
+            <div className="space-y-2" aria-hidden="true">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-11/12" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+            <div className="h-24 rounded-md border" aria-hidden="true" />
+            <Skeleton className="mt-auto h-10 w-48 max-w-full" />
+            <span className="sr-only">Loading question</span>
+          </CardContent>
+        </Card>
+      ) : exerciseQuery.data ? (
         <Card data-testid="session-exercise" data-exercise-container="">
           <CardContent className="space-y-5">
             <QuestionProgress states={questionStates} />
