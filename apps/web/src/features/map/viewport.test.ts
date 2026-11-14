@@ -31,11 +31,20 @@ test('desktop fits every band and its title inside the canvas even with fifty to
 test('mobile fits the first band width rather than shrinking to fit later bands', () => {
   const first = group(1600, 400);
   const viewport = initialMapViewport([first, group(4000, 3000, 488)], 340, 520);
-  expect(viewport?.zoom).toBeCloseTo(340 / (1600 * 1.4));
+  expect(viewport?.zoom).toBeCloseTo((340 - 32) / 1600);
   if (!viewport) return;
   expect(first.position.y * viewport.zoom + viewport.y).toBe(16);
-  expect(first.position.x * viewport.zoom + viewport.x).toBeGreaterThan(0);
-  expect((first.position.x + 1600) * viewport.zoom + viewport.x).toBeLessThan(340);
+  expect(first.position.x * viewport.zoom + viewport.x).toBe(16);
+  expect(1600 * viewport.zoom).toBeGreaterThanOrEqual(340 * 0.8);
+  expect((first.position.x + 1600) * viewport.zoom + viewport.x).toBe(340 - 16);
+});
+
+test('small mobile groups respect the maximum zoom and remain top-left aligned', () => {
+  const first = group(268, 188);
+  const viewport = initialMapViewport([first], 390, 520);
+  expect(viewport?.zoom).toBe(0.85);
+  expect(first.position.x * Number(viewport?.zoom) + Number(viewport?.x)).toBe(16);
+  expect(first.position.y * Number(viewport?.zoom) + Number(viewport?.y)).toBe(16);
 });
 
 test('small maps never open larger than the maximum load zoom', () => {

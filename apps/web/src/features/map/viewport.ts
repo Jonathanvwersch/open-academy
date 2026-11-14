@@ -7,9 +7,13 @@ export function initialMapViewport(groups: GroupNode[], width: number, height: n
   const first = groups[0];
   if (!first || width <= 0 || height <= 0) return undefined;
   if (width < 640) {
-    const zoom = Math.min(mapFitViewOptions.maxZoom, width / (Number(first.style?.width) * 1.4));
+    const padding = Math.min(16, width / 10);
+    const zoom = Math.min(
+      mapFitViewOptions.maxZoom,
+      (width - padding * 2) / Number(first.style?.width),
+    );
     return {
-      x: (width - Number(first.style?.width) * zoom) / 2 - first.position.x * zoom,
+      x: padding - first.position.x * zoom,
       y: 16 - first.position.y * zoom,
       zoom,
     };

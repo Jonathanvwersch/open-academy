@@ -160,8 +160,11 @@ test.describe('touch navigation', () => {
     const firstGroup = page.locator('.react-flow__node-courseGroup').first();
     await expect
       .poll(async () => (await firstGroup.boundingBox())?.width ?? Infinity)
-      .toBeLessThan(graph.width * 0.9);
-    expect((await firstGroup.boundingBox())?.width).toBeGreaterThan(graph.width * 0.65);
+      .toBeLessThanOrEqual(graph.width - 16);
+    expect((await firstGroup.boundingBox())?.width).toBeGreaterThanOrEqual(graph.width * 0.8);
+    expect((await firstGroup.boundingBox())?.x).toBeCloseTo(graph.x + 16, 0);
+    expect((await firstGroup.boundingBox())?.y).toBeCloseTo(graph.y + 16, 0);
+    await expect(page.locator('[data-map-title]').first()).toBeInViewport();
     const before = await viewport.getAttribute('style');
     const start = { x: graph.x + graph.width - 12, y: graph.y + graph.height - 35 };
     const swipe = async (dx: number, dy: number) => {
