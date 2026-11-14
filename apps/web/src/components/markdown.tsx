@@ -138,9 +138,7 @@ export const Markdown = React.memo(function Markdown({
   return inline ? (
     <span className={cn('inline', className)}>{content}</span>
   ) : (
-    <div className={cn('markdown max-w-[70ch] text-base leading-7 text-foreground', className)}>
-      {content}
-    </div>
+    <div className={cn('markdown text-base leading-7 text-foreground', className)}>{content}</div>
   );
 });
 

@@ -282,6 +282,107 @@ test('Course tutor sidebar fills at least 90 percent of the viewport height', as
   ).toBeGreaterThanOrEqual(viewportHeight * 0.9);
 });
 
+test('tutor chat loading shows thread skeletons and an empty conversation state', async ({
+  page,
+}, testInfo) => {
+  let releaseThreads!: () => void;
+  const threadsGate = new Promise<void>((resolve) => {
+    releaseThreads = resolve;
+  });
+  let releaseLesson!: () => void;
+  const lessonGate = new Promise<void>((resolve) => {
+    releaseLesson = resolve;
+  });
+  let threadsRequestStarted = false;
+  let lessonRequestStarted = false;
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.removeItem('academy.tutor.thread');
+    localStorage.setItem('academy.tutor.open', 'true');
+  });
+  await page.route('**/api/tutor/threads**', async (route) => {
+    const request = route.request();
+    if (request.method() === 'GET' && new URL(request.url()).pathname === '/api/tutor/threads') {
+      threadsRequestStarted = true;
+      await threadsGate;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '[]',
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await page.route('**/api/lessons/supervised-learning/review', async (route) => {
+    lessonRequestStarted = true;
+    await lessonGate;
+    await route.continue();
+  });
+
+  await page.goto('/lessons/supervised-learning');
+  await expect.poll(() => lessonRequestStarted).toBe(true);
+  await expect(page.getByTestId('route-skeleton')).toBeVisible();
+  const tutor = page.getByRole('complementary', { name: 'Tutor' });
+  await expect(tutor).toBeVisible();
+  await expect(tutor.getByRole('heading', { name: 'Chats' })).toBeVisible();
+  await expect.poll(() => threadsRequestStarted).toBe(true);
+  await expect(tutor.getByTestId('tutor-thread-skeleton')).toHaveCount(4);
+
+  const desktopPanelState = await page.evaluate(() => {
+    const tutorPanel = document.querySelector<HTMLElement>(
+      '[role="complementary"][aria-label="Tutor"]',
+    );
+    const insets = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-slot="sidebar-inset"]'),
+    );
+    const skeleton = document.querySelector<HTMLElement>('[data-testid="route-skeleton"]');
+    const pageFrame = skeleton?.closest<HTMLElement>('[data-page-frame]');
+    const pageStyle = pageFrame ? getComputedStyle(pageFrame) : null;
+    return {
+      mobile: tutorPanel?.getAttribute('data-mobile'),
+      overlays: document.querySelectorAll('[data-slot="sheet-overlay"]').length,
+      pageOpacity: pageStyle?.opacity,
+      pageFilter: pageStyle?.filter,
+      insets: insets.map((element) => {
+        const style = getComputedStyle(element);
+        return { opacity: style.opacity, filter: style.filter };
+      }),
+    };
+  });
+  expect(desktopPanelState.mobile).toBeNull();
+  expect(desktopPanelState.overlays).toBe(0);
+  expect(desktopPanelState.pageOpacity).toBe('1');
+  expect(desktopPanelState.pageFilter).toBe('none');
+  expect(desktopPanelState.insets.length).toBeGreaterThan(0);
+  expect(
+    desktopPanelState.insets.every(({ opacity, filter }) => opacity === '1' && filter === 'none'),
+  ).toBe(true);
+
+  mkdirSync(testInfo.outputDir, { recursive: true });
+  await page.screenshot({
+    path: testInfo.outputPath('tutor-threads-loading-1440x900.png'),
+    animations: 'disabled',
+  });
+
+  releaseLesson();
+  await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
+  await tutor.getByRole('button', { name: 'New chat', exact: true }).click();
+  await expect(tutor.getByText('Loading chats…', { exact: true })).toHaveCount(0);
+  await expect(tutor.getByLabel('Ask the tutor')).toBeVisible();
+  releaseThreads();
+  await expect(tutor.getByTestId('tutor-empty-conversation')).toHaveText(
+    'No chats yet. Ask a question below.',
+  );
+  await tutor.getByRole('button', { name: 'Chats', exact: true }).click();
+  await expect(tutor.getByTestId('tutor-empty-thread-list')).toContainText(
+    'No chats yet. Ask a question below.',
+  );
+  await expect(tutor.getByRole('img', { name: 'Academy tortoise' })).toBeVisible();
+  await expect(tutor.getByRole('button', { name: 'New chat', exact: true })).toBeVisible();
+});
+
 test('restored tutor sidebar loads while the tutor flag is pending', async ({ page }) => {
   let startTodayRequest!: () => void;
   let releaseTodayResponse!: () => void;

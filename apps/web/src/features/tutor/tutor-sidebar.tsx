@@ -46,6 +46,7 @@ import {
   SidebarInset,
   SidebarProvider,
 } from '../../components/ui/sidebar.js';
+import { Skeleton } from '../../components/ui/skeleton.js';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../components/ui/tooltip.js';
 import { useIsMobile } from '../../hooks/use-mobile.js';
 import {
@@ -475,6 +476,7 @@ export function TutorContextProvider({
     (greeting !== null && greeting.threadId !== null && greeting.threadId === selectedId);
   const visiblePendingSend = pendingSend?.threadId === selectedId ? pendingSend : null;
   const threadGroups = groupThreads(threads.data ?? []);
+  const noChats = !threads.isPending && !threads.isError && threadGroups.length === 0;
   const selectionPreview = context.selection
     ? `${context.selection.slice(0, 120)}${context.selection.length > 120 ? '…' : ''}`
     : null;
@@ -632,13 +634,20 @@ export function TutorContextProvider({
                   </SidebarHeader>
                   <SidebarContent className="min-h-0 flex-1 p-2">
                     {threads.isPending ? (
-                      <div
-                        role="status"
-                        aria-label="Loading chats"
-                        className="flex flex-1 items-center justify-center gap-2 p-6 text-sm text-muted-foreground"
-                      >
-                        <Loader size={16} aria-hidden="true" />
-                        Loading chats…
+                      <div role="status" aria-label="Loading chats" className="space-y-1 p-1">
+                        {['first', 'second', 'third', 'fourth'].map((row) => (
+                          <div
+                            key={row}
+                            data-testid="tutor-thread-skeleton"
+                            className="flex min-h-16 items-start justify-between gap-3 rounded-md px-3 py-2"
+                          >
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <Skeleton className="h-4 w-[70%]" />
+                              <Skeleton className="h-4 w-24 rounded-full" />
+                            </div>
+                            <Skeleton className="mt-0.5 h-3 w-10 shrink-0" />
+                          </div>
+                        ))}
                       </div>
                     ) : null}
                     {threads.isError ? (
@@ -650,10 +659,15 @@ export function TutorContextProvider({
                         </AlertDescription>
                       </Alert>
                     ) : null}
-                    {!threads.isPending && !threads.isError && threadGroups.length === 0 ? (
-                      <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
-                        <AcademyMascot className="size-16" decorative />
-                        <p className="text-sm text-muted-foreground">No chats yet</p>
+                    {noChats ? (
+                      <div
+                        data-testid="tutor-empty-thread-list"
+                        className="flex flex-col items-center gap-3 px-4 py-8 text-center"
+                      >
+                        <AcademyMascot className="size-20" />
+                        <p className="text-sm text-muted-foreground">
+                          No chats yet. Ask a question below.
+                        </p>
                         <Button type="button" variant="outline" size="sm" onClick={startNewChat}>
                           <Plus aria-hidden="true" />
                           New chat
@@ -750,6 +764,57 @@ export function TutorContextProvider({
                         className="gap-4 p-4"
                         scrollClassName="tutor-message-scroll-area"
                       >
+                        {newChatSelected &&
+                        !showGreeting &&
+                        messages.length === 0 &&
+                        !visiblePendingSend ? (
+                          threads.isPending ? null : threads.isError ? (
+                            <Alert variant="destructive">
+                              <AlertDescription>
+                                {threads.error instanceof Error
+                                  ? threads.error.message
+                                  : 'Tutor conversations could not be loaded.'}
+                              </AlertDescription>
+                            </Alert>
+                          ) : (
+                            <p
+                              data-testid="tutor-empty-conversation"
+                              className="my-auto px-4 text-center text-sm text-muted-foreground"
+                            >
+                              {noChats
+                                ? 'No chats yet. Ask a question below.'
+                                : 'Ask a question below to start a new chat.'}
+                            </p>
+                          )
+                        ) : null}
+                        {!newChatSelected &&
+                        selectedId &&
+                        detail.isPending &&
+                        messages.length === 0 ? (
+                          <div
+                            role="status"
+                            aria-label="Loading conversation"
+                            className="flex flex-col gap-4 py-2"
+                          >
+                            <div className="space-y-2 self-start">
+                              <Skeleton className="h-3 w-10" />
+                              <Skeleton className="h-12 w-48 rounded-2xl" />
+                            </div>
+                            <div className="space-y-2 self-end">
+                              <Skeleton className="h-3 w-10" />
+                              <Skeleton className="h-12 w-56 rounded-2xl" />
+                            </div>
+                          </div>
+                        ) : null}
+                        {!newChatSelected && selectedId && detail.isError ? (
+                          <Alert variant="destructive">
+                            <AlertDescription>
+                              {detail.error instanceof Error
+                                ? detail.error.message
+                                : 'Tutor conversation could not be loaded.'}
+                            </AlertDescription>
+                          </Alert>
+                        ) : null}
                         {showGreeting && greeting ? (
                           <Message data-testid="tutor-greeting" from="assistant">
                             <p className="w-full text-left text-xs font-medium text-muted-foreground">

@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, type Route, test } from '@playwright/test';
 import { and, eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
@@ -15,6 +15,21 @@ import { enrollInDefaultCourse } from './course-start.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 let userId = '';
+
+async function fulfillCoursesWithLongTitle(route: Route) {
+  const response = await route.fetch({
+    headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
+  });
+  const catalog = (await response.json()) as {
+    subjects: Array<{ courses: Array<{ id: string; title: string }> }>;
+  };
+  const longTitleCourse = catalog.subjects
+    .flatMap((subject) => subject.courses)
+    .find((course) => course.id === 'fixture-switching-course');
+  if (!longTitleCourse) throw new Error('Missing fixture switching course in catalogue');
+  longTitleCourse.title = 'Mathematics for Machine Learning';
+  await route.fulfill({ response, json: catalog });
+}
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/**', (route) =>
@@ -91,6 +106,210 @@ test('desktop sidebar collapse persists across reload', async ({ page }) => {
   await expect(header.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
   await page.reload();
   await expect(header.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
+});
+
+test('sidebar shows first-load course and review skeletons before real data', async ({
+  page,
+}, testInfo) => {
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: 'supervised-learning',
+    dimension: 'conceptual',
+    fsrs: newReviewCard(new Date('2026-01-01T12:00:00.000Z')),
+    dueAt: new Date('2026-01-01T00:00:00.000Z'),
+    reps: 0,
+    lapses: 0,
+  });
+  const createGate = () => {
+    let release = () => {};
+    const promise = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return { promise, release: () => release() };
+  };
+  let coursesGate = createGate();
+  let reviewsGate = createGate();
+  let coursesRequests = 0;
+  let reviewsRequests = 0;
+  await page.route('**/api/courses', async (route) => {
+    coursesRequests += 1;
+    await coursesGate.promise;
+    await fulfillCoursesWithLongTitle(route);
+  });
+  await page.route('**/api/reviews', async (route) => {
+    reviewsRequests += 1;
+    await reviewsGate.promise;
+    await route.continue({
+      headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
+    });
+  });
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await expect.poll(() => coursesRequests > 0 && reviewsRequests > 0).toBe(true);
+  const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+  await expect(navigation.getByText('My courses', { exact: true })).toBeVisible();
+  await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+  await expect(navigation.getByTestId('reviews-due-skeleton')).toBeVisible();
+  const skeletonRowHeights = await navigation
+    .getByTestId('sidebar-course-skeleton')
+    .evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height));
+  expect(skeletonRowHeights[1]).toBe(skeletonRowHeights[0]);
+  expect(skeletonRowHeights[2]).toBe(skeletonRowHeights[0]);
+  await page.screenshot({
+    path: testInfo.outputPath('sidebar-loading-1440x900.png'),
+    animations: 'disabled',
+  });
+
+  await navigation.getByRole('button', { name: 'Collapse navigation' }).click();
+  await expect(navigation.getByText('My courses', { exact: true })).toHaveCount(0);
+  await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath('sidebar-collapsed-1440x900.png'),
+    animations: 'disabled',
+  });
+  await navigation.getByRole('button', { name: 'Expand navigation' }).click();
+  await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+
+  coursesGate.release();
+  reviewsGate.release();
+  await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(0);
+  await expect(navigation.getByRole('link', { name: 'Open Fixture course' })).toBeVisible();
+  const longCourseLink = navigation.getByRole('link', {
+    name: 'Open Mathematics for Machine Learning',
+  });
+  await expect(longCourseLink).toBeVisible();
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+  const longCourseLayout = await longCourseLink.evaluate((link) => {
+    const [title, count] = Array.from(link.querySelectorAll<HTMLElement>(':scope > span'));
+    if (!title || !count) throw new Error('Expected title and topic count in course row');
+    const rowBounds = link.getBoundingClientRect();
+    const titleBounds = title.getBoundingClientRect();
+    const countBounds = count.getBoundingClientRect();
+    return {
+      titleHeight: titleBounds.height,
+      titleTop: titleBounds.top,
+      titleClassName: title.className,
+      titleTextOverflow: getComputedStyle(title).textOverflow,
+      titleWhiteSpace: getComputedStyle(title).whiteSpace,
+      countTop: countBounds.top,
+      countRightInset: rowBounds.right - countBounds.right,
+    };
+  });
+  expect(longCourseLayout.titleHeight).toBeGreaterThan(20);
+  expect(longCourseLayout.titleClassName).not.toMatch(/truncate|line-clamp/);
+  expect(longCourseLayout.titleTextOverflow).not.toBe('ellipsis');
+  expect(longCourseLayout.titleWhiteSpace).toBe('normal');
+  expect(Math.abs(longCourseLayout.titleTop - longCourseLayout.countTop)).toBeLessThanOrEqual(1);
+  expect(longCourseLayout.countRightInset).toBeCloseTo(8, 0);
+  const desktopCourseRows = await navigation.locator('a[href^="/courses/"]').evaluateAll((links) =>
+    links
+      .map((link) => {
+        const bounds = link.getBoundingClientRect();
+        return { top: bounds.top, bottom: bounds.bottom };
+      })
+      .sort((a, b) => a.top - b.top),
+  );
+  for (let index = 1; index < desktopCourseRows.length; index += 1) {
+    expect(desktopCourseRows[index].top).toBeGreaterThanOrEqual(
+      desktopCourseRows[index - 1].bottom,
+    );
+  }
+  await page.screenshot({
+    path: testInfo.outputPath('sidebar-wrapped-course-1440x900.png'),
+    animations: 'disabled',
+  });
+  await navigation.getByRole('button', { name: 'Collapse navigation' }).click();
+  await expect(
+    navigation.getByRole('link', { name: /Mathematics for Machine Learning/ }),
+  ).toHaveCount(0);
+  await navigation.getByRole('button', { name: 'Expand navigation' }).click();
+  await expect(longCourseLink).toBeVisible();
+  await expect(navigation.getByTestId('reviews-due-count')).toHaveText('1');
+  await expect(navigation.getByTestId('reviews-due-skeleton')).toHaveCount(0);
+
+  const previousCoursesRequests = coursesRequests;
+  const previousReviewsRequests = reviewsRequests;
+  coursesGate = createGate();
+  reviewsGate = createGate();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect
+    .poll(
+      () => coursesRequests > previousCoursesRequests && reviewsRequests > previousReviewsRequests,
+    )
+    .toBe(true);
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  const mobileNavigation = page.getByRole('navigation', { name: 'Main navigation' });
+  await expect(mobileNavigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+  await expect(mobileNavigation.getByTestId('reviews-due-skeleton')).toBeVisible();
+  const mobileSkeletonRowHeights = await mobileNavigation
+    .getByTestId('sidebar-course-skeleton')
+    .evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height));
+  expect(mobileSkeletonRowHeights[0]).toBe(mobileSkeletonRowHeights[1]);
+  expect(mobileSkeletonRowHeights[2]).toBe(mobileSkeletonRowHeights[1]);
+  const mobileWidths = await mobileNavigation.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(mobileWidths.scrollWidth).toBeLessThanOrEqual(mobileWidths.clientWidth);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  coursesGate.release();
+  reviewsGate.release();
+  await expect(mobileNavigation.getByTestId('sidebar-course-skeleton')).toHaveCount(0);
+  await expect(mobileNavigation.getByRole('link', { name: 'Open Fixture course' })).toBeVisible();
+  const mobileLongCourseLink = mobileNavigation.getByRole('link', {
+    name: 'Open Mathematics for Machine Learning',
+  });
+  await expect(mobileLongCourseLink).toBeVisible();
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+  const mobileLongCourseLayout = await mobileLongCourseLink.evaluate((link) => {
+    const [title, count] = Array.from(link.querySelectorAll<HTMLElement>(':scope > span'));
+    if (!title || !count) throw new Error('Expected title and topic count in course row');
+    const rowBounds = link.getBoundingClientRect();
+    const titleBounds = title.getBoundingClientRect();
+    const countBounds = count.getBoundingClientRect();
+    return {
+      titleHeight: titleBounds.height,
+      titleTop: titleBounds.top,
+      titleClassName: title.className,
+      titleTextOverflow: getComputedStyle(title).textOverflow,
+      titleWhiteSpace: getComputedStyle(title).whiteSpace,
+      countTop: countBounds.top,
+      countRightInset: rowBounds.right - countBounds.right,
+    };
+  });
+  expect(mobileLongCourseLayout.titleHeight).toBeGreaterThanOrEqual(20);
+  expect(mobileLongCourseLayout.titleClassName).not.toMatch(/truncate|line-clamp/);
+  expect(mobileLongCourseLayout.titleTextOverflow).not.toBe('ellipsis');
+  expect(mobileLongCourseLayout.titleWhiteSpace).toBe('normal');
+  expect(
+    Math.abs(mobileLongCourseLayout.titleTop - mobileLongCourseLayout.countTop),
+  ).toBeLessThanOrEqual(1);
+  expect(mobileLongCourseLayout.countRightInset).toBeCloseTo(8, 0);
+  const mobileCourseRows = await mobileNavigation
+    .locator('a[href^="/courses/"]')
+    .evaluateAll((links) =>
+      links
+        .map((link) => {
+          const bounds = link.getBoundingClientRect();
+          return { top: bounds.top, bottom: bounds.bottom };
+        })
+        .sort((a, b) => a.top - b.top),
+    );
+  for (let index = 1; index < mobileCourseRows.length; index += 1) {
+    expect(mobileCourseRows[index].top).toBeGreaterThanOrEqual(mobileCourseRows[index - 1].bottom);
+  }
+  await page.screenshot({
+    path: testInfo.outputPath('sidebar-wrapped-course-390x844.png'),
+    animations: 'disabled',
+  });
+  await expect(mobileNavigation.getByTestId('reviews-due-count')).toHaveText('1');
 });
 
 test('mobile sidebar closes after navigating to Reviews', async ({ page }) => {
