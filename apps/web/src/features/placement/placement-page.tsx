@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Markdown } from '../../components/markdown.js';
 import { PageLayoutSkeleton } from '../../components/page-layout-skeleton.js';
 import { Button } from '../../components/ui/button.js';
@@ -44,12 +44,7 @@ export function PlacementPage({ initialRunId }: { initialRunId?: string }) {
     },
   });
 
-  useEffect(() => {
-    if (initialRunId) {
-      setRunId(initialRunId);
-      return;
-    }
-    if (startRequested.current) return;
+  const startRun = useCallback(() => {
     startRequested.current = true;
     startPlacement.mutate(undefined, {
       onSuccess: async ({ id }) => {
@@ -58,7 +53,16 @@ export function PlacementPage({ initialRunId }: { initialRunId?: string }) {
         await navigate({ to: '/placement', search: { id }, replace: true });
       },
     });
-  }, [initialRunId, navigate, queryClient, startPlacement.mutate]);
+  }, [navigate, queryClient, startPlacement.mutate]);
+
+  useEffect(() => {
+    if (initialRunId) {
+      setRunId(initialRunId);
+      return;
+    }
+    if (startRequested.current) return;
+    startRun();
+  }, [initialRunId, startRun]);
 
   const question = nextQuery.data;
   useEffect(() => {
@@ -76,6 +80,15 @@ export function PlacementPage({ initialRunId }: { initialRunId?: string }) {
   };
 
   const loadError = startPlacement.error ?? nextQuery.error;
+  const retry = () => {
+    if (runId) {
+      void nextQuery.refetch();
+      return;
+    }
+    startRequested.current = false;
+    startPlacement.reset();
+    startRun();
+  };
   if (loadError && !question) {
     return (
       <section className="space-y-4">
@@ -83,6 +96,13 @@ export function PlacementPage({ initialRunId }: { initialRunId?: string }) {
         <p role="alert">
           {loadError instanceof Error ? loadError.message : 'The placement check is unavailable.'}
         </p>
+        <Button
+          type="button"
+          loading={startPlacement.isPending || nextQuery.isFetching}
+          onClick={retry}
+        >
+          Try again
+        </Button>
         <Button asChild variant="outline">
           <Link to="/course">Back to Courses</Link>
         </Button>

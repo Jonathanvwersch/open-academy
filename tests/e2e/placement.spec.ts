@@ -145,6 +145,33 @@ test('a new learner chooses a course, resumes placement, and sees placed-out top
   await page.screenshot({ path: `${screenshots}/placed-out-390.png`, fullPage: true });
 });
 
+test('a failed placement start can be retried', async ({ page }) => {
+  let startRequests = 0;
+  await page.route('**/api/placement', async (route) => {
+    startRequests += 1;
+    if (startRequests === 1) {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Temporary error' }),
+      });
+      return;
+    }
+    await route.continue({
+      headers: { ...route.request().headers(), 'x-now': '2026-01-07T12:00:00.000Z' },
+    });
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Take the placement check' }).click();
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Back to Courses' })).toBeVisible();
+  await page.getByRole('button', { name: 'Try again' }).click();
+  await expect(page.getByRole('heading', { name: /Placement check ·/ })).toBeVisible();
+  expect(startRequests).toBe(2);
+});
+
 test('starting from the beginning enrolls without a placement run', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Start', exact: true }).first().click();
