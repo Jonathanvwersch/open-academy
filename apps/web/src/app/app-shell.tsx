@@ -1,3 +1,4 @@
+import type { CourseCatalogPayload } from '@academy/contracts/course';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { Activity, BookOpen, House, Network, RotateCcw, Settings } from 'lucide-react';
@@ -47,18 +48,43 @@ function initialSidebarOpen() {
   return localStorage.getItem(SIDEBAR_STORAGE_KEY) !== 'false';
 }
 
-function AppSidebar() {
+function useAppSidebarOpenState() {
+  const [sidebarOpen, setSidebarOpen] = useState(initialSidebarOpen);
+  const updateSidebarOpen = useCallback((open: boolean) => {
+    setSidebarOpen(open);
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(open));
+  }, []);
+  return { sidebarOpen, updateSidebarOpen };
+}
+
+function pageFrameClassName(pathname: string) {
+  if (pathname.startsWith('/papers/')) {
+    return 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0';
+  }
+  if (pathname === '/map') {
+    return 'flex w-full flex-1 flex-col py-4';
+  }
+  return 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8';
+}
+
+interface AppSidebarViewProps {
+  courses?: CourseCatalogPayload;
+  loadingCourses: boolean;
+  reviewsDue?: number;
+  loadingReviews: boolean;
+}
+
+function AppSidebarView({
+  courses,
+  loadingCourses,
+  reviewsDue,
+  loadingReviews,
+}: AppSidebarViewProps) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { isMobile, state, setOpenMobile } = useSidebar();
-  const coursesQuery = useQuery(coursesQueryOptions());
-  const reviewsQuery = useQuery(reviewsQueryOptions());
-  const courseData = coursesQuery.data;
-  const reviewsData = reviewsQuery.data;
-  const loadingCourses = coursesQuery.isPending && !courseData;
-  const loadingReviews = reviewsQuery.isPending && !reviewsData;
   const showCourseSection = state !== 'collapsed' || isMobile;
   const activeCourses =
-    courseData?.subjects.flatMap((subject) =>
+    courses?.subjects.flatMap((subject) =>
       subject.courses.filter((course) => course.status === 'active'),
     ) ?? [];
   const closeMobile = () => {
@@ -125,9 +151,9 @@ function AppSidebar() {
                         <SidebarMenuBadge data-testid="reviews-due-skeleton" aria-hidden="true">
                           <Skeleton className="size-3 rounded-sm" />
                         </SidebarMenuBadge>
-                      ) : label === 'Reviews' && reviewsData && reviewsData.dueNow > 0 ? (
+                      ) : label === 'Reviews' && reviewsDue !== undefined && reviewsDue > 0 ? (
                         <SidebarMenuBadge data-testid="reviews-due-count">
-                          {reviewsData.dueNow}
+                          {reviewsDue}
                         </SidebarMenuBadge>
                       ) : null}
                     </Link>
@@ -238,6 +264,19 @@ function AppSidebar() {
   );
 }
 
+function AppSidebar() {
+  const coursesQuery = useQuery(coursesQueryOptions());
+  const reviewsQuery = useQuery(reviewsQueryOptions());
+  return (
+    <AppSidebarView
+      courses={coursesQuery.data}
+      loadingCourses={coursesQuery.isPending && !coursesQuery.data}
+      reviewsDue={reviewsQuery.data?.dueNow}
+      loadingReviews={reviewsQuery.isPending && !reviewsQuery.data}
+    />
+  );
+}
+
 function MobileAppHeader() {
   return (
     <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-card px-3 md:hidden">
@@ -251,71 +290,24 @@ function MobileAppHeader() {
 
 export function AppShellSkeleton() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const isPaperReader = pathname.startsWith('/papers/');
-  const [sidebarOpen] = useState(initialSidebarOpen);
+  const { sidebarOpen, updateSidebarOpen } = useAppSidebarOpenState();
   return (
-    <div
-      aria-hidden="true"
-      data-testid="app-shell-skeleton"
-      className="flex min-h-svh bg-background"
-    >
-      <aside
-        data-collapsible={sidebarOpen ? '' : 'icon'}
-        className={`group hidden shrink-0 flex-col border-r bg-card md:flex ${
-          sidebarOpen ? 'w-64' : 'w-12 items-center'
-        }`}
+    <TooltipProvider>
+      <SidebarProvider
+        data-testid="app-shell-skeleton"
+        open={sidebarOpen}
+        onOpenChange={updateSidebarOpen}
+        disableKeyboardShortcut
       >
-        <div
-          className={`flex h-14 w-full shrink-0 items-center border-b ${
-            sidebarOpen ? 'justify-between px-3' : 'justify-center'
-          }`}
-        >
-          {sidebarOpen ? <BrandLockup size="sm" /> : null}
-          <Skeleton className="size-8 rounded-md" />
-        </div>
-        <nav className="mt-2 w-full space-y-1 px-2">
-          {navigation.map(({ label }) => (
-            <div
-              key={label}
-              className={`flex h-8 items-center rounded-md px-2 ${
-                sidebarOpen ? 'gap-3' : 'justify-center'
-              }`}
-            >
-              <Skeleton className="size-4 shrink-0" />
-              {sidebarOpen ? <Skeleton className="h-4 w-20" /> : null}
-            </div>
-          ))}
-          {sidebarOpen ? (
-            <div className="space-y-2 pt-5">
-              <Skeleton className="mx-2 h-3 w-16" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-4/5" />
-            </div>
-          ) : null}
-        </nav>
-        <div className="mt-auto w-full border-t p-2">
-          <Skeleton className={`h-8 ${sidebarOpen ? 'w-full' : 'w-8'}`} />
-        </div>
-      </aside>
-      <main className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-card px-3 md:hidden">
-          <Skeleton className="size-8 rounded-md" />
-          <BrandLockup size="sm" />
-        </header>
-        <div
-          data-page-frame
-          className={
-            isPaperReader
-              ? 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0'
-              : pathname === '/map'
-                ? 'flex w-full flex-1 flex-col py-4'
-                : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
-          }
-        >
-          <PageSkeleton />
-        </div>
-      </main>
-    </div>
+        <AppSidebarView loadingCourses loadingReviews />
+        <SidebarInset className="min-w-0">
+          <MobileAppHeader />
+          <div data-page-frame className={pageFrameClassName(pathname)}>
+            <PageSkeleton />
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }
 
@@ -336,11 +328,7 @@ function AppToaster() {
 export function RootLayout() {
   const contentRef = useCapturePageLayout();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const [sidebarOpen, setSidebarOpen] = useState(initialSidebarOpen);
-  const updateSidebarOpen = useCallback((open: boolean) => {
-    setSidebarOpen(open);
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(open));
-  }, []);
+  const { sidebarOpen, updateSidebarOpen } = useAppSidebarOpenState();
   if (pathname === '/login') {
     return (
       <>
@@ -360,17 +348,7 @@ export function RootLayout() {
             routeAllowed={!pathname.startsWith('/placement')}
             pushSidebar={isPaperReader}
           >
-            <div
-              ref={contentRef}
-              data-page-frame
-              className={
-                isPaperReader
-                  ? 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0'
-                  : pathname === '/map'
-                    ? 'flex w-full flex-1 flex-col py-4'
-                    : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
-              }
-            >
+            <div ref={contentRef} data-page-frame className={pageFrameClassName(pathname)}>
               <Outlet />
             </div>
           </TutorContextProvider>

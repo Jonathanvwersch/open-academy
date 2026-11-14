@@ -116,6 +116,7 @@ test('routes fit mobile viewports without horizontal page overflow', async ({ pa
 test('course route skeleton displays beside the app navigation', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
   await page.route('**/api/courses/fixture-course', async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await route.continue({
@@ -147,9 +148,17 @@ test('root auth pending renders the app-shell skeleton', async ({ page }) => {
   await page.goto('/courses/fixture-course');
   const shell = page.getByTestId('app-shell-skeleton');
   await expect(shell).toBeVisible();
-  await expect(shell.locator('aside')).toBeVisible();
   await expect(shell.getByTestId('route-skeleton')).toBeVisible();
-  await expect(shell.locator('nav > *')).toHaveCount(5);
+  const navigation = shell.getByRole('navigation', { name: 'Main navigation' });
+  for (const label of ['Home', 'Courses', 'Map', 'Reviews', 'Progress']) {
+    await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
+  }
+  await expect(navigation.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
+  await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+  await expect(navigation.getByTestId('reviews-due-skeleton')).toBeVisible();
+  await expect(
+    navigation.locator('[data-sidebar="menu"]').first().locator('[data-sidebar="menu-skeleton"]'),
+  ).toHaveCount(0);
   await expectCenteredPageLoader(page);
   await page.screenshot({ path: 'test-results/sidebar-app-shell-skeleton-desktop.png' });
   await expect(shell).toBeHidden();
