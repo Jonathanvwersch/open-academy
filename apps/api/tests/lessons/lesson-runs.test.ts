@@ -583,27 +583,43 @@ test('practice-only questions resume, record practice, and do not change XP or r
     answeredAt: null,
   });
   const practiceId = run.pendingPracticeProblem.id;
+  const samePointResponse = await app.request(`/api/lessons/${conceptId}/run/practice`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ pointId }),
+  });
+  expect(samePointResponse.status).toBe(200);
+  expect((await samePointResponse.json()).run.pendingPracticeProblem.id).toBe(practiceId);
   const pendingRows = await db
     .select()
     .from(lessonProblems)
     .where(eq(lessonProblems.runId, completedSteps.id));
   expect(pendingRows.filter((row) => row.practiceOnly && row.answeredAt === null)).toHaveLength(1);
+  const switched = await app.request(`/api/lessons/${conceptId}/run/practice`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ pointId: completedSteps.points[1].id }),
+  });
+  expect(switched.status).toBe(200);
+  run = (await switched.json()).run;
+  expect(run.pendingPracticeProblem.knowledgePointId).toBe(completedSteps.points[1].id);
+  const switchedPracticeId = run.pendingPracticeProblem.id;
+  expect(switchedPracticeId).not.toBe(practiceId);
+  const pendingAfterSwitch = await db
+    .select()
+    .from(lessonProblems)
+    .where(eq(lessonProblems.runId, completedSteps.id));
   expect(
-    (
-      await app.request(`/api/lessons/${conceptId}/run/practice`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ pointId: completedSteps.points[1].id }),
-      })
-    ).status,
-  ).toBe(409);
+    pendingAfterSwitch.filter((row) => row.practiceOnly && row.answeredAt === null),
+  ).toHaveLength(1);
+  expect(pendingAfterSwitch.some((row) => row.id === practiceId)).toBe(false);
   const resumed = await getCurrentRun();
-  expect(resumed.pendingPracticeProblem.id).toBe(practiceId);
+  expect(resumed.pendingPracticeProblem.id).toBe(switchedPracticeId);
   const answer = correctAnswer(
     resumed.pendingPracticeProblem.exerciseId,
     resumed.pendingPracticeProblem.seed,
   );
-  const answered = await answerProblem(practiceId, answer);
+  const answered = await answerProblem(switchedPracticeId, answer);
   expect(answered.status).toBe(200);
   run = (await answered.json()).state;
   expect(run.status).toBe('quiz');
@@ -614,7 +630,10 @@ test('practice-only questions resume, record practice, and do not change XP or r
     .from(attempts)
     .where(eq(attempts.id, run.lastAnsweredProblem.attemptId));
   expect(attempt?.mode).toBe('practice');
-  const [problem] = await db.select().from(lessonProblems).where(eq(lessonProblems.id, practiceId));
+  const [problem] = await db
+    .select()
+    .from(lessonProblems)
+    .where(eq(lessonProblems.id, switchedPracticeId));
   expect(problem?.practiceOnly).toBe(true);
 });
 
@@ -702,7 +721,7 @@ test('quiz start is idempotent and unsubmitted answers disclose no correctness',
       const practiceResponse = await app.request(`/api/lessons/${conceptId}/run/practice`, {
         method: 'POST',
         headers: practiceHeaders,
-        body: JSON.stringify({ pointId: step.pointId }),
+        body: JSON.stringify({ pointId: step.pointId, warmup: true }),
       });
       expect(practiceResponse.status).toBe(200);
       const practiceRun = (await practiceResponse.json()).run;
@@ -726,6 +745,33 @@ test('quiz start is idempotent and unsubmitted answers disclose no correctness',
   expect(
     reviewed.quiz.reviewRequired.every((step: { answered: number }) => step.answered === 3),
   ).toBe(true);
+  practiceTime += 1_000;
+  const completePointId = reviewed.quiz.reviewRequired[0].pointId;
+  const extraPractice = await app.request(`/api/lessons/${conceptId}/run/practice`, {
+    method: 'POST',
+    headers: { ...headers, 'X-Now': new Date(practiceTime).toISOString() },
+    body: JSON.stringify({ pointId: completePointId }),
+  });
+  expect(extraPractice.status).toBe(200);
+  const extraPracticeProblem = (await extraPractice.json()).run.pendingPracticeProblem;
+  expect(extraPracticeProblem.knowledgePointId).toBe(completePointId);
+  practiceTime += 1_000;
+  const extraWarmup = await app.request(`/api/lessons/${conceptId}/run/practice`, {
+    method: 'POST',
+    headers: { ...headers, 'X-Now': new Date(practiceTime).toISOString() },
+    body: JSON.stringify({
+      pointId: completePointId,
+      warmup: true,
+    }),
+  });
+  expect(extraWarmup.status).toBe(409);
+  expect(await extraWarmup.json()).toEqual({
+    error: 'Quiz practice is complete for this step',
+  });
+  expect((await getCurrentRun()).pendingPracticeProblem).toBeUndefined();
+  expect(
+    await db.select().from(lessonProblems).where(eq(lessonProblems.id, extraPracticeProblem.id)),
+  ).toHaveLength(0);
   expect((await startQuiz()).status).toBe(200);
   const failedReview = await app.request(
     `/api/lessons/${conceptId}/quiz/${firstRun.quiz.current.attemptId}/review`,

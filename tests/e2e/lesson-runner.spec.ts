@@ -6,6 +6,7 @@ import { createDb } from '../../apps/api/src/db/client.js';
 import {
   diagnosticRuns,
   lessonProblems,
+  lessonQuizItems,
   lessonRuns,
   sessionActivities,
   studySessions,
@@ -26,6 +27,7 @@ const quizUiScreenshotDir = 'test-results/screenshots/screenshots/quiz-ui';
 const spacedReviewScreenshotDir = 'test-results/screenshots/screenshots/spaced-review';
 const lastTryScreenshotDir = 'test-results/screenshots/last-try';
 const failedQuizScreenshotDir = 'test-results/screenshots/failed-quiz';
+const quizRetryScreenshotDir = 'test-results/screenshots/quiz-retry';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
@@ -39,6 +41,7 @@ mkdirSync(lessonQuizScreenshotDir, { recursive: true });
 mkdirSync(spacedReviewScreenshotDir, { recursive: true });
 mkdirSync(lastTryScreenshotDir, { recursive: true });
 mkdirSync(failedQuizScreenshotDir, { recursive: true });
+mkdirSync(quizRetryScreenshotDir, { recursive: true });
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -464,6 +467,7 @@ test('a passed knowledge point opens the next step and shows an XP toast', async
   expect(run.points[0].xpEarned).toBe(10);
   await expect(page.getByText('Correct · +10 XP')).toBeVisible();
   await expect(page.getByRole('button', { name: `Next: ${nextTitle}`, exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toHaveCount(0);
 
   const advancedRun = await advanceToNextStep(page);
   await expect(page.locator('section > header h2')).toHaveText(nextTitle);
@@ -497,6 +501,55 @@ test('a passed knowledge point opens the next step and shows an XP toast', async
   await expect(page.getByRole('heading', { name: nextTitle, exact: true })).toBeVisible();
   await expect(page.getByTestId('lesson-problem')).toBeVisible();
   expect(advancedRun.currentPoint.title).toBe(nextTitle);
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.getByRole('button', { name: /Step 1 of \d+, passed/ }).click();
+  await expect(page.getByTestId('lesson-step-content')).toBeVisible();
+  await page.getByRole('button', { name: 'Practise this step', exact: true }).click();
+  await expect
+    .poll(async () => Boolean((await currentRun(page)).pendingPracticeProblem))
+    .toBe(true);
+  const ordinaryProblem = (await currentRun(page)).pendingPracticeProblem;
+  if (!ordinaryProblem) throw new Error('Expected a practice question for the passed step');
+  const ordinaryAnswer = await page.evaluate(async (id) => {
+    const response = await fetch(`/api/test/lesson-problems/${id}/answer`);
+    return response.json();
+  }, ordinaryProblem.id);
+  if (ordinaryProblem.exercise.type === 'mc') {
+    const ids = Array.isArray(ordinaryAnswer.answer)
+      ? ordinaryAnswer.answer
+      : [ordinaryAnswer.answer];
+    for (const optionId of ids) {
+      await page.locator(`[id="${ordinaryProblem.exercise.id}-${optionId}"]`).click();
+    }
+  } else {
+    const value =
+      ordinaryAnswer.answer &&
+      typeof ordinaryAnswer.answer === 'object' &&
+      'text' in ordinaryAnswer.answer
+        ? ordinaryAnswer.answer.text
+        : ordinaryAnswer.answer;
+    await page.getByLabel('Your answer').fill(String(value));
+  }
+  await page.getByRole('button', { name: 'Submit answer', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Another question', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Another question', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ask the tutor', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible();
+  await expect(page.getByText(toastTitle, { exact: true })).toBeHidden();
+  await page.screenshot({
+    path: `${quizRetryScreenshotDir}/ordinary-practice-answer-desktop.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({
+    path: `${quizRetryScreenshotDir}/ordinary-practice-answer-390.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
 });
 
 test('leaving after a step resumes on the next knowledge point', async ({ page }) => {
@@ -1131,10 +1184,59 @@ test('explains when a final explain question is locked after the last try', asyn
   ).toHaveCount(1);
   await expect(answer).toHaveAttribute('readonly', '');
   await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toHaveCount(0);
   await page.screenshot({
     path: `${lastTryScreenshotDir}/final-explain-locked.png`,
     fullPage: true,
   });
+});
+
+test('session inline checks remove Submit after the final retry', async ({ page }) => {
+  const db = createDb(env.TEST_DATABASE_URL);
+  const [learner] = await db.select({ id: users.id }).from(users).limit(1);
+  if (!learner) throw new Error('Missing E2E learner');
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId: learner.id,
+      kind: 'weekday',
+      plannedMinutes: 20,
+      status: 'active',
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+    })
+    .returning();
+  if (!session) throw new Error('Could not create inline-check session');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind: 'learn',
+    conceptId,
+    exerciseIds: ['sl-explain-setup'],
+    plannedMinutes: 10,
+    status: 'in_progress',
+    progress: {},
+  });
+  await db.$client.end();
+
+  await page.route(`**/api/lessons/${conceptId}`, async (route) => {
+    const response = await route.fetch();
+    const lesson = await response.json();
+    delete lesson.knowledge_points;
+    lesson.blocks = [{ kind: 'worked', md: 'Inline check fixture.', exercise: 'sl-explain-setup' }];
+    await route.fulfill({ response, json: lesson });
+  });
+  await page.goto(`/session/${session.id}`);
+
+  const answer = page.getByLabel('Your answer');
+  await answer.fill('A model uses inputs to predict a target.');
+  await page.getByRole('button', { name: 'Submit answer', exact: true }).click();
+  await expect(page.getByText('Almost', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toBeVisible();
+
+  await answer.fill('A model uses inputs to predict a target, and loss measures its errors.');
+  await page.getByRole('button', { name: 'Submit answer', exact: true }).click();
+  await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toHaveCount(0);
 });
 
 test('a legacy v1 learn activity resumes through the KP runner and final question', async ({
@@ -1311,6 +1413,8 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await page.screenshot({ path: `${quizUiScreenshotDir}/step-row-mobile.png` });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.setViewportSize({ width: 1280, height: 900 });
+  await tutorPanel.getByRole('button', { name: 'Close tutor' }).click();
+  await expect(tutorPanel).toBeHidden();
   const prepared = await page.evaluate(
     async ({ conceptId, sessionId }) => {
       const sessionResponse = await fetch(`/api/sessions/${sessionId}`);
@@ -1406,9 +1510,14 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await page.keyboard.press('Control+b');
   await expect(tutorPanel).toBeHidden();
 
-  const answerAttempt = async (wrong: boolean, oneWrong = false) =>
+  const answerAttempt = async (
+    wrong: boolean,
+    oneWrong = false,
+    wrongPointIds?: string[],
+    itemPointIds: Record<string, string> = {},
+  ) =>
     page.evaluate(
-      async ({ conceptId, activityId, wrong, oneWrong }) => {
+      async ({ conceptId, activityId, wrong, oneWrong, wrongPointIds, itemPointIds }) => {
         let run = (await (await fetch(`/api/lessons/${conceptId}/run`)).json()).run;
         let wrongUsed = false;
         for (const item of run.quiz.current.items) {
@@ -1417,7 +1526,9 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
             await fetch(`/api/test/lesson-quiz-items/${item.id}/answer`)
           ).json();
           let answer = expected.answer;
-          const makeWrong = wrong || (oneWrong && !wrongUsed);
+          const makeWrong =
+            (wrong && (wrongPointIds === null || wrongPointIds.includes(itemPointIds[item.id]))) ||
+            (oneWrong && !wrongUsed);
           if (makeWrong) {
             wrongUsed = true;
             if (item.exercise.type === 'mc') {
@@ -1450,26 +1561,43 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
         if (!response.ok) throw new Error(result.error ?? 'Could not submit quiz');
         return result.run;
       },
-      { conceptId, activityId: currentActivityId, wrong, oneWrong },
+      {
+        conceptId,
+        activityId: currentActivityId,
+        wrong,
+        oneWrong,
+        wrongPointIds: wrongPointIds ?? null,
+        itemPointIds,
+      },
     );
 
+  const quizRun = await currentRun(page);
+  const quizItemsDb = createDb(env.TEST_DATABASE_URL);
+  const quizItemPoints = await quizItemsDb
+    .select({ id: lessonQuizItems.id, pointId: lessonQuizItems.knowledgePointId })
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, quizRun.quiz.current.attemptId));
+  await quizItemsDb.$client.end();
+  const missedPointIds = [...new Set(quizItemPoints.map((item) => item.pointId))].slice(0, 2);
+  if (missedPointIds.length !== 2) throw new Error('Expected quiz questions on two steps');
+  const itemPointIds = Object.fromEntries(quizItemPoints.map((item) => [item.id, item.pointId]));
   const firstItem = await page.evaluate(async (concept) => {
     const run = await (await fetch(`/api/lessons/${concept}/run`)).json();
     return run.run.quiz.current.items[0];
   }, conceptId);
   const firstAnswer = await page.evaluate(
-    async ({ concept, item, activityId }) => {
+    async ({ concept, item, activityId, answerWrong }) => {
       const expected = await (await fetch(`/api/test/lesson-quiz-items/${item.id}/answer`)).json();
       let answer = expected.answer;
-      if (item.exercise.type === 'mc') {
+      if (answerWrong && item.exercise.type === 'mc') {
         const correctIds = Array.isArray(answer) ? answer : [answer];
         const other = item.exercise.options.find(
           (option: { id: string }) => !correctIds.includes(option.id),
         )?.id;
         answer = item.exercise.multi ? [other] : other;
-      } else if (typeof answer === 'number') {
+      } else if (answerWrong && typeof answer === 'number') {
         answer += 1_000_000;
-      } else {
+      } else if (answerWrong) {
         answer = `${String(answer)} incorrect`;
       }
       const response = await fetch(`/api/lessons/${concept}/quiz/answer`, {
@@ -1479,37 +1607,60 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
       });
       return response.status;
     },
-    { concept: conceptId, item: firstItem, activityId: currentActivityId },
+    {
+      concept: conceptId,
+      item: firstItem,
+      activityId: currentActivityId,
+      answerWrong: missedPointIds.includes(itemPointIds[firstItem.id]),
+    },
   );
   expect(firstAnswer).toBe(200);
   await page.reload();
   await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
-  await answerAttempt(true);
+  await answerAttempt(true, false, missedPointIds, itemPointIds);
   await page.reload();
   const failed = page.getByTestId('lesson-quiz-results');
-  await expect(failed).toContainText('Not passed yet');
-  await expect(failed.getByText(/^Step \d+ · /).first()).toBeVisible();
+  await expect(failed).toContainText(/Not passed · \d+ of \d+ \(you need \d+\)/);
   await expect(failed.getByText(/Your answer:|Correct answer:|Question \d+/)).toHaveCount(0);
-  await expect(failed).toContainText(
-    /To pass, practise each step you missed \(3 questions each\), then retake the quiz\. You need \d+ of \d+\./,
-  );
-  await expect(failed.getByRole('button', { name: 'Do this later' })).toBeVisible();
+  await expect(failed).toContainText('You missed questions on:');
   const requiredReviews = (await currentRun(page)).quiz.reviewRequired as Array<{
     pointId: string;
+    title: string;
     answered: number;
     needed: number;
   }>;
-  expect(requiredReviews.length).toBeGreaterThan(0);
-  const reviewStepButton = failed.getByRole('button', { name: 'Practise · 0/3' }).first();
-  await expect(reviewStepButton).toBeVisible();
+  expect(requiredReviews).toHaveLength(2);
+  expect(requiredReviews.every((step) => step.answered === 0 && step.needed === 3)).toBe(true);
+  await expect(failed.getByTestId('quiz-missed-steps').getByRole('listitem')).toHaveText(
+    requiredReviews.map((step) => step.title),
+  );
+  await expect(failed.locator('button[data-variant="default"]')).toHaveCount(1);
+  await expect(failed.getByRole('button', { name: 'Retry', exact: true })).toBeVisible();
+  await expect(failed.getByRole('button', { name: /Practise/ })).toHaveCount(0);
   await expect(failed.getByRole('button', { name: 'Retake quiz' })).toHaveCount(0);
-  const practiseFirstStep = failed.getByRole('button', { name: 'Practise step 1' });
-  await expect(practiseFirstStep).toBeVisible();
-  await expect(practiseFirstStep).toHaveAttribute('data-variant', 'default');
   const doThisLater = failed.getByRole('button', { name: 'Do this later' });
-  await expect(doThisLater).toHaveAttribute('data-variant', 'outline');
-  await expect(failed).toContainText(/Retake unlocks after \d+ more practice questions?\./);
-  await expect(failed).toContainText("You can come back to it from the lesson's page on Course.");
+  await expect(doThisLater).toHaveAttribute('data-variant', 'ghost');
+  const prepareQuizRetryScreenshot = async (actionName?: string) => {
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.mouse.move(0, 0);
+    if (actionName) {
+      const action = page.getByRole('button', { name: actionName, exact: true });
+      await expect(action).toBeEnabled();
+      await expect(action).not.toHaveAttribute('data-loading', 'true');
+      await expect(action).toHaveAttribute('data-variant', 'default');
+      await expect(action).toHaveCSS('background-color', 'oklch(0.205 0 0)');
+    }
+  };
+  await prepareQuizRetryScreenshot('Retry');
+  await page.screenshot({
+    path: `${quizRetryScreenshotDir}/failed-card-desktop.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await prepareQuizRetryScreenshot('Retry');
+  await page.screenshot({ path: `${quizRetryScreenshotDir}/failed-card-390.png`, fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.screenshot({
     path: `${spacedReviewScreenshotDir}/failed-quiz-pending-desktop.png`,
     fullPage: true,
@@ -1577,59 +1728,7 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
     },
     { sessionId: newSessionId, conceptId },
   );
-  await expect(page.getByTestId('lesson-quiz-results')).toContainText(
-    'To pass, practise each step you missed (3 questions each), then retake the quiz.',
-  );
-  await page.screenshot({
-    path: `${failedQuizScreenshotDir}/failed-results-pending.png`,
-    fullPage: true,
-  });
-  await page.setViewportSize({ width: 390, height: 844 });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  await page.screenshot({
-    path: `${spacedReviewScreenshotDir}/failed-quiz-pending-mobile.png`,
-    fullPage: true,
-  });
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await practiseFirstStep.click();
-  await expect(page.getByRole('button', { name: 'Back to quiz results' })).toBeVisible();
-  await expect(page.getByTestId('lesson-quiz-chip')).toBeVisible();
-  await page.screenshot({
-    path: `${spacedReviewScreenshotDir}/failed-step-back-desktop.png`,
-    fullPage: true,
-  });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({
-    path: `${spacedReviewScreenshotDir}/failed-step-back-mobile.png`,
-    fullPage: true,
-  });
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await page.getByTestId('lesson-quiz-chip').click();
-  await expect(page.getByTestId('lesson-quiz-results')).toBeVisible();
-  const reviewStepAfterReturn = page
-    .getByTestId('lesson-quiz-results')
-    .getByRole('button', { name: 'Practise · 0/3' })
-    .first();
-  await reviewStepAfterReturn.click();
-  await expect(page.getByRole('button', { name: 'Practise this step' })).toBeVisible();
-  await page.getByRole('button', { name: 'Practise this step' }).click();
-  await expect(page.getByTestId('lesson-problem')).toBeVisible();
-  const firstPracticeRun = await currentRun(page);
-  const firstPractice = firstPracticeRun.pendingPracticeProblem;
-  const practiceAnswer = await page.evaluate(async (id) => {
-    const response = await fetch(`/api/test/lesson-problems/${id}/answer`);
-    return response.json();
-  }, firstPractice.id);
-  if (firstPractice.exercise.type === 'mc') {
-    const ids = Array.isArray(practiceAnswer.answer)
-      ? practiceAnswer.answer
-      : [practiceAnswer.answer];
-    for (const id of ids) {
-      await page.locator(`[id="${firstPractice.exercise.id}-${id}"]`).click();
-    }
-  } else {
-    await page.getByLabel('Your answer').fill(String(practiceAnswer.answer));
-  }
+  await expect(page.getByTestId('lesson-quiz-results')).toContainText('You missed questions on:');
   let uiPracticeTime = Date.parse('2026-01-01T12:01:00.000Z');
   await page.route(`**/api/lessons/${conceptId}/run/answer`, async (route) => {
     uiPracticeTime += 1_000;
@@ -1640,116 +1739,199 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
       },
     });
   });
-  await page.getByRole('button', { name: 'Submit answer' }).click();
-  await expect
-    .poll(async () => {
-      const run = await currentRun(page);
-      return run.quiz.reviewRequired.find(
-        (step: { pointId: string }) => step.pointId === firstPractice.knowledgePointId,
-      )?.answered;
-    })
-    .toBe(1);
-  await page.getByTestId('lesson-quiz-chip').click();
-  await expect(
-    page.getByTestId('lesson-quiz-results').getByRole('button', { name: 'Practise · 1/3' }),
-  ).toBeVisible();
+
+  const captureQuizRetryState = async (name: string) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const actionName =
+      name === 'warmup-next'
+        ? 'Next'
+        : name === 'warmup-last-answer'
+          ? 'Start the retake'
+          : undefined;
+    await prepareQuizRetryScreenshot(actionName);
+    await page.screenshot({
+      path: `${quizRetryScreenshotDir}/${name}-desktop.png`,
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      390,
+    );
+    await prepareQuizRetryScreenshot(actionName);
+    await page.screenshot({
+      path: `${quizRetryScreenshotDir}/${name}-390.png`,
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 1280, height: 900 });
+  };
+  const waitForPracticeRun = async () => {
+    await expect
+      .poll(async () => Boolean((await currentRun(page)).pendingPracticeProblem))
+      .toBe(true);
+    return currentRun(page);
+  };
+  const answerPracticeQuestion = async (
+    problem: Awaited<ReturnType<typeof currentRun>>['pendingPracticeProblem'],
+    wrong: boolean,
+    nextAction: string,
+    expectedAnswered?: number,
+  ) => {
+    if (!problem) throw new Error('Expected a pending practice question');
+    const expected = await page.evaluate(async (id) => {
+      const response = await fetch(`/api/test/lesson-problems/${id}/answer`);
+      return response.json();
+    }, problem.id);
+    if (problem.exercise.type === 'mc') {
+      const correctIds = Array.isArray(expected.answer) ? expected.answer : [expected.answer];
+      const selectedIds = wrong
+        ? [
+            problem.exercise.options.find(
+              (option: { id: string }) => !correctIds.includes(option.id),
+            )?.id,
+          ]
+        : correctIds;
+      for (const id of selectedIds) {
+        await page.locator(`[id="${problem.exercise.id}-${id}"]`).click();
+      }
+    } else {
+      const expectedAnswer =
+        expected.answer && typeof expected.answer === 'object' && 'text' in expected.answer
+          ? expected.answer.text
+          : expected.answer;
+      const answer =
+        wrong && typeof expectedAnswer === 'number'
+          ? String(expectedAnswer + 1_000_000)
+          : wrong
+            ? `${String(expectedAnswer)} incorrect`
+            : String(expectedAnswer);
+      await page.getByLabel('Your answer').fill(answer);
+    }
+    await page.getByRole('button', { name: 'Submit answer', exact: true }).click();
+    if (expectedAnswered !== undefined) {
+      await expect
+        .poll(
+          async () =>
+            (await currentRun(page)).quiz.reviewRequired.find(
+              (step: { pointId: string }) => step.pointId === problem.knowledgePointId,
+            )?.answered,
+        )
+        .toBe(expectedAnswered);
+    }
+    await expect(page.getByRole('button', { name: nextAction, exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: nextAction, exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Submit answer', exact: true })).toHaveCount(0);
+  };
+
+  await page.getByTestId('lesson-quiz-results').getByRole('button', { name: 'Retry' }).click();
+  const warmupProgress = page.getByTestId('quiz-warmup-progress');
+  await expect(warmupProgress).toHaveText('Warm-up before the retake · 1 of 6');
+  await expect(page.getByTestId('lesson-step-content')).toHaveCount(0);
+  await expect(page.getByTestId('lesson-problem-header')).toHaveCount(0);
+  await expect(page.getByText(/^Question \d+/)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Retake quiz', exact: true })).toHaveCount(0);
+  await captureQuizRetryState('warmup-question');
+  let practiceRun = await waitForPracticeRun();
+  await answerPracticeQuestion(practiceRun.pendingPracticeProblem, false, 'Next', 1);
+  await expect(warmupProgress).toHaveText('Warm-up before the retake · 1 of 6');
+  await captureQuizRetryState('warmup-next');
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  practiceRun = await waitForPracticeRun();
+  await expect(warmupProgress).toHaveText('Warm-up before the retake · 2 of 6');
+  await answerPracticeQuestion(practiceRun.pendingPracticeProblem, false, 'Next', 2);
+
+  await page.reload();
+  const continuedResults = page.getByTestId('lesson-quiz-results');
+  await expect(continuedResults.getByRole('button', { name: 'Continue retry' })).toBeVisible();
+  await continuedResults.getByRole('button', { name: 'Continue retry' }).click();
+  await expect(warmupProgress).toHaveText('Warm-up before the retake · 3 of 6');
+  const resumedPractice = (await waitForPracticeRun()).pendingPracticeProblem;
+  if (!resumedPractice) throw new Error('Expected the third warm-up question');
+  await page.getByRole('button', { name: 'Do this later', exact: true }).click();
+  await expect(page.getByTestId('lesson-quiz-results')).toBeVisible();
   await page
     .getByTestId('lesson-quiz-results')
-    .getByRole('button', { name: 'Practise · 1/3' })
+    .getByRole('button', { name: 'Continue retry' })
     .click();
-  await page.getByRole('button', { name: 'Practise this step' }).click();
-  await expect.poll(async () => (await currentRun(page)).pendingPracticeProblem?.id).toBeTruthy();
-  const nextPractice = (await currentRun(page)).pendingPracticeProblem;
-  if (!nextPractice) throw new Error('Expected a fresh practice question');
-  expect(nextPractice.id).not.toBe(firstPractice.id);
-  await page.reload();
-  const reloadedRun = await currentRun(page);
-  expect(reloadedRun.pendingPracticeProblem?.id).toBe(nextPractice.id);
-  expect(reloadedRun.pendingPracticeProblem?.answeredAt).toBeNull();
-  await expect(page.getByRole('button', { name: 'Back to quiz results' })).toBeVisible();
+  await expect(warmupProgress).toHaveText('Warm-up before the retake · 3 of 6');
   await expect(page.getByTestId('lesson-problem')).toHaveAttribute(
     'data-problem-id',
-    nextPractice.id,
+    resumedPractice.id,
   );
-  if (nextPractice.exercise.type === 'mc') {
-    const choice = page.getByTestId('lesson-problem').getByRole('radio').first();
-    await expect(choice).toBeEnabled();
-    await expect(choice).not.toBeChecked();
-  } else {
-    const answer = page.getByTestId('lesson-problem').getByLabel('Your answer');
-    await expect(answer).toBeEnabled();
-    await expect(answer).toHaveValue('');
-  }
-  await expect(page.getByTestId('lesson-problem').getByRole('status')).toHaveCount(0);
-  await page.getByTestId('lesson-quiz-chip').click();
-  const practiceStatus = await page.evaluate(
-    async ({ concept, activityId, requiredReviews }) => {
-      let practiceTime = Date.parse('2026-01-01T12:00:00.000Z');
-      for (const step of requiredReviews) {
-        for (let count = step.answered; count < step.needed; count += 1) {
-          let run = (await (await fetch(`/api/lessons/${concept}/run`)).json()).run;
-          let pending = run.pendingPracticeProblem;
-          if (!pending) {
-            practiceTime += 1_000;
-            const response = await fetch(`/api/lessons/${concept}/run/practice`, {
-              method: 'POST',
-              headers: {
-                'content-type': 'application/json',
-                'x-now': new Date(practiceTime).toISOString(),
-              },
-              body: JSON.stringify({ pointId: step.pointId, activityId }),
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error ?? 'Could not start step practice');
-            run = data.run;
-            pending = run.pendingPracticeProblem;
-          }
-          const expected = await (
-            await fetch(`/api/test/lesson-problems/${pending.id}/answer`)
-          ).json();
-          practiceTime += 1_000;
-          const response = await fetch(`/api/lessons/${concept}/run/answer`, {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json',
-              'x-now': new Date(practiceTime).toISOString(),
-            },
-            body: JSON.stringify({
-              problemId: pending.id,
-              answer: expected.answer,
-              activityId,
-            }),
-          });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error ?? 'Could not answer step practice');
-        }
-      }
-      return (await (await fetch(`/api/lessons/${concept}/run`)).json()).run.quiz.reviewRequired;
+
+  practiceRun = await waitForPracticeRun();
+  await answerPracticeQuestion(practiceRun.pendingPracticeProblem, false, 'Next', 3);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  practiceRun = await waitForPracticeRun();
+  expect(practiceRun.pendingPracticeProblem?.knowledgePointId).toBe(requiredReviews[1].pointId);
+  await expect(warmupProgress).toHaveText('Warm-up before the retake · 4 of 6');
+  await answerPracticeQuestion(practiceRun.pendingPracticeProblem, true, 'Next', 1);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  practiceRun = await waitForPracticeRun();
+  await answerPracticeQuestion(practiceRun.pendingPracticeProblem, false, 'Next', 2);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  practiceRun = await waitForPracticeRun();
+  await expect(warmupProgress).toHaveText('Warm-up before the retake · 6 of 6');
+  await answerPracticeQuestion(practiceRun.pendingPracticeProblem, false, 'Start the retake', 3);
+  await expect(warmupProgress).toHaveText('Warm-up before the retake · 6 of 6');
+  await captureQuizRetryState('warmup-last-answer');
+  const completedReviewRun = await currentRun(page);
+  expect(
+    completedReviewRun.quiz.reviewRequired.every(
+      (step: { answered: number }) => step.answered === 3,
+    ),
+  ).toBe(true);
+  await page.getByRole('button', { name: 'Do this later', exact: true }).click();
+  await page.getByRole('button', { name: /Step 1 of \d+, passed/ }).click();
+  await expect(page.getByTestId('lesson-step-content')).toBeVisible();
+  await page.getByRole('button', { name: 'Practise this step', exact: true }).click();
+  await expect(page.getByTestId('lesson-quiz-warmup')).toHaveCount(0);
+  practiceRun = await waitForPracticeRun();
+  await answerPracticeQuestion(practiceRun.pendingPracticeProblem, false, 'Another question');
+  await expect(warmupProgress).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible();
+  await page.reload();
+  const completedReviewResults = page.getByTestId('lesson-quiz-results');
+  await expect(
+    completedReviewResults.getByRole('button', { name: 'Continue retry' }),
+  ).toBeVisible();
+  const extraPendingPractice = await page.evaluate(
+    async ({ conceptId, pointId, activityId, now }) => {
+      const response = await fetch(`/api/lessons/${conceptId}/run/practice`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-now': now },
+        body: JSON.stringify({ pointId, activityId }),
+      });
+      return { status: response.status, run: (await response.json()).run };
     },
     {
-      concept: conceptId,
+      conceptId,
+      pointId: requiredReviews[0].pointId,
       activityId: currentActivityId,
-      requiredReviews: (await currentRun(page)).quiz.reviewRequired,
+      now: new Date(uiPracticeTime + 1_000).toISOString(),
     },
   );
-  expect(practiceStatus.every((step: { answered: number }) => step.answered === 3)).toBe(true);
-  await page.reload();
-  const reviewedFailure = page.getByTestId('lesson-quiz-results');
-  await expect(reviewedFailure.getByText('✓ Reviewed').first()).toBeVisible();
-  const unlockedRetake = reviewedFailure.getByRole('button', { name: 'Retake quiz' });
-  await expect(unlockedRetake).toBeEnabled();
-  await expect(unlockedRetake).toHaveAttribute('data-variant', 'default');
-  await expect(reviewedFailure).not.toContainText(/Retake unlocks after/);
-  await expect(reviewedFailure).toContainText(
-    "You can come back to it from the lesson's page on Course.",
-  );
-  await page.screenshot({
-    path: `${failedQuizScreenshotDir}/failed-results-done.png`,
-    fullPage: true,
+  expect(extraPendingPractice.status).toBe(200);
+  const extraPendingPracticeId = extraPendingPractice.run.pendingPracticeProblem?.id;
+  if (!extraPendingPracticeId) throw new Error('Expected an extra pending practice question');
+  let completedReviewPracticeRequests = 0;
+  await page.route(`**/api/lessons/${conceptId}/run/practice`, async (route) => {
+    completedReviewPracticeRequests += 1;
+    await route.continue();
   });
-  await page.screenshot({ path: `${lessonQuizScreenshotDir}/failed-results.png`, fullPage: true });
-  await page.getByRole('button', { name: 'Retake quiz' }).click();
+  await page.reload();
+  const reloadedCompletedReviewResults = page.getByTestId('lesson-quiz-results');
+  await expect(
+    reloadedCompletedReviewResults.getByRole('button', { name: 'Continue retry' }),
+  ).toBeVisible();
+  await reloadedCompletedReviewResults.getByRole('button', { name: 'Continue retry' }).click();
   await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+  expect(completedReviewPracticeRequests).toBe(0);
+  const cleanupDb = createDb(env.TEST_DATABASE_URL);
+  await cleanupDb.delete(lessonProblems).where(eq(lessonProblems.id, extraPendingPracticeId));
+  await cleanupDb.$client.end();
+  await page.reload();
+  await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+  await captureQuizRetryState('quiz-start');
   await answerAttempt(false, true);
   await page.reload();
   const passed = page.getByTestId('lesson-quiz-results');
@@ -1758,7 +1940,6 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await expect(passed.getByText(/^\+\d+ XP$/)).toBeVisible();
   await expect(quizChip).toHaveAttribute('aria-label', 'Lesson quiz, passed');
   await expect(quizChip).toContainText('✓ Quiz');
-  await expect(tutorPanel).toBeVisible();
   const seeAnswers = passed.getByRole('button', { name: 'See answers' });
   const retake = passed.getByRole('button', { name: 'Retake quiz' });
   await expect(retake).toBeEnabled();
@@ -1819,10 +2000,12 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await answerAttempt(true);
   await page.reload();
   const failedRetake = page.getByTestId('lesson-quiz-results');
-  await expect(failedRetake).toContainText('Retake not passed');
-  await expect(failedRetake).toContainText('Your lesson quiz is already passed.');
-  await expect(failedRetake.getByText(/^Step \d+ · /).first()).toBeVisible();
+  await expect(failedRetake).toContainText(/Not passed · \d+ of \d+ \(you need \d+\)/);
+  await expect(failedRetake).toContainText('You missed questions on:');
   await expect(failedRetake.getByRole('button', { name: 'See answers' })).toHaveCount(0);
   await expect(failedRetake.getByText(/Your answer:|Correct answer:|Question \d+/)).toHaveCount(0);
+  await expect(failedRetake.getByRole('button', { name: 'Retry', exact: true })).toBeVisible();
+  await failedRetake.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
   expect(prepared.questionCount).toBeGreaterThan(0);
 });

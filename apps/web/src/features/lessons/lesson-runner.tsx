@@ -60,14 +60,16 @@ export function LessonRunner({
       (review) => review.pointId === step.pointId && review.answered < review.needed,
     ),
   );
-  const firstPendingStepNumber = firstPendingStep
-    ? (state?.quiz.last?.perStep.findIndex((step) => step.pointId === firstPendingStep.pointId) ??
-        -1) + 1
-    : null;
-  const remainingReviewQuestions = reviewRequired.reduce(
-    (remaining, review) => remaining + Math.max(0, review.needed - review.answered),
-    0,
-  );
+  const doneReviewQuestions = reviewRequired.reduce((done, review) => done + review.answered, 0);
+  const totalReviewQuestions = reviewRequired.reduce((total, review) => total + review.needed, 0);
+  const hasWarmupAnswers = reviewRequired.some((review) => review.answered > 0);
+  const missedQuizSteps = state?.quiz.last
+    ? state.quiz.last.perStep.filter((step) =>
+        reviewRequired.length
+          ? reviewRequired.some((review) => review.pointId === step.pointId)
+          : step.correct < step.total,
+      )
+    : [];
   const starting = useRef(false);
   const visibleProblemId =
     state?.pendingPracticeProblem?.id ??
@@ -87,6 +89,7 @@ export function LessonRunner({
   const [error, setError] = useState('');
   const [viewingPointId, setViewingPointId] = useState<string | null>(null);
   const [practicePointId, setPracticePointId] = useState<string | null>(null);
+  const [warmupActive, setWarmupActive] = useState(false);
   const [quizReview, setQuizReview] = useState<QuizReviewPayload | null>(null);
   const activePoint = state
     ? (lesson?.knowledge_points?.find((point) => point.id === state.currentPointId) ?? undefined)
@@ -117,6 +120,20 @@ export function LessonRunner({
     state?.pendingPracticeProblem ??
     (state?.lastAnsweredProblem?.practiceOnly ? state.lastAnsweredProblem : undefined);
   const pendingPracticePointId = state?.pendingPracticeProblem?.knowledgePointId;
+  const pendingPracticeIsWarmup = Boolean(
+    state?.quiz.last &&
+      !state.quiz.last.passed &&
+      reviewRequired.some((review) => review.pointId === pendingPracticePointId),
+  );
+  const warmupReview = reviewRequired.find((review) => review.pointId === practicePointId);
+  const warmupMode = Boolean(
+    warmupActive &&
+      state?.quiz.last &&
+      !state.quiz.last.passed &&
+      !state.quiz.current &&
+      practiceMode &&
+      warmupReview,
+  );
   const displayedPoint = viewingPastStep ? viewingPoint : point;
   const pageLabel =
     state && currentPointIndex >= 0
@@ -156,10 +173,10 @@ export function LessonRunner({
   }, [state?.currentPointId]);
 
   useEffect(() => {
-    if (!pendingPracticePointId) return;
+    if (!pendingPracticePointId || pendingPracticeIsWarmup) return;
     setPracticePointId(pendingPracticePointId);
     setViewingPointId(pendingPracticePointId);
-  }, [pendingPracticePointId]);
+  }, [pendingPracticeIsWarmup, pendingPracticePointId]);
 
   useEffect(() => {
     tutorSidebar.setContext({
@@ -247,6 +264,10 @@ export function LessonRunner({
     setBusyAction('next');
     setError('');
     setQuizReview(null);
+    setWarmupActive(false);
+    setPracticePointId(null);
+    setViewingPointId(null);
+    window.scrollTo({ top: 0 });
     try {
       const response = await apiFetch(`/api/lessons/${encodeURIComponent(conceptId)}/quiz/start`, {
         method: 'POST',
@@ -317,7 +338,8 @@ export function LessonRunner({
     }
   };
 
-  const startPractice = async (pointId: string) => {
+  const startPractice = async (pointId: string, warmup = false) => {
+    setWarmupActive(warmup);
     setBusy(true);
     setError('');
     try {
@@ -326,20 +348,37 @@ export function LessonRunner({
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ pointId, activityId }),
+          body: JSON.stringify({ pointId, activityId, warmup }),
         },
       );
       const data = (await response.json()) as LessonRunPayload & { error?: string };
       if (!response.ok || !data.run) {
         throw new Error(data.error ?? 'Could not load a practice question.');
       }
+      setViewingPointId(pointId);
       setPracticePointId(pointId);
+      window.scrollTo({ top: 0 });
       await updateState(data.run);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load a practice question.');
     } finally {
       setBusy(false);
     }
+  };
+
+  const continueQuizWarmup = () => {
+    if (firstPendingStep) {
+      void startPractice(firstPendingStep.pointId, true);
+    } else {
+      void startQuiz();
+    }
+  };
+
+  const leaveQuizWarmup = () => {
+    setWarmupActive(false);
+    setPracticePointId(null);
+    setViewingPointId(null);
+    window.scrollTo({ top: 0 });
   };
 
   const showQuizReview = async (attemptId: string) => {
@@ -455,17 +494,31 @@ export function LessonRunner({
   const shownProblem = practiceMode
     ? practiceProblem
     : (state.pendingProblem ?? state.lastAnsweredProblem);
+  const practiceResult = state.lastAnsweredProblem?.result;
+  const hasPracticeResult = Boolean(
+    practiceMode &&
+      state.lastAnsweredProblem?.practiceOnly &&
+      state.lastAnsweredProblem.id === shownProblem?.id &&
+      state.lastAnsweredProblem.knowledgePointId === practicePointId,
+  );
+  const practiceRetryAllowed = Boolean(
+    practiceMode &&
+      state.lastAnsweredProblem?.id === shownProblem?.id &&
+      practiceResult &&
+      'retryAllowed' in practiceResult &&
+      practiceResult.retryAllowed === true,
+  );
   const showingAnswer = practiceMode
-    ? Boolean(
-        state.lastAnsweredProblem?.practiceOnly &&
-          state.lastAnsweredProblem.id === shownProblem?.id &&
-          state.lastAnsweredProblem.knowledgePointId === practicePointId,
-      )
+    ? hasPracticeResult && !practiceRetryAllowed
     : Boolean(
         state.lastAnsweredProblem &&
           !state.pendingProblem &&
           state.lastAnsweredProblem.id === shownProblem?.id,
       );
+  const warmupQuestionNumber = Math.min(
+    doneReviewQuestions + (showingAnswer ? 0 : 1),
+    totalReviewQuestions,
+  );
   const quizItems = state.quiz.current?.items ?? [];
   const unansweredQuizIndex = quizItems.findIndex((item) => !item.answered);
   const quizQuestionIndex =
@@ -506,6 +559,83 @@ export function LessonRunner({
     window.scrollTo({ top: 0 });
   };
 
+  const practiceQuestionCard = (warmup: boolean) =>
+    shownProblem ? (
+      <Card
+        data-testid="lesson-problem"
+        data-exercise-container=""
+        data-problem-id={shownProblem.id}
+      >
+        <CardContent className="space-y-5">
+          {!warmup ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-sm font-medium">{problemLabel(shownProblem)}</h3>
+              <StepProgress point={pointStatus} />
+            </div>
+          ) : null}
+          <div data-testid="lesson-problem-prompt">
+            <Markdown>{shownProblem.exercise.prompt}</Markdown>
+          </div>
+          <ExerciseForm
+            key={shownProblem.id}
+            exercise={shownProblem.exercise}
+            onSubmit={submit}
+            loading={busyAction === 'submit'}
+            disabled={busy && busyAction !== 'submit'}
+            locked={showingAnswer}
+            submittedAnswer={
+              showingAnswer ? state.lastAnsweredProblem?.result.yourAnswer : undefined
+            }
+            answerOptions={
+              showingAnswer ? state.lastAnsweredProblem?.result.answerOptions : undefined
+            }
+            submitLabel={practiceRetryAllowed ? 'Try again' : 'Submit answer'}
+            actions={
+              !warmup && !showingAnswer && tutorEnabled ? (
+                <TutorLauncher
+                  context={{
+                    conceptId,
+                    activityId,
+                    lessonProblemId: shownProblem.id,
+                    allowed: true,
+                    enabled: tutorEnabled,
+                  }}
+                />
+              ) : null
+            }
+            primaryAction={
+              showingAnswer
+                ? {
+                    label: warmup
+                      ? doneReviewQuestions >= totalReviewQuestions
+                        ? 'Start the retake'
+                        : 'Next'
+                      : 'Another question',
+                    onClick: () =>
+                      warmup
+                        ? continueQuizWarmup()
+                        : void startPractice(practicePointId ?? shownProblem.knowledgePointId),
+                    loading: busy,
+                    disabled: busy,
+                  }
+                : undefined
+            }
+          />
+          {hasPracticeResult && state.lastAnsweredProblem ? (
+            <>
+              <FeedbackPanel
+                result={state.lastAnsweredProblem.result}
+                hideAnswerLines={['mc', 'debug', 'explain'].includes(
+                  state.lastAnsweredProblem.exercise.type,
+                )}
+              />
+              {isFinalRetryResult(state.lastAnsweredProblem.result) ? <FinalRetryNote /> : null}
+            </>
+          ) : null}
+        </CardContent>
+      </Card>
+    ) : null;
+
   return (
     <section className="space-y-6">
       <SessionActivityHeader
@@ -523,83 +653,45 @@ export function LessonRunner({
         returnToCurrentStep={returnToCurrentStep}
       />
 
-      {viewingPastStep ? (
-        <>
-          <Button type="button" onClick={returnToCurrentStep}>
-            {state.status === 'quiz' ? 'Back to quiz results' : backButtonLabel}
+      {warmupMode && shownProblem ? (
+        <section data-testid="lesson-quiz-warmup" className="space-y-4">
+          <p className="text-sm text-muted-foreground" data-testid="quiz-warmup-progress">
+            Warm-up before the retake · {warmupQuestionNumber} of {totalReviewQuestions}
+          </p>
+          {practiceQuestionCard(true)}
+          <Button type="button" variant="ghost" disabled={busy} onClick={leaveQuizWarmup}>
+            Do this later
           </Button>
-          {stepContent}
-          {practiceMode && shownProblem ? (
-            <Card
-              data-testid="lesson-problem"
-              data-exercise-container=""
-              data-problem-id={shownProblem.id}
-            >
-              <CardContent className="space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h3 className="text-sm font-medium">{problemLabel(shownProblem)}</h3>
-                  <StepProgress point={pointStatus} />
-                </div>
-                <div data-testid="lesson-problem-prompt">
-                  <Markdown>{shownProblem.exercise.prompt}</Markdown>
-                </div>
-                <ExerciseForm
-                  key={shownProblem.id}
-                  exercise={shownProblem.exercise}
-                  onSubmit={submit}
-                  loading={busyAction === 'submit'}
-                  disabled={busy && busyAction !== 'submit'}
-                  locked={showingAnswer}
-                  submittedAnswer={
-                    showingAnswer ? state.lastAnsweredProblem?.result.yourAnswer : undefined
-                  }
-                  answerOptions={
-                    showingAnswer ? state.lastAnsweredProblem?.result.answerOptions : undefined
-                  }
-                  submitLabel="Submit answer"
-                  actions={
-                    tutorEnabled ? (
-                      <TutorLauncher
-                        context={{
-                          conceptId,
-                          activityId,
-                          lessonProblemId: shownProblem.id,
-                          allowed: true,
-                          enabled: tutorEnabled,
-                        }}
-                      />
-                    ) : null
-                  }
-                />
-                {showingAnswer && state.lastAnsweredProblem ? (
-                  <>
-                    <FeedbackPanel
-                      result={state.lastAnsweredProblem.result}
-                      hideAnswerLines={['mc', 'debug', 'explain'].includes(
-                        state.lastAnsweredProblem.exercise.type,
-                      )}
-                    />
-                    {isFinalRetryResult(state.lastAnsweredProblem.result) ? (
-                      <FinalRetryNote />
-                    ) : null}
-                  </>
-                ) : null}
-              </CardContent>
-            </Card>
-          ) : null}
-          {pointStatus?.status === 'passed' && displayedPoint ? (
-            <Button
-              type="button"
-              disabled={busy}
-              onClick={() => void startPractice(displayedPoint.id)}
-            >
-              Practise this step
+        </section>
+      ) : viewingPastStep ? (
+        practiceMode && shownProblem ? (
+          <>
+            {stepContent}
+            {practiceQuestionCard(false)}
+            <Button type="button" variant="ghost" onClick={returnToCurrentStep}>
+              Back
             </Button>
-          ) : null}
-          <Button type="button" onClick={returnToCurrentStep}>
-            {backButtonLabel}
-          </Button>
-        </>
+          </>
+        ) : (
+          <>
+            <Button type="button" onClick={returnToCurrentStep}>
+              {state.status === 'quiz' ? 'Back to quiz results' : backButtonLabel}
+            </Button>
+            {stepContent}
+            {pointStatus?.status === 'passed' && displayedPoint ? (
+              <Button
+                type="button"
+                disabled={busy}
+                onClick={() => void startPractice(displayedPoint.id)}
+              >
+                Practise this step
+              </Button>
+            ) : null}
+            <Button type="button" onClick={returnToCurrentStep}>
+              {backButtonLabel}
+            </Button>
+          </>
+        )
       ) : state.quiz.current ? (
         quizAllAnswered ? (
           <Card>
@@ -649,41 +741,26 @@ export function LessonRunner({
         )
       ) : quizReview ? (
         <QuizReview quizReview={quizReview} onClose={() => setQuizReview(null)} />
-      ) : state.status === 'completed' && state.quiz.last && !state.quiz.last.passed ? (
+      ) : state.quiz.last && !state.quiz.last.passed ? (
         <Card className="border-amber-300 bg-amber-50" data-testid="lesson-quiz-results">
           <CardContent className="space-y-4 text-amber-950">
             <h2 className="text-xl font-semibold">
-              Retake not passed · {state.quiz.last.correctCount} of {state.quiz.last.total}
+              Not passed · {state.quiz.last.correctCount} of {state.quiz.last.total} (you need{' '}
+              {Math.ceil(state.quiz.passMark * state.quiz.last.total)})
             </h2>
-            <p>Your lesson quiz is already passed. Here&apos;s how this retake went:</p>
-            <div className="space-y-2">
-              {state.quiz.last.perStep.map((step, index) => (
-                <Button
-                  key={step.pointId}
-                  type="button"
-                  variant="link"
-                  className="h-auto whitespace-normal p-0 text-left text-amber-950"
-                  onClick={() => viewStep(step.pointId)}
-                >
-                  Step {index + 1} · {step.title}: {step.correct} of {step.total} right
-                </Button>
+            <p>You missed questions on:</p>
+            <ul data-testid="quiz-missed-steps" className="list-disc space-y-1 pl-5">
+              {missedQuizSteps.map((step) => (
+                <li key={step.pointId}>{step.title}</li>
               ))}
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div />
-              <div className="ml-auto flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => void startQuiz()}
-                >
-                  Retake quiz
-                </Button>
-                <Button type="button" disabled={busy} onClick={() => void next()}>
-                  Continue
-                </Button>
-              </div>
+            </ul>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" disabled={busy} onClick={continueQuizWarmup}>
+                {hasWarmupAnswers ? 'Continue retry' : 'Retry'}
+              </Button>
+              <Button type="button" variant="ghost" disabled={busy} onClick={() => void next()}>
+                Do this later
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -728,80 +805,6 @@ export function LessonRunner({
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      ) : state.quiz.last && !state.quiz.last.passed ? (
-        <Card className="border-amber-300 bg-amber-50" data-testid="lesson-quiz-results">
-          <CardContent className="space-y-4 text-amber-950">
-            <h2 className="text-xl font-semibold">
-              Not passed yet · {state.quiz.last.correctCount} of {state.quiz.last.total}
-            </h2>
-            <p>
-              To pass, practise each step you missed (3 questions each), then retake the quiz. You
-              need {Math.ceil(state.quiz.passMark * state.quiz.last.total)} of{' '}
-              {state.quiz.last.total}.
-            </p>
-            <div className="space-y-2">
-              {state.quiz.last.perStep.map((step, index) => {
-                const review = state.quiz.reviewRequired.find(
-                  (item) => item.pointId === step.pointId,
-                );
-                return (
-                  <div
-                    key={step.pointId}
-                    className="flex flex-wrap items-center justify-between gap-2"
-                  >
-                    <p className="min-w-0 flex-1">
-                      Step {index + 1} · {step.title}: {step.correct} of {step.total} right
-                    </p>
-                    {review ? (
-                      review.answered >= review.needed ? (
-                        <span className="text-sm text-muted-foreground">✓ Reviewed</span>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => viewStep(step.pointId)}
-                        >
-                          Practise · {review.answered}/{review.needed}
-                        </Button>
-                      )
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-            {firstPendingStep ? (
-              <p className="text-sm text-muted-foreground">
-                Retake unlocks after {remainingReviewQuestions} more practice question
-                {remainingReviewQuestions === 1 ? '' : 's'}.
-              </p>
-            ) : null}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div />
-              <div className="ml-auto flex flex-wrap gap-2">
-                {firstPendingStep && firstPendingStepNumber !== null ? (
-                  <Button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => viewStep(firstPendingStep.pointId)}
-                  >
-                    Practise step {firstPendingStepNumber}
-                  </Button>
-                ) : (
-                  <Button type="button" disabled={busy} onClick={() => void startQuiz()}>
-                    Retake quiz
-                  </Button>
-                )}
-                <Button type="button" variant="outline" disabled={busy} onClick={() => void next()}>
-                  Do this later
-                </Button>
-              </div>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              You can come back to it from the lesson&apos;s page on Course.
-            </p>
           </CardContent>
         </Card>
       ) : state.status === 'quiz' && !finalAnswered ? (
