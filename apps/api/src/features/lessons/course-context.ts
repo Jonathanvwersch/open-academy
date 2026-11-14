@@ -34,7 +34,7 @@ export async function resolveLessonCourse(
   const result = lessonCourseContext(content, {
     conceptId,
     preferredCourseId,
-    studyCourseIds: await repo.studyCourseIds(content),
+    studyCourseIds: await repo.activeStudyCourseIds(content),
   });
   return result
     ? {

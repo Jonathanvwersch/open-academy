@@ -296,6 +296,12 @@ async function rowCounts() {
         )
     : [];
   return {
+    enrollments: await db
+      .select()
+      .from(courseEnrollments)
+      .where(eq(courseEnrollments.userId, userId)),
+    studySetInitializedAt: (await db.select().from(users).where(eq(users.id, userId)))[0]
+      .studySetInitializedAt,
     runs: runRows.length,
     problems: problemRows.length,
     attempts: (await db.select().from(attempts).where(eq(attempts.userId, userId))).length,
@@ -305,6 +311,10 @@ async function rowCounts() {
 
 test('GET run is read-only and POST creates exactly one pending problem', async () => {
   const before = await rowCounts();
+  expect(before.studySetInitializedAt).toBeNull();
+  const review = await app.request(`/api/lessons/${conceptId}/review`, { headers });
+  expect(review.status).toBe(200);
+  expect(await rowCounts()).toEqual(before);
   const read = await getRun();
   expect(await read.json()).toMatchObject({ run: null });
   expect(await rowCounts()).toEqual(before);
@@ -319,6 +329,23 @@ test('GET run is read-only and POST creates exactly one pending problem', async 
   const second = await startRun();
   expect((await second.json()).run.pendingProblem.id).toBe(firstBody.run.pendingProblem.id);
   expect(await db.select().from(lessonProblems)).toHaveLength(1);
+});
+
+test('lesson GETs do not backfill an uninitialized learner with prior lesson evidence', async () => {
+  expect((await startRun()).status).toBe(200);
+  await db.delete(courseEnrollments).where(eq(courseEnrollments.userId, userId));
+  await db.update(users).set({ studySetInitializedAt: null }).where(eq(users.id, userId));
+  const before = await rowCounts();
+  expect(before.enrollments).toEqual([]);
+  expect(before.studySetInitializedAt).toBeNull();
+  const review = await app.request(`/api/lessons/${conceptId}/review`, { headers });
+  expect(review.status).toBe(200);
+  expect((await review.json()).course).toMatchObject({ id: 'ml-foundations' });
+  expect(await rowCounts()).toEqual(before);
+  const run = await getRun();
+  expect(run.status).toBe(200);
+  expect((await run.json()).course).toMatchObject({ id: 'ml-foundations' });
+  expect(await rowCounts()).toEqual(before);
 });
 
 test('basics counts toward the two-correct streak and the XP award', async () => {
