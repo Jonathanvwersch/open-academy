@@ -18,7 +18,7 @@ concepts:
           { text: "Mask the loss so only response tokens are trained", dimension: implementation },
         ],
       projects: [llm-post-training],
-      status: stub,
+      status: authored,
     }
   - {
       id: lora,
