@@ -11,7 +11,7 @@ await db
     displayName: 'Learner',
     timezone: 'Europe/London',
     startDate: new Date().toISOString().slice(0, 10),
-    prefs: { scheduleMinutes: 60, goal: 'Build a steady foundation in machine learning.' },
+    prefs: { scheduleMinutes: 60 },
   })
   .onConflictDoUpdate({
     target: users.id,

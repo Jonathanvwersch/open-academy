@@ -9,6 +9,7 @@ import type {
   NotationRegistry,
   Paper,
   Project,
+  SourceIndex,
 } from './schemas.js';
 
 export interface ContentIssue {
@@ -24,6 +25,7 @@ export interface ContentSourceData {
   lessons: Array<{ value: Lesson; file: string }>;
   exercises: Array<{ value: Exercise; concept: string; file: string }>;
   notation?: { value: NotationRegistry; file: string };
+  sourceIndex?: { value: SourceIndex; file: string };
   projects: Array<{ value: Project; file: string }>;
   papers: Array<{ value: Paper; file: string }>;
 }
@@ -78,4 +80,5 @@ export interface ContentIndex {
   projectsById: Map<string, IndexedProject>;
   papers: IndexedPaper[];
   papersById: Map<string, IndexedPaper>;
+  sourceIndex?: SourceIndex;
 }

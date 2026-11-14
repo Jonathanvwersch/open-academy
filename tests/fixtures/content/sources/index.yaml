@@ -1,0 +1,6 @@
+sources:
+  - id: fixture-notes
+    title: Fixture notes
+    file: notes-not-present.md
+    kind: notes
+    added: 2026-11-14

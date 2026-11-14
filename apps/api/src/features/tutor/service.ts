@@ -1,12 +1,13 @@
 import { and, count, eq, gte } from 'drizzle-orm';
+import type { ContentIndex } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import { llmCalls } from '../../db/schema.js';
 import {
-  TUTOR_PROMPT_VERSIONS,
   type TutorPromptId,
   type TutorProvider,
   type TutorResult,
   type TutorUsage,
+  tutorPromptVersion,
 } from './provider.js';
 import type { ExplanationContext, TutorContext, TutorLevel } from './schemas.js';
 
@@ -59,8 +60,8 @@ export class TutorService {
     private readonly timeZone: string,
   ) {}
 
-  respond(ctx: TutorContext, level: TutorLevel) {
-    return this.invoke('tutor-system', () => this.provider.respond(ctx, level));
+  respond(ctx: TutorContext, level: TutorLevel, content: ContentIndex) {
+    return this.invoke('tutor-system', () => this.provider.respond(ctx, level, content), content);
   }
 
   gradeExplanation(ctx: ExplanationContext) {
@@ -70,8 +71,10 @@ export class TutorService {
   private async invoke<T>(
     promptId: TutorPromptId,
     call: () => Promise<TutorResult<T>>,
+    content?: ContentIndex,
   ): Promise<{ value?: T; status: 'ok' | 'fallback' | 'budget_exceeded'; callId?: string }> {
     const startedAt = performance.now();
+    const promptVersion = tutorPromptVersion(promptId, content);
     const [daily] = await this.db
       .select({ value: count() })
       .from(llmCalls)
@@ -82,13 +85,14 @@ export class TutorService {
         ),
       );
     if (!tutorCallAllowed(daily?.value ?? 0, this.dailyCap)) {
-      const callId = await this.record(promptId, 'budget_exceeded', null, 0);
+      const callId = await this.record(promptId, promptVersion, 'budget_exceeded', null, 0);
       return { status: 'budget_exceeded', callId };
     }
     try {
       const result = await call();
       const callId = await this.record(
         promptId,
+        promptVersion,
         'ok',
         result.usage,
         Math.round(performance.now() - startedAt),
@@ -97,6 +101,7 @@ export class TutorService {
     } catch (error) {
       const callId = await this.record(
         promptId,
+        promptVersion,
         'fallback',
         null,
         Math.round(performance.now() - startedAt),
@@ -108,6 +113,7 @@ export class TutorService {
 
   private async record(
     promptId: TutorPromptId,
+    promptVersion: string,
     status: 'ok' | 'fallback' | 'budget_exceeded',
     usage: TutorUsage | null,
     latencyMs: number,
@@ -118,7 +124,7 @@ export class TutorService {
       .values({
         userId: this.userId,
         promptId,
-        promptVersion: TUTOR_PROMPT_VERSIONS[promptId],
+        promptVersion,
         provider: 'openai',
         model: this.provider.model,
         inputTokens: usage?.inputTokens ?? null,

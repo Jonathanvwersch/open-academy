@@ -21,7 +21,8 @@
       "!apps/api/drizzle/meta",
       "!apps/api/src/features/tutor/prompts",
       "!apps/web/src/components/ui",
-      "!apps/web/src/routeTree.gen.ts"
+      "!apps/web/src/routeTree.gen.ts",
+      "!packages/cli/template/.agents"
     ]
   },
   "formatter": {

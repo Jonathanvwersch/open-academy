@@ -1,5 +1,6 @@
 concept: gradients
 version: 2
+sources: [{ source: fixture-notes, section: "Chapter 1" }]
 objective: Practice gradients and their components.
 where_this_fits: |
   Training a model means changing parameters to reduce its loss. When several inputs affect that loss, you need to know how each one contributes before choosing an update. Looking only at the loss value does not show which parameter matters or which direction helps. A gradient collects those separate rates of change into one vector. It lets you compare sensitivity across parameters and is the starting point for deciding how to adjust them during gradient descent.

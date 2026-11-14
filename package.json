@@ -20,6 +20,7 @@
     "test": "docker compose up -d && node scripts/wait-for-db.mjs && vitest run",
     "test:unit": "vitest run --project unit",
     "test:e2e": "playwright test",
+    "test:e2e:generated-pack": "node scripts/generated-pack-smoke.mjs",
     "test:architecture": "node --test scripts/architecture/check.test.mjs",
     "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.json",
     "lint": "biome check .",
@@ -27,6 +28,7 @@
     "boundaries": "node scripts/architecture/check.mjs",
     "check": "pnpm boundaries && pnpm lint && pnpm typecheck && pnpm content:check && pnpm test:architecture",
     "build": "pnpm --filter @academy/web build && pnpm --filter @academy/api build",
+    "academy": "tsx packages/cli/src/index.ts",
     "start": "pnpm --filter @academy/api start",
     "vercel-build": "pnpm build && pnpm --filter @academy/api vercel:bundle && pnpm --filter @academy/api vercel:migrate"
   },

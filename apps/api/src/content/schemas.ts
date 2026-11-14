@@ -84,6 +84,14 @@ export const CurriculumSchema = z
           .strict(),
       )
       .default([]),
+    subject: z
+      .object({
+        title: z.string().min(1),
+        tutor_context: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+    grounded: z.boolean().optional(),
   })
   .strict();
 
@@ -176,6 +184,16 @@ const LessonBlockSchema = z.union([BlockMarkdownSchema, BlockExerciseSchema]);
 const LessonFieldsSchema = z.object({
   concept: IdSchema,
   version: z.number().int().positive(),
+  sources: z
+    .array(
+      z
+        .object({
+          source: IdSchema,
+          section: z.string().optional(),
+        })
+        .strict(),
+    )
+    .optional(),
 });
 
 const LegacyLessonSchema = LessonFieldsSchema.extend({
@@ -253,6 +271,7 @@ export function normalizeLesson(
   return {
     concept: lesson.concept,
     version: lesson.version,
+    sources: lesson.sources,
     where_this_fits: lesson.where_this_fits,
     recap: lesson.recap,
     summary: lesson.summary,
@@ -542,9 +561,27 @@ export const PaperSchema = z
   })
   .strict();
 
+export const SourceIndexEntrySchema = z
+  .object({
+    id: IdSchema,
+    title: z.string().min(1),
+    file: z.string().min(1),
+    kind: z.enum(['pdf', 'notes', 'book', 'paper', 'slides', 'other']).optional(),
+    added: z.iso.date().optional(),
+  })
+  .strict();
+
+export const SourceIndexSchema = z
+  .object({
+    sources: z.array(SourceIndexEntrySchema),
+  })
+  .strict();
+
 export type Curriculum = z.infer<typeof CurriculumSchema>;
 export type Course = z.infer<typeof CourseSchema>;
 export type Concept = z.infer<typeof ConceptSchema>;
+export type SourceIndexEntry = z.infer<typeof SourceIndexEntrySchema>;
+export type SourceIndex = z.infer<typeof SourceIndexSchema>;
 export type NotationRegistry = z.infer<typeof NotationSchema>;
 export type Exercise = z.infer<typeof ExerciseSchema>;
 export type Project = z.infer<typeof ProjectSchema>;

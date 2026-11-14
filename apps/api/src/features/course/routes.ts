@@ -14,6 +14,11 @@ import {
   xpEvents,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
+import {
+  filterMasteryRecordsForContent,
+  filterSchedulerStateForContent,
+  sessionActivityIsInContent,
+} from '../../learning/content-filters.js';
 import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
 import { topicIsComplete } from '../../learning/course-status.js';
 import { deriveLessonState } from '../../learning/lesson-runner.js';
@@ -69,7 +74,7 @@ export function registerLearnCourseRoutes(
     const userId = context.get('userId');
     const timeZone = context.get('timeZone');
     const now = deps.requestNow(context);
-    const [runRows, completedRows, projectRows] = await Promise.all([
+    const [runRowsRaw, completedRowsRaw, projectRowsRaw] = await Promise.all([
       deps.db.select().from(lessonRuns).where(eq(lessonRuns.userId, userId)),
       deps.db
         .select({ activity: sessionActivities })
@@ -81,7 +86,14 @@ export function registerLearnCourseRoutes(
         .from(projectProgress)
         .where(eq(projectProgress.userId, userId)),
     ]);
-    const [mastery, user, events, active, placementRuns, enrollments, completedPlacementRuns] =
+    const runRows = runRowsRaw.filter((run) => index.conceptsById.has(run.conceptId));
+    const completedRows = completedRowsRaw.filter(({ activity }) =>
+      sessionActivityIsInContent(index, activity),
+    );
+    const projectRows = projectRowsRaw.filter((project) =>
+      index.projectsById.has(project.projectId),
+    );
+    const [masteryRows, user, events, active, placementRuns, enrollments, completedPlacementRuns] =
       await Promise.all([
         repo.masteryRecords(),
         repo.user(),
@@ -100,17 +112,21 @@ export function registerLearnCourseRoutes(
             ),
           ),
       ]);
-    const activeCourse = activeCourseFor(index, user?.activeCourseId);
+    const mastery = filterMasteryRecordsForContent(index, masteryRows);
+    const activeCourseId = index.coursesById.has(user?.activeCourseId ?? '')
+      ? (user?.activeCourseId ?? null)
+      : null;
+    const activeCourse = activeCourseFor(index, activeCourseId);
     const startState = buildCourseStartState({
       content: index,
-      activeCourseId: user?.activeCourseId,
+      activeCourseId,
       mastery,
       lessonRuns: runRows,
       enrollments,
       placementRuns,
     });
     const needsChoice = needsCourseChoice({
-      activeCourseId: user?.activeCourseId,
+      activeCourseId,
       mastery,
       lessonRuns: runRows,
     });
@@ -146,16 +162,27 @@ export function registerLearnCourseRoutes(
     };
 
     const activeSession = active ? await repo.session(active.id) : undefined;
-    const activities: Array<ActivityRecord | PlannedActivity> = activeSession
-      ? activeSession.activities.filter(
-          (activity) => activity.status === 'planned' || activity.status === 'in_progress',
-        )
+    const activeActivities =
+      activeSession?.activities.filter(
+        (activity) =>
+          (activity.status === 'planned' || activity.status === 'in_progress') &&
+          sessionActivityIsInContent(index, activity),
+      ) ?? [];
+    const activeSessionId =
+      activeSession && (activeSession.activities.length === 0 || activeActivities.length > 0)
+        ? (active?.id ?? null)
+        : null;
+    const activities: Array<ActivityRecord | PlannedActivity> = activeSessionId
+      ? activeActivities
       : plannedActivities(
-          await repo.schedulerState(now, {
-            mastery,
-            lessonRuns: runRows,
-            projectProgress: projectRows,
-          }),
+          filterSchedulerStateForContent(
+            index,
+            await repo.schedulerState(now, {
+              mastery,
+              lessonRuns: runRows,
+              projectProgress: projectRows,
+            }),
+          ),
           index,
           prefs,
           timeZone,
@@ -204,7 +231,7 @@ export function registerLearnCourseRoutes(
         ...courseFoundationIds(index, activeCourse?.id),
       ]),
     );
-    const eligibleChoices = active
+    const eligibleChoices = activeSessionId
       ? []
       : outlineConceptIds.flatMap((conceptId) => {
           const concept = index.conceptsById.get(conceptId);
@@ -345,7 +372,7 @@ export function registerLearnCourseRoutes(
       tasks,
       choices,
       doneToday,
-      activeSessionId: active?.id ?? null,
+      activeSessionId,
     });
   });
 
@@ -353,11 +380,11 @@ export function registerLearnCourseRoutes(
     const index = await deps.content();
     const repo = deps.withRepo(context);
     const [
-      mastery,
-      activeCourseId,
-      runs,
+      masteryRows,
+      activeCourseIdStored,
+      runsRaw,
       paperRows,
-      projectRows,
+      projectRowsRaw,
       enrollments,
       placementRuns,
       completedPlacementRuns,
@@ -389,8 +416,18 @@ export function registerLearnCourseRoutes(
           ),
         ),
     ]);
+    const mastery = filterMasteryRecordsForContent(index, masteryRows);
+    const activeCourseId = index.coursesById.has(activeCourseIdStored ?? '')
+      ? (activeCourseIdStored ?? null)
+      : null;
+    const runs = runsRaw.filter((run) => index.conceptsById.has(run.conceptId));
+    const projectRows = projectRowsRaw.filter((project) =>
+      index.projectsById.has(project.projectId),
+    );
     const paperStatuses = new Map<string, 'not_started' | 'reading' | 'completed'>(
-      paperRows.map((row) => [row.paperId, row.completedAt ? 'completed' : 'reading'] as const),
+      paperRows
+        .filter((row) => index.papersById.has(row.paperId))
+        .map((row) => [row.paperId, row.completedAt ? 'completed' : 'reading'] as const),
     );
     const projectStatuses = new Map(projectRows.map((row) => [row.projectId, row.status]));
     const startState = buildCourseStartState({

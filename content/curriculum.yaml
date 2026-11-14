@@ -70,6 +70,9 @@ courses:
   - robot-learning
   - maths-for-ml
 default_course: ml-foundations
+subject:
+  title: machine learning, AI and robotics
+  tutor_context: The learner is a strong software engineer working towards understanding and building modern robot-learning systems.
 goals:
   - {
       id: g-training,

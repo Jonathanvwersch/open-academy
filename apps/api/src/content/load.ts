@@ -16,6 +16,7 @@ import {
   normalizeLesson,
   PaperSchema,
   ProjectSchema,
+  SourceIndexSchema,
 } from './schemas.js';
 import type { ContentIndex, ContentIssue, ContentSourceData } from './types.js';
 import { validateContent } from './validate.js';
@@ -79,6 +80,20 @@ export async function loadContent(
       data.curriculum = { value: parsed.data, file: 'curriculum.yaml' };
     } else {
       addZodIssues(issues, 'curriculum.yaml', curriculumRaw, parsed.error);
+    }
+  }
+
+  const sourceIndexRaw = await readYaml(
+    join(root, 'sources', 'index.yaml'),
+    'sources/index.yaml',
+    issues,
+  );
+  if (sourceIndexRaw !== undefined) {
+    const parsed = SourceIndexSchema.safeParse(sourceIndexRaw);
+    if (parsed.success) {
+      data.sourceIndex = { value: parsed.data, file: 'sources/index.yaml' };
+    } else {
+      addZodIssues(issues, 'sources/index.yaml', sourceIndexRaw, parsed.error);
     }
   }
 

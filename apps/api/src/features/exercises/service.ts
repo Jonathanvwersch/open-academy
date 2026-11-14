@@ -193,6 +193,7 @@ export async function postHints(deps: FeatureServices, request: FeatureRequest) 
         page_content: '',
       },
       level === 1 ? 'nudge' : level === 2 ? 'hint' : 'worked_step',
+      index,
     );
     if (generatedHint.status === 'ok' && generatedHint.value) {
       text = generatedHint.value.message_md;

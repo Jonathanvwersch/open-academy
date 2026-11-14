@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { loadContent } from '../../src/content/load.js';
 import { OpenAIProvider } from '../../src/features/tutor/provider.js';
 
 describe('live OpenAI tutor smoke', () => {
@@ -30,6 +31,7 @@ describe('live OpenAI tutor smoke', () => {
           page_content: '',
         },
         'nudge',
+        await loadContent(),
       );
       expect(reply.value.message_md.length).toBeGreaterThan(0);
       expect(reply.value.suggests_review_of).toEqual(expect.any(Array));

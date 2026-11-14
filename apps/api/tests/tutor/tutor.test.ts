@@ -1,15 +1,17 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import type { ContentIndex } from '../../src/content/types.js';
 import type { Database } from '../../src/db/client.js';
 import {
-  buildTutorInput,
+  buildTutorInput as buildTutorInputWithContent,
   createTutorProvider,
   FakeProvider,
-  TUTOR_PROMPT_VERSIONS,
+  tutorPromptVersion,
 } from '../../src/features/tutor/provider.js';
 import {
   RubricJudgementSchema,
   type TutorContext,
+  type TutorLevel,
   TutorReplySchema,
 } from '../../src/features/tutor/schemas.js';
 import { scoreRubric } from '../../src/features/tutor/scoring.js';
@@ -19,6 +21,23 @@ import {
   tutorCallAllowed,
 } from '../../src/features/tutor/service.js';
 import { calculateCredit } from '../../src/learning/mastery.js';
+
+const tutorContent = {
+  curriculum: {
+    subject: {
+      title: 'Fixture subject',
+      tutor_context: 'The learner is working through a fixture course.',
+    },
+  },
+} as unknown as ContentIndex;
+
+function buildTutorInput(
+  context: TutorContext,
+  level: TutorLevel,
+  content: ContentIndex = tutorContent,
+) {
+  return buildTutorInputWithContent(context, level, content);
+}
 
 function testDatabase(dailyCount = 0) {
   let loggedCall: Record<string, unknown> | undefined;
@@ -57,15 +76,30 @@ function tutorContext(overrides: Partial<TutorContext> = {}): TutorContext {
 }
 
 describe('buildTutorInput', () => {
-  it('guides the tutor to keep display math narrow and hashes the current prompt', () => {
+  it('grounds the tutor in the curriculum subject and hashes the rendered prompt', () => {
     const prompt = buildTutorInput(tutorContext(), 'hint')[0]?.content;
     if (!prompt) throw new Error('Missing tutor system prompt');
     expect(prompt).toContain(
+      'You are the Academy tutor: a patient, rigorous teacher of Fixture subject for one adult learner.',
+    );
+    expect(prompt).toContain(
+      'About this learner and subject: The learner is working through a fixture course.',
+    );
+    expect(prompt).toContain(
       'The chat panel is narrow (about 45 characters). Keep each display equation short; split a long one over several lines with `$$\\begin{aligned} … \\\\ … \\end{aligned}$$`, one step per line.',
     );
-    expect(TUTOR_PROMPT_VERSIONS['tutor-system']).toBe(
+    expect(tutorPromptVersion('tutor-system', tutorContent)).toBe(
       createHash('sha256').update(prompt).digest('hex').slice(0, 12),
     );
+  });
+
+  it('uses the generic course subject when no title is configured', () => {
+    const content = {} as ContentIndex;
+    const prompt = buildTutorInput(tutorContext(), 'hint', content)[0]?.content ?? '';
+    expect(prompt).toContain(
+      'You are the Academy tutor: a patient, rigorous teacher of the subject of this course for one adult learner.',
+    );
+    expect(prompt).not.toContain('{{subject}}');
   });
 
   it('tells the tutor to respond honestly to unsubmitted guesses without inventing flaws', () => {
@@ -184,7 +218,7 @@ describe('tutor contracts', () => {
   it('supports a provider error fallback path', async () => {
     const provider = new FakeProvider(undefined, undefined, new Error('offline'));
     const service = new TutorService(testDatabase().db, provider, 'user', 200, 'UTC');
-    await expect(service.respond({} as never, 'hint')).resolves.toMatchObject({
+    await expect(service.respond({} as never, 'hint', tutorContent)).resolves.toMatchObject({
       status: 'fallback',
     });
   });
@@ -197,7 +231,7 @@ describe('tutor contracts', () => {
     const { db, loggedCall } = testDatabase(200);
     const provider = new FakeProvider();
     const service = new TutorService(db, provider, 'user', 200, 'UTC');
-    await expect(service.respond({} as never, 'hint')).resolves.toMatchObject({
+    await expect(service.respond({} as never, 'hint', tutorContent)).resolves.toMatchObject({
       status: 'budget_exceeded',
     });
     expect(loggedCall()).toMatchObject({
@@ -210,10 +244,10 @@ describe('tutor contracts', () => {
   it('logs prompt version and provider metadata on a successful call', async () => {
     const { db, loggedCall } = testDatabase();
     const service = new TutorService(db, new FakeProvider(), 'user', 200, 'UTC');
-    await service.respond({} as never, 'hint');
+    await service.respond({} as never, 'hint', tutorContent);
     expect(loggedCall()).toMatchObject({
       promptId: 'tutor-system',
-      promptVersion: TUTOR_PROMPT_VERSIONS['tutor-system'],
+      promptVersion: tutorPromptVersion('tutor-system', tutorContent),
       provider: 'openai',
       model: 'fake-provider',
       status: 'ok',
@@ -235,7 +269,7 @@ describe('tutor contracts', () => {
       correct: true,
     } as never);
     const service = new TutorService(testDatabase().db, provider, 'user', 200, 'UTC');
-    await expect(service.respond({} as never, 'nudge')).resolves.toMatchObject({
+    await expect(service.respond({} as never, 'nudge', tutorContent)).resolves.toMatchObject({
       status: 'fallback',
     });
   });
@@ -278,7 +312,7 @@ describe('tutor contracts', () => {
 
   it('keeps FakeProvider deterministic for tests', async () => {
     const provider = new FakeProvider();
-    await expect(provider.respond({} as never, 'nudge')).resolves.toMatchObject({
+    await expect(provider.respond({} as never, 'nudge', tutorContent)).resolves.toMatchObject({
       value: { message_md: expect.any(String) },
       usage: null,
     });

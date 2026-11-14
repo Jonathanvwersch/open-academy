@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import OpenAI from 'openai';
 import { zodTextFormat } from 'openai/helpers/zod';
+import type { ContentIndex } from '../../content/types.js';
 import { repositoryPath } from '../../paths.js';
 import {
   type ExplanationContext,
@@ -35,28 +36,37 @@ function readPrompt(id: TutorPromptId): string {
   return prompt;
 }
 
-function promptVersion(id: TutorPromptId): string {
-  return createHash('sha256').update(readPrompt(id)).digest('hex').slice(0, 12);
+export function renderTutorSystemPrompt(content: ContentIndex): string {
+  const curriculum = content.curriculum;
+  const prompt = readPrompt('tutor-system').replaceAll(
+    '{{subject}}',
+    curriculum?.subject?.title ?? 'the subject of this course',
+  );
+  const tutorContext = curriculum?.subject?.tutor_context;
+  return tutorContext
+    ? `${prompt.trimEnd()}\n\nAbout this learner and subject: ${tutorContext}`
+    : prompt;
 }
 
-export const TUTOR_PROMPT_VERSIONS: Record<TutorPromptId, string> = {
-  get 'tutor-system'() {
-    return promptVersion('tutor-system');
-  },
-  get 'rubric-grader'() {
-    return promptVersion('rubric-grader');
-  },
-};
+export function tutorPromptVersion(id: TutorPromptId, content?: ContentIndex): string {
+  const prompt =
+    id === 'tutor-system' && content ? renderTutorSystemPrompt(content) : readPrompt(id);
+  return createHash('sha256').update(prompt).digest('hex').slice(0, 12);
+}
 
 export type TutorInputMessage = {
   role: 'system' | 'user' | 'assistant';
   content: string;
 };
 
-export function buildTutorInput(ctx: TutorContext, level: TutorLevel): TutorInputMessage[] {
+export function buildTutorInput(
+  ctx: TutorContext,
+  level: TutorLevel,
+  content: ContentIndex,
+): TutorInputMessage[] {
   const { history = [], question, ...rest } = ctx;
   return [
-    { role: 'system', content: readPrompt('tutor-system') },
+    { role: 'system', content: renderTutorSystemPrompt(content) },
     ...history.map(
       (message): TutorInputMessage => ({
         role: message.role === 'tutor' ? 'assistant' : 'user',
@@ -88,7 +98,11 @@ export interface TutorResult<Value> {
 
 export interface TutorProvider {
   readonly model: string;
-  respond(ctx: TutorContext, level: TutorLevel): Promise<TutorResult<TutorReply>>;
+  respond(
+    ctx: TutorContext,
+    level: TutorLevel,
+    content: ContentIndex,
+  ): Promise<TutorResult<TutorReply>>;
   gradeExplanation(ctx: ExplanationContext): Promise<TutorResult<RubricJudgement>>;
 }
 
@@ -103,10 +117,14 @@ export class OpenAIProvider implements TutorProvider {
     this.client = client ?? new OpenAI({ apiKey, timeout: 20_000, maxRetries: 0 });
   }
 
-  async respond(ctx: TutorContext, level: TutorLevel): Promise<TutorResult<TutorReply>> {
+  async respond(
+    ctx: TutorContext,
+    level: TutorLevel,
+    content: ContentIndex,
+  ): Promise<TutorResult<TutorReply>> {
     const response = await this.client.responses.parse({
       model: this.model,
-      input: buildTutorInput(ctx, level),
+      input: buildTutorInput(ctx, level, content),
       text: { format: zodTextFormat(TutorReplySchema, 'tutor_reply') },
       max_output_tokens: 900,
     });
@@ -159,7 +177,11 @@ export class FakeProvider implements TutorProvider {
     private readonly failure?: Error,
   ) {}
 
-  async respond(_ctx: TutorContext, _level: TutorLevel): Promise<TutorResult<TutorReply>> {
+  async respond(
+    _ctx: TutorContext,
+    _level: TutorLevel,
+    _content: ContentIndex,
+  ): Promise<TutorResult<TutorReply>> {
     if (this.failure) throw this.failure;
     return { value: TutorReplySchema.parse(this.reply), usage: null };
   }
@@ -173,7 +195,11 @@ export class FakeProvider implements TutorProvider {
 export class E2ETutorProvider implements TutorProvider {
   readonly model = 'academy-e2e';
 
-  async respond(ctx: TutorContext): Promise<TutorResult<TutorReply>> {
+  async respond(
+    ctx: TutorContext,
+    _level: TutorLevel,
+    _content: ContentIndex,
+  ): Promise<TutorResult<TutorReply>> {
     return {
       value: TutorReplySchema.parse({
         message_md: `Tutor reply to: ${ctx.question ?? ''}`,

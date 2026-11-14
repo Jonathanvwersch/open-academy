@@ -1,5 +1,6 @@
 concept: gradient-descent
 version: 2
+sources: [{ source: fixture-notes, section: "Chapter 1" }]
 objective: Practice gradient descent updates.
 where_this_fits: |
   A model can make predictions but still perform poorly, so its parameters need to change to reduce the loss. Randomly adjusting weights gives no reliable direction, while trying every possible setting is impossible for a large model. The gradient tells which way the loss rises most quickly; moving against it makes a small local decrease. Gradient descent turns that signal into a repeatable update, and the learning rate controls how large each step is.

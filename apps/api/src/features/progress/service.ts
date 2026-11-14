@@ -1,5 +1,6 @@
 import { desc, eq } from 'drizzle-orm';
 import { masteryEvents, projectSubmissions, studySessions, xpEvents } from '../../db/schema.js';
+import { filterMasteryRecordsForContent } from '../../learning/content-filters.js';
 import { buildProgress } from '../../learning/progress.js';
 import type { MasteryRecord } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
@@ -30,21 +31,31 @@ export async function getProgress(deps: FeatureServices, request: FeatureRequest
       .from(xpEvents)
       .where(eq(xpEvents.userId, request.userId)),
   ]);
+  const contentAttempts = recent.filter((attempt) => {
+    const exercise = index.exercisesById.get(attempt.exerciseId);
+    return index.conceptsById.has(attempt.conceptId) && exercise?.concept === attempt.conceptId;
+  });
   return serviceResult(
     buildProgress({
       content: index,
-      records,
-      events: events.map((event) => ({
-        ...event,
-        attemptId: event.attemptId ?? undefined,
-        dimension: event.dimension as MasteryRecord['dimension'],
-      })),
-      attempts: recent.map((attempt) => ({
+      records: filterMasteryRecordsForContent(index, records),
+      events: events
+        .filter((event) => index.conceptsById.has(event.conceptId))
+        .map((event) => ({
+          ...event,
+          attemptId: event.attemptId ?? undefined,
+          dimension: event.dimension as MasteryRecord['dimension'],
+        })),
+      attempts: contentAttempts.map((attempt) => ({
         ...attempt,
         dimension: attempt.dimension as MasteryRecord['dimension'],
       })),
-      flags,
-      submissions,
+      flags: flags.filter(
+        (flag) =>
+          index.conceptsById.has(flag.conceptId) &&
+          (!flag.targetPrereqId || index.conceptsById.has(flag.targetPrereqId)),
+      ),
+      submissions: submissions.filter((submission) => index.projectsById.has(submission.projectId)),
       sessions,
       xpEvents: earnedXp,
       now: request.now(),
