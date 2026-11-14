@@ -139,5 +139,5 @@ concepts:
       prereqs: [{ id: autoregressive-lm }],
       objectives:
         [{ text: "Describe the stages of an LLM training pipeline", dimension: conceptual }],
-      status: stub,
+      status: authored,
     }

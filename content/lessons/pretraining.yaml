@@ -1,0 +1,288 @@
+concept: pretraining
+version: 1
+objective: |
+  **Goal:** describe the stages of an LLM training pipeline, from collecting and cleaning text through pretraining to post-training, and estimate what a pretraining run costs and how its loss improves with scale.
+where_this_fits: |
+  ### What is pretraining?
+
+  Pretraining is the first and biggest stage of training a large language model, or LLM. We train the model to predict the next token across an enormous amount of text.
+
+  A token is a short piece of text, such as a word or part of one, and a tokenizer splits text into tokens. A language model predicts each token from the ones before it, $p(x_{t+1}\mid x_1,\dots,x_t)$, and training adds the cross-entropy loss $-\ln p$ of the true next token at every position.
+
+  Text needs no labels, because each next token is its own answer, and predicting it well teaches the model grammar, facts and patterns of reasoning. This lesson follows a model from raw text to an assistant and estimates what pretraining costs.
+knowledge_points:
+  - id: pt-training-data
+    title: "Prepare text for training"
+    explain: |
+      ### Where the text comes from
+
+      To pretrain a model we need far more text than anyone could write for the job. So most of it is gathered from the public web by programs called crawlers, which download pages and follow their links. The Common Crawl archive, a free collection of crawled pages, is a usual starting point, and it's mixed with books, Wikipedia, scientific papers and, in many recent models, computer code. We count dataset sizes in tokens. OpenAI's GPT-3, a large language model from 2020, was trained on 300 billion tokens, and Meta's Llama 3 model on over 15 trillion in 2024.
+
+      ### Cleaning, tokenizing and packing
+
+      Raw web pages are messy, so the text goes through the four stages along the top of the picture. First we **filter** out pages that aren't useful writing, such as spam, menus of links and gibberish. Then we **deduplicate**, which means removing repeated copies. Next the tokenizer turns the text into tokens. Finally we pack the tokens into windows of the same length $T$, so that the computer can process many windows side by side as one block of numbers.
+
+      The picture uses whole words as tokens. Two documents survive cleaning, "the cat sat on the mat" and "a dog ran". We join them into one long stream, with an end-of-text token, written [end], after each document so the model can tell where one stops and the next begins. Then we cut the stream into windows of $T=4$ tokens. A window can hold the end of one document and the start of the next, as window 2 does, and the [end] token between them shows that a new text has begun.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Top: the data stages as four boxes joined by arrows, filter, deduplicate, tokenize and pack into windows. Bottom: two documents, the cat sat on the mat and a dog ran, joined into one stream of 11 tokens, including an end token after each document. The stream is cut into windows of 4 tokens: window 1 is the cat sat on, window 2 is the mat end a, and the last 3 tokens, dog ran end, are left out of this small example">
+      <defs><marker id="pt1-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="10.0" y="20" width="130" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="75.0" y="47" text-anchor="middle">1. Filter</text>
+      <path d="M143.0 42 H170.3" stroke="#737373" stroke-width="2" marker-end="url(#pt1-muted)"/>
+      <rect x="173.3" y="20" width="130" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="238.3" y="47" text-anchor="middle">2. Deduplicate</text>
+      <path d="M306.3 42 H333.7" stroke="#737373" stroke-width="2" marker-end="url(#pt1-muted)"/>
+      <rect x="336.7" y="20" width="130" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="401.7" y="47" text-anchor="middle">3. Tokenize</text>
+      <path d="M469.7 42 H497.0" stroke="#737373" stroke-width="2" marker-end="url(#pt1-muted)"/>
+      <rect x="500.0" y="20" width="130" height="44" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="565.0" y="47" text-anchor="middle">4. Pack windows</text>
+      <text x="23.0" y="136" fill="#737373">one stream of tokens</text>
+      <rect x="25.0" y="150" width="50" height="40" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/><text x="50.0" y="175" text-anchor="middle">the</text>
+      <rect x="79.0" y="150" width="50" height="40" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/><text x="104.0" y="175" text-anchor="middle">cat</text>
+      <rect x="133.0" y="150" width="50" height="40" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/><text x="158.0" y="175" text-anchor="middle">sat</text>
+      <rect x="187.0" y="150" width="50" height="40" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/><text x="212.0" y="175" text-anchor="middle">on</text>
+      <rect x="241.0" y="150" width="50" height="40" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="2"/><text x="266.0" y="175" text-anchor="middle">the</text>
+      <rect x="295.0" y="150" width="50" height="40" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="2"/><text x="320.0" y="175" text-anchor="middle">mat</text>
+      <rect x="349.0" y="150" width="50" height="40" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="2"/><text x="374.0" y="175" text-anchor="middle">[end]</text>
+      <rect x="403.0" y="150" width="50" height="40" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="2"/><text x="428.0" y="175" text-anchor="middle">a</text>
+      <rect x="457.0" y="150" width="50" height="40" rx="6" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="482.0" y="175" text-anchor="middle">dog</text>
+      <rect x="511.0" y="150" width="50" height="40" rx="6" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="536.0" y="175" text-anchor="middle">ran</text>
+      <rect x="565.0" y="150" width="50" height="40" rx="6" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="590.0" y="175" text-anchor="middle">[end]</text>
+      <path d="M27.0 202 V210 H235.0 V202" stroke="#3b82f6" stroke-width="2" fill="#ffffff" fill-opacity="0"/><text x="131.0" y="230" text-anchor="middle" fill="#3b82f6">window 1</text>
+      <path d="M243.0 202 V210 H451.0 V202" stroke="#10b981" stroke-width="2" fill="#ffffff" fill-opacity="0"/><text x="347.0" y="230" text-anchor="middle" fill="#10b981">window 2</text>
+      <path d="M459.0 202 V210 H613.0 V202" stroke="#737373" stroke-width="2" fill="#ffffff" fill-opacity="0"/><text x="536.0" y="230" text-anchor="middle" fill="#737373">left over</text>
+      <text x="320" y="265" text-anchor="middle" fill="#737373">each window of T = 4 tokens gives 3 next-token predictions</text>
+      </g>
+      </svg>
+      ```
+
+      **Pretraining data** is this long stream of cleaned, deduplicated tokens, cut into windows of a fixed length $T$. Each window is trained on its own, like one sequence of tokens in the opening, so its first token has nothing before it to be predicted from. Every later token is predicted from the ones before it, so a window gives $T-1$ predictions.
+
+      Be careful not to think of duplicates as harmless extra data. A model that sees the same passage many times tends to memorise it word for word, and every repeat costs training time without teaching anything new.
+    worked: |
+      Let's count how many predictions a tiny collection gives the model to learn from. It has three documents, "the cat sat on the mat", the same sentence again, and "a dog ran". As in the picture, each word is one token, and we pack the tokens into windows of $T=4$.
+
+      1. **Remove the duplicate.** The second document is an exact copy of the first, so deduplication drops it, leaving two documents.
+
+      2. **Count the tokens.** Each document gives its words plus one [end] token.
+         $$(6+1)+(3+1)=11\text{ tokens}.$$
+
+      3. **Cut the stream into windows.** Each window takes $4$ tokens, so $11$ tokens fill $2$ windows with $3$ tokens left over, too few for a third window, so this small example leaves them out.
+         $$11=2\times4+3.$$
+
+      4. **Count the predictions.** Each window predicts every token after its first one, which is $T-1=3$ tokens.
+         $$2\times3=6\text{ predictions}.$$
+
+      Without deduplication the stream would have $18=4\times4+2$ tokens and give $4\times3=12$ predictions, but the repeated cat sentence adds no new text while still costing training time.
+    problems:
+      - pt-training-data-basics
+      - ptp-data-self-explain
+      - ptp-token-count-unit
+      - ptp-dedupe-why
+      - ptp-window-predictions-template
+      - ptp-stream-windows-template
+      - ptp-end-token
+      - ptp-filter-spam
+      - ptp-robot-logs
+  - id: pt-training-compute
+    title: "Estimate the cost of a training run"
+    explain: |
+      ### Counting operations
+
+      Once we have the data, how much computing does training take? We measure it in **floating-point operations**, or FLOPs. Floating-point numbers are numbers with a decimal point, the kind the weights are stored as, and one FLOP is a single addition or multiplication of two of them.
+
+      Almost every parameter is a weight in some matrix, and in the matrices lesson we saw that multiplying a matrix by a vector multiplies each weight by one number and adds the product to a running total. That's two FLOPs per weight, so the forward pass costs about $2$ FLOPs per parameter for each token.
+
+      Training also needs the slope of the loss for every weight. The model finds them working backwards, one layer at a time. At each weight it does two multiply-and-add steps. One gives that weight's slope, and the other passes a slope back so the layer before can find its own. That's about $4$ more FLOPs, for $6$ in all.
+
+      ### The compute formula
+
+      So the **training compute** of a run, the total number of FLOPs it takes, is approximately
+
+      $$C\approx6PD,$$
+
+      where $P$ is the number of parameters, $D$ is the number of training tokens, and $6$ is the FLOPs per parameter per token. The formula leaves out the work attention does comparing tokens with each other, which grows with the window length and is small next to the weight multiplications unless windows are very long.
+
+      The numbers get big, so we write them with powers of ten. $10^6$ is a $1$ followed by six zeros, a million, and the raised $6$ is called the exponent. A small model with $P=10^6$ parameters trained on $D=2\times10^7$ tokens needs $1.2\times10^{14}$ FLOPs. GPT-3, with $175$ billion parameters trained on $300$ billion tokens, needs about $3.15\times10^{23}$ FLOPs.
+
+      ### What that means in time
+
+      Training runs on GPUs, the chips built to do many multiplications at once. Suppose one GPU can do $10^{14}$ FLOPs every second. The small model then trains in about a second, but GPT-3 would take about $100$ years, which is why large runs share the work across thousands of GPUs.
+
+      Be careful not to read compute as model size. If we double the training tokens, the compute doubles, even though the model stays the same size.
+    worked: |
+      Let's work out the compute and training time of the two runs in the explanation, using $C\approx6PD$ and a GPU that can do $10^{14}$ FLOPs per second.
+
+      1. **Find the cost of one token for the small model.** Each of its $P=10^6$ parameters costs $6$ FLOPs per token, $2$ for the forward pass and $4$ for the slopes.
+         $$6P=6\times10^6\text{ FLOPs per token}.$$
+
+      2. **Multiply by the number of tokens.** It trains on $D=2\times10^7$ tokens. We multiply the plain numbers, $6\times2=12$, and add the exponents, $6+7=13$. Moving the decimal point one place left and adding $1$ to the exponent writes the answer in the usual form.
+         $$C=6\times10^6\times2\times10^7=12\times10^{13}=1.2\times10^{14}.$$
+
+      3. **Turn FLOPs into seconds.** Dividing by the GPU's speed gives the time.
+         $$\frac{1.2\times10^{14}}{10^{14}}=1.2\text{ seconds}.$$
+
+      4. **Do the same for GPT-3.** Now $P=1.75\times10^{11}$ and $D=3\times10^{11}$.
+         $$C=6\times1.75\times10^{11}\times3\times10^{11}=31.5\times10^{22}=3.15\times10^{23}.$$
+
+      5. **Turn that into years.** It takes $3.15\times10^{23}/10^{14}=3.15\times10^9$ seconds, and a year has about $3.15\times10^7$ seconds.
+         $$\frac{3.15\times10^{9}}{3.15\times10^{7}}=100\text{ years}.$$
+
+      The same formula covers both runs. Only $P$ and $D$ change, and together they decide whether training takes a second or a century on one GPU.
+    problems:
+      - pt-training-compute-basics
+      - ptp-compute-self-explain
+      - ptp-double-tokens
+      - ptp-compute-template
+      - ptp-forward-only
+      - ptp-gpu-days-template
+      - ptp-compare-runs
+      - ptp-robot-compute
+  - id: pt-scaling-laws
+    title: "Predict the loss of a bigger training run"
+    explain: |
+      ### Loss against compute
+
+      What does more compute buy, and can we know before paying for it?
+
+      In 2020, Kaplan and colleagues at OpenAI found a simple pattern across many language models. As long as neither the model's size nor its data holds it back, the loss on test text the model never trained on falls smoothly as compute grows. Every tenfold increase in compute multiplies the loss by about the same factor. The picture starts from a run with a loss of $4$, measures compute in multiples of that run, and uses a factor of $0.9$, close to what they measured. So three tenfold steps take it to $3.6$, then $3.24$, then $2.916$, about $2.92$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 320" aria-label="Loss against training compute on logarithmic axes, with each compute tick ten times the one before. Four green points, at compute 1, 10, 100 and 1000 times the first run, have losses 4, 3.6, 3.24 and 2.92. They lie on one straight line, because each tenfold step multiplies the loss by 0.9">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M90 20 V260 H620" stroke="#737373" fill="#ffffff" fill-opacity="0"/>
+      <path d="M110.00 65.27 L590.00 228.98" stroke="#10b981" stroke-width="2" stroke-dasharray="6 5"/>
+      <circle cx="110.00" cy="65.27" r="5" fill="#10b981"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="110.00" y="51.27" text-anchor="middle">4</text>
+      <path d="M110.00 260 v6" stroke="#737373"/><text x="110.00" y="284" text-anchor="middle" fill="#737373">1</text>
+      <circle cx="270.00" cy="119.84" r="5" fill="#10b981"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="270.00" y="105.84" text-anchor="middle">3.6</text>
+      <path d="M270.00 260 v6" stroke="#737373"/><text x="270.00" y="284" text-anchor="middle" fill="#737373">10</text>
+      <circle cx="430.00" cy="174.41" r="5" fill="#10b981"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="430.00" y="160.41" text-anchor="middle">3.24</text>
+      <path d="M430.00 260 v6" stroke="#737373"/><text x="430.00" y="284" text-anchor="middle" fill="#737373">100</text>
+      <circle cx="590.00" cy="228.98" r="5" fill="#10b981"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="590.00" y="214.98" text-anchor="middle">2.92</text>
+      <path d="M590.00 260 v6" stroke="#737373"/><text x="590.00" y="284" text-anchor="middle" fill="#737373">1000</text>
+      <text x="350" y="310" text-anchor="middle" fill="#737373">training compute (each tick ten times the last)</text>
+      <text x="90" y="12" fill="#737373">loss</text>
+      </g>
+      </svg>
+      ```
+
+      On these axes, each tenfold step in compute moves the same distance right. The loss axis is spaced so that each multiplication by $0.9$ moves the same distance down, so the points lie on a straight line. The actual drops shrink, $0.4$, then $0.36$, then about $0.32$, so improvements keep getting more expensive.
+
+      ### Scaling laws
+
+      A **scaling law** is a formula that predicts a model's loss from the compute, parameters or data used to train it. The one in the picture is
+
+      $$L=L_0\times0.9^{k},$$
+
+      where $L_0$ is the loss of a starting run and $k$ is how many tenfold steps of compute we add. Scaling laws are useful for planning. A lab can train a few small models, draw a line through their points, and extend it to predict the loss of a far bigger run.
+
+      ### Splitting the budget
+
+      For a fixed budget $C\approx6PD$, should we build a bigger model or train it on more tokens? In 2022, Hoffmann and colleagues at DeepMind found that at any budget the lowest loss comes at about $20$ training tokens per parameter. Their Chinchilla model had $70$ billion parameters and $1.4$ trillion tokens. It beat their earlier $280$-billion-parameter Gopher model on most tests, using about the same compute.
+
+      Scaling laws predict only the loss, though. Which skills a model will have at a given loss is much harder to forecast. Many recent models are trained far past $20$ tokens per parameter, because a smaller model needs fewer FLOPs every time it answers a user.
+    worked: |
+      Let's plan a run with a budget of $C=1.2\times10^{16}$ FLOPs, splitting it at $20$ tokens per parameter.
+
+      1. **Write the tokens in terms of the parameters.** Twenty tokens per parameter means
+         $$D=20P.$$
+
+      2. **Put that into the compute formula.** The budget becomes a formula in $P$ alone.
+         $$C=6P\times20P=120P^2.$$
+
+      3. **Solve for the parameters.** We divide the budget by $120$. Since $1.2/120=10^{-2}$, this gives $10^{-2}\times10^{16}=10^{14}$. The square root halves the exponent, because $10^7\times10^7=10^{14}$.
+         $$P^2=\frac{1.2\times10^{16}}{120}=10^{14},\qquad P=10^7.$$
+
+      4. **Find the tokens.** Each parameter gets $20$ tokens.
+         $$D=20\times10^7=2\times10^8.$$
+
+      5. **Predict the loss.** Suppose the team first trained a few small runs and measured the same factor $0.9$ as the picture. The smallest used $1.2\times10^{14}$ FLOPs, like the small model in the compute step, and reached a loss of $4$. Our budget is $100$ times bigger, two tenfold steps, so
+         $$L=4\times0.9^2=3.24.$$
+
+      So the budget buys a model with ten million parameters trained on two hundred million tokens, and the scaling law tells us roughly what loss to expect before we start.
+    problems:
+      - pt-scaling-laws-basics
+      - ptp-scaling-self-explain
+      - ptp-smaller-drops
+      - ptp-scaling-template
+      - ptp-tokens-per-param-template
+      - ptp-straight-line
+      - ptp-budget-split-template
+      - ptp-why-overtrain
+      - ptp-scaling-limits
+  - id: pt-training-pipeline
+    title: "Follow a model from raw text to assistant"
+    explain: |
+      ### From raw text to an assistant
+
+      So far we've looked at pretraining itself. It is one stage of a longer pipeline that ends with an assistant, so let's follow a model through the whole pipeline, from left to right in the picture.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="The LLM training pipeline from left to right: text data, then a tokenizer, then pretraining, which gives a base model that continues text, then post-training, which gives an assistant. A bar underneath pretraining and post-training, labelled evaluate on unseen tests, shows the model being tested throughout both">
+      <defs><marker id="pt3-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="10.0" y="30" width="120" height="54" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="70.0" y="62" text-anchor="middle">Text data</text>
+      <path d="M133.0 57 H173.7" stroke="#737373" stroke-width="2" marker-end="url(#pt3-muted)"/>
+      <rect x="176.7" y="30" width="120" height="54" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="236.7" y="62" text-anchor="middle">Tokenizer</text>
+      <path d="M299.7 57 H340.3" stroke="#737373" stroke-width="2" marker-end="url(#pt3-muted)"/>
+      <rect x="343.3" y="30" width="120" height="54" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/><text x="403.3" y="54" text-anchor="middle">Pretraining</text>
+      <text x="403.3" y="73" text-anchor="middle" font-size="13" fill="#737373">most compute</text>
+      <path d="M466.3 57 H507.0" stroke="#737373" stroke-width="2" marker-end="url(#pt3-muted)"/>
+      <rect x="510.0" y="30" width="120" height="54" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/><text x="570.0" y="48" text-anchor="middle">Post-training</text>
+      <text x="570.0" y="64" text-anchor="middle" font-size="13" fill="#737373"><tspan x="570.0">usually far less </tspan><tspan x="570.0" y="78">compute</tspan></text>
+      <text x="403.3" y="110" text-anchor="middle">gives a base model</text><text x="403.3" y="128" text-anchor="middle" fill="#737373">that continues text</text>
+      <text x="570.0" y="110" text-anchor="middle">gives an assistant</text><text x="570.0" y="128" text-anchor="middle" fill="#737373">that answers</text>
+      <rect x="343.3" y="160" width="286.7" height="36" rx="8" fill="#ffffff" stroke="#10b981" stroke-width="2"/><text x="486.7" y="183" text-anchor="middle" fill="#171717">evaluate on unseen tests</text>
+      </g>
+      </svg>
+      ```
+
+      First comes the text data, filtered and deduplicated as we saw earlier. Next the tokenizer turns the text into tokens, which are packed into windows as in the first step. It gets its own box because the same tokenizer is used whenever the finished model reads or writes text. Then the pretraining run trains the model on those tokens, often for weeks. During the run, the team training it watches the loss fall and regularly saves **checkpoints**, copies of all the weights, so that if one of thousands of GPUs fails, training can resume from the last checkpoint.
+
+      ### What pretraining produces
+
+      The result is a **base model**, a model that has learned to continue text. Be careful not to expect a base model to answer questions. Given "What is the capital of France?", it may well continue with another quiz question, because on the web a question like that is often followed by more questions.
+
+      ### Post-training
+
+      Turning a base model into a helpful assistant is the job of **post-training**. It usually starts with supervised fine-tuning, training on examples of the answers we want. The model is trained in the same way, on next-token prediction, but on a much smaller set of example conversations that show good answers. It often goes on to methods that learn from people's preferences between two answers, or from problems whose answers can be checked. Later lessons cover each of these.
+
+      Post-training sees far less text than pretraining, so most of what the model knows comes from pretraining. Post-training mostly changes how the model responds. Throughout pretraining and post-training, the team **evaluates** the model on tests it never trained on, to pick the best checkpoint and catch problems early.
+
+      So the **LLM training pipeline** is the sequence of data, tokenizer, pretraining and post-training, with evaluation running alongside.
+    worked: |
+      Let's compare the compute of pretraining and supervised fine-tuning for one model with $P=10^9$ parameters, using $C\approx6PD$.
+
+      1. **Pick the pretraining tokens.** Aiming for the lowest loss, we use the Chinchilla ratio of $20$ tokens per parameter, so pretraining uses
+         $$D_{\text{pre}}=20\times10^9=2\times10^{10}\text{ tokens}.$$
+
+      2. **Count the fine-tuning tokens.** Suppose we fine-tune on $10^4$ example conversations of $500$ tokens each.
+         $$D_{\text{fine}}=10^4\times500=5\times10^6\text{ tokens}.$$
+
+      3. **Find each stage's compute.** Both stages train the same model, so each costs $6P$ FLOPs per token. Fine-tuning costs $C_{\text{fine}}=6\times10^9\times5\times10^6=3\times10^{16}$ FLOPs, and pretraining costs
+         $$C_{\text{pre}}=6\times10^9\times2\times10^{10}=1.2\times10^{20}.$$
+
+      4. **Compare them.** Dividing one by the other, the $6P$ cancels, so the ratio is just the ratio of tokens.
+         $$\frac{C_{\text{pre}}}{C_{\text{fine}}}=\frac{2\times10^{10}}{5\times10^6}=4000.$$
+
+      With these numbers, pretraining sees $4000$ times as much text as fine-tuning, and costs $4000$ times as much compute, which is why almost all the compute of training an LLM goes into pretraining.
+    problems:
+      - pt-training-pipeline-basics
+      - ptp-pipeline-self-explain
+      - ptp-base-model
+      - ptp-checkpoints
+      - ptp-fine-tune-ratio-template
+      - ptp-which-stage
+      - ptp-test-leak
+      - ptp-robot-pipeline
+final: pt-explain-pipeline
+summary: |
+  - Pretraining trains a language model to predict the next token over a huge stream of web text, books and code that has been filtered, deduplicated, tokenized and cut into windows of $T$ tokens, each giving $T-1$ predictions.
+  - Training a model with $P$ parameters on $D$ tokens takes about $C\approx6PD$ FLOPs, $2$ per parameter per token for the forward pass and about $4$ more for the slopes.
+  - Scaling laws find that the loss falls smoothly with compute, by about the same factor for every tenfold increase, and a fixed budget gives the lowest loss at roughly $20$ tokens per parameter.
+  - The LLM training pipeline runs data, tokenizer, pretraining and post-training, with evaluation alongside. Pretraining gives a base model that continues text, and post-training turns it into an assistant.
+
+  **Next:** The supervised fine-tuning lesson takes a pretrained base model and trains it on example conversations so that it answers questions and follows instructions.
