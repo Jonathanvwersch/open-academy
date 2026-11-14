@@ -10,7 +10,7 @@ concepts:
       dimensions: [conceptual],
       prereqs: [],
       objectives: [{ text: "Explain how BPE builds a vocabulary", dimension: conceptual }],
-      status: stub,
+      status: authored,
     }
   - {
       id: embeddings,

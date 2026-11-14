@@ -34,3 +34,666 @@ exercises:
           category: incorrect_reasoning,
         }
     solution: "Word-level vocabularies explode in size and still fail on unseen words; character-level sequences are very long. Subword schemes such as BPE start from bytes/characters and merge frequent pairs, so frequent words become single tokens and anything else decomposes into pieces."
+  - id: tok-ids-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is a token id?
+    options:
+      - id: a
+        text: A number that measures how important a token is in its sentence.
+        correct: false
+        category: misunderstood_definition
+        feedback: An id says nothing about importance. It only says which entry of the vocabulary the token is.
+      - id: b
+        text: The position of a token in the tokenizer's fixed vocabulary list.
+        correct: true
+        feedback: Each token in the vocabulary has one position, and that position is its id.
+      - id: c
+        text: The number of times a token appears in the text being encoded.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is a count. A token gets the same id however often it appears.
+      - id: d
+        text: The position of a token in the sentence, counting from the first word.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is where the token sits in the sentence. Its id comes from the vocabulary, so repeated tokens share an id.
+    solution: A token id is the token's position in the vocabulary, the fixed list of every token the tokenizer knows. The same token always gets the same id, wherever it appears.
+  - id: tok-ids-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, "the mat sat on the cat" becomes $(0,4,2,3,0,1)$. Why do both copies of "the" get the id $0$?
+    options:
+      - id: a
+        text: An id is the token's place in the vocabulary, and "the" is entry $0$ there.
+        correct: true
+        feedback: The id comes from looking the token up, so the same token always gets the same id.
+      - id: b
+        text: Both copies of "the" are at the start of a phrase in the sentence.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The id doesn't depend on where the token sits in the sentence. "the" is also id $0$ in the middle of a sentence.
+      - id: c
+        text: Repeated tokens are set to $0$ so that the model can skip them.
+        correct: false
+        category: misunderstood_definition
+        feedback: Nothing is skipped. "the" is $0$ because it is the first entry of the vocabulary.
+      - id: d
+        text: The id counts how many tokens came before it in the sentence.
+        correct: false
+        category: misunderstood_definition
+        feedback: Then the second "the" would get $4$. The id is a position in the vocabulary.
+    solution: Each token is replaced by its position in the vocabulary, and "the" is entry $0$. Looking up the same token always gives the same id, so both copies are $0$.
+  - id: tok-ids-encode
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'A word tokenizer has the vocabulary $0$ a, $1$ dog, $2$ ran, $3$ the. What ids does it give the sentence "the dog ran"?'
+    options:
+      - id: a
+        text: $(3,1,2)$
+        correct: true
+        feedback: '"the" is entry $3$, "dog" is entry $1$ and "ran" is entry $2$.'
+      - id: b
+        text: $(0,1,2)$
+        correct: false
+        category: misunderstood_definition
+        feedback: That numbers the words by their place in the sentence. Each id comes from the vocabulary instead.
+      - id: c
+        text: $(1,2,3)$
+        correct: false
+        category: misunderstood_definition
+        feedback: That counts the words from $1$. Look each word up in the vocabulary.
+      - id: d
+        text: $(3,2,1)$
+        correct: false
+        category: recall_failure
+        feedback: The ids stay in the same order as the words, so "dog" comes before "ran".
+    solution: Encoding replaces each token with its place in the vocabulary, keeping the sentence's order. "the" is $3$, "dog" is $1$ and "ran" is $2$, giving $(3,1,2)$.
+  - id: tok-ids-decode
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A word tokenizer has the vocabulary $0$ a, $1$ dog, $2$ ran, $3$ the. Which text do the ids $(0,1,2)$ decode to?"
+    options:
+      - id: a
+        text: '"the dog ran"'
+        correct: false
+        category: recall_failure
+        feedback: '"the" would be id $3$. Id $0$ is "a".'
+      - id: b
+        text: '"a dog ran"'
+        correct: true
+        feedback: Ids $0$, $1$ and $2$ are "a", "dog" and "ran".
+      - id: c
+        text: '"ran dog a"'
+        correct: false
+        category: incorrect_reasoning
+        feedback: Decoding keeps the order of the ids, so the first id gives the first word.
+      - id: d
+        text: '"a dog ran the"'
+        correct: false
+        category: incorrect_reasoning
+        feedback: Three ids decode to three tokens, so no fourth word appears.
+    solution: Decoding looks up the token at each id, in order. Ids $0$, $1$ and $2$ are "a", "dog" and "ran", so the text is "a dog ran".
+  - id: tok-ids-char-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A sentence has ${{=w}}$ words of $3$ letters each, with a single space between neighbouring words and no other characters. A character tokenizer makes every character a token, spaces included. How many tokens $T$ does the sentence become?
+    params:
+      w:
+        min: 3
+        max: 9
+    answer_expr: 4 * w - 1
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 3 * w
+        category: incomplete_explanation
+        feedback: That counts only the letters. Each space is a character too, so it is a token.
+      - answer_expr: 4 * w
+        category: math_error
+        feedback: There is one space between each pair of neighbouring words, so ${{=w}}$ words have ${{=w-1}}$ spaces.
+      - answer_expr: w
+        category: misunderstood_definition
+        feedback: That is the number of tokens with one token per word. Here every character is a token.
+    solution: The letters give $3\times{{=w}}={{=3*w}}$ tokens and the ${{=w-1}}$ spaces give ${{=w-1}}$ more, so $T={{=3*w}}+{{=w-1}}={{=4*w-1}}$.
+  - id: tok-ids-locker
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In a word tokenizer's vocabulary, "red" has id $3$ and "blue" has id $4$. What does that tell you about the two words?
+    options:
+      - id: a
+        text: They are close in meaning, because their ids are next to each other.
+        correct: false
+        category: misunderstood_definition
+        feedback: Ids are labels. Neighbouring ids say nothing about meaning, which the model learns in training.
+      - id: b
+        text: '"blue" matters more to the model, because its id is larger.'
+        correct: false
+        category: misunderstood_definition
+        feedback: A larger id isn't "more" of anything. It is just a later position in the list.
+      - id: c
+        text: Only which entries of the vocabulary list the two words are.
+        correct: true
+        feedback: An id is a position in the list, like a number on a locker, and nothing more.
+      - id: d
+        text: '"blue" appears exactly one time more often than "red" in text.'
+        correct: false
+        category: misunderstood_definition
+        feedback: Ids don't count anything. Each token simply has one position in the vocabulary.
+    solution: A token id is only the token's position in the vocabulary. It carries no meaning or size, so the model has to learn what each token means during training.
+  - id: tok-ids-unknown
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A word tokenizer has the vocabulary $0$ the, $1$ cat, $2$ sat, $3$ on, $4$ mat, and $5$ for any unknown word. What happens when it encodes "the cats sat"?'
+    options:
+      - id: a
+        text: It gives $(0,1,2)$, because "cats" is close enough to "cat".
+        correct: false
+        category: incorrect_reasoning
+        feedback: A word tokenizer matches whole words exactly, so "cats" doesn't match "cat".
+      - id: b
+        text: It gives $(0,6,2)$, adding "cats" to the vocabulary as id $6$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The vocabulary is fixed once it is built, so the tokenizer can't add new words while encoding.
+      - id: c
+        text: It gives $(0,5,2)$, so "cats" becomes the unknown-word id and the word itself is lost.
+        correct: true
+        feedback: The vocabulary has no entry for "cats", so it gets the unknown-word id. Losing unseen words is the main weakness of word tokens.
+      - id: d
+        text: It gives $(0,2)$, leaving out "cats" without changing anything else.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Dropping words would change the text. "cats" gets the unknown-word id $5$ instead.
+    solution: A word tokenizer only has ids for the words in its fixed vocabulary. "cats" isn't one of them, so it gets the unknown-word id $5$, giving $(0,5,2)$. Decoding these ids can't bring back "cats".
+  - id: tok-ids-robot
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A robot reads typed commands. Its word tokenizer's vocabulary holds every word in its manual, "mug" isn't in the manual, so in "grab the mug" the tokenizer turns it into the unknown-word id and the robot never sees which word it was. An engineer switches to one token per character. What changes?
+    options:
+      - id: a
+        text: Nothing, because "mug" is still missing from the manual.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A character tokenizer only needs the letters m, u and g, so the word itself doesn't have to be in any list.
+      - id: b
+        text: '"mug" can now be encoded, but every command becomes many more tokens.'
+        correct: true
+        feedback: Characters can spell any word made from them, at the cost of one token per character.
+      - id: c
+        text: Commands become shorter, because characters are smaller than words.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Smaller pieces mean more of them, so each command takes more tokens.
+      - id: d
+        text: The vocabulary grows larger, because it now needs every possible word.
+        correct: false
+        category: misunderstood_definition
+        feedback: A character vocabulary only lists characters, so it is much smaller than a word vocabulary.
+    solution: With one token per character, any word made from known characters can be encoded, so "mug" works. But "grab the mug" becomes $12$ tokens, spaces included, instead of $3$.
+  - id: tok-bpe-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does each merge of byte-pair encoding add to the vocabulary?
+    options:
+      - id: a
+        text: The single character that appears most often in the training text.
+        correct: false
+        category: misunderstood_definition
+        feedback: Single characters are already in the starting vocabulary. Each merge joins a pair.
+      - id: b
+        text: Every whole word that appears in the training text at least twice.
+        correct: false
+        category: misunderstood_definition
+        feedback: BPE grows tokens one join at a time, and adds exactly one token per merge.
+      - id: c
+        text: The most frequent pair of neighbouring tokens, joined into one token.
+        correct: true
+        feedback: Each round counts neighbouring pairs and joins the most frequent one into a new token.
+      - id: d
+        text: The pair of tokens that appears least often in the training text.
+        correct: false
+        category: recall_failure
+        feedback: BPE joins the most frequent pair, so that common pieces become single tokens.
+    solution: Each merge counts every pair of neighbouring tokens in the training text and adds the most frequent pair, joined together, as one new token.
+  - id: tok-bpe-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In the worked example, after merge 2 has made th, why is the pair h e no longer counted?
+    options:
+      - id: a
+        text: The h in each "the" is now inside the token th, so it doesn't stand next to e.
+        correct: true
+        feedback: Counting uses the current tokens, and h is now part of th, so the pair is th e.
+      - id: b
+        text: The pair h e was already merged earlier, so it is skipped.
+        correct: false
+        category: recall_failure
+        feedback: h e was never merged. The merges so far were a + t and t + h.
+      - id: c
+        text: Pairs that lost a tie can never be merged later.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Losing a tie doesn't ban a pair. h e disappears because its h became part of th.
+      - id: d
+        text: BPE only counts pairs that begin with the letter t.
+        correct: false
+        category: misunderstood_definition
+        feedback: Every pair of neighbouring tokens is counted, such as o n and c at.
+    solution: Each round counts pairs of the current tokens. After merge 2, each "the" is th e, so its h is part of th and the pair h e is gone; th e appears twice and is merged next.
+  - id: tok-bpe-first-merge
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: 'A BPE tokenizer is trained on the text "sea see seen", splitting at the spaces first. Which pair does its first merge join?'
+    options:
+      - id: a
+        text: s + e
+        correct: true
+        feedback: s e appears $3$ times, once in each word, more than any other pair.
+      - id: b
+        text: e + e
+        correct: false
+        category: math_error
+        feedback: e e appears only $2$ times, in "see" and "seen".
+      - id: c
+        text: e + n
+        correct: false
+        category: math_error
+        feedback: e n appears only once, in "seen".
+      - id: d
+        text: a + s
+        correct: false
+        category: misapplied_technique
+        feedback: Merges stay inside a word, so the a ending "sea" never pairs with the s starting "see".
+    solution: The pairs are s e $3$ times, e e $2$ times, and e a and e n once each. The most frequent is s e, so the first merge joins s and e.
+  - id: tok-bpe-vocab-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A BPE tokenizer starts from ${{=c}}$ single characters and learns ${{=k}}$ merges. How many tokens $N$ are in its vocabulary?
+    params:
+      c:
+        min: 20
+        max: 80
+        step: 2
+      k:
+        min: 100
+        max: 2000
+        step: 100
+    answer_expr: c + k
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: k
+        category: incomplete_explanation
+        feedback: The starting characters stay in the vocabulary, so add them to the merged tokens.
+      - answer_expr: 2 * k + c
+        category: misunderstood_definition
+        feedback: A merge joins two tokens but adds only one new token; the two it joined stay in the vocabulary.
+    solution: Each merge adds exactly one token and the starting characters stay, so $N={{=c}}+{{=k}}={{=c+k}}$.
+  - id: tok-bpe-shorten-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A BPE training text is ${{=L}}$ tokens long. The most frequent pair of neighbouring tokens appears in ${{=n}}$ places, and no two of those places share a token. How many tokens long is the text after this pair is merged?
+    params:
+      L:
+        min: 200
+        max: 500
+        step: 10
+      n:
+        min: 10
+        max: 40
+    answer_expr: L - n
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: L - 2 * n
+        category: math_error
+        feedback: Each merge turns two tokens into one, so each place loses one token, not two.
+      - answer_expr: L - 1
+        category: misunderstood_definition
+        feedback: The merge happens everywhere the pair appears, not just once.
+      - answer_expr: L + 1
+        category: misunderstood_definition
+        feedback: The vocabulary grows by one token, but the text gets shorter.
+    solution: Each of the ${{=n}}$ places turns two tokens into one, so it loses one token. The text becomes ${{=L}}-{{=n}}={{=L-n}}$ tokens long.
+  - id: tok-bpe-letters
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In the training text "the cat sat on the mat", the letter t appears $5$ times, more than any other letter. Why does BPE's first merge join a + t rather than doing something with t alone?
+    options:
+      - id: a
+        text: BPE counts pairs of neighbours, and a followed by t is the most frequent pair.
+        correct: true
+        feedback: A new token must be two pieces that actually occur together, and a t occurs $3$ times.
+      - id: b
+        text: BPE always starts with vowels, and a is the first vowel in the text.
+        correct: false
+        category: misunderstood_definition
+        feedback: BPE has no rule about vowels. It joins whichever neighbouring pair is most frequent.
+      - id: c
+        text: The letter t is already in the vocabulary, so BPE has to choose a different letter.
+        correct: false
+        category: incorrect_reasoning
+        feedback: All the single letters are in the starting vocabulary. Each merge adds one new token made of two neighbouring tokens joined together.
+      - id: d
+        text: BPE picks the pair whose letters come earliest in the alphabet.
+        correct: false
+        category: misunderstood_definition
+        feedback: The alphabet plays no part. Only how often the pair appears matters.
+    solution: Every single letter is already a token, so BPE counts pairs of neighbouring tokens. a t appears $3$ times, in cat, sat and mat, which is more than any other pair.
+  - id: tok-bpe-gpt2
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: GPT-2's tokenizer starts from the $256$ possible bytes, learns $50{,}000$ merges, and adds $1$ special token that marks the end of a text. How many tokens are in its vocabulary?
+    answer: 50257
+    tolerance:
+      abs: 0.5
+    common_wrong:
+      - answer: 50256
+        category: incomplete_explanation
+        feedback: Don't forget the special end-of-text token.
+      - answer: 50000
+        category: incomplete_explanation
+        feedback: The starting bytes stay in the vocabulary alongside the merged tokens.
+      - answer: 50001
+        category: incomplete_explanation
+        feedback: The $256$ starting bytes are tokens too.
+    solution: Each merge adds one token, so the vocabulary is the starting bytes plus the merges plus the special token, $256+50{,}000+1=50{,}257$.
+  - id: tok-bpe-two-merges
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A BPE tokenizer is trained on the text "to too toot", splitting at the spaces first, so the text starts as $9$ single-letter tokens. After two merges, how many tokens long is the training text?
+    answer: 4
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 6
+        category: incomplete_explanation
+        feedback: That is the length after only the first merge, t + o. Count the pairs again for the second.
+      - answer: 3
+        category: incorrect_reasoning
+        feedback: '"toot" can''t become one token in two merges. After to + o, it is too t.'
+    solution: "The pairs are t o $3$ times, o o twice and o t once, so merge 1 joins t + o: to, to o, to o t, which is $6$ tokens. Now to o appears twice and o t once, so merge 2 joins to + o: to, too, too t, which is $4$ tokens."
+  - id: tok-enc-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: How does a trained BPE tokenizer split a word it never saw during training?
+    options:
+      - id: a
+        text: It counts the pairs in the new word and joins whichever is most frequent.
+        correct: false
+        category: misapplied_technique
+        feedback: Counting happens only in training. A trained tokenizer applies the merges it already learned.
+      - id: b
+        text: It starts from single characters and applies its learned merges in order.
+        correct: true
+        feedback: Applying the same merges in the same order gives every text a fixed split.
+      - id: c
+        text: It adds the whole new word to its vocabulary as one new token.
+        correct: false
+        category: misunderstood_definition
+        feedback: The vocabulary is fixed after training, so a new word is built from existing tokens.
+      - id: d
+        text: It can't split the word, so it leaves the word out of the text.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That is the weakness of word tokens. BPE can always fall back on smaller pieces.
+    solution: A trained BPE tokenizer splits the word into single characters, then applies its learned merges one at a time in the order they were learned. The vocabulary and merges don't change.
+  - id: tok-enc-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In the worked example, "cats" becomes the three tokens c, at and s. Why isn't it split as cat and s?
+    options:
+      - id: a
+        text: No learned merge joins c with at, so c and at stay separate tokens.
+        correct: true
+        feedback: Only the three learned merges are applied, and none of them is c + at.
+      - id: b
+        text: '"cat" was split up so that "cats" would have the same number of tokens as letters.'
+        correct: false
+        category: incorrect_reasoning
+        feedback: '"cats" has $4$ letters but $3$ tokens. The split comes from the learned merges.'
+      - id: c
+        text: The tokenizer counted the pairs in "cats" and found c at only once.
+        correct: false
+        category: misapplied_technique
+        feedback: Pairs are counted only in training. New text just has the learned merges applied.
+      - id: d
+        text: A tokenizer never puts more than two letters into one token.
+        correct: false
+        category: misunderstood_definition
+        feedback: '"the" has three letters and is one token, made by two merges.'
+    solution: The tokenizer only applies its learned merges, a + t, t + h and th + e. None of them joins c with at, so "cats" stays as c, at and s.
+  - id: tok-enc-apply
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: 'A BPE tokenizer learned two merges, in this order: s + e, then se + e. How does it split the new word "seed"?'
+    options:
+      - id: a
+        text: s, e, e, d
+        correct: false
+        category: recall_failure
+        feedback: That is the starting split. Now apply each merge in turn.
+      - id: b
+        text: se, e, d
+        correct: false
+        category: incomplete_explanation
+        feedback: That applies only the first merge. The second, se + e, also applies.
+      - id: c
+        text: see, d
+        correct: true
+        feedback: s + e gives se e d, then se + e gives see d.
+      - id: d
+        text: seed
+        correct: false
+        category: misunderstood_definition
+        feedback: No merge joins see with d, so the word can't become a single token.
+    solution: Start from s e e d. The first merge, s + e, gives se e d. The second, se + e, gives see d. No merge joins see and d, so the word is two tokens, see and d.
+  - id: tok-enc-context-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A rule of thumb for English text is that one token is about $4$ characters. A model can read at most ${{=M}}$ tokens at once. Roughly how many characters of English text is that?
+    params:
+      M:
+        min: 1000
+        max: 8000
+        step: 1000
+    answer_expr: 4 * M
+    tolerance:
+      rel: 0.001
+    common_wrong:
+      - answer_expr: M / 4
+        category: math_error
+        feedback: Each token holds about $4$ characters, so there are more characters than tokens. Multiply by $4$.
+      - answer_expr: M
+        category: misunderstood_definition
+        feedback: A token is usually longer than one character, so the tokens hold more characters than their count.
+    solution: Each token covers about $4$ characters, so ${{=M}}$ tokens cover about $4\times{{=M}}={{=4*M}}$ characters.
+  - id: tok-enc-bigger-vocab
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A team retrains its BPE tokenizer with many more merges, so the vocabulary grows from $32{,}000$ to $128{,}000$ tokens. Which statement is right?
+    options:
+      - id: a
+        text: The same texts take fewer tokens, but the model has more tokens to learn, and many are rare.
+        correct: true
+        feedback: More merges make longer tokens, so texts shrink, while each extra token gets fewer training examples.
+      - id: b
+        text: The same texts take more tokens, because there are more tokens to choose from.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Extra merges join pieces together, so the same text needs fewer, longer tokens.
+      - id: c
+        text: It is better in every way, because longer tokens always carry more meaning.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A bigger vocabulary has a cost. The model must learn every token, and rare tokens appear in few examples.
+      - id: d
+        text: Nothing changes for the model, because the ids are only labels.
+        correct: false
+        category: misunderstood_definition
+        feedback: The ids are labels, but a different vocabulary changes how many tokens a text takes and how many the model must learn.
+    solution: More merges give longer tokens, so texts take fewer tokens. But the model has to learn something about every token in the vocabulary, and the extra tokens are rarer, so each appears in fewer training examples.
+  - id: tok-enc-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'A BPE tokenizer learned two merges, in this order: h + e, then t + h. How does it split the word "the"?'
+    options:
+      - id: a
+        text: t, he
+        correct: true
+        feedback: h + e comes first and gives t he. After that, no t stands next to an h, so t + h can't apply.
+      - id: b
+        text: th, e
+        correct: false
+        category: misapplied_technique
+        feedback: That applies t + h first. The merges are applied in the order they were learned.
+      - id: c
+        text: the
+        correct: false
+        category: incorrect_reasoning
+        feedback: Joining all three letters would need a merge such as t + he, which wasn't learned.
+      - id: d
+        text: t, h, e
+        correct: false
+        category: incomplete_explanation
+        feedback: h + e does apply, because "the" has an h followed by an e.
+    solution: Start from t h e. The first merge, h + e, gives t he. The second merge, t + h, needs a t next to an h, but the h is now inside he, so the word stays as t and he.
+  - id: tok-enc-spelling
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A language model with a BPE tokenizer is asked how many times the letter r appears in "strawberry", and it gets the count wrong. What about tokenization makes this question harder than it looks?
+    options:
+      - id: a
+        text: The word reaches the model as a few token ids, so its letters are never given to it one by one.
+        correct: true
+        feedback: A common word is a few multi-letter tokens, and each id says nothing direct about which letters it holds.
+      - id: b
+        text: The letter r was dropped from the vocabulary because it is too rare.
+        correct: false
+        category: misunderstood_definition
+        feedback: Single characters or bytes are always in the starting vocabulary, so no letter is dropped.
+      - id: c
+        text: The model reads text one character at a time, which takes too long.
+        correct: false
+        category: misunderstood_definition
+        feedback: With BPE, the model reads tokens that are usually several characters long.
+      - id: d
+        text: Token ids are sorted alphabetically, which mixes up the order of the letters.
+        correct: false
+        category: misunderstood_definition
+        feedback: Ids keep the text's order and don't sort anything.
+    solution: A BPE tokenizer turns a common word into a few multi-letter tokens, and the model only sees their ids. To count letters it has to have learned which letters each token holds.
+  - id: tok-enc-robot
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'A robot''s BPE tokenizer learned three merges, in this order: g + r, then a + b, then gr + ab. How many tokens does it split the word "grabbed" into?'
+    answer: 4
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 1
+        category: incorrect_reasoning
+        feedback: No merge joins grab with the letters after it, so the word can't be one token.
+      - answer: 5
+        category: incomplete_explanation
+        feedback: That stops after a + b. The third merge, gr + ab, still applies.
+      - answer: 7
+        category: recall_failure
+        feedback: That is the number of letters. Apply the three merges in order.
+    solution: Start from g r a b b e d. g + r gives gr a b b e d, a + b gives gr ab b e d, and gr + ab gives grab b e d, which is $4$ tokens.
+  - id: tok-explain-bpe
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: Explain how byte-pair encoding builds its vocabulary from training text, how a trained tokenizer then splits a word it never saw, and why this works better than using whole words or single characters as tokens.
+    rubric:
+      - id: r1
+        criterion: Building the vocabulary starts from single characters (or bytes) and repeatedly adds the most frequent pair of neighbouring tokens as a new token, until the chosen vocabulary size
+        weight: 2
+        required: true
+      - id: r2
+        criterion: A new word is split into characters and the learned merges are applied in the order they were learned, with no new counting
+        weight: 2
+        required: true
+      - id: r3
+        criterion: Compared with words, any word can still be encoded; compared with characters, texts take far fewer tokens because common words become single tokens
+        weight: 1
+    exemplar: BPE starts with a vocabulary of single characters (bytes, in tokenizers like GPT-2's). It counts every pair of neighbouring tokens in the training text, joins the most frequent pair into a new token, and repeats until the vocabulary reaches the size we chose, keeping the merges in order. To split a new word, it starts from its characters and applies those merges in the same order, so an unseen word like "that" becomes pieces it knows, th and at. Whole-word tokens turn every word outside the vocabulary into one unknown-word id, losing the word, and character tokens make every text very long; BPE keeps common words as single tokens and spells rare ones from smaller pieces.
