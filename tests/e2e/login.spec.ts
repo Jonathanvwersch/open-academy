@@ -40,9 +40,11 @@ test('password login remembers the session and logout requires login again', asy
 
   await page.getByRole('link', { name: 'Settings' }).click();
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
-  await page.getByLabel('Daily study time').fill('30');
-  await page.getByLabel('Saturday study time').fill('45');
-  await page.getByLabel('Sunday study time').fill('75');
+  for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']) {
+    await page.getByLabel(`${day} study goal`).fill('30');
+  }
+  await page.getByLabel('Saturday study goal').fill('45');
+  await page.getByLabel('Sunday study goal').fill('75');
   await expect(page.getByText('4.5 hours / week', { exact: true })).toBeVisible();
   await page.screenshot({
     path: `${xpFinishScreenshotDir}/settings-goal-hints.png`,
