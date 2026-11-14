@@ -26,7 +26,7 @@ const envSchema = z.object({
 export const env = envSchema.parse(process.env);
 
 export function productionAuth(demo: boolean, password?: string) {
-  if (demo && password !== undefined) {
+  if (demo && password) {
     throw new Error('ACADEMY_DEMO and ACADEMY_PASSWORD cannot both be set.');
   }
   if (demo) return null;
