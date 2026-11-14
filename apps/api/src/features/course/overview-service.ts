@@ -11,8 +11,9 @@ export async function getMap(deps: FeatureServices, request: FeatureRequest) {
   const index = await content();
   const requestedDomain = request.query.domain;
   const state = await request.repo.schedulerState(request.now(), index);
-  const activeCourse = activeCourseFor(index, state.activeCourseId);
-  const currentUnit = currentLearnerUnit(state, index);
+  const courseId = state.studyCourseIds[0] ?? state.activeCourseId;
+  const activeCourse = activeCourseFor(index, courseId);
+  const currentUnit = currentLearnerUnit({ ...state, activeCourseId: courseId }, index);
   const currentUnitDomain =
     activeCourse?.units[currentUnit - 1]?.concepts
       .map((id) => index.conceptsById.get(id)?.domain)
@@ -101,7 +102,7 @@ export async function getPlanWeek(deps: FeatureServices, request: FeatureRequest
   const index = await content();
   const state = await request.repo.schedulerState(request.now(), index);
   return serviceResult({
-    units: activeCourseFor(index, state.activeCourseId)?.units ?? [],
+    units: activeCourseFor(index, state.studyCourseIds[0] ?? state.activeCourseId)?.units ?? [],
     mastery: state.mastery,
   });
 }

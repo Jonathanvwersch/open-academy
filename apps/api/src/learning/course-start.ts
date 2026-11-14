@@ -30,8 +30,8 @@ export function courseStartStatus(input: {
 }): CourseStartStatus {
   return {
     needed:
-      !input.enrolled &&
-      (input.activePlacementRunId !== null ||
+      input.activePlacementRunId !== null ||
+      (!input.enrolled &&
         !courseHasEvidence(input.courseConceptIds, input.mastery, input.lessonRuns)),
     placementRunId: input.activePlacementRunId,
   };
@@ -39,11 +39,12 @@ export function courseStartStatus(input: {
 
 export function needsCourseChoice(input: {
   activeCourseId: string | null | undefined;
+  studyCourseIds?: readonly string[];
   mastery: readonly Pick<MasteryRecord, 'state'>[];
   lessonRuns: readonly unknown[];
 }): boolean {
   return (
-    input.activeCourseId == null &&
+    (input.studyCourseIds ? input.studyCourseIds.length === 0 : input.activeCourseId == null) &&
     input.lessonRuns.length === 0 &&
     !input.mastery.some((record) => record.state !== 'not_assessed')
   );

@@ -387,8 +387,8 @@ function packWeekday(
             .filter(
               ([conceptId]) =>
                 course.newConceptIds.has(conceptId) &&
-                courseContexts.find((candidate) => candidate.newConceptIds.has(conceptId))
-                  ?.course.id === course.course.id,
+                courseContexts.find((candidate) => candidate.newConceptIds.has(conceptId))?.course
+                  .id === course.course.id,
             )
             .reduce((sum, [, value]) => sum + value, 0);
           return recentMinutes + (selectedLearnMinutesByCourse.get(course.course.id) ?? 0);
@@ -594,9 +594,7 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     if (!reviewCourseContext) continue;
     const reviewProjectId =
       reviewCourseContext.course.units[reviewCourseContext.currentUnit - 1]?.project;
-    const reviewProject = reviewProjectId
-      ? content.projectsById.get(reviewProjectId)
-      : undefined;
+    const reviewProject = reviewProjectId ? content.projectsById.get(reviewProjectId) : undefined;
     const candidate = makeCandidate(
       state,
       content,

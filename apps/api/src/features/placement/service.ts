@@ -105,10 +105,11 @@ export async function postPlacement(deps: FeatureServices, request: FeatureReque
   const content = await deps.content();
   const body = request.body as { courseId?: unknown } | null;
   const storedCourseId = await request.repo.activeCourseId();
+  const studyCourseIds = await request.repo.studyCourseIds(content);
   const courseId =
     typeof body?.courseId === 'string' && content.coursesById.has(body.courseId)
       ? body.courseId
-      : storedCourseId;
+      : (studyCourseIds[0] ?? storedCourseId);
   const course = activeCourseFor(content, courseId);
   if (!course) return serviceResult({ error: 'No active course' }, 404);
   const activeRun = await request.repo.activePlacementRun(course.id);
@@ -275,7 +276,14 @@ export async function getPlacementResults(deps: FeatureServices, request: Featur
   const sessionKind = sessionKindForDate(localDate);
   const firstTopic =
     planSession(
-      { ...schedulerState, activeCourseId: state.courseId },
+      {
+        ...schedulerState,
+        activeCourseId: state.courseId,
+        studyCourseIds: [
+          state.courseId,
+          ...schedulerState.studyCourseIds.filter((courseId) => courseId !== state.courseId),
+        ],
+      },
       content,
       request.now(),
       sessionBudget(sessionKind, prefs, localDate),

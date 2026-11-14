@@ -14,6 +14,7 @@ import {
   sessionActivityIsInContent,
 } from '../../learning/content-filters.js';
 import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
+import { topicIsComplete } from '../../learning/course-status.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
 import { recordLessonViewed } from '../../learning/mastery.js';
 import {
@@ -62,22 +63,64 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const activeSessionId = hasCurrentActivity ? (active?.id ?? null) : null;
   const startState = buildCourseStartState({
     content: index,
-    activeCourseId: state.activeCourseId,
+    activeCourseId: state.studyCourseIds[0] ?? state.activeCourseId,
     mastery: state.mastery,
     lessonRuns: state.lessonRuns ?? [],
     enrollments,
     placementRuns,
   });
-  const course = activeCourseFor(index, state.activeCourseId);
-  const unit = currentLearnerUnit(state, index);
+  const currentCourseId = state.studyCourseIds[0] ?? state.activeCourseId;
+  const course = activeCourseFor(index, currentCourseId);
+  const unit = currentLearnerUnit({ ...state, activeCourseId: currentCourseId }, index);
   const unitFocus = course?.units[unit - 1];
+  const runsByConcept = new Map((state.lessonRuns ?? []).map((run) => [run.conceptId, run.status]));
+  const masteryByConcept = new Map<string, typeof state.mastery>();
+  for (const record of state.mastery) {
+    const records = masteryByConcept.get(record.conceptId) ?? [];
+    records.push(record);
+    masteryByConcept.set(record.conceptId, records);
+  }
+  const studyCourses = state.studyCourseIds.flatMap((courseId) => {
+    const studyCourse = index.coursesById.get(courseId);
+    if (!studyCourse) return [];
+    const topics = studyCourse.units.flatMap((studyUnit) => studyUnit.concepts);
+    const topicsDone = topics.filter((conceptId) => {
+      const concept = index.conceptsById.get(conceptId);
+      if (!concept) return false;
+      const states = concept.dimensions.map(
+        (dimension) =>
+          masteryByConcept.get(conceptId)?.find((record) => record.dimension === dimension)
+            ?.state ?? 'not_assessed',
+      );
+      return topicIsComplete(runsByConcept.get(conceptId), states);
+    }).length;
+    const courseUnit = currentLearnerUnit({ ...state, activeCourseId: courseId }, index);
+    return [
+      {
+        id: courseId,
+        title: studyCourse.title,
+        topicsDone,
+        topicsTotal: topics.length,
+        unitTitle: studyCourse.units[courseUnit - 1]?.title ?? `Unit ${courseUnit}`,
+      },
+    ];
+  });
+  const completedCourseIds = studyCourses
+    .filter(
+      (studyCourse) =>
+        studyCourse.topicsTotal > 0 && studyCourse.topicsDone === studyCourse.topicsTotal,
+    )
+    .map((studyCourse) => studyCourse.id);
+  await request.repo.completeCourses(completedCourseIds, now);
   return serviceResult({
     needsCourseChoice: needsCourseChoice({
       activeCourseId: state.activeCourseId,
+      studyCourseIds: state.studyCourseIds,
       mastery: state.mastery,
       lessonRuns: state.lessonRuns ?? [],
     }),
     courseStart: startState.courseStart,
+    studyCourses,
     objective:
       unitFocus?.title ??
       prefs.goal ??

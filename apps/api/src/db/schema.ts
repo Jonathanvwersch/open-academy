@@ -96,7 +96,10 @@ export const users = pgTable('users', {
   startDate: text('start_date').notNull().default(''),
   prefs: jsonb('prefs').notNull().default({}),
   activeCourseId: text('active_course_id'),
-  studySetInitializedAt: timestamp('study_set_initialized_at', { withTimezone: true, mode: 'date' }),
+  studySetInitializedAt: timestamp('study_set_initialized_at', {
+    withTimezone: true,
+    mode: 'date',
+  }),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 });
 

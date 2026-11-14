@@ -105,6 +105,7 @@ export function createApiRoutes(deps: {
   registerPaperRoutes(api, {
     db,
     content,
+    withRepo,
     tutor,
     paperFetcher: deps.paperFetcher,
     requestNow,
