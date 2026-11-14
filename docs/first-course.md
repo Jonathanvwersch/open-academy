@@ -61,7 +61,7 @@ Open the pack folder in Claude Code, Codex, or any agent that can run shell comm
 
 > Plan a 15-topic introduction to organic chemistry for a first-year student, using the lecture notes in sources/. Show me the plan, then write the lessons for unit 1.
 
-The agent reads `AGENTS.md` and follows the skills that come with the pack: `plan-course`, `write-lesson` and `write-from-sources`. It creates files with the CLI and runs `academy check` until everything passes. Check the topic plan before it starts writing lessons, and spot-check the maths in what it writes.
+The agent reads `AGENTS.md` and follows the skills that come with the pack: `plan-course`, `write-lesson`, `write-questions` and `write-from-sources`. It creates files with the CLI and runs `academy check` until everything passes. Check the topic plan before it starts writing lessons, and spot-check the maths in what it writes.
 
 ## 6. Use it
 
