@@ -284,25 +284,13 @@ describe('academy CLI', () => {
               ],
               solution: 'The first option is correct.',
             },
-            {
-              id: `${topicId}-problem-1`,
-              dimension: 'conceptual',
-              type: 'mc',
-              role: 'basics',
-              difficulty: 1,
-              est_minutes: 1,
-              prompt: 'Existing basics question.',
-              options: [
-                { id: 'a', text: 'Correct', correct: true, feedback: 'Correct.' },
-                { id: 'b', text: 'Incorrect', correct: false, feedback: 'Incorrect.' },
-              ],
-              solution: 'The first option is correct.',
-            },
           ],
         }),
       );
+      const before = runWithInitCwd(['check', pack], parent);
+      expect(before.status, before.stderr).toBe(0);
       const created = run(['new', 'lesson', topicId, '--pack', pack]);
-      expect(created.status).toBe(0);
+      expect(created.status, created.stderr).toBe(0);
       expect(created.stdout.trim()).toBe(
         'Write it with .agents/skills/write-lesson/SKILL.md, then run academy check.',
       );
@@ -318,25 +306,66 @@ describe('academy CLI', () => {
         role: 'diagnostic',
         prompt: 'Existing diagnostic question.',
       });
-      const existingBasics = exercises.exercises.filter(
-        (exercise) => exercise.id === `${topicId}-problem-1`,
-      );
-      expect(existingBasics).toHaveLength(1);
-      expect(existingBasics[0]).toMatchObject({
-        id: `${topicId}-problem-1`,
-        role: 'basics',
-        prompt: 'Existing basics question.',
-      });
       const checked = runWithInitCwd(['check', pack], parent);
       expect(checked.status).toBe(1);
       expect(checked.stderr).toContain('TODO field at .objective');
-      expect(checked.stderr).toContain('TODO field at .exercises[2].prompt');
+      expect(checked.stderr).toContain('TODO field at .exercises[1].prompt');
       expect(
         checked.stderr
           .trim()
           .split('\n')
           .every((issue) => issue.includes('TODO field at ')),
       ).toBe(true);
+    } finally {
+      rmSync(parent, { recursive: true, force: true });
+    }
+  });
+
+  it('skips skeleton exercises whose IDs already exist', () => {
+    const parent = temporaryDirectory();
+    try {
+      const pack = join(parent, 'pack');
+      run(['init', pack, '--title', 'Applied Science']);
+      const topicId = 'applied-science-first-topic';
+      const exerciseFile = join(pack, 'exercises', `${topicId}.yaml`);
+      mkdirSync(join(pack, 'exercises'), { recursive: true });
+      writeFileSync(
+        exerciseFile,
+        stringify({
+          concept: topicId,
+          exercises: [
+            {
+              id: `${topicId}-problem-1`,
+              dimension: 'conceptual',
+              type: 'mc',
+              role: 'diagnostic',
+              difficulty: 1,
+              est_minutes: 1,
+              prompt: 'Existing diagnostic question.',
+              options: [
+                { id: 'a', text: 'Correct', correct: true, feedback: 'Correct.' },
+                { id: 'b', text: 'Incorrect', correct: false, feedback: 'Incorrect.' },
+              ],
+              solution: 'The first option is correct.',
+            },
+          ],
+        }),
+      );
+
+      expect(run(['new', 'lesson', topicId, '--pack', pack]).status).toBe(0);
+
+      const exercises = parse(readFileSync(exerciseFile, 'utf8')) as {
+        exercises: Array<{ id: string; role: string; prompt: string }>;
+      };
+      const existingExercise = exercises.exercises.filter(
+        (exercise) => exercise.id === `${topicId}-problem-1`,
+      );
+      expect(existingExercise).toHaveLength(1);
+      expect(existingExercise[0]).toMatchObject({
+        id: `${topicId}-problem-1`,
+        role: 'diagnostic',
+        prompt: 'Existing diagnostic question.',
+      });
     } finally {
       rmSync(parent, { recursive: true, force: true });
     }
