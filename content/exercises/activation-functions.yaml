@@ -160,11 +160,12 @@ exercises:
     role: transfer
     difficulty: 3
     est_minutes: 3
-    prompt: "Ten sigmoids are applied one after another, each to the previous one's output. A small change at the start is multiplied by each sigmoid's slope as it passes through. If every sigmoid sits at the score where its slope is largest, by what factor does the change end up multiplied? (Scientific notation is fine, e.g. `9.5e-7`.)"
+    prompt: "Ten sigmoids are applied one after another, each to the previous one's output. A small change at the start is multiplied by each sigmoid's slope as it passes through. What is the largest factor the change can end up multiplied by? (Scientific notation is fine, e.g. `9.5e-7`.)"
     answer: 9.5367e-7
     tolerance: { rel: 0.01 }
-    hints: ["The sigmoid's slope is largest at $z = 0$, where its output is 0.5."]
-    solution: "The sigmoid's largest slope is $0.5(1-0.5) = 0.25$, at $z = 0$. Ten such factors give $0.25^{10} \\approx 9.5\\times10^{-7}$, so even in the best case the change almost disappears."
+    hints:
+      ["Each factor is at most the sigmoid's largest slope, at $z = 0$, where its output is 0.5."]
+    solution: "The sigmoid's largest slope is $0.5(1-0.5) = 0.25$, at $z = 0$. Each of the ten factors is at most that, so the total is at most $0.25^{10} \\approx 9.5\\times10^{-7}$. Even in the best case the change almost disappears."
   - id: act-review-deriv
     dimension: math
     type: mc

@@ -138,7 +138,7 @@ exercises:
           id: b,
           text: "The inputs whose score equals the bias",
           correct: false,
-          feedback: "The score equals the bias only when every input is 0. The boundary is where the whole score is 0.",
+          feedback: "The score equals the bias wherever the weighted inputs add to 0. The boundary is where the whole score, bias included, is 0.",
         }
       - {
           id: c,
