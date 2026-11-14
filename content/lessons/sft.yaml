@@ -1,12 +1,15 @@
 concept: sft
 version: 1
 objective: "**Goal:** Explain how supervised fine-tuning teaches a pretrained model to answer prompts, and implement a loss that scores only response tokens while keeping the prompt as context."
+recap:
+  - concept: pretraining
+    text: "Pretraining is an initial stage of language-model training; later stages adapt the pretrained model for a particular use."
 where_this_fits: |
   ### What is supervised fine-tuning?
 
   Supervised fine-tuning (SFT) continues training a pretrained language model on examples of the responses we want it to give. It helps turn that model into an assistant, a model used to answer requests, by changing its weights to make the example responses more likely.
 
-  Pretraining is an initial stage of language-model training; later stages adapt the pretrained model for a particular use. SFT pairs requests with example answers called demonstrations. These show the content, style and format we want the assistant to produce.
+  SFT pairs requests with example answers called demonstrations. These show the content, style and format we want the assistant to produce.
 knowledge_points:
   - id: sft-example-responses
     title: Learn from example responses

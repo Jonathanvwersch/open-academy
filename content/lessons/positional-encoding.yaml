@@ -2,12 +2,13 @@ concept: positional-encoding
 version: 1
 objective: |
   **Goal:** explain why attention without position information follows token reorderings, and how learned, sinusoidal and rotary positional encodings give it access to order.
+recap:
+  - concept: attention
+    text: "Shared attention compares each query with every key, then softmax turns each query's scores into weights that mix the values. The same transformations apply at every token, so attention alone has no position information."
 where_this_fits: |
   ### What is positional encoding?
 
   Positional encoding gives attention information about where tokens occur in a sequence. It helps distinguish word order: “the cat sat on the mat” and “the mat sat on the cat” describe different scenes.
-
-  Attention makes a query, key and value vector for each token. Each query is compared with each key: their dot product is divided by the square root of the number of key entries to give a score. Softmax turns one query's scores into positive weights adding to one; these weights mix the value vectors. The transformations are shared across positions.
 
   We'll follow a rearranged token's output, then encode positions by adding vectors to embeddings or rotating queries and keys.
 knowledge_points:

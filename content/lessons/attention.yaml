@@ -3,6 +3,8 @@ version: 1
 objective: |
   **Goal:** compute scaled dot-product attention by scoring query–key matches, turning the scores into weights, and using those weights to mix values.
 recap:
+  - concept: embeddings
+    text: "Each token has a learned embedding vector, selected from a table with one row per token."
   - concept: dot-product
     text: "The dot product multiplies matching vector components and adds the products. It gives one number, and depends on both the vectors' directions and their lengths."
   - concept: classification-softmax
@@ -11,8 +13,6 @@ where_this_fits: |
   ### What is attention?
 
   Attention builds a vector for a token by mixing information from tokens in a sequence, with a weight deciding how much each token contributes.
-
-  A token is a unit of text, such as a word or part of one. An embedding table stores one learned vector for each token. Looking up a token selects that vector, so the lookup alone gives the same vector whenever that token appears.
 
   In the phrase "the cat", looking up "cat" alone cannot tell a model that "the" came before it. Attention lets cat's new vector include information from "the", so a model predicting the next word can use both. We'll call each token that supplies information a source.
 knowledge_points:

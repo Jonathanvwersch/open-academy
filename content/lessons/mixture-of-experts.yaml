@@ -3,14 +3,14 @@ version: 1
 objective: |
   **Goal:** explain how a router chooses expert MLPs, count total and active parameters per token, and explain why training needs a load-balancing loss.
 recap:
+  - concept: transformer-block
+    text: "A transformer block combines attention with an MLP applied separately to each token's vector, using residual connections and normalization around these parts."
   - concept: classification-softmax
     text: "Softmax turns scores into positive probabilities that sum to one. A larger score gets a larger probability; dividing each probability by a shared total preserves their ordering."
 where_this_fits: |
   ### What is a mixture of experts?
 
   A **mixture of experts** is a layer with several neural networks, called experts, and a small router that chooses which few process each token. Each expert here is an MLP: weighted layers with a nonlinear activation between them.
-
-  A transformer block combines attention, which mixes information from other tokens, with an MLP applied separately to each token. Residual connections add a part's input to its output. Normalization adjusts vector values to a consistent scale. The expert layer replaces the MLP.
 
   Language models predict the next token: the token following the text so far. More parameters can help represent learned patterns. Running only a few experts lets us store more parameters while limiting each token's calculations.
 knowledge_points:

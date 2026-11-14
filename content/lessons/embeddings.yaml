@@ -3,6 +3,8 @@ version: 1
 objective: |
   **Goal:** explain an embedding as a token's row of a learned table, find it by lookup or by multiplying a one-hot vector by the table, and compare two embeddings with the dot product.
 recap:
+  - concept: tokenization
+    text: "Tokenization splits text into tokens and gives each token in the model's vocabulary, its list of known tokens, an ID number."
   - concept: matrices
     text: "To multiply two matrices, we dot each row of the first with each column of the second. An $m\\times n$ matrix times an $n\\times p$ matrix gives an $m\\times p$ matrix, so the inner sizes must match."
 where_this_fits: |
@@ -10,7 +12,7 @@ where_this_fits: |
 
   A language model reads and writes text, and it splits text into small pieces called tokens. An embedding is a list of numbers, a vector, that the model uses to stand for one token. The model keeps one vector for every token it knows, as the rows of a table.
 
-  Why do we need it? Tokenization splits text into tokens and gives each token in the model's vocabulary, its list of known tokens, an ID number. A model works by doing arithmetic, but an ID is only a label, so arithmetic on IDs means nothing. An embedding gives each token numbers that the model adjusts as it learns, so tokens used in similar ways tend to get vectors pointing in similar directions.
+  Why do we need it? A model works by doing arithmetic, but an ID is only a label, so arithmetic on IDs means nothing. An embedding gives each token numbers that the model adjusts as it learns, so tokens used in similar ways tend to get vectors pointing in similar directions.
 knowledge_points:
   - id: emb-lookup-table
     title: "Look up a vector for each token"

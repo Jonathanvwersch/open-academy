@@ -3,6 +3,10 @@ version: 1
 objective: |
   **Goal:** explain how a language model predicts the next token, how one sentence becomes many training examples with teacher forcing, and how the model writes new text by choosing one token at a time.
 recap:
+  - concept: causal-masking
+    text: "A causal mask makes the vector at each position depend only on the tokens up to it."
+  - concept: transformer-block
+    text: "A transformer turns each token into a vector."
   - concept: classification-softmax
     text: "Softmax turns one score per class into probabilities that are positive and add up to 1, $p_k=e^{z_k}/(e^{z_1}+\\dots+e^{z_K})$. The multiclass cross-entropy loss is $L=-\\ln p_{\\text{true}}$, minus the log of the true class's probability."
 where_this_fits: |
@@ -12,7 +16,6 @@ where_this_fits: |
 
   Why is it useful? Any ordinary text can train it, with no labels written by people, because each word after the first is the right answer for the words before it. Once trained, the same model can write new text, for example by finishing a sentence we start.
 
-  A transformer turns each token into a vector, and a causal mask makes the vector at each position depend only on the tokens up to it. Softmax turns scores made from each vector into probabilities.
 knowledge_points:
   - id: alm-next-token
     title: "Predict the next word"

@@ -137,3 +137,89 @@ terms:
       match: ['\bP\((?:A|B)'],
       introduced_by: [probability-basics],
     }
+  - {
+      id: one-hot-token-vector,
+      label: "one-hot vector $u_i$",
+      match: ["one-hot vector", '\bu_i\s*E\b'],
+      introduced_by: [embeddings],
+    }
+  - {
+      id: one-hot-token-matrix,
+      label: "one-hot token matrix $U$",
+      match: ['\bUE\b'],
+      introduced_by: [embeddings],
+    }
+  - {
+      id: cosine-similarity,
+      label: "cosine similarity",
+      match: ["cosine similarity"],
+      introduced_by: [dot-product],
+    }
+  - {
+      id: permutation-equivariance,
+      label: "permutation equivariance",
+      match: ['\bpermutation[- ]equivari(?:ance|ant)\b'],
+      introduced_by: [positional-encoding],
+    }
+  - {
+      id: positional-encoding,
+      label: "positional representations / encoding",
+      match: ['\bpositional representations?\b', '\bpositional encodings?\b'],
+      introduced_by: [positional-encoding],
+    }
+  - {
+      id: causal-mask,
+      label: "causal mask",
+      match: ['\bcausal mask\b'],
+      introduced_by: [causal-masking],
+    }
+  - {
+      id: causal-mask-value,
+      label: "causal mask value $m_{tj}$",
+      match: ['m_\{tj\}'],
+      introduced_by: [causal-masking],
+    }
+  - {
+      id: expert-router,
+      label: "expert router",
+      match: ['\brouter\b'],
+      introduced_by: [mixture-of-experts],
+    }
+  - {
+      id: top-k-routing,
+      label: "top-k routing",
+      match: ["top[- ]k routing"],
+      introduced_by: [mixture-of-experts],
+    }
+  - {
+      id: load-balancing-loss,
+      label: "load-balancing loss",
+      match: ["load-balancing loss"],
+      introduced_by: [mixture-of-experts],
+    }
+  - {
+      id: supervised-fine-tuning,
+      label: "supervised fine-tuning (SFT)",
+      match: ['\bSFT\b'],
+      introduced_by: [sft],
+    }
+  - { id: chat-template, label: "chat template", match: ["chat template"], introduced_by: [sft] }
+  - {
+      id: response-only-loss-masking,
+      label: "response-only loss masking",
+      match: ["response-only loss masking"],
+      introduced_by: [sft],
+    }
+  - {
+      id: lora-rank,
+      label: "LoRA rank $r$",
+      match: ["LoRA rank", 'rank\s*\$?r\$?'],
+      introduced_by: [lora],
+    }
+  - {
+      id: lora-weight-update,
+      label: "LoRA weight change $\\Delta W=BA$",
+      match: ['\\Delta\s*W', "ΔW"],
+      introduced_by: [lora],
+    }
+  - { id: lora-adapter, label: "LoRA adapter", match: ["LoRA adapter"], introduced_by: [lora] }

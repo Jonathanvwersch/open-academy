@@ -2,12 +2,17 @@ concept: lora
 version: 1
 objective: |
   **Goal:** fine-tune a model with LoRA by freezing its weight matrices and training a small change $BA$ for each, count that change's $r(d+k)$ trainable numbers for a $d\times k$ matrix, explain why a low-rank change can be enough, and merge it back into the weights.
+recap:
+  - concept: sft
+    text: "Supervised fine-tuning keeps training a pretrained model on prompt–response pairs, and gradient descent updates every weight."
+  - concept: eigen-svd
+    text: "A big matrix can often be closely approximated by a low-rank one, which takes far fewer numbers to describe."
 where_this_fits: |
   ### What is LoRA?
 
   LoRA, short for low-rank adaptation, is a cheap way to fine-tune a large model. It keeps the pretrained weights fixed and trains only a change to some of the weight matrices. That change is built from two thin matrices, each with only a few rows or columns.
 
-  Supervised fine-tuning keeps training a pretrained model on prompt–response pairs, and gradient descent updates every weight. For a model with billions of weights, that means storing a gradient for each one, and a whole new copy of the model for every task. LoRA rests on a fact about matrices: a big matrix can often be closely approximated by a low-rank one, which takes far fewer numbers to describe. The change fine-tuning needs is usually close to low rank.
+  For a model with billions of weights, full fine-tuning needs a gradient for each one and a whole new copy of the model for every task. The change fine-tuning needs is usually close to low rank.
 knowledge_points:
   - id: lora-frozen-change
     title: "Keep the weights, train a change"

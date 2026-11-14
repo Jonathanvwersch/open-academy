@@ -2,12 +2,15 @@ concept: pretraining
 version: 1
 objective: |
   **Goal:** describe the stages of an LLM training pipeline, from collecting and cleaning text through pretraining to post-training, and estimate what a pretraining run costs and how its loss improves with scale.
+recap:
+  - concept: autoregressive-lm
+    text: "A language model predicts each token from the ones before it, $p(x_{t+1}\\mid x_1,\\dots,x_t)$, and adds the cross-entropy loss $-\\ln p$ of the true next token at every position."
+  - concept: tokenization
+    text: "A token is a short piece of text, such as a word or part of one, and a tokenizer splits text into tokens."
 where_this_fits: |
   ### What is pretraining?
 
   Pretraining is the first and biggest stage of training a large language model, or LLM. We train the model to predict the next token across an enormous amount of text.
-
-  A token is a short piece of text, such as a word or part of one, and a tokenizer splits text into tokens. A language model predicts each token from the ones before it, $p(x_{t+1}\mid x_1,\dots,x_t)$, and training adds the cross-entropy loss $-\ln p$ of the true next token at every position.
 
   Text needs no labels, because each next token is its own answer, and predicting it well teaches the model grammar, facts and patterns of reasoning. This lesson follows a model from raw text to an assistant and estimates what pretraining costs.
 knowledge_points:

@@ -3,6 +3,8 @@ version: 1
 objective: |
   **Goal:** explain why people's preferences are collected as comparisons rather than scores, and use the Bradley–Terry model to turn two rewards into the probability that one response is preferred and into the loss that trains a reward model.
 recap:
+  - concept: sft
+    text: "In supervised fine-tuning, a language model learns to reply like an assistant from responses that people wrote."
   - concept: logistic-regression
     text: "The sigmoid $\\sigma(z)=1/(1+e^{-z})$ turns a score $z$ into a probability $p$. The loss for an outcome that happened is $-\\ln p$. Its slope against the score is $p-y$, where $y$ is the label, $1$ or $0$."
 where_this_fits: |
@@ -10,7 +12,7 @@ where_this_fits: |
 
   A reward model is a model that reads a prompt and a response and gives back one number, the response's **reward**, which is higher for responses people prefer. It learns this from pairs of responses where a person said which one was better.
 
-  Why is it useful? In supervised fine-tuning, a language model learns to reply like an assistant from responses that people wrote. Its own replies can still be unhelpful, and to improve them it needs to know which of its replies people prefer. Asking a person about every reply is far too slow. A reward model gives that judgement straight away, as a number. Later lessons train the language model to write replies that get high rewards.
+  Why is it useful? A language model's own replies can still be unhelpful, and to improve them we need to know which of its replies people prefer. Asking a person about every reply is far too slow. A reward model gives that judgement straight away, as a number. Later lessons train the language model to write replies that get high rewards.
 knowledge_points:
   - id: rm-comparisons
     title: "Ask people which answer is better"

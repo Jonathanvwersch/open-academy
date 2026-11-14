@@ -2,6 +2,8 @@ concept: llm-evaluation
 version: 1
 objective: "**Goal:** explain why contaminated benchmarks can exaggerate ability on new requests, compute a clearly defined pairwise score, and design an LLM-judge comparison that checks position bias."
 recap:
+  - concept: sft
+    text: "Supervised fine-tuning trains a model on prompt–response pairs to change how it responds, for example to follow instructions as an assistant."
   - concept: evaluation-metrics
     text: "An evaluation metric is a number summarising performance. Choose scores that reflect the task's costly errors, and keep the test set out of training and model selection."
 where_this_fits: |
@@ -9,7 +11,7 @@ where_this_fits: |
 
   LLM evaluation means checking how well a large language model answers the kinds of requests we care about, using clear rules for judging its answers. It helps us choose an assistant for a particular task.
 
-  Supervised fine-tuning trains a model on prompt–response pairs to change how it responds, for example to follow instructions as an assistant. We need fresh requests to check whether this training improved its answers. We'll score test questions and compare pairs of answers. Then we'll ask another language model to rate those answers and check its decisions. We'll report the questions used, the score and how the judging decisions were checked.
+  We need fresh requests to check whether this training improved its answers. We'll score test questions and compare pairs of answers. Then we'll ask another language model to rate those answers and check its decisions. We'll report the questions used, the score and how the judging decisions were checked.
 knowledge_points:
   - id: lev-clean-benchmarks
     title: Keep test answers out of training

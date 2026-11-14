@@ -2,12 +2,15 @@ concept: multi-head-attention
 version: 1
 objective: |
   **Goal:** compute multi-head attention for a short sentence and track the shape of every matrix in it, from the $T\times d$ embeddings through each head's $T\times d_k$ queries, keys and values and $T\times T$ weights, back to a $T\times d$ output.
+recap:
+  - concept: attention
+    text: "Learned matrices $W_Q$, $W_K$ and $W_V$ turn each embedding $e_t$ into a query $q_t$, key $k_t$ and value $v_t$. Scores $q_t\\cdot k_j/\\sqrt{d_k}$ become softmax weights that mix the values."
+  - concept: embeddings
+    text: "Each token starts as a learned embedding $e_t$ of width $d$."
 where_this_fits: |
   ### What is multi-head attention?
 
   Multi-head attention runs several attention calculations, called **heads**, side by side on the same tokens and joins their results into one output per token.
-
-  Each token starts as a learned embedding $e_t$ of width $d$. Learned matrices $W_Q$, $W_K$ and $W_V$ turn $e_t$ into a query $q_t$, key $k_t$ and value $v_t$. Token $t$ scores token $j$ with $s_{tj}=q_t\cdot k_j/\sqrt{d_k}$. Long vectors give large dot products, and dividing by $\sqrt{d_k}$ keeps the softmax from putting almost all weight on one token. The softmax weights add up to 1 and average the values.
 
   In "the cat sat", "sat" needs both "cat" and its own meaning. One head splitting its attention weights between them blurs both values. Two heads can each favour one.
 knowledge_points:
@@ -320,4 +323,4 @@ summary: |
   - The head outputs are concatenated back to width $d$ and multiplied by a $d\times d$ output matrix: $o_t=\operatorname{concat}(o^{(1)}_t,\dots,o^{(h)}_t)\,W_O$, so each output entry can use every head.
   - For $T$ tokens the shapes run $X:T\times d$, then $T\times d_k$ queries, keys and values and $T\times T$ weights in each head, then $T\times d$ out. The layer learns $4d^2$ numbers whatever $h$ is.
 
-  **Next:** The positional representations lesson shows why attention can't tell the order of the tokens on its own, and how models add position to the embeddings.
+  **Next:** A follow-on lesson shows why attention can't tell the order of the tokens on its own, and how models add position to the embeddings.

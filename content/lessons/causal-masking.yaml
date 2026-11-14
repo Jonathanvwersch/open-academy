@@ -2,6 +2,9 @@ concept: causal-masking
 version: 1
 objective: |
   **Goal:** build a causal mask for a sentence, add it to the attention scores before the softmax so that each position gives zero weight to every later position, and explain why this lets a language model learn to predict each next word from the words before it.
+recap:
+  - concept: attention
+    text: "Attention lets each position gather information from others. Position $t$ scores $j$ with $q_t\\cdot k_j/\\sqrt{d_k}$; softmax makes weights $a_{tj}$ summing to 1, which mix values $v_j$."
 where_this_fits: |
   ### What is causal masking?
 
@@ -9,7 +12,6 @@ where_this_fits: |
 
   We need it to train a language model, which learns to guess each next word from the earlier words. In training, the whole sentence goes in at once, so with plain attention every word could look ahead and copy the answer. The mask hides later words.
 
-  Attention lets each position gather information from other positions. Position $t$ gives every position $j$ a score $s_{tj}=q_t\cdot k_j/\sqrt{d_k}$. Softmax turns position $t$'s scores into weights $a_{tj}$ that add up to 1, and the output $o_t$ is the weighted sum of the value vectors $v_j$.
 knowledge_points:
   - id: cm-hide-future
     title: "Hide the words that come later"

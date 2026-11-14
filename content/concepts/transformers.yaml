@@ -45,7 +45,7 @@ concepts:
       est_minutes: 25,
       goal_weight: 2,
       dimensions: [conceptual, implementation],
-      prereqs: [{ id: attention }],
+      prereqs: [{ id: attention }, { id: embeddings }],
       objectives:
         [{ text: "Track shapes through multi-head attention", dimension: implementation }],
       status: authored,
@@ -136,7 +136,7 @@ concepts:
       est_minutes: 25,
       goal_weight: 2,
       dimensions: [conceptual],
-      prereqs: [{ id: autoregressive-lm }],
+      prereqs: [{ id: autoregressive-lm }, { id: tokenization }],
       objectives:
         [{ text: "Describe the stages of an LLM training pipeline", dimension: conceptual }],
       status: authored,

@@ -3,18 +3,20 @@ version: 1
 objective: |
   **Goal:** draw a pre-norm transformer block and explain what each part does: LayerNorm before each sublayer, attention that mixes the tokens, an MLP that processes each token on its own, and the residual connections that add each sublayer's output back to its input.
 recap:
-  - concept: mlp-forward-pass
-    text: "A layer computes $h=\\phi(Wx+b)$: one weighted sum per neuron, then an activation such as ReLU on each score. An MLP runs layers like this in order, using the same weights for every example in a batch."
+  - concept: multi-head-attention
+    text: "Attention uses $h$ heads of width $d_k=d/h$. Each token makes $q_t$, $k_t$ and $v_t$ using $W_Q$, $W_K$ and $W_V$. Scores $q_t\\cdot k_j/\\sqrt{d_k}$ become softmax weights mixing values; joined heads are mixed by $W_O$."
+  - concept: positional-encoding
+    text: "The original design adds a position vector to each token's embedding before the first block; rotary encodings instead apply position information inside attention by rotating queries and keys."
   - concept: weight-init-normalization
     text: "LayerNorm subtracts an example's mean $\\mu$, divides by its standard deviation $s$, then applies a learned gain $\\gamma$ and shift $\\beta$. A slope passing back through many layers is multiplied at each one, so it can vanish."
+  - concept: mlp-forward-pass
+    text: "A layer computes $h=\\phi(Wx+b)$: one weighted sum per neuron, then an activation such as ReLU on each score. An MLP runs layers like this in order, using the same weights for every example in a batch."
 where_this_fits: |
   ### What is a transformer block?
 
   A transformer block updates each token's width-$d$ vector using attention, an MLP, shortcuts and normalization. Repeating blocks builds a model.
 
-  Attention uses $h$ heads of width $d_k=d/h$. Each token makes a query $q_t$, key $k_t$ and value $v_t$ using $W_Q,W_K,W_V$. Scores are $s_{tj}=q_t\cdot k_j/\sqrt{d_k}$. Softmax turns each row of scores into weights $a_{tj}$ that sum to $1$, giving $o_t=\sum_j a_{tj}v_j$. The heads' outputs are joined and mixed by $W_O$.
-
-  In the original design, position information is added to each token's vector before the first block; some models use rotary encodings, which apply it inside attention instead. The MLP applies a nonlinearity such as ReLU to process each token separately.
+  The MLP applies a nonlinearity such as ReLU to process each token separately.
 knowledge_points:
   - id: tb-residual
     title: "Add a layer's output to its input"
