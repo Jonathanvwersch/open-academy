@@ -329,75 +329,91 @@ async function newLesson(topicId: string, directory: string) {
     final: finalId,
     summary: 'TODO: Summarize the lesson.\n\n**Next:** TODO: Name the next topic.',
   });
-  writeYaml(join(directory, 'exercises', `${topicId}.yaml`), {
-    concept: topicId,
-    exercises: [
-      ...problemIds.map((problemId, index) => ({
-        id: problemId,
-        dimension: 'conceptual',
-        type: 'mc',
-        role: index === 0 ? 'basics' : 'practice',
-        difficulty: (index % 3) + 1,
-        est_minutes: 2,
-        prompt: 'TODO: Write a practice question.',
-        hints: [],
-        solution: 'TODO: Explain the answer.',
-        options: [
-          {
-            id: 'answer',
-            text: 'TODO: Correct answer.',
-            correct: true,
-            feedback: 'TODO: Explain why this is correct.',
-          },
-          {
-            id: 'distractor',
-            text: 'TODO: Plausible alternative.',
-            correct: false,
-            feedback: 'TODO: Explain why this is not the answer.',
-          },
-        ],
-      })),
-      {
-        id: selfExplanationId,
-        dimension: 'conceptual',
-        type: 'mc',
-        role: 'check',
-        difficulty: 1,
-        est_minutes: 2,
-        lesson_only: true,
-        prompt: 'TODO: Ask the learner to explain the worked example.',
-        hints: [],
-        solution: 'TODO: Explain the worked example.',
-        options: [
-          {
-            id: 'answer',
-            text: 'TODO: Correct explanation.',
-            correct: true,
-            feedback: 'TODO: Explain why this is correct.',
-          },
-          {
-            id: 'distractor',
-            text: 'TODO: Plausible alternative.',
-            correct: false,
-            feedback: 'TODO: Explain why this is not the answer.',
-          },
-        ],
-      },
-      {
-        id: finalId,
-        dimension: 'conceptual',
-        type: 'explain',
-        role: 'core',
-        difficulty: 2,
-        est_minutes: 3,
-        prompt: 'TODO: Ask the learner to explain the key idea.',
-        hints: [],
-        solution: 'TODO: Explain what a strong answer includes.',
-        rubric: [{ id: 'key-idea', criterion: 'TODO: Identify the core idea.', weight: 1 }],
-        exemplar: 'TODO: Write an exemplar answer.',
-      },
-    ],
-  });
+  const skeletonExercises = [
+    ...problemIds.map((problemId, index) => ({
+      id: problemId,
+      dimension: 'conceptual',
+      type: 'mc',
+      role: index === 0 ? 'basics' : 'practice',
+      difficulty: (index % 3) + 1,
+      est_minutes: 2,
+      prompt: 'TODO: Write a practice question.',
+      hints: [],
+      solution: 'TODO: Explain the answer.',
+      options: [
+        {
+          id: 'answer',
+          text: 'TODO: Correct answer.',
+          correct: true,
+          feedback: 'TODO: Explain why this is correct.',
+        },
+        {
+          id: 'distractor',
+          text: 'TODO: Plausible alternative.',
+          correct: false,
+          feedback: 'TODO: Explain why this is not the answer.',
+        },
+      ],
+    })),
+    {
+      id: selfExplanationId,
+      dimension: 'conceptual',
+      type: 'mc',
+      role: 'check',
+      difficulty: 1,
+      est_minutes: 2,
+      lesson_only: true,
+      prompt: 'TODO: Ask the learner to explain the worked example.',
+      hints: [],
+      solution: 'TODO: Explain the worked example.',
+      options: [
+        {
+          id: 'answer',
+          text: 'TODO: Correct explanation.',
+          correct: true,
+          feedback: 'TODO: Explain why this is correct.',
+        },
+        {
+          id: 'distractor',
+          text: 'TODO: Plausible alternative.',
+          correct: false,
+          feedback: 'TODO: Explain why this is not the answer.',
+        },
+      ],
+    },
+    {
+      id: finalId,
+      dimension: 'conceptual',
+      type: 'explain',
+      role: 'core',
+      difficulty: 2,
+      est_minutes: 3,
+      prompt: 'TODO: Ask the learner to explain the key idea.',
+      hints: [],
+      solution: 'TODO: Explain what a strong answer includes.',
+      rubric: [{ id: 'key-idea', criterion: 'TODO: Identify the core idea.', weight: 1 }],
+      exemplar: 'TODO: Write an exemplar answer.',
+    },
+  ];
+  const exerciseFile = join(directory, 'exercises', `${topicId}.yaml`);
+  if (existsSync(exerciseFile)) {
+    const exerciseSource = editYaml(exerciseFile, (document) => {
+      const exercises = document.get('exercises', true);
+      if (!isSeq(exercises)) fail(`Expected exercises sequence in ${exerciseFile}.`);
+      const existingIds = new Set<string>();
+      for (const exercise of exercises.items) {
+        if (!isMap(exercise)) continue;
+        const existingId = exercise.get('id');
+        if (typeof existingId === 'string') existingIds.add(existingId);
+      }
+      for (const exercise of skeletonExercises) {
+        if (!existingIds.has(exercise.id)) exercises.add(exercise);
+      }
+    });
+    writeFileSync(exerciseFile, exerciseSource);
+  } else {
+    writeYaml(exerciseFile, { concept: topicId, exercises: skeletonExercises });
+  }
   writeFileSync(conceptFile, source);
   console.log('Write it with .agents/skills/write-lesson/SKILL.md, then run academy check.');
 }

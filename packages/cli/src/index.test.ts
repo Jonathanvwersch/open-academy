@@ -196,10 +196,46 @@ describe('academy CLI', () => {
     try {
       const pack = join(parent, 'pack');
       run(['init', pack, '--title', 'Applied Science']);
-      const created = run(['new', 'lesson', 'applied-science-first-topic', '--pack', pack]);
+      const topicId = 'applied-science-first-topic';
+      const exerciseFile = join(pack, 'exercises', `${topicId}.yaml`);
+      writeFileSync(
+        exerciseFile,
+        stringify({
+          concept: topicId,
+          exercises: [
+            {
+              id: `${topicId}-problem-1`,
+              dimension: 'conceptual',
+              type: 'mc',
+              role: 'diagnostic',
+              difficulty: 1,
+              est_minutes: 1,
+              prompt: 'Existing diagnostic question.',
+              options: [
+                { id: 'a', text: 'Correct', correct: true, feedback: 'Correct.' },
+                { id: 'b', text: 'Incorrect', correct: false, feedback: 'Incorrect.' },
+              ],
+              solution: 'The first option is correct.',
+            },
+          ],
+        }),
+      );
+      const created = run(['new', 'lesson', topicId, '--pack', pack]);
       expect(created.status).toBe(0);
       expect(created.stdout.trim()).toBe(
         'Write it with .agents/skills/write-lesson/SKILL.md, then run academy check.',
+      );
+      const exercises = parse(readFileSync(exerciseFile, 'utf8')) as {
+        exercises: Array<{ id: string; role: string; prompt: string }>;
+      };
+      expect(exercises.exercises.filter((exercise) => exercise.id === `${topicId}-problem-1`)).toEqual(
+        [
+          {
+            id: `${topicId}-problem-1`,
+            role: 'diagnostic',
+            prompt: 'Existing diagnostic question.',
+          },
+        ],
       );
       const checked = run(['check', pack]);
       expect(checked.status).toBe(1);
