@@ -782,6 +782,8 @@ test('navigation cleanup pages render at desktop and mobile widths', async ({ pa
 });
 
 test('authored course-structure lessons render their diagrams', async ({ page }) => {
+  // This batch visits many lessons and captures each diagram; CI needs time for those screenshots.
+  test.setTimeout(120_000);
   test.skip(
     process.env.PLAYWRIGHT_CONTENT_DIR !== 'content',
     'requires the repository content directory',
