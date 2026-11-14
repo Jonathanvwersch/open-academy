@@ -133,6 +133,21 @@ test('already-complete concepts are excluded from placement', () => {
   ).toBe('probe-d');
 });
 
+test('concepts with lesson runs are excluded and not credited through dependents', () => {
+  const content = makeContent(['a', 'b', 'c'], { b: ['a'], c: ['b'] });
+  const lessonRuns = [{ conceptId: 'a', status: 'in_progress' as const }];
+  expect(placementConceptIds('placement-test', content, [], lessonRuns)).toEqual(['b', 'c']);
+  const state = recordPlacementAnswer(
+    createPlacementState('placement-test'),
+    { conceptId: 'c', exerciseId: 'probe-c', correct: true },
+    content,
+    [],
+    lessonRuns,
+  );
+  expect(state.known).toEqual(['c', 'b']);
+  expect(state.known).not.toContain('a');
+});
+
 test('a concept without a probe can still be placed out through a correct dependent', () => {
   const content = makeContent(['a', 'b'], { b: ['a'] });
   content.exercisesByConcept.set('a', []);

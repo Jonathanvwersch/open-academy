@@ -54,13 +54,13 @@ export function placementConceptIds(
     records.push(record);
     masteryByConcept.set(record.conceptId, records);
   }
-  const lessonRunByConcept = new Map(lessonRuns.map((run) => [run.conceptId, run.status]));
+  const lessonRunConcepts = new Set(lessonRuns.map((run) => run.conceptId));
 
   return conceptIds.filter((conceptId) => {
     const concept = content.conceptsById.get(conceptId);
-    if (!concept || concept.status === 'stub') return false;
+    if (!concept || concept.status === 'stub' || lessonRunConcepts.has(conceptId)) return false;
     return !topicIsComplete(
-      lessonRunByConcept.get(conceptId),
+      undefined,
       concept.dimensions.map(
         (dimension) =>
           masteryByConcept.get(conceptId)?.find((record) => record.dimension === dimension)
