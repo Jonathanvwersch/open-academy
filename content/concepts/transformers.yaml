@@ -126,7 +126,7 @@ concepts:
           },
           { text: "Explain why a router needs a load-balancing loss", dimension: conceptual },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: pretraining,
