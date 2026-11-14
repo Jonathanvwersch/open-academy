@@ -37,3 +37,59 @@ test('strips remaining C0 control characters without removing newlines or tabs',
   expect(repairTutorMarkdown('a\u0007b')).toBe('ab');
   expect(repairTutorMarkdown('line one\nline two\tend')).toBe('line one\nline two\tend');
 });
+
+test.each([
+  ['lower $p \u000dightarrow$ more', 'lower $p \\rightarrow$ more'],
+  ['a \u000dightarrow b', 'a \\rightarrow b'],
+  ['$\u000crac{1}{2}$', '$\\frac{1}{2}$'],
+  ['$\u0008eta$', '$\\beta$'],
+  ['$\u0009heta + 1$', '$\\theta + 1$'],
+  ['$\u000aabla f$', '$\\nabla f$'],
+  ['$a \u000aeq b$', '$a \\neq b$'],
+])('repairs escaped math commands: %s', (markdown, expected) => {
+  expect(repairTutorMarkdown(markdown)).toBe(expected);
+});
+
+test.each([
+  ['$$\u000ae^x\u000a$$', '$$\u000ae^x\u000a$$'],
+  ['$$\u000au_t = 1\u000a$$', '$$\u000au_t = 1\u000a$$'],
+  ['$$a\u0009 + 1$$', '$$a\u0009 + 1$$'],
+  ['$\u000au$', '$\\nu$'],
+  ['$$\u000aabla f$$', '$$\\nabla f$$'],
+  ['$$\u0009heta$$', '$$\\theta$$'],
+  ['$A^\u0009op$', '$A^\\top$'],
+  ['$\u0009frac{1}{2}$', '$\\tfrac{1}{2}$'],
+  ['$$\u0009ilde{x} + \u0009extbf{v}$$', '$$\\tilde{x} + \\textbf{v}$$'],
+  ['$\u000aunder$', '$\u000aunder$'],
+])(
+  'repairs math control-character escapes without changing display formatting: %s',
+  (markdown, expected) => {
+    expect(repairTutorMarkdown(markdown)).toBe(expected);
+  },
+);
+
+test('repairs tabs before letters only inside math', () => {
+  expect(repairTutorMarkdown('a \u0009heta')).toBe('a \u0009heta');
+});
+
+test.each([
+  ['surprise is `\\log_2(1/p)` bits', 'surprise is $\\log_2(1/p)$ bits'],
+  ['probabilities `1/2, 1/4, 1/4` here', 'probabilities $1/2, 1/4, 1/4$ here'],
+])('converts mathematical backticks to math: %s', (markdown, expected) => {
+  expect(repairTutorMarkdown(markdown)).toBe(expected);
+});
+
+test.each([
+  ['```js\nconst value = `0.5`;\n```', '```js\nconst value = `0.5`;\n```'],
+  ['```\n`\\log x` and `$x$`\n```', '```\n`\\log x` and `$x$`\n```'],
+  ['see `1/2`\n```\n`1/2`\n```', 'see $1/2$\n```\n`1/2`\n```'],
+])('converts backticked math only outside fenced code: %s', (markdown, expected) => {
+  expect(repairTutorMarkdown(markdown)).toBe(expected);
+});
+
+test.each(['`\\n`', '`np.log2(p)`', '`print(1)`', '`x = 1`'])(
+  'leaves non-math backticks unchanged: %s',
+  (markdown) => {
+    expect(repairTutorMarkdown(markdown)).toBe(markdown);
+  },
+);

@@ -28,6 +28,7 @@ import {
   formatGraderFeedback,
   graderVerdictFor,
   tutorAnswerFor,
+  tutorAnswerKeyFor,
   tutorSolutionFor,
 } from '../tutor/feedback-context.js';
 import { scoreRubric } from '../tutor/scoring.js';
@@ -178,6 +179,7 @@ export async function postHints(deps: FeatureServices, request: FeatureRequest) 
         exerciseOptions: optionTexts.map(
           ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
         ),
+        answerKey: tutorAnswerKeyFor(exercise, optionTexts),
         learnerAnswer: priorAttempt ? tutorAnswerFor(exercise, priorAttempt.answer) : '',
         graderVerdict: priorAttempt ? graderVerdictFor(priorAttempt.correct) : 'No prior answer.',
         graderFeedback: priorAttempt ? formatGraderFeedback(priorAttempt.feedback, retrying) : '',
