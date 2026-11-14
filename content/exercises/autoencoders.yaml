@@ -48,20 +48,23 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: A $2\times2$ grayscale image has top row $0.1,\ 0.2$ and bottom row $0.3,\ 0.4$. Which vector does flattening it, row by row, give?
+    prompt: A grayscale image array is `[[0.1, 0.2], [0.3, 0.4]]`. Which vector results from NumPy's
+      default flattening order?
     options:
       - id: a
         text: $(0.1,0.2,0.3,0.4)$
         correct: true
+        feedback: Default flattening lays out the first row, followed by the second row.
       - id: b
         text: $(0.1,0.3,0.2,0.4)$
         correct: false
-        feedback: That reads down the columns; flattening lays the rows end to end.
+        feedback: That reads down each column instead of using the default row order.
       - id: c
-        text: $(0.25)$, the average brightness
+        text: $(0.3,0.4,0.1,0.2)$
         correct: false
-        feedback: Flattening keeps every pixel; it only changes the grid into one list.
-    solution: Laying the rows end to end gives the top row then the bottom row, $(0.1,0.2,0.3,0.4)$.
+        feedback: That reverses the row order; default flattening preserves it.
+    solution: NumPy's default flattening order reads each row in order, then continues with the next
+      row. The resulting vector is $(0.1,0.2,0.3,0.4)$.
   - id: aep-encode-template
     dimension: math
     type: numeric
@@ -91,17 +94,21 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A decoder for $2\times2$ grayscale images has rows $(1,0)$, $(1,0)$, $(0,1)$ and $(0,1)$, and bias $0$. For latent vector $z=(0.3,0.9)$, what is the third rebuilt pixel, $\hat x_3$?
+    prompt: A linear decoder for $2\times2$ grayscale images has third weight row $(0.5,1)$ and zero
+      bias. For latent vector $z=(0.2,0.8)$, what is the third rebuilt pixel, $\hat x_3$?
     answer: 0.9
-    tolerance: { abs: 0.0001 }
+    tolerance:
+      abs: 0.0001
     common_wrong:
-      - answer: 0.3
+      - answer: 0.8
         category: math_error
-        feedback: That's the first latent number; the third row, $(0,1)$, picks out the second one.
-      - answer: 1.2
+        feedback: The first latent entry also contributes 0.5 times 0.2.
+      - answer: 1
         category: math_error
-        feedback: That adds both latent numbers; the row $(0,1)$ multiplies the first by $0$.
-    solution: The third row of $W_d$ is $(0,1)$, so $\hat x_3=0\cdot0.3+1\cdot0.9=0.9$. The bottom-row pixels copy the second latent number.
+        feedback: Multiply the first latent entry by its weight 0.5 before adding the second contribution.
+    solution:
+      A decoder pixel is the weighted sum for its row plus bias, so $\hat x_3=0.5(0.2)+1(0.8)=0.9$.
+      Both latent entries contribute.
   - id: aep-decoder-shape
     dimension: math
     type: mc
@@ -210,7 +217,9 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 3
-    prompt: An autoencoder maps image $x=({{= a/10 }},{{= b/10 }},0.2,0.2)$ to reconstruction $\hat x=({{= (a+b)/20 }},{{= (a+b)/20 }},0.2,0.2)$. If $E=\sum_{i=1}^{4}(x_i-\hat x_i)^2$, what is its reconstruction error $E$?
+    prompt: An autoencoder maps image $x=({{= a/10 }},{{= b/10 }},0.2,0.2)$ to reconstruction $\hat
+      x=({{= (a+b)/20 }},{{= (a+b)/20 }},0.2,0.2)$. What is its sum-of-squared-pixel-errors reconstruction
+      error $E$?
     params:
       a:
         min: 5
@@ -221,15 +230,18 @@ exercises:
         max: 4
         step: 1
     answer_expr: (a - b)^2 / 200
-    tolerance: { abs: 0.00001 }
+    tolerance:
+      abs: 1.0e-05
     common_wrong:
-      - answer_expr: "0 * a"
+      - answer_expr: 0 * a
         category: math_error
         feedback: The two differences cancel when added; square each one first.
       - answer_expr: (a - b) / 10
         category: math_error
         feedback: That adds the sizes of the differences without squaring them; square each before adding.
-    solution: The differences are ${{= (a+b)/20 }}-{{= a/10 }}={{= (b-a)/20 }}$ and ${{= (a+b)/20 }}-{{= b/10 }}={{= (a-b)/20 }}$, then $0$ and $0$. So $E=2\times{{= (a-b)/20 }}^2={{= (a-b)^2/200 }}$.
+    solution:
+      The differences are ${{= (a+b)/20 }}-{{= a/10 }}={{= (b-a)/20 }}$ and ${{= (a+b)/20 }}-{{=
+      b/10 }}={{= (a-b)/20 }}$, then $0$ and $0$. So $E=2\times{{= (a-b)/20 }}^2={{= (a-b)^2/200 }}$.
   - id: aep-flat-grey-error
     dimension: math
     type: numeric
@@ -253,20 +265,30 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: An autoencoder for $4$-pixel images has a latent vector of $4$ numbers, and it reaches $E=0$ on every image, stripes or not. Why is that latent vector not useful?
+    prompt: A four-pixel autoencoder has four latent numbers and reaches zero reconstruction error.
+      What does that result establish about compression?
     options:
       - id: a
-        text: It can pass each pixel straight through, so it hasn't had to find any pattern
+        text:
+          It establishes accurate reconstruction, while the latent vector uses as many numbers as
+          the input.
         correct: true
+        feedback: Four latent numbers for four pixel values give no reduction in representation length.
       - id: b
-        text: An error of $0$ means the training went wrong
+        text:
+          It establishes compression because zero reconstruction error means the latent vector stores
+          fewer values.
         correct: false
-        feedback: $E=0$ is fine on its own; the problem is that nothing forced it to learn a pattern.
+        feedback: Reconstruction error measures accuracy; input and latent lengths determine compression.
       - id: c
-        text: A latent vector must have exactly half as many numbers as the input
+        text: It establishes a fourfold compression because each image is represented by one latent
+          vector.
         correct: false
-        feedback: There's no fixed ratio; it only has to be narrow enough to force a summary.
-    solution: With as many latent numbers as pixels, copying every pixel through gives a perfect copy, so the latent vector is no shorter and no more useful than the image.
+        feedback: Count scalar values inside the vector; grouping four numbers into one vector does
+          not make them one stored number.
+    solution:
+      Zero error establishes accurate reconstruction. With four latent numbers for four input
+      numbers, the representation has no length reduction and can simply pass the pixels through.
   - id: aep-vertical-stripes
     dimension: math
     type: numeric
@@ -444,20 +466,25 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A classmate says the digit autoencoder, with $50{,}992$ parameters, can't be compressing anything, because that's more than the $784$ pixels in a digit. What's wrong with this?
+    prompt:
+      A digit autoencoder has 50,992 parameters and maps each 784-number image to 32 latent numbers.
+      How many numbers store the trained network and the latent representations of 1,000 images?
     options:
       - id: a
-        text: The parameters are stored once and shared by every image, while each image shrinks to $32$ numbers
+        text: 82,992 numbers, counting the network once and one latent vector per image.
         correct: true
+        feedback: The shared network costs 50,992 numbers and the latent vectors cost 1,000 times 32.
       - id: b
-        text: Nothing; the autoencoder makes each image take more space
+        text: 51,024,000 numbers, counting a network and latent vector separately for every image.
         correct: false
-        feedback: Each image is stored as $32$ latent numbers instead of $784$ pixels.
+        feedback: The parameters are shared across images, so their cost is paid once.
       - id: c
-        text: Most of the parameters are zero, so they don't count
+        text: 32,000 numbers, counting the latent vectors as the entire storage cost.
         correct: false
-        feedback: Trained weights are generally not zero; the point is that they're shared.
-    solution: "Compression is about each image: $784$ pixels become $32$ latent numbers. The network's parameters are a one-off cost shared across all images."
+        feedback: The question includes the trained network, so add its one-off parameter count.
+    solution:
+      The network parameters are shared by every image, while each image needs its own 32-number
+      latent vector. The total is $50{,}992+1{,}000(32)=82{,}992$ numbers.
   - id: aep-robot-camera-ratio
     dimension: math
     type: numeric
@@ -481,21 +508,24 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 1
-    prompt: What is an autoencoder's latent space?
+    prompt:
+      A trained encoder maps every image to two latent numbers. What is one point in its latent
+      space?
     options:
       - id: a
-        text: The space of all latent vectors, with one axis for each latent number
+        text: One image's pair of encoder output values.
         correct: true
-        feedback: Each image's latent vector is one point in it.
+        feedback: The two latent values are coordinates, so an encoded image is a point.
       - id: b
-        text: The empty space left over after the image is compressed
+        text: One image's full list of reconstructed pixel values.
         correct: false
-        feedback: It's a space of points, one for each latent vector, not leftover room.
+        feedback: Those coordinates belong to the reconstruction, not the two-number latent representation.
       - id: c
-        text: The grid of pixels in the rebuilt image
+        text: One pair of trainable weights inside the encoder.
         correct: false
-        feedback: Those are the decoder's outputs; latent space holds the short vectors in the middle.
-    solution: Latent space has one axis per latent number, so each image's latent vector is a point in it, and similar images usually land close together.
+        feedback: Weights define the mapping; a latent point is the encoded output for an input image.
+    solution: The encoder's two output values are the coordinates of a latent point for that image.
+      The encoder weights are shared parameters that determine where images map.
   - id: aep-space-self-explain
     lesson_only: true
     dimension: math
@@ -503,20 +533,27 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: In the worked example, why is the distance from $z_A=(0.8,0.2)$ to $z_C=(0.5,0.6)$ equal to $0.5$?
+    prompt:
+      In the worked example, which rule measures straight-line distance from $z_A=(0.8,0.2)$ to
+      $z_C=(0.5,0.6)$?
     options:
       - id: a
-        text: The differences are $-0.3$ and $0.4$, and $\sqrt{0.09+0.16}=0.5$
+        text: $\sqrt{(0.5-0.8)^2+(0.6-0.2)^2}$
         correct: true
+        feedback: Square both coordinate differences, add them, then take the square root.
       - id: b
-        text: The differences $0.3$ and $0.4$ add up to roughly $0.5$
+        text: $|0.5-0.8|+|0.6-0.2|$
         correct: false
-        feedback: They add to $0.7$; distance squares them, adds and takes the square root.
+        feedback:
+          That adds axis-by-axis distances instead of measuring the straight line between the
+          points.
       - id: c
-        text: C's numbers add to $1.1$ and A's to $1$, and it rounds to $0.5$
+        text: $(0.5-0.8)^2+(0.6-0.2)^2$
         correct: false
-        feedback: Distance compares the matching numbers one by one, not the totals.
-    solution: $0.5-0.8=-0.3$ and $0.6-0.2=0.4$, so the distance is $\sqrt{0.09+0.16}=\sqrt{0.25}=0.5$.
+        feedback: That gives squared distance; take the square root for distance.
+    solution:
+      Straight-line distance uses the square root of the sum of squared coordinate differences.
+      Here the differences are -0.3 and 0.4, giving $\sqrt{0.09+0.16}=0.5$.
   - id: aep-distance-template
     dimension: math
     type: numeric
@@ -566,20 +603,27 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: Why does a world model often predict the robot's next latent vector rather than its next camera image?
+    prompt: What is the computational benefit of a world model predicting a 256-number latent vector
+      for a 64×64 RGB frame?
     options:
       - id: a
-        text: The latent vector is far shorter and keeps what's needed to rebuild the image
+        text: Its predictor outputs fewer numbers, and a decoder can rebuild an image from that representation.
         correct: true
+        feedback: A frame has 12,288 scalar values, so 256 outputs give a much smaller prediction target.
       - id: b
-        text: Latent vectors are always exactly right, while images are noisy
+        text: Its predictor outputs the same number of values, but stores them under fewer axis names.
         correct: false
-        feedback: Latent vectors can lose details; they're used because they're short summaries.
+        feedback: The latent vector reduces the scalar count, not merely the number of named axes.
       - id: c
-        text: The camera image can't be stored as numbers
+        text: Its predictor avoids approximation because compression preserves every possible frame
+          detail.
         correct: false
-        feedback: An image is a tensor of numbers; there are just a lot of them.
-    solution: Predicting, say, $256$ latent numbers is far easier than all $12{,}288$ numbers of the frame, and the latent vector still keeps what the decoder needs to rebuild the image.
+        feedback:
+          A short latent representation can lose details; smaller prediction size does not guarantee
+          a perfect copy.
+    solution: The RGB frame contains $64\times64\times3=12{,}288$ numbers, compared with 256 latent
+      numbers. Predicting the short representation reduces the output size, and the decoder maps it
+      back to an image.
   - id: aep-latent-meaning
     dimension: conceptual
     type: mc
@@ -606,20 +650,33 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot's autoencoder rebuilds table scenes well, but a small screw covering a few pixels often vanishes from the rebuilt image. Why?
+    prompt:
+      A robot autoencoder uses a short latent vector and a sum of squared pixel errors. It rebuilds
+      a large tabletop accurately but often loses a tiny screw. Which explanation fits that objective?
     options:
       - id: a
-        text: The few pixels barely change $E$, so the short latent vector spends its numbers on bigger patterns
+        text: The many tabletop pixels can dominate total error, so limited latent capacity favours
+          their patterns.
         correct: true
+        feedback: A few wrong screw pixels can add little to an error summed over the entire frame.
       - id: b
-        text: The decoder deletes objects it doesn't recognise
+        text: The error assigns equal total weight to each object, so the tabletop and screw receive
+          equal emphasis.
         correct: false
-        feedback: The decoder rebuilds whatever the latent vector holds; the screw was never kept in it.
+        feedback: The loss counts pixel errors, so objects covering different numbers of pixels need
+          not receive equal total emphasis.
       - id: c
-        text: Flattening the image removes small objects
+        text:
+          Training scores only the latent vector against itself, so missing details in the rebuilt
+          image go unmeasured.
         correct: false
-        feedback: Flattening keeps every pixel; the loss happens in the narrow middle.
-    solution: $E$ counts every pixel equally, so a few wrong pixels add little error, and training uses the few latent numbers on patterns that cover many pixels.
+        feedback:
+          The training target is the input image; missing screw pixels count, but may contribute
+          little to the total.
+    solution:
+      The objective sums errors over pixels, so a few missing screw pixels can matter less than
+      small improvements over a large tabletop. A short latent vector can favour those broad patterns
+      while losing small details.
   - id: aep-sum-difference
     dimension: math
     type: numeric

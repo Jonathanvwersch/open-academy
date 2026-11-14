@@ -240,20 +240,27 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: Why is reshape(3, H, W) not a safe HWC-to-CHW conversion?
+    prompt: An HWC RGB array contains pixel triples in row order. What goes wrong if `reshape(3, H,
+      W)` is used to make CHW planes?
     options:
       - id: a
-        text: It regroups default index-order values instead of moving channel axes
+        text: It regroups consecutive values, mixing channels within the supposed colour planes.
         correct: true
+        feedback:
+          Reshape keeps the default value order and cuts it into new shapes instead of moving
+          axes.
       - id: b
-        text: It always changes the number of values
+        text: It keeps each colour plane intact but swaps height and width within each plane.
         correct: false
-        feedback: Reshape preserves the number of values.
+        feedback: A plain reshape does not first gather each channel's values into a plane.
       - id: c
-        text: It always raises an error for colour images
+        text: It gathers the correct colour values into planes but reverses the RGB channel order.
         correct: false
-        feedback: The sizes can match, so it may run with wrong pixel groupings.
-    solution: A matching shape does not ensure that each number stays with its own pixel; transpose is the operation that moves axes.
+        feedback:
+          Reshape does not gather channels or intentionally reverse their order; transpose is
+          needed to move the channel axis.
+    solution: Reshape regroups the existing value sequence, so a supposed channel plane can contain
+      several colours. Transpose moves the channel axis while keeping every value with its pixel.
   - id: iat-layout-code
     dimension: implementation
     type: code_read
@@ -318,21 +325,24 @@ exercises:
     role: basics
     difficulty: 1
     est_minutes: 2
-    prompt: What does dividing uint8 pixel values by 255 achieve?
+    prompt: An RGB image is loaded as uint8 values from 0 to 255. Which preparation puts its values
+      on a 0-to-1 scale?
     options:
       - id: a
-        text: It puts brightness values on a 0-to-1 scale
+        text: Convert to floating point and divide every channel value by 255.
         correct: true
-        feedback: Dividing by 255 maps the endpoints 0 and 255 to 0 and 1.
+        feedback: This maps brightness endpoints to 0 and 1 without changing the axes.
       - id: b
-        text: It moves channels to the first axis
+        text: Convert to floating point and subtract 255 from every channel value.
         correct: false
-        feedback: Division changes values, not axes.
+        feedback: Subtracting gives values from -255 to 0 instead of the requested scale.
       - id: c
-        text: It guarantees a mean of zero in every image
+        text: Keep values unchanged and move the channel axis to the first position.
         correct: false
-        feedback: Rescaling alone does not centre the values.
-    solution: Values from 0 through 255 become values from 0 through 1.
+        feedback: Axis movement changes layout while leaving brightness values unchanged.
+    solution:
+      Convert to floating point and divide each value by 255. This changes the brightness scale
+      while preserving each pixel's channel values and position.
   - id: iat-scale-self-explain
     lesson_only: true
     dimension: conceptual
@@ -360,15 +370,18 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A pixel's whole-number value is {{= k*51 }}. What is its value after division by 255?
+    prompt:
+      An 8-bit camera pixel has whole-number brightness {{= k*51 }}. What floating-point brightness
+      should a model expecting the 0-to-1 scale receive?
     params:
       k:
         min: 0
         max: 5
         step: 1
     answer_expr: k/5
-    tolerance: { abs: 0.000001 }
-    solution: Divide {{= k*51 }} by 255 to get {{= k/5 }}.
+    tolerance:
+      abs: 1.0e-06
+    solution: Rescaling 8-bit brightness uses division by 255, giving ${{= k*51 }}/255={{= k/5 }}$.
   - id: iat-standard-value
     dimension: implementation
     type: numeric
@@ -390,34 +403,42 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A CHW image has shape (3, 4, 3). Why is subtracting means of shape (3,) dangerous?
+    prompt: A CHW image has shape (3, 4, 3), and channel means have shape (3,). How will NumPy apply
+      `image - means`?
     options:
       - id: a
-        text: NumPy aligns them with width, so it silently uses one mean per column
+        text: It subtracts one mean per width position, repeating that pattern across rows and channels.
         correct: true
+        feedback: The one-dimensional means line up with the trailing width axis.
       - id: b
-        text: NumPy always rejects arrays with three axes
+        text: It subtracts one mean per channel, repeating that mean across all rows and columns.
         correct: false
-        feedback: Broadcasting supports arrays with three axes.
+        feedback: That requires means shaped `(3, 1, 1)` so their channel axis aligns first.
       - id: c
-        text: NumPy automatically recognises the channel axis
+        text: It rejects the subtraction because the image has three axes and the means have one.
         correct: false
-        feedback: NumPy uses axis sizes and positions, not their meanings.
-    solution: Trailing axes line up, so (3,) matches width; reshape means to (3, 1, 1) for channels.
+        feedback:
+          Different axis counts can broadcast; here both trailing sizes are 3, so the subtraction
+          runs.
+    solution: NumPy aligns trailing axes, so the means match width in this shape. Reshaping means to
+      `(3, 1, 1)` aligns them with channels instead.
   - id: iat-scale-code
     dimension: implementation
     type: code_read
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: What does this print?
-    code: |-
+    prompt: What nested list does this print after subtracting the channel means?
+    code: |
       import numpy as np
+      chw = np.array([[[0.6]], [[0.4]], [[0.2]]])
       mean = np.array([0.5, 0.3, 0.2])
-      print(mean.reshape(3, 1, 1).shape)
+      out = chw - mean.reshape(3, 1, 1)
+      print(np.round(out, 2).tolist())
     accept:
-      - (3, 1, 1)
-    solution: The three numbers remain in order, with two size-one axes added for height and width.
+      - "[[[0.1]], [[0.1]], [[0.0]]]"
+    solution: The reshaped means align one value with each channel. Subtraction gives $0.6-0.5=0.1$,
+      $0.4-0.3=0.1$ and $0.2-0.2=0$, while the CHW shape stays `(3, 1, 1)`.
   - id: iat-pretrained
     lesson_only: true
     dimension: conceptual
@@ -425,20 +446,26 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A pretrained model specifies channel means and standard deviations different from the ImageNet example. Which should you use?
+    prompt:
+      A camera image already contains floats between 0 and 1. A pretrained model was trained on
+      that scale with fixed channel means and standard deviations. Which preparation preserves its expected
+      input?
     options:
       - id: a
-        text: The model's specified statistics and preparation
+        text: Standardise once with the model's fixed channel statistics.
         correct: true
+        feedback: The image is already rescaled, so only the model's expected standardisation remains.
       - id: b
-        text: The ImageNet example for every model
+        text: Divide by 255 again, then standardise with the model's fixed statistics.
         correct: false
-        feedback: Those values are common, not universal.
+        feedback: The second rescaling makes the values too small before the fixed statistics are applied.
       - id: c
-        text: New statistics computed from each individual pixel
+        text: Replace the fixed channel statistics with each new image's own statistics.
         correct: false
-        feedback: That changes the preparation from what the model expects.
-    solution: Follow the pretrained model's documented inference preparation, including its specified channel statistics.
+        feedback: Per-image statistics change the preparation from the one the pretrained model expects.
+    solution:
+      The floating-point image already has the expected 0-to-1 scale. Apply the model's fixed
+      channel statistics once, preserving the preparation used for training.
   - id: iat-robot-scale
     dimension: implementation
     type: numeric
