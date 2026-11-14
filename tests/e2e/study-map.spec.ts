@@ -29,7 +29,11 @@ test.afterAll(async () => {
 });
 
 test('study map groups shared topics once and opens available lessons', async ({ page }) => {
+  const payloadResponse = page.waitForResponse('**/api/study-map');
   await page.goto('/map');
+  const payload: { nodes: Array<{ id: string; groupId: string }> } = await (
+    await payloadResponse
+  ).json();
   const graph = page.getByRole('region', { name: 'Study map graph', exact: true });
   await expect(graph.getByText('Fixture course', { exact: true })).toBeVisible();
   await expect(graph.getByText('Fixture switching course', { exact: true })).toBeVisible();
@@ -37,6 +41,43 @@ test('study map groups shared topics once and opens available lessons', async ({
     graph.getByRole('button', { name: 'Linear models: Locked', exact: true }),
   ).toHaveCount(1);
   await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
+  const geometryErrors = await graph.locator('.react-flow__node').evaluateAll(
+    (elements, parents) => {
+      const groups = new Map(
+        elements
+          .filter((element) => element.classList.contains('react-flow__node-courseGroup'))
+          .map((element) => [element.getAttribute('data-id'), element.getBoundingClientRect()]),
+      );
+      const topics = elements
+        .filter((element) => element.classList.contains('react-flow__node-topic'))
+        .map((element) => ({
+          id: element.getAttribute('data-id'),
+          group: parents[element.getAttribute('data-id') ?? ''] ?? null,
+          box: element.getBoundingClientRect(),
+        }));
+      const errors: string[] = [];
+      for (const [index, topic] of topics.entries()) {
+        const parent = groups.get(topic.group);
+        const a = topic.box;
+        if (
+          !parent ||
+          a.left < parent.left ||
+          a.top < parent.top ||
+          a.right > parent.right ||
+          a.bottom > parent.bottom
+        )
+          errors.push(`${topic.id} is outside its group`);
+        for (const other of topics.slice(index + 1)) {
+          const b = other.box;
+          if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom)
+            errors.push(`${topic.id} overlaps ${other.id}`);
+        }
+      }
+      return errors;
+    },
+    Object.fromEntries(payload.nodes.map((node) => [node.id, `group:${node.groupId}`])),
+  );
+  expect(geometryErrors).toEqual([]);
   const locked = graph.getByRole('button', { name: 'Derivatives: Locked', exact: true });
   await locked.click();
   await expect(page.getByRole('dialog')).toContainText('Needs:');
