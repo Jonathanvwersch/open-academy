@@ -6,6 +6,7 @@ export const publicFeatureModules = {
     'features/lessons/lesson-block.tsx',
     'features/lessons/lesson-runner.tsx',
     'features/sessions/session-activity-header.tsx',
+    'features/progress/streak-card.tsx',
     'features/tutor/tutor-sidebar.tsx',
   ]),
   api: new Set([

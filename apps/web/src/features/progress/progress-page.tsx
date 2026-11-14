@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Progress } from '../../components/ui/progress.js';
 import { masteryStateLabels } from './mastery-labels.js';
 import { progressQueryOptions } from './queries.js';
+import { StreakCard } from './streak-card.js';
 
 const masteryStateOrder = ['retained', 'independent', 'assisted', 'introduced', 'not_assessed'];
 
@@ -22,9 +23,10 @@ export function ProgressPage() {
   return (
     <section className="space-y-6">
       <h1 className="sr-only">Progress</h1>
+      <StreakCard streak={data.streak} />
       <Card>
         <CardHeader className="gap-0">
-          <div className="grid grid-cols-3 divide-x">
+          <div className="grid grid-cols-2 divide-x">
             <div className="min-w-0 px-3 first:pl-0">
               <p className="min-h-8 text-xs leading-4 text-muted-foreground sm:min-h-4">
                 Concepts mastered
@@ -40,7 +42,7 @@ export function ProgressPage() {
                 />
               </div>
             </div>
-            <div className="min-w-0 px-3">
+            <div className="min-w-0 px-3 last:pr-0">
               <p className="min-h-8 text-xs leading-4 text-muted-foreground sm:min-h-4">
                 Study time
               </p>
@@ -48,13 +50,6 @@ export function ProgressPage() {
                 {data.hours.toFixed(1)} h
               </p>
               <p className="mt-1 text-sm leading-5 text-muted-foreground">of {data.planHours} h</p>
-            </div>
-            <div className="min-w-0 px-3 last:pr-0">
-              <p className="min-h-8 text-xs leading-4 text-muted-foreground sm:min-h-4">Streak</p>
-              <p className="mt-1 whitespace-nowrap text-xl leading-8 font-semibold tabular-nums max-[360px]:text-lg sm:text-2xl">
-                {data.streakDays}
-              </p>
-              <p className="mt-1 text-sm leading-5 text-muted-foreground">days</p>
             </div>
           </div>
         </CardHeader>

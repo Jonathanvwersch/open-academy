@@ -1,6 +1,8 @@
 import type { ContentIndex } from '../content/types.js';
 import { deriveLearningDebt } from './debt.js';
+import { buildStreak } from './streak.js';
 import type { MasteryEvent, MasteryRecord, MasteryState } from './types.js';
+import { localDateKey, type XpEventDate } from './xp.js';
 
 const states: MasteryState[] = [
   'not_assessed',
@@ -32,6 +34,7 @@ export function buildProgress(input: {
   flags: Array<{ conceptId: string; targetPrereqId?: string | null }>;
   submissions: Array<{ projectId: string; results: unknown }>;
   sessions: Array<{ activeSeconds: number; status: string; startedAt: Date | null }>;
+  xpEvents: readonly XpEventDate[];
   now: Date;
   timeZone: string;
 }) {
@@ -86,16 +89,7 @@ export function buildProgress(input: {
         ),
     );
   });
-  const dateKey = (date: Date) => {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).formatToParts(date);
-    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-    return `${values.year}-${values.month}-${values.day}`;
-  };
+  const dateKey = (date: Date) => localDateKey(date, timeZone);
   const today = dateKey(now);
   const seconds = input.sessions.reduce(
     (total, session) =>
@@ -106,17 +100,7 @@ export function buildProgress(input: {
         : 0),
     0,
   );
-  const studyDays = new Set(
-    input.sessions
-      .map((session) => (session.startedAt ? dateKey(session.startedAt) : ''))
-      .filter(Boolean),
-  );
-  const cursor = new Date(`${today}T00:00:00.000Z`);
-  let streakDays = 0;
-  while (studyDays.has(cursor.toISOString().slice(0, 10))) {
-    streakDays += 1;
-    cursor.setUTCDate(cursor.getUTCDate() - 1);
-  }
+  const streak = buildStreak(input.xpEvents, today);
   const domains = (content.curriculum?.domains ?? []).map((domain) => {
     const concepts = content.concepts.filter(
       (concept) => concept.domain === domain.id && concept.status === 'authored',
@@ -156,7 +140,8 @@ export function buildProgress(input: {
     })),
     hours: seconds / 3600,
     planHours: 132,
-    streakDays,
+    streakDays: streak.current,
+    streak,
   };
 }
 

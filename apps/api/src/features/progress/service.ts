@@ -1,5 +1,5 @@
 import { desc, eq } from 'drizzle-orm';
-import { masteryEvents, projectSubmissions, studySessions } from '../../db/schema.js';
+import { masteryEvents, projectSubmissions, studySessions, xpEvents } from '../../db/schema.js';
 import { buildProgress } from '../../learning/progress.js';
 import type { MasteryRecord } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
@@ -8,7 +8,7 @@ export async function getProgress(deps: FeatureServices, request: FeatureRequest
   const { db, content } = deps;
   const index = await content();
   const repo = request.repo;
-  const [records, recent, events, flags, submissions, sessions] = await Promise.all([
+  const [records, recent, events, flags, submissions, sessions, earnedXp] = await Promise.all([
     repo.masteryRecords(),
     repo.recentAttempts(100),
     db
@@ -25,6 +25,10 @@ export async function getProgress(deps: FeatureServices, request: FeatureRequest
       .orderBy(desc(projectSubmissions.createdAt))
       .limit(50),
     db.select().from(studySessions).where(eq(studySessions.userId, request.userId)),
+    db
+      .select({ amount: xpEvents.amount, localDate: xpEvents.localDate })
+      .from(xpEvents)
+      .where(eq(xpEvents.userId, request.userId)),
   ]);
   return serviceResult(
     buildProgress({
@@ -42,6 +46,7 @@ export async function getProgress(deps: FeatureServices, request: FeatureRequest
       flags,
       submissions,
       sessions,
+      xpEvents: earnedXp,
       now: request.now(),
       timeZone: request.timeZone,
     }),
