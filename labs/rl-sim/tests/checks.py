@@ -53,12 +53,19 @@ def run_checks(model):
         for a, b in zip(first, second):
             np.testing.assert_array_equal(a, b)
         env = GridWorld()
-        assert env.reset(3) == 0
+        starts = [env.reset(seed) for seed in range(100)]
+        expected = [int(np.random.default_rng(seed).integers(24)) for seed in range(100)]
+        np.testing.assert_array_equal(starts, expected)
+        assert len(set(starts)) > 1
+        assert all(0 <= state < 24 for state in starts)
+        env.reset(3)
+        env.state = 0
         for a in [1] * 4 + [2] * 4:
             state, reward, done = env.step(a)
         assert (state, reward, done) == (24, 1., True)
         rejects(lambda: env.step(1))
         env.reset(3)
+        env.state = 0
         rejects(lambda: env.step(4))
         for _ in range(50):
             state, reward, done = env.step(0)
@@ -73,8 +80,6 @@ def run_checks(model):
         np.testing.assert_array_equal(model.returns_to_go([], 0.9), [])
         np.testing.assert_allclose(model.returns_to_go([2, -1], 0), [2, -1])
         np.testing.assert_allclose(model.returns_to_go([2, -1], 1), [1, -1])
-        rejects(lambda: model.returns_to_go([1], -0.1))
-        rejects(lambda: model.returns_to_go([1], 1.1))
 
     check("returns-to-go", "Use G_t = r_{t+1} + gamma G_{t+1}.", returns)
     theta = np.array([[0.2, -0.4, 0.7, 0.1], [1., -1., 0.3, 0.2]])
@@ -113,7 +118,6 @@ def run_checks(model):
         np.testing.assert_allclose(got, expected)
         np.testing.assert_array_equal(theta, original)
         np.testing.assert_allclose(model.reinforce_update(theta, s, a, adv * 0, 0.3), theta)
-        rejects(lambda: model.reinforce_update(theta, s[:0], a[:0], adv[:0], 0.3))
 
     check("reinforce-update", "Ascend the mean advantage-weighted gradient with learning rate eta; preserve inputs.", reinforce)
 
@@ -126,8 +130,6 @@ def run_checks(model):
             np.testing.assert_allclose(value, expected, err_msg="Use min(rho*A_hat, clip(rho,1-c,1+c)*A_hat), including negative advantages.")
             if (ratio > 1.2 and advantage > 0) or (ratio < 0.8 and advantage < 0):
                 np.testing.assert_allclose(grad, 0, atol=1e-12, err_msg="The clipped branch is flat. Its gradient must be zero.")
-        rejects(lambda: model.ppo_clipped_objective(theta, s[:0], a[:0], old[:0], adv[:0]))
-        rejects(lambda: model.ppo_clipped_objective(theta, s, a, old, adv, 0))
 
     check("ppo-objective", "Clipping must cap favorable changes for both advantage signs.", objective)
 

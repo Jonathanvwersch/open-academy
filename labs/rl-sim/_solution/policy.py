@@ -16,8 +16,6 @@ def collect_episode(env, theta, seed, rng):
 
 
 def returns_to_go(rewards, gamma):
-    if not 0 <= gamma <= 1:
-        raise ValueError("gamma must be between zero and one")
     result = np.zeros(len(rewards))
     total = 0.
     for t in reversed(range(len(rewards))):
@@ -45,8 +43,6 @@ def grad_log_prob(theta, state, action):
 
 
 def reinforce_update(theta, states, actions, advantages, eta):
-    if len(states) == 0:
-        raise ValueError("batch must be nonempty")
     shifted = theta[states] - theta[states].max(axis=1, keepdims=True)
     probs = np.exp(shifted)
     probs /= probs.sum(axis=1, keepdims=True)
@@ -59,10 +55,6 @@ def reinforce_update(theta, states, actions, advantages, eta):
 
 def ppo_clipped_objective(theta, states, actions, old_log_probs, advantages, c=0.2):
     """Return mean clipped surrogate and its ascent gradient."""
-    if len(states) == 0:
-        raise ValueError("batch must be nonempty")
-    if not 0 < c < 1:
-        raise ValueError("c must lie between zero and one")
     shifted = theta[states] - theta[states].max(axis=1, keepdims=True)
     log_probs = shifted - np.log(np.exp(shifted).sum(axis=1, keepdims=True))
     ratio = np.exp(log_probs[np.arange(len(states)), actions] - old_log_probs)

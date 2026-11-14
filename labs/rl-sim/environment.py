@@ -7,8 +7,8 @@ class GridWorld:
     n_actions = 4
 
     def reset(self, seed):
-        self.rng = np.random.default_rng(seed)
-        self.state, self.steps, self.done = 0, 0, False
+        self.state = int(np.random.default_rng(seed).integers(24))
+        self.steps, self.done = 0, False
         return self.state
 
     def step(self, action):

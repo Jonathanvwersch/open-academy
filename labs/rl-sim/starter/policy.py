@@ -7,7 +7,7 @@ def collect_episode(env, theta, seed, rng):
 
 
 def returns_to_go(rewards, gamma):
-    """Return discounted returns with shape (T,); reject gamma outside [0, 1]."""
+    """Return discounted returns with shape (T,)."""
     raise NotImplementedError("TODO: returns_to_go")
 
 
@@ -27,10 +27,10 @@ def grad_log_prob(theta, state, action):
 
 
 def reinforce_update(theta, states, actions, advantages, eta):
-    """Return a new theta after mean policy-gradient ascent; reject empty batches."""
+    """Return a new theta after mean policy-gradient ascent."""
     raise NotImplementedError("TODO: reinforce_update")
 
 
 def ppo_clipped_objective(theta, states, actions, old_log_probs, advantages, c=0.2):
-    """Return mean clipped objective and gradient; reject empty batches and c outside (0, 1)."""
+    """Return mean clipped objective and gradient."""
     raise NotImplementedError("TODO: ppo_clipped_objective")
