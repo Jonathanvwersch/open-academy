@@ -34,9 +34,9 @@ test('password login remembers the session and logout requires login again', asy
   await password.fill('test-password-123');
   await page.getByRole('button', { name: 'Log in' }).click();
   await expect(page).toHaveURL(/\/course$/);
-  await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: 'Settings' }).click();
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();

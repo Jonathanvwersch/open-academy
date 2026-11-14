@@ -31,6 +31,7 @@ const navCleanupScreenshotDir = 'test-results/screenshots/screenshots/nav-cleanu
 const xpFinishScreenshotDir = 'test-results/screenshots/screenshots/xp-finish';
 const chooseLessonScreenshotDir = 'test-results/screenshots/screenshots/choose-lesson';
 const failedQuizScreenshotDir = 'test-results/screenshots/failed-quiz';
+const courseModelScreenshotDir = 'test-results/screenshots/courses';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(brandScreenshotDir, { recursive: true });
 mkdirSync(courseStructureScreenshotDir, { recursive: true });
@@ -43,6 +44,7 @@ mkdirSync(navCleanupScreenshotDir, { recursive: true });
 mkdirSync(xpFinishScreenshotDir, { recursive: true });
 mkdirSync(chooseLessonScreenshotDir, { recursive: true });
 mkdirSync(failedQuizScreenshotDir, { recursive: true });
+mkdirSync(courseModelScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async ({ page }) => {
@@ -119,6 +121,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   ).toBeVisible();
   await expect(page.getByText(/^At your pace:/)).toBeVisible();
   await expect(page.getByText(/^At your daily goal:/)).toBeVisible();
+  await expect(page.getByText('Fixture course', { exact: true })).toBeVisible();
   await expect(page.getByText('Total XP').locator('..')).toContainText('45');
   await expect(page.getByRole('button', { name: 'Start learning' })).toBeEnabled();
   await page.screenshot({ path: `${screenshotDir}/learn-with-xp.png`, fullPage: true });
@@ -128,7 +131,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   });
 
   await page.getByRole('link', { name: 'View course' }).click();
-  await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
   await expect(page.getByText(/You'll build the simplest model that learns:/)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Optional reading' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Optional reading', exact: true })).toBeVisible();
@@ -175,28 +178,28 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentStartedAt);
 });
 
-test('Course weeks default to the current week and remember toggles', async ({ page }) => {
+test('Course units default to the current unit and remember toggles', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/course');
   const weekOneCard = page
     .locator('[data-slot="card"]')
-    .filter({ has: page.getByRole('heading', { name: 'Week 1 · ML fundamentals' }) });
+    .filter({ has: page.getByRole('heading', { name: 'Unit 1 · ML fundamentals' }) });
   const weekTwoCard = page
     .locator('[data-slot="card"]')
-    .filter({ has: page.getByRole('heading', { name: 'Week 2 · Optimization' }) });
-  await expect(weekOneCard.getByRole('button', { name: 'Collapse week 1' })).toHaveAttribute(
+    .filter({ has: page.getByRole('heading', { name: 'Unit 2 · Optimization' }) });
+  await expect(weekOneCard.getByRole('button', { name: 'Collapse unit 1' })).toHaveAttribute(
     'aria-expanded',
     'true',
   );
   await expect(weekOneCard.locator('ol')).toBeVisible();
-  const weekOneTrigger = weekOneCard.getByRole('button', { name: 'Collapse week 1' });
+  const weekOneTrigger = weekOneCard.getByRole('button', { name: 'Collapse unit 1' });
   await expect(weekOneTrigger.locator('svg')).toHaveCSS('rotate', '180deg');
   const weekOneIntro = weekOneCard.locator('p').first();
   await expect(weekOneIntro).toContainText("You'll build the simplest model that learns:");
   const weekOneTitleBounds = await weekOneTrigger.locator('span').first().boundingBox();
   const weekOneIntroBounds = await weekOneIntro.boundingBox();
   if (!weekOneTitleBounds || !weekOneIntroBounds) {
-    throw new Error('Expected the open Week 1 header and intro');
+    throw new Error('Expected the open Unit 1 header and intro');
   }
   const weekOneIntroGap = weekOneIntroBounds.y - (weekOneTitleBounds.y + weekOneTitleBounds.height);
   expect(weekOneIntroGap).toBeGreaterThanOrEqual(8);
@@ -205,41 +208,41 @@ test('Course weeks default to the current week and remember toggles', async ({ p
     path: `${failedQuizScreenshotDir}/course-week1-open-with-intro-desktop.png`,
     fullPage: true,
   });
-  await expect(weekTwoCard.getByRole('button', { name: 'Expand week 2' })).toHaveAttribute(
+  await expect(weekTwoCard.getByRole('button', { name: 'Expand unit 2' })).toHaveAttribute(
     'aria-expanded',
     'false',
   );
   await expect(weekTwoCard.locator('ol')).toBeHidden();
   await expect(weekTwoCard.getByText('Project coming soon')).toBeHidden();
 
-  await weekTwoCard.getByRole('button', { name: 'Expand week 2' }).click();
+  await weekTwoCard.getByRole('button', { name: 'Expand unit 2' }).click();
   await expect(weekTwoCard.locator('ol')).toBeVisible();
-  await weekTwoCard.getByRole('heading', { name: 'Week 2 · Optimization' }).click();
+  await weekTwoCard.getByRole('heading', { name: 'Unit 2 · Optimization' }).click();
   await expect(weekTwoCard.locator('ol')).toBeHidden();
-  await weekTwoCard.getByRole('button', { name: 'Expand week 2' }).click();
-  await weekOneCard.getByRole('button', { name: 'Collapse week 1' }).click();
-  await expect(weekOneCard.getByRole('button', { name: 'Expand week 1' }).locator('svg')).toHaveCSS(
+  await weekTwoCard.getByRole('button', { name: 'Expand unit 2' }).click();
+  await weekOneCard.getByRole('button', { name: 'Collapse unit 1' }).click();
+  await expect(weekOneCard.getByRole('button', { name: 'Expand unit 1' }).locator('svg')).toHaveCSS(
     'rotate',
     'none',
   );
   await expect(
-    weekTwoCard.getByRole('button', { name: 'Collapse week 2' }).locator('svg'),
+    weekTwoCard.getByRole('button', { name: 'Collapse unit 2' }).locator('svg'),
   ).toHaveCSS('rotate', '180deg');
   const weekOnePadding = await weekOneCard
-    .getByRole('button', { name: 'Expand week 1' })
+    .getByRole('button', { name: 'Expand unit 1' })
     .evaluate((element) => {
       const style = getComputedStyle(element);
       return [style.paddingTop, style.paddingBottom];
     });
   expect(weekOnePadding[0]).toBe(weekOnePadding[1]);
   const weekTwoTitle = await weekTwoCard
-    .getByRole('button', { name: 'Collapse week 2' })
+    .getByRole('button', { name: 'Collapse unit 2' })
     .locator('span')
     .first()
     .boundingBox();
   const weekTwoContent = await weekTwoCard.locator('ol').boundingBox();
   if (!weekTwoTitle || !weekTwoContent) {
-    throw new Error('Expected the open Week 2 header and first content row');
+    throw new Error('Expected the open Unit 2 header and first content row');
   }
   const contentGap = weekTwoContent.y - (weekTwoTitle.y + weekTwoTitle.height);
   expect(contentGap).toBeGreaterThanOrEqual(8);
@@ -256,16 +259,63 @@ test('Course weeks default to the current week and remember toggles', async ({ p
   await page.setViewportSize({ width: 1280, height: 900 });
 
   await page.reload();
-  await expect(weekOneCard.getByRole('button', { name: 'Expand week 1' })).toHaveAttribute(
+  await expect(weekOneCard.getByRole('button', { name: 'Expand unit 1' })).toHaveAttribute(
     'aria-expanded',
     'false',
   );
   await expect(weekOneCard.locator('ol')).toBeHidden();
-  await expect(weekTwoCard.getByRole('button', { name: 'Collapse week 2' })).toHaveAttribute(
+  await expect(weekTwoCard.getByRole('button', { name: 'Collapse unit 2' })).toHaveAttribute(
     'aria-expanded',
     'true',
   );
   await expect(weekTwoCard.locator('ol')).toBeVisible();
+});
+
+test('Course page switches courses and shows prerequisite foundations', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/course');
+  await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
+  await expect(page.getByText(/^\d+ of \d+ topics done$/)).toBeVisible();
+  await page.screenshot({ path: `${courseModelScreenshotDir}/course-1280.png`, fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: `${courseModelScreenshotDir}/course-390.png`, fullPage: true });
+
+  await page.getByRole('button', { name: 'Change course' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Courses' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText('Current', { exact: true })).toBeVisible();
+  await page.screenshot({ path: `${courseModelScreenshotDir}/dialog-390.png`, fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({ path: `${courseModelScreenshotDir}/dialog-1280.png`, fullPage: true });
+
+  const targetCourseTitle = 'Fixture switching course';
+  const courseCard = page
+    .locator('[data-slot="card"]')
+    .filter({ has: page.getByRole('heading', { name: targetCourseTitle, exact: true }) });
+  await courseCard.getByRole('button', { name: 'Switch' }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByRole('heading', { name: targetCourseTitle, exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Unit 1 · Linear models', exact: true }),
+  ).toBeVisible();
+  const foundations = page.getByText(/^Foundations · \d+ topics$/);
+  await expect(foundations).toBeVisible();
+  const foundationIntro = page.getByText(
+    "Topics from other courses that this course needs. They're scheduled when a unit needs them.",
+    { exact: true },
+  );
+  await expect(foundationIntro).toBeHidden();
+  await page.getByRole('button', { name: 'Expand foundations' }).click();
+  await expect(foundationIntro).toBeVisible();
+  await page.screenshot({
+    path: `${courseModelScreenshotDir}/foundations-1280.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${courseModelScreenshotDir}/foundations-390.png`,
+    fullPage: true,
+  });
 });
 
 test('completed activity deep links can continue or show the session finish screen', async ({
@@ -473,7 +523,7 @@ test('navigation has four destinations and Lab redirects to Course', async ({ pa
 
   await page.goto('/lab');
   await expect(page).toHaveURL(/\/course$/);
-  await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
 });
 
 test('Home offers alternative lessons and starts the selected lesson', async ({ page }) => {
@@ -693,12 +743,12 @@ test('navigation cleanup pages render at desktop and mobile widths', async ({ pa
   await page.goto('/course');
   const weekOneCard = page
     .locator('[data-slot="card"]')
-    .filter({ has: page.getByRole('heading', { name: 'Week 1 · ML fundamentals' }) });
+    .filter({ has: page.getByRole('heading', { name: 'Unit 1 · ML fundamentals' }) });
   const weekTwoCard = page
     .locator('[data-slot="card"]')
-    .filter({ has: page.getByRole('heading', { name: 'Week 2 · Optimization' }) });
+    .filter({ has: page.getByRole('heading', { name: 'Unit 2 · Optimization' }) });
   await expect(weekOneCard).toContainText('Linear regression in NumPy');
-  await weekTwoCard.getByRole('button', { name: 'Expand week 2' }).click();
+  await weekTwoCard.getByRole('button', { name: 'Expand unit 2' }).click();
   await expect(weekTwoCard).toContainText('Project coming soon');
   await weekOneCard.screenshot({
     path: `${navCleanupScreenshotDir}/course-week-1-desktop.png`,
@@ -756,7 +806,7 @@ test('authored course-structure lessons render their diagrams', async ({ page })
   await hideTutorLauncher(page);
   await expect(page.locator('article > h2').nth(1)).toContainText('2.');
   const roadmap = page.getByRole('img', {
-    name: 'The seven steps of the house-price model, each taught by a Week 1 lesson',
+    name: 'The seven steps of the house-price model, each taught by a Unit 1 lesson',
   });
   await expect(roadmap).toBeVisible();
   await roadmap.evaluate((image) => {
@@ -992,8 +1042,8 @@ test('a fresh post-diagnostic learner sees outline order and prerequisite needs'
   await expect(secondTopic).toContainText('Needs Vectors');
   const weekTwoCard = page
     .locator('[data-slot="card"]')
-    .filter({ has: page.getByRole('heading', { name: 'Week 2 · Optimization' }) });
-  await weekTwoCard.getByRole('button', { name: 'Expand week 2' }).click();
+    .filter({ has: page.getByRole('heading', { name: 'Unit 2 · Optimization' }) });
+  await weekTwoCard.getByRole('button', { name: 'Expand unit 2' }).click();
   const noLessonRow = page.getByRole('listitem').filter({
     has: page.getByText('Matrix products', { exact: true }),
   });

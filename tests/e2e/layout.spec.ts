@@ -275,7 +275,7 @@ test('first-visit loaders stay centered on mobile during auth and page loading',
     releasePage();
   }
   await navigation;
-  await expect(page.getByRole('heading', { name: /Week 1/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Unit 1/ })).toBeVisible();
 });
 
 test('session loading starts lesson metadata and run state together without fetching papers', async ({
@@ -406,7 +406,7 @@ test('plain Settings and Course pages do not load the Markdown and math renderer
   await expect(page.getByRole('button', { name: 'Open tutor' })).toBeVisible();
   expect(markdownRequests).toEqual([]);
   await page.getByRole('link', { name: 'Course', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Week 1 · ML fundamentals' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Unit 1 · ML fundamentals' })).toBeVisible();
   expect(markdownRequests).toEqual([]);
 });
 
@@ -489,8 +489,8 @@ test('Course still renders formatted metadata when it needs Markdown and math', 
   await page.route('**/api/course', async (route) => {
     const response = await route.fetch();
     const data = await response.json();
-    data.weeks[0].papers[0].title = '$x^2$';
-    data.weeks[0].project.title = '**Linear model**';
+    data.units[0].papers[0].title = '$x^2$';
+    data.units[0].project.title = '**Linear model**';
     await route.fulfill({ response, json: data });
   });
   await page.goto('/course');
