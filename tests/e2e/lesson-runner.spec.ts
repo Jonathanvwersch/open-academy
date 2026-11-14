@@ -27,7 +27,7 @@ const quizUiScreenshotDir = 'test-results/screenshots/screenshots/quiz-ui';
 const spacedReviewScreenshotDir = 'test-results/screenshots/screenshots/spaced-review';
 const lastTryScreenshotDir = 'test-results/screenshots/last-try';
 const failedQuizScreenshotDir = 'test-results/screenshots/failed-quiz';
-const quizRetryScreenshotDir = '/home/ubuntu/screens/quiz-retry';
+const quizRetryScreenshotDir = 'test-results/screenshots/quiz-retry';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
