@@ -2,25 +2,11 @@ import type { ContentIndex } from '../content/types.js';
 import type { SchedulerState } from './scheduler.js';
 import type { MasteryRecord } from './types.js';
 
-export function hasContentDimension(
-  content: ContentIndex,
-  conceptId: string,
-  dimension: string,
-): boolean {
-  return (
-    content.conceptsById
-      .get(conceptId)
-      ?.dimensions.includes(dimension as MasteryRecord['dimension']) ?? false
-  );
-}
-
 export function filterMasteryRecordsForContent(
   content: ContentIndex,
   records: MasteryRecord[],
 ): MasteryRecord[] {
-  return records.filter((record) =>
-    hasContentDimension(content, record.conceptId, record.dimension),
-  );
+  return records.filter((record) => content.conceptsById.has(record.conceptId));
 }
 
 export function filterSchedulerStateForContent(
@@ -33,14 +19,11 @@ export function filterSchedulerStateForContent(
       ? state.activeCourseId
       : null,
     mastery: filterMasteryRecordsForContent(content, state.mastery),
-    cards: state.cards.filter((card) =>
-      hasContentDimension(content, card.conceptId, card.dimension),
-    ),
+    cards: state.cards.filter((card) => content.conceptsById.has(card.conceptId)),
     recentAttempts: state.recentAttempts.filter((attempt) => {
       const exercise = content.exercisesById.get(attempt.exerciseId);
       return (
-        hasContentDimension(content, attempt.conceptId, attempt.dimension ?? '') &&
-        exercise?.concept === attempt.conceptId
+        content.conceptsById.has(attempt.conceptId) && exercise?.concept === attempt.conceptId
       );
     }),
     remediationFlags: state.remediationFlags.filter(

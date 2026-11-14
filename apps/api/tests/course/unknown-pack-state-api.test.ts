@@ -68,20 +68,36 @@ beforeEach(async () => {
     conceptId: missingConceptId,
     targetPrereqId: missingPrerequisiteId,
   });
-  await db.insert(attempts).values({
-    userId,
-    exerciseId: missingExerciseId,
-    exerciseVersion: 'retired-version',
-    conceptId: missingConceptId,
-    dimension: 'conceptual',
-    mode: 'practice',
-    answer: { text: 'old answer' },
-    correct: 0,
-    credit: 0,
-    gradedBy: 'test',
-    feedback: {},
-    createdAt: new Date('2026-01-06T12:00:00.000Z'),
-  });
+  await db.insert(attempts).values([
+    {
+      userId,
+      exerciseId: missingExerciseId,
+      exerciseVersion: 'retired-version',
+      conceptId: missingConceptId,
+      dimension: 'conceptual',
+      mode: 'practice',
+      answer: { text: 'old answer' },
+      correct: 0,
+      credit: 0,
+      gradedBy: 'test',
+      feedback: {},
+      createdAt: new Date('2026-01-06T12:00:00.000Z'),
+    },
+    {
+      userId,
+      exerciseId: 'ptb-tensors-basics',
+      exerciseVersion: 'current-version',
+      conceptId: 'pytorch-basics',
+      dimension: 'conceptual',
+      mode: 'practice',
+      answer: { text: 'an answer' },
+      correct: 1,
+      credit: 1,
+      gradedBy: 'test',
+      feedback: {},
+      createdAt: new Date('2026-01-07T11:00:00.000Z'),
+    },
+  ]);
   const [session] = await db
     .insert(studySessions)
     .values({
@@ -163,7 +179,7 @@ test('learner endpoints ignore progress from concepts and courses absent from lo
   expect(await db.select().from(mastery).where(eq(mastery.userId, userId))).toHaveLength(1);
   expect(await db.select().from(reviewCards).where(eq(reviewCards.userId, userId))).toHaveLength(1);
   expect(await db.select().from(lessonRuns).where(eq(lessonRuns.userId, userId))).toHaveLength(1);
-  expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(1);
+  expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(2);
   expect(
     await db.select().from(remediationFlags).where(eq(remediationFlags.userId, userId)),
   ).toHaveLength(1);
@@ -178,4 +194,12 @@ test('learner endpoints ignore progress from concepts and courses absent from lo
     { activeCourseId: missingCourseId },
   ]);
   expect(JSON.parse(responseBodies.get('/api/settings') ?? '{}').dailyMinutes.monday).toBe(77);
+  expect(JSON.parse(responseBodies.get('/api/progress') ?? '{}').evidence).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        exerciseId: 'ptb-tensors-basics',
+        conceptId: 'pytorch-basics',
+      }),
+    ]),
+  );
 });

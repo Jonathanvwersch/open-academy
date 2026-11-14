@@ -2,7 +2,6 @@ import { desc, eq } from 'drizzle-orm';
 import { masteryEvents, projectSubmissions, studySessions, xpEvents } from '../../db/schema.js';
 import {
   filterMasteryRecordsForContent,
-  hasContentDimension,
 } from '../../learning/content-filters.js';
 import { buildProgress } from '../../learning/progress.js';
 import type { MasteryRecord } from '../../learning/types.js';
@@ -37,7 +36,7 @@ export async function getProgress(deps: FeatureServices, request: FeatureRequest
   const contentAttempts = recent.filter((attempt) => {
     const exercise = index.exercisesById.get(attempt.exerciseId);
     return (
-      hasContentDimension(index, attempt.conceptId, attempt.dimension) &&
+      index.conceptsById.has(attempt.conceptId) &&
       exercise?.concept === attempt.conceptId
     );
   });
@@ -46,7 +45,7 @@ export async function getProgress(deps: FeatureServices, request: FeatureRequest
       content: index,
       records: filterMasteryRecordsForContent(index, records),
       events: events
-        .filter((event) => hasContentDimension(index, event.conceptId, event.dimension))
+        .filter((event) => index.conceptsById.has(event.conceptId))
         .map((event) => ({
           ...event,
           attemptId: event.attemptId ?? undefined,
