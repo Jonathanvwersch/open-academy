@@ -10,14 +10,13 @@ import { StreakCard } from '../progress/streak-card.js';
 import { todayQueryOptions } from '../sessions/queries.js';
 import { useStartSession } from '../sessions/start-session.js';
 import { CourseStartCard } from './course-start-card.js';
-import { courseQueryOptions, learnQueryOptions } from './queries.js';
-import { useSwitchCourse } from './use-switch-course.js';
+import { coursesQueryOptions, learnQueryOptions } from './queries.js';
 
 export function LearnPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data } = useSuspenseQuery(learnQueryOptions());
-  const { data: courseData } = useSuspenseQuery(courseQueryOptions());
+  const { data: catalog } = useSuspenseQuery(coursesQueryOptions());
   const today = data.today;
   const enterSession = async ({ id }: { id: string }) => {
     queryClient.setQueryData(learnQueryOptions().queryKey, (current) =>
@@ -33,7 +32,6 @@ export function LearnPage() {
     });
   };
   const startSession = useStartSession(today.sessionKind, enterSession);
-  const chooseCourse = useSwitchCourse();
   const startChoice = useMutation({
     mutationFn: async (focusConceptId: string) => {
       const response = await apiFetch('/api/sessions', {
@@ -58,43 +56,41 @@ export function LearnPage() {
             <CardTitle>Choose a course</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {courseData.courses.map((course) => (
-              <Card key={course.id} size="sm">
-                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 space-y-1">
-                    <h2 className="font-medium">{course.title}</h2>
-                    <p className="line-clamp-2 text-sm text-muted-foreground">
-                      {course.description}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    loading={chooseCourse.isPending && chooseCourse.variables === course.id}
-                    onClick={() => chooseCourse.switchTo(course.id)}
-                  >
-                    Start
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-            {chooseCourse.isError ? (
-              <p role="alert" className="text-sm text-destructive">
-                {chooseCourse.error.message}
-              </p>
-            ) : null}
+            {catalog.subjects.flatMap((subject) =>
+              subject.courses.map((course) => (
+                <Link
+                  key={course.id}
+                  to="/courses/$courseId"
+                  params={{ courseId: course.id }}
+                  className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Card size="sm" className="transition-colors hover:border-primary/50">
+                    <CardContent className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <h2 className="font-medium">{course.title}</h2>
+                        <p className="line-clamp-2 text-sm text-muted-foreground">
+                          {course.description}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-sm font-medium">View course</span>
+                    </CardContent>
+                  </Card>
+                </Link>
+              )),
+            )}
           </CardContent>
         </Card>
       </section>
     );
   }
-  if (today.courseStart.needed) {
+  const courseToStart = today.studyCourses[0];
+  if (today.courseStart.needed && courseToStart) {
     return (
       <section className="space-y-6">
         <h1 className="sr-only">Home</h1>
         <CourseStartCard
-          courseId={courseData.course.id}
-          courseTitle={courseData.course.title}
+          courseId={courseToStart.id}
+          courseTitle={courseToStart.title}
           placementRunId={today.courseStart.placementRunId}
         />
       </section>
@@ -239,43 +235,55 @@ export function LearnPage() {
             <CardTitle>Your progress</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-baseline justify-between gap-4">
-                <span className="text-sm font-medium">{data.course.title}</span>
-                <span className="text-sm font-medium">
-                  {data.course.topicsDone} of {data.course.topicsTotal} topics
-                </span>
-              </div>
-              <Progress
-                value={data.course.percentComplete}
-                aria-label="Course progress"
-                className="h-2"
-              />
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">{data.course.percentComplete}% complete</span>
-                <Button asChild variant="link" size="sm" className="h-auto px-0">
-                  <Link to="/course">View course</Link>
-                </Button>
-              </div>
-              {data.course.estimatedFinish &&
-              data.course.estimatedFinish === data.course.estimatedFinishAtGoal ? (
-                <p className="text-sm text-muted-foreground">
-                  Estimated finish {formatDate(data.course.estimatedFinish)}
-                </p>
-              ) : (
-                <>
-                  {data.course.estimatedFinish ? (
-                    <p className="text-sm text-muted-foreground">
-                      At your pace: {formatDate(data.course.estimatedFinish)}
-                    </p>
-                  ) : null}
-                  {data.course.estimatedFinishAtGoal ? (
-                    <p className="text-sm text-muted-foreground">
-                      At your daily goal: {formatDate(data.course.estimatedFinishAtGoal)}
-                    </p>
-                  ) : null}
-                </>
-              )}
+            <div className="space-y-5">
+              {data.studyCourses.map((course) => {
+                const percentComplete =
+                  course.topicsTotal > 0
+                    ? Math.round((course.topicsDone / course.topicsTotal) * 100)
+                    : 0;
+                return (
+                  <div key={course.id} className="space-y-2">
+                    <div className="flex items-baseline justify-between gap-4">
+                      <span className="min-w-0 truncate text-sm font-medium">{course.title}</span>
+                      <span className="shrink-0 text-sm font-medium">
+                        {course.topicsDone} of {course.topicsTotal} topics
+                      </span>
+                    </div>
+                    <Progress
+                      value={percentComplete}
+                      aria-label={`${course.title} progress`}
+                      className="h-2"
+                    />
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{percentComplete}% complete</span>
+                      <Button asChild variant="link" size="sm" className="h-auto px-0">
+                        <Link to="/courses/$courseId" params={{ courseId: course.id }}>
+                          View course
+                        </Link>
+                      </Button>
+                    </div>
+                    {course.estimatedFinish &&
+                    course.estimatedFinish === course.estimatedFinishAtGoal ? (
+                      <p className="text-sm text-muted-foreground">
+                        Estimated finish {formatDate(course.estimatedFinish)}
+                      </p>
+                    ) : (
+                      <>
+                        {course.estimatedFinish ? (
+                          <p className="text-sm text-muted-foreground">
+                            At your pace: {formatDate(course.estimatedFinish)}
+                          </p>
+                        ) : null}
+                        {course.estimatedFinishAtGoal ? (
+                          <p className="text-sm text-muted-foreground">
+                            At your daily goal: {formatDate(course.estimatedFinishAtGoal)}
+                          </p>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="space-y-3 border-t pt-5">

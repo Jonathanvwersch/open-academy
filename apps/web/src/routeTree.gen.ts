@@ -11,12 +11,15 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CourseRouteImport } from './routes/course'
+import { Route as CoursesRouteImport } from './routes/courses'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PlacementRouteImport } from './routes/placement'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as ReviewsRouteImport } from './routes/reviews'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as CoursesIndexRouteImport } from './routes/courses.index'
+import { Route as CoursesCourseIdRouteImport } from './routes/courses.$courseId'
 import { Route as LessonsConceptIdRouteImport } from './routes/lessons.$conceptId'
 import { Route as PapersPaperIdRouteImport } from './routes/papers.$paperId'
 import { Route as PlacementIndexRouteImport } from './routes/placement.index'
@@ -32,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
 const CourseRoute = CourseRouteImport.update({
   id: '/course',
   path: '/course',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CoursesRoute = CoursesRouteImport.update({
+  id: '/courses',
+  path: '/courses',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LabRoute = LabRouteImport.update({
@@ -63,6 +71,16 @@ const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => rootRouteImport,
+} as any)
+const CoursesIndexRoute = CoursesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CoursesRoute,
+} as any)
+const CoursesCourseIdRoute = CoursesCourseIdRouteImport.update({
+  id: '/$courseId',
+  path: '/$courseId',
+  getParentRoute: () => CoursesRoute,
 } as any)
 const LessonsConceptIdRoute = LessonsConceptIdRouteImport.update({
   id: '/lessons/$conceptId',
@@ -98,17 +116,20 @@ const SessionIdRoute = SessionIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/course': typeof CourseRoute
+  '/courses': typeof CoursesRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/placement': typeof PlacementRouteWithChildren
   '/progress': typeof ProgressRoute
   '/reviews': typeof ReviewsRoute
   '/settings': typeof SettingsRoute
+  '/courses/$courseId': typeof CoursesCourseIdRoute
   '/lessons/$conceptId': typeof LessonsConceptIdRoute
   '/papers/$paperId': typeof PapersPaperIdRoute
   '/placement/results': typeof PlacementResultsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/session/$id': typeof SessionIdRoute
+  '/courses/': typeof CoursesIndexRoute
   '/placement/': typeof PlacementIndexRoute
 }
 export interface FileRoutesByTo {
@@ -119,28 +140,33 @@ export interface FileRoutesByTo {
   '/progress': typeof ProgressRoute
   '/reviews': typeof ReviewsRoute
   '/settings': typeof SettingsRoute
+  '/courses/$courseId': typeof CoursesCourseIdRoute
   '/lessons/$conceptId': typeof LessonsConceptIdRoute
   '/papers/$paperId': typeof PapersPaperIdRoute
   '/placement/results': typeof PlacementResultsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/session/$id': typeof SessionIdRoute
+  '/courses': typeof CoursesIndexRoute
   '/placement': typeof PlacementIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/course': typeof CourseRoute
+  '/courses': typeof CoursesRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/placement': typeof PlacementRouteWithChildren
   '/progress': typeof ProgressRoute
   '/reviews': typeof ReviewsRoute
   '/settings': typeof SettingsRoute
+  '/courses/$courseId': typeof CoursesCourseIdRoute
   '/lessons/$conceptId': typeof LessonsConceptIdRoute
   '/papers/$paperId': typeof PapersPaperIdRoute
   '/placement/results': typeof PlacementResultsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/session/$id': typeof SessionIdRoute
+  '/courses/': typeof CoursesIndexRoute
   '/placement/': typeof PlacementIndexRoute
 }
 export interface FileRouteTypes {
@@ -148,17 +174,20 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/course'
+    | '/courses'
     | '/lab'
     | '/login'
     | '/placement'
     | '/progress'
     | '/reviews'
     | '/settings'
+    | '/courses/$courseId'
     | '/lessons/$conceptId'
     | '/papers/$paperId'
     | '/placement/results'
     | '/projects/$projectId'
     | '/session/$id'
+    | '/courses/'
     | '/placement/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -169,33 +198,39 @@ export interface FileRouteTypes {
     | '/progress'
     | '/reviews'
     | '/settings'
+    | '/courses/$courseId'
     | '/lessons/$conceptId'
     | '/papers/$paperId'
     | '/placement/results'
     | '/projects/$projectId'
     | '/session/$id'
+    | '/courses'
     | '/placement'
   id:
     | '__root__'
     | '/'
     | '/course'
+    | '/courses'
     | '/lab'
     | '/login'
     | '/placement'
     | '/progress'
     | '/reviews'
     | '/settings'
+    | '/courses/$courseId'
     | '/lessons/$conceptId'
     | '/papers/$paperId'
     | '/placement/results'
     | '/projects/$projectId'
     | '/session/$id'
+    | '/courses/'
     | '/placement/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CourseRoute: typeof CourseRoute
+  CoursesRoute: typeof CoursesRouteWithChildren
   LabRoute: typeof LabRoute
   LoginRoute: typeof LoginRoute
   PlacementRoute: typeof PlacementRouteWithChildren
@@ -222,6 +257,13 @@ declare module '@tanstack/react-router' {
       path: '/course'
       fullPath: '/course'
       preLoaderRoute: typeof CourseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/courses': {
+      id: '/courses'
+      path: '/courses'
+      fullPath: '/courses'
+      preLoaderRoute: typeof CoursesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lab': {
@@ -265,6 +307,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/courses/': {
+      id: '/courses/'
+      path: '/'
+      fullPath: '/courses/'
+      preLoaderRoute: typeof CoursesIndexRouteImport
+      parentRoute: typeof CoursesRoute
+    }
+    '/courses/$courseId': {
+      id: '/courses/$courseId'
+      path: '/$courseId'
+      fullPath: '/courses/$courseId'
+      preLoaderRoute: typeof CoursesCourseIdRouteImport
+      parentRoute: typeof CoursesRoute
     }
     '/lessons/$conceptId': {
       id: '/lessons/$conceptId'
@@ -311,6 +367,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CoursesRouteChildren {
+  CoursesCourseIdRoute: typeof CoursesCourseIdRoute
+  CoursesIndexRoute: typeof CoursesIndexRoute
+}
+
+const CoursesRouteChildren: CoursesRouteChildren = {
+  CoursesCourseIdRoute: CoursesCourseIdRoute,
+  CoursesIndexRoute: CoursesIndexRoute,
+}
+
+const CoursesRouteWithChildren =
+  CoursesRoute._addFileChildren(CoursesRouteChildren)
+
 interface PlacementRouteChildren {
   PlacementResultsRoute: typeof PlacementResultsRoute
   PlacementIndexRoute: typeof PlacementIndexRoute
@@ -328,6 +397,7 @@ const PlacementRouteWithChildren = PlacementRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CourseRoute: CourseRoute,
+  CoursesRoute: CoursesRouteWithChildren,
   LabRoute: LabRoute,
   LoginRoute: LoginRoute,
   PlacementRoute: PlacementRouteWithChildren,

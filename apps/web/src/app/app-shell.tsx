@@ -25,8 +25,7 @@ import {
 } from '../components/ui/sidebar.js';
 import { Skeleton } from '../components/ui/skeleton.js';
 import { TooltipProvider } from '../components/ui/tooltip.js';
-import { courseQueryOptions } from '../features/course/queries.js';
-import { useSwitchCourse } from '../features/course/use-switch-course.js';
+import { coursesQueryOptions } from '../features/course/queries.js';
 import { reviewsQueryOptions } from '../features/reviews/queries.js';
 import { TutorContextProvider } from '../features/tutor/tutor-sidebar.js';
 
@@ -34,7 +33,7 @@ const SIDEBAR_STORAGE_KEY = 'academy.app-sidebar.open';
 
 const navigation = [
   { label: 'Home', to: '/', icon: House },
-  { label: 'Courses', to: '/course', icon: BookOpen },
+  { label: 'Courses', to: '/courses', icon: BookOpen },
   { label: 'Reviews', to: '/reviews', icon: RotateCcw },
   { label: 'Progress', to: '/progress', icon: Activity },
 ] as const;
@@ -49,24 +48,16 @@ function initialSidebarOpen() {
 
 function AppSidebar() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const searchCourseId = useRouterState({
-    select: (state) => {
-      const search = state.location.search as Record<string, unknown>;
-      return typeof search.course === 'string' ? search.course : undefined;
-    },
-  });
   const { isMobile, state, setOpenMobile } = useSidebar();
-  const { data: courseData } = useQuery(courseQueryOptions());
+  const { data: courseData } = useQuery(coursesQueryOptions());
   const { data: reviewsData } = useQuery(reviewsQueryOptions());
-  const startedCourses = courseData?.courses.filter((course) => course.started) ?? [];
-  const selectedCourseId =
-    pathname === '/course' && courseData?.courses.some((course) => course.id === searchCourseId)
-      ? searchCourseId
-      : courseData?.courses.find((course) => course.active)?.id;
+  const activeCourses =
+    courseData?.subjects.flatMap((subject) =>
+      subject.courses.filter((course) => course.status === 'active'),
+    ) ?? [];
   const closeMobile = () => {
     if (isMobile) setOpenMobile(false);
   };
-  const switchCourse = useSwitchCourse(closeMobile);
 
   return (
     <Sidebar
@@ -136,13 +127,15 @@ function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {startedCourses.length > 0 && (state !== 'collapsed' || isMobile) ? (
+        {activeCourses.length > 0 && (state !== 'collapsed' || isMobile) ? (
           <SidebarGroup className="px-2 py-1">
             <SidebarGroupLabel>My courses</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
-                {startedCourses.map((course) => {
-                  const isActive = course.id === selectedCourseId;
+                {activeCourses.map((course) => {
+                  const isActive =
+                    pathname === `/courses/${course.id}` ||
+                    pathname.startsWith(`/courses/${course.id}/`);
                   const content = (
                     <>
                       <span className="min-w-0 flex-1 truncate text-sm">{course.title}</span>
@@ -160,8 +153,9 @@ function AppSidebar() {
                           className="items-center text-sm"
                         >
                           <Link
-                            to="/course"
-                            search={{ course: course.id }}
+                            to="/courses/$courseId"
+                            params={{ courseId: course.id }}
+                            preload="intent"
                             aria-label={`${course.title}, ${course.topicsDone} of ${course.topicsTotal} topics done`}
                             onClick={closeMobile}
                           >
@@ -171,24 +165,11 @@ function AppSidebar() {
                       ) : (
                         <SidebarMenuButton asChild className="items-center text-sm">
                           <Link
-                            to="/course"
-                            search={{ course: course.id }}
+                            to="/courses/$courseId"
+                            params={{ courseId: course.id }}
                             preload="intent"
-                            aria-label={`Switch to ${course.title}`}
-                            onClick={(event) => {
-                              if (
-                                event.button !== 0 ||
-                                event.metaKey ||
-                                event.ctrlKey ||
-                                event.shiftKey ||
-                                event.altKey
-                              ) {
-                                return;
-                              }
-                              event.preventDefault();
-                              closeMobile();
-                              switchCourse.switchTo(course.id);
-                            }}
+                            aria-label={`Open ${course.title}`}
+                            onClick={closeMobile}
                           >
                             {content}
                           </Link>
@@ -198,11 +179,6 @@ function AppSidebar() {
                   );
                 })}
               </SidebarMenu>
-              {switchCourse.isError ? (
-                <p role="alert" className="px-2 pt-2 text-xs text-destructive">
-                  {switchCourse.error.message}
-                </p>
-              ) : null}
             </SidebarGroupContent>
           </SidebarGroup>
         ) : null}

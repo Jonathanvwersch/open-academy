@@ -7,31 +7,29 @@ import { useEffect, useState } from 'react';
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
-import { Dialog, DialogContent, DialogTitle } from '../../components/ui/dialog.js';
 import { paperStatusLabel } from '../papers/queries.js';
 import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { CourseMetadata } from './course-metadata.js';
 import { CourseStartCard } from './course-start-card.js';
 import { foundationsHeading } from './foundations-heading.js';
-import { courseQueryOptions } from './queries.js';
-import { useSwitchCourse } from './use-switch-course.js';
+import { useCourseEnrollment } from './mutations.js';
+import { courseDetailQueryOptions } from './queries.js';
 import {
   isUnitOpen,
   readCourseUnitOpenOverrides,
   writeCourseUnitOpenOverrides,
 } from './week-open-state.js';
 
-const CourseRoute = getRouteApi('/course');
+const CourseRoute = getRouteApi('/courses/$courseId');
 
 export function CoursePage() {
-  const { course: courseId } = CourseRoute.useSearch();
-  const { data } = useSuspenseQuery(courseQueryOptions(courseId));
+  const { courseId } = CourseRoute.useParams();
+  const { data } = useSuspenseQuery(courseDetailQueryOptions(courseId));
   const tutorSidebar = useTutorSidebar();
   const [unitOpenOverrides, setUnitOpenOverrides] = useState(readCourseUnitOpenOverrides);
-  const [coursesOpen, setCoursesOpen] = useState(false);
   const [foundationsOpen, setFoundationsOpen] = useState(false);
-  const activeCourse = data.courses.find((course) => course.id === data.course.id);
-  const changeCourse = useSwitchCourse(() => setCoursesOpen(false));
+  const enrollment = useCourseEnrollment(courseId, data.course.title);
+  const courseProgress = data.courses.find((course) => course.id === courseId);
   useEffect(() => {
     tutorSidebar.setContext({
       page: 'course',
@@ -48,55 +46,73 @@ export function CoursePage() {
           <h1 className="text-2xl font-semibold tracking-tight">{data.course.title}</h1>
           <p className="max-w-[70ch] text-sm text-muted-foreground">{data.course.description}</p>
           <p className="text-sm font-medium">
-            {activeCourse?.topicsDone ?? 0} of {activeCourse?.topicsTotal ?? 0} topics done
+            {courseProgress?.topicsDone ?? 0} of {courseProgress?.topicsTotal ?? 0} topics done
           </p>
         </div>
-        <Button type="button" variant="outline" onClick={() => setCoursesOpen(true)}>
-          Change course
-        </Button>
+        {data.status === 'active' ? (
+          <Button
+            type="button"
+            variant="outline"
+            loading={enrollment.isPending}
+            onClick={() => enrollment.mutate('paused')}
+          >
+            Remove
+          </Button>
+        ) : data.status === 'paused' ? (
+          <Button
+            type="button"
+            variant="outline"
+            loading={enrollment.isPending}
+            onClick={() => enrollment.mutate('active')}
+          >
+            Add to my courses
+          </Button>
+        ) : data.status === 'not_started' ? (
+          <Button
+            type="button"
+            onClick={() =>
+              document.getElementById('course-start-card')?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              })
+            }
+          >
+            Add to my courses
+          </Button>
+        ) : null}
       </header>
-      <Dialog open={coursesOpen} onOpenChange={setCoursesOpen}>
-        <DialogContent aria-describedby={undefined}>
-          <DialogTitle>Courses</DialogTitle>
-          <div className="mt-4 space-y-3">
-            {data.courses.map((course) => (
-              <Card key={course.id} size="sm">
-                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 space-y-1">
-                    <h3 className="font-medium">{course.title}</h3>
-                    <p className="line-clamp-2 text-sm text-muted-foreground">
-                      {course.description}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {course.topicsDone} of {course.topicsTotal} topics
-                    </p>
-                  </div>
-                  {course.active ? (
-                    <Badge variant="secondary">Current</Badge>
-                  ) : (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={changeCourse.isPending}
-                      loading={changeCourse.isPending && changeCourse.variables === course.id}
-                      onClick={() => changeCourse.switchTo(course.id)}
-                    >
-                      {course.started ? 'Switch' : 'Start'}
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
+      {enrollment.isError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {enrollment.error.message}
+        </p>
+      ) : null}
+      {data.status === 'completed' && data.suggestedNext.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Up next</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {data.suggestedNext.map((course) => (
+              <Link
+                key={course.id}
+                to="/courses/$courseId"
+                params={{ courseId: course.id }}
+                className="flex items-center justify-between gap-3 rounded-md border px-4 py-3 hover:bg-muted/60"
+              >
+                <span className="min-w-0">
+                  <span className="block font-medium">{course.title}</span>
+                  <span className="block text-sm text-muted-foreground">{course.reason}</span>
+                </span>
+                <ChevronRight
+                  aria-hidden="true"
+                  className="size-4 shrink-0 text-muted-foreground"
+                />
+              </Link>
             ))}
-          </div>
-          {changeCourse.isError ? (
-            <p role="alert" className="mt-3 text-sm text-destructive">
-              {changeCourse.error.message}
-            </p>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-      {data.courseStart.needed ? (
+          </CardContent>
+        </Card>
+      ) : null}
+      {data.status === 'not_started' || data.courseStart.needed ? (
         <CourseStartCard
           courseId={data.course.id}
           courseTitle={data.course.title}
@@ -320,6 +336,7 @@ export function CoursePage() {
                               <Link
                                 to="/papers/$paperId"
                                 params={{ paperId: paper.id }}
+                                search={{ courseId: data.course.id }}
                                 className="flex items-center justify-between gap-3 px-(--card-spacing) py-3 hover:bg-muted/60"
                               >
                                 <span className="flex w-9 shrink-0 items-center">
