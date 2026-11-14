@@ -91,6 +91,9 @@ export function LessonRunner({
   const [practicePointId, setPracticePointId] = useState<string | null>(null);
   const [warmupActive, setWarmupActive] = useState(false);
   const [quizReview, setQuizReview] = useState<QuizReviewPayload | null>(null);
+  const [quizPosition, setQuizPosition] = useState<{ attemptId: string; index: number } | null>(
+    null,
+  );
   const activePoint = state
     ? (lesson?.knowledge_points?.find((point) => point.id === state.currentPointId) ?? undefined)
     : undefined;
@@ -297,7 +300,7 @@ export function LessonRunner({
     await queryClient.invalidateQueries({ queryKey: sessionQueryOptions(sessionId).queryKey });
   };
 
-  const submitQuiz = async () => {
+  const submitLockedQuiz = async () => {
     setBusy(true);
     setBusyAction('submit');
     setError('');
@@ -311,7 +314,13 @@ export function LessonRunner({
     }
   };
 
-  const submitQuizAnswer = async (itemId: string, answer: unknown, last: boolean) => {
+  const submitQuizAnswer = async (
+    itemId: string,
+    answer: unknown,
+    attemptId: string,
+    index: number,
+    last: boolean,
+  ) => {
     setBusy(true);
     setBusyAction('submit');
     setError('');
@@ -327,8 +336,10 @@ export function LessonRunner({
       };
       if (!response.ok || !data.run) throw new Error(data.error ?? 'Your answer was not saved.');
       await updateState(data.run);
-      if (last || data.run.quiz.current?.items.every((item) => item.answered)) {
+      if (last) {
         await submitQuizResult();
+      } else {
+        setQuizPosition({ attemptId, index: index + 1 });
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Your answer was not saved.');
@@ -521,10 +532,15 @@ export function LessonRunner({
   );
   const quizItems = state.quiz.current?.items ?? [];
   const unansweredQuizIndex = quizItems.findIndex((item) => !item.answered);
-  const quizQuestionIndex =
+  const defaultQuizQuestionIndex =
     unansweredQuizIndex >= 0 ? unansweredQuizIndex : Math.max(0, quizItems.length - 1);
+  const quizAttemptId = state.quiz.current?.attemptId;
+  const quizQuestionIndex =
+    quizAttemptId && quizPosition?.attemptId === quizAttemptId
+      ? Math.min(quizPosition.index, Math.max(0, quizItems.length - 1))
+      : defaultQuizQuestionIndex;
   const currentQuizItem = quizItems[quizQuestionIndex];
-  const quizAllAnswered = quizItems.length > 0 && quizItems.every((item) => item.answered);
+  const lastQuizQuestion = quizQuestionIndex === quizItems.length - 1;
   const stableHeightForCurrentPoint =
     stableCardHeights?.pointId === state.currentPointId ? stableCardHeights : null;
   const backButtonLabel = 'Back';
@@ -693,21 +709,7 @@ export function LessonRunner({
           </>
         )
       ) : state.quiz.current ? (
-        quizAllAnswered ? (
-          <Card>
-            <CardContent className="space-y-4">
-              <p>All questions are answered.</p>
-              <Button
-                type="button"
-                loading={busyAction === 'submit'}
-                disabled={busy}
-                onClick={() => void submitQuiz()}
-              >
-                Submit quiz
-              </Button>
-            </CardContent>
-          </Card>
-        ) : currentQuizItem?.exercise ? (
+        currentQuizItem?.exercise ? (
           <Card data-testid="lesson-quiz-question">
             <CardContent className="space-y-5">
               <h2 className="text-lg font-semibold">
@@ -719,16 +721,55 @@ export function LessonRunner({
               <ExerciseForm
                 key={currentQuizItem.id}
                 exercise={currentQuizItem.exercise}
-                onSubmit={(answer) =>
-                  submitQuizAnswer(
+                onSubmit={(answer) => {
+                  if (!quizAttemptId || currentQuizItem.locked) return;
+                  void submitQuizAnswer(
                     currentQuizItem.id,
                     answer,
-                    quizQuestionIndex === quizItems.length - 1,
-                  )
-                }
+                    quizAttemptId,
+                    quizQuestionIndex,
+                    lastQuizQuestion,
+                  );
+                }}
                 loading={busyAction === 'submit'}
                 disabled={busy && busyAction !== 'submit'}
-                submitLabel={quizQuestionIndex === quizItems.length - 1 ? 'Submit quiz' : 'Next'}
+                locked={currentQuizItem.locked}
+                submittedAnswer={currentQuizItem.answer}
+                submitLabel={lastQuizQuestion ? 'Submit quiz' : 'Next'}
+                primaryAction={
+                  currentQuizItem.locked
+                    ? {
+                        label: lastQuizQuestion ? 'Submit quiz' : 'Next',
+                        onClick: () => {
+                          if (!quizAttemptId) return;
+                          if (lastQuizQuestion) {
+                            void submitLockedQuiz();
+                          } else {
+                            setQuizPosition({
+                              attemptId: quizAttemptId,
+                              index: quizQuestionIndex + 1,
+                            });
+                          }
+                        },
+                        loading: busyAction === 'submit',
+                        disabled: busy,
+                      }
+                    : undefined
+                }
+                actions={
+                  quizQuestionIndex > 0 && quizAttemptId ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() =>
+                        setQuizPosition({ attemptId: quizAttemptId, index: quizQuestionIndex - 1 })
+                      }
+                    >
+                      Back
+                    </Button>
+                  ) : null
+                }
               />
             </CardContent>
           </Card>

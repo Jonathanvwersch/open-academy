@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
+  attempts,
   diagnosticRuns,
   lessonProblems,
   lessonQuizItems,
@@ -28,6 +29,7 @@ const spacedReviewScreenshotDir = 'test-results/screenshots/screenshots/spaced-r
 const lastTryScreenshotDir = 'test-results/screenshots/last-try';
 const failedQuizScreenshotDir = 'test-results/screenshots/failed-quiz';
 const quizRetryScreenshotDir = 'test-results/screenshots/quiz-retry';
+const quizReviseScreenshotDir = 'test-results/screenshots/quiz-revise';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
@@ -42,6 +44,101 @@ mkdirSync(spacedReviewScreenshotDir, { recursive: true });
 mkdirSync(lastTryScreenshotDir, { recursive: true });
 mkdirSync(failedQuizScreenshotDir, { recursive: true });
 mkdirSync(quizRetryScreenshotDir, { recursive: true });
+mkdirSync(quizReviseScreenshotDir, { recursive: true });
+
+type QuizItemForForm = {
+  id: string;
+  exercise: {
+    id: string;
+    type: string;
+    multi?: boolean;
+    options?: Array<{ id: string; text: string }>;
+    code?: string;
+    fix_options?: Array<{ id: string; text: string }>;
+  };
+};
+
+function wrongQuizAnswer(item: QuizItemForForm, answer: unknown): unknown {
+  if (item.exercise.type === 'mc') {
+    const correctIds = new Set(Array.isArray(answer) ? answer : [answer]);
+    const wrongOption = item.exercise.options?.find((option) => !correctIds.has(option.id));
+    return item.exercise.multi ? [wrongOption?.id ?? 'incorrect-option'] : wrongOption?.id;
+  }
+  if (item.exercise.type === 'debug') {
+    const correct = answer as { line: number; fixId: string };
+    const lineCount = item.exercise.code?.split(/\\n|\n/).length ?? 0;
+    const wrongLine = correct.line === 1 ? 2 : 1;
+    const wrongFix = item.exercise.fix_options?.find((option) => option.id !== correct.fixId);
+    return {
+      line: wrongLine <= lineCount ? wrongLine : correct.line + 1,
+      fixId: wrongFix?.id ?? '',
+    };
+  }
+  return typeof answer === 'number' ? answer + 1_000_000 : `${String(answer)} incorrect`;
+}
+
+async function fillQuizAnswer(page: Page, item: QuizItemForForm, answer: unknown) {
+  if (item.exercise.type === 'mc') {
+    const selectedIds = new Set(
+      (Array.isArray(answer) ? answer : [answer]).filter(
+        (value): value is string => typeof value === 'string',
+      ),
+    );
+    for (const option of item.exercise.options ?? []) {
+      const controlId = `${item.exercise.id}-${option.id}`;
+      const control = page.locator(`#${controlId}`);
+      const selected = (await control.getAttribute('aria-checked')) === 'true';
+      if (selected !== selectedIds.has(option.id)) {
+        await page.locator(`label[for="${controlId}"]`).click();
+      }
+    }
+    return;
+  }
+  if (item.exercise.type === 'debug') {
+    const value = answer as { line: number; fixId: string };
+    const fix = item.exercise.fix_options?.find((option) => option.id === value.fixId);
+    if (!fix) throw new Error(`Missing debug fix option ${value.fixId}`);
+    await page.getByLabel('Buggy line').click();
+    await page.getByRole('option', { name: `Line ${value.line}` }).click();
+    await page.getByLabel('Fix').click();
+    await page.getByRole('option').filter({ hasText: fix.text }).click();
+    return;
+  }
+  const value =
+    typeof answer === 'object' && answer !== null && 'text' in answer
+      ? (answer as { text: unknown }).text
+      : answer;
+  await page.getByLabel('Your answer').fill(String(value ?? ''));
+}
+
+async function expectQuizAnswerPrefilled(page: Page, item: QuizItemForForm, answer: unknown) {
+  if (item.exercise.type === 'mc') {
+    const selectedIds = new Set(
+      (Array.isArray(answer) ? answer : [answer]).filter(
+        (value): value is string => typeof value === 'string',
+      ),
+    );
+    for (const option of item.exercise.options ?? []) {
+      await expect(page.locator(`#${item.exercise.id}-${option.id}`)).toHaveAttribute(
+        'aria-checked',
+        String(selectedIds.has(option.id)),
+      );
+    }
+    return;
+  }
+  if (item.exercise.type === 'debug') {
+    const value = answer as { line: number; fixId: string };
+    const fix = item.exercise.fix_options?.find((option) => option.id === value.fixId);
+    await expect(page.getByLabel('Buggy line')).toHaveText(`Line ${value.line}`);
+    if (fix) await expect(page.getByLabel('Fix')).toContainText(fix.text);
+    return;
+  }
+  const value =
+    typeof answer === 'object' && answer !== null && 'text' in answer
+      ? (answer as { text: unknown }).text
+      : answer;
+  await expect(page.getByLabel('Your answer')).toHaveValue(String(value ?? ''));
+}
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -1572,6 +1669,8 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
     );
 
   const quizRun = await currentRun(page);
+  const questionCount = quizRun.quiz.current.items.length;
+  expect(questionCount).toBeGreaterThan(1);
   const quizItemsDb = createDb(env.TEST_DATABASE_URL);
   const quizItemPoints = await quizItemsDb
     .select({ id: lessonQuizItems.id, pointId: lessonQuizItems.knowledgePointId })
@@ -1585,41 +1684,55 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
     const run = await (await fetch(`/api/lessons/${concept}/run`)).json();
     return run.run.quiz.current.items[0];
   }, conceptId);
-  const firstAnswer = await page.evaluate(
-    async ({ concept, item, activityId, answerWrong }) => {
-      const expected = await (await fetch(`/api/test/lesson-quiz-items/${item.id}/answer`)).json();
-      let answer = expected.answer;
-      if (answerWrong && item.exercise.type === 'mc') {
-        const correctIds = Array.isArray(answer) ? answer : [answer];
-        const other = item.exercise.options.find(
-          (option: { id: string }) => !correctIds.includes(option.id),
-        )?.id;
-        answer = item.exercise.multi ? [other] : other;
-      } else if (answerWrong && typeof answer === 'number') {
-        answer += 1_000_000;
-      } else if (answerWrong) {
-        answer = `${String(answer)} incorrect`;
-      }
-      const response = await fetch(`/api/lessons/${concept}/quiz/answer`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ itemId: item.id, answer, activityId }),
-      });
-      return response.status;
-    },
-    {
-      concept: conceptId,
-      item: firstItem,
-      activityId: currentActivityId,
-      answerWrong: missedPointIds.includes(itemPointIds[firstItem.id]),
-    },
-  );
-  expect(firstAnswer).toBe(200);
+  if (!firstItem.exercise) throw new Error('Could not load the first quiz question');
+  const firstAnswer = await page.evaluate(async (itemId) => {
+    const response = await fetch(`/api/test/lesson-quiz-items/${itemId}/answer`);
+    return (await response.json()).answer;
+  }, firstItem.id);
+  const firstWrongAnswer = wrongQuizAnswer(firstItem, firstAnswer);
+  await fillQuizAnswer(page, firstItem, firstWrongAnswer);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `Question 2 of ${questionCount}` })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `Question 1 of ${questionCount}` })).toBeVisible();
+  await expectQuizAnswerPrefilled(page, firstItem, firstWrongAnswer);
+  await fillQuizAnswer(page, firstItem, firstAnswer);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `Question 2 of ${questionCount}` })).toBeVisible();
+  await page.screenshot({
+    path: `${quizReviseScreenshotDir}/question-with-back-1280.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${quizReviseScreenshotDir}/question-with-back-390.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.reload();
   await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+  await expect(page.getByRole('heading', { name: `Question 2 of ${questionCount}` })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `Question 1 of ${questionCount}` })).toBeVisible();
+  await expectQuizAnswerPrefilled(page, firstItem, firstAnswer);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `Question 2 of ${questionCount}` })).toBeVisible();
   await answerAttempt(true, false, missedPointIds, itemPointIds);
   await page.reload();
   const failed = page.getByTestId('lesson-quiz-results');
+  const finalQuizState = await currentRun(page);
+  const finalQuizItemsDb = createDb(env.TEST_DATABASE_URL);
+  const finalQuizItems = await finalQuizItemsDb
+    .select({ id: lessonQuizItems.id, correct: lessonQuizItems.correct })
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, finalQuizState.quiz.last.attemptId));
+  await finalQuizItemsDb.$client.end();
+  expect(finalQuizItems.find((item) => item.id === firstItem.id)?.correct).toBe(1);
+  expect(finalQuizState.quiz.last.correctCount).toBe(
+    finalQuizItems.filter((item) => item.correct === 1).length,
+  );
   await expect(failed).toContainText(/Not passed · \d+ of \d+ \(you need \d+\)/);
   await expect(failed.getByText(/Your answer:|Correct answer:|Question \d+/)).toHaveCount(0);
   await expect(failed).toContainText('You missed questions on:');
@@ -2008,4 +2121,134 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await failedRetake.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
   expect(prepared.questionCount).toBeGreaterThan(0);
+});
+
+test('legacy quiz answers can be navigated and submitted without resaving', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.route('**/api/**', (route) =>
+    route.continue({
+      headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
+    }),
+  );
+  const sessionId = await createSession(page);
+  const preparedAttemptId = await page.evaluate(
+    async ({ conceptId, sessionId }) => {
+      const session = await (await fetch(`/api/sessions/${sessionId}`)).json();
+      const activity = session.activities.find(
+        (item: { conceptId?: string }) => item.conceptId === conceptId,
+      );
+      if (!activity) throw new Error('Missing lesson activity');
+      let run = (await (await fetch(`/api/lessons/${conceptId}/run`)).json()).run;
+      for (let count = 0; run.status === 'in_progress' && count < 200; count += 1) {
+        if (!run.pendingProblem) {
+          const response = await fetch(`/api/lessons/${conceptId}/run`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ activityId: activity.id }),
+          });
+          run = (await response.json()).run;
+          continue;
+        }
+        const expected = await (
+          await fetch(`/api/test/lesson-problems/${run.pendingProblem.id}/answer`)
+        ).json();
+        const response = await fetch(`/api/lessons/${conceptId}/run/answer`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            problemId: run.pendingProblem.id,
+            answer: expected.answer,
+            activityId: activity.id,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error ?? 'Could not prepare quiz');
+        run = result.state;
+      }
+      if (run.status !== 'quiz') throw new Error('Lesson steps did not reach the quiz');
+      const response = await fetch(`/api/lessons/${conceptId}/quiz/start`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ activityId: activity.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? 'Could not start quiz');
+      return result.run.quiz.current.attemptId as string;
+    },
+    { conceptId, sessionId },
+  );
+
+  const legacyAnswers = await page.evaluate(
+    async ({ concept, attemptId }) => {
+      const run = (await (await fetch(`/api/lessons/${concept}/run`)).json()).run;
+      if (run.quiz.current.attemptId !== attemptId) throw new Error('Quiz attempt changed');
+      return Promise.all(
+        run.quiz.current.items.map(async (item: { id: string }) => {
+          const response = await fetch(`/api/test/lesson-quiz-items/${item.id}/answer`);
+          return { id: item.id, answer: (await response.json()).answer };
+        }),
+      );
+    },
+    { concept: conceptId, attemptId: preparedAttemptId },
+  );
+  const db = createDb(env.TEST_DATABASE_URL);
+  const [learner] = await db.select({ id: users.id }).from(users).limit(1);
+  if (!learner) throw new Error('Missing E2E learner');
+  const [legacyAttempt] = await db
+    .select({ id: attempts.id })
+    .from(attempts)
+    .where(eq(attempts.userId, learner.id))
+    .limit(1);
+  if (!legacyAttempt) throw new Error('Expected an existing lesson attempt');
+  for (const item of legacyAnswers) {
+    await db
+      .update(lessonQuizItems)
+      .set({
+        answer: item.answer,
+        correct: 1,
+        attemptId: legacyAttempt.id,
+        answeredAt: new Date('2026-01-01T12:00:00.000Z'),
+      })
+      .where(eq(lessonQuizItems.id, item.id));
+  }
+  await db.$client.end();
+
+  await page.reload();
+  await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+  const run = await currentRun(page);
+  const quizItems = run.quiz.current.items;
+  expect(quizItems).toHaveLength(legacyAnswers.length);
+  expect(quizItems.every((item: { locked: boolean }) => item.locked)).toBe(true);
+  const lastItem = quizItems.at(-1);
+  if (!lastItem) throw new Error('Expected legacy quiz items');
+  await expect(
+    page.getByRole('heading', { name: `Question ${quizItems.length} of ${quizItems.length}` }),
+  ).toBeVisible();
+  await expectQuizAnswerPrefilled(page, lastItem, lastItem.answer);
+
+  let answerPosts = 0;
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().endsWith('/quiz/answer')) answerPosts += 1;
+  });
+  await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(
+    page.getByRole('heading', {
+      name: `Question ${quizItems.length - 1} of ${quizItems.length}`,
+    }),
+  ).toBeVisible();
+  const previousItem = quizItems.at(-2);
+  if (!previousItem) throw new Error('Expected a previous quiz item');
+  await expectQuizAnswerPrefilled(page, previousItem, previousItem.answer);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: `Question ${quizItems.length} of ${quizItems.length}` }),
+  ).toBeVisible();
+  const submitResponse = page.waitForResponse(
+    (response) => response.request().method() === 'POST' && response.url().endsWith('/quiz/submit'),
+  );
+  await page.getByRole('button', { name: 'Submit quiz', exact: true }).click();
+  expect((await submitResponse).status()).toBe(200);
+  await expect(page.getByTestId('lesson-quiz-results')).toContainText(/^Quiz passed ·/);
+  expect(answerPosts).toBe(0);
 });

@@ -13,6 +13,7 @@ import {
   lessonQuizAttempts,
   lessonQuizItems,
   lessonRuns,
+  mastery,
   reviewCards,
   reviewLogs,
   sessionActivities,
@@ -22,6 +23,7 @@ import {
   xpEvents,
 } from '../../src/db/schema.js';
 import { FakeProvider } from '../../src/features/tutor/provider.js';
+import { scoreLessonQuiz } from '../../src/learning/lesson-quiz.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const userId = '00000000-0000-4000-8000-000000000087';
@@ -111,7 +113,7 @@ function wrongAnswer(exerciseId: string, seed: number | null): unknown {
   if (exercise.type === 'debug') {
     return {
       line: exercise.buggy_line + 1,
-      fixId: exercise.fix_options.find((option) => option.correct)?.id,
+      fixId: exercise.fix_options.find((option) => !option.correct)?.id ?? '',
     };
   }
   if ('answer' in exercise) {
@@ -653,6 +655,8 @@ test('quiz start is idempotent and unsubmitted answers disclose no correctness',
   expect(repeatedRun.quiz.current.attemptId).toBe(firstRun.quiz.current.attemptId);
   expect(await db.select().from(lessonQuizAttempts)).toHaveLength(1);
 
+  const attemptsBeforeAnswer = await db.select().from(attempts).where(eq(attempts.userId, userId));
+  const masteryBeforeAnswer = await db.select().from(mastery).where(eq(mastery.userId, userId));
   const firstItem = firstRun.quiz.current.items[0];
   const question = JSON.stringify(firstItem);
   for (const secret of ['"answer"', '"answer_expr"', '"correct"', '"feedback"', '"solution"']) {
@@ -663,20 +667,41 @@ test('quiz start is idempotent and unsubmitted answers disclose no correctness',
     .from(lessonQuizItems)
     .where(eq(lessonQuizItems.id, firstItem.id));
   if (!firstRow) throw new Error('Quiz item missing from database');
-  const answered = await answerQuizItem(
-    firstItem.id,
-    correctAnswer(firstRow.exerciseId, firstRow.seed),
-  );
+  const firstAnswer = correctAnswer(firstRow.exerciseId, firstRow.seed);
+  const answered = await answerQuizItem(firstItem.id, firstAnswer);
   expect(answered.status).toBe(200);
   const answerBody = await answered.json();
   expect(answerBody).not.toHaveProperty('correct');
   expect(answerBody).not.toHaveProperty('feedback');
   expect(answerBody).not.toHaveProperty('solution');
-  expect(answerBody.run.quiz.current.items[0]).toMatchObject({ answered: true });
+  expect(answerBody.run.quiz.current.items[0]).toMatchObject({
+    answered: true,
+    answer: firstAnswer,
+  });
+  expect(answerBody.run.quiz.current.items[0]).not.toHaveProperty('correct');
   expect(JSON.stringify(answerBody.run.quiz.current)).not.toMatch(
-    /"(?:correct|feedback|solution|answer_expr|answer)"\s*:/,
+    /"(?:correct|feedback|solution|answer_expr)"\s*:/,
   );
-  expect((await answerQuizItem(firstItem.id, 'second answer')).status).toBe(409);
+  const replacementAnswer = wrongAnswer(firstRow.exerciseId, firstRow.seed);
+  const revised = await answerQuizItem(firstItem.id, replacementAnswer);
+  expect(revised.status).toBe(200);
+  const revisedBody = await revised.json();
+  expect(revisedBody.run.quiz.current.items[0]).toMatchObject({
+    answered: true,
+    answer: replacementAnswer,
+  });
+  const [revisedRow] = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.id, firstItem.id));
+  expect(revisedRow?.answer).toEqual(replacementAnswer);
+  expect(revisedRow?.correct).toBeLessThan(1);
+  expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toEqual(
+    attemptsBeforeAnswer,
+  );
+  expect(await db.select().from(mastery).where(eq(mastery.userId, userId))).toEqual(
+    masteryBeforeAnswer,
+  );
   expect((await submitQuiz()).status).toBe(409);
   const review = await app.request(
     `/api/lessons/${conceptId}/quiz/${firstRun.quiz.current.attemptId}/review`,
@@ -699,6 +724,29 @@ test('quiz start is idempotent and unsubmitted answers disclose no correctness',
     bestPassed: false,
     last: { passed: false },
   });
+  const submittedItems = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, firstRun.quiz.current.attemptId));
+  expect(submittedItems.every((item) => item.attemptId !== null)).toBe(true);
+  const quizAttemptIds = submittedItems.flatMap((item) => (item.attemptId ? [item.attemptId] : []));
+  expect(await db.select().from(attempts).where(inArray(attempts.id, quizAttemptIds))).toHaveLength(
+    submittedItems.length,
+  );
+  const masteryRows = await db
+    .select({ evidence: mastery.evidence })
+    .from(mastery)
+    .where(eq(mastery.userId, userId));
+  const masteredAttemptIds = new Set(
+    masteryRows.flatMap((row) => {
+      const evidence = row.evidence as { attempts?: Array<{ attemptId: string }> };
+      return evidence.attempts?.map((attempt) => attempt.attemptId) ?? [];
+    }),
+  );
+  expect(
+    submittedItems.every((item) => item.attemptId && masteredAttemptIds.has(item.attemptId)),
+  ).toBe(true);
+  expect((await answerQuizItem(firstItem.id, 'after submit')).status).toBe(409);
   expect(failedRun.quiz.reviewRequired.length).toBeGreaterThan(0);
   expect(
     failedRun.quiz.reviewRequired.every(
@@ -778,6 +826,139 @@ test('quiz start is idempotent and unsubmitted answers disclose no correctness',
     { headers },
   );
   expect(failedReview.status).toBe(403);
+});
+
+test('quiz answers can be revised before submit and submission grades the latest answer', async () => {
+  await finishLessonSteps();
+  const started = (await (await startQuiz()).json()).run;
+  const items = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, started.quiz.current.attemptId))
+    .orderBy(lessonQuizItems.position);
+  expect(items.length).toBeGreaterThanOrEqual(5);
+  const wrongCount = Math.floor(items.length * 0.2) + 1;
+
+  for (const [index, item] of items.entries()) {
+    const answer =
+      index < wrongCount
+        ? wrongAnswer(item.exerciseId, item.seed)
+        : correctAnswer(item.exerciseId, item.seed);
+    expect((await answerQuizItem(item.id, answer)).status).toBe(200);
+  }
+
+  let storedItems = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, started.quiz.current.attemptId))
+    .orderBy(lessonQuizItems.position);
+  expect(scoreLessonQuiz(storedItems.map((item) => item.correct ?? 0)).passed).toBe(false);
+  const revisedItem = items[0];
+  if (!revisedItem) throw new Error('Expected a quiz item to revise');
+  const revisedAnswer = correctAnswer(revisedItem.exerciseId, revisedItem.seed);
+  expect((await answerQuizItem(revisedItem.id, revisedAnswer)).status).toBe(200);
+
+  storedItems = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, started.quiz.current.attemptId))
+    .orderBy(lessonQuizItems.position);
+  expect(storedItems[0]?.answer).toEqual(revisedAnswer);
+  expect(storedItems[0]?.correct).toBe(1);
+  expect(scoreLessonQuiz(storedItems.map((item) => item.correct ?? 0)).passed).toBe(true);
+
+  const itemToRegrade = storedItems.find((item) => item.correct === 1);
+  if (!itemToRegrade) throw new Error('Expected a correct answer to regrade at submission');
+  await db
+    .update(lessonQuizItems)
+    .set({ correct: 0 })
+    .where(eq(lessonQuizItems.id, itemToRegrade.id));
+  const beforeSubmitItems = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, started.quiz.current.attemptId))
+    .orderBy(lessonQuizItems.position);
+  expect(scoreLessonQuiz(beforeSubmitItems.map((item) => item.correct ?? 0)).passed).toBe(false);
+
+  const submitted = await submitQuiz();
+  expect(submitted.status).toBe(200);
+  expect((await submitted.json()).run.quiz.last.passed).toBe(true);
+  const finalItems = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, started.quiz.current.attemptId));
+  expect(finalItems.find((item) => item.id === itemToRegrade.id)?.correct).toBe(1);
+  expect(finalItems.filter((item) => item.attemptId !== null)).toHaveLength(items.length);
+  const finalAttemptIds = finalItems.flatMap((item) => (item.attemptId ? [item.attemptId] : []));
+  expect(
+    await db.select().from(attempts).where(inArray(attempts.id, finalAttemptIds)),
+  ).toHaveLength(items.length);
+  expect(
+    (await answerQuizItem(revisedItem.id, wrongAnswer(revisedItem.exerciseId, revisedItem.seed)))
+      .status,
+  ).toBe(409);
+});
+
+test('legacy quiz answers stay locked and submission does not duplicate their attempt', async () => {
+  await finishLessonSteps();
+  const started = (await (await startQuiz()).json()).run;
+  const items = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, started.quiz.current.attemptId))
+    .orderBy(lessonQuizItems.position);
+  const legacyItem = items[0];
+  if (!legacyItem) throw new Error('Expected a quiz item');
+  const [legacyAttempt] = await db
+    .select()
+    .from(attempts)
+    .where(eq(attempts.userId, userId))
+    .limit(1);
+  if (!legacyAttempt) throw new Error('Expected a prior attempt for the legacy fixture');
+  const legacyAnswer = correctAnswer(legacyItem.exerciseId, legacyItem.seed);
+  await db
+    .update(lessonQuizItems)
+    .set({
+      answer: legacyAnswer,
+      correct: 1,
+      attemptId: legacyAttempt.id,
+      answeredAt: new Date(headers['X-Now']),
+    })
+    .where(eq(lessonQuizItems.id, legacyItem.id));
+  const legacyRun = await getCurrentRun();
+  const legacyPayloadItem = legacyRun.quiz.current.items.find(
+    (item: { id: string }) => item.id === legacyItem.id,
+  );
+  expect(legacyPayloadItem).toMatchObject({
+    answered: true,
+    answer: legacyAnswer,
+    locked: true,
+  });
+  expect(legacyPayloadItem).not.toHaveProperty('correct');
+  expect(
+    (await answerQuizItem(legacyItem.id, wrongAnswer(legacyItem.exerciseId, legacyItem.seed)))
+      .status,
+  ).toBe(409);
+
+  const attemptsBeforeSubmit = await db.select().from(attempts).where(eq(attempts.userId, userId));
+  for (const item of items.slice(1)) {
+    expect((await answerQuizItem(item.id, correctAnswer(item.exerciseId, item.seed))).status).toBe(
+      200,
+    );
+  }
+  const submitted = await submitQuiz();
+  expect(submitted.status).toBe(200);
+
+  const finalItems = await db
+    .select()
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, started.quiz.current.attemptId));
+  expect(finalItems.every((item) => item.attemptId !== null)).toBe(true);
+  expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(
+    attemptsBeforeSubmit.length + items.length - 1,
+  );
+  expect(await db.select().from(attempts).where(eq(attempts.id, legacyAttempt.id))).toHaveLength(1);
+  expect((await answerQuizItem(legacyItem.id, legacyAnswer)).status).toBe(409);
 });
 
 test('passing and retaking a quiz awards quiz XP only once and enables review', async () => {

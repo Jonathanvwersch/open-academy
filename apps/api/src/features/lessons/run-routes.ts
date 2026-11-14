@@ -76,6 +76,24 @@ type MasteryApplier = (input: {
   timeZone: string;
 }) => Promise<unknown>;
 
+function seededRandom(seed: string): () => number {
+  let state = 0x811c9dc5;
+  for (const character of seed) {
+    state = Math.imul(state ^ character.charCodeAt(0), 0x01000193);
+  }
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 0x1_0000_0000;
+  };
+}
+
+function gradeQuizAnswer(exercise: IndexedExercise, answer: unknown, itemId: string) {
+  return gradeExercise(exercise, answer, { random: seededRandom(itemId) });
+}
+
 export function registerLessonRunRoutes(
   api: Hono<ApiEnv>,
   deps: {
@@ -279,6 +297,8 @@ export function registerLessonRunRoutes(
                   position: item.position,
                   exercise: instance ? serializeExercise(instance, userId) : null,
                   answered: item.answeredAt !== null,
+                  ...(item.answeredAt !== null ? { answer: item.answer } : {}),
+                  locked: item.attemptId !== null,
                 };
               }),
             },
@@ -1048,7 +1068,7 @@ export function registerLessonRunRoutes(
         .for('update')
         .limit(1);
       if (!joined) return { kind: 'not_found' as const };
-      if (joined.item.answeredAt || joined.quiz.submittedAt) {
+      if (joined.item.attemptId || joined.quiz.submittedAt) {
         return { kind: 'conflict' as const, runId: joined.run.id };
       }
       const problems = await tx
@@ -1070,57 +1090,13 @@ export function registerLessonRunRoutes(
       if (emptyAnswerMessage(exercise.type, body.data.answer)) {
         return { kind: 'invalid' as const };
       }
-      const graded = await gradeExercise(exercise, body.data.answer);
+      const graded = await gradeQuizAnswer(exercise, body.data.answer, joined.item.id);
       if (graded.status !== 'graded') return { kind: 'invalid' as const };
-      const attemptId = crypto.randomUUID();
-      const credit = calculateCredit({
-        correct: graded.correct,
-        hintsUsed: 0,
-        attemptNo: 1,
-        gradedBy: graded.graded_by ?? 'deterministic',
-      });
-      const repo = new LearnerRepository(tx as unknown as Database, userId);
-      await tx.insert(attempts).values({
-        id: attemptId,
-        userId,
-        sessionId: activity.activity ? activity.session?.id : undefined,
-        activityId: body.data.activityId,
-        exerciseId: exercise.id,
-        exerciseVersion: exercise.contentVersion,
-        conceptId: exercise.concept,
-        dimension: exercise.dimension,
-        mode: 'assessment',
-        answer: body.data.answer,
-        correct: graded.correct,
-        credit,
-        hintsUsed: 0,
-        attemptNo: 1,
-        gradedBy: graded.graded_by ?? 'deterministic',
-        feedback: { message: graded.feedback },
-        mistakeCategory: graded.mistake_category,
-        createdAt: now,
-      });
-      await deps.applyMastery({
-        repo,
-        userId,
-        exercise,
-        attemptId,
-        correct: graded.correct,
-        credit,
-        hintsUsed: 0,
-        attemptNo: 1,
-        mode: 'assessment',
-        gradedBy: graded.graded_by ?? 'deterministic',
-        createReviewCard: false,
-        now,
-        timeZone: context.get('timeZone'),
-      });
       await tx
         .update(lessonQuizItems)
         .set({
           answer: body.data.answer,
           correct: graded.correct,
-          attemptId,
           answeredAt: now,
         })
         .where(eq(lessonQuizItems.id, joined.item.id));
@@ -1180,7 +1156,77 @@ export function registerLessonRunRoutes(
       if (items.some((item) => item.answeredAt === null || item.correct === null)) {
         return { kind: 'unanswered' as const };
       }
-      const result = scoreLessonQuiz(items.map((item) => item.correct ?? 0));
+      const pendingGrades: Array<{
+        item: (typeof items)[number];
+        exercise: IndexedExercise;
+        graded: Extract<Awaited<ReturnType<typeof gradeExercise>>, { status: 'graded' }>;
+      }> = [];
+      for (const item of items) {
+        if (item.attemptId !== null) continue;
+        const indexed = resolved.index.exercisesById.get(item.exerciseId);
+        const exercise = indexed ? resolvedIndexedExercise(indexed, item.seed) : undefined;
+        if (!exercise) return { kind: 'invalid_answer' as const };
+        const graded = await gradeQuizAnswer(exercise, item.answer, item.id);
+        if (graded.status !== 'graded') return { kind: 'invalid_answer' as const };
+        pendingGrades.push({ item, exercise, graded });
+      }
+      const repo = new LearnerRepository(tx as unknown as Database, userId);
+      const finalItems = new Map(items.map((item) => [item.id, item]));
+      for (const pending of pendingGrades) {
+        const { graded } = pending;
+        const attemptId = crypto.randomUUID();
+        const gradedBy = graded.graded_by ?? 'deterministic';
+        const credit = calculateCredit({
+          correct: graded.correct,
+          hintsUsed: 0,
+          attemptNo: 1,
+          gradedBy,
+        });
+        await tx.insert(attempts).values({
+          id: attemptId,
+          userId,
+          sessionId: activity.activity ? activity.session?.id : undefined,
+          activityId: body.data.activityId,
+          exerciseId: pending.exercise.id,
+          exerciseVersion: pending.exercise.contentVersion,
+          conceptId: pending.exercise.concept,
+          dimension: pending.exercise.dimension,
+          mode: 'assessment',
+          answer: pending.item.answer,
+          correct: graded.correct,
+          credit,
+          hintsUsed: 0,
+          attemptNo: 1,
+          gradedBy,
+          feedback: { message: graded.feedback },
+          mistakeCategory: graded.mistake_category,
+          createdAt: now,
+        });
+        await deps.applyMastery({
+          repo,
+          userId,
+          exercise: pending.exercise,
+          attemptId,
+          correct: graded.correct,
+          credit,
+          hintsUsed: 0,
+          attemptNo: 1,
+          mode: 'assessment',
+          gradedBy,
+          createReviewCard: false,
+          now,
+          timeZone: context.get('timeZone'),
+        });
+        const [updatedItem] = await tx
+          .update(lessonQuizItems)
+          .set({ correct: graded.correct, attemptId })
+          .where(eq(lessonQuizItems.id, pending.item.id))
+          .returning();
+        if (!updatedItem) throw new Error('Unable to finalize lesson quiz item');
+        finalItems.set(updatedItem.id, updatedItem);
+      }
+      const submittedItems = items.map((item) => finalItems.get(item.id) ?? item);
+      const result = scoreLessonQuiz(submittedItems.map((item) => item.correct ?? 0));
       await tx
         .update(lessonQuizAttempts)
         .set({ submittedAt: now, score: result.score, passed: result.passed })
@@ -1207,7 +1253,7 @@ export function registerLessonRunRoutes(
             .returning({ id: xpEvents.id });
           if (inserted.length > 0) xpAwarded = items.length;
           const itemsByDimension = new Map<string, (typeof items)[number][]>();
-          for (const item of items) {
+          for (const item of submittedItems) {
             const exercise = resolved.index.exercisesById.get(item.exerciseId);
             if (!exercise) continue;
             const dimensionItems = itemsByDimension.get(exercise.dimension) ?? [];
@@ -1282,7 +1328,7 @@ export function registerLessonRunRoutes(
           .where(eq(lessonRuns.id, run.id));
       }
 
-      const attemptIds = items.flatMap((item) => (item.attemptId ? [item.attemptId] : []));
+      const attemptIds = submittedItems.flatMap((item) => (item.attemptId ? [item.attemptId] : []));
       const quizAnswerAttempts = attemptIds.length
         ? await tx.select().from(attempts).where(inArray(attempts.id, attemptIds))
         : [];
@@ -1318,6 +1364,9 @@ export function registerLessonRunRoutes(
     if (result.kind === 'not_found') return context.json({ error: 'Lesson quiz not found' }, 404);
     if (result.kind === 'unanswered') {
       return context.json({ error: 'Answer every quiz question before submitting' }, 409);
+    }
+    if (result.kind === 'invalid_answer') {
+      return context.json({ error: 'A saved quiz answer could not be graded' }, 422);
     }
     const [run] = await deps.db
       .select()

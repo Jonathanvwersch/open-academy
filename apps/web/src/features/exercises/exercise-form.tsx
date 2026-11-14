@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '../../components/ui/select.js';
 import { Textarea } from '../../components/ui/textarea.js';
+import { prefillExerciseAnswer } from './submitted-answer.js';
 
 const EXERCISE_CONTAINER_SELECTOR = '[data-exercise-container]';
 
@@ -139,20 +140,10 @@ export function ExerciseForm({
         if (selectedFix) setValue(selectedFix.slice('fix:'.length));
       }
     } else if (submittedAnswer !== undefined) {
-      if (typeof submittedAnswer === 'string' || typeof submittedAnswer === 'number') {
-        setValue(String(submittedAnswer));
-      } else if (
-        typeof submittedAnswer === 'object' &&
-        submittedAnswer !== null &&
-        !Array.isArray(submittedAnswer)
-      ) {
-        const answer = submittedAnswer as { line?: unknown; fixId?: unknown; text?: unknown };
-        if (typeof answer.line === 'number' || typeof answer.line === 'string') {
-          setLine(String(answer.line));
-        }
-        if (typeof answer.fixId === 'string') setValue(answer.fixId);
-        if (typeof answer.text === 'string') setValue(answer.text);
-      }
+      const prefilled = prefillExerciseAnswer(exercise.type, submittedAnswer);
+      if (prefilled.selected) setSelected(prefilled.selected);
+      if (prefilled.line !== undefined) setLine(prefilled.line);
+      if (prefilled.value !== undefined) setValue(prefilled.value);
     }
   }, [answerOptions, exercise.type, submittedAnswer]);
   const optionState = (id: string, isSelected: boolean) => {
