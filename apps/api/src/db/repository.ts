@@ -455,7 +455,10 @@ export class LearnerRepository {
         startMethod,
         startedAt,
       })
-      .onConflictDoNothing();
+      .onConflictDoUpdate({
+        target: [courseEnrollments.userId, courseEnrollments.courseId],
+        set: { status: 'active' },
+      });
     this.invalidateEnrollmentCaches();
   }
 

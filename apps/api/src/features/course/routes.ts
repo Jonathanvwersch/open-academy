@@ -652,7 +652,20 @@ export function registerLearnCourseRoutes(
     if (body?.method !== 'beginning') {
       return context.json({ error: 'Invalid course start method' }, 400);
     }
-    await deps.withRepo(context).startCourse(courseId, 'beginning', deps.requestNow(context));
+    const repo = deps.withRepo(context);
+    const now = deps.requestNow(context);
+    const activeRuns = await repo.activePlacementRuns();
+    await Promise.all(
+      activeRuns
+        .filter((run) => (run.state as { courseId?: unknown }).courseId === courseId)
+        .map((run) =>
+          deps.db
+            .update(diagnosticRuns)
+            .set({ status: 'abandoned' })
+            .where(eq(diagnosticRuns.id, run.id)),
+        ),
+    );
+    await repo.startCourse(courseId, 'beginning', now);
     return context.json({ courseId, method: 'beginning' });
   });
 
