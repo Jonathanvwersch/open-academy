@@ -6,10 +6,10 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "At the point $(4,3)$ a surface has gradient $(6,20)$. Take a small step in the steepest downhill direction with a displacement length of $0.1$ times the gradient length. What is the new $y$ coordinate?"
+    prompt: "At the point $(4,3)$ a surface has gradient $(6,20)$. You step downhill by subtracting $0.1$ times the gradient from the point. What is the new $y$ coordinate?"
     answer: 1
     tolerance: { abs: 0.001 }
-    hints: ["Use the second component of the gradient."]
+    hints: ["Which way does the gradient point: uphill or downhill?"]
     solution: 'The new coordinate is $3-0.1\times20=1$.'
   - id: grad-vector-of-partials-basics
     dimension: conceptual
