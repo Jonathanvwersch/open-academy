@@ -1,0 +1,279 @@
+concept: reward-models
+version: 1
+objective: |
+  **Goal:** explain why people's preferences are collected as comparisons rather than scores, and use the Bradley–Terry model to turn two rewards into the probability that one response is preferred and into the loss that trains a reward model.
+recap:
+  - concept: logistic-regression
+    text: "The sigmoid $\\sigma(z)=1/(1+e^{-z})$ turns a score $z$ into a probability $p$. The loss for an outcome that happened is $-\\ln p$. Its slope against the score is $p-y$, where $y$ is the label, $1$ or $0$."
+where_this_fits: |
+  ### What is a reward model?
+
+  A reward model is a model that reads a prompt and a response and gives back one number, the response's **reward**, which is higher for responses people prefer. It learns this from pairs of responses where a person said which one was better.
+
+  Why is it useful? In supervised fine-tuning, a language model learns to reply like an assistant from responses that people wrote. Its own replies can still be unhelpful, and to improve them it needs to know which of its replies people prefer. Asking a person about every reply is far too slow. A reward model gives that judgement straight away, as a number. Later lessons train the language model to write replies that get high rewards.
+knowledge_points:
+  - id: rm-comparisons
+    title: "Ask people which answer is better"
+    explain: |
+      ### Scores that don't line up
+
+      To train a reward model, we first need data on what people like. The obvious way is to show someone a response and ask for a score from 0 to 10.
+
+      Take the prompt "Write one sentence about a cat" and two responses. Response A is "The cat sat on the mat." Response B is "Cat mat the sat on." The picture shows the scores two raters gave them, with A in green and B in red.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 310" aria-label="Two raters score the same two responses on a scale from 0 to 10. Rater 1 gives response A a 9 and response B a 6. Rater 2 gives A a 5 and B a 2. Their scores differ by 4 points for both responses, but both put A above B">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M220 260 V40" stroke="#d4d4d4" stroke-width="2"/>
+      <path d="M215 260 h10" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="208" y="265" fill="#737373" text-anchor="end">0</text>
+      <path d="M215 216 h10" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="208" y="221" fill="#737373" text-anchor="end">2</text>
+      <path d="M215 172 h10" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="208" y="177" fill="#737373" text-anchor="end">4</text>
+      <path d="M215 128 h10" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="208" y="133" fill="#737373" text-anchor="end">6</text>
+      <path d="M215 84 h10" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="208" y="89" fill="#737373" text-anchor="end">8</text>
+      <path d="M215 40 h10" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="208" y="45" fill="#737373" text-anchor="end">10</text>
+      <circle cx="220" cy="62" r="6" fill="#10b981"/>
+      <circle cx="220" cy="128" r="6" fill="#ef4444"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="234" y="67" fill="#10b981">A: 9</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="234" y="133" fill="#ef4444">B: 6</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="220" y="22" text-anchor="middle">Rater 1</text>
+      <path d="M460 260 V40" stroke="#d4d4d4" stroke-width="2"/>
+      <path d="M455 260 h10" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="448" y="265" fill="#737373" text-anchor="end">0</text>
+      <path d="M455 216 h10" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="448" y="221" fill="#737373" text-anchor="end">2</text>
+      <path d="M455 172 h10" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="448" y="177" fill="#737373" text-anchor="end">4</text>
+      <path d="M455 128 h10" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="448" y="133" fill="#737373" text-anchor="end">6</text>
+      <path d="M455 84 h10" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="448" y="89" fill="#737373" text-anchor="end">8</text>
+      <path d="M455 40 h10" stroke="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="448" y="45" fill="#737373" text-anchor="end">10</text>
+      <circle cx="460" cy="150" r="6" fill="#10b981"/>
+      <circle cx="460" cy="216" r="6" fill="#ef4444"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="474" y="155" fill="#10b981">A: 5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="474" y="221" fill="#ef4444">B: 2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="460" y="22" text-anchor="middle">Rater 2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="340" y="295" fill="#737373" text-anchor="middle">Both raters put A above B</text>
+      </g>
+      </svg>
+      ```
+
+      Rater 1 is generous and gives A a 9 and B a 6. Rater 2 is strict and gives A a 5 and B a 2. If we trained on the scores, the model would be told that A is worth 9 and also that it's worth 5. It can't match both, and the 4-point difference only shows how generous each rater is. Their gaps match here only by chance, since a third rater could give A a 4 and B a 3. Yet every rater agrees that A is better than B.
+
+      ### Comparing two responses
+
+      So we ask a simpler question. We show a person two responses to the same prompt and ask which is better. No one has to decide what a 9 means, and the two raters above give the same answer. Each answer is stored as a **preference pair**. It holds the prompt and two responses, the one the person chose and the one they rejected.
+
+      To get more pairs from each prompt, we can ask a person to put several responses in order from best to worst. Every two responses in that order then make a pair. Each of the $k$ responses pairs with the $k-1$ others, and that counts every pair twice, so ranking $k$ responses gives
+
+      $$\frac{k(k-1)}{2}\ \text{pairs}.$$
+
+      InstructGPT, an OpenAI model from 2022, collected its preferences this way. People ranked between 4 and 9 responses from OpenAI's own models to each prompt. Its reward model was a language model whose last layer was swapped for one that gives a single number.
+
+      "A is better than B" doesn't say how much better. When many people compare the same two responses, the share who pick A does show how much better it is. The next step uses this.
+    worked: |
+      Let's count the preference pairs we get when a person ranks four responses to one prompt. These are different from A and B, so we'll call them P, Q, R and S, in order from best to worst.
+
+      1. **Pair the best response with each one below it.** P beats Q, R and S, so the top response gives three pairs.
+         $$(P,Q),\ (P,R),\ (P,S).$$
+
+      2. **Pair the second response with each one below it.** Q beats R and S. We don't pair Q with P again, because that pair is already counted.
+         $$(Q,R),\ (Q,S).$$
+
+      3. **Pair the third response with the last.** R beats S, which gives one more pair.
+         $$(R,S).$$
+
+      4. **Add them up.** The counts fall by one each time, and the total matches the formula with $k=4$.
+         $$3+2+1=6=\frac{4\times3}{2}.$$
+
+      One ranking of four responses gives six preference pairs, each with a chosen and a rejected response.
+    problems:
+      - rm-comparisons-basics
+      - rmp-count-self-explain
+      - rmp-why-compare
+      - rmp-pair-record
+      - rmp-pairs-template
+      - rmp-raters-agree
+      - rmp-how-much-better
+      - rmp-robot-pour
+  - id: rm-bradley-terry
+    title: "Predict which response a person picks"
+    explain: |
+      ### From two rewards to a chance
+
+      A reward model gives each response its own reward. We'll write $r_A$ for the reward of response A and $r_B$ for the reward of response B, both for the same prompt. To learn from preference pairs, we need to connect these two numbers to what a person chose.
+
+      People don't always agree. Different people pick differently, and so can one person on different days. So we use the two rewards to work out the probability that a person prefers A over B. We'll write it $P(A\text{ over }B)$. That probability should be $0.5$ when the rewards are equal and close to $1$ when A's reward is much higher.
+
+      ### The Bradley–Terry model
+
+      In the logistic regression lesson, the sigmoid turned any score into a probability. A person compares the two responses, so here the score is how much higher A's reward is than B's, the difference $r_A-r_B$. The **Bradley–Terry model** puts that difference into the sigmoid:
+
+      $$P(A\text{ over }B)=\sigma(r_A-r_B).$$
+
+      Written out, that's $1/(1+e^{-(r_A-r_B)})$.
+
+      The blue curve shows this probability against the difference $r_A-r_B$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" aria-label="The blue sigmoid curve of the chance that A is preferred, against the reward difference, A minus B, from minus 4 to 4. It is 0.5 when the difference is 0, 0.88 when A has the reward 2 higher, and 0.12 when A has the reward 2 lower">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M80 300 H560 M320 300 V50" stroke="#d4d4d4"/>
+      <path d="M80 180 H560" stroke="#d4d4d4" stroke-dasharray="6 4"/>
+      <path d="M80 295.68 L86 295.24 L92 294.75 L98 294.21 L104 293.62 L110 292.97 L116 292.25 L122 291.46 L128 290.6 L134 289.65 L140 288.62 L146 287.48 L152 286.24 L158 284.89 L164 283.41 L170 281.79 L176 280.04 L182 278.13 L188 276.06 L194 273.82 L200 271.39 L206 268.77 L212 265.96 L218 262.93 L224 259.68 L230 256.22 L236 252.52 L242 248.6 L248 244.45 L254 240.06 L260 235.45 L266 230.63 L272 225.59 L278 220.37 L284 214.96 L290 209.39 L296 203.69 L302 197.87 L308 191.96 L314 186 L320 180 L326 174 L332 168.04 L338 162.13 L344 156.31 L350 150.61 L356 145.04 L362 139.63 L368 134.41 L374 129.37 L380 124.55 L386 119.94 L392 115.55 L398 111.4 L404 107.48 L410 103.78 L416 100.32 L422 97.07 L428 94.04 L434 91.23 L440 88.61 L446 86.18 L452 83.94 L458 81.87 L464 79.96 L470 78.21 L476 76.59 L482 75.11 L488 73.76 L494 72.52 L500 71.38 L506 70.35 L512 69.4 L518 68.54 L524 67.75 L530 67.03 L536 66.38 L542 65.79 L548 65.25 L554 64.76 L560 64.32" stroke="#3b82f6" stroke-width="3" fill="#ffffff" fill-opacity="0"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="305" fill="#737373" text-anchor="end">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="185" fill="#737373" text-anchor="end">0.5</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="65" fill="#737373" text-anchor="end">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="322" fill="#737373" text-anchor="middle">−4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="200" y="322" fill="#737373" text-anchor="middle">−2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="322" fill="#737373" text-anchor="middle">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="440" y="322" fill="#737373" text-anchor="middle">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560" y="322" fill="#737373" text-anchor="middle">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="344" fill="#737373" text-anchor="middle">reward difference, A minus B</text>
+      <circle cx="200" cy="271.39" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="212" y="293.39">difference −2: 0.12</text>
+      <circle cx="320" cy="180" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="308" y="168" text-anchor="end">difference 0: 0.5</text>
+      <circle cx="440" cy="88.61" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="452" y="110.61">difference 2: 0.88</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="32" fill="#3b82f6">chance that A is preferred</text>
+      </g>
+      </svg>
+      ```
+
+      ### Only the difference counts
+
+      Let's try four pairs of rewards:
+
+      | $r_A$ | $r_B$ | $r_A-r_B$ | $P(A\text{ over }B)$ |
+      | --- | --- | --- | --- |
+      | $2$ | $2$ | $0$ | $0.5$ |
+      | $3$ | $1$ | $2$ | $0.88$ |
+      | $1$ | $3$ | $-2$ | $0.12$ |
+      | $10$ | $8$ | $2$ | $0.88$ |
+
+      The second and fourth rows give the same probability, because only the difference goes into the sigmoid. So be careful not to read a reward of $10$ as "good" on its own. Adding the same number to the rewards of all the responses to a prompt changes nothing, so a reward only means something next to the reward of another response to the same prompt.
+
+      Many comparisons of the same two responses show how much better one is. If 88 out of 100 people prefer A over B, the model should give A a reward $2$ higher, because $\sigma(2)\approx0.88$. If only 60 out of 100 prefer A, a gap of $2$ is too big. The curve reaches $0.6$ at a difference of about $0.4$, so A's reward should be only a little higher.
+    worked: |
+      Let's find the probability that a person prefers "The cat sat on the mat." (response A) over "Cat mat the sat on." (response B), when the reward model gives them $r_A=2.5$ and $r_B=0.5$. We'll write values to three decimals but keep the exact ones in the calculator, and round to two decimals only at the end.
+
+      1. **Subtract the rewards.** The Bradley–Terry model only uses the difference.
+         $$r_A-r_B=2.5-0.5=2.$$
+
+      2. **Work out $e^{-2}$.** The sigmoid needs $e$ raised to minus the difference.
+         $$e^{-2}\approx0.135.$$
+
+      3. **Put it into the sigmoid.** The sigmoid is 1 divided by 1 plus that number.
+         $$P(A\text{ over }B)=\frac{1}{1+0.135}\approx0.881.$$
+
+      4. **Find the chance of the other choice.** A person picks one or the other, so the two chances add up to 1.
+         $$P(B\text{ over }A)\approx1-0.881=0.119.$$
+
+      Rounded, the model says a person picks A with probability $0.88$ and B with probability $0.12$.
+    problems:
+      - rm-bradley-terry-basics
+      - rmp-difference-self-explain
+      - rmp-equal-rewards
+      - rmp-other-choice
+      - rmp-bt-template
+      - rmp-shift
+      - rmp-match-raters
+      - rmp-robot-grasp
+  - id: rm-preference-loss
+    title: "Train the reward model on comparisons"
+    explain: |
+      ### A loss for one comparison
+
+      To train the reward model, we want a high probability for the choice people actually made. We'll write $r_w$ for the chosen response's reward and $r_l$ for the rejected one's, with w for winner and l for loser.
+
+      As in logistic regression, the loss for something that happened is $-\ln p$. Here what happened is that the chosen response won, and the Bradley–Terry model says the probability of that is $p=\sigma(r_w-r_l)$. So the **Bradley–Terry loss** for one preference pair is
+
+      $$L=-\ln\sigma(r_w-r_l).$$
+
+      For a whole dataset, we average this loss across all the preference pairs. InstructGPT trained its reward model with this loss.
+
+      The red curve shows the loss against the difference $r_w-r_l$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" aria-label="The red curve is the loss for one comparison, against the reward difference between the chosen and the rejected response, from minus 4 to 4. It is 2.13 at difference minus 2, where the model has the order backwards, 0.69 at difference 0 and 0.13 at difference 2, and it flattens out towards 0 as the difference grows">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M80 300 H560 M320 300 V69" stroke="#d4d4d4"/>
+      <path d="M80 79 L86 84.4 L92 89.78 L98 95.16 L104 100.52 L110 105.86 L116 111.19 L122 116.51 L128 121.8 L134 127.08 L140 132.33 L146 137.55 L152 142.75 L158 147.92 L164 153.06 L170 158.16 L176 163.22 L182 168.24 L188 173.22 L194 178.15 L200 183.02 L206 187.83 L212 192.59 L218 197.27 L224 201.89 L230 206.42 L236 210.88 L242 215.24 L248 219.52 L254 223.7 L260 227.77 L266 231.74 L272 235.59 L278 239.32 L284 242.94 L290 246.43 L296 249.78 L302 253.01 L308 256.1 L314 259.06 L320 261.88 L326 264.56 L332 267.1 L338 269.51 L344 271.78 L350 273.93 L356 275.94 L362 277.82 L368 279.59 L374 281.24 L380 282.77 L386 284.2 L392 285.52 L398 286.74 L404 287.88 L410 288.92 L416 289.89 L422 290.77 L428 291.59 L434 292.33 L440 293.02 L446 293.65 L452 294.22 L458 294.74 L464 295.22 L470 295.66 L476 296.06 L482 296.42 L488 296.75 L494 297.05 L500 297.33 L506 297.58 L512 297.8 L518 298.01 L524 298.19 L530 298.36 L536 298.52 L542 298.66 L548 298.78 L554 298.9 L560 299" stroke="#ef4444" stroke-width="3" fill="#ffffff" fill-opacity="0"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="305" fill="#737373" text-anchor="end">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="250" fill="#737373" text-anchor="end">1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="195" fill="#737373" text-anchor="end">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="140" fill="#737373" text-anchor="end">3</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="70" y="85" fill="#737373" text-anchor="end">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="80" y="322" fill="#737373" text-anchor="middle">−4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="200" y="322" fill="#737373" text-anchor="middle">−2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="322" fill="#737373" text-anchor="middle">0</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="440" y="322" fill="#737373" text-anchor="middle">2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="560" y="322" fill="#737373" text-anchor="middle">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="320" y="344" fill="#737373" text-anchor="middle">reward difference, chosen minus rejected</text>
+      <circle cx="200" cy="183.02" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="212" y="175.02">backwards: loss 2.13</text>
+      <circle cx="320" cy="261.88" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="332" y="251.88">equal rewards: loss 0.69</text>
+      <circle cx="440" cy="293.02" r="5" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="450" y="279.02">right way round: loss 0.13</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="90" y="40" fill="#ef4444">loss for one comparison</text>
+      </g>
+      </svg>
+      ```
+
+      - When the difference is $2$, the order is right. Then $p=0.88$ and the loss is only $0.13$.
+      - When it's $0$, the rewards are equal. Then $p=0.5$ and the loss is $0.69$.
+      - When it's $-2$, the order is backwards. Then $p=0.12$ and the loss is $2.13$.
+
+      ### Which way the rewards move
+
+      In the logistic regression lesson, the slope of the loss against the score was $p-y$. Here the score is the difference $r_w-r_l$ and the label is $y=1$, since the chosen response won. So the slope of the loss against the difference is $p-1$. Raising $r_w$ raises the difference by the same amount, so the slope against $r_w$ is also $p-1$. Raising $r_l$ lowers the difference, so its slope has the opposite sign.
+
+      $$\frac{\partial L}{\partial r_w}=p-1,\qquad\frac{\partial L}{\partial r_l}=1-p.$$
+
+      Gradient descent moves against these slopes. If we could set the two rewards directly, it would push $r_w$ up and $r_l$ down by the same amount. The push is strong when $p$ is small and fades as $p$ nears $1$. In a real reward model, one neural network computes every reward, so gradient descent changes the network's weights in the way that raises $r_w-r_l$.
+
+      ### It copies the raters' habits
+
+      Training raises the rewards of whatever the chosen responses have in common. If raters tend to prefer longer answers, the reward model learns to give longer answers higher rewards, even when they're no better. A language model later trained to get high rewards can then learn to write long answers too.
+    worked: |
+      Let's work out the loss and slopes for one preference pair that the reward model has backwards. The person chose the response with reward $r_w=0.5$ over the one with reward $r_l=1.5$. We'll write values to three decimals but keep the exact ones in the calculator, and round only at the end.
+
+      1. **Find the difference.** We subtract the rejected response's reward from the chosen one's.
+         $$r_w-r_l=0.5-1.5=-1.$$
+
+      2. **Find the probability of the choice that was made.** In the sigmoid, $e^{-(-1)}=e^{1}\approx2.718$, so $1+e^{1}\approx3.718$.
+         $$p=\sigma(-1)=\frac{1}{1+e^{1}}\approx0.269.$$
+
+      3. **Find the loss.** It's minus the log of that probability.
+         $$L=-\ln0.269\approx1.313.$$
+
+      4. **Find the two slopes.** They're $p-1$ for the chosen reward and $1-p$ for the rejected one.
+         $$\frac{\partial L}{\partial r_w}\approx-0.731,\qquad\frac{\partial L}{\partial r_l}\approx0.731.$$
+
+      Rounded, the loss is $1.31$, almost twice the $0.69$ for equal rewards. The slopes are $-0.73$ and $0.73$, so gradient descent pushes the chosen reward up and the rejected reward down with equal strength.
+    problems:
+      - rm-preference-loss-basics
+      - rmp-slopes-self-explain
+      - rmp-loss-equal
+      - rmp-loss-template
+      - rmp-slope-template
+      - rmp-right-order
+      - rmp-length
+      - rmp-robot-loss
+final: rm-explain-reward-model
+summary: |
+  - A reward model reads a prompt and a response and gives one number, the reward, that is higher for responses people prefer.
+  - People's preferences are collected as comparisons, because raters use number scales differently even when they agree on which response is better. Ranking $k$ responses gives $k(k-1)/2$ preference pairs.
+  - The Bradley–Terry model gives the probability that a person prefers A over B as $\sigma(r_A-r_B)$, so only the difference between rewards matters.
+  - The reward model is trained with the loss $L=-\ln\sigma(r_w-r_l)$, averaged over the pairs, which pushes the chosen response's reward up and the rejected one's down, most strongly when the model has the order wrong.
+
+  **Next:** RLHF, reinforcement learning from human feedback, uses this reward model to train a language model to write responses that get high rewards.

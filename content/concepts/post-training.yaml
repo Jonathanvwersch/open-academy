@@ -59,7 +59,7 @@ concepts:
             dimension: conceptual,
           },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: rlhf,

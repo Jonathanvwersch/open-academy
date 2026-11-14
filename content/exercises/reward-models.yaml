@@ -1,0 +1,612 @@
+concept: reward-models
+exercises:
+  - id: rm-comparisons-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does a reward model give back when it reads a prompt and one response?
+    options:
+      - {
+          id: a,
+          text: "One number, the reward, which is higher for responses people prefer.",
+          correct: true,
+          feedback: "A reward model scores a response with a single number.",
+        }
+      - {
+          id: b,
+          text: "A new, better response to the same prompt.",
+          correct: false,
+          feedback: "Writing responses is the language model's job. The reward model only scores them.",
+        }
+      - {
+          id: c,
+          text: "The probability of each next token in the response.",
+          correct: false,
+          feedback: "That is what a language model gives. A reward model gives one number for the whole response.",
+        }
+    solution: A reward model reads a prompt and a response and gives one number, the reward, which is higher for responses people prefer.
+  - id: rmp-count-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, a person ranks P, Q, R and S from best to worst. Why does step 2 pair Q only with R and S?"
+    options:
+      - {
+          id: a,
+          text: "The pair of Q and P was already counted in step 1, as P beating Q.",
+          correct: true,
+          feedback: "Each two responses make one pair, so a pair is counted once.",
+        }
+      - {
+          id: b,
+          text: "A response can only be compared with responses ranked next to it.",
+          correct: false,
+          feedback: "Step 1 pairs P with S, which are not next to each other in the ranking.",
+        }
+      - {
+          id: c,
+          text: "Q was not the person's favourite, so it can't be a chosen response.",
+          correct: false,
+          feedback: "Q is the chosen response in the pairs with R and with S.",
+        }
+    solution: "Step 1 already counted P over Q. Pairing each response only with the ones ranked below it counts every pair exactly once, giving $3+2+1=6$."
+  - id: rmp-why-compare
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Two raters read the same two responses. One gives them 9 and 6 out of 10, and the other gives them 5 and 2. Why do reward-model datasets ask people which of two responses is better, rather than for scores like these?"
+    options:
+      - {
+          id: a,
+          text: "Raters use a score scale differently, but they can still agree on which response is better.",
+          correct: true,
+          feedback: "Here the scores disagree by 4 points, yet both raters put the same response first.",
+        }
+      - {
+          id: b,
+          text: "Scores take up too much storage for large datasets.",
+          correct: false,
+          feedback: "A score is one small number. The problem is that different raters mean different things by the same score.",
+        }
+      - {
+          id: c,
+          text: "A comparison says exactly how much better one response is.",
+          correct: false,
+          feedback: "A single comparison only says which response is better.",
+        }
+    solution: "The raters' scores differ by 4 points for each response, so scores would give the model clashing targets. Both raters agree that the first response is better, and that is what a comparison records."
+  - id: rmp-pair-record
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "A person ranks three responses to one prompt from best to worst as B, C, A. Each preference pair is written (chosen, rejected). Which of these is not one of the pairs this ranking gives?"
+    options:
+      - {
+          id: a,
+          text: "(A, B)",
+          correct: true,
+          feedback: "B is ranked above A, so the pair is (B, A), with B chosen.",
+        }
+      - {
+          id: b,
+          text: "(B, C)",
+          correct: false,
+          feedback: "B is ranked first and C second, so B is chosen over C.",
+        }
+      - {
+          id: c,
+          text: "(C, A)",
+          correct: false,
+          feedback: "C is ranked second and A third, so C is chosen over A.",
+        }
+    solution: "The ranking B, C, A gives the pairs (B, C), (B, A) and (C, A). In each pair the higher-ranked response is the chosen one, so (A, B) is not a pair."
+  - id: rmp-pairs-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A person ranks {{= k }} responses to one prompt from best to worst. Every two responses in the ranking make one preference pair. How many preference pairs does this ranking give?"
+    params:
+      k: { min: 3, max: 9 }
+    answer_expr: k*(k-1)/2
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer_expr: "k*(k-1)",
+          category: math_error,
+          feedback: "That counts each pair twice, once in each order. Each two responses make one pair, so divide by 2.",
+        }
+    solution: "The best response pairs with the $k-1$ below it, the next with $k-2$, and so on, giving ${{= k }}\\times{{= k-1 }}/2={{= k*(k-1)/2 }}$ pairs."
+  - id: rmp-raters-agree
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "Rater 1 gives response A 8 and response B 7 out of 10. Rater 2 gives A 4 and B 2. What do the two raters agree on?"
+    options:
+      - {
+          id: a,
+          text: "That A is better than B.",
+          correct: true,
+          feedback: "Both raters give A the higher score, which is the comparison a preference pair records.",
+        }
+      - {
+          id: b,
+          text: "That A deserves a score of 6, the average of their two scores.",
+          correct: false,
+          feedback: "Averaging mixes two different ways of using the scale. Neither rater gave A a 6.",
+        }
+      - {
+          id: c,
+          text: "Nothing, because their scores for A differ by 4 points.",
+          correct: false,
+          feedback: "Their scores differ, but both put A above B.",
+        }
+    solution: "Their scores differ, but both raters give A a higher score than B, so they agree that A is better."
+  - id: rmp-how-much-better
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A person compares two responses and says response A is better than response B. What does this single comparison tell us about how much better A is?"
+    options:
+      - {
+          id: a,
+          text: "Nothing on its own. How much better shows up only when many people compare the same two responses.",
+          correct: true,
+          feedback: "One comparison gives an order. The share of those people who pick A gives a sense of size.",
+        }
+      - {
+          id: b,
+          text: "That A is much better, because the person picked it.",
+          correct: false,
+          feedback: "A person picks one response even when the two are nearly as good as each other.",
+        }
+      - {
+          id: c,
+          text: "That A is exactly one point better on a 10-point scale.",
+          correct: false,
+          feedback: "No scale was used. The person only said which response was better.",
+        }
+    solution: "A comparison only gives an order. If most people pick A over B, the two are far apart, and if people split nearly evenly, they're close."
+  - id: rmp-robot-pour
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A kitchen robot pours a glass of water 5 times. A person watches and ranks the 5 pours from best to worst. A second person ranks 4 different pours. If every two pours in a ranking make one preference pair, how many preference pairs do the two rankings give in total?"
+    answer: 16
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 9,
+          category: math_error,
+          feedback: "That adds the number of pours. Each ranking of k pours gives k(k-1)/2 pairs.",
+        }
+      - {
+          answer: 32,
+          category: math_error,
+          feedback: "That counts each pair twice, once in each order.",
+        }
+    solution: 'The first ranking gives $5\times4/2=10$ pairs and the second gives $4\times3/2=6$, so there are $10+6=16$ pairs.'
+  - id: rm-bradley-terry-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A reward model gives response A the reward $r_A$ and response B the reward $r_B$, for the same prompt. What does the Bradley–Terry model use these rewards to work out?"
+    options:
+      - {
+          id: a,
+          text: "The probability that a person prefers A over B, from the sigmoid of $r_A-r_B$.",
+          correct: true,
+          feedback: "The difference between the rewards goes into the sigmoid, which gives a probability.",
+        }
+      - {
+          id: b,
+          text: "The rating out of 10 that a person would give A.",
+          correct: false,
+          feedback: "The model describes choices between two responses. It says nothing about ratings.",
+        }
+      - {
+          id: c,
+          text: "The probability that A is correct, from the sigmoid of $r_A$ alone.",
+          correct: false,
+          feedback: "The model compares two responses, so it uses both rewards.",
+        }
+    solution: 'The Bradley–Terry model says $P(A\text{ over }B)=\sigma(r_A-r_B)$.'
+  - id: rmp-difference-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the worked example, the chance that a person picks A is 0.881. Why is the chance that they pick B $1-0.881$?"
+    options:
+      - {
+          id: a,
+          text: "The person picks exactly one of the two, so the two chances add up to 1.",
+          correct: true,
+          feedback: "Picking A and picking B are the only two outcomes.",
+        }
+      - {
+          id: b,
+          text: "B's reward is lower than A's by exactly 0.881.",
+          correct: false,
+          feedback: "The rewards differ by 2. The 0.881 is a probability.",
+        }
+      - {
+          id: c,
+          text: "The sigmoid of any number is 1 minus that number.",
+          correct: false,
+          feedback: "That isn't true. For example, $\\sigma(2)\\approx0.881$, while $1-2=-1$.",
+        }
+    solution: 'Either A or B is preferred, so $P(B\text{ over }A)=1-P(A\text{ over }B)\approx0.119$. This also equals $\sigma(r_B-r_A)=\sigma(-2)$.'
+  - id: rmp-equal-rewards
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'A reward model gives two responses to the same prompt the same reward, $r_A=r_B=3$. Under the Bradley–Terry model, $P(A\text{ over }B)=\sigma(r_A-r_B)$, with $\sigma(z)=1/(1+e^{-z})$. What is this probability?'
+    answer: 0.5
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer: 0.9525741268,
+          tolerance: { abs: 0.005 },
+          category: misapplied_technique,
+          feedback: "That is $\\sigma(3)$. The sigmoid takes the difference of the rewards, which is 0.",
+        }
+    solution: 'The difference is $3-3=0$, and $\sigma(0)=1/(1+1)=0.5$. Equal rewards mean the model thinks either choice is equally likely.'
+  - id: rmp-other-choice
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A reward model gives response A the reward $r_A=1$ and response B the reward $r_B=2$. Under the Bradley–Terry model, $P(A\text{ over }B)=\sigma(r_A-r_B)$, with $\sigma(z)=1/(1+e^{-z})$. What is this probability? Give two decimal places.'
+    answer: 0.2689414214
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 0.7310585786,
+          tolerance: { abs: 0.005 },
+          category: math_error,
+          feedback: "That is $\\sigma(1)$, the chance that B is preferred. The difference $r_A-r_B$ is $-1$.",
+        }
+    solution: 'The difference is $1-2=-1$, so the probability is $1/(1+e^{1})\approx1/3.718\approx0.27$.'
+  - id: rmp-bt-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A reward model gives response A the reward $r_A={{= a }}$ and response B the reward $r_B={{= b }}$. Under the Bradley–Terry model, $P(A\text{ over }B)=\sigma(r_A-r_B)$, with $\sigma(z)=1/(1+e^{-z})$. What is this probability? Give two decimal places.'
+    params:
+      a: { min: 0, max: 4 }
+      b: { min: 0, max: 4 }
+    constraints: ["a != b"]
+    answer_expr: 1/(1+exp(-(a-b)))
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer_expr: "1/(1+exp(a-b))",
+          category: math_error,
+          feedback: "That is the chance that B is preferred. Subtract $r_B$ from $r_A$ and put that into the sigmoid.",
+        }
+    solution: 'The difference is $r_A-r_B={{= a-b }}$, so the probability is $1/(1+e^{{{= b-a }}})\approx{{= round(1/(1+exp(-(a-b))), 2) }}$.'
+  - id: rmp-shift
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: 'A reward model gives two responses the rewards $r_A=3$ and $r_B=1$. Under the Bradley–Terry model, $P(A\text{ over }B)=\sigma(r_A-r_B)$. If we add 5 to both rewards, making them 8 and 6, what happens to this probability?'
+    options:
+      - {
+          id: a,
+          text: "It stays the same, because the difference is still 2.",
+          correct: true,
+          feedback: "Only the difference between the rewards goes into the sigmoid.",
+        }
+      - {
+          id: b,
+          text: "It goes up, because both responses now have higher rewards.",
+          correct: false,
+          feedback: "Higher rewards for both don't favour either one. The difference hasn't changed.",
+        }
+      - {
+          id: c,
+          text: "It goes down, because 6 is a bigger share of 8 than 1 is of 3.",
+          correct: false,
+          feedback: "The model subtracts the rewards. It never divides them.",
+        }
+    solution: 'The difference is $8-6=2$, the same as $3-1$, so the probability stays $\sigma(2)\approx0.88$.'
+  - id: rmp-match-raters
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'Out of 100 people who compared response A with response B, 73 preferred A. Under the Bradley–Terry model, $P(A\text{ over }B)=\sigma(r_A-r_B)$, with $\sigma(z)=1/(1+e^{-z})$. Which reward difference $r_A-r_B$ matches this best?'
+    options:
+      - { id: a, text: "$1$", correct: true, feedback: "$\\sigma(1)=1/(1+e^{-1})\\approx0.73$." }
+      - {
+          id: b,
+          text: "$73$",
+          correct: false,
+          feedback: "A difference of 73 would give a probability extremely close to 1.",
+        }
+      - {
+          id: c,
+          text: "$0$",
+          correct: false,
+          feedback: "A difference of 0 gives 0.5, an even split between the two.",
+        }
+      - {
+          id: d,
+          text: "$2$",
+          correct: false,
+          feedback: "$\\sigma(2)\\approx0.88$, which would mean about 88 people out of 100.",
+        }
+    solution: 'We want $\sigma(r_A-r_B)\approx0.73$. Since $\sigma(1)=1/(1+e^{-1})\approx1/1.368\approx0.73$, a difference of 1 matches.'
+  - id: rmp-robot-grasp
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'A robot tried three ways of picking up a cup, A, B and C, and a model gave them the rewards $r_A=2$, $r_B=0$ and $r_C=-1$. Under the Bradley–Terry model, the chance that a person prefers one way over another is $\sigma$ of the first reward minus the second, with $\sigma(z)=1/(1+e^{-z})$. So A beats B with chance $\sigma(2)\approx0.88$ and B beats C with chance $\sigma(1)\approx0.73$. What is the chance that a person prefers A over C? Give two decimal places.'
+    answer: 0.9525741268
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 0.6424,
+          tolerance: { abs: 0.005 },
+          category: misapplied_technique,
+          feedback: "That multiplies the two chances. Use the rewards directly: the difference between A and C is 3.",
+        }
+      - {
+          answer: 0.88,
+          tolerance: { abs: 0.005 },
+          category: misapplied_technique,
+          feedback: "That is the chance that A beats B. The difference between A and C is 3.",
+        }
+    solution: 'The difference is $r_A-r_C=2-(-1)=3$, so the chance is $\sigma(3)=1/(1+e^{-3})\approx0.95$.'
+  - id: rm-preference-loss-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'A reward model is trained on a preference pair with the loss $L=-\ln\sigma(r_w-r_l)$, where $r_w$ is the reward of the chosen response and $r_l$ the reward of the rejected one. When is this loss small?'
+    options:
+      - {
+          id: a,
+          text: "When the chosen response's reward is well above the rejected one's.",
+          correct: true,
+          feedback: "Then $\\sigma(r_w-r_l)$ is close to 1, and $-\\ln$ of it is close to 0.",
+        }
+      - {
+          id: b,
+          text: "When both rewards are close to 0.",
+          correct: false,
+          feedback: "Equal rewards give $\\sigma(0)=0.5$ and a loss of about 0.69.",
+        }
+      - {
+          id: c,
+          text: "When the rejected response's reward is well above the chosen one's.",
+          correct: false,
+          feedback: "That is the model getting the order backwards, which gives a large loss.",
+        }
+    solution: "The loss is minus the log of the probability the model gives to the choice that was made. It is small when that probability is near 1, which happens when $r_w$ is well above $r_l$."
+  - id: rmp-slopes-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "In the worked example, the slopes for the chosen and rejected rewards are $-0.731$ and $0.731$. Why are they equal in size and opposite in sign?"
+    options:
+      - {
+          id: a,
+          text: "The loss depends only on the difference $r_w-r_l$, and raising $r_l$ lowers that difference as much as raising $r_w$ raises it.",
+          correct: true,
+          feedback: "So any change to one reward has the opposite effect of the same change to the other.",
+        }
+      - {
+          id: b,
+          text: "The chosen reward was 0.5 and the rejected reward was 1.5, which add up to 2.",
+          correct: false,
+          feedback: "The slopes come from the probability $p\\approx0.269$, not from the sum of the rewards.",
+        }
+      - {
+          id: c,
+          text: "The model had the order backwards, and slopes are only equal and opposite when it does.",
+          correct: false,
+          feedback: "The slopes are $p-1$ and $1-p$ for every pair, whichever order the model has.",
+        }
+    solution: 'Only $r_w-r_l$ enters the loss, so $\partial L/\partial r_w=p-1$ and $\partial L/\partial r_l=1-p$ are always equal and opposite. Here $p\approx0.269$, giving $\mp0.731$.'
+  - id: rmp-loss-equal
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'A reward model gives a chosen response and a rejected response the same reward, $r_w=r_l=1$. The Bradley–Terry loss is $L=-\ln\sigma(r_w-r_l)$, with $\sigma(z)=1/(1+e^{-z})$. What is the loss? Give two decimal places.'
+    answer: 0.6931471806
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 0.5,
+          tolerance: { abs: 0.005 },
+          category: misapplied_technique,
+          feedback: "That is the probability $\\sigma(0)$. The loss is minus its natural log.",
+        }
+    solution: 'The difference is 0, so $p=\sigma(0)=0.5$ and $L=-\ln0.5\approx0.69$.'
+  - id: rmp-loss-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A person chose one response over another. The reward model gives the chosen response $r_w={{= w }}$ and the rejected one $r_l={{= l }}$. The Bradley–Terry loss is $L=-\ln\sigma(r_w-r_l)$, with $\sigma(z)=1/(1+e^{-z})$. What is the loss? Give two decimal places.'
+    params:
+      w: { min: 0, max: 3 }
+      l: { min: 0, max: 3 }
+    constraints: ["w != l", "w - l >= -2"]
+    answer_expr: log(1+exp(-(w-l)))
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer_expr: "log(1+exp(w-l))",
+          category: math_error,
+          feedback: "That uses $r_l-r_w$. Subtract the rejected reward from the chosen one.",
+        }
+    solution: 'The difference is $r_w-r_l={{= w-l }}$, so $p=\sigma({{= w-l }})\approx{{= round(1/(1+exp(-(w-l))), 3) }}$ and $L=-\ln p\approx{{= round(log(1+exp(-(w-l))), 2) }}$.'
+  - id: rmp-slope-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'A person chose one response over another. The reward model gives the chosen response $r_w={{= w }}$ and the rejected one $r_l={{= l }}$, and is trained with the loss $L=-\ln\sigma(r_w-r_l)$, with $\sigma(z)=1/(1+e^{-z})$. With $p=\sigma(r_w-r_l)$, the slopes are $\partial L/\partial r_w=p-1$ and $\partial L/\partial r_l=1-p$. Find $\partial L/\partial r_l$. Give two decimal places.'
+    params:
+      w: { min: 0, max: 3 }
+      l: { min: 0, max: 3 }
+    constraints: ["w != l"]
+    answer_expr: 1-1/(1+exp(-(w-l)))
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer_expr: "1/(1+exp(-(w-l)))-1",
+          category: math_error,
+          feedback: "That is the slope for the chosen reward, $p-1$. The rejected reward's slope is $1-p$.",
+        }
+      - {
+          answer_expr: "1/(1+exp(-(w-l)))",
+          category: misapplied_technique,
+          feedback: "That is $p$ itself. The slope is $1-p$.",
+        }
+    solution: 'The difference is ${{= w-l }}$, so $p\approx{{= round(1/(1+exp(-(w-l))), 3) }}$ and $\partial L/\partial r_l=1-p\approx{{= round(1-1/(1+exp(-(w-l))), 2) }}$.'
+  - id: rmp-right-order
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: 'A reward model already gives a chosen response a reward 3 above the rejected one, so $p=\sigma(3)\approx0.95$. It is trained with $L=-\ln\sigma(r_w-r_l)$, whose slopes are $\partial L/\partial r_w=p-1$ and $\partial L/\partial r_l=1-p$. What does one more training step do to these two rewards?'
+    options:
+      - {
+          id: a,
+          text: "It still pushes them further apart, but only gently, because $1-p$ is small.",
+          correct: true,
+          feedback: "The loss is about 0.05, above 0, and the slopes are about $\\mp0.05$.",
+        }
+      - {
+          id: b,
+          text: "Nothing, because the model already has the order right, so the loss is 0.",
+          correct: false,
+          feedback: "The loss is $-\\ln0.95\\approx0.05$. It only reaches 0 if $p$ reaches 1.",
+        }
+      - {
+          id: c,
+          text: "It pulls them closer together, because the gap is already large.",
+          correct: false,
+          feedback: "The slopes push $r_w$ up and $r_l$ down, whatever the gap.",
+        }
+    solution: "The slopes are about $-0.05$ and $0.05$, so gradient descent raises $r_w$ and lowers $r_l$, but only slightly. The push fades as $p$ nears 1 and never quite stops."
+  - id: rmp-length
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "The people who labelled a set of preference pairs tended to choose the longer of two responses, even when the shorter one was just as good. A reward model is trained on these pairs. What is it likely to learn?"
+    options:
+      - {
+          id: a,
+          text: "To give longer responses higher rewards, whether or not they are better.",
+          correct: true,
+          feedback: "The reward model learns whatever explains the choices, including a habit like this one.",
+        }
+      - {
+          id: b,
+          text: "To ignore length, because the training loss only looks at rewards.",
+          correct: false,
+          feedback: "The rewards are fit to the choices, and the choices favour length.",
+        }
+      - {
+          id: c,
+          text: "To give shorter responses higher rewards, to make up for the labellers' habit.",
+          correct: false,
+          feedback: "Nothing in the training tells the model about the habit. It just fits the choices.",
+        }
+    solution: "A reward model only learns from the comparisons it sees. If longer responses tend to win, giving length a high reward lowers the loss, so the model learns to do that."
+  - id: rmp-robot-loss
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'A person compared two ways a robot folded a towel and chose the first. Treat the two rewards themselves as the numbers being trained, starting at $r_w=0$ and $r_l=0$. The loss is $L=-\ln\sigma(r_w-r_l)$, with $\sigma(z)=1/(1+e^{-z})$, $p=\sigma(r_w-r_l)$, $\partial L/\partial r_w=p-1$ and $\partial L/\partial r_l=1-p$. After one gradient descent step on both rewards with learning rate $\eta=1$, what is the new $p$? Give two decimal places.'
+    answer: 0.7310585786
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - {
+          answer: 0.6224593312,
+          tolerance: { abs: 0.005 },
+          category: math_error,
+          feedback: "That only updates $r_w$. Both rewards move, so the difference grows by twice as much.",
+        }
+      - {
+          answer: 0.5,
+          tolerance: { abs: 0.005 },
+          category: misapplied_technique,
+          feedback: "That is $p$ before the step. The step moves both rewards.",
+        }
+    solution: 'At the start $p=\sigma(0)=0.5$, so the slopes are $-0.5$ and $0.5$. The step gives $r_w=0-1\times(-0.5)=0.5$ and $r_l=0-1\times0.5=-0.5$, so the difference is 1 and the new $p=\sigma(1)\approx0.73$.'
+  - id: rm-explain-reward-model
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: "How would you train a model that scores an assistant's responses by how much people like them? Explain why you would collect comparisons of two responses rather than scores, how the Bradley–Terry model turns two rewards into the probability that one response is preferred, and how its loss changes the rewards during training."
+    rubric:
+      - {
+          id: comparisons,
+          criterion: "Explains that different raters use score scales differently but can agree on which of two responses is better, so data is stored as chosen and rejected pairs",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: bradley-terry,
+          criterion: "States that the probability one response is preferred is the sigmoid of the reward difference, so only differences between rewards matter",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: loss,
+          criterion: "Gives the loss as minus the log of the sigmoid of chosen minus rejected reward, and explains that training raises the chosen reward and lowers the rejected one, most when the order is wrong",
+          weight: 1,
+          required: true,
+        }
+    exemplar: "Show people two responses to the same prompt and ask which is better, storing each answer as a chosen and a rejected response. Scores would clash, because one rater's 9 can mean the same as another's 5, but both raters still agree on the order. The reward model gives each response one number, its reward, and the Bradley–Terry model says the chance a person prefers A over B is the sigmoid of A's reward minus B's, so adding the same amount to every reward changes nothing. Train with the loss minus the log of the sigmoid of the chosen reward minus the rejected reward, averaged over the pairs. Its slopes are p-1 for the chosen reward and 1-p for the rejected one, so gradient descent pushes the chosen reward up and the rejected one down, strongly when the model has the order backwards and only gently when it is already confident and right."
