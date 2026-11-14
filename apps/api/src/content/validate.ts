@@ -1291,7 +1291,10 @@ function validateAvoidedProse(
       continue;
     }
     for (const entry of prose) {
-      const text = entry.text.replace(/```[\s\S]*?```/g, ' ').replace(/(`+)[\s\S]*?\1/g, ' ');
+      const text = entry.text
+        .replace(/```[\s\S]*?```/g, ' ')
+        .replace(/~~~[\s\S]*?~~~/g, ' ')
+        .replace(/(`+)[\s\S]*?\1/g, ' ');
       for (const match of text.matchAll(pattern)) {
         addIssue(issues, entry.file, entry.id, `"${match[0]}": ${rule.use}`);
       }
