@@ -90,16 +90,20 @@ export function SessionPage() {
     }
   }, [sessionQuery.data?.serverNow]);
   const activities = sessionQuery.data.activities;
-  const lessonRunConceptIds = [
-    ...new Set(
-      sessionActivityCandidates(activities, requestedActivityId).flatMap((item) =>
-        item.kind === 'learn' && item.conceptId && item.lessonAvailable ? [item.conceptId] : [],
-      ),
-    ),
-  ];
+  const lessonRunActivities = new Map<string, string>();
+  for (const item of sessionActivityCandidates(activities, requestedActivityId)) {
+    if (
+      item.kind === 'learn' &&
+      item.conceptId &&
+      item.lessonAvailable &&
+      !lessonRunActivities.has(item.conceptId)
+    )
+      lessonRunActivities.set(item.conceptId, item.id);
+  }
+  const lessonRunConceptIds = [...lessonRunActivities.keys()];
   const lessonRunQueries = useQueries({
     queries: lessonRunConceptIds.map((conceptId) => ({
-      ...lessonRunQueryOptions(conceptId),
+      ...lessonRunQueryOptions(conceptId, lessonRunActivities.get(conceptId)),
       retry: false,
     })),
   });
@@ -130,7 +134,9 @@ export function SessionPage() {
     }
     if (nextActivity?.kind === 'learn' && nextActivity.lessonAvailable && nextActivity.conceptId) {
       void queryClient.prefetchQuery(lessonQueryOptions(nextActivity.conceptId));
-      void queryClient.prefetchQuery(lessonRunQueryOptions(nextActivity.conceptId));
+      void queryClient.prefetchQuery(
+        lessonRunQueryOptions(nextActivity.conceptId, nextActivity.id),
+      );
     }
   }, [activities, activity, queryClient]);
   const showingRequestedCompletedActivity = Boolean(
