@@ -29,7 +29,7 @@ tasks:
     md: "Implement `gradients(X, y, w, b)` returning `(dw, db)` for the MSE loss. Derive them on paper first: $\\partial L/\\partial w = \\frac{2}{n} X^\\top(\\hat y - y)$ and $\\partial L/\\partial b = \\frac{2}{n}\\sum_i(\\hat y_i - y_i)$. The verifier checks them against finite differences."
   - id: t-fit
     title: Gradient-descent loop
-    md: "Implement `fit(X, y, lr, steps)` starting from zeros. Return the final `(w, b)` and a history list of `(loss, w.copy(), b)` per step."
+    md: "Implement `fit(X, y, lr, steps)`, where `lr` is the learning rate $\\eta$, starting from zeros. Return the final `(w, b)` and a history list of `(loss, w.copy(), b)` per step."
   - id: t-split
     title: Train/validation split
     md: "Implement `train_val_split(X, y, val_frac, seed)` with a seeded shuffle. Fit on train only; report validation MSE."
@@ -38,7 +38,7 @@ tasks:
     md: "Run `python work/plot.py` to save `work/loss.png` (loss vs step, log scale) and `work/params.png` (trajectory of the two weights). Look at them before answering the reflection questions."
   - id: t-lr
     title: Learning-rate experiment
-    md: "Train with lr = 0.01, 0.1 and 1.0 on the provided data. Note which converge, which are slow, and which diverge. You will be asked to predict and explain this."
+    md: "Train with learning rates $\\eta = 0.01$, $0.1$ and $1.0$ on the provided data. Note which converge, which are slow, and which diverge. You will be asked to predict and explain this."
 acceptance:
   - "All public tests pass."
   - "Analytic gradients match finite differences to 1e-5 relative error."

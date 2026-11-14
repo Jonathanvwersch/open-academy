@@ -2,6 +2,9 @@
 # A concept may use a term only if it is one of `introduced_by`, or one of them is a
 # hard prerequisite ancestor. `match` entries are JavaScript regexes (case-insensitive)
 # applied to lesson Markdown and to all exercise text.
+avoid:
+  - pattern: '\b[Ll][Rr]\b'
+    use: 'write "learning rate" or $\eta$'
 terms:
   - { id: real-space, label: "ℝⁿ notation", match: ['\\mathbb\s*\{?R'], introduced_by: [vectors] }
   - {

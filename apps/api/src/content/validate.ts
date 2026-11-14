@@ -31,6 +31,31 @@ const MATH_PROSE_KEYS = new Set([
   'solution',
 ]);
 const PLAIN_TEXT_MATH = /[A-Za-z]_[A-Za-z0-9({]|[A-Za-z][\u2080-\u2089]|[∇θ‖]/u;
+const STRING_VALUE_METADATA_KEYS = new Set(['id', 'type', 'role', 'dimension', 'category']);
+const AVOIDED_PROSE_EXCLUDED_KEYS = new Set([
+  'accept',
+  'answer',
+  'answer_expr',
+  'answers',
+  'code',
+  'concept',
+  'constraints',
+  'exercise',
+  'fast_path',
+  'final',
+  'params',
+  'prereqs',
+  'problems',
+  'projects',
+  'regex',
+  'reflection',
+  'related',
+  'source',
+  'sources',
+  'starter',
+  'tests',
+  'variables',
+]);
 
 function svgIssue(source: string): string | null {
   if (/<\s*(script|foreignObject)\b/i.test(source)) return 'forbidden element';
@@ -1219,6 +1244,59 @@ function validateNotationUsage(data: ContentSourceData, issues: ContentIssue[]) 
       }
     }
   }
+
+  validateAvoidedProse(data, notation.file, issues);
+}
+
+function validateAvoidedProse(
+  data: ContentSourceData,
+  notationFile: string,
+  issues: ContentIssue[],
+) {
+  const prose = [
+    ...data.lessons.flatMap(({ value, file }) =>
+      stringValues(value, AVOIDED_PROSE_EXCLUDED_KEYS).map((text) => ({
+        file,
+        id: value.concept,
+        text,
+      })),
+    ),
+    ...data.exercises.flatMap(({ value, file }) =>
+      stringValues(value, AVOIDED_PROSE_EXCLUDED_KEYS).map((text) => ({
+        file,
+        id: value.id,
+        text,
+      })),
+    ),
+    ...data.projects.flatMap(({ value, file }) =>
+      stringValues(value, AVOIDED_PROSE_EXCLUDED_KEYS).map((text) => ({
+        file,
+        id: value.id,
+        text,
+      })),
+    ),
+  ];
+
+  for (const rule of data.notation?.value.avoid ?? []) {
+    let pattern: RegExp;
+    try {
+      pattern = new RegExp(rule.pattern, 'g');
+    } catch (error) {
+      addIssue(
+        issues,
+        notationFile,
+        '<file>',
+        `invalid avoid regex "${rule.pattern}": ${messageOf(error)}`,
+      );
+      continue;
+    }
+    for (const entry of prose) {
+      const text = entry.text.replace(/```[\s\S]*?```/g, ' ').replace(/(`+)[\s\S]*?\1/g, ' ');
+      for (const match of text.matchAll(pattern)) {
+        addIssue(issues, entry.file, entry.id, `"${match[0]}": ${rule.use}`);
+      }
+    }
+  }
 }
 
 function hardAncestors(
@@ -1238,14 +1316,13 @@ function hardAncestors(
   return ancestors;
 }
 
-function stringValues(value: unknown): string[] {
+function stringValues(value: unknown, excludedKeys: ReadonlySet<string> = new Set()): string[] {
   if (typeof value === 'string') return [value];
-  if (Array.isArray(value)) return value.flatMap(stringValues);
+  if (Array.isArray(value)) return value.flatMap((entry) => stringValues(entry, excludedKeys));
   if (typeof value === 'object' && value !== null) {
-    const metadata = new Set(['id', 'type', 'role', 'dimension', 'category']);
     return Object.entries(value)
-      .filter(([key]) => !metadata.has(key))
-      .flatMap(([, child]) => stringValues(child));
+      .filter(([key]) => !STRING_VALUE_METADATA_KEYS.has(key) && !excludedKeys.has(key))
+      .flatMap(([, child]) => stringValues(child, excludedKeys));
   }
   return [];
 }

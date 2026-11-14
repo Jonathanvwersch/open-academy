@@ -38,7 +38,7 @@ exercises:
           id: d,
           text: "Lower the learning rate",
           correct: false,
-          feedback: "With zero gradients at step time the learning rate is irrelevant: the update is lr × 0.",
+          feedback: "With zero gradients at step time the learning rate is irrelevant: the update is $\\eta \\times 0$.",
         }
     solution: "`optimizer.step()` reads `.grad`. Because `zero_grad()` ran first and `backward()` runs after the step, `.grad` is always zero at step time, so parameters never change. Order must be: `zero_grad()` → forward → loss → `backward()` → `step()`."
   - id: dbt-curve-basics
@@ -607,7 +607,7 @@ exercises:
         correct: false
         feedback: The weight slope needs x because the weight multiplies the input.
       - id: c
-        text: Use b = b + lr * db.
+        text: Use `b = b + lr * db`.
         correct: false
         feedback: Adding the slope would move the bias uphill, not repair its formula.
     solution:
@@ -795,7 +795,7 @@ exercises:
         correct: false
         feedback: Changing a sign does not assign the new value to w.
       - id: c
-        text: Increase lr without changing any assignment.
+        text: Increase the learning rate without changing any assignment.
         correct: false
         feedback: The computed value is still stored in `w_new` rather than `w`.
     solution:

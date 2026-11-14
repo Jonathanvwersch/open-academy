@@ -569,7 +569,7 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 3
-    prompt: For one training example with $x=2$, $y=7$, starting at $w=b=1$ with `lr = 0.05`, a coder computes the error as `e = y - y_hat` but keeps the update `w = w - lr * 2 * e * x` (and subtracts `lr * 2 * e` from `b`). What happens to the training loss as this loop repeats?
+    prompt: For one training example with $x=2$, $y=7$, starting at $w=b=1$ with learning rate $\eta = 0.05$, a coder computes the error as `e = y - y_hat` but keeps the update `w = w - lr * 2 * e * x` (with `lr` = $\eta$) and subtracts `lr * 2 * e` from `b`. What happens to the training loss as this loop repeats?
     options:
       - id: a
         text: It grows, because every slope has the wrong sign, so each step goes uphill.
@@ -946,7 +946,7 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: In your lab, you trained with lr = 0.01 and it converged smoothly. **Before running it**, predict what happens with lr = 10× larger, then with lr = 100× larger (the lab data has feature variance ≈ 1).
+    prompt: In your lab, you trained with learning rate $\eta = 0.01$ and it converged smoothly. **Before running it**, predict what happens with $\eta$ 10× larger, then 100× larger (the lab data has feature variance ≈ 1).
     options:
       - id: a
         text: "10×: converges faster, maybe with slight oscillation; 100×: likely diverges (loss grows, may become NaN)"
@@ -981,7 +981,7 @@ exercises:
       - id: r3
         criterion: Connects to curvature/feature scale or the $|1-2a\eta|>1$ condition
         weight: 1
-    exemplar: At lr=0.5 the loss dropped once and then grew every step until it hit inf, and the weight trajectory zig-zagged across the minimum with growing amplitude. Each step moves by η times the gradient; when η is too large relative to the curvature, the step jumps past the minimum to a point where the error (and so the gradient) is larger, so the next jump is bigger again — the factor |1−2aη| exceeds 1.
+    exemplar: At $\eta = 0.5$ the loss dropped once and then grew every step until it hit inf, and the weight trajectory zig-zagged across the minimum with growing amplitude. Each step moves by $\eta$ times the gradient; when $\eta$ is too large relative to the curvature, the step jumps past the minimum to a point where the error (and so the gradient) is larger, so the next jump is bigger again — the factor $|1 - 2a\eta|$ exceeds 1.
   - id: lab-linreg-val-vs-train
     dimension: conceptual
     type: mc

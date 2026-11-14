@@ -66,6 +66,7 @@ describe('academy CLI', () => {
       expect(readFileSync(join(pack, 'concepts/main.yaml'), 'utf8')).toContain(
         'id: applied-science-first-topic',
       );
+      expect(readFileSync(join(pack, 'notation.yaml'), 'utf8')).toContain('avoid: []');
       const result = run(['check', pack]);
       expect(result.status).toBe(0);
       expect(result.stdout).toContain('1 topics, 0 lessons, 0 questions, 1 courses');
