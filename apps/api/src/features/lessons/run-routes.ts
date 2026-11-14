@@ -1,5 +1,5 @@
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
-import { and, eq, inArray, isNull, like } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, like } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { Rating } from 'ts-fsrs';
 import { z } from 'zod';
@@ -509,7 +509,11 @@ export function registerLessonRunRoutes(
     const resolved = await lessonFor(conceptId);
     if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);
     const body = z
-      .object({ pointId: z.string().min(1), activityId: z.string().uuid().optional() })
+      .object({
+        pointId: z.string().min(1),
+        activityId: z.string().uuid().optional(),
+        warmup: z.boolean().optional(),
+      })
       .safeParse(await context.req.json().catch(() => ({})));
     if (!body.success) return context.json({ error: 'Invalid practice request' }, 400);
     const activity = await verifyActivity(context, body.data.activityId, conceptId);
@@ -536,15 +540,56 @@ export function registerLessonRunRoutes(
       );
       const pointState = state.points.find((item) => item.id === body.data.pointId);
       if (pointState?.status !== 'passed') return { kind: 'not_passed' as const, run };
-      const pending = problems.find((item) => item.practiceOnly && item.answeredAt === null);
-      if (pending) {
-        return pending.knowledgePointId === body.data.pointId
-          ? { kind: 'ready' as const, run }
-          : { kind: 'pending_other' as const, run };
+      let availableProblems = problems;
+      let warmupComplete = false;
+      if (body.data.warmup) {
+        const [latestQuizAttempt] = await tx
+          .select()
+          .from(lessonQuizAttempts)
+          .where(eq(lessonQuizAttempts.runId, run.id))
+          .orderBy(desc(lessonQuizAttempts.attemptNo))
+          .limit(1);
+        const latestSubmittedAt = latestQuizAttempt?.submittedAt;
+        if (!run.quizPassedAt && latestQuizAttempt?.passed === false && latestSubmittedAt) {
+          const quizItems = await tx
+            .select({
+              knowledgePointId: lessonQuizItems.knowledgePointId,
+              correct: lessonQuizItems.correct,
+            })
+            .from(lessonQuizItems)
+            .where(eq(lessonQuizItems.quizAttemptId, latestQuizAttempt.id));
+          const pointWasMissed = quizItems.some(
+            (item) =>
+              item.knowledgePointId === body.data.pointId &&
+              item.correct !== null &&
+              item.correct < 1,
+          );
+          const answeredSinceFailure = problems.filter(
+            (problem) =>
+              problem.practiceOnly &&
+              problem.knowledgePointId === body.data.pointId &&
+              problem.answeredAt !== null &&
+              problem.answeredAt > latestSubmittedAt,
+          ).length;
+          warmupComplete = !pointWasMissed || answeredSinceFailure >= 3;
+        } else {
+          warmupComplete = true;
+        }
       }
+      const pending = availableProblems.find(
+        (item) => item.practiceOnly && item.answeredAt === null,
+      );
+      if (pending?.knowledgePointId === body.data.pointId && !warmupComplete) {
+        return { kind: 'ready' as const, run };
+      }
+      if (pending) {
+        await tx.delete(lessonProblems).where(eq(lessonProblems.id, pending.id));
+        availableProblems = availableProblems.filter((item) => item.id !== pending.id);
+      }
+      if (warmupComplete) return { kind: 'review_complete' as const, run };
       const point = resolved.lesson.knowledge_points?.find((item) => item.id === body.data.pointId);
       if (!point) return { kind: 'not_found' as const };
-      const pointRows = problems
+      const pointRows = availableProblems
         .filter((problem) => problem.knowledgePointId === point.id)
         .map(({ exerciseId, seed, position, correct, servedAt }) => ({
           exerciseId,
@@ -554,7 +599,7 @@ export function registerLessonRunRoutes(
           servedAt,
         }));
       const usedSeeds = new Set(
-        problems.flatMap((problem) => (problem.seed === null ? [] : [problem.seed])),
+        availableProblems.flatMap((problem) => (problem.seed === null ? [] : [problem.seed])),
       );
       const selection = selectNextProblem(
         point,
@@ -580,8 +625,8 @@ export function registerLessonRunRoutes(
     if (result.kind === 'not_passed') {
       return context.json({ error: 'Only a passed step can be practised again' }, 409);
     }
-    if (result.kind === 'pending_other') {
-      return context.json({ error: 'Finish the pending practice question first' }, 409);
+    if (result.kind === 'review_complete') {
+      return context.json({ error: 'Quiz practice is complete for this step' }, 409);
     }
     if (result.kind === 'no_problem') {
       return context.json({ error: 'No practice question is available' }, 409);
