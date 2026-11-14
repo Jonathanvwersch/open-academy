@@ -369,7 +369,7 @@ test('tutor chat loading shows thread skeletons and an empty conversation state'
   releaseLesson();
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
   await tutor.getByRole('button', { name: 'New chat', exact: true }).click();
-  await expect(tutor.getByRole('status', { name: 'Loading chats' })).toBeVisible();
+  await expect(tutor.getByText('Loading chats…', { exact: true })).toHaveCount(0);
   await expect(tutor.getByLabel('Ask the tutor')).toBeVisible();
   releaseThreads();
   await expect(tutor.getByTestId('tutor-empty-conversation')).toHaveText(
@@ -379,6 +379,8 @@ test('tutor chat loading shows thread skeletons and an empty conversation state'
   await expect(tutor.getByTestId('tutor-empty-thread-list')).toContainText(
     'No chats yet. Ask a question below.',
   );
+  await expect(tutor.getByRole('img', { name: 'Academy tortoise' })).toBeVisible();
+  await expect(tutor.getByRole('button', { name: 'New chat', exact: true })).toBeVisible();
 });
 
 test('restored tutor sidebar loads while the tutor flag is pending', async ({ page }) => {

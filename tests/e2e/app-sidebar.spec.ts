@@ -154,8 +154,8 @@ test('sidebar shows first-load course and review skeletons before real data', as
   const skeletonRowHeights = await navigation
     .getByTestId('sidebar-course-skeleton')
     .evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height));
-  expect(skeletonRowHeights[0]).toBeLessThan(skeletonRowHeights[1]);
-  expect(skeletonRowHeights[2]).toBeLessThan(skeletonRowHeights[1]);
+  expect(skeletonRowHeights[1]).toBe(skeletonRowHeights[0]);
+  expect(skeletonRowHeights[2]).toBe(skeletonRowHeights[0]);
   await page.screenshot({
     path: testInfo.outputPath('sidebar-loading-1440x900.png'),
     animations: 'disabled',
@@ -189,7 +189,6 @@ test('sidebar shows first-load course and review skeletons before real data', as
     const titleBounds = title.getBoundingClientRect();
     const countBounds = count.getBoundingClientRect();
     return {
-      rowHeight: rowBounds.height,
       titleHeight: titleBounds.height,
       titleTop: titleBounds.top,
       titleClassName: title.className,
@@ -203,7 +202,6 @@ test('sidebar shows first-load course and review skeletons before real data', as
   expect(longCourseLayout.titleClassName).not.toMatch(/truncate|line-clamp/);
   expect(longCourseLayout.titleTextOverflow).not.toBe('ellipsis');
   expect(longCourseLayout.titleWhiteSpace).toBe('normal');
-  expect(longCourseLayout.rowHeight).toBe(skeletonRowHeights[1]);
   expect(Math.abs(longCourseLayout.titleTop - longCourseLayout.countTop)).toBeLessThanOrEqual(1);
   expect(longCourseLayout.countRightInset).toBeCloseTo(8, 0);
   const desktopCourseRows = await navigation.locator('a[href^="/courses/"]').evaluateAll((links) =>
@@ -277,7 +275,6 @@ test('sidebar shows first-load course and review skeletons before real data', as
     const titleBounds = title.getBoundingClientRect();
     const countBounds = count.getBoundingClientRect();
     return {
-      rowHeight: rowBounds.height,
       titleHeight: titleBounds.height,
       titleTop: titleBounds.top,
       titleClassName: title.className,
@@ -288,7 +285,6 @@ test('sidebar shows first-load course and review skeletons before real data', as
     };
   });
   expect(mobileLongCourseLayout.titleHeight).toBeGreaterThanOrEqual(20);
-  expect(mobileLongCourseLayout.rowHeight).toBe(mobileSkeletonRowHeights[1]);
   expect(mobileLongCourseLayout.titleClassName).not.toMatch(/truncate|line-clamp/);
   expect(mobileLongCourseLayout.titleTextOverflow).not.toBe('ellipsis');
   expect(mobileLongCourseLayout.titleWhiteSpace).toBe('normal');

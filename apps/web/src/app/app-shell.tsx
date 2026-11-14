@@ -19,7 +19,6 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSkeleton,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
@@ -144,29 +143,20 @@ function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
                 {loadingCourses
-                  ? ['first', 'wrapped', 'third'].map((row) => {
-                      const wraps = row === 'wrapped' && !isMobile;
+                  ? [
+                      { id: 'first', titleWidth: 'w-3/4' },
+                      { id: 'second', titleWidth: 'w-3/5' },
+                      { id: 'third', titleWidth: 'w-[68%]' },
+                    ].map(({ id, titleWidth }) => {
                       return (
                         <SidebarMenuItem
-                          key={`course-skeleton-${row}`}
+                          key={`course-skeleton-${id}`}
                           data-testid="sidebar-course-skeleton"
                           aria-hidden="true"
                         >
-                          <div className="relative">
-                            <SidebarMenuSkeleton
-                              className={`h-auto py-2 pr-12 ${
-                                wraps ? 'min-h-[4.75rem] items-start' : 'min-h-9'
-                              }`}
-                            />
-                            {wraps ? <Skeleton className="absolute left-2 top-7 h-3 w-24" /> : null}
-                            {wraps ? (
-                              <Skeleton className="absolute bottom-2 left-2 h-3 w-20" />
-                            ) : null}
-                            <Skeleton
-                              className={`absolute right-2 h-3 w-8 ${
-                                wraps ? 'top-2' : 'top-1/2 -translate-y-1/2'
-                              }`}
-                            />
+                          <div className="flex h-9 items-center gap-2 rounded-md px-2">
+                            <Skeleton className={`h-4 ${titleWidth}`} />
+                            <Skeleton className="ml-auto h-3 w-8 shrink-0" />
                           </div>
                         </SidebarMenuItem>
                       );

@@ -19,6 +19,7 @@ import {
 } from 'react';
 import type { StickToBottomContext } from 'use-stick-to-bottom';
 import { apiFetch } from '../../api/authenticated-fetch.js';
+import { AcademyMascot } from '../../components/academy-mascot.js';
 import { ThinkingIndicator } from '../../components/thinking-indicator.js';
 import { TortoiseMark } from '../../components/tortoise-mark.js';
 import {
@@ -663,6 +664,7 @@ export function TutorContextProvider({
                         data-testid="tutor-empty-thread-list"
                         className="flex flex-col items-center gap-3 px-4 py-8 text-center"
                       >
+                        <AcademyMascot className="size-20" />
                         <p className="text-sm text-muted-foreground">
                           No chats yet. Ask a question below.
                         </p>
@@ -766,16 +768,7 @@ export function TutorContextProvider({
                         !showGreeting &&
                         messages.length === 0 &&
                         !visiblePendingSend ? (
-                          threads.isPending ? (
-                            <div
-                              role="status"
-                              aria-label="Loading chats"
-                              className="flex flex-1 items-center justify-center gap-2 p-6 text-sm text-muted-foreground"
-                            >
-                              <Loader size={16} aria-hidden="true" />
-                              Loading chats…
-                            </div>
-                          ) : threads.isError ? (
+                          threads.isPending ? null : threads.isError ? (
                             <Alert variant="destructive">
                               <AlertDescription>
                                 {threads.error instanceof Error
