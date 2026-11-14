@@ -1,0 +1,6 @@
+id: fixture-third-course
+title: Fixture third course
+description: A third course for study-set views.
+units:
+  - title: Vector foundations
+    concepts: [switching-topic]

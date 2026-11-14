@@ -94,7 +94,7 @@ test('a new learner chooses a course before course start is needed', async () =>
     get('/learn').then((response) => response.json()),
   ]);
   expect(course.courseStart).toEqual({ needed: true, placementRunId: null });
-  expect(learn.today.needsCourseChoice).toBe(false);
+  expect(learn.today.needsCourseChoice).toBe(true);
   expect(learn.today.courseStart.needed).toBe(true);
   expect(
     course.courses.find((entry: { id: string }) => entry.id === 'fixture-course').started,
@@ -142,7 +142,7 @@ test('beginning enrolls in the active course without changing mastery', async ()
   ).toBe(true);
 });
 
-test('existing course evidence means no start card is needed without an enrollment', async () => {
+test('existing course evidence is lazily enrolled without a start card', async () => {
   await db.insert(lessonRuns).values({
     userId,
     conceptId: 'vectors',
@@ -160,7 +160,7 @@ test('existing course evidence means no start card is needed without an enrollme
   ).toBe(true);
   expect(
     await db.select().from(courseEnrollments).where(eq(courseEnrollments.userId, userId)),
-  ).toHaveLength(0);
+  ).toMatchObject([{ courseId: 'fixture-course', status: 'active', startMethod: 'beginning' }]);
 });
 
 test('an abandoned placement resumes on the same question and rejects stale or empty answers', async () => {
@@ -538,7 +538,6 @@ test('placement results keep their first topic after switching courses', async (
     )?.conceptId;
     if (!firstLearnId) throw new Error('Placement course has no next learning topic');
 
-    let switchedCourse = false;
     for (const course of realContent.courses.filter((entry) => entry.id !== placementCourseId)) {
       const switched = await put('/course/active', { courseId: course.id });
       expect(switched.status).toBe(200);
@@ -546,12 +545,8 @@ test('placement results keep their first topic after switching courses', async (
       const firstLearn = today.plan.activities.find(
         (activity: { kind: string; conceptId?: string }) => activity.kind === 'learn',
       )?.conceptId;
-      if (firstLearn && firstLearn !== firstLearnId) {
-        switchedCourse = true;
-        break;
-      }
+      expect(firstLearn).toBe(firstLearnId);
     }
-    expect(switchedCourse).toBe(true);
     const results = await get(`/placement/${id}/results`).then((response) => response.json());
     expect(results.firstTopic).toBe(realContent.conceptsById.get(firstLearnId)?.title);
   } finally {

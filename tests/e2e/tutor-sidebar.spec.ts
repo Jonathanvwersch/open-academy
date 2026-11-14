@@ -273,7 +273,7 @@ test('Course tutor sidebar fills at least 90 percent of the viewport height', as
   await page.addInitScript(() => {
     localStorage.setItem('academy.tutor.open', 'true');
   });
-  await page.goto('/course');
+  await page.goto('/courses/fixture-course');
   const tutor = page.getByRole('complementary', { name: 'Tutor' });
   await expect(tutor).toBeVisible();
   const viewportHeight = await page.evaluate(() => window.innerHeight);
@@ -303,7 +303,7 @@ test('restored tutor sidebar loads while the tutor flag is pending', async ({ pa
     await route.continue();
   });
 
-  const navigation = page.goto('/course');
+  const navigation = page.goto('/courses/fixture-course');
   await todayRequestStarted;
   const tutor = page.getByRole('complementary', { name: 'Tutor' });
   const unavailable = tutor.getByText('Tutor is unavailable.', { exact: true });
@@ -339,7 +339,7 @@ test('tutor sidebar defaults to 448px when width storage is empty', async ({ pag
     localStorage.removeItem('academy.tutor.thread');
     localStorage.setItem('academy.tutor.open', 'true');
   });
-  await page.goto('/course');
+  await page.goto('/courses/fixture-course');
 
   const tutor = page.getByRole('complementary', { name: 'Tutor' });
   const container = tutor.locator('[data-slot="sidebar-container"]');
@@ -364,7 +364,7 @@ test('tutor sidebar width resizes, persists, responds to the keyboard, and clamp
       sessionStorage.setItem('tutor-width-test-initialized', 'true');
     }
   });
-  await page.goto('/course');
+  await page.goto('/courses/fixture-course');
 
   const tutor = page.getByRole('complementary', { name: 'Tutor' });
   const container = tutor.locator('[data-slot="sidebar-container"]');
@@ -445,7 +445,7 @@ test('chat text stays visible while Markdown loads', async ({ page }) => {
     await markdownGate;
     await route.continue();
   });
-  await page.goto('/course');
+  await page.goto('/courses/fixture-course');
   await page.getByRole('button', { name: 'Open tutor' }).click();
   const tutor = page.getByRole('complementary', { name: 'Tutor' });
   await tutor.getByRole('button', { name: 'New chat' }).click();
@@ -479,7 +479,7 @@ test('pending tutor reply shows pulsing Thinking within the mobile conversation'
     if (route.request().method() === 'POST') await replyGate;
     await route.continue();
   });
-  await page.goto('/course');
+  await page.goto('/courses/fixture-course');
   await page.getByRole('button', { name: 'Open tutor' }).click();
   const conversation = page.getByLabel('Ask the tutor');
   await page.getByRole('button', { name: 'New chat' }).click();
@@ -1372,7 +1372,7 @@ test('long tutor drafts keep the composer controls in view on desktop and mobile
   await page.addInitScript(() => {
     localStorage.setItem('academy.tutor.open', 'true');
   });
-  await page.goto('/course');
+  await page.goto('/courses/fixture-course');
 
   const initialTutor = page.getByRole('complementary', { name: 'Tutor' });
   await expect(initialTutor).toBeVisible();

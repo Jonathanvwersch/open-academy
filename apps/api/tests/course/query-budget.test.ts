@@ -34,7 +34,7 @@ test('Course reads progress without loading review scheduling or attempt history
   const response = await app.request('/api/course');
   expect(response.status).toBe(200);
   expect((await response.json()).units.length).toBeGreaterThan(0);
-  expect(statements.length).toBeLessThanOrEqual(8); // Includes enrollment, placement, and event reads.
+  expect(statements.length).toBeLessThanOrEqual(14); // Study-course membership and recent-learn estimates.
   expect(statements.join('\n')).not.toMatch(/"review_cards"|"attempts"|"remediation_flags"/);
 });
 
@@ -76,6 +76,6 @@ test('resuming Home uses the existing session instead of rebuilding the schedule
   const response = await app.request('/api/learn', { headers: { 'X-Now': now } });
   expect(response.status).toBe(200);
   expect((await response.json()).activeSessionId).toBe(session.id);
-  expect(statements.length).toBeLessThanOrEqual(12);
+  expect(statements.length).toBeLessThanOrEqual(19); // Study-course membership and recent-learn estimates.
   expect(statements.join('\n')).not.toMatch(/"review_cards"|"attempts"|"remediation_flags"/);
 });

@@ -1,3 +1,4 @@
+import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { and, eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
@@ -57,12 +58,8 @@ test('desktop sidebar collapse persists across reload', async ({ page }) => {
   await expect(
     footer.getByRole('button', { name: /Collapse navigation|Expand navigation/ }),
   ).toHaveCount(0);
-  await expect(
-    page.getByRole('link', { name: /Fixture course.*0 of 9 topics done/ }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: 'Switch to Fixture switching course' }),
-  ).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Fixture course' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Fixture switching course' })).toBeVisible();
   const navRows = ['Home', 'Courses', 'Reviews', 'Progress'].map((name) =>
     navigation.getByRole('link', { name, exact: true }),
   );
@@ -76,7 +73,7 @@ test('desktop sidebar collapse persists across reload', async ({ page }) => {
       4,
     );
   }
-  await page.getByRole('link', { name: 'Switch to Fixture switching course' }).hover();
+  await page.getByRole('link', { name: 'Open Fixture switching course' }).hover();
   await page.screenshot({
     path: 'test-results/sidebar-home-expanded.png',
     animations: 'disabled',
@@ -142,17 +139,32 @@ test('mobile sidebar closes after navigating to Reviews', async ({ page }) => {
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
 });
 
-test('switching a My courses entry opens that course', async ({ page }) => {
+test('My courses links open course details directly', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
-  await page.getByRole('link', { name: 'Switch to Fixture switching course' }).click();
+  await page.getByRole('link', { name: 'Open Fixture switching course' }).click();
+  await expect(page).toHaveURL('/courses/fixture-switching-course');
   await expect(
     page.getByRole('heading', { name: 'Fixture switching course', exact: true }),
   ).toBeVisible();
   await page.screenshot({ path: 'test-results/sidebar-course.png', animations: 'disabled' });
 });
 
-test('modified course-row clicks open the course in a new tab without switching', async ({
+test('course catalogue links every course and legacy course URLs redirect', async ({ page }) => {
+  await page.goto('/courses');
+  const catalogue = page.getByRole('main');
+  await expect(catalogue.getByRole('link', { name: /Fixture course/ })).toBeVisible();
+  await expect(catalogue.getByRole('link', { name: /Fixture switching course/ })).toBeVisible();
+  await expect(catalogue.getByRole('link', { name: /Fixture third course/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fixture subject' })).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.goto('/course');
+  await expect(page).toHaveURL('/courses');
+  await page.goto('/course?course=fixture-switching-course');
+  await expect(page).toHaveURL('/courses/fixture-switching-course');
+});
+
+test('modified course-row clicks open the course in a new tab without changing enrollment', async ({
   page,
   context,
 }) => {
@@ -165,82 +177,129 @@ test('modified course-row clicks open the course in a new tab without switching'
   await page.goto('/');
   const currentUrl = page.url();
   const newPagePromise = context.waitForEvent('page');
-  await page.getByRole('link', { name: 'Switch to Fixture switching course' }).click({
+  await page.getByRole('link', { name: 'Open Fixture switching course' }).click({
     modifiers: ['Control'],
   });
   const newPage = await newPagePromise;
-  await expect(newPage).toHaveURL(/\/course\?course=fixture-switching-course$/);
+  await expect(newPage).toHaveURL('/courses/fixture-switching-course');
   expect(page.url()).toBe(currentUrl);
   expect(switchRequests).toBe(0);
   await newPage.close();
 });
 
-test('overlapping course switches run in order and keep the last selected course', async ({
-  page,
-}) => {
-  const requestOrder: string[] = [];
-  const completedOrder: string[] = [];
-  await page.route('**/api/course/active', async (route) => {
-    const { courseId } = route.request().postDataJSON() as { courseId: string };
-    requestOrder.push(courseId);
-    if (courseId === 'fixture-switching-course') {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-    }
-    const response = await route.fetch();
-    await route.fulfill({ response });
-    completedOrder.push(courseId);
-  });
-  await page.setViewportSize({ width: 1440, height: 900 });
+test('Home schedules learn activities from both active courses', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Switch to Fixture switching course' }).click();
-  await expect(page).toHaveURL(/\/course\?course=fixture-switching-course$/, { timeout: 1000 });
-  await expect(
-    page.getByRole('heading', { name: 'Fixture switching course', exact: true }),
-  ).toBeVisible({ timeout: 1000 });
-  const courseRows = page
-    .getByRole('navigation', { name: 'Main navigation' })
-    .locator('[data-sidebar="menu-button"]')
-    .filter({ hasText: /Fixture/ });
-  await expect(courseRows).toHaveCount(2);
-  for (const row of await courseRows.all()) {
-    expect(await row.getAttribute('disabled')).toBeNull();
-    expect(await row.getAttribute('aria-disabled')).toBeNull();
-  }
-  await expect(page.getByRole('link', { name: 'Switch to Fixture course' })).toBeVisible();
-  await page.getByRole('link', { name: 'Switch to Fixture course' }).click();
-  await expect(page).toHaveURL(/\/course\?course=fixture-course$/, { timeout: 1000 });
-  expect(completedOrder).toEqual([]);
-
-  await expect.poll(() => requestOrder.length, { timeout: 8000 }).toBe(2);
-  expect(requestOrder).toEqual(['fixture-switching-course', 'fixture-course']);
-  await expect.poll(() => completedOrder.length, { timeout: 8000 }).toBe(2);
-  expect(completedOrder).toEqual(['fixture-switching-course', 'fixture-course']);
-  await page.reload();
-  await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: /Fixture course, 0 of 9 topics done/ }),
-  ).toHaveAttribute('data-active', 'true');
+  await expect(page.getByText('Vectors', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Switching topic', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'View course' })).toHaveCount(2);
 });
 
-test('failed course switches restore the default course and can be retried', async ({ page }) => {
-  let requests = 0;
-  await page.route('**/api/course/active', async (route) => {
-    requests += 1;
-    await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
-  });
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Switch to Fixture switching course' }).click();
-  await expect(page).toHaveURL(/\/course$/);
-  await expect(page.getByText("Couldn't switch courses")).toBeVisible();
+test('adding a course from the beginning adds it to My courses', async ({ page }) => {
+  await db
+    .delete(courseEnrollments)
+    .where(
+      and(
+        eq(courseEnrollments.userId, userId),
+        eq(courseEnrollments.courseId, 'fixture-switching-course'),
+      ),
+    );
+  await page.goto('/courses/fixture-switching-course');
+  await page.getByRole('button', { name: 'Add to my courses' }).click();
+  await page.getByRole('button', { name: "I'm new to this — start from the beginning" }).click();
   await expect(
-    page.getByRole('link', { name: /Fixture course, 0 of 9 topics done/ }),
-  ).toHaveAttribute('data-active', 'true');
-  await expect.poll(() => requests).toBe(1);
+    page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', {
+      name: /Fixture switching course/,
+    }),
+  ).toBeVisible();
+});
 
-  await page.getByRole('link', { name: 'Switch to Fixture switching course' }).click();
-  await expect.poll(() => requests).toBe(2);
-  await expect(page).toHaveURL(/\/course$/);
+test('removing a course keeps its due reviews and Undo restores it', async ({ page }) => {
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: 'switching-topic',
+    dimension: 'conceptual',
+    fsrs: newReviewCard(new Date('2026-01-01T12:00:00.000Z')),
+    dueAt: new Date('2026-01-01T00:00:00.000Z'),
+    reps: 0,
+    lapses: 0,
+  });
+  await page.goto('/courses/fixture-switching-course');
+  await page.getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByRole('link', { name: 'Open Fixture switching course' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(
+    page.getByRole('link', { name: /Fixture switching course.*topics done/ }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByRole('link', { name: 'Open Fixture switching course' })).toHaveCount(0);
+  await page.goto('/reviews');
+  await expect(page.getByText('Switching topic', { exact: true })).toBeVisible();
+});
+
+test('captures multi-course desktop and mobile screenshots', async ({ page }) => {
+  const screenshots = '/home/ubuntu/shots/study-set';
+  mkdirSync(screenshots, { recursive: true });
+  for (const viewport of [
+    { width: 1440, height: 900, suffix: 'desktop' },
+    { width: 390, height: 844, suffix: 'mobile' },
+  ]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+    await page.screenshot({
+      path: `${screenshots}/home-two-courses-${viewport.suffix}.png`,
+      animations: 'disabled',
+    });
+
+    await page.goto('/courses');
+    await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
+    await page.screenshot({
+      path: `${screenshots}/catalogue-${viewport.suffix}.png`,
+      animations: 'disabled',
+    });
+    await page.goto('/courses/fixture-course');
+    await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
+    await page.screenshot({
+      path: `${screenshots}/active-detail-${viewport.suffix}.png`,
+      animations: 'disabled',
+    });
+    await page.goto('/courses/fixture-third-course');
+    await expect(
+      page.getByRole('heading', { name: 'Fixture third course', exact: true }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: `${screenshots}/not-started-detail-${viewport.suffix}.png`,
+      animations: 'disabled',
+    });
+    await db.insert(courseEnrollments).values({
+      userId,
+      courseId: 'fixture-third-course',
+      status: 'active',
+      startMethod: 'beginning',
+    });
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+    if (viewport.suffix === 'mobile') {
+      await page.getByRole('button', { name: 'Open navigation' }).click();
+    }
+    await expect(
+      page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', {
+        name: /Fixture third course/,
+      }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: `${screenshots}/sidebar-three-courses-${viewport.suffix}.png`,
+      animations: 'disabled',
+    });
+    await db
+      .delete(courseEnrollments)
+      .where(
+        and(
+          eq(courseEnrollments.userId, userId),
+          eq(courseEnrollments.courseId, 'fixture-third-course'),
+        ),
+      );
+  }
 });
 
 test('placement starts for the course selected in the course URL', async ({ page }) => {
@@ -252,7 +311,7 @@ test('placement starts for the course selected in the course URL', async ({ page
         eq(courseEnrollments.courseId, 'fixture-switching-course'),
       ),
     );
-  await page.goto('/course?course=fixture-switching-course');
+  await page.goto('/courses/fixture-switching-course');
   await expect(page.getByRole('heading', { name: 'Start Fixture switching course' })).toBeVisible();
 
   const placementStart = page.waitForRequest(

@@ -77,7 +77,7 @@ test('routes fit mobile viewports without horizontal page overflow', async ({ pa
     await page.setViewportSize({ width, height: 844 });
     for (const route of [
       '/',
-      '/course',
+      '/courses/fixture-course',
       '/projects/linreg-numpy',
       '/progress',
       '/settings',
@@ -116,13 +116,16 @@ test('routes fit mobile viewports without horizontal page overflow', async ({ pa
 test('course route skeleton displays beside the app navigation', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
-  await page.route('**/api/course*', async (route) => {
+  await page.route('**/api/courses/fixture-course', async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await route.continue({
       headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
     });
   });
-  const navigation = page.getByRole('link', { name: 'Courses', exact: true }).click();
+  const navigation = page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Open Fixture course' })
+    .click();
   const skeleton = page.getByTestId('route-skeleton');
   await expect(skeleton).toBeVisible();
   const skeletonBounds = await skeleton.boundingBox();
@@ -141,7 +144,7 @@ test('root auth pending renders the app-shell skeleton', async ({ page }) => {
       headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
     });
   });
-  await page.goto('/course');
+  await page.goto('/courses/fixture-course');
   const shell = page.getByTestId('app-shell-skeleton');
   await expect(shell).toBeVisible();
   await expect(shell.locator('aside')).toBeVisible();
@@ -220,11 +223,11 @@ test('first visits wait for real layout data without inventing placeholder cards
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.route('**/api/course', async (route) => {
+  await page.route('**/api/courses/fixture-course', async (route) => {
     await gate;
     await route.continue();
   });
-  await page.goto('/course');
+  await page.goto('/courses/fixture-course');
   try {
     const pending = page.getByTestId('route-skeleton');
     await expect(pending).toBeVisible();
@@ -254,7 +257,7 @@ test('first-visit loaders stay centered on mobile during auth and page loading',
     await authGate;
     await route.continue();
   });
-  await page.route('**/api/course', async (route) => {
+  await page.route('**/api/courses/fixture-course', async (route) => {
     await pageGate;
     await route.continue();
   });
@@ -271,7 +274,7 @@ test('first-visit loaders stay centered on mobile during auth and page loading',
     await page.keyboard.press('Escape');
     await expect(appNavigation).toBeHidden();
     await page.getByRole('button', { name: 'Save goal' }).waitFor();
-    navigation = clickSidebarLink(page, 'Courses');
+    navigation = page.goto('/courses/fixture-course').then(() => {});
     await expectCenteredPageLoader(page);
     await page.screenshot({ path: '/tmp/academy-loading-mobile.png' });
   } finally {
@@ -409,7 +412,10 @@ test('plain Settings and Course pages do not load the Markdown and math renderer
   await expect(page.getByRole('button', { name: 'Save goal' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open tutor' })).toBeVisible();
   expect(markdownRequests).toEqual([]);
-  await page.getByRole('link', { name: 'Courses', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Open Fixture course' })
+    .click();
   await expect(page.getByRole('heading', { name: 'Unit 1 · ML fundamentals' })).toBeVisible();
   expect(markdownRequests).toEqual([]);
 });
@@ -490,14 +496,14 @@ for (const failure of ['save response', 'save network', 'Home refresh'] as const
 test('Course still renders formatted metadata when it needs Markdown and math', async ({
   page,
 }) => {
-  await page.route('**/api/course', async (route) => {
+  await page.route('**/api/courses/fixture-course', async (route) => {
     const response = await route.fetch();
     const data = await response.json();
     data.units[0].papers[0].title = '$x^2$';
     data.units[0].project.title = '**Linear model**';
     await route.fulfill({ response, json: data });
   });
-  await page.goto('/course');
+  await page.goto('/courses/fixture-course');
   await expect(page.locator('.katex').first()).toBeVisible();
   await expect(page.locator('strong').filter({ hasText: 'Linear model' })).toBeVisible();
 });

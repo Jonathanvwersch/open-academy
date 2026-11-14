@@ -17,8 +17,8 @@ import {
   recordLessonViewed,
 } from '../../src/learning/mastery.js';
 import {
-  courseFoundationIds,
   compareOutlinePosition,
+  courseFoundationIds,
   masteryKey,
   outlinePosition,
   prerequisiteMet,
@@ -63,16 +63,10 @@ function emptyState(): SchedulerState {
   };
 }
 
-function studyState(
-  courseIds: string[],
-  index: ContentIndex = courseContent,
-): SchedulerState {
+function studyState(courseIds: string[], index: ContentIndex = courseContent): SchedulerState {
   const courseConceptIds = new Set(
     courseIds.flatMap(
-      (courseId) =>
-        index.coursesById
-          .get(courseId)
-          ?.units.flatMap((unit) => unit.concepts) ?? [],
+      (courseId) => index.coursesById.get(courseId)?.units.flatMap((unit) => unit.concepts) ?? [],
     ),
   );
   const hardPrerequisiteIds = new Set(
@@ -119,9 +113,7 @@ function studyCourseOwner(
   });
 }
 
-function schedulerContentWithTopics(
-  topicsByCourse: Record<string, string[]>,
-): ContentIndex {
+function schedulerContentWithTopics(topicsByCourse: Record<string, string[]>): ContentIndex {
   const courses = content.courses.map((course) => {
     const topics = topicsByCourse[course.id];
     if (!topics) return course;
@@ -1453,12 +1445,7 @@ test('an unfinished lesson from a paused course is not resumed', () => {
       (activity) => activity.kind === 'learn' && activity.conceptId === 'derivatives',
     ),
   ).toBe(false);
-  const resumed = planSession(
-    { ...state, studyCourseIds: ['fixture-course'] },
-    content,
-    now,
-    60,
-  );
+  const resumed = planSession({ ...state, studyCourseIds: ['fixture-course'] }, content, now, 60);
   expect(
     resumed.activities.some(
       (activity) => activity.kind === 'learn' && activity.conceptId === 'derivatives',

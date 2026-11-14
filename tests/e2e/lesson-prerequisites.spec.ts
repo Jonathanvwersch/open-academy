@@ -140,7 +140,7 @@ test('course shows an unpassed quiz and locks a dependent lesson', async ({ page
     },
   ]);
 
-  await page.goto('/course');
+  await page.goto('/courses/fixture-course');
   await expect(page.getByText('Quiz not passed', { exact: true })).toBeVisible();
   const lockedDependent = page.getByRole('link', { name: /1\.6 Linear regression/ });
   await expect(lockedDependent).toHaveClass(/opacity-60/);

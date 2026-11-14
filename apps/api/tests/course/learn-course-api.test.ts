@@ -152,10 +152,7 @@ test('study set backfill includes started courses and later respects removal', a
     return { conceptId, dimension };
   };
   const a = conceptFor(courseA);
-  const b = conceptFor(
-    courseB,
-    new Set(courseA.units.flatMap((unit) => unit.concepts)),
-  );
+  const b = conceptFor(courseB, new Set(courseA.units.flatMap((unit) => unit.concepts)));
   await db.update(users).set({ activeCourseId: courseA.id }).where(eq(users.id, userId));
   await db.insert(mastery).values([
     { userId, conceptId: a.conceptId, dimension: a.dimension, state: 'introduced', evidence: {} },
@@ -210,6 +207,84 @@ test('starting a course uses a valid requested courseId instead of the active co
   expect(enrollments.some((enrollment) => enrollment.courseId === 'deep-learning')).toBe(true);
   const [user] = await db.select().from(users).where(eq(users.id, userId));
   expect(user?.activeCourseId).toBe('robotics');
+});
+
+test('course catalogue and enrollment routes start, pause, and reactivate courses', async () => {
+  const catalog = await (await get('/courses')).json();
+  const courses = catalog.subjects.flatMap(
+    (subject: { courses: Array<{ id: string; status: string; startNeeded: boolean }> }) =>
+      subject.courses,
+  );
+  expect(courses.map((course: { id: string }) => course.id)).toEqual(
+    content.curriculum?.courses ?? content.courses.map((course) => course.id),
+  );
+  expect(courses.find((course: { id: string }) => course.id === 'deep-learning')).toMatchObject({
+    status: 'not_started',
+    startNeeded: true,
+  });
+
+  const detail = await (await get('/courses/deep-learning')).json();
+  expect(detail).toMatchObject({
+    course: { id: 'deep-learning' },
+    status: 'not_started',
+    suggestedNext: [],
+  });
+  expect((await put('/courses/deep-learning/enrollment', { status: 'active' })).status).toBe(409);
+
+  expect(
+    (
+      await post('/courses/deep-learning/start', {
+        method: 'beginning',
+      })
+    ).status,
+  ).toBe(200);
+  expect(
+    (
+      await put('/courses/deep-learning/enrollment', {
+        status: 'paused',
+      })
+    ).status,
+  ).toBe(200);
+  const pausedCatalog = await (await get('/courses')).json();
+  expect(
+    pausedCatalog.subjects
+      .flatMap((subject: { courses: Array<{ id: string; status: string }> }) => subject.courses)
+      .find((course: { id: string }) => course.id === 'deep-learning')?.status,
+  ).toBe('paused');
+
+  expect(
+    (
+      await put('/courses/deep-learning/enrollment', {
+        status: 'active',
+      })
+    ).status,
+  ).toBe(200);
+});
+
+test('course details persist completion when every topic is complete', async () => {
+  const course = content.coursesById.get('deep-learning');
+  if (!course) throw new Error('Missing deep learning course');
+  const records = course.units
+    .flatMap((unit) => unit.concepts)
+    .flatMap((conceptId) => {
+      const concept = content.conceptsById.get(conceptId);
+      return (concept?.dimensions ?? []).map((dimension) => ({
+        userId,
+        conceptId,
+        dimension,
+        state: 'independent' as const,
+        evidence: {},
+      }));
+    });
+  await db.insert(mastery).values(records);
+
+  const detail = await (await get('/courses/deep-learning')).json();
+  expect(detail.status).toBe('completed');
+  const enrollment = await new LearnerRepository(db, userId).courseEnrollment('deep-learning');
+  expect(enrollment).toMatchObject({
+    status: 'completed',
+    completedAt: expect.any(Date),
+  });
 });
 
 test('switching to an unknown course returns 404 without changing learner state', async () => {
@@ -523,10 +598,7 @@ test('session creation matches the local-day preview kind and activities', async
 test('lesson choices exclude locked, completed and stub concepts and retain the recommended lesson past five', async () => {
   const defaultCourseId = content.curriculum?.default_course ?? content.courses[0]?.id;
   if (!defaultCourseId) throw new Error('Expected a default course');
-  await db
-    .update(users)
-    .set({ activeCourseId: defaultCourseId })
-    .where(eq(users.id, userId));
+  await db.update(users).set({ activeCourseId: defaultCourseId }).where(eq(users.id, userId));
   await db.insert(courseEnrollments).values(
     content.courses.map((course) => ({
       userId,
@@ -627,6 +699,15 @@ test('lesson choices are empty while a session is active', async () => {
 });
 
 test('a focused session replaces the default new lesson and rejects locked concepts', async () => {
+  const courseId = content.curriculum?.default_course;
+  if (!courseId) throw new Error('Expected a default course');
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId,
+    status: 'active',
+    startMethod: 'beginning',
+  });
+  await db.update(users).set({ activeCourseId: courseId }).where(eq(users.id, userId));
   const learnResponse = await get('/learn');
   const learn = await learnResponse.json();
   const focusedChoice = learn.choices.find(

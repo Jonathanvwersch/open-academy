@@ -55,7 +55,7 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
       }
     }).observe({ type: 'layout-shift', buffered: true });
   });
-  await page.goto('/course');
+  await page.goto('/courses/fixture-course');
   const paperLink = page.getByRole('link', { name: /Fixture Paper One/ }).first();
   await expect(paperLink).toBeVisible();
   await expect(paperLink.locator('[data-slot="badge"]')).toHaveCount(0);
