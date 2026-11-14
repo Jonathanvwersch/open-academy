@@ -1,8 +1,6 @@
 import { desc, eq } from 'drizzle-orm';
 import { masteryEvents, projectSubmissions, studySessions, xpEvents } from '../../db/schema.js';
-import {
-  filterMasteryRecordsForContent,
-} from '../../learning/content-filters.js';
+import { filterMasteryRecordsForContent } from '../../learning/content-filters.js';
 import { buildProgress } from '../../learning/progress.js';
 import type { MasteryRecord } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
@@ -35,10 +33,7 @@ export async function getProgress(deps: FeatureServices, request: FeatureRequest
   ]);
   const contentAttempts = recent.filter((attempt) => {
     const exercise = index.exercisesById.get(attempt.exerciseId);
-    return (
-      index.conceptsById.has(attempt.conceptId) &&
-      exercise?.concept === attempt.conceptId
-    );
+    return index.conceptsById.has(attempt.conceptId) && exercise?.concept === attempt.conceptId;
   });
   return serviceResult(
     buildProgress({

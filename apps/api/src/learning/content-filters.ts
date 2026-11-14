@@ -22,9 +22,7 @@ export function filterSchedulerStateForContent(
     cards: state.cards.filter((card) => content.conceptsById.has(card.conceptId)),
     recentAttempts: state.recentAttempts.filter((attempt) => {
       const exercise = content.exercisesById.get(attempt.exerciseId);
-      return (
-        content.conceptsById.has(attempt.conceptId) && exercise?.concept === attempt.conceptId
-      );
+      return content.conceptsById.has(attempt.conceptId) && exercise?.concept === attempt.conceptId;
     }),
     remediationFlags: state.remediationFlags.filter(
       (flag) =>
