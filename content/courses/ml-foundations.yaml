@@ -1,0 +1,36 @@
+id: ml-foundations
+title: Machine Learning Foundations
+description: "What machine learning is and how a model learns from data: linear and logistic regression, losses, gradient descent, probability for classification, and how to evaluate a model. The maths is taught as each model needs it."
+units:
+  - title: ML fundamentals
+    intro: "You'll build the simplest model that learns: predicting a house's price from its measurements, trained on past sales. The maths topics are the tools this model needs, taught in the order it needs them."
+    project: linreg-numpy
+    papers:
+      - domingos-useful-things
+      - ruder-gradient-descent-overview
+    concepts:
+      - what-is-ml
+      - supervised-learning
+      - vectors
+      - dot-product
+      - matrices
+      - linear-regression
+      - derivatives
+      - loss-functions
+      - partial-derivatives
+      - chain-rule
+      - gradients
+      - gradient-descent
+      - train-test-split
+  - title: Probability and classification
+    intro: "Probability as the language of uncertainty, and using it to classify: the Gaussian, maximum likelihood, logistic regression, cross-entropy and softmax, and how to measure a classifier."
+    project: classifier-numpy
+    concepts:
+      - probability-basics
+      - gaussian-distribution
+      - maximum-likelihood
+      - logistic-regression
+      - information-theory
+      - classification-softmax
+      - evaluation-metrics
+      - descriptive-statistics

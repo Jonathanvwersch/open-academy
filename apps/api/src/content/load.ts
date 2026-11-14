@@ -7,6 +7,7 @@ import { buildContentIndex } from './index.js';
 import type { LessonInput } from './schemas.js';
 import {
   ConceptSchema,
+  CourseSchema,
   CurriculumSchema,
   DiagnosticSchema,
   ExerciseSchema,
@@ -63,6 +64,7 @@ export async function loadContent(
   const root = resolveContentDirectory(directory);
   const data: ContentSourceData = {
     concepts: [],
+    courses: [],
     lessons: [],
     exercises: [],
     projects: [],
@@ -78,6 +80,17 @@ export async function loadContent(
       data.curriculum = { value: parsed.data, file: 'curriculum.yaml' };
     } else {
       addZodIssues(issues, 'curriculum.yaml', curriculumRaw, parsed.error);
+    }
+  }
+
+  for (const file of await yamlFiles(join(root, 'courses'))) {
+    const displayFile = toContentRelative(root, file);
+    const raw = await readYaml(file, displayFile, issues);
+    const parsed = CourseSchema.safeParse(raw);
+    if (parsed.success) {
+      data.courses.push({ value: parsed.data, file: displayFile });
+    } else {
+      addZodIssues(issues, displayFile, raw, parsed.error);
     }
   }
 

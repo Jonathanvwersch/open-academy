@@ -1,6 +1,5 @@
 id: linreg-numpy
 title: Linear regression in NumPy
-week: 1
 status: authored
 est_hours: 4
 objective: Implement a small linear regression model.

@@ -6,8 +6,9 @@ export interface TodayPayload {
   diagnosticActive: boolean;
   diagnosticRunId: string | null;
   objective: string;
-  weekTitle: string;
-  week: number;
+  courseTitle: string;
+  unitTitle: string;
+  unit: number;
   dueReviews: number;
   budgetMinutes: number;
   sessionKind: 'weekday' | 'saturday' | 'sunday';

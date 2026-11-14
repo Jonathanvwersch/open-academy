@@ -2,7 +2,6 @@ id: end-to-end-visuomotor-policies
 title: End-to-End Training of Deep Visuomotor Policies
 authors: Levine, Finn, Darrell and Abbeel
 year: 2015
-week: 11
 est_minutes: 90
 source:
   arxiv: 1504.00702v5

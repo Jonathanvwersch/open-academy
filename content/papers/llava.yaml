@@ -2,7 +2,6 @@ id: llava
 title: Visual Instruction Tuning
 authors: Liu, Li, Wu and Lee
 year: 2023
-week: 9
 est_minutes: 75
 source:
   arxiv: 2304.08485v2

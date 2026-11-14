@@ -131,11 +131,11 @@ test('paper progress rejects question IDs not in the guide', async () => {
 test('paper list and detail expose progress state and unknown papers return 404', async () => {
   const initialList = await app.request('/api/papers');
   expect(initialList.status).toBe(200);
-  const initialWeek = (await initialList.json()).weeks.find(
-    (week: { week: number }) => week.week === 1,
+  const initialUnit = (await initialList.json()).units.find(
+    (unit: { unit: number }) => unit.unit === 1,
   );
   expect(
-    initialWeek?.papers.find((paper: { id: string }) => paper.id === 'fixture-paper-one'),
+    initialUnit?.papers.find((paper: { id: string }) => paper.id === 'fixture-paper-one'),
   ).toMatchObject({ status: 'not_started' });
 
   const saved = await app.request('/api/papers/fixture-paper-one/progress', {
@@ -153,11 +153,11 @@ test('paper list and detail expose progress state and unknown papers return 404'
   expect(detailBody.paper.summary).not.toHaveProperty('exemplar');
   expect(detailBody.paper.summary).not.toHaveProperty('rubric');
   const readingList = await app.request('/api/papers');
-  const readingWeek = (await readingList.json()).weeks.find(
-    (week: { week: number }) => week.week === 1,
+  const readingUnit = (await readingList.json()).units.find(
+    (unit: { unit: number }) => unit.unit === 1,
   );
   expect(
-    readingWeek?.papers.find((paper: { id: string }) => paper.id === 'fixture-paper-one'),
+    readingUnit?.papers.find((paper: { id: string }) => paper.id === 'fixture-paper-one'),
   ).toMatchObject({ status: 'reading' });
   expect((await app.request('/api/papers/unknown-paper')).status).toBe(404);
 });

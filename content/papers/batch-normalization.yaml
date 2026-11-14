@@ -2,7 +2,6 @@ id: batch-normalization
 title: "Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift"
 authors: Ioffe and Szegedy
 year: 2015
-week: 4
 est_minutes: 75
 source:
   arxiv: 1502.03167v3

@@ -33,7 +33,7 @@ test('Course reads progress without loading review scheduling or attempt history
   statements = [];
   const response = await app.request('/api/course');
   expect(response.status).toBe(200);
-  expect((await response.json()).weeks.length).toBeGreaterThan(0);
+  expect((await response.json()).units.length).toBeGreaterThan(0);
   expect(statements.length).toBeLessThanOrEqual(5); // Auth adds one read when enabled.
   expect(statements.join('\n')).not.toMatch(/"review_cards"|"attempts"|"remediation_flags"/);
 });

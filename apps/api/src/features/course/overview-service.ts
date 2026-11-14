@@ -1,6 +1,7 @@
 import { serializeConcept } from '../../content/serialize.js';
 import { deriveLearningDebt } from '../../learning/debt.js';
-import { currentLearnerWeek } from '../../learning/scheduler.js';
+import { activeCourseFor } from '../../learning/prerequisites.js';
+import { currentLearnerUnit } from '../../learning/scheduler.js';
 import type { MasteryRecord } from '../../learning/types.js';
 import { initialMastery, masteryRank } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
@@ -10,15 +11,15 @@ export async function getMap(deps: FeatureServices, request: FeatureRequest) {
   const index = await content();
   const requestedDomain = request.query.domain;
   const state = await request.repo.schedulerState(request.now());
-  const currentWeek = currentLearnerWeek(state, index);
-  const currentWeekDomain =
-    index.curriculum?.weeks
-      .find((entry) => entry.week === currentWeek)
-      ?.concepts.map((id) => index.conceptsById.get(id)?.domain)
+  const activeCourse = activeCourseFor(index, state.activeCourseId);
+  const currentUnit = currentLearnerUnit(state, index);
+  const currentUnitDomain =
+    activeCourse?.units[currentUnit - 1]?.concepts
+      .map((id) => index.conceptsById.get(id)?.domain)
       .find((value): value is string => Boolean(value)) ??
     index.curriculum?.domains[0]?.id ??
     '';
-  const domain = requestedDomain === 'all' ? '' : (requestedDomain ?? currentWeekDomain);
+  const domain = requestedDomain === 'all' ? '' : (requestedDomain ?? currentUnitDomain);
   const concepts = domain
     ? index.concepts.filter((concept) => concept.domain === domain)
     : index.concepts;
@@ -53,7 +54,7 @@ export async function getMap(deps: FeatureServices, request: FeatureRequest) {
     nodes,
     edges: index.edges.filter((edge) => concepts.some((concept) => concept.id === edge.conceptId)),
     domains: (index.curriculum?.domains ?? []).map(({ id, title }) => ({ id, title })),
-    currentWeekDomain,
+    currentWeekDomain: currentUnitDomain,
   });
 }
 
@@ -99,5 +100,8 @@ export async function getPlanWeek(deps: FeatureServices, request: FeatureRequest
   const { content } = deps;
   const index = await content();
   const state = await request.repo.schedulerState(request.now());
-  return serviceResult({ weeks: index.curriculum?.weeks ?? [], mastery: state.mastery });
+  return serviceResult({
+    units: activeCourseFor(index, state.activeCourseId)?.units ?? [],
+    mastery: state.mastery,
+  });
 }

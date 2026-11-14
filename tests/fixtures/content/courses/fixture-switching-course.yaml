@@ -1,0 +1,6 @@
+id: fixture-switching-course
+title: Fixture switching course
+description: A second course for switching tests.
+units:
+  - title: Vectors
+    concepts: [vectors]

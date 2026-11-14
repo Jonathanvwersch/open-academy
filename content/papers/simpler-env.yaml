@@ -2,7 +2,6 @@ id: simpler-env
 title: Evaluating Real-World Robot Manipulation Policies in Simulation
 authors: Li et al.
 year: 2024
-week: 15
 est_minutes: 60
 source:
   arxiv: 2405.05941v1

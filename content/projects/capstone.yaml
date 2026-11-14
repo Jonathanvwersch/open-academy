@@ -1,6 +1,5 @@
 id: capstone
 title: "End-to-end robot-learning capstone"
-week: 15
 status: stub
 est_hours: 10
 objective: "Collect demonstrations, train and evaluate a policy end to end, analyse failures and write up results."

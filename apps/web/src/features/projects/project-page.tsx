@@ -64,10 +64,10 @@ export function ProjectPage() {
         current
           ? {
               ...current,
-              weeks: current.weeks.map((week) =>
-                week.project?.id === projectId
-                  ? { ...week, project: { ...week.project, status } }
-                  : week,
+              units: current.units.map((unit) =>
+                unit.project?.id === projectId
+                  ? { ...unit, project: { ...unit.project, status } }
+                  : unit,
               ),
             }
           : current,

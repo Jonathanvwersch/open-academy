@@ -1,5 +1,6 @@
 import type {
   Concept,
+  Course,
   Curriculum,
   Diagnostic,
   Dimension,
@@ -19,6 +20,7 @@ export interface ContentIssue {
 
 export interface ContentSourceData {
   curriculum?: { value: Curriculum; file: string };
+  courses: Array<{ value: Course; file: string }>;
   concepts: Array<{ value: Concept; domain: string; file: string }>;
   lessons: Array<{ value: Lesson; file: string }>;
   exercises: Array<{ value: Exercise; concept: string; file: string }>;
@@ -30,6 +32,10 @@ export interface ContentSourceData {
 
 export type IndexedConcept = Concept & {
   domain: string;
+  contentVersion: string;
+};
+
+export type IndexedCourse = Course & {
   contentVersion: string;
 };
 
@@ -58,6 +64,8 @@ export interface ContentEdge {
 
 export interface ContentIndex {
   curriculum?: Curriculum & { contentVersion: string };
+  courses: IndexedCourse[];
+  coursesById: Map<string, IndexedCourse>;
   concepts: IndexedConcept[];
   conceptsById: Map<string, IndexedConcept>;
   edges: ContentEdge[];
@@ -73,5 +81,4 @@ export interface ContentIndex {
   projectsById: Map<string, IndexedProject>;
   papers: IndexedPaper[];
   papersById: Map<string, IndexedPaper>;
-  papersByWeek: Map<number, IndexedPaper[]>;
 }

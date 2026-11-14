@@ -2,7 +2,6 @@ id: ruder-gradient-descent-overview
 title: An overview of gradient descent optimization algorithms
 authors: Sebastian Ruder
 year: 2016
-week: 1
 est_minutes: 75
 source:
   arxiv: 1609.04747v2

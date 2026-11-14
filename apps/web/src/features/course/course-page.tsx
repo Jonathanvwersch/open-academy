@@ -10,15 +10,15 @@ import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { CourseMetadata } from './course-metadata.js';
 import { courseQueryOptions } from './queries.js';
 import {
-  isWeekOpen,
-  readCourseWeekOpenOverrides,
-  writeCourseWeekOpenOverrides,
+  isUnitOpen,
+  readCourseUnitOpenOverrides,
+  writeCourseUnitOpenOverrides,
 } from './week-open-state.js';
 
 export function CoursePage() {
   const { data } = useSuspenseQuery(courseQueryOptions());
   const tutorSidebar = useTutorSidebar();
-  const [weekOpenOverrides, setWeekOpenOverrides] = useState(readCourseWeekOpenOverrides);
+  const [unitOpenOverrides, setUnitOpenOverrides] = useState(readCourseUnitOpenOverrides);
   useEffect(() => {
     tutorSidebar.setContext({
       page: 'course',
@@ -32,27 +32,30 @@ export function CoursePage() {
     <section className="space-y-6">
       <h1 className="sr-only">Course</h1>
       <div className="space-y-4">
-        {data.weeks.map((week) => {
-          const open = isWeekOpen(week.week, data.currentWeek, weekOpenOverrides);
+        {data.units.map((unit) => {
+          const open = isUnitOpen(data.course.id, unit.unit, data.currentUnit, unitOpenOverrides);
           return (
             <Collapsible.Root
-              key={week.week}
+              key={unit.unit}
               open={open}
               onOpenChange={(nextOpen) => {
-                const next = { ...weekOpenOverrides, [week.week]: nextOpen };
-                setWeekOpenOverrides(next);
-                writeCourseWeekOpenOverrides(next);
+                const next = {
+                  ...unitOpenOverrides,
+                  [`${data.course.id}:${unit.unit}`]: nextOpen,
+                };
+                setUnitOpenOverrides(next);
+                writeCourseUnitOpenOverrides(next);
               }}
             >
               <Card className="gap-0">
                 <CardHeader className="p-0">
-                  <CardTitle aria-label={`Week ${week.week} · ${week.title}`} className="w-full">
+                  <CardTitle aria-label={`Unit ${unit.unit} · ${unit.title}`} className="w-full">
                     <Collapsible.Trigger
-                      aria-label={`${open ? 'Collapse' : 'Expand'} week ${week.week}`}
+                      aria-label={`${open ? 'Collapse' : 'Expand'} unit ${unit.unit}`}
                       className="flex w-full items-center justify-between gap-3 rounded-t-xl px-(--card-spacing) pt-(--card-spacing) text-left data-[state=open]:pb-3 data-[state=closed]:pb-(--card-spacing) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                     >
                       <span>
-                        Week {week.week} · {week.title}
+                        Unit {unit.unit} · {unit.title}
                       </span>
                       <ChevronDown
                         aria-hidden="true"
@@ -63,13 +66,13 @@ export function CoursePage() {
                 </CardHeader>
                 <Collapsible.Content>
                   <CardContent className="first:pt-0 p-0 last:pb-0">
-                    {week.intro ? (
+                    {unit.intro ? (
                       <p className="px-(--card-spacing) pb-4 text-sm text-muted-foreground">
-                        {week.intro}
+                        {unit.intro}
                       </p>
                     ) : null}
                     <ol className="divide-y">
-                      {week.topics.map((topic) => {
+                      {unit.topics.map((topic) => {
                         const row = (
                           <>
                             <div className="flex min-w-0 items-start gap-3">
@@ -203,13 +206,13 @@ export function CoursePage() {
                         );
                       })}
                     </ol>
-                    {week.papers.length > 0 ? (
+                    {unit.papers.length > 0 ? (
                       <section className="border-t" aria-label="Optional reading">
                         <h3 className="px-(--card-spacing) pt-4 pb-1 text-sm font-medium text-muted-foreground">
                           Optional reading
                         </h3>
                         <ul className="divide-y">
-                          {week.papers.map((paper) => (
+                          {unit.papers.map((paper) => (
                             <li key={paper.id}>
                               <Link
                                 to="/papers/$paperId"
@@ -254,17 +257,17 @@ export function CoursePage() {
                         </ul>
                       </section>
                     ) : null}
-                    {week.project ? (
+                    {unit.project ? (
                       <section className="border-t" aria-label="Project">
                         <h3 className="px-(--card-spacing) pt-4 pb-1 text-sm font-medium text-muted-foreground">
                           Project
                         </h3>
                         <ul className="divide-y">
                           <li>
-                            {week.project.available ? (
+                            {unit.project.available ? (
                               <Link
                                 to="/projects/$projectId"
-                                params={{ projectId: week.project.id }}
+                                params={{ projectId: unit.project.id }}
                                 className="flex items-center justify-between gap-3 px-(--card-spacing) py-3 hover:bg-muted/60"
                               >
                                 <span className="flex w-9 shrink-0 items-center">
@@ -275,19 +278,19 @@ export function CoursePage() {
                                 </span>
                                 <span className="min-w-0 flex-1">
                                   <span className="block font-medium">
-                                    <CourseMetadata>{week.project.title}</CourseMetadata>
+                                    <CourseMetadata>{unit.project.title}</CourseMetadata>
                                   </span>
                                 </span>
-                                {week.project.status !== 'not_started' ? (
+                                {unit.project.status !== 'not_started' ? (
                                   <Badge
                                     variant="secondary"
                                     className={
-                                      week.project.status === 'completed'
+                                      unit.project.status === 'completed'
                                         ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
                                         : ''
                                     }
                                   >
-                                    {week.project.status === 'completed'
+                                    {unit.project.status === 'completed'
                                       ? 'Complete'
                                       : 'In progress'}
                                   </Badge>
@@ -307,7 +310,7 @@ export function CoursePage() {
                                 </span>
                                 <span className="min-w-0 flex-1">
                                   <span className="block font-medium text-muted-foreground">
-                                    <CourseMetadata>{week.project.title}</CourseMetadata>
+                                    <CourseMetadata>{unit.project.title}</CourseMetadata>
                                   </span>
                                   <span className="block text-xs text-muted-foreground">
                                     Project coming soon

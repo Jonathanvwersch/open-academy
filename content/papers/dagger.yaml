@@ -2,7 +2,6 @@ id: dagger
 title: A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning
 authors: Ross, Gordon and Bagnell
 year: 2010
-week: 12
 est_minutes: 75
 source:
   arxiv: 1011.0686v3

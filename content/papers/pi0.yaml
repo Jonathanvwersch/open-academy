@@ -2,7 +2,6 @@ id: pi0
 title: "π0: A Vision-Language-Action Flow Model for General Robot Control"
 authors: Black et al. (Physical Intelligence)
 year: 2024
-week: 14
 est_minutes: 90
 source:
   arxiv: 2410.24164v4

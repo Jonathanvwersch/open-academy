@@ -14,6 +14,7 @@ import { gradeExercise } from '../../learning/grading/index.js';
 import type { GradeResult } from '../../learning/grading/types.js';
 import { inferPrerequisite } from '../../learning/mastery.js';
 import { applyMastery } from '../../learning/mastery-service.js';
+import { activeCourseFor } from '../../learning/prerequisites.js';
 import { planSession, sessionBudget } from '../../learning/scheduler.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 
@@ -232,6 +233,7 @@ export async function getDiagnosticByIdResults(deps: FeatureServices, request: F
     (await repo.diagnosticRun(request.params.id)) ?? (await repo.latestCompletedDiagnosticRun());
   const now = request.now();
   const state = await repo.schedulerState(now);
+  const activeCourse = activeCourseFor(index, state.activeCourseId);
   const user = await repo.user();
   const prefs = (user?.prefs ?? {}) as { scheduleMinutes?: number };
   const firstSession = planSession(state, index, now, sessionBudget('weekday', prefs));
@@ -276,20 +278,20 @@ export async function getDiagnosticByIdResults(deps: FeatureServices, request: F
           };
         }),
         plan: {
-          firstWeek: curriculum?.weeks.find((entry) => entry.week === 1) ?? null,
-          firstWeekConcepts:
-            curriculum?.weeks
-              .find((entry) => entry.week === 1)
-              ?.concepts.map((id) => index.conceptsById.get(id)?.title ?? id) ?? [],
+          firstUnit: activeCourse?.units[0] ? { title: activeCourse.units[0].title } : null,
+          firstUnitConcepts:
+            activeCourse?.units[0]?.concepts.map((id) => index.conceptsById.get(id)?.title ?? id) ??
+            [],
           firstSession: firstSession.activities.map((activity) => ({
             ...activity,
             conceptTitle: activity.conceptId
               ? index.conceptsById.get(activity.conceptId)?.title
               : undefined,
           })),
-          ninetyDayPath: (curriculum?.weeks ?? [])
-            .slice(0, 13)
-            .map((entry) => ({ week: entry.week, title: entry.title })),
+          path: (activeCourse?.units ?? []).map((entry, index) => ({
+            unit: index + 1,
+            title: entry.title,
+          })),
         },
       })
     : serviceResult({ error: 'Diagnostic not found' }, 404);

@@ -2,7 +2,6 @@ id: dreamzero
 title: "World Action Models are Zero-shot Policies"
 authors: Ye et al. (NVIDIA)
 year: 2026
-week: 14
 est_minutes: 90
 source:
   arxiv: 2602.15922v1

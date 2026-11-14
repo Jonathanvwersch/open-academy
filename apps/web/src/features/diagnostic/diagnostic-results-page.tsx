@@ -46,10 +46,10 @@ export function DiagnosticResultsPage() {
         <CardContent className="space-y-4">
           <div>
             <h3 className="font-medium">
-              First week: {result.plan.firstWeek?.title ?? 'No plan available'}
+              First unit: {result.plan.firstUnit?.title ?? 'No plan available'}
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Focus: {result.plan.firstWeekConcepts.join(', ')}
+              Focus: {result.plan.firstUnitConcepts.join(', ')}
             </p>
           </div>
           <div>
@@ -68,9 +68,9 @@ export function DiagnosticResultsPage() {
           <div>
             <h3 className="font-medium">90-day path</h3>
             <ol className="mt-2 list-inside list-decimal space-y-1 text-sm text-muted-foreground">
-              {result.plan.ninetyDayPath.map((week) => (
-                <li key={week.week}>
-                  Week {week.week}: {week.title}
+              {result.plan.path.map((unit) => (
+                <li key={unit.unit}>
+                  Unit {unit.unit}: {unit.title}
                 </li>
               ))}
             </ol>

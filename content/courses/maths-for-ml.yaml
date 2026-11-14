@@ -1,0 +1,26 @@
+id: maths-for-ml
+title: Mathematics for Machine Learning
+description: The linear algebra, calculus and probability that machine learning uses, as a course of its own.
+units:
+  - title: Linear algebra
+    intro: "Vectors, dot products and matrices: how models store and combine numbers, plus eigenvalues and the SVD."
+    concepts:
+      - vectors
+      - dot-product
+      - matrices
+      - eigen-svd
+  - title: Calculus
+    intro: "Derivatives, partial derivatives, the chain rule and gradients: the tools that tell a model which way to change."
+    concepts:
+      - derivatives
+      - partial-derivatives
+      - chain-rule
+      - gradients
+  - title: Probability and statistics
+    intro: "Probability, the Gaussian, statistics, maximum likelihood and information theory: the language of uncertainty that losses are built on."
+    concepts:
+      - probability-basics
+      - descriptive-statistics
+      - gaussian-distribution
+      - maximum-likelihood
+      - information-theory

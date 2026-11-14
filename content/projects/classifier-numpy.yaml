@@ -1,6 +1,5 @@
 id: classifier-numpy
 title: "Classifier from scratch"
-week: 2
 status: stub
 est_hours: 4
 objective: "Implement logistic regression and softmax regression in NumPy trained with cross-entropy, then evaluate them on held-out data with accuracy, precision, recall and a confusion matrix."

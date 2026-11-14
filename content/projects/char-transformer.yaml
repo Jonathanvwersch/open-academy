@@ -1,6 +1,5 @@
 id: char-transformer
 title: "Character-level transformer"
-week: 5
 status: stub
 est_hours: 5
 objective: "Implement and train a small decoder-only character-level transformer and sample from it."

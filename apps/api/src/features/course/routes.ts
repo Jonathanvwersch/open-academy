@@ -15,14 +15,14 @@ import {
 import type { ApiEnv } from '../../http/context.js';
 import { topicIsComplete } from '../../learning/course-status.js';
 import { deriveLessonState } from '../../learning/lesson-runner.js';
-import { masteryKey, prerequisiteMet } from '../../learning/prerequisites.js';
-import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
 import {
-  currentLearnerWeek,
-  planSession,
-  type SessionKind,
-  sessionBudget,
-} from '../../learning/scheduler.js';
+  activeCourseFor,
+  courseFoundationIds,
+  masteryKey,
+  prerequisiteMet,
+} from '../../learning/prerequisites.js';
+import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
+import { planSession, type SessionKind, sessionBudget } from '../../learning/scheduler.js';
 import {
   averageDailyXp,
   coursePercent,
@@ -33,7 +33,7 @@ import {
   weekXp,
   xpGoalFor,
 } from '../../learning/xp.js';
-import { buildCourseWeeks } from './service.js';
+import { buildCoursePayload } from './service.js';
 
 type RouteContext = Context<ApiEnv>;
 type ActivityRecord = typeof sessionActivities.$inferSelect;
@@ -72,6 +72,7 @@ export function registerLearnCourseRoutes(
       repo.activeSession(now),
       repo.latestDiagnosticRun(),
     ]);
+    const activeCourse = activeCourseFor(index, user?.activeCourseId);
     const prefs = (user?.prefs ?? {}) as SessionPreferences;
     const todayLocal = localDateKey(now, timeZone);
     const totalXp = events.reduce((total, event) => total + event.amount, 0);
@@ -156,12 +157,10 @@ export function registerLearnCourseRoutes(
     );
     const lessonRunState = runRows.map(({ conceptId, status }) => ({ conceptId, status }));
     const outlineConceptIds = Array.from(
-      new Set(
-        (index.curriculum?.weeks ?? [])
-          .slice()
-          .sort((left, right) => left.week - right.week)
-          .flatMap((week) => week.concepts),
-      ),
+      new Set([
+        ...(activeCourse?.units.flatMap((unit) => unit.concepts) ?? []),
+        ...courseFoundationIds(index, activeCourse?.id),
+      ]),
     );
     const eligibleChoices = active
       ? []
@@ -254,8 +253,15 @@ export function registerLearnCourseRoutes(
       };
     });
 
-    const weeks = buildCourseWeeks(index, mastery, runRows, new Map(), projectStatuses);
-    const topics = weeks.flatMap((week) => week.topics);
+    const coursePayload = buildCoursePayload(
+      index,
+      activeCourse?.id,
+      mastery,
+      runRows,
+      new Map(),
+      projectStatuses,
+    );
+    const topics = coursePayload.units.flatMap((unit) => unit.topics);
     const topicsDone = topics.filter((topic) => topic.status === 'complete').length;
     const estimatedFinish =
       topicsDone < topics.length
@@ -285,6 +291,7 @@ export function registerLearnCourseRoutes(
         week: weekXp(events, todayLocal, prefs),
       },
       course: {
+        title: coursePayload.course.title,
         percentComplete: coursePercent(topicsDone, topics.length),
         topicsDone,
         topicsTotal: topics.length,
@@ -300,8 +307,10 @@ export function registerLearnCourseRoutes(
 
   api.get('/course', async (context) => {
     const index = await deps.content();
-    const [mastery, runs, paperRows, projectRows] = await Promise.all([
-      deps.withRepo(context).masteryRecords(),
+    const repo = deps.withRepo(context);
+    const [mastery, activeCourseId, runs, paperRows, projectRows] = await Promise.all([
+      repo.masteryRecords(),
+      repo.activeCourseId(),
       deps.db
         .select()
         .from(lessonRuns)
@@ -319,10 +328,22 @@ export function registerLearnCourseRoutes(
       paperRows.map((row) => [row.paperId, row.completedAt ? 'completed' : 'reading'] as const),
     );
     const projectStatuses = new Map(projectRows.map((row) => [row.projectId, row.status]));
-    return context.json({
-      currentWeek: currentLearnerWeek({ mastery, lessonRuns: runs }, index),
-      weeks: buildCourseWeeks(index, mastery, runs, paperStatuses, projectStatuses),
-    });
+    return context.json(
+      buildCoursePayload(index, activeCourseId, mastery, runs, paperStatuses, projectStatuses),
+    );
+  });
+
+  api.put('/course/active', async (context) => {
+    const index = await deps.content();
+    const body = (await context.req.json().catch(() => null)) as { courseId?: unknown } | null;
+    if (!body || typeof body.courseId !== 'string') {
+      return context.json({ error: 'Invalid courseId' }, 400);
+    }
+    if (!index.coursesById.has(body.courseId)) {
+      return context.json({ error: 'Unknown course' }, 404);
+    }
+    await deps.withRepo(context).setActiveCourseId(body.courseId);
+    return context.json({ courseId: body.courseId });
   });
 }
 

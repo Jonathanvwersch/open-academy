@@ -4,9 +4,16 @@ import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { ContentIndex, IndexedPaper } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
-import { paperFiles, paperProgress, sessionActivities, studySessions } from '../../db/schema.js';
+import {
+  paperFiles,
+  paperProgress,
+  sessionActivities,
+  studySessions,
+  users,
+} from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
 import { updateActivityAndAdvance } from '../../learning/activity-completion.js';
+import { activeCourseFor } from '../../learning/prerequisites.js';
 import type { TutorService } from '../tutor/service.js';
 import type { PaperFetcher } from './fetcher.js';
 import { defaultPaperFetcher } from './fetcher.js';
@@ -67,23 +74,32 @@ export function registerPaperRoutes(
       .from(paperProgress)
       .where(eq(paperProgress.userId, c.get('userId')));
     const progress = new Map(rows.map((row) => [row.paperId, row]));
-    const grouped = [...index.papersByWeek.entries()]
-      .sort(([left], [right]) => left - right)
-      .map(([week, papers]) => ({
-        week,
-        papers: papers.map((paper) => {
-          const row = progress.get(paper.id);
-          return {
+    const [user] = await deps.db
+      .select({ activeCourseId: users.activeCourseId })
+      .from(users)
+      .where(eq(users.id, c.get('userId')))
+      .limit(1);
+    const course = activeCourseFor(index, user?.activeCourseId);
+    const grouped = (course?.units ?? []).map((unit, unitIndex) => ({
+      unit: unitIndex + 1,
+      title: unit.title,
+      papers: (unit.papers ?? []).flatMap((paperId) => {
+        const paper = index.papersById.get(paperId);
+        if (!paper) return [];
+        const row = progress.get(paper.id);
+        return [
+          {
             id: paper.id,
             title: paper.title,
             authors: paper.authors,
             year: paper.year,
             est_minutes: paper.est_minutes,
             status: !row ? 'not_started' : row.completedAt ? 'completed' : 'reading',
-          };
-        }),
-      }));
-    return c.json({ weeks: grouped });
+          },
+        ];
+      }),
+    }));
+    return c.json({ units: grouped });
   });
 
   api.get('/papers/:id', async (c) => {

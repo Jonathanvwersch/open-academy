@@ -12,14 +12,14 @@ export interface DiagnosticResultsPayload {
     gaps: string[];
   }>;
   plan: {
-    firstWeek: { title: string } | null;
-    firstWeekConcepts: string[];
+    firstUnit: { title: string } | null;
+    firstUnitConcepts: string[];
     firstSession: Array<{
       kind: string;
       conceptTitle?: string;
       plannedMinutes: number;
       reason: { summary: string };
     }>;
-    ninetyDayPath: Array<{ week: number; title: string }>;
+    path: Array<{ unit: number; title: string }>;
   };
 }

@@ -1,6 +1,5 @@
 id: bc-policy
 title: "Behavioral cloning from demonstrations"
-week: 12
 status: stub
 est_hours: 5
 objective: "Collect scripted demonstrations, train a behavioral cloning policy from robot state and then from camera images, measure success rates with confidence intervals and observe distribution shift."

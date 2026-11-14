@@ -38,6 +38,14 @@ export class LearnerRepository {
     return user;
   }
 
+  async activeCourseId(): Promise<string | null> {
+    return (await this.user())?.activeCourseId ?? null;
+  }
+
+  async setActiveCourseId(courseId: string): Promise<void> {
+    await this.db.update(users).set({ activeCourseId: courseId }).where(eq(users.id, this.userId));
+  }
+
   async masteryRecords(): Promise<MasteryRecord[]> {
     const rows = await this.db.select().from(mastery).where(eq(mastery.userId, this.userId));
     return rows.map((row) => {
@@ -140,6 +148,7 @@ export class LearnerRepository {
       ]);
     return {
       timezone: user?.timezone ?? 'UTC',
+      activeCourseId: user?.activeCourseId ?? null,
       mastery: masteryRows,
       cards: cards.map((card) => ({
         conceptId: card.conceptId,

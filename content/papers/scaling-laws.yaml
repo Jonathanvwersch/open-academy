@@ -2,7 +2,6 @@ id: scaling-laws
 title: Scaling Laws for Neural Language Models
 authors: Kaplan et al.
 year: 2020
-week: 5
 est_minutes: 75
 source:
   arxiv: 2001.08361v1

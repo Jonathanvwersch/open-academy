@@ -1,6 +1,5 @@
 id: linreg-numpy
 title: Linear regression with NumPy, from scratch
-week: 1
 status: authored
 est_hours: 4
 objective: "Implement linear regression trained by batch gradient descent using only NumPy, verify your gradients numerically, evaluate on held-out data, and visualise how the loss and parameters evolve."

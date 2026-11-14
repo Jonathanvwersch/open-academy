@@ -2,7 +2,6 @@ id: fixture-paper-one
 title: "Fixture Paper One"
 authors: "Fixture Authors"
 year: 2024
-week: 1
 est_minutes: 60
 source: { arxiv: "2401.12345v1" }
 concepts: [vectors]

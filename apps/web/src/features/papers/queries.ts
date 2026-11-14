@@ -17,7 +17,6 @@ export const paperQueryOptions = (paperId: string) =>
           title: string;
           authors: string;
           year: number;
-          week: number;
           est_minutes: number;
           source: { arxiv: string } | { url: string };
           questions: Array<{ id: string; kind: string; prompt: string }>;
@@ -39,7 +38,7 @@ export const paperQueryOptions = (paperId: string) =>
   });
 
 export function paperStatusLabel(
-  status: PapersPayload['weeks'][number]['papers'][number]['status'],
+  status: PapersPayload['units'][number]['papers'][number]['status'],
 ) {
   return status === 'not_started' ? 'Not started' : status === 'reading' ? 'Reading' : 'Completed';
 }

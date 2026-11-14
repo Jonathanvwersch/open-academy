@@ -1,0 +1,35 @@
+id: transformers-llms
+title: Transformers and LLMs
+description: "How language models work and are trained: tokens, attention, the transformer block, pretraining, then post-training with fine-tuning, preference learning and reinforcement learning."
+units:
+  - title: Transformers and LLMs
+    intro: "The model design behind ChatGPT and many robot models: tokens, embeddings and attention, built up into a small language model."
+    project: char-transformer
+    papers:
+      - attention-is-all-you-need
+      - gpt-3
+      - scaling-laws
+    concepts:
+      - tokenization
+      - embeddings
+      - attention
+      - multi-head-attention
+      - positional-encoding
+      - transformer-block
+      - causal-masking
+      - autoregressive-lm
+      - mixture-of-experts
+      - pretraining
+  - title: Post-training LLMs
+    intro: "Turning a pretrained language model into a useful assistant: supervised fine-tuning, learning rewards from human preferences, RLHF and DPO, and reinforcement learning on problems with checkable answers, the recipe behind reasoning models."
+    project: llm-post-training
+    concepts:
+      - sft
+      - eigen-svd
+      - lora
+      - reward-models
+      - rlhf
+      - dpo
+      - rl-verifiable-rewards
+      - reward-hacking
+      - llm-evaluation

@@ -2,7 +2,6 @@ id: dexterous-in-hand-manipulation
 title: Learning Dexterous In-Hand Manipulation
 authors: OpenAI (Andrychowicz et al.)
 year: 2018
-week: 10
 est_minutes: 75
 source:
   arxiv: 1808.00177v5

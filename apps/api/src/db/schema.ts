@@ -94,6 +94,7 @@ export const users = pgTable('users', {
   timezone: text('timezone').notNull().default('Europe/London'),
   startDate: text('start_date').notNull().default(''),
   prefs: jsonb('prefs').notNull().default({}),
+  activeCourseId: text('active_course_id'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 });
 

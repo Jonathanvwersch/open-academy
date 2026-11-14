@@ -1,7 +1,7 @@
 import type { ContentIndex, IndexedLesson } from '../../content/types.js';
 
-export interface CourseOutlineWeek {
-  week: number;
+export interface CourseOutlineUnit {
+  unit: number;
   title: string;
   intro?: string;
   topics: Array<{ title: string; status: string }>;
@@ -55,13 +55,13 @@ export function buildTutorPageContent(input: {
   index: ContentIndex;
   conceptId?: string | null;
   knowledgePointId?: string;
-  courseWeeks?: CourseOutlineWeek[];
+  courseUnits?: CourseOutlineUnit[];
   paper?: PaperTutorContext;
   paperId?: string;
   pageNumber?: number;
   selection?: string;
 }): string {
-  const { page, index, conceptId, knowledgePointId, courseWeeks } = input;
+  const { page, index, conceptId, knowledgePointId, courseUnits } = input;
   if (!page) return '';
 
   if (page === 'paper') {
@@ -92,11 +92,11 @@ export function buildTutorPageContent(input: {
 
   if (page === 'course') {
     return sanitizePageContent(
-      (courseWeeks ?? [])
-        .flatMap((week) => [
-          `## Week ${week.week} · ${week.title}`,
-          ...(week.intro ? [week.intro] : []),
-          ...week.topics.map((topic) => `- ${topic.title} — ${topic.status}`),
+      (courseUnits ?? [])
+        .flatMap((unit) => [
+          `## Unit ${unit.unit} · ${unit.title}`,
+          ...(unit.intro ? [unit.intro] : []),
+          ...unit.topics.map((topic) => `- ${topic.title} — ${topic.status}`),
         ])
         .join('\n'),
     );
