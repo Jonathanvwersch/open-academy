@@ -188,7 +188,7 @@ const LessonFieldsSchema = z.object({
     .array(
       z
         .object({
-          id: IdSchema,
+          source: IdSchema,
           section: z.string().optional(),
         })
         .strict(),

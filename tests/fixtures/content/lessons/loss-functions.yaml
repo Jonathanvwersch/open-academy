@@ -1,6 +1,6 @@
 concept: loss-functions
 version: 2
-sources: [{ id: fixture-notes, section: "Chapter 1" }]
+sources: [{ source: fixture-notes, section: "Chapter 1" }]
 objective: Practice measuring prediction error.
 where_this_fits: |
   A model needs a measurable signal for whether its predictions are useful. Looking at a list of predictions and targets is not enough to compare two models or guide training. A loss turns each prediction error into a number, and an average combines those numbers across examples. The choice of loss determines which mistakes matter most, so understanding its calculation helps explain what training is trying to improve and how a model can be evaluated.

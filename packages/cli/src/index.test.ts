@@ -13,11 +13,13 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { parse, stringify } from 'yaml';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const cli = join(root, 'packages/cli/src/index.ts');
+
+vi.setConfig({ testTimeout: 60_000 });
 
 function temporaryDirectory() {
   return mkdtempSync(join(tmpdir(), 'academy-cli-'));
@@ -27,19 +29,34 @@ function run(args: string[], cwd = root, env: NodeJS.ProcessEnv = process.env) {
   return spawnSync('pnpm', ['academy', ...args], { cwd, env, encoding: 'utf8' });
 }
 
-function runFromCallerDirectory(args: string[], cwd: string) {
+function runWithInitCwd(args: string[], initCwd: string, environment: NodeJS.ProcessEnv = {}) {
   return spawnSync(join(root, 'node_modules/.bin/tsx'), [cli, ...args], {
-    cwd,
+    cwd: root,
+    env: { ...process.env, ...environment, INIT_CWD: initCwd },
     encoding: 'utf8',
   });
 }
 
 describe('academy CLI', () => {
   it('prints root and per-command help', () => {
+    expect(run([]).status).toBe(0);
     expect(run(['--help']).status).toBe(0);
     expect(run(['new', 'topic', '--help']).stdout).toContain('academy new topic');
     expect(run(['sources', 'add', '--help']).stdout).toContain('academy sources add');
   });
+
+  it('prints help and exits unsuccessfully for unknown commands and subcommands', () => {
+    for (const args of [
+      ['unknown'],
+      ['new', 'unknown'],
+      ['sources', 'unknown'],
+      ['unknown', '--help'],
+    ]) {
+      const result = run(args);
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain('academy');
+    }
+  }, 15_000);
 
   it('initializes a template pack that passes check and refuses non-empty directories', () => {
     const parent = temporaryDirectory();
@@ -49,12 +66,37 @@ describe('academy CLI', () => {
       const result = run(['check', pack]);
       expect(result.status).toBe(0);
       expect(result.stdout).toContain('1 topics, 0 lessons, 0 questions, 1 courses');
-      expect(runFromCallerDirectory(['check', 'my-pack'], parent).status).toBe(0);
+      expect(runWithInitCwd(['check', 'my-pack'], parent).status).toBe(0);
+      expect(runWithInitCwd(['check'], parent, { CONTENT_DIR: 'my-pack' }).status).toBe(0);
       expect(run(['check'], root, { ...process.env, CONTENT_DIR: pack }).status).toBe(0);
       const defaultPackEnvironment = { ...process.env };
       delete defaultPackEnvironment.CONTENT_DIR;
       expect(run(['check'], root, defaultPackEnvironment).status).toBe(0);
-      expect(existsSync(join(pack, '.agents/skills/plan-course/SKILL.md'))).toBe(true);
+      const templateFiles = [
+        '.agents/skills/plan-course/SKILL.md',
+        '.agents/skills/write-from-sources/SKILL.md',
+        '.agents/skills/write-lesson/SKILL.md',
+        '.agents/skills/write-lesson/reference/lesson.yaml',
+        '.agents/skills/write-lesson/reference/exercises.yaml',
+        '.agents/skills/write-lesson/reference/CONTENT_FORMAT.md',
+        '.agents/skills/write-lesson/reference/lesson-standard.md',
+      ];
+      expect(readFileSync(join(pack, 'AGENTS.md'), 'utf8')).toBe(
+        readFileSync(join(root, 'packages/cli/template/AGENTS.md'), 'utf8'),
+      );
+      for (const file of templateFiles) expect(existsSync(join(pack, file))).toBe(true);
+      const templateCopies = [
+        ['.agents/skills/write-lesson/SKILL.md', '.agents/skills/write-lesson/SKILL.md'],
+        ['content/lessons/gradient-descent.yaml', templateFiles[3]],
+        ['content/exercises/gradient-descent.yaml', templateFiles[4]],
+        ['docs/CONTENT_FORMAT.md', templateFiles[5]],
+        ['docs/design/lesson-standard.md', templateFiles[6]],
+      ] as const;
+      for (const [source, target] of templateCopies) {
+        expect(readFileSync(join(pack, target), 'utf8')).toBe(
+          readFileSync(join(root, source), 'utf8'),
+        );
+      }
       expect(run(['init', pack, '--title', 'Replacement']).status).toBe(1);
     } finally {
       rmSync(parent, { recursive: true, force: true });
@@ -173,17 +215,33 @@ describe('academy CLI', () => {
       run(['init', pack, '--title', 'Applied Science']);
       writeFileSync(source, 'fixture');
       expect(
-        run(['sources', 'add', source, '--title', 'Robot notes', '--kind', 'pdf', '--pack', pack])
-          .status,
+        runWithInitCwd(
+          [
+            'sources',
+            'add',
+            'robotics-notes.pdf',
+            '--title',
+            'Robot notes',
+            '--kind',
+            'pdf',
+            '--pack',
+            'pack',
+          ],
+          parent,
+        ).status,
       ).toBe(0);
-      expect(run(['sources', 'list', '--pack', pack]).stdout).toContain(
+      const sourceIndex = parse(readFileSync(join(pack, 'sources/index.yaml'), 'utf8')) as {
+        sources: Array<{ added?: string }>;
+      };
+      expect(sourceIndex.sources[0]?.added).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(runWithInitCwd(['sources', 'list', '--pack', 'pack'], parent).stdout).toContain(
         'robotics-notes\tRobot notes',
       );
       writeFileSync(
         join(pack, 'sources/index.yaml'),
         'sources:\n  - id: missing\n    title: Missing\n    file: absent.pdf\n',
       );
-      expect(run(['sources', 'list', '--pack', pack]).stdout).toContain(
+      expect(runWithInitCwd(['sources', 'list', '--pack', 'pack'], parent).stdout).toContain(
         'missing\tMissing\tmissing',
       );
     } finally {
@@ -199,7 +257,7 @@ describe('academy CLI', () => {
       const lesson = join(pack, 'lessons/derivatives.yaml');
       const original = readFileSync(lesson, 'utf8');
       const noCitation = original.replace(
-        'sources: [{ id: fixture-notes, section: "Chapter 1" }]\n',
+        'sources: [{ source: fixture-notes, section: "Chapter 1" }]\n',
         '',
       );
       writeFileSync(lesson, noCitation);
@@ -226,10 +284,14 @@ describe('academy CLI', () => {
       const fakePnpm = join(bin, 'pnpm');
       writeFileSync(fakePnpm, `#!/bin/sh\nprintf '%s' "$CONTENT_DIR" > '${output}'\n`);
       chmodSync(fakePnpm, 0o755);
-      const result = spawnSync(process.execPath, ['--import', 'tsx', cli, 'dev', pack], {
+      const result = spawnSync(process.execPath, ['--import', 'tsx', cli, 'dev', 'pack'], {
         cwd: root,
         encoding: 'utf8',
-        env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+        env: {
+          ...process.env,
+          INIT_CWD: parent,
+          PATH: `${bin}:${process.env.PATH}`,
+        },
       });
       expect(result.status).toBe(0);
       expect(readFileSync(output, 'utf8')).toBe(pack);

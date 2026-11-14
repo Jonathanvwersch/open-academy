@@ -1,6 +1,6 @@
 concept: linear-models
 version: 2
-sources: [{ id: fixture-notes, section: "Chapter 1" }]
+sources: [{ source: fixture-notes, section: "Chapter 1" }]
 objective: Practice predictions from linear models.
 where_this_fits: |
   A prediction often depends on several measurements at once, such as size and age when estimating a house price. A lookup table cannot cover every combination, and an arbitrary rule may be hard to adjust from examples. A linear model combines inputs using weights, then adds a bias to produce a prediction. Because each weight has a clear effect on the output, the model is easy to calculate, inspect, and improve using data.

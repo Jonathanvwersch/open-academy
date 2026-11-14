@@ -1,6 +1,6 @@
 concept: supervised-learning
 version: 3
-sources: [{ id: fixture-notes, section: "Chapter 1" }]
+sources: [{ source: fixture-notes, section: "Chapter 1" }]
 objective: |
   **Goal:** identify the inputs, targets, model, loss and training data in any supervised problem, and explain why training means making the average loss small.
 where_this_fits: |

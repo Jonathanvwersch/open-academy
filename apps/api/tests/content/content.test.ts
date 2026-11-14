@@ -55,7 +55,7 @@ test('loads the fixture graph and builds lookup indexes', async () => {
     },
   ]);
   expect(content.lessonsByConcept.get('derivatives')?.sources).toEqual([
-    { id: 'fixture-notes', section: 'Chapter 1' },
+    { source: 'fixture-notes', section: 'Chapter 1' },
   ]);
   expect(content.edges).toContainEqual({
     conceptId: 'gradient-descent',
@@ -98,7 +98,7 @@ test('source citations reject duplicate IDs, unknown references, and grounded le
   const unknownCitation = structuredClone(data);
   const citedLesson = unknownCitation.lessons.find(({ value }) => value.concept === 'derivatives');
   if (!citedLesson) throw new Error('Missing cited lesson');
-  citedLesson.value.sources = [{ id: 'unknown-source' }];
+  citedLesson.value.sources = [{ source: 'unknown-source' }];
   expect(validateContent(unknownCitation)).toEqual(
     expect.arrayContaining([
       expect.objectContaining({

@@ -1,6 +1,6 @@
 concept: linear-algebra
 version: 2
-sources: [{ id: fixture-notes, section: "Chapter 1" }]
+sources: [{ source: fixture-notes, section: "Chapter 1" }]
 objective: Practice matrix operations.
 where_this_fits: |
   Data often arrives as many numbers at once: pixels, measurements, or model features. Applying the same operation to each coordinate by hand is slow and makes it easy to mix up which values belong together. Matrices package those operations into a compact, repeatable form. Matrix-vector multiplication combines each row with the input vector, producing one output per row. This lets a model transform a whole set of features in one clear calculation.

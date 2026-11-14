@@ -1,6 +1,6 @@
 concept: derivatives
 version: 2
-sources: [{ id: fixture-notes, section: "Chapter 1" }]
+sources: [{ source: fixture-notes, section: "Chapter 1" }]
 objective: Practice the central idea of derivatives.
 where_this_fits: |
   Training a model means changing weights to make its loss smaller. If the loss depends on a weight, you need to know whether nudging it upward will raise or lower the loss, and by how much. Trying many nearby values is slow and noisy, especially when a model has millions of weights. A derivative gives the local change as a formula instead of a repeated measurement. It becomes the basis for partial derivatives, gradients, gradient descent, and backpropagation.

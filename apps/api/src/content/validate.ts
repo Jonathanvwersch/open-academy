@@ -450,9 +450,9 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
         'grounded curriculum requires at least one source citation in the "sources" field',
       );
     }
-    for (const source of value.sources ?? []) {
-      if (!sourceIds.has(source.id)) {
-        addIssue(issues, file, value.concept, `lesson cites unknown source "${source.id}"`);
+    for (const citation of value.sources ?? []) {
+      if (!sourceIds.has(citation.source)) {
+        addIssue(issues, file, value.concept, `lesson cites unknown source "${citation.source}"`);
       }
     }
     for (const text of new Set(stringValues(value))) {

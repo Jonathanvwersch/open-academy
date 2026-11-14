@@ -61,7 +61,7 @@ Stub concepts may have exercises only when `role: diagnostic`, and must not have
 ```yaml
 concept: gradient-descent
 version: 1
-sources: [{ id: gradient-descent-notes, section: "Chapter 2" }]  # optional citations
+sources: [{ source: gradient-descent-notes, section: "Chapter 2" }]  # optional citations
 blocks:                           # rendered in order
   - { kind: objective, md: "..." }
   - { kind: intuition, md: "..." }
@@ -73,7 +73,7 @@ blocks:                           # rendered in order
   - { kind: summary, md: "..." }
 fast_path: [objective, summary]   # kinds shown to learners with prior evidence (others collapsible)
 ```
-Each citation's `id` must exist in `sources/index.yaml`; `section` is optional. Source files are not checked for existence.
+Each citation's `source` must match an ID in `sources/index.yaml`; `section` is optional. Source files are not checked for existence.
 After the blocks, the runner serves independent `core` exercises for the concept not already used in the lesson.
 
 New lessons may use knowledge points instead of authored blocks:

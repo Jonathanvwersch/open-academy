@@ -51,8 +51,15 @@ function parseOptions(args: string[]) {
   return parseArgs({ args, options, allowPositionals: true });
 }
 
+function invocationDirectory(): string {
+  return process.env.INIT_CWD ?? process.cwd();
+}
+
 function packPath(positionals: string[], pack?: string): string {
-  return resolve(process.cwd(), pack ?? positionals[0] ?? process.env.CONTENT_DIR ?? 'content');
+  return resolve(
+    invocationDirectory(),
+    pack ?? positionals[0] ?? process.env.CONTENT_DIR ?? 'content',
+  );
 }
 
 function fail(message: string): never {
@@ -154,6 +161,21 @@ async function init(directory: string, title: string) {
   mkdirSync(directory, { recursive: true });
   cpSync(join(templateRoot, 'AGENTS.md'), join(directory, 'AGENTS.md'));
   cpSync(join(templateRoot, '.agents'), join(directory, '.agents'), { recursive: true });
+  const writeLessonDirectory = join(directory, '.agents/skills/write-lesson');
+  const referenceDirectory = join(writeLessonDirectory, 'reference');
+  mkdirSync(referenceDirectory, { recursive: true });
+  copyFileSync(
+    join(repoRoot, '.agents/skills/write-lesson/SKILL.md'),
+    join(writeLessonDirectory, 'SKILL.md'),
+  );
+  for (const [source, target] of [
+    ['content/lessons/gradient-descent.yaml', 'lesson.yaml'],
+    ['content/exercises/gradient-descent.yaml', 'exercises.yaml'],
+    ['docs/CONTENT_FORMAT.md', 'CONTENT_FORMAT.md'],
+    ['docs/design/lesson-standard.md', 'lesson-standard.md'],
+  ]) {
+    copyFileSync(join(repoRoot, source), join(referenceDirectory, target));
+  }
   const courseId = `${slug(title)}-basics`;
   writeYaml(join(directory, 'curriculum.yaml'), {
     schedule: { mon: 45, tue: 45, wed: 45, thu: 45, fri: 45, sat: 120, sun: 60 },
@@ -436,7 +458,7 @@ async function addSource(
   kind: string | undefined,
   directory: string,
 ) {
-  const sourceFile = resolve(process.cwd(), file);
+  const sourceFile = resolve(invocationDirectory(), file);
   if (!existsSync(sourceFile) || !statSync(sourceFile).isFile())
     fail(`Source file not found: ${file}`);
   const filename = basename(sourceFile);
@@ -462,6 +484,7 @@ async function addSource(
     id,
     title: title ?? basename(filename, extname(filename)),
     file: filename,
+    added: new Date().toISOString().slice(0, 10),
     ...(kind ? { kind } : {}),
   };
   if (existsSync(indexFile)) {
@@ -482,6 +505,12 @@ async function main() {
   const command = args.shift();
   if (command === 'new' || command === 'sources') {
     const subcommand = args.shift();
+    const validSubcommands = command === 'new' ? ['topic', 'lesson', 'course'] : ['add', 'list'];
+    if (!subcommand || !validSubcommands.includes(subcommand)) {
+      showHelp(command);
+      process.exitCode = 1;
+      return;
+    }
     const name = `${command} ${subcommand}`;
     const parsed = parseOptions(args);
     if (parsed.values.help) return showHelp(name);
@@ -516,6 +545,11 @@ async function main() {
     }
     return showHelp(name);
   }
+  if (!['init', 'check', 'dev'].includes(command ?? '')) {
+    showHelp();
+    process.exitCode = 1;
+    return;
+  }
   const parsed = parseOptions(args);
   if (parsed.values.help) return showHelp(command);
   if (command === 'init') {
@@ -538,6 +572,7 @@ async function main() {
     return;
   }
   showHelp();
+  process.exitCode = 1;
 }
 
 main().catch((error) => {

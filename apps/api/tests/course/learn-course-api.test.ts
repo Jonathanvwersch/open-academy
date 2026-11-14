@@ -706,7 +706,7 @@ test('active-session tasks, done-today activity, and local-date KP XP are return
         idx: 0,
         kind: 'practice',
         conceptId: 'vectors',
-        exerciseIds: ['vectors-magnitude'],
+        exerciseIds: ['vec-points-moves-basics'],
         plannedMinutes: 12,
         status: 'completed',
         completedAt: new Date('2026-01-07T11:30:00.000Z'),

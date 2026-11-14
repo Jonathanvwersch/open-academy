@@ -9,6 +9,10 @@ import {
 } from '../../db/schema.js';
 import { answerDisplay } from '../../learning/answer-display.js';
 import { answerOptionsFor } from '../../learning/answer-options.js';
+import {
+  filterSchedulerStateForContent,
+  sessionActivityIsInContent,
+} from '../../learning/content-filters.js';
 import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
 import { recordLessonViewed } from '../../learning/mastery.js';
@@ -34,7 +38,7 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const { content, tutorProvider } = deps;
   const [index, repo] = [await content(), request.repo];
   const now = request.now();
-  const state = await repo.schedulerState(now);
+  const state = filterSchedulerStateForContent(index, await repo.schedulerState(now));
   const user = await repo.user();
   const prefs = (user?.prefs ?? {}) as SessionPreferences & { goal?: string };
   const subjectTitle = index.curriculum?.subject?.title;
@@ -46,9 +50,19 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
     repo.courseEnrollments(),
     repo.activePlacementRuns(),
   ]);
+  const activeSession = active ? await repo.session(active.id) : undefined;
+  const hasCurrentActivity =
+    !activeSession ||
+    activeSession.activities.length === 0 ||
+    activeSession.activities.some(
+      (activity) =>
+        (activity.status === 'planned' || activity.status === 'in_progress') &&
+        sessionActivityIsInContent(index, activity),
+    );
+  const activeSessionId = hasCurrentActivity ? (active?.id ?? null) : null;
   const startState = buildCourseStartState({
     content: index,
-    activeCourseId: user?.activeCourseId,
+    activeCourseId: state.activeCourseId,
     mastery: state.mastery,
     lessonRuns: state.lessonRuns ?? [],
     enrollments,
@@ -59,7 +73,7 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const unitFocus = course?.units[unit - 1];
   return serviceResult({
     needsCourseChoice: needsCourseChoice({
-      activeCourseId: user?.activeCourseId,
+      activeCourseId: state.activeCourseId,
       mastery: state.mastery,
       lessonRuns: state.lessonRuns ?? [],
     }),
@@ -74,7 +88,7 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
     dueReviews: plan.activities.filter((activity) => activity.kind === 'review').length,
     budgetMinutes: budget,
     sessionKind,
-    activeSessionId: active?.id ?? null,
+    activeSessionId,
     tutorEnabled: tutorProvider !== null,
     plan: {
       ...plan,
@@ -103,7 +117,7 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
   const [index, repo] = [await content(), request.repo];
   const now = request.now();
   const sessionKind = body.data.kind ?? sessionKindForDate(localDateKey(now, request.timeZone));
-  const state = await repo.schedulerState(now);
+  const state = filterSchedulerStateForContent(index, await repo.schedulerState(now));
   const user = await repo.user();
   const prefs = (user?.prefs ?? {}) as SessionPreferences;
   const budgetMinutes =
@@ -252,11 +266,13 @@ export async function getSessionsActive(deps: FeatureServices, request: FeatureR
   const session = await request.repo.activeSession(now);
   const index = await content();
   const fullSession = session ? await request.repo.session(session.id) : null;
+  const activities =
+    fullSession?.activities.filter((activity) => sessionActivityIsInContent(index, activity)) ?? [];
   return serviceResult(
-    fullSession
+    fullSession && activities.length
       ? {
           ...fullSession,
-          activities: fullSession.activities.map((activity) => ({
+          activities: activities.map((activity) => ({
             ...activity,
             conceptTitle: activity.conceptId
               ? index.conceptsById.get(activity.conceptId)?.title
@@ -273,7 +289,9 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
   const repo = request.repo;
   const session = await repo.session(request.params.id);
   const index = await content();
-  const activityIds = session?.activities.map((activity) => activity.id) ?? [];
+  const activities =
+    session?.activities.filter((activity) => sessionActivityIsInContent(index, activity)) ?? [];
+  const activityIds = activities.map((activity) => activity.id);
   const activityAttempts = activityIds.length
     ? await db
         .select()
@@ -315,7 +333,7 @@ export async function getSessionsById(deps: FeatureServices, request: FeatureReq
     ? serviceResult({
         ...session,
         xp,
-        activities: session.activities.map((activity) => ({
+        activities: activities.map((activity) => ({
           ...activity,
           conceptTitle: activity.conceptId
             ? index.conceptsById.get(activity.conceptId)?.title
