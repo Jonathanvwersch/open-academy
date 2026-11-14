@@ -298,7 +298,7 @@ test('Course page switches courses and shows prerequisite foundations', async ({
   await expect(
     page.getByRole('heading', { name: 'Unit 1 · Linear models', exact: true }),
   ).toBeVisible();
-  const foundations = page.getByText(/^Foundations · \d+ topics$/);
+  const foundations = page.getByText('Foundations · 1 topic', { exact: true });
   await expect(foundations).toBeVisible();
   const foundationIntro = page.getByText(
     "Topics from other courses that this course needs. They're scheduled when a unit needs them.",

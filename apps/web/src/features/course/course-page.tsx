@@ -13,6 +13,7 @@ import { paperStatusLabel, papersQueryOptions } from '../papers/queries.js';
 import { todayQueryOptions } from '../sessions/queries.js';
 import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { CourseMetadata } from './course-metadata.js';
+import { foundationsHeading } from './foundations-heading.js';
 import { courseQueryOptions, learnQueryOptions } from './queries.js';
 import {
   isUnitOpen,
@@ -120,7 +121,7 @@ export function CoursePage() {
                   aria-label={`${foundationsOpen ? 'Collapse' : 'Expand'} foundations`}
                   className="flex w-full items-center justify-between gap-3 rounded-t-xl px-(--card-spacing) pt-(--card-spacing) text-left data-[state=open]:pb-3 data-[state=closed]:pb-(--card-spacing) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                 >
-                  <span>Foundations · {data.foundations.length} topics</span>
+                  <span>{foundationsHeading(data.foundations.length)}</span>
                   <ChevronDown
                     aria-hidden="true"
                     className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${foundationsOpen ? 'rotate-180' : ''}`}
