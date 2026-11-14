@@ -5,6 +5,8 @@ units:
   - title: Linear algebra
     project: pca-numpy
     intro: "Vectors, dot products and matrices: how models store and combine numbers, plus eigenvalues and the SVD."
+    papers:
+      - pca-tutorial
     concepts:
       - vectors
       - dot-product
@@ -13,6 +15,8 @@ units:
   - title: Calculus
     project: gradient-check
     intro: "Derivatives, partial derivatives, the chain rule and gradients: the tools that tell a model which way to change."
+    papers:
+      - matrix-calculus
     concepts:
       - derivatives
       - partial-derivatives
@@ -21,6 +25,8 @@ units:
   - title: Probability and statistics
     intro: "Probability, the Gaussian, statistics, maximum likelihood and information theory: the language of uncertainty that losses are built on."
     project: gaussian-mle
+    papers:
+      - shannon-1948
     concepts:
       - probability-basics
       - descriptive-statistics

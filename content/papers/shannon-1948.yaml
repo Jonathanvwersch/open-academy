@@ -1,0 +1,45 @@
+id: shannon-1948
+title: A Mathematical Theory of Communication
+authors: Claude E. Shannon
+year: 1948
+est_minutes: 60
+source:
+  url: https://people.math.harvard.edu/~ctm/home/text/others/shannon/entropy/entropy.pdf
+concepts:
+  - information-theory
+  - probability-basics
+why_this_week: You have used probabilities to describe uncertainty and met entropy in information theory. Shannon builds a measure of uncertainty from the probabilities of possible messages. His coding example gives that measure a concrete meaning as an average number of bits.
+how_to_read: Read the introduction, then Section 6, Choice, Uncertainty and Entropy. Focus on the three requirements for an uncertainty measure and Figure 7. In Section 10, read the four-symbol example with probabilities 1/2, 1/4, 1/8 and 1/8 and its binary code. Treat this as a short guided excerpt. Skip the Markov-process analysis, the coding theorem proofs, the noisy and continuous channel sections and the appendices on this first pass.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What does Shannon's entropy measure about a set of possible messages, and how does their probability distribution affect it?
+  - id: method
+    kind: method
+    prompt: Why does Shannon require a choice split into successive stages to have the same uncertainty as the original choice? Explain the probability weighting in Figure 6.
+  - id: evidence
+    kind: evidence
+    prompt: In Section 10, how does the code for the four-symbol source achieve an average length of 1.75 bits per symbol, and how does that relate to its entropy?
+  - id: limitations
+    kind: limitations
+    prompt: What does the introduction leave out when it treats communication as selecting and reproducing messages? Can entropy alone tell us how meaningful a message is?
+summary:
+  prompt: In about five sentences, explain entropy as a measure of uncertainty, the idea behind its definition, the four-symbol coding example, and the scope of the measure.
+  rubric:
+    - id: contribution
+      criterion: Describes entropy as average uncertainty determined by the probabilities of possible outcomes, with base-two logarithms giving bits
+      weight: 2
+      required: true
+    - id: method
+      criterion: Explains that splitting a choice into stages preserves total uncertainty when later uncertainties are weighted by their probabilities
+      weight: 2
+      required: true
+    - id: evidence
+      criterion: Connects the four-symbol probabilities and code lengths 1, 2, 3 and 3 to an average of 1.75 bits per symbol, equal to the source entropy
+      weight: 1
+      required: false
+    - id: limitation
+      criterion: Explains that the engineering measure concerns message selection and reproduction and leaves semantic meaning outside its scope
+      weight: 1
+      required: false
+  exemplar: Shannon measures uncertainty using the probabilities of possible messages, with base-two logarithms giving bits. Equal probabilities give the largest entropy for a fixed set of outcomes. His requirements include preserving uncertainty when a choice is split into probability-weighted stages. For the four-symbol source, code lengths of one, two, three and three bits give an average of 1.75 bits per symbol, equal to its entropy. This measure describes message selection and reproduction while leaving the meaning of the messages outside its scope.

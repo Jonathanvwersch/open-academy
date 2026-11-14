@@ -1,0 +1,45 @@
+id: pca-tutorial
+title: A Tutorial on Principal Component Analysis
+authors: Jonathon Shlens
+year: 2014
+est_minutes: 60
+source:
+  arxiv: 1404.1100v1
+concepts:
+  - eigen-svd
+  - matrices
+why_this_week: You have learned how matrices change coordinates and how eigenvectors describe special directions. PCA uses these ideas to find directions that capture the spread of a dataset. The spring example gives those directions a physical meaning.
+how_to_read: Read Sections II and III for the camera and spring example and the change of basis. Read Section IV for the meaning of variance and covariance, then Section V for the eigenvector solution. Focus on what the matrices represent. Read Figure 5 and the discussion of the Ferris wheel in Section VII. Skip the SVD derivation in Section VI, the advanced statistics in Section VII.A and the appendix proofs on this first pass.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What does PCA try to recover from the six camera measurements in the spring example?
+  - id: method
+    kind: method
+    prompt: After centering the measurements, how does the covariance matrix determine the principal directions and their order?
+  - id: evidence
+    kind: evidence
+    prompt: In Section V, what happens to the covariance matrix after the change of basis? How does this show that the new coordinates are uncorrelated?
+  - id: limitations
+    kind: limitations
+    prompt: Why does PCA fail to recover the single angle that describes the Ferris wheel example in Figure 6?
+summary:
+  prompt: In about five sentences, explain what PCA finds, how eigenvectors produce it, what the transformed covariance shows, and one limit of the method.
+  rubric:
+    - id: contribution
+      criterion: Explains that PCA finds orthogonal directions ordered by the variance of the measurements along them
+      weight: 2
+      required: true
+    - id: method
+      criterion: Describes subtracting each measurement's mean and finding eigenvectors of the covariance matrix, ordered by eigenvalue
+      weight: 2
+      required: true
+    - id: evidence
+      criterion: Explains that the eigenvector basis makes the covariance matrix diagonal, so different coordinates have zero covariance
+      weight: 1
+      required: false
+    - id: limitation
+      criterion: Identifies the linear change of basis as a limit, using the curved Ferris wheel example or explaining why large variance can miss useful structure
+      weight: 1
+      required: false
+  exemplar: PCA finds orthogonal directions that capture the spread of a dataset. After subtracting each measurement's mean, it finds the eigenvectors of the covariance matrix and orders them by eigenvalue. In the spring example, this aims to recover the direction of motion from redundant camera measurements. The transformed covariance matrix is diagonal, so the new coordinates are uncorrelated. A linear change of basis cannot recover the single angle describing motion around a Ferris wheel.

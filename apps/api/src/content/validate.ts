@@ -429,14 +429,19 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
       const url = new URL(value.source.url);
       if (
         url.protocol !== 'https:' ||
-        !['arxiv.org', 'homes.cs.washington.edu'].includes(url.hostname) ||
+        ![
+          'arxiv.org',
+          'homes.cs.washington.edu',
+          'proceedings.neurips.cc',
+          'people.math.harvard.edu',
+        ].includes(url.hostname) ||
         !url.pathname.toLowerCase().endsWith('.pdf')
       ) {
         addIssue(
           issues,
           file,
           value.id,
-          'paper URL must be an HTTPS PDF on arxiv.org or homes.cs.washington.edu',
+          'paper URL must be an HTTPS PDF on arxiv.org, homes.cs.washington.edu, proceedings.neurips.cc or people.math.harvard.edu',
         );
       }
     }
