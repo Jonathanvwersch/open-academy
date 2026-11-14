@@ -1,6 +1,8 @@
+import type { StreakPayload } from './progress.js';
 import type { TodayPayload } from './sessions.js';
 
 export interface LearnPayload {
+  streak: StreakPayload;
   today: Pick<
     TodayPayload,
     'needsDiagnostic' | 'diagnosticActive' | 'diagnosticRunId' | 'sessionKind'

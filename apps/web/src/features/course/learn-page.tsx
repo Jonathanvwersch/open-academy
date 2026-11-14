@@ -2,10 +2,12 @@ import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-q
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowRight } from 'lucide-react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
+import { AcademyMascot } from '../../components/academy-mascot.js';
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { Progress } from '../../components/ui/progress.js';
+import { StreakCard } from '../progress/streak-card.js';
 import { todayQueryOptions } from '../sessions/queries.js';
 import { learnQueryOptions } from './queries.js';
 
@@ -64,6 +66,7 @@ export function LearnPage() {
             <CardTitle>Welcome to Open Academy</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <AcademyMascot className="size-24" />
             <p className="max-w-[70ch] text-base leading-7 text-muted-foreground">
               Begin with a short diagnostic so your first sessions start at the right level.
             </p>
@@ -86,6 +89,7 @@ export function LearnPage() {
   return (
     <section className="space-y-6">
       <h1 className="sr-only">Home</h1>
+      <StreakCard streak={data.streak} />
       <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
         <div className="space-y-5">
           <Card>

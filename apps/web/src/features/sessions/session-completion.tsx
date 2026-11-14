@@ -1,3 +1,4 @@
+import { AcademyMascot } from '../../components/academy-mascot.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
 import { XpGoalBar } from './xp-goal-bar.js';
@@ -14,6 +15,7 @@ export function SessionCompletion({
 }) {
   return (
     <section className="space-y-4">
+      <AcademyMascot celebrating className="size-28" />
       <h1 className="text-3xl font-semibold">Session complete</h1>
       <p className="text-4xl font-bold">+{xp.session} XP</p>
       <p className="text-muted-foreground">
