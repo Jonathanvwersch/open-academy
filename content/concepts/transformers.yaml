@@ -35,7 +35,7 @@ concepts:
       prereqs: [{ id: embeddings }, { id: dot-product }, { id: classification-softmax }],
       objectives:
         [{ text: "Compute scaled dot-product attention for a tiny example", dimension: math }],
-      status: stub,
+      status: authored,
     }
   - {
       id: multi-head-attention,

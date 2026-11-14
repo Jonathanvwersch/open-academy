@@ -1,5 +1,449 @@
 concept: attention
 exercises:
+  - id: attn-score-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does a query–key score measure in attention?
+    options:
+      - {
+          id: a,
+          text: How well a query matches a source token's key.,
+          correct: true,
+          feedback: A query describes what is sought and each key is compared with it.,
+        }
+      - {
+          id: b,
+          text: How much information is already stored in the output.,
+          correct: false,
+          feedback: The score is calculated before the output is formed from values.,
+        }
+      - {
+          id: c,
+          text: How many times a source token appears in the vocabulary.,
+          correct: false,
+          feedback: Scores compare vectors rather than counting vocabulary occurrences.,
+        }
+      - {
+          id: d,
+          text: How large a source's value is after multiplying by its weight.,
+          correct: false,
+          feedback: Scores compare queries with keys; values are used later.,
+        }
+    solution: A score compares a query with a source token's key. The values do not enter that comparison.
+  - id: attn-score-reason
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example divide both dot products by 2?
+    options:
+      - {
+          id: a,
+          text: Because there are two tokens in the example.,
+          correct: false,
+          feedback: "The divisor depends on key width, not sequence length.",
+        }
+      - {
+          id: b,
+          text: Because the query happens to have a component equal to 2.,
+          correct: false,
+          feedback: Query component values do not set the divisor.,
+        }
+      - {
+          id: c,
+          text: Because each key has four components and the divisor is the square root of four.,
+          correct: true,
+        }
+      - {
+          id: d,
+          text: Because dividing any pair of scores by 2 makes them add up to 1.,
+          correct: false,
+          feedback: Scaling scores does not generally make them add up to 1.,
+        }
+    solution: The key width is $d_k=4$, so the scaled score divides the dot product by $\sqrt4=2$. The number of source tokens is irrelevant to this divisor.
+  - id: attn-score-faded
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: A query and a key each have four components. Their dot product is 6. What is the scaled score $s=6/\sqrt4$?
+    answer: 3
+    tolerance: { abs: 0.001 }
+    solution: The key width is 4, so the divisor is $\sqrt4=2$. The scaled score is $6/2=3$.
+  - id: attn-score-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'For $q=({{=u}},{{=v}},0,0)$ and $k=({{=r}},{{=b}},0,0)$, calculate the scaled score $q\cdot k/\sqrt{d_k}$. Both vectors have four components.'
+    params:
+      u: { min: 1, max: 3 }
+      v: { min: 1, max: 2 }
+      r: { min: -1, max: 2 }
+      b: { min: -1, max: 2 }
+    constraints: ["u*r+v*b != 0"]
+    answer_expr: (u*r+v*b)/2
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: u*r+v*b
+        category: misunderstood_definition
+        feedback: You found the dot product; divide by the square root of the key width, which is 2.
+    solution: 'Multiplying matching components and adding gives ${{=u*r+v*b}}$. The divisor is $\sqrt4=2$, so the score is ${{=(u*r+v*b)/2}}$.'
+  - id: attn-score-cosine
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A nonzero query is doubled while its width and all keys stay fixed. What happens to every scaled dot-product score?
+    options:
+      - {
+          id: a,
+          text: It stays unchanged because scaling removes all length information.,
+          correct: false,
+          feedback: Dividing by key width's square root is not division by vector lengths.,
+        }
+      - {
+          id: b,
+          text: It doubles because the dot product doubles and the divisor stays fixed.,
+          correct: true,
+        }
+      - {
+          id: c,
+          text: It halves because the key width also doubles with the query.,
+          correct: false,
+          feedback: Doubling components does not change the number of components.,
+        }
+      - {
+          id: d,
+          text: It becomes positive because all scaled scores are positive.,
+          correct: false,
+          feedback: "Scores may be negative, zero or positive; doubling preserves their sign.",
+        }
+    solution: Every product in the dot product doubles. Since $d_k$ stays fixed, each scaled score doubles too; length has not been removed as in cosine similarity.
+  - id: attn-score-transfer
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'A robot compares a query $q=(2,-2,0,0)$ with two object keys $k_1=(1,1,0,0)$ and $k_2=(0,2,0,0)$. Using $s_j=q\cdot k_j/\sqrt4$, how much larger is the first score than the second? Give $s_1-s_2$.'
+    answer: 2
+    tolerance: { abs: 0.001 }
+    solution: The dot products are $0$ and $-4$, so the scaled scores are $0$ and $-2$. Their difference is $0-(-2)=2$; a zero score can still beat a negative one.
+  - id: attn-weight-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: How does attention turn the scores for one query into mixing weights?
+    options:
+      - {
+          id: a,
+          text: It divides each raw score by the sum of the raw scores.,
+          correct: false,
+          feedback: Raw scores can be negative or have a zero total; attention uses softmax.,
+        }
+      - {
+          id: b,
+          text: It gives weight 1 to the largest score and 0 to every other score.,
+          correct: false,
+          feedback: Softmax assigns positive shares rather than selecting only the largest score.,
+        }
+      - {
+          id: c,
+          text: It applies softmax across the source scores for that query.,
+          correct: true,
+          feedback: These scores share one denominator so their weights add up to 1.,
+        }
+      - {
+          id: d,
+          text: It applies softmax separately to each score on its own.,
+          correct: false,
+          feedback: All sources for a query share one denominator; separate single-score softmaxes would each give 1.,
+        }
+    solution: Softmax compares all source scores for one query together. Its positive outputs sum to 1 and assign larger shares to larger scores.
+  - id: attn-weight-reason
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In the worked example with scores $(1,0)$, why does cat still receive some weight despite its score being 0?
+    options:
+      - { id: a, text: "Softmax raises $e$ to the score, and $e^0=1$ is positive.", correct: true }
+      - {
+          id: b,
+          text: A source always receives at least half the weight on itself.,
+          correct: false,
+          feedback: There is no such lower bound; here cat receives about 0.27.,
+        }
+      - {
+          id: c,
+          text: 'The divisor $\sqrt{d_k}$ adds 1 to every zero score.',
+          correct: false,
+          feedback: Scaling divides the dot product; the positive numerator comes from exponentiation.,
+        }
+      - {
+          id: d,
+          text: Zero scores are ignored until the remaining weight is assigned equally.,
+          correct: false,
+          feedback: "Every score enters the same softmax calculation, including zero scores.",
+        }
+    solution: The numerator for the zero score is $e^0=1$. Dividing by $e+1$ gives a positive weight of about $0.27$.
+  - id: attn-weight-faded
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: For one query, exponentiating three source scores gives $(2,3,5)$. What attention weight is assigned to the second source?
+    answer: 0.3
+    tolerance: { abs: 0.001 }
+    solution: Softmax divides the second positive number by their shared total, $2+3+5=10$. The second weight is $3/10=0.3$.
+  - id: attn-weight-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "The scaled scores for one query are $({{=s}},0)$. What is the softmax weight of the first source? Round only the final answer to two decimals."
+    params:
+      s: { min: -3, max: 3, step: 0.25 }
+    constraints: ["s != -2", "s != -1", "s != 0", "s != 1", "s != 2"]
+    answer_expr: exp(s)/(exp(s)+1)
+    tolerance: { abs: 0.006 }
+    solution: 'The positive numbers are $e^{ {{=s}} }$ and $e^0=1$. Dividing the first by their sum gives $e^{ {{=s}} }/(e^{ {{=s}} }+1)\approx{{=round(exp(s)/(exp(s)+1),2)}}$.'
+  - id: attn-weight-confusion
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Two sources have scaled scores $(-2,-2)$ for a query. What are their softmax weights?"
+    options:
+      - {
+          id: a,
+          text: "$(-0.5,-0.5)$, because both scores are negative.",
+          correct: false,
+          feedback: "Exponentials are positive, so attention weights cannot be negative.",
+        }
+      - {
+          id: b,
+          text: "$(0,0)$, because negative scores cannot contribute.",
+          correct: false,
+          feedback: Each negative score still has a positive exponential.,
+        }
+      - {
+          id: c,
+          text: "$(1,1)$, because the two sources match equally.",
+          correct: false,
+          feedback: "Equal weights must share a total of 1, not each receive 1.",
+        }
+      - { id: d, text: "$(0.5,0.5)$, because equal scores get equal shares.", correct: true }
+    solution: Both numerators are $e^{-2}$ and the denominator is twice that. Each source gets half the total weight, regardless of their common negative score.
+  - id: attn-weight-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot compares two object keys. One query gives scaled scores $(1,0)$; another gives $(0,2)$. Which pair lists the weight on the first object for the first query, then for the second query?"
+    options:
+      - {
+          id: a,
+          text: "About $(0.73,0.88)$.",
+          correct: false,
+          feedback: "0.88 is the second object's weight for scores (0,2), not the first object's.",
+        }
+      - { id: b, text: "About $(0.73,0.12)$.", correct: true }
+      - {
+          id: c,
+          text: "About $(0.27,0.12)$.",
+          correct: false,
+          feedback: "For scores (1,0), the first object has the larger score and gets about 0.73.",
+        }
+      - {
+          id: d,
+          text: "About $(0.50,0.50)$.",
+          correct: false,
+          feedback: "Neither query has equal scores, so neither gives equal weights.",
+        }
+    solution: For the first query the weight is $e/(e+1)\approx0.73$. For the second it is $1/(1+e^2)\approx0.12$; each query uses its own denominator.
+  - id: attn-mix-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What information does an attention output combine?
+    options:
+      - {
+          id: a,
+          text: It adds the keys after multiplying each by its attention weight.,
+          correct: false,
+          feedback: Keys help determine weights; the output combines values.,
+        }
+      - {
+          id: b,
+          text: It copies the value with the highest score and drops the others.,
+          correct: false,
+          feedback: Softmax makes a weighted mixture rather than a hard choice.,
+        }
+      - {
+          id: c,
+          text: It sorts the query components from the smallest to the largest.,
+          correct: false,
+          feedback: "The query is used to score keys, not sorted to form the output.",
+        }
+      - {
+          id: d,
+          text: It adds values after multiplying each by its attention weight.,
+          correct: true,
+          feedback: The output is the sum of the weighted value vectors.,
+        }
+    solution: Each source's value is multiplied by its share for the receiving query. Adding those weighted vectors gives the output.
+  - id: attn-mix-reason
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is the output's second component positive even though "the" has the larger weight?
+    options:
+      - {
+          id: a,
+          text: The query's second component is copied directly into the output.,
+          correct: false,
+          feedback: The query's second component is 0; the output comes from weighted values.,
+        }
+      - {
+          id: b,
+          text: Cat's value has second component 2 and still receives a positive share.,
+          correct: true,
+        }
+      - {
+          id: c,
+          text: The largest weight is assigned to every nonzero value component.,
+          correct: false,
+          feedback: "Each source has its own weight, applied to all of that source's components.",
+        }
+      - {
+          id: d,
+          text: Adding two values always makes every output component positive.,
+          correct: false,
+          feedback: Values can contain zeros or negative components; adding them does not guarantee positive output components.,
+        }
+    solution: Cat contributes $2/(e+1)$ to the second component. A larger weight for another source does not erase that positive contribution.
+  - id: attn-mix-faded
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "Two attention weights are $(0.25,0.75)$ and the corresponding values are $v_1=(4,0)$ and $v_2=(0,8)$. What is the second component of the output?"
+    answer: 6
+    tolerance: { abs: 0.001 }
+    solution: Mix the second components with their matching weights. The result is $0.25\times0+0.75\times8=6$.
+  - id: attn-mix-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "The weights are $({{=p/4}},{{=1-p/4}})$ and values are $v_1=({{=u}},1)$, $v_2=({{=v}},3)$. What is the first component of their attention output?"
+    params:
+      p: { min: 1, max: 3 }
+      u: { min: 2, max: 6, step: 2 }
+      v: { min: -2, max: 0, step: 1 }
+    answer_expr: p*u/4+(1-p/4)*v
+    tolerance: { abs: 0.001 }
+    solution: 'Multiply each first component by its own weight, then add: ${{=p/4}}\times{{=u}}+{{=1-p/4}}\times({{=v}})={{=p*u/4+(1-p/4)*v}}$. The second components do not enter this coordinate.'
+  - id: attn-mix-keys
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Attention gives two sources weights $(0.6,0.4)$. Their values change but their query and keys stay fixed. What happens?
+    options:
+      - { id: a, text: "The weights stay fixed, but the output may change.", correct: true }
+      - {
+          id: b,
+          text: "The weights must change, but the output stays fixed.",
+          correct: false,
+          feedback: Weights depend on the query and keys; the output depends on the values too.,
+        }
+      - {
+          id: c,
+          text: Both weights become 0.5 whenever either value changes.,
+          correct: false,
+          feedback: Changing values alone does not equalize query–key scores.,
+        }
+      - {
+          id: d,
+          text: Both output and weights always stay exactly the same.,
+          correct: false,
+          feedback: Holding weights fixed still allows changed values to change their weighted sum.,
+        }
+    solution: Query–key scores and their softmax weights do not use the values. Changing a value can change the output even when its weight stays fixed.
+  - id: attn-mix-full
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 4
+    prompt: "Let $q=(2,0,0,0)$, $k_1=(2,0,0,0)$, $k_2=(0,1,0,0)$, $v_1=(4,0,0,0)$ and $v_2=(0,4,0,0)$. Compute the first component of the attention output using scaled scores with $d_k=4$, then softmax and a weighted sum. Round only the final answer to two decimals."
+    answer: 3.52
+    tolerance: { abs: 0.006 }
+    solution: The dot products are 4 and 0, giving scaled scores 2 and 0. The first output component is $4e^2/(e^2+1)\approx3.52$, keeping full precision until the final rounding.
+  - id: attn-mix-transfer
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot uses attention weights $(0.2,0.3,0.5)$ to mix three two-component sensor values $(10,0)$, $(0,10)$ and $(4,4)$. What is the second component of the mixed value?"
+    answer: 5
+    tolerance: { abs: 0.001 }
+    solution: Use the second component from each source with its matching weight. The result is $0.2\times0+0.3\times10+0.5\times4=5$.
+  - id: attn-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: Explain how scaled dot-product attention turns a query, two keys and two values into one output vector. Say why a source with the larger score need not be the only source contributing.
+    rubric:
+      - {
+          id: scores,
+          criterion: Says to dot the query with each key and divide each result by the square root of key width.,
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: weights,
+          criterion: Describes softmax across source scores producing positive weights that sum to 1.,
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: values,
+          criterion: Describes adding weighted values and explains that the lower-scoring source still has a positive weight.,
+          weight: 1,
+          required: true,
+        }
+    exemplar: Compute the dot product of the query with each key and divide by the square root of the key width. Apply softmax to those two scores together so the weights are positive and sum to 1, then multiply each value by its weight and add the vectors. Every source's value is included with a positive weight, so the source with the largest score need not supply the whole output.
   - id: dx-tf-3
     dimension: math
     type: numeric
@@ -7,9 +451,9 @@ exercises:
     difficulty: 3
     est_minutes: 4
     prompt: |
-      Scaled dot-product attention with a single query $q = (1, 0)$, two keys $k_1 = (2, 0)$, $k_2 = (0, 2)$ and scalar values $v_1 = 10$, $v_2 = 0$. The key dimension is $d = 2$.
+      A query $q_1=(1,0)$ has keys $k_1=(2,0)$ and $k_2=(0,2)$, with value vectors $v_1=(10,0)$ and $v_2=(0,0)$. The key width is $d_k=2$.
 
-      Compute the attention output $\sum_i \mathrm{softmax}_i\!\left(\frac{q \cdot k_i}{\sqrt d}\right) v_i$. Give 2 decimal places.
+      Compute the first component of $o_1=\sum_{j=1}^{2}a_{1j}v_j$, using scores $s_{1j}=q_1\cdot k_j/\sqrt{d_k}$ and weights $a_{1j}=\text{softmax}_j(s_{1j})$. Round only at the end and give two decimal places.
     answer: 8.0443
     tolerance: { abs: 0.02 }
     common_wrong:
@@ -17,7 +461,7 @@ exercises:
           answer: 8.808,
           tolerance: { abs: 0.02 },
           category: misunderstood_definition,
-          feedback: "That is the result without the $1/\\sqrt d$ scaling (softmax of scores 2 and 0).",
+          feedback: "That is the result without the $1/\\sqrt{d_k}$ scaling (softmax of scores 2 and 0).",
         }
       - {
           answer: 10,
@@ -29,11 +473,11 @@ exercises:
           answer: 5,
           tolerance: { abs: 0.01 },
           category: math_error,
-          feedback: "Equal weights would only happen if both scores were equal. Here $q\\cdot k_1 = 2$ and $q \\cdot k_2 = 0$.",
+          feedback: "Equal weights would only happen if both scores were equal. Here $q_1\\cdot k_1=2$ and $q_1\\cdot k_2=0$.",
         }
     hints:
       [
-        "Compute each score $q\\cdot k_i/\\sqrt{2}$ first.",
+        "Compute each score $s_{1j}=q_1\\cdot k_j/\\sqrt{d_k}$ first.",
         "Scores are $\\sqrt2 \\approx 1.414$ and $0$; apply softmax to them.",
       ]
-    solution: "Scores: $2/\\sqrt2 = 1.414$ and $0$. Softmax weights: $e^{1.414}/(e^{1.414}+1) = 4.113/5.113 = 0.804$ and $0.196$. Output $= 0.804 \\times 10 + 0.196 \\times 0 \\approx 8.04$."
+    solution: "The scores are $s_{11}=\\sqrt2\\approx1.414$ and $s_{12}=0$, with $e^{1.414}\\approx4.112$. Softmax exponentiates and normalizes these scores, giving $a_{11}=e^{\\sqrt2}/(e^{\\sqrt2}+1)\\approx0.80443$ and $a_{12}\\approx0.19557$ when computed without intermediate rounding. Their weighted sum is $o_1\\approx(8.0443,0)$, so the first component rounds to $8.04$."

@@ -1,0 +1,212 @@
+concept: attention
+version: 1
+objective: |
+  **Goal:** compute scaled dot-product attention by scoring query–key matches, turning the scores into weights, and using those weights to mix values.
+recap:
+  - concept: dot-product
+    text: "The dot product multiplies matching vector components and adds the products. It gives one number, and depends on both the vectors' directions and their lengths."
+  - concept: classification-softmax
+    text: "Softmax raises $e$ to each score and divides by the total. Its outputs are positive and add up to 1, with larger scores getting larger shares."
+where_this_fits: |
+  ### What is attention?
+
+  Attention builds a vector for a token by mixing information from tokens in a sequence, with a weight deciding how much each token contributes.
+
+  A token is a unit of text, such as a word or part of one. An embedding table stores one learned vector for each token. Looking up a token selects that vector, so the lookup alone gives the same vector whenever that token appears.
+
+  In the phrase "the cat", looking up "cat" alone cannot tell a model that "the" came before it. Attention lets cat's new vector include information from "the", so a model predicting the next word can use both. We'll call each token that supplies information a source.
+knowledge_points:
+  - id: attn-score-matches
+    title: Score each source of information
+    explain: |
+      ### Prepare the vectors we need
+
+      We first score how well each source matches what a token needs. Our running sentence is "the cat sat on the mat". To keep this calculation small, our entire input is its first two words, "the cat", with one token per word. Position 1 holds "the" and position 2 holds "cat". We'll build cat's new vector, called its output, using information from both tokens. Including cat's own value lets its output contain information about itself too.
+
+      A matrix is a grid of numbers. Three learned matrices transform each embedding into three vectors, using dot products with the matrix columns to compute the components. The matrix $W_Q$ produces a **query** to compare with sources' keys. The matrix $W_K$ produces each source's **key**. The matrix $W_V$ produces its **value**, the information to contribute to the output. Separate matrices let a model learn what to compare and what to pass along independently. We'll start from invented results of these transformations.
+
+      ### Compare the query with every key
+
+      The diagram compares cat's query with each key using a dot product. Width means the number of components. Our keys have width 4, so we divide by $\sqrt4=2$ to get the blue scores. Summing many component products can make score gaps large, giving one source almost all the influence. This scaling helps control that effect.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 240" aria-label="For cat's query (2,0,0,0), the key for the is (1,0,0,0), giving dot product 2 and scaled score 1. The key for cat is (0,1,0,0), giving dot product 0 and scaled score 0. Both dot products are divided by the square root of 4, which is 2.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+      <text x="180" y="25" text-anchor="middle">cat's query: (2,0,0,0)</text>
+      <path d="M180 40 V65 H85 V92 M180 65 H275 V92 M80 84 L85 92 L90 84 M270 84 L275 92 L280 84" stroke="#d4d4d4" fill="#d4d4d4" fill-opacity="0" stroke-width="2"/>
+      <text x="85" y="115" text-anchor="middle">the: key (1,0,0,0)</text>
+      <text x="275" y="115" text-anchor="middle">cat: key (0,1,0,0)</text>
+      <text x="85" y="148" text-anchor="middle">dot product 2</text>
+      <text x="275" y="148" text-anchor="middle">dot product 0</text>
+      <text x="85" y="181" text-anchor="middle">divide by 2</text>
+      <text x="275" y="181" text-anchor="middle">divide by 2</text>
+      <text x="85" y="219" text-anchor="middle" fill="#3b82f6">score 1</text>
+      <text x="275" y="219" text-anchor="middle" fill="#3b82f6">score 0</text>
+      </g></svg>
+      ```
+
+      A **scaled dot-product score** is a query–key dot product divided by the square root of the key width:
+
+      $$s_{tj}=\frac{q_t\cdot k_j}{\sqrt{d_k}}.$$
+
+      Here $t$ is the position whose output we're building and $j$ is a source position. The vector $q_t$ is the query of the token at $t$, and $k_j$ is the key of the token at $j$. Both have $d_k$ components.
+
+      ### Changing the query changes the scores
+
+      Keeping these keys, a query $(0,2,0,0)$ would give cat the higher score. The zero query $(0,0,0,0)$ would tie both scores.
+
+      Be careful not to confuse this scaling with cosine similarity. Doubling a query's components doubles its scores because the divisor depends only on width.
+    worked: |
+      Let's compute both scores for cat in "the cat", with "the" at position 1 and "cat" at position 2. We are given these query and key vectors:
+
+      $$\begin{aligned}q_2&=(2,0,0,0),\\k_1&=(1,0,0,0),\\k_2&=(0,1,0,0).\end{aligned}$$
+
+      1. **Find the divisor.** Each key has four components, so $d_k=4$.
+         $$\sqrt{d_k}=\sqrt4=2.$$
+
+      2. **Score the first source.** Multiply matching components for "the", add, and divide by 2. In $s_{21}$, the first subscript names cat's position and the second names the source "the".
+         $$s_{21}=\frac{2\times1+0\times0+0\times0+0\times0}{2}=1.$$
+
+      3. **Score the second source.** Compare cat's query with its own key to score information from cat itself.
+         $$s_{22}=\frac{2\times0+0\times1+0\times0+0\times0}{2}=0.$$
+
+      For this invented query, "the" scores higher than "cat", so it will have more influence on cat's output. Training adjusts the matrices to make useful comparisons.
+    problems:
+      - attn-score-basics
+      - attn-score-reason
+      - attn-score-faded
+      - attn-score-template
+      - attn-score-cosine
+      - attn-score-transfer
+  - id: attn-make-weights
+    title: Turn scores into mixing weights
+    explain: |
+      ### Give each value a share
+
+      To mix source values, we need a weight to multiply each one by. Scaled scores can be negative or exceed 1. Softmax turns them into positive shares that add up to 1, letting us form a weighted average. For cat's query in the two-token input "the cat", the scaled scores are 1 for "the" and 0 for "cat".
+
+      The blue bars show the scores; the green bars show the resulting shares. A zero score still gets a positive share because raising $e$ to the power 0 gives 1.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 240" aria-label="Blue scores for the and cat are 1 and 0. Softmax gives green weights approximately 0.73 and 0.27. The weight bars use a common scale and add up to 1.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717">
+      <text x="20" y="25">Scores</text><text x="200" y="25">Weights</text>
+      <path d="M20 180 H150 M200 180 H340" stroke="#d4d4d4"/>
+      <rect x="30" y="60" width="40" height="120" fill="#3b82f6"/>
+      <text x="50" y="50" text-anchor="middle">1</text><text x="50" y="205" text-anchor="middle">the</text>
+      <text x="120" y="170" text-anchor="middle">0</text><text x="120" y="205" text-anchor="middle">cat</text>
+      <rect x="210" y="92.27" width="40" height="87.73" fill="#10b981"/>
+      <text x="230" y="82" text-anchor="middle">0.73</text><text x="230" y="205" text-anchor="middle">the</text>
+      <rect x="280" y="147.73" width="40" height="32.27" fill="#10b981"/>
+      <text x="300" y="137" text-anchor="middle">0.27</text><text x="300" y="205" text-anchor="middle">cat</text>
+      <text x="200" y="230" fill="#737373">total weight = 1</text>
+      </g></svg>
+      ```
+
+      ### Apply softmax for one query
+
+      An **attention weight** is the share assigned to one source for a particular query. Let $T$ be the number of source tokens. Using the constant $e\approx2.72$, softmax gives
+
+      $$a_{tj}=\frac{e^{s_{tj}}}{\sum_{i=1}^{T}e^{s_{ti}}}=\text{softmax}_j(s_{tj}).$$
+
+      To find the weight for source $j$, divide its exponential by the total for all sources. The sum uses $i$ to count through those sources, while $j$ keeps pointing to the selected one. The notation $\text{softmax}_j$ means applying softmax across sources for the query at position $t$. Each query gets its own set of weights.
+
+      ### Equal scores and larger gaps
+
+      - Scores $(0,0)$ give equal weights $(0.50,0.50)$.
+      - Scores $(1,0)$ favour the first source, giving about $(0.73,0.27)$.
+      - Scores $(2,0)$ favour it more strongly, giving about $(0.88,0.12)$.
+
+      The growing gap gives the first source a larger share of the mixture. Our unscaled dot products $(2,0)$ would give the third pair of weights; dividing by the square root of the key width gives the middle pair.
+
+      Be careful not to divide the scores themselves by their sum. For scores $(1,0)$, that would give $(1,0)$ and drop the second source, even though softmax gives it a positive share. For scores $(-1,1)$, it would even require dividing by zero.
+    worked: |
+      Let's turn cat's scaled scores $(1,0)$ for "the" and "cat" into weights. We'll keep exact fractions for the value calculation, and round only the final reported weights and output to two decimals.
+
+      1. **Raise $e$ to each score.** Even the zero score gives a positive number because $e^0=1$.
+         $$(e^{s_{21}},e^{s_{22}})=(e^1,e^0)=(e,1).$$
+
+      2. **Add them.** We need the total for both sources to turn each number into a share.
+         $$e^1+e^0=e+1.$$
+
+      3. **Divide each by that total.** These are the shares used to mix information.
+         $$(a_{21},a_{22})=\left(\frac{e}{e+1},\frac{1}{e+1}\right)\approx(0.73,0.27).$$
+
+      Cat's output will use a larger share of the first source. Both sources have positive weights, and the exact weights sum to 1.
+    problems:
+      - attn-weight-basics
+      - attn-weight-reason
+      - attn-weight-faded
+      - attn-weight-template
+      - attn-weight-confusion
+      - attn-weight-transfer
+  - id: attn-mix-values
+    title: Mix information using the weights
+    explain: |
+      ### Add the weighted value vectors
+
+      We now multiply source values by their weights to build cat's output for "the cat". Suppose multiplying embeddings by $W_V$ gives "the" the vector $v_1=(2,0)$ and "cat" the vector $v_2=(0,2)$. We chose these values so the first output component tracks the contribution from "the", and the second tracks the contribution from "cat".
+
+      The diagram multiplies each value by its green weight, about 0.73 and 0.27, then adds the contributions to give the orange output vector.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 250" aria-label="The value (2,0) for the times weight about 0.73 contributes (1.46,0). The value (0,2) for cat times weight about 0.27 contributes (0,0.54). Adding the contributions gives output (1.46,0.54), rounded after calculating with exact weights.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717" text-anchor="middle">
+      <text x="90" y="25">the: (2,0)</text><text x="90" y="52" fill="#10b981">weight ≈ 0.73</text>
+      <text x="270" y="25">cat: (0,2)</text><text x="270" y="52" fill="#10b981">weight ≈ 0.27</text>
+      <path d="M90 65 V90 M270 65 V90" stroke="#d4d4d4" stroke-width="2"/>
+      <text x="110" y="84">×</text><text x="290" y="84">×</text>
+      <text x="90" y="117">(1.46,0)</text><text x="270" y="117">(0,0.54)</text>
+      <path d="M90 130 V155 H270 V130 M180 155 V162" stroke="#d4d4d4" fill="#d4d4d4" fill-opacity="0" stroke-width="2"/>
+      <text x="180" y="184">+</text>
+      <text x="180" y="210" text-anchor="middle" fill="#f59e0b">output ≈ (1.46,0.54)</text>
+      <text x="180" y="240" text-anchor="middle" fill="#737373">multiply each value, then add</text>
+      </g></svg>
+      ```
+
+      ### A weighted sum of values
+
+      **Scaled dot-product attention** uses query–key scores to make weights, then adds the weighted values:
+
+      $$o_t=\sum_{j=1}^{T}a_{tj}v_j.$$
+
+      The vector $o_t$ is the output for position $t$. Multiply every component of value $v_j$ by its weight $a_{tj}$, then add matching components across sources. Values need equal widths so their components line up for addition. The query and key widths must match for their dot product. Value width can differ because values are added to other values. Using queries, keys and values from the same sequence is called **self-attention**.
+
+      ### Limitations
+
+      A single mixture can lose distinctions between sources. Weights $(0.5,0.5)$ on $(2,0)$ and $(0,2)$ give $(1,1)$. If the source values were $(1,0)$ and $(1,2)$, those weights would also give $(1,1)$. The output alone cannot identify the original sources, which can hide information useful for a prediction. Several separate mixtures can retain more information, as the next lesson shows.
+
+      With $T$ tokens, each of $T$ queries scores all $T$ keys, giving $T^2$ scores. Storing all those scores uses computer memory. Computing them in blocks can reduce the amount that must be stored at once.
+
+      ### Use values for the output
+
+      Be careful to add weighted values when forming the output. Adding weighted keys would combine the vectors used for matching instead of the information intended for the output.
+    worked: |
+      Let's finish cat's attention output for "the cat", using exact weights $a_{21}=\frac{e}{e+1}$, $a_{22}=\frac{1}{e+1}$ and values $(2,0)$ and $(0,2)$.
+
+      1. **Weight the first value.** Multiply every component by the first weight. Only the first component of this value is nonzero.
+         $$a_{21}v_1=\left(\frac{2e}{e+1},0\right).$$
+
+      2. **Weight the second value.** Multiply both components by the second weight. The nonzero contribution is in the second component.
+         $$a_{22}v_2=\left(0,\frac{2}{e+1}\right).$$
+
+      3. **Add the contributions.** We can now round the output's two components for reporting.
+         $$o_2=\left(\frac{2e}{e+1},\frac{2}{e+1}\right)\approx(1.46,0.54).$$
+
+      The first component now carries information from "the" into the output for "cat". Changing that source's value would change this output even if cat's embedding stayed the same. Later parts of the model can use this context-dependent vector when predicting what comes next.
+    problems:
+      - attn-mix-basics
+      - attn-mix-reason
+      - attn-mix-faded
+      - attn-mix-template
+      - attn-mix-keys
+      - attn-mix-full
+      - attn-mix-transfer
+final: attn-explain
+summary: |
+  - Multiplying embeddings by learned matrices gives queries for seeking information, keys for comparison and values containing the information to pass along.
+  - Scaled scores compare a query with each key using $s_{tj}=q_t\cdot k_j/\sqrt{d_k}$, where $d_k$ is the key width.
+  - Softmax turns the scores for one query into positive weights $a_{tj}=e^{s_{tj}}/\sum_{i=1}^{T}e^{s_{ti}}$ that add up to 1.
+  - Attention forms $o_t=\sum_{j=1}^{T}a_{tj}v_j$ by adding the value vectors multiplied by their assigned weights.
+
+  **Next:** Multi-head attention forms several such mixtures in parallel, each with its own learned query, key and value matrices.
