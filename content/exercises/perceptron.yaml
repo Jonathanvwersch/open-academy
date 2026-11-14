@@ -30,6 +30,7 @@ exercises:
         }
     solution: "The weighted sum plus the bias is 3. Since 3 is positive, the step gives the decision 1 rather than returning the score."
   - id: percp-boundary-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -58,6 +59,7 @@ exercises:
         }
     solution: "The line locates the zero scores but does not by itself label the sides. The origin scores -1, so the side containing it gives output 0."
   - id: percp-xor-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

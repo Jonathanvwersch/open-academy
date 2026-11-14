@@ -259,6 +259,7 @@ exercises:
         feedback: Doubling repeatedly would cause exploding activations.
         category: incorrect_reasoning
   - id: wip-init-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -477,6 +478,7 @@ exercises:
         feedback: LayerNorm divides by standard deviation and includes learned gain and shift.
         category: incorrect_reasoning
   - id: wip-ln-self-explain
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

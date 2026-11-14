@@ -252,6 +252,7 @@ exercises:
         category: incorrect_reasoning
     solution: A known achievable loss makes a failure on this small test informative.
   - id: dbt-tiny-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

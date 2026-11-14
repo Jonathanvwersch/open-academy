@@ -110,6 +110,7 @@ exercises:
       ]
     solution: "The bias belongs to the reused neuron, so each output score adds it exactly once."
   - id: conv-edge-robot
+    lesson_only: true
     dimension: "conceptual"
     type: "mc"
     role: "practice"
@@ -352,6 +353,7 @@ exercises:
       ]
     solution: "One filter has weights for all input channels and produces one score at each position."
   - id: conv-channels-why-small
+    lesson_only: true
     dimension: "conceptual"
     type: "mc"
     role: "practice"

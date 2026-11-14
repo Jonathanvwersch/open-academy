@@ -22,6 +22,7 @@ exercises:
         feedback: Surprise concerns one outcome and its probability.
     solution: Surprise measures how unexpected an outcome is. Smaller probability gives larger surprise.
   - id: it-surprise-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -132,6 +133,7 @@ exercises:
         feedback: Equal weights apply only when the outcomes are equally likely.
     solution: Entropy is expected surprise. We multiply each surprise by its actual probability and add.
   - id: it-entropy-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -240,6 +242,7 @@ exercises:
         feedback: That is the entropy of q, not the score of q when actual weather follows p.
     solution: Cross-entropy calculates surprises from forecast probabilities and averages them using actual probabilities.
   - id: it-cross-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -376,6 +379,7 @@ exercises:
     solution: KL is the extra average surprise due to mismatched forecast probabilities. It excludes
       the entropy baseline from actual weather probabilities.
   - id: it-kl-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

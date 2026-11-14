@@ -185,6 +185,7 @@ exercises:
         feedback: "An event and its complement split outcomes into two groups. A distribution covers every numeric value."
     solution: "A distribution lists every value a random variable can take, with the probability of each value."
   - id: pb-distribution-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -330,6 +331,7 @@ exercises:
         feedback: "The probabilities always add to 1. The expected value also uses the values themselves."
     solution: "Multiply each value by its probability and add the results. This weighted average is the long-run average value."
   - id: pb-expectation-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

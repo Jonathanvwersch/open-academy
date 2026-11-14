@@ -400,6 +400,7 @@ exercises:
         }
     solution: The slope of the loss with respect to the score works out to $p-y$, and each weight slope multiplies this by its input.
   - id: lr-gradient-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

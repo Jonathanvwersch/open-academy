@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { loadContent } from '../../src/content/load.js';
 import { type Exercise, ExerciseSchema } from '../../src/content/schemas.js';
 import {
   quizQuestionsPerStep,
@@ -156,6 +157,25 @@ test('lesson-only problems are not included in the lesson quiz', () => {
   );
 
   expect(items.map((item) => item.exerciseId)).toEqual([quizEligible.id]);
+});
+
+test('information-theory quiz excludes its worked-example self-explanations', async () => {
+  const content = await loadContent('content');
+  const lesson = content.lessonsByConcept.get('information-theory');
+  if (!lesson) throw new Error('Missing information-theory lesson');
+
+  const items = selectQuizItems({
+    lesson,
+    exercises: content.exercisesById,
+    servedProblems: [],
+    previousAttemptItems: [],
+    usedSeeds: new Set(),
+    seed: 1234,
+  });
+
+  expect(items.map((item) => item.exerciseId)).not.toEqual(
+    expect.arrayContaining(['it-surprise-why', 'it-entropy-why', 'it-cross-why', 'it-kl-why']),
+  );
 });
 
 test('is deterministic for a fixed seed', () => {
