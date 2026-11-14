@@ -114,6 +114,7 @@ export function SessionPage() {
   const showingLessonQuiz =
     activity?.kind === 'learn' &&
     Boolean(activity.conceptId) &&
+    !activity.progress?.quizContinued &&
     lessonRunsByConcept.get(activity.conceptId ?? '')?.status === 'quiz';
   const showingRequestedCompletedActivity = Boolean(
     activity && activity.id === requestedCompletedActivity?.id && !showingLessonQuiz,

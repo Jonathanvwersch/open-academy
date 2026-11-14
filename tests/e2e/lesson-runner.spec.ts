@@ -1853,16 +1853,32 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await expect
     .poll(async () =>
       page.evaluate(
-        async ({ sessionId, conceptId }) => {
+        async ({ sessionId, activityId }) => {
           const session = await (await fetch(`/api/sessions/${sessionId}`)).json();
-          return session.activities.find(
-            (item: { conceptId: string }) => item.conceptId === conceptId,
-          )?.progress?.quizContinued;
+          const activity = session.activities.find(
+            (item: { id: string; progress?: { quizContinued?: boolean } }) =>
+              item.id === activityId,
+          );
+          return activity?.progress?.quizContinued;
         },
-        { sessionId: failedSessionId, conceptId },
+        { sessionId: failedSessionId, activityId: prepared.activityId },
       ),
     )
     .toBe(true);
+  const completeResponse = await page.evaluate(
+    async ({ sessionId, activityId }) => {
+      const response = await fetch(`/api/sessions/${sessionId}/activities/${activityId}/progress`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ complete: true, lessonRunnerContinued: true, quizContinued: true }),
+      });
+      return response.status;
+    },
+    { sessionId: failedSessionId, activityId: prepared.activityId },
+  );
+  expect(completeResponse).toBe(200);
+  await page.reload();
+  await expect(page.getByRole('status')).toHaveText('Supervised learning complete.');
   const endResponse = await page.evaluate(async (id) => {
     const response = await fetch(`/api/sessions/${id}/end`, { method: 'POST' });
     return response.status;
