@@ -11,6 +11,7 @@ units:
       - matrices
       - eigen-svd
   - title: Calculus
+    project: gradient-check
     intro: "Derivatives, partial derivatives, the chain rule and gradients: the tools that tell a model which way to change."
     concepts:
       - derivatives
