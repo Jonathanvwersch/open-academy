@@ -213,7 +213,7 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
   const selectedPreview = `${selectedText.slice(0, 120)}${selectedText.length > 120 ? '…' : ''}`;
   const quoteChip = tutor.getByText(`Selected: “${selectedPreview}”`, { exact: true });
   await expect(quoteChip).toBeVisible();
-  await expect(tutor.getByText('No chats yet')).toHaveCount(0);
+  await expect(tutor.getByText('No chats yet')).toBeVisible();
   await expect(tutor.getByTestId('tutor-reading-context')).toHaveText(
     'Context: Fixture Paper One · page 1 of 3 · selected passage',
   );

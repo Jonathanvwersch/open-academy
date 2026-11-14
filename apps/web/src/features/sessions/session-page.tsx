@@ -829,7 +829,7 @@ export function SessionPage() {
             aria-label="Loading question"
             aria-busy="true"
           >
-            <CardContent className="flex min-h-[36rem] flex-col gap-5 sm:min-h-[26rem]">
+            <CardContent className="flex min-h-[34rem] flex-col gap-5 sm:min-h-[26rem]">
               <QuestionProgress states={questionStates} />
               <div className="space-y-2" aria-hidden="true">
                 <Skeleton className="h-4 w-full" />
