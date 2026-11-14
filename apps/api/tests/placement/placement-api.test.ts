@@ -10,6 +10,7 @@ import {
   diagnosticRuns,
   lessonRuns,
   mastery,
+  masteryEvents,
   reviewCards,
   sessionActivities,
   users,
@@ -216,6 +217,22 @@ test('placement answers are private to their learner and unknown runs return 404
 
 test('mixed placement credits placed-out topics, creates reviews, and keeps unknown topics learnable', async () => {
   await chooseFixtureCourse();
+  const vectorsMath = initialMastery('vectors', 'math');
+  vectorsMath.state = 'independent';
+  await db.insert(mastery).values({
+    userId,
+    conceptId: vectorsMath.conceptId,
+    dimension: vectorsMath.dimension,
+    state: vectorsMath.state,
+    provisional: false,
+    inferred: false,
+    evidence: {
+      independentItemIds: [],
+      independentDeterministicCount: 0,
+      lastIndependentCorrect: false,
+      attempts: [],
+    },
+  });
   const start = await post('/placement', {});
   const { id } = (await start.json()) as { id: string };
   let complete = false;
@@ -242,17 +259,36 @@ test('mixed placement credits placed-out topics, creates reviews, and keeps unkn
 
   const [run] = await db.select().from(diagnosticRuns).where(eq(diagnosticRuns.id, id));
   const state = run?.state as { known: string[]; unknown: string[] };
+  expect(state.known).toContain('vectors');
+  const placementEvents = (
+    await db.select().from(masteryEvents).where(eq(masteryEvents.userId, userId))
+  ).filter((event) => event.rule === 'placement_placed_out');
+  expect(placementEvents.every((event) => event.fromState !== event.toState)).toBe(true);
+  expect(
+    placementEvents.some((event) => event.conceptId === 'vectors' && event.dimension === 'math'),
+  ).toBe(false);
   const results = await (await get(`/placement/${id}/results`)).json();
   expect(results.topicsTotal).toBe(9);
   expect(results.topicsDone).toBeGreaterThan(0);
   expect(results.placedOut.length).toBeGreaterThan(0);
+  const fixtureCourse = content.coursesById.get('fixture-course');
+  if (!fixtureCourse) throw new Error('Missing fixture course');
+  const known = new Set(state.known);
+  const unitConceptIds = [...new Set(fixtureCourse.units.flatMap((unit) => unit.concepts))];
   expect(results.placedOut).toEqual(
-    state.known.flatMap((conceptId) => {
+    unitConceptIds.flatMap((conceptId) => {
+      if (!known.has(conceptId)) return [];
       const concept = content.conceptsById.get(conceptId);
       return concept ? [concept.title] : [];
     }),
   );
+  expect(results.foundationsPlacedOut).toEqual([]);
   const course = await (await get('/course')).json();
+  const courseProgress = course.courses.find(
+    (entry: { id: string }) => entry.id === 'fixture-course',
+  );
+  expect(results.topicsTotal).toBe(courseProgress.topicsTotal);
+  expect(results.topicsDone).toBe(courseProgress.topicsDone);
   const topics = course.units.flatMap(
     (unit: {
       topics: Array<{
@@ -305,7 +341,9 @@ test('mixed placement credits placed-out topics, creates reviews, and keeps unkn
 
   const placedOutConceptId = topics.find(
     (topic: { conceptId: string; placedOut: boolean }) =>
-      topic.placedOut && content.conceptsById.get(topic.conceptId)?.dimensions.includes('math'),
+      topic.placedOut &&
+      topic.conceptId !== 'vectors' &&
+      content.conceptsById.get(topic.conceptId)?.dimensions.includes('math'),
   )?.conceptId;
   const baseCheckExercise = content.exercises.find(
     (exercise): exercise is Extract<IndexedExercise, { type: 'mc' }> => exercise.type === 'mc',
@@ -368,4 +406,59 @@ test('mixed placement credits placed-out topics, creates reviews, and keeps unkn
         activity.kind === 'learn' && activity.conceptId === placedOutConceptId,
     ),
   ).toBe(true);
+});
+
+test('placement results separate known foundations from course topics', async () => {
+  const originalApp = app;
+  const originalContent = content;
+  const foundationContent = await loadContent('tests/fixtures/content');
+  const vectors = foundationContent.conceptsById.get('vectors');
+  if (!vectors) throw new Error('Missing vectors fixture');
+  const foundation = {
+    ...vectors,
+    id: 'fixture-foundation',
+    title: 'Fixture foundation',
+    description: 'A prerequisite outside the active course.',
+    prereqs: [],
+    related: [],
+  };
+  vectors.prereqs = [{ id: foundation.id, strength: 'hard' }];
+  foundationContent.concepts.push(foundation);
+  foundationContent.conceptsById.set(foundation.id, foundation);
+  foundationContent.edges.push({
+    conceptId: vectors.id,
+    prerequisiteId: foundation.id,
+    strength: 'hard',
+  });
+  content = foundationContent;
+  app = createApp({ db, content, tutorProvider: null });
+
+  try {
+    await chooseFixtureCourse();
+    const start = await post('/placement', {});
+    const { id } = (await start.json()) as { id: string };
+    const state = {
+      courseId: 'fixture-course',
+      answers: [],
+      known: ['fixture-foundation', 'vectors'],
+      unknown: [],
+    };
+    await db
+      .update(diagnosticRuns)
+      .set({ state, status: 'completed', completedAt: new Date(now), summary: state })
+      .where(eq(diagnosticRuns.id, id));
+
+    const results = await get(`/placement/${id}/results`).then((response) => response.json());
+    expect(results.placedOut).toEqual(['Vectors']);
+    expect(results.foundationsPlacedOut).toEqual(['Fixture foundation']);
+    const course = await get('/course').then((response) => response.json());
+    const courseProgress = course.courses.find(
+      (entry: { id: string }) => entry.id === 'fixture-course',
+    );
+    expect(results.topicsTotal).toBe(courseProgress.topicsTotal);
+    expect(results.topicsDone).toBe(courseProgress.topicsDone);
+  } finally {
+    app = originalApp;
+    content = originalContent;
+  }
 });

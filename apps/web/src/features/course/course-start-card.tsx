@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
@@ -44,11 +45,9 @@ export function CourseStartCard({
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button asChild>
-            <a
-              href={`/placement${placementRunId ? `?id=${encodeURIComponent(placementRunId)}` : ''}`}
-            >
+            <Link to="/placement" search={{ id: placementRunId ?? undefined }}>
               {placementRunId ? 'Continue placement check' : 'Take the placement check'}
-            </a>
+            </Link>
           </Button>
           <Button
             type="button"

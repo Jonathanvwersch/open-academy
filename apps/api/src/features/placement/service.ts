@@ -3,7 +3,6 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { serializeExercise } from '../../content/serialize.js';
 import { attempts, diagnosticRuns, lessonRuns, masteryEvents } from '../../db/schema.js';
-import { topicIsComplete } from '../../learning/course-status.js';
 import { gradeExercise } from '../../learning/grading/index.js';
 import { applyMastery, ensureReviewCard } from '../../learning/mastery-service.js';
 import {
@@ -14,10 +13,11 @@ import {
   placementComplete,
   recordPlacementAnswer,
 } from '../../learning/placement.js';
-import { activeCourseFor, masteryKey } from '../../learning/prerequisites.js';
+import { activeCourseFor, courseFoundations, masteryKey } from '../../learning/prerequisites.js';
 import { planSession, sessionBudget } from '../../learning/scheduler.js';
 import { initialMastery, masteryRank } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
+import { buildCoursePayload } from '../course/service.js';
 
 const answerBody = z.union([
   z.object({ exerciseId: z.string(), dontKnow: z.literal(true) }),
@@ -27,10 +27,7 @@ const answerBody = z.union([
 async function placementProgress(request: FeatureRequest) {
   const [mastery, lessonRunRows] = await Promise.all([
     request.repo.masteryRecords(),
-    request.repo.db
-      .select({ conceptId: lessonRuns.conceptId, status: lessonRuns.status })
-      .from(lessonRuns)
-      .where(eq(lessonRuns.userId, request.userId)),
+    request.repo.db.select().from(lessonRuns).where(eq(lessonRuns.userId, request.userId)),
   ]);
   return { mastery, lessonRuns: lessonRunRows };
 }
@@ -62,16 +59,16 @@ async function creditPlacedOut(
         record.lastAssessedAt = now.toISOString();
         await request.repo.saveMastery(record);
         masteryByKey.set(key, record);
+        await request.repo.db.insert(masteryEvents).values({
+          userId: request.userId,
+          conceptId,
+          dimension,
+          fromState,
+          toState: record.state,
+          rule: 'placement_placed_out',
+          createdAt: now,
+        });
       }
-      await request.repo.db.insert(masteryEvents).values({
-        userId: request.userId,
-        conceptId,
-        dimension,
-        fromState,
-        toState: record.state,
-        rule: 'placement_placed_out',
-        createdAt: now,
-      });
       await ensureReviewCard({
         repo: request.repo,
         userId: request.userId,
@@ -254,26 +251,15 @@ export async function getPlacementResults(deps: FeatureServices, request: Featur
   const course = content.coursesById.get(state.courseId);
   if (!course) return serviceResult({ error: 'Placement course not found' }, 404);
   const progress = await placementProgress(request);
+  const known = new Set(state.known);
   const unitConcepts = [...new Set(course.units.flatMap((unit) => unit.concepts))];
-  const masteryByKey = new Map(
-    progress.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
-  );
-  const runsByConcept = new Map(
-    progress.lessonRuns.map((lessonRun) => [lessonRun.conceptId, lessonRun.status]),
-  );
-  const topicsDone = unitConcepts.filter((conceptId) => {
-    const concept = content.conceptsById.get(conceptId);
-    return (
-      concept &&
-      topicIsComplete(
-        runsByConcept.get(conceptId),
-        concept.dimensions.map(
-          (dimension) =>
-            masteryByKey.get(masteryKey(conceptId, dimension))?.state ?? 'not_assessed',
-        ),
-      )
-    );
-  }).length;
+  const courseProgress = buildCoursePayload(
+    content,
+    course.id,
+    progress.mastery,
+    progress.lessonRuns,
+  ).courses.find((entry) => entry.id === course.id);
+  if (!courseProgress) return serviceResult({ error: 'Placement course not found' }, 404);
   const user = await request.repo.user();
   const schedulerState = await request.repo.schedulerState(request.now());
   const prefs = (user?.prefs ?? {}) as { scheduleMinutes?: number };
@@ -287,12 +273,16 @@ export async function getPlacementResults(deps: FeatureServices, request: Featur
   return serviceResult({
     courseId: course.id,
     courseTitle: course.title,
-    placedOut: state.known.flatMap((conceptId) => {
+    placedOut: unitConcepts.flatMap((conceptId) => {
+      if (!known.has(conceptId)) return [];
       const concept = content.conceptsById.get(conceptId);
       return concept ? [concept.title] : [];
     }),
-    topicsTotal: unitConcepts.length,
-    topicsDone,
+    foundationsPlacedOut: courseFoundations(content, course.id)
+      .filter((concept) => known.has(concept.id))
+      .map((concept) => concept.title),
+    topicsTotal: courseProgress.topicsTotal,
+    topicsDone: courseProgress.topicsDone,
     firstTopic: firstTopic ? (content.conceptsById.get(firstTopic)?.title ?? firstTopic) : null,
   });
 }

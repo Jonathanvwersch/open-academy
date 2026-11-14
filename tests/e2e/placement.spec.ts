@@ -6,15 +6,17 @@ import { loadContent } from '../../apps/api/src/content/load.js';
 import type { IndexedExercise } from '../../apps/api/src/content/types.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import { users } from '../../apps/api/src/db/schema.js';
+import { courseFoundations } from '../../apps/api/src/learning/prerequisites.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const contentPath =
   process.env.PLAYWRIGHT_CONTENT_DIR === 'content' ? 'content' : 'tests/fixtures/content';
 const content = await loadContent(contentPath);
 const screenshots =
-  process.env.PLAYWRIGHT_CONTENT_DIR === 'content'
+  process.env.PLACEMENT_SCREENSHOT_DIR ??
+  (process.env.PLAYWRIGHT_CONTENT_DIR === 'content'
     ? 'test-results/screenshots/placement-real'
-    : 'test-results/screenshots/placement-fixture';
+    : 'test-results/screenshots/placement-fixture');
 mkdirSync(screenshots, { recursive: true });
 
 test.beforeEach(async ({ page }) => {
@@ -174,4 +176,79 @@ test('switching to an unstarted course shows its start card, then switching back
     .filter({ has: page.getByRole('heading', { name: startedCourse.title, exact: true }) });
   await first.getByRole('button', { name: 'Switch', exact: true }).click();
   await expect(page.getByRole('heading', { name: `Start ${startedCourse.title}` })).toHaveCount(0);
+});
+
+test('placement results keep foundations separate and hide an empty foundations card', async ({
+  page,
+}) => {
+  await page.route('**/api/placement/*/results', async (route) => {
+    const runId = new URL(route.request().url()).pathname.split('/')[3];
+    const hasFoundation = runId === 'with-foundation';
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        courseId: 'fixture-course',
+        courseTitle: 'Fixture course',
+        placedOut: hasFoundation ? ['Course topic'] : [],
+        foundationsPlacedOut: hasFoundation ? ['Foundation topic'] : [],
+        topicsTotal: 9,
+        topicsDone: hasFoundation ? 2 : 0,
+        firstTopic: 'Next topic',
+      }),
+    });
+  });
+
+  await page.goto('/placement/results?id=with-foundation');
+  await expect(
+    page.getByRole('heading', { name: 'You placed out of 1 of 9 topics' }),
+  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Foundations you already know' })).toBeVisible();
+  await expect(page.getByText('Foundation topic', { exact: true })).toBeVisible();
+  await page.goto('/placement/results?id=without-foundation');
+  await expect(
+    page.getByText("No course topics placed out — you'll start from the beginning."),
+  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Foundations you already know' })).toHaveCount(0);
+});
+
+test('real-content results keep known foundations separate from course topics', async ({
+  page,
+}) => {
+  test.skip(
+    process.env.PLAYWRIGHT_CONTENT_DIR !== 'content',
+    'requires authored course foundations',
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/');
+  const course = content.coursesById.get('deep-learning');
+  if (!course) throw new Error('Missing Deep Learning course');
+  const foundations = courseFoundations(content, course.id);
+  if (foundations.length === 0) throw new Error('Deep Learning should have foundation topics');
+  const courseIndex = content.courses.findIndex((entry) => entry.id === course.id);
+  if (courseIndex < 0) throw new Error('Deep Learning is not in the course list');
+  await page.getByRole('button', { name: 'Start', exact: true }).nth(courseIndex).click();
+  await expect(page.getByRole('heading', { name: `Start ${course.title}` })).toBeVisible();
+  await page.getByRole('link', { name: 'Take the placement check' }).click();
+  await expect(page.getByRole('heading', { name: /Placement check ·/ })).toBeVisible();
+
+  let complete = false;
+  for (let index = 0; index < 16; index += 1) {
+    if (complete) break;
+    complete = await answerCurrentCorrectly(page);
+  }
+  await expect(page).toHaveURL(/\/placement\/results\?id=/);
+  await expect(page.getByRole('heading', { name: /You placed out of/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Foundations you already know' })).toBeVisible();
+  const results = await page.evaluate(async () => {
+    const runId = new URLSearchParams(window.location.search).get('id');
+    if (!runId) throw new Error('Placement id missing');
+    const response = await fetch(`/api/placement/${runId}/results`);
+    return response.json();
+  });
+  expect(results.foundationsPlacedOut.length).toBeGreaterThan(0);
+  await expect(page.getByText(results.foundationsPlacedOut[0], { exact: true })).toBeVisible();
+  await page.screenshot({ path: `${screenshots}/foundations-results-1280.png`, fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: `${screenshots}/foundations-results-390.png`, fullPage: true });
 });

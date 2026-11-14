@@ -1,36 +1,27 @@
-import type { PlacementResultsPayload } from '@academy/contracts/placement';
-import { useEffect, useState } from 'react';
-import { apiFetch } from '../../api/authenticated-fetch.js';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
+import { PageLayoutSkeleton } from '../../components/page-layout-skeleton.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
+import { placementResultsQueryOptions } from './queries.js';
 
 export function PlacementResultsPage({ runId }: { runId?: string }) {
-  const [results, setResults] = useState<PlacementResultsPayload | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    if (!runId) {
-      setError('Placement results are unavailable.');
-      return () => {
-        cancelled = true;
-      };
-    }
-    void apiFetch(`/api/placement/${encodeURIComponent(runId)}/results`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error('Could not load placement results');
-        const data = (await response.json()) as PlacementResultsPayload;
-        if (!cancelled) setResults(data);
-      })
-      .catch((loadError: unknown) => {
-        if (!cancelled) setError(loadError instanceof Error ? loadError.message : 'Try again.');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [runId]);
-
-  if (error) return <p role="alert">{error}</p>;
-  if (!results) return <p role="status">Loading placement results</p>;
+  const resultsQuery = useQuery({
+    ...placementResultsQueryOptions(runId ?? null),
+    enabled: Boolean(runId),
+  });
+  if (!runId) return <p role="alert">Placement results are unavailable.</p>;
+  if (resultsQuery.error) {
+    return (
+      <p role="alert">
+        {resultsQuery.error instanceof Error
+          ? resultsQuery.error.message
+          : 'Placement results are unavailable.'}
+      </p>
+    );
+  }
+  if (resultsQuery.isPending || !resultsQuery.data) return <PageLayoutSkeleton />;
+  const results = resultsQuery.data;
   const many = results.placedOut.length > 8;
   const visibleTopics = many ? results.placedOut.slice(0, 8) : results.placedOut;
   return (
@@ -62,11 +53,25 @@ export function PlacementResultsPage({ runId }: { runId?: string }) {
           </CardContent>
         </Card>
       ) : (
-        <p>No topics placed out — you&apos;ll start from the beginning.</p>
+        <p>No course topics placed out — you&apos;ll start from the beginning.</p>
       )}
+      {results.foundationsPlacedOut.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Foundations you already know</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="list-inside list-disc space-y-2">
+              {results.foundationsPlacedOut.map((title) => (
+                <li key={title}>{title}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
       {results.firstTopic ? <p>You&apos;ll start with: {results.firstTopic}</p> : null}
       <Button asChild>
-        <a href="/">Start learning</a>
+        <Link to="/">Start learning</Link>
       </Button>
     </section>
   );
