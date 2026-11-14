@@ -50,6 +50,7 @@ export function invalidateSidebarQueries(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: studyMapQueryOptions().queryKey }),
     queryClient.invalidateQueries({ queryKey: courseQueryKeyRoot }),
+    queryClient.invalidateQueries({ queryKey: coursesQueryKeyRoot }),
     queryClient.invalidateQueries({ queryKey: reviewsQueryOptions().queryKey }),
   ]);
 }

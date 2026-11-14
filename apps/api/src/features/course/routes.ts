@@ -109,7 +109,10 @@ export function registerLearnCourseRoutes(
       ? (user?.activeCourseId ?? null)
       : null;
     const studyCourseIds = await repo.studyCourseIds(index);
-    const currentCourseId = studyCourseIds[0] ?? activeCourseId;
+    const placementCourseId = placementRuns
+      .map((run) => (run.state as { courseId?: unknown }).courseId)
+      .find((id): id is string => typeof id === 'string' && index.coursesById.has(id));
+    const currentCourseId = placementCourseId ?? studyCourseIds[0] ?? activeCourseId;
     const startState = buildCourseStartState({
       content: index,
       activeCourseId: currentCourseId,
@@ -123,6 +126,7 @@ export function registerLearnCourseRoutes(
       studyCourseIds,
       mastery,
       lessonRuns: runRows,
+      activePlacementRuns: placementRuns,
     });
     const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
     const prefs = (user?.prefs ?? {}) as SessionPreferences;
@@ -635,7 +639,20 @@ export function registerLearnCourseRoutes(
     if (body?.method !== 'beginning') {
       return context.json({ error: 'Invalid course start method' }, 400);
     }
-    await deps.withRepo(context).startCourse(courseId, 'beginning', deps.requestNow(context));
+    const repo = deps.withRepo(context);
+    const now = deps.requestNow(context);
+    const activeRuns = await repo.activePlacementRuns();
+    await Promise.all(
+      activeRuns
+        .filter((run) => (run.state as { courseId?: unknown }).courseId === courseId)
+        .map((run) =>
+          deps.db
+            .update(diagnosticRuns)
+            .set({ status: 'abandoned' })
+            .where(eq(diagnosticRuns.id, run.id)),
+        ),
+    );
+    await repo.startCourse(courseId, 'beginning', now);
     return context.json({ courseId, method: 'beginning' });
   });
 

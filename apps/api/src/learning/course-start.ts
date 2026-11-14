@@ -3,6 +3,7 @@ import { activeCourseFor } from './prerequisites.js';
 import type { MasteryRecord } from './types.js';
 
 export interface CourseStartStatus {
+  courseId: string | null;
   needed: boolean;
   placementRunId: string | null;
 }
@@ -22,6 +23,7 @@ export function courseHasEvidence(
 }
 
 export function courseStartStatus(input: {
+  courseId: string;
   enrolled: boolean;
   courseConceptIds: readonly string[];
   activePlacementRunId: string | null;
@@ -29,6 +31,7 @@ export function courseStartStatus(input: {
   lessonRuns: readonly { conceptId: string }[];
 }): CourseStartStatus {
   return {
+    courseId: input.courseId,
     needed:
       input.activePlacementRunId !== null ||
       (!input.enrolled &&
@@ -42,8 +45,10 @@ export function needsCourseChoice(input: {
   studyCourseIds?: readonly string[];
   mastery: readonly Pick<MasteryRecord, 'state'>[];
   lessonRuns: readonly unknown[];
+  activePlacementRuns?: readonly unknown[];
 }): boolean {
   return (
+    (input.activePlacementRuns?.length ?? 0) === 0 &&
     (input.studyCourseIds ? input.studyCourseIds.length === 0 : input.activeCourseId == null) &&
     input.lessonRuns.length === 0 &&
     !input.mastery.some((record) => record.state !== 'not_assessed')
@@ -69,6 +74,7 @@ export function buildCourseStartState(input: {
     input.content.courses.map((course) => [
       course.id,
       courseStartStatus({
+        courseId: course.id,
         enrolled: enrolledCourseIds.has(course.id),
         courseConceptIds: course.units.flatMap((unit) => unit.concepts),
         activePlacementRunId: activePlacementByCourse.get(course.id) ?? null,
@@ -93,8 +99,12 @@ export function buildCourseStartState(input: {
 
   return {
     courseStart: activeCourse
-      ? (statuses.get(activeCourse.id) ?? { needed: false, placementRunId: null })
-      : { needed: false, placementRunId: null },
+      ? (statuses.get(activeCourse.id) ?? {
+          courseId: activeCourse.id,
+          needed: false,
+          placementRunId: null,
+        })
+      : { courseId: null, needed: false, placementRunId: null },
     startedCourseIds,
   };
 }

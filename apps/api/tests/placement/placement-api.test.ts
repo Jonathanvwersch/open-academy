@@ -93,7 +93,11 @@ test('a new learner chooses a course before course start is needed', async () =>
     get('/course').then((response) => response.json()),
     get('/learn').then((response) => response.json()),
   ]);
-  expect(course.courseStart).toEqual({ needed: true, placementRunId: null });
+  expect(course.courseStart).toEqual({
+    courseId: 'fixture-course',
+    needed: true,
+    placementRunId: null,
+  });
   expect(learn.today.needsCourseChoice).toBe(true);
   expect(learn.today.courseStart.needed).toBe(true);
   expect(
@@ -123,6 +127,44 @@ test('placement starts the requested course and falls back for an unknown course
     .from(diagnosticRuns)
     .where(eq(diagnosticRuns.id, fallbackId));
   expect(fallbackRun?.state).toMatchObject({ courseId: 'fixture-course' });
+});
+
+test('an active placement keeps Home focused on its course before enrollment', async () => {
+  const start = await post('/placement', { courseId: 'fixture-switching-course' });
+  const { id } = (await start.json()) as { id: string };
+  const question = await (await get(`/placement/${id}/next`)).json();
+  const exercise = content.exercisesById.get(question.exercise.id);
+  if (!exercise) throw new Error('Missing placement exercise');
+  await post(`/placement/${id}/answer`, {
+    exerciseId: exercise.id,
+    answer: correctAnswer(exercise),
+  });
+
+  const today = await (await get('/today')).json();
+  expect(today).toMatchObject({
+    needsCourseChoice: false,
+    courseStart: { courseId: 'fixture-switching-course', placementRunId: id },
+  });
+});
+
+test('starting from the beginning abandons an active placement without changing start method', async () => {
+  const start = await post('/placement', { courseId: 'fixture-course' });
+  const { id } = (await start.json()) as { id: string };
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId: 'fixture-course',
+    startMethod: 'placement',
+  });
+  expect((await post('/courses/fixture-course/start', { method: 'beginning' })).status).toBe(200);
+  const [run] = await db.select().from(diagnosticRuns).where(eq(diagnosticRuns.id, id));
+  const [enrollment] = await db
+    .select()
+    .from(courseEnrollments)
+    .where(eq(courseEnrollments.courseId, 'fixture-course'));
+  expect(run?.status).toBe('abandoned');
+  expect(enrollment?.startMethod).toBe('placement');
+  const detail = await (await get('/courses/fixture-course')).json();
+  expect(detail.courseStart.needed).toBe(false);
 });
 
 test('beginning enrolls in the active course without changing mastery', async () => {
@@ -178,7 +220,11 @@ test('an abandoned placement resumes on the same question and rejects stale or e
   expect((await resume.json()).id).toBe(id);
   expect(sameQuestion.exercise.id).toBe(firstQuestion.exercise.id);
   const course = await (await get('/course')).json();
-  expect(course.courseStart).toEqual({ needed: true, placementRunId: id });
+  expect(course.courseStart).toEqual({
+    courseId: 'fixture-course',
+    needed: true,
+    placementRunId: id,
+  });
   expect(
     await post(`/placement/${id}/answer`, { exerciseId: 'stale', answer: 'answer' }).then(
       (response) => response.status,

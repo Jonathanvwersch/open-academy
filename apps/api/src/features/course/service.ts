@@ -216,7 +216,8 @@ export function buildCoursePayload(
   projectStatuses: ProjectStatuses = new Map(),
   placedOutConcepts: ReadonlySet<string> = new Set(),
   startedCourseIds: ReadonlySet<string> = new Set(),
-  courseStart: { needed: boolean; placementRunId: string | null } = {
+  courseStart: { courseId: string | null; needed: boolean; placementRunId: string | null } = {
+    courseId: null,
     needed: false,
     placementRunId: null,
   },

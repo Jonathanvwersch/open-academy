@@ -83,7 +83,10 @@ export function LearnPage() {
       </section>
     );
   }
-  const courseToStart = today.studyCourses[0];
+  const courseToStart =
+    catalog.subjects
+      .flatMap((subject) => subject.courses)
+      .find((course) => course.id === today.courseStart.courseId) ?? today.studyCourses[0];
   if (today.courseStart.needed && courseToStart) {
     return (
       <section className="space-y-6">

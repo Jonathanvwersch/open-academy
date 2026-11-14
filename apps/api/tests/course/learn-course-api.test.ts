@@ -170,6 +170,22 @@ test('study set backfill includes started courses and later respects removal', a
   expect(await repository.studyCourseIds(content)).toEqual([courseA.id]);
 });
 
+test('an unstarted selected course stays unenrolled and still needs its start card', async () => {
+  const course = content.coursesById.get('ml-foundations');
+  if (!course) throw new Error('Missing ML Foundations course');
+  await db.update(users).set({ activeCourseId: course.id }).where(eq(users.id, userId));
+
+  const response = await get(`/courses/${course.id}`);
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({
+    status: 'not_started',
+    courseStart: { courseId: course.id, needed: true, placementRunId: null },
+  });
+  expect(
+    await db.select().from(courseEnrollments).where(eq(courseEnrollments.userId, userId)),
+  ).toEqual([]);
+});
+
 test('study-course membership refreshes after a course is started in the same repository', async () => {
   const repository = new LearnerRepository(db, userId);
   expect(await repository.studyCourseIds(content)).toEqual([]);
@@ -442,6 +458,13 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
     .update(users)
     .set({ activeCourseId: content.curriculum?.default_course ?? content.courses[0]?.id ?? null })
     .where(eq(users.id, userId));
+  const courseId = content.curriculum?.default_course ?? content.courses[0]?.id;
+  if (!courseId) throw new Error('Missing default course');
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId,
+    startMethod: 'beginning',
+  });
   const before = await rowCounts();
   const learnResponse = await get('/learn');
   expect(learnResponse.status).toBe(200);
