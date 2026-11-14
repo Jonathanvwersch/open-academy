@@ -6,6 +6,17 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
+FAILURE_TEST_IDS = (
+    "test_centre",
+    "test_covariance",
+    "test_eigen_sorted",
+    "test_svd_sign_invariant",
+    "test_projection",
+    "test_reconstruction",
+    "test_error",
+    "test_explained_variance",
+    "test_image_compression",
+)
 
 
 def load_module(path, name):
@@ -42,13 +53,8 @@ def main():
         suite = load_module(ROOT / "tests" / "checks.py", "pca_numpy_checks")
         checks, metrics = suite.run_checks(model, load_module(ROOT / "data.py", "pca_data").make_images)
     except Exception as error:
-        checks = [
-            {
-                "id": "test_centre",
-                "passed": False,
-                "message": f"{type(error).__name__}: {error}",
-            }
-        ]
+        message = f"{type(error).__name__}: {error}"
+        checks = [{"id": test_id, "passed": False, "message": message} for test_id in FAILURE_TEST_IDS]
 
     result = {
         "project": "pca-numpy",

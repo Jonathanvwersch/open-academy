@@ -6,6 +6,19 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
+FAILURE_TEST_IDS = (
+    "test_mean_variance_std",
+    "test_log_density_matches_formula",
+    "test_log_likelihood_is_sum_of_log_densities",
+    "test_fit_uses_mean_and_spread",
+    "test_sigma_search_agrees_with_fit",
+    "test_fit_beats_worse_fits_on_held_out",
+    "test_entropy_in_bits",
+    "test_cross_entropy_in_bits",
+    "test_bell_forecast_is_a_distribution",
+    "test_bell_forecast_cross_entropy",
+    "test_fit_recovers_sensor_settings",
+)
 
 
 def load_module(path, name):
@@ -42,13 +55,8 @@ def main():
         suite = load_module(ROOT / "tests" / "checks.py", "gaussian_mle_checks")
         checks, metrics = suite.run_checks(model)
     except Exception as error:
-        checks = [
-            {
-                "id": "test_verifier_completed",
-                "passed": False,
-                "message": f"{type(error).__name__}: {error}",
-            }
-        ]
+        message = f"{type(error).__name__}: {error}"
+        checks = [{"id": test_id, "passed": False, "message": message} for test_id in FAILURE_TEST_IDS]
 
     result = {
         "project": "gaussian-mle",

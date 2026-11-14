@@ -1,14 +1,75 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { expect, test } from 'vitest';
+import { parse } from 'yaml';
 
 const verifier = resolve('labs/linreg-numpy/verify.py');
 const solution = resolve('labs/linreg-numpy/_solution/linreg.py');
 const buggy = resolve('labs/linreg-numpy/_solution/buggy.py');
 const nnVerifier = resolve('labs/verify.py');
 const nnSolution = resolve('labs/nn-from-scratch/_solution/nn.py');
+
+const failureCases = [
+  { project: 'gaussian-mle', verifier: resolve('labs/gaussian-mle/verify.py') },
+  { project: 'classifier-numpy', verifier: resolve('labs/classifier-numpy/verify.py') },
+  { project: 'nn-from-scratch', verifier: resolve('labs/nn-from-scratch/verify.py') },
+  { project: 'pca-numpy', verifier: resolve('labs/pca-numpy/verify.py') },
+  { project: 'gradient-check', verifier: resolve('labs/gradient-check/verify.py') },
+  { project: 'linreg-numpy', verifier: resolve('labs/linreg-numpy/verify.py') },
+] as const;
+
+const verifierIdsScript = [
+  'import importlib.util, json, sys',
+  'spec = importlib.util.spec_from_file_location("lab_verifier", sys.argv[1])',
+  'module = importlib.util.module_from_spec(spec)',
+  'spec.loader.exec_module(module)',
+  'print(json.dumps(module.FAILURE_TEST_IDS))',
+].join('; ');
+
+test.each(failureCases)(
+  '$project verifier reports declared failures when implementation has a syntax error',
+  ({ project, verifier }) => {
+    const projectYaml = parse(readFileSync(`content/projects/${project}.yaml`, 'utf8')) as {
+      tests: Array<{ id: string }>;
+    };
+    const declaredIds = projectYaml.tests.map(({ id }) => id);
+    const failureIds = JSON.parse(
+      execFileSync('python3', ['-c', verifierIdsScript, verifier], { encoding: 'utf8' }),
+    ) as string[];
+    expect(failureIds.sort()).toEqual([...declaredIds].sort());
+
+    const directory = mkdtempSync(join(tmpdir(), 'academy-lab-load-failure-'));
+    try {
+      const broken = join(directory, 'broken.py');
+      const output = join(directory, 'results.json');
+      writeFileSync(broken, 'def broken(:\n');
+      const process = spawnSync(
+        'python3',
+        [verifier, '--implementation', broken, '--output', output],
+        { encoding: 'utf8' },
+      );
+      expect(process.error).toBeUndefined();
+      expect(process.status, process.stdout + process.stderr).toBe(1);
+
+      const result = JSON.parse(readFileSync(output, 'utf8')) as {
+        tests: Array<{ id: string; passed: boolean; message: string }>;
+        metrics: Record<string, number>;
+      };
+      const resultIds = result.tests.map(({ id }) => id);
+      expect(resultIds.sort()).toEqual([...declaredIds].sort());
+      expect(new Set(resultIds).size).toBe(resultIds.length);
+      expect(resultIds.every((id) => declaredIds.includes(id))).toBe(true);
+      expect(
+        result.tests.every(({ passed, message }) => !passed && message.includes('SyntaxError')),
+      ).toBe(true);
+      expect(result.metrics).toEqual({});
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  },
+);
 
 // PyTorch labs are skipped where torch isn't installed (see each lab's requirements.txt).
 const hasTorch = spawnSync('python3', ['-c', 'import torch']).status === 0;

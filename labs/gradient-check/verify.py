@@ -6,6 +6,15 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
+FAILURE_TEST_IDS = (
+    "test_derivative",
+    "test_partial_derivatives",
+    "test_analytic_chain_rule",
+    "test_relative_error",
+    "test_gradient_checker",
+    "test_downhill",
+    "test_edge_cases",
+)
 
 
 def load_module(path, name):
@@ -42,13 +51,8 @@ def main():
         suite = load_module(ROOT / "tests" / "checks.py", "gradient_check_checks")
         checks, metrics = suite.run_checks(model)
     except Exception as error:
-        checks = [
-            {
-                "id": "test_derivative",
-                "passed": False,
-                "message": f"{type(error).__name__}: {error}",
-            }
-        ]
+        message = f"{type(error).__name__}: {error}"
+        checks = [{"id": test_id, "passed": False, "message": message} for test_id in FAILURE_TEST_IDS]
 
     result = {
         "project": "gradient-check",

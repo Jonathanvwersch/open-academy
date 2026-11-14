@@ -6,6 +6,17 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
+FAILURE_TEST_IDS = (
+    "test_sigmoid",
+    "test_stable_softmax_logsumexp",
+    "test_binary_loss_gradient",
+    "test_multiclass_loss_gradient",
+    "test_training_step",
+    "test_confusion_matrix",
+    "test_precision_recall",
+    "test_binary_held_out",
+    "test_multiclass_held_out",
+)
 
 
 def load_module(path, name):
@@ -42,13 +53,8 @@ def main():
         suite = load_module(ROOT / "tests" / "checks.py", "classifier_numpy_checks")
         checks, metrics = suite.run_checks(model)
     except Exception as error:
-        checks = [
-            {
-                "id": "test_verifier_completed",
-                "passed": False,
-                "message": f"{type(error).__name__}: {error}",
-            }
-        ]
+        message = f"{type(error).__name__}: {error}"
+        checks = [{"id": test_id, "passed": False, "message": message} for test_id in FAILURE_TEST_IDS]
 
     result = {
         "project": "classifier-numpy",
