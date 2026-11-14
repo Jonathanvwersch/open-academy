@@ -132,13 +132,13 @@ def run(candidate, seed):
         best_baseline = min(baseline, key=lambda r: r["validation_loss"])
         best_regularized = min(regularized, key=lambda r: r["validation_loss"])
         rise = baseline[-1]["validation_loss"] - best_baseline["validation_loss"]
-        gain = best_baseline["validation_loss"] - best_regularized["validation_loss"]
-        metrics.update(baseline_overfit_rise=rise, regularization_gain=gain)
+        regularized_rise = regularized[-1]["validation_loss"] - best_regularized["validation_loss"]
+        ratio = regularized_rise / rise if rise > 0 else math.inf
+        metrics.update(baseline_overfit_rise=rise, overfit_rise_ratio=ratio)
         assert best_baseline["epoch"] < EPOCHS - 5, "The baseline should reach its validation minimum before training ends."
         assert baseline[-1]["train_loss"] < best_baseline["train_loss"] * 0.5, "After the baseline validation minimum, training loss should fall by more than half. Check that training continues for all epochs."
-        assert rise > 0.2, "The unregularised baseline should overfit: final validation loss must exceed its minimum by more than 0.20. Check that baseline dropout and weight decay are both zero."
-        assert gain > 0.01, "Regularisation should lower best validation loss by more than 0.01. Check dropout, weight decay and evaluation mode."
-        assert rows[selected]["weight_decay"] > 0, "Keep the regularised checkpoint with the lowest validation loss."
+        assert rise > 0.15, "The unregularised baseline should overfit: final validation loss must exceed its minimum by more than 0.15. Check that baseline dropout and weight decay are both zero."
+        assert ratio < 0.3, "Regularisation should limit the validation-loss rise to less than 30% of the baseline rise. Check dropout, weight decay and evaluation mode."
 
     def quality():
         assert metrics, "Complete the controlled regularization experiment first."

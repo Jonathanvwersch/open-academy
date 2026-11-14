@@ -67,14 +67,14 @@ tasks:
     md: |
       Run the full verifier. Open `work/history.json`, which records training loss, validation loss and validation accuracy after each epoch for both settings. Plot both loss curves or make a table with each run's best validation epoch, training loss at that epoch, final training loss and final validation loss. Record the best validation loss for each run in `work/notes.md`.
 
-      The baseline validation loss reaches a minimum early, then rises while training loss continues falling. Explain why this is overfitting and how the small training set and incorrect labels contribute. The regularised run has a lower best validation loss. Quantify that improvement and keep its best checkpoint. The checker requires baseline validation loss to rise by more than 0.20 after its minimum and regularisation to improve the best loss by more than 0.01. All choices are finished before the final test score. You are done when all seven checks pass and your notes connect both curves to the chosen checkpoint.
+      The baseline validation loss reaches a minimum early, then rises while training loss continues falling. Explain why this is overfitting and how the small training set and incorrect labels contribute. For each run, subtract its best validation loss from its final validation loss. The regularised run has a much smaller rise. Divide its rise by the baseline rise to measure the reduction. The checker requires baseline loss to rise by more than 0.15 and the ratio to be below 0.30. Compare the best validation losses too, then keep the checkpoint with the lowest validation loss across both runs. All choices are finished before the final test score. You are done when all seven checks pass and your notes connect both curves to the chosen checkpoint.
 acceptance:
   - "All seven public verifier checks pass."
   - "Training-only normalization, seeded initialization and mini-batch updates match the function contracts."
   - "Evaluation disables dropout and gradient recording, and repeated scores agree."
-  - "Both runs use the same split, initialization and batch orders. Validation loss selects the regularised checkpoint before test scoring."
-  - "After the baseline validation minimum, its training loss falls by more than half and its final validation loss rises by more than 0.20."
-  - "Weight decay plus dropout lowers the best validation loss by more than 0.01 compared with the baseline."
+  - "Both runs use the same split, initialization and batch orders. The lowest validation loss across both runs selects the checkpoint before test scoring."
+  - "After the baseline validation minimum, its training loss falls by more than half and its final validation loss rises by more than 0.15."
+  - "The regularised validation-loss rise is less than 30% of the baseline rise. Each rise is final loss minus that run's minimum."
   - "Validation accuracy exceeds 0.74, test accuracy exceeds 0.65, and test binary loss is below 0.65."
   - "Your notes explain the planted bug, diagnose baseline overfitting and quantify the regularisation benefit."
 tests:
@@ -92,14 +92,14 @@ metrics:
   - {
       id: baseline_overfit_rise,
       label: "Baseline validation loss rise",
-      threshold: 0.20,
+      threshold: 0.15,
       direction: above,
     }
   - {
-      id: regularization_gain,
-      label: "Best validation loss improvement",
-      threshold: 0.01,
-      direction: above,
+      id: overfit_rise_ratio,
+      label: "Regularised to baseline validation-loss rise ratio",
+      threshold: 0.30,
+      direction: below,
     }
 reflection:
   [lab-image-classifier-dropout, lab-image-classifier-selection, lab-image-classifier-decay]

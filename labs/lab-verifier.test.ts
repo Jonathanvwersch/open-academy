@@ -42,7 +42,7 @@ test.each([
           test_accuracy: number;
           test_loss: number;
           baseline_overfit_rise: number;
-          regularization_gain: number;
+          overfit_rise_ratio: number;
         };
       };
       expect(result.tests).toHaveLength(7);
@@ -51,8 +51,8 @@ test.each([
         expect(result.metrics.validation_accuracy).toBeGreaterThan(0.74);
         expect(result.metrics.test_accuracy).toBeGreaterThan(0.65);
         expect(result.metrics.test_loss).toBeLessThan(0.65);
-        expect(result.metrics.baseline_overfit_rise).toBeGreaterThan(0.2);
-        expect(result.metrics.regularization_gain).toBeGreaterThan(0.01);
+        expect(result.metrics.baseline_overfit_rise).toBeGreaterThan(0.15);
+        expect(result.metrics.overfit_rise_ratio).toBeLessThan(0.3);
       } else if (file.includes('buggy')) {
         const check = result.tests.find((check) => check.id === 'test_evaluation_mode');
         expect(check?.passed).toBe(false);

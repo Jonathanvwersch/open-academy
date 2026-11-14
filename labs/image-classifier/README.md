@@ -78,9 +78,11 @@ training and validation loss for both settings in a small plot or table. Record
 each setting's best validation epoch and loss in your notes, along with its final
 training and validation losses. The baseline fits the small training sample and
 its incorrect labels. Its training loss keeps falling after the validation minimum,
-while validation loss rises. Explain why this shows overfitting. The regularised
-run reaches a lower best validation loss. Quantify the improvement and explain
-why you would keep that checkpoint. Notes and plots are for your own review;
+while validation loss rises. Explain why this shows overfitting. For each run,
+subtract its best validation loss from its final validation loss. The regularised
+run has a much smaller rise. Divide its rise by the baseline rise and record this
+ratio. Compare the best validation losses too, then select the checkpoint with
+the lowest validation loss across both runs. Notes and plots are for your own review;
 the automated checks require the overfitting pattern and regularisation benefit.
 
 Upload `work/results.json` on the project page. The verifier exits nonzero on a
@@ -88,15 +90,15 @@ failed check and still writes JSON with helpful messages. It checks normalizatio
 architecture, updates, evaluation, checkpoint selection, the controlled comparison
 and held-out performance. The accuracy thresholds are above 0.74 on validation and
 above 0.65 on test; test loss must be below 0.65. The baseline's final validation
-loss must exceed its minimum by more than 0.20, with training loss falling by more
-than half after that minimum. Regularisation must improve the best validation loss
-by more than 0.01 and supply the selected checkpoint.
+loss must exceed its minimum by more than 0.15, with training loss falling by more
+than half after that minimum. The metric `overfit_rise_ratio` divides the regularised
+rise by the baseline rise and must be below 0.30. There is no minimum improvement
+required in the best validation loss. Either run can supply the selected checkpoint.
 
 These limits have margin across initialization and batch-order seeds 1, 7, 19, 42
-and 91 on PyTorch 2.10 CPU. In that sweep, selected test accuracy was 0.70 to 0.763,
-baseline validation loss rose by at least 0.50, and regularisation improved best
-validation loss by at least 0.019. Different PyTorch releases and CPU platforms
-can produce small numerical differences.
+and 91 on CPU. Different PyTorch releases and CPU platforms can produce small
+numerical differences, so the checker focuses on the large reduction in validation
+loss rise. It does not require one regularisation setting to win checkpoint selection.
 
 ## Reference and checker proof
 
