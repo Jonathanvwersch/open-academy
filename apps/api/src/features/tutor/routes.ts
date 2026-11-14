@@ -29,6 +29,7 @@ import {
   formatGraderFeedback,
   graderVerdictFor,
   tutorAnswerFor,
+  tutorAnswerKeyFor,
   tutorSolutionFor,
 } from './feedback-context.js';
 import { buildTutorPageContent } from './page-context.js';
@@ -371,6 +372,7 @@ export function registerTutorThreadRoutes(
         exerciseOptions: optionTexts.map(
           ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
         ),
+        answerKey: tutorAnswerKeyFor(exercise, optionTexts),
         learnerAnswer:
           (status === 'retrying' || status === 'answered') && currentAttempt && exercise
             ? tutorAnswerFor(exercise, currentAttempt.answer)

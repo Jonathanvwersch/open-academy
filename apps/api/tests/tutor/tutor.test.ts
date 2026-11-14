@@ -42,6 +42,7 @@ function tutorContext(overrides: Partial<TutorContext> = {}): TutorContext {
     exercisePrompt: 'What does the slope represent?',
     exerciseLabel: 'Question 4',
     exerciseOptions: [],
+    answerKey: '',
     graderFeedback: '',
     hintLevel: 1,
     authoredHints: ['Think about how y changes as x changes.'],

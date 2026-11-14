@@ -36,6 +36,7 @@ export interface TutorContext {
   exercisePrompt: string;
   exerciseLabel: string;
   exerciseOptions: string[];
+  answerKey: string;
   learnerAnswer?: string;
   graderVerdict?: string;
   graderFeedback: string;

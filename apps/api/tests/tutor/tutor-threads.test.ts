@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { env } from '../../src/config.js';
 import { loadContent } from '../../src/content/load.js';
+import { serializedOptionOrder } from '../../src/content/serialize.js';
 import { instantiateExercise, isTemplate } from '../../src/content/templates.js';
 import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
@@ -366,11 +367,21 @@ test('unanswered multiple-choice lesson problems pass screen-ordered options to 
 
   const tutorInput = captured.at(-1);
   const optionInput = tutorInput?.exerciseOptions ?? [];
+  const optionsOnScreen = onScreenOptions(
+    serializedOptionOrder(exercise.options, userId, exercise.id),
+    exercise.id,
+  );
+  const answerKey = optionsOnScreen
+    .flatMap((option, index) =>
+      option.correct ? [`${String.fromCharCode(65 + index)}. ${option.text}`] : [],
+    )
+    .join('; ');
   expect(tutorInput).toMatchObject({
     problem_status: 'unanswered',
     exerciseOptions: displayedOptions.map(
       ({ text }, index) => `${String.fromCharCode(65 + index)}. ${text}`,
     ),
+    answerKey,
   });
   expect(tutorInput).not.toHaveProperty('options');
   expect(tutorInput).not.toHaveProperty('correct');
@@ -379,6 +390,38 @@ test('unanswered multiple-choice lesson problems pass screen-ordered options to 
   for (const option of exercise.options) {
     if (option.feedback) expect(JSON.stringify(tutorInput)).not.toContain(option.feedback);
   }
+});
+
+test('seeded numeric lesson problems give the tutor the resolved answer key', async () => {
+  const template = content.exercisesById.get('it-surprise-template');
+  if (!template || !isTemplate(template)) throw new Error('Missing information theory template');
+  const defaultAnswer = instantiateExercise(template, 0).exercise.answer;
+  const seed = Array.from({ length: 100 }, (_, index) => index + 1).find(
+    (candidate) => instantiateExercise(template, candidate).exercise.answer !== defaultAnswer,
+  );
+  if (seed === undefined) throw new Error('Expected a seed with a different template answer');
+
+  const start = await startLessonRun('information-theory');
+  const run = (await start.json()).run;
+  const pending = run.pendingProblem ?? run.pending;
+  if (!pending?.id) throw new Error('Expected a pending information theory lesson problem');
+  await db
+    .update(lessonProblems)
+    .set({ exerciseId: template.id, seed })
+    .where(eq(lessonProblems.id, pending.id));
+
+  const exercise = concreteExercise(template.id, seed);
+  if (exercise.type !== 'numeric') throw new Error('Expected a concrete numeric exercise');
+  const response = await send('Help with this question', undefined, {
+    lessonProblemId: pending.id,
+    questionLabel: 'Question 3',
+  });
+  expect(response.status).toBe(200);
+  expect(captured.at(-1)).toMatchObject({
+    problem_status: 'unanswered',
+    exercisePrompt: exercise.prompt,
+    answerKey: String(exercise.answer),
+  });
 });
 
 test('lesson problems owned by another learner are not available to the tutor', async () => {
@@ -497,6 +540,16 @@ test('session explain context exposes partial grader feedback until the retry is
       }),
     });
 
+  expect(
+    (
+      await send('help before answering', undefined, {
+        exerciseId: exercise.id,
+        activityId: activity.id,
+      })
+    ).status,
+  ).toBe(200);
+  expect(captured.at(-1)).toMatchObject({ problem_status: 'unanswered', answerKey: '' });
+
   expect((await submit(answer)).status).toBe(200);
   expect(
     (
@@ -513,6 +566,7 @@ test('session explain context exposes partial grader feedback until the retry is
   });
   expect(retrying).toMatchObject({
     problem_status: 'retrying',
+    answerKey: '',
     learnerAnswer: answer,
     graderVerdict: 'partly correct',
     solution: '',
@@ -544,6 +598,7 @@ test('session explain context exposes partial grader feedback until the retry is
   ).toBe(200);
   expect(captured.at(-1)).toMatchObject({
     problem_status: 'answered',
+    answerKey: '',
     learnerAnswer: secondAnswer,
     graderVerdict: 'correct',
   });

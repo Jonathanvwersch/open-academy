@@ -16,6 +16,7 @@ describe('live OpenAI tutor smoke', () => {
           exercisePrompt: 'What does the slope mean?',
           exerciseLabel: 'Question 1',
           exerciseOptions: [],
+          answerKey: '',
           learnerAnswer: 'The intercept.',
           graderVerdict: 'Incorrect.',
           graderFeedback: '',

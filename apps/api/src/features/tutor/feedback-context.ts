@@ -47,6 +47,24 @@ export function tutorAnswerFor(exercise: IndexedExercise, answer: unknown): stri
   return answerDisplay(exercise, answer);
 }
 
+export function tutorAnswerKeyFor(
+  exercise: IndexedExercise | undefined,
+  options: readonly { text: string; correct?: boolean }[] = [],
+): string {
+  if (!exercise || exercise.type === 'explain') return '';
+  if (exercise.type === 'mc' || exercise.type === 'debug') {
+    const correctOptions = options.flatMap((option, index) =>
+      option.correct ? [`${String.fromCharCode(65 + index)}. ${option.text}`] : [],
+    );
+    return exercise.type === 'debug'
+      ? [...correctOptions, `Line ${exercise.buggy_line}`].join('; ')
+      : correctOptions.join('; ');
+  }
+  if ('answer' in exercise) return tutorAnswerFor(exercise, exercise.answer);
+  if ('accept' in exercise) return tutorAnswerFor(exercise, exercise.accept);
+  return '';
+}
+
 export function tutorSolutionFor(exercise: IndexedExercise | undefined): string {
   if (!exercise) return '';
   return exercise.type === 'explain'
