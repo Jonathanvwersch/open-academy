@@ -359,9 +359,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt:
-      A sensor with Gaussian noise of fixed $\sigma$ gives the readings {{= m-d}}, {{= m+d}} and
-      {{= m+3*d}} cm. What is the maximum likelihood estimate of the true distance $\mu$, in cm?
+    prompt: "A sensor with Gaussian noise of fixed $\\sigma$ gives the readings {{= m-2*d}}, {{= m}} and {{= m+5*d}} cm. What is the maximum likelihood estimate of the true distance $\\mu$, in cm?"
     params:
       m:
         min: 20
@@ -374,8 +372,7 @@ exercises:
     answer_expr: m+d
     tolerance:
       abs: 0.005
-    solution: The maximum likelihood centre is the mean, $({{= m-d}}+{{= m+d}}+{{= m+3*d}})/3={{=
-      m+d}}$ cm.
+    solution: "For Gaussian noise with fixed $\\sigma$, the maximum likelihood centre minimises the sum of squared distances and equals the mean: $({{= m-2*d}}+{{= m}}+{{= m+5*d}})/3={{= m+d}}$ cm."
   - id: mle-sumsq-template
     dimension: math
     type: numeric
