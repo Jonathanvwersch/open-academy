@@ -80,7 +80,7 @@ export function CoursePage() {
                       variant="outline"
                       disabled={changeCourse.isPending}
                       loading={changeCourse.isPending && changeCourse.variables === course.id}
-                      onClick={() => changeCourse.mutate(course.id)}
+                      onClick={() => changeCourse.switchTo(course.id)}
                     >
                       {course.started ? 'Switch' : 'Start'}
                     </Button>

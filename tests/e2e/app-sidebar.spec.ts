@@ -152,15 +152,20 @@ test('switching a My courses entry opens that course', async ({ page }) => {
   await page.screenshot({ path: 'test-results/sidebar-course.png', animations: 'disabled' });
 });
 
-test('course switching shows the new course before the active-course request resolves', async ({
+test('overlapping course switches run in order and keep the last selected course', async ({
   page,
 }) => {
-  let putResolved = false;
+  const requestOrder: string[] = [];
+  const completedOrder: string[] = [];
   await page.route('**/api/course/active', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    const { courseId } = route.request().postDataJSON() as { courseId: string };
+    requestOrder.push(courseId);
+    if (courseId === 'fixture-switching-course') {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
     const response = await route.fetch();
     await route.fulfill({ response });
-    putResolved = true;
+    completedOrder.push(courseId);
   });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
@@ -169,8 +174,6 @@ test('course switching shows the new course before the active-course request res
   await expect(
     page.getByRole('heading', { name: 'Fixture switching course', exact: true }),
   ).toBeVisible({ timeout: 1000 });
-  expect(putResolved).toBe(false);
-
   const courseRows = page
     .getByRole('navigation', { name: 'Main navigation' })
     .locator('[data-sidebar="menu-button"]')
@@ -180,13 +183,43 @@ test('course switching shows the new course before the active-course request res
     expect(await row.getAttribute('disabled')).toBeNull();
     expect(await row.getAttribute('aria-disabled')).toBeNull();
   }
+  await expect(page.getByRole('link', { name: 'Switch to Fixture course' })).toBeVisible();
+  await page.getByRole('link', { name: 'Switch to Fixture course' }).click();
+  await expect(page).toHaveURL(/\/course\?course=fixture-course$/, { timeout: 1000 });
+  expect(completedOrder).toEqual([]);
 
-  await expect.poll(() => putResolved, { timeout: 5000 }).toBe(true);
-  await page.goto('/course');
+  await expect.poll(() => requestOrder.length, { timeout: 8000 }).toBe(2);
+  expect(requestOrder).toEqual(['fixture-switching-course', 'fixture-course']);
+  await expect.poll(() => completedOrder.length, { timeout: 8000 }).toBe(2);
+  expect(completedOrder).toEqual(['fixture-switching-course', 'fixture-course']);
   await page.reload();
   await expect(
-    page.getByRole('heading', { name: 'Fixture switching course', exact: true }),
+    page.getByRole('heading', { name: 'Fixture course', exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: /Fixture course, 0 of 9 topics done/ }),
+  ).toHaveAttribute('data-active', 'true');
+});
+
+test('failed course switches restore the default course and can be retried', async ({ page }) => {
+  let requests = 0;
+  await page.route('**/api/course/active', async (route) => {
+    requests += 1;
+    await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Switch to Fixture switching course' }).click();
+  await expect(page).toHaveURL(/\/course$/);
+  await expect(page.getByText("Couldn't switch courses")).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: /Fixture course, 0 of 9 topics done/ }),
+  ).toHaveAttribute('data-active', 'true');
+  await expect.poll(() => requests).toBe(1);
+
+  await page.getByRole('link', { name: 'Switch to Fixture switching course' }).click();
+  await expect.poll(() => requests).toBe(2);
+  await expect(page).toHaveURL(/\/course$/);
 });
 
 test('placement starts for the course selected in the course URL', async ({ page }) => {

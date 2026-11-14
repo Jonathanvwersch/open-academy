@@ -178,7 +178,7 @@ function AppSidebar() {
                             onClick={(event) => {
                               event.preventDefault();
                               closeMobile();
-                              switchCourse.mutate(course.id);
+                              switchCourse.switchTo(course.id);
                             }}
                           >
                             {content}
