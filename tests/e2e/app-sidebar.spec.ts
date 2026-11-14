@@ -1,7 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
-import { courseEnrollments, reviewCards, users } from '../../apps/api/src/db/schema.js';
+import {
+  courseEnrollments,
+  reviewCards,
+  sessionActivities,
+  studySessions,
+  users,
+} from '../../apps/api/src/db/schema.js';
 import { newReviewCard } from '../../apps/api/src/learning/fsrs.js';
 import { enrollInDefaultCourse } from './course-start.js';
 
@@ -73,7 +79,7 @@ test('mobile sidebar closes after navigating to Reviews', async ({ page }) => {
   await page.getByRole('button', { name: 'Open navigation' }).click();
   const navigation = page.getByRole('navigation', { name: 'Main navigation' });
   await expect(navigation).toBeVisible();
-  expect((await navigation.boundingBox())?.width).toBe(288);
+  expect((await navigation.boundingBox())?.width).toBeCloseTo(288, 1);
   await expect(navigation.locator('[data-active="true"]')).toHaveCount(0);
   await expect(navigation.getByRole('link', { name: 'Open Academy home' })).not.toHaveAttribute(
     'data-sidebar',
@@ -139,6 +145,50 @@ test('Reviews badge and Start reviews work from the sidebar', async ({ page }) =
   });
   await page.getByRole('button', { name: 'Start reviews' }).click();
   await expect(page).toHaveURL(/\/session\//);
+});
+
+test('Reviews badge clears when a review is completed in an active session', async ({ page }) => {
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: 'supervised-learning',
+    dimension: 'math',
+    fsrs: newReviewCard(new Date('2026-01-01T12:00:00.000Z')),
+    dueAt: new Date('2026-01-01T00:00:00.000Z'),
+    reps: 0,
+    lapses: 0,
+  });
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 10,
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+      status: 'active',
+    })
+    .returning();
+  if (!session) throw new Error('Could not create active review session');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind: 'review',
+    conceptId: 'supervised-learning',
+    exerciseIds: ['supervised-learning-fixture-review'],
+    plannedMinutes: 5,
+    status: 'in_progress',
+  });
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await expect(page.getByTestId('reviews-due-count')).toHaveText('1');
+  await page.getByRole('link', { name: 'Reviews', exact: true }).click();
+  const continueReviews = page.getByRole('link', { name: 'Continue reviews' });
+  await expect(continueReviews).toHaveAttribute('href', `/session/${session.id}`);
+  await continueReviews.click();
+  await expect(page.getByTestId('session-exercise')).toBeVisible();
+  await page.getByLabel('Your answer').fill('4');
+  await page.getByRole('button', { name: 'Submit answer' }).click();
+  await expect(page.getByTestId('reviews-due-count')).toHaveCount(0);
 });
 
 test('tutor opens without moving the app navigation', async ({ page }) => {

@@ -1,3 +1,4 @@
+import type { AttemptResponse } from '@academy/contracts/exercises';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
@@ -19,7 +20,7 @@ export function InlineLessonCheck({
   onDone: () => void;
   onConflict: () => Promise<void>;
 }) {
-  const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [result, setResult] = useState<AttemptResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const { data: exercise } = useSuspenseQuery(exerciseQueryOptions(exerciseId));
@@ -32,7 +33,7 @@ export function InlineLessonCheck({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ exerciseId, activityId, answer, mode: 'practice' }),
       });
-      const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+      const data = (await response.json().catch(() => ({}))) as AttemptResponse;
       if (response.status === 409) {
         await onConflict();
         return;
