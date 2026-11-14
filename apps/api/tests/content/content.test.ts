@@ -41,6 +41,22 @@ test('loads the fixture graph and builds lookup indexes', async () => {
     'fixture-paper-one',
   ]);
   expect(content.papersById.has('fixture-paper-two')).toBe(true);
+  expect(content.curriculum?.subject).toEqual({
+    title: 'Fixture subject',
+    tutor_context: 'The learner is working through a fixture course.',
+  });
+  expect(content.sourceIndex?.sources).toEqual([
+    {
+      id: 'fixture-notes',
+      title: 'Fixture notes',
+      file: 'notes-not-present.md',
+      kind: 'notes',
+      added: '2026-11-14',
+    },
+  ]);
+  expect(content.lessonsByConcept.get('derivatives')?.sources).toEqual([
+    { id: 'fixture-notes', section: 'Chapter 1' },
+  ]);
   expect(content.edges).toContainEqual({
     conceptId: 'gradient-descent',
     prerequisiteId: 'gradients',
@@ -63,6 +79,49 @@ test('loads the fixture graph and builds lookup indexes', async () => {
     ]),
   );
   expect(content.concepts[0]?.contentVersion).toMatch(/^[a-f0-9]{12}$/);
+});
+
+test('source citations reject duplicate IDs, unknown references, and grounded lessons without citations', async () => {
+  const data = await notationFixture();
+  expect(validateContent(data)).toEqual([]);
+
+  const duplicateSource = structuredClone(data);
+  const source = duplicateSource.sourceIndex?.value.sources[0];
+  if (!source || !duplicateSource.sourceIndex) throw new Error('Missing source fixture');
+  duplicateSource.sourceIndex.value.sources.push({ ...source });
+  expect(validateContent(duplicateSource)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: 'fixture-notes', message: 'duplicate source id' }),
+    ]),
+  );
+
+  const unknownCitation = structuredClone(data);
+  const citedLesson = unknownCitation.lessons.find(({ value }) => value.concept === 'derivatives');
+  if (!citedLesson) throw new Error('Missing cited lesson');
+  citedLesson.value.sources = [{ id: 'unknown-source' }];
+  expect(validateContent(unknownCitation)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'derivatives',
+        message: 'lesson cites unknown source "unknown-source"',
+      }),
+    ]),
+  );
+
+  const missingCitation = structuredClone(data);
+  const groundedLesson = missingCitation.lessons.find(
+    ({ value }) => value.concept === 'derivatives',
+  );
+  if (!groundedLesson || !missingCitation.curriculum) throw new Error('Missing grounded lesson');
+  groundedLesson.value.sources = [];
+  expect(validateContent(missingCitation)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        id: 'derivatives',
+        message: 'grounded curriculum requires at least one source citation in the "sources" field',
+      }),
+    ]),
+  );
 });
 
 test('real authored papers load and are attached to course units', async () => {
@@ -1268,6 +1327,9 @@ function sourceDataFromIndex(content: ContentIndex): ContentSourceData {
   return {
     ...(content.curriculum
       ? { curriculum: { value: content.curriculum, file: 'curriculum.yaml' } }
+      : {}),
+    ...(content.sourceIndex
+      ? { sourceIndex: { value: content.sourceIndex, file: 'sources/index.yaml' } }
       : {}),
     courses: content.courses.map(({ contentVersion, ...value }) => ({
       value,

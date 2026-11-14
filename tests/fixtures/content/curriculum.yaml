@@ -4,6 +4,10 @@ domains:
   - { id: ml, title: Machine learning, description: "Models, losses, and optimization." }
 courses: [fixture-course, fixture-switching-course]
 default_course: fixture-course
+subject:
+  title: Fixture subject
+  tutor_context: The learner is working through a fixture course.
+grounded: true
 goals:
   - id: g-model-training
     text: Explain how a simple model learns from data.

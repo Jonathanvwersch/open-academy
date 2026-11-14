@@ -212,6 +212,19 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
   const seenProjects = new Set<string>();
   const seenExercises = new Set<string>();
   const seenConcepts = new Set<string>();
+  const sourceIds = new Set<string>();
+
+  for (const source of data.sourceIndex?.value.sources ?? []) {
+    if (sourceIds.has(source.id)) {
+      addIssue(
+        issues,
+        data.sourceIndex?.file ?? 'sources/index.yaml',
+        source.id,
+        'duplicate source id',
+      );
+    }
+    sourceIds.add(source.id);
+  }
 
   for (const { value, file } of data.concepts) {
     if (seenConcepts.has(value.id)) {
@@ -424,6 +437,23 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
   for (const { value, file } of data.lessons) {
     if (!value.knowledge_points) {
       addIssue(issues, file, value.concept, 'authored lessons must use knowledge_points');
+    }
+    if (
+      data.curriculum?.value.grounded &&
+      concepts.get(value.concept)?.value.status === 'authored' &&
+      (value.sources?.length ?? 0) === 0
+    ) {
+      addIssue(
+        issues,
+        file,
+        value.concept,
+        'grounded curriculum requires at least one source citation in the "sources" field',
+      );
+    }
+    for (const source of value.sources ?? []) {
+      if (!sourceIds.has(source.id)) {
+        addIssue(issues, file, value.concept, `lesson cites unknown source "${source.id}"`);
+      }
     }
     for (const text of new Set(stringValues(value))) {
       validateSvgText(text, file, value.concept, issues);

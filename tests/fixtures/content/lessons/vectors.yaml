@@ -1,5 +1,6 @@
 concept: vectors
 version: 2
+sources: [{ id: fixture-notes, section: "Chapter 1" }]
 objective: Compute vector magnitudes and explain dot products.
 where_this_fits: |
   A robot, image, or model may need to track several measurements together, such as position, color, or features. Treating each number separately hides their relationships and makes calculations repetitive. A vector stores the coordinates as one object, so its length and operations can summarize the quantity or compare it with another. This makes vectors a practical language for data with many components and prepares you to understand matrix operations and model inputs.

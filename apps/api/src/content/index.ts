@@ -114,5 +114,6 @@ export function buildContentIndex(data: ContentSourceData): ContentIndex {
     projectsById,
     papers,
     papersById,
+    sourceIndex: data.sourceIndex?.value,
   };
 }
