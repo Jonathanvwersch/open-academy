@@ -431,7 +431,7 @@ exercises:
       - id: c
         text: Overfitting
         correct: false
-        feedback: This line misses the training pattern rather than fitting it too closely.
+        feedback: This line is too rigid to capture the training pattern.
       - id: d
         text: A good fit
         correct: false
@@ -596,7 +596,7 @@ exercises:
         feedback: Both errors are improving with training; a simpler model may make the remaining fit worse.
     solution:
       Further training may help while both errors keep falling. Monitor validation and keep the best observed
-      version rather than assuming the final epoch will win.
+      version.
   - id: ovf-speech-curves
     dimension: transfer
     type: mc

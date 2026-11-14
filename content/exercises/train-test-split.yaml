@@ -528,7 +528,7 @@ exercises:
       - id: a
         text: The reported error comes out too high, since the test set is small
         correct: false
-        feedback: A small test set adds uncertainty, not a systematic upward shift from selection.
+        feedback: A small test set adds uncertainty. Selecting the lowest test error makes the reported score optimistic.
       - id: b
         text: The training error rises, since test sales leak into training
         correct: false

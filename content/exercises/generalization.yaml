@@ -70,7 +70,7 @@ exercises:
       abs: 0.01
     solution:
       Add the four absolute errors to get {{= 4*e+20 }}, then divide by four to get {{= e+5 }} thousand dollars.
-      This is an average, not a bound on any one prediction.
+      Individual prediction errors can be above or below this average.
   - id: gen-identical
     dimension: conceptual
     type: mc

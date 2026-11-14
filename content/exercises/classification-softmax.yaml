@@ -377,7 +377,7 @@ exercises:
     common_wrong:
       - answer: 0.24
         category: misunderstood_definition
-        feedback: For the true class, subtract its label 1 rather than 0.
+        feedback: For the true class, subtract its label 1 from its predicted probability.
     solution: The ball label is 1, so its slope is $0.24-1=-0.76$; subtracting this negative slope raises its score.
   - id: sm-grad-template
     dimension: math
