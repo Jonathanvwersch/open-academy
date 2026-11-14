@@ -37,7 +37,7 @@ concepts:
           },
           { text: "Explain why a low-rank update can adapt a large model", dimension: conceptual },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: reward-models,

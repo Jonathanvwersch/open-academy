@@ -1,0 +1,780 @@
+concept: lora
+exercises:
+  - id: lora-frozen-change-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: When a weight matrix $W$ is fine-tuned with LoRA, what does training update?
+    options:
+      - id: a
+        text: A separate change $\Delta W$ that is added to the frozen matrix $W$.
+        correct: true
+        feedback: LoRA keeps $W$ fixed and trains only the change, so the layer computes $Wx+\Delta Wx$.
+      - id: b
+        text: Every entry of $W$, each with a much smaller learning rate than usual.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is still ordinary fine-tuning of $W$. LoRA leaves $W$ out of training altogether.
+      - id: c
+        text: Only the input vectors $x$, while every weight matrix stays fixed.
+        correct: false
+        category: misunderstood_definition
+        feedback: The inputs come from the data. LoRA trains a change to the weights.
+      - id: d
+        text: A new copy of $W$ that replaces the original matrix after training.
+        correct: false
+        category: incorrect_reasoning
+        feedback: LoRA keeps the original $W$ untouched and learns only the change to add to it.
+    solution: LoRA freezes the pretrained $W$ and trains a separate change $\Delta W$, so the layer's output is $h=Wx+\Delta Wx$.
+  - id: lorp-frozen-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why do $Wx+\Delta Wx$ and $(W+\Delta W)x$ both give $(3,3)$?
+    options:
+      - id: a
+        text: Each row's dot product with $x$ splits into the part from $W$ plus the part from $\Delta W$.
+        correct: true
+        feedback: Multiplying by a matrix shares out over a sum of matrices, so the two orders always agree.
+      - id: b
+        text: The two results match only because the entries of $x=(1,0,2)$ happen to be small.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The rule $Wx+\Delta Wx=(W+\Delta W)x$ holds for every input $x$, whatever its size.
+      - id: c
+        text: The change $\Delta W$ is all zeros, so adding it leaves the output unchanged.
+        correct: false
+        category: misunderstood_definition
+        feedback: Here $\Delta W$ has already been trained and adds $(0,3)$. It is all zeros only at the start.
+      - id: d
+        text: Freezing $W$ makes its product with $x$ equal to the product of $\Delta W$ with $x$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The two products differ, $(3,0)$ and $(0,3)$. Freezing only stops $W$ from being trained.
+    solution: Each output entry is a row dotted with $x$, and a row of $W+\Delta W$ dotted with $x$ is the $W$ row's dot product plus the $\Delta W$ row's. So $Wx+\Delta Wx=(W+\Delta W)x$ for any $x$.
+  - id: lorp-what-trains
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A layer computes $h=Wx+\Delta Wx$, where $W$ is frozen. Which numbers does a gradient-descent update change?
+    options:
+      - id: a
+        text: The entries of $\Delta W$ only.
+        correct: true
+        feedback: A frozen matrix is left out of training, so only $\Delta W$ moves.
+      - id: b
+        text: The entries of $W$ only.
+        correct: false
+        category: misunderstood_definition
+        feedback: Frozen means training never updates $W$.
+      - id: c
+        text: The entries of both $W$ and $\Delta W$.
+        correct: false
+        category: misunderstood_definition
+        feedback: That would be ordinary fine-tuning plus an extra matrix. Freezing keeps $W$ fixed.
+    solution: Freezing $W$ leaves it out of training, so gradient descent updates only the entries of $\Delta W$.
+  - id: lorp-output-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: |
+      A layer has the frozen matrix $W=\begin{pmatrix}1&2\\0&1\end{pmatrix}$ and the trained change $\Delta W=\begin{pmatrix}0&1\\1&0\end{pmatrix}$. For the input $x=({{=p}},{{=q}})$, what is the first entry of $h=Wx+\Delta Wx$?
+    params:
+      p:
+        min: 1
+        max: 5
+        step: 1
+      q:
+        min: 1
+        max: 4
+        step: 1
+    answer_expr: p + 3 * q
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: p + 2 * q
+        category: incomplete_explanation
+        feedback: That is the first entry of $Wx$ alone. Add the first entry of $\Delta Wx$ too.
+      - answer_expr: q
+        category: incomplete_explanation
+        feedback: That is the first entry of $\Delta Wx$ alone. Add the first entry of $Wx$ too.
+    solution: The first row of $W$ gives ${{=p}}+2\times{{=q}}={{=p+2*q}}$, and the first row of $\Delta W$ gives ${{=q}}$. So the first entry of $h$ is ${{=p+2*q}}+{{=q}}={{=p+3*q}}$.
+  - id: lorp-start-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A layer computes $h=Wx+\Delta Wx$ with $W$ frozen, and $\Delta W$ starts as all zeros. Before the first training update, how do the model's answers compare with the pretrained model's?
+    options:
+      - id: a
+        text: They are exactly the same, because $\Delta Wx$ is all zeros.
+        correct: true
+        feedback: With $\Delta W=0$, $h=Wx$, which is the pretrained layer.
+      - id: b
+        text: They are all zero, because the change multiplies every output by zero.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The change is added to $Wx$, not multiplied with it, so $h=Wx+0=Wx$.
+      - id: c
+        text: They are random, because the change has not been trained yet.
+        correct: false
+        category: incorrect_reasoning
+        feedback: An all-zero change adds nothing, so the output is exactly $Wx$.
+    solution: With $\Delta W$ all zeros, $\Delta Wx=0$, so $h=Wx$ and the model starts exactly where pretraining left it.
+  - id: lorp-full-change-count
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A frozen weight matrix $W$ has 300 rows and 200 columns. If the trained change $\Delta W$ is a full matrix of the same shape, how many numbers does training update?
+    answer: 60000
+    tolerance:
+      abs: 0.5
+    common_wrong:
+      - answer: 500
+        category: math_error
+        feedback: That adds the rows and columns. A $300\times200$ matrix has $300\times200$ entries.
+      - answer: 120000
+        category: incorrect_reasoning
+        feedback: That counts $W$ as well, but $W$ is frozen. Only the $60{,}000$ entries of $\Delta W$ are trained.
+    solution: A full $\Delta W$ has as many entries as $W$, $300\times200=60{,}000$, so freezing $W$ alone trains just as many numbers as fine-tuning $W$ directly.
+  - id: lorp-robot-freeze
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A team has a pretrained model that controls several robot arms. They want to adapt it to one new gripper while keeping the original behaviour available for the other arms. Why does training a separate change to frozen weights suit this?
+    options:
+      - id: a
+        text: The original weights stay untouched, so removing the change gives back the original model exactly.
+        correct: true
+        feedback: The frozen $W$ never moves, so the old model is always $W$ itself, with the change left out.
+      - id: b
+        text: The separate change makes the new gripper's model run faster than the original model does.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Keeping the change separate adds work on each input, since the layer computes two products.
+      - id: c
+        text: Freezing the weights makes the new model more accurate on the new gripper than full fine-tuning.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Freezing limits what training can move. Its benefit here is keeping the original weights intact.
+    solution: Because $W$ is frozen, the original model is untouched. The gripper-specific change lives in $\Delta W$, and leaving it out recovers the original behaviour for the other arms.
+  - id: lora-two-thin-matrices-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: In LoRA, how is the change $\Delta W$ to a $d\times k$ weight matrix built?
+    options:
+      - id: a
+        text: As the product $BA$ of a $d\times r$ matrix $B$ and an $r\times k$ matrix $A$, with $r$ small.
+        correct: true
+        feedback: The inner sizes are both $r$, so $BA$ is $d\times k$ while $B$ and $A$ stay thin.
+      - id: b
+        text: As a $d\times k$ matrix in which only $r$ chosen entries are allowed to change.
+        correct: false
+        category: misunderstood_definition
+        feedback: LoRA changes every entry of $W$ a little, through the product of two thin matrices.
+      - id: c
+        text: As the sum $B+A$ of a $d\times r$ matrix $B$ and an $r\times k$ matrix $A$.
+        correct: false
+        category: misunderstood_definition
+        feedback: Matrices of different shapes can't be added. LoRA multiplies them, $\Delta W=BA$.
+      - id: d
+        text: As a smaller $r\times r$ matrix that replaces $W$ in the layer during training.
+        correct: false
+        category: misunderstood_definition
+        feedback: The change must have the shape of $W$, $d\times k$, so it can be added to $W$.
+    solution: LoRA writes the change as $\Delta W=BA$, with $B$ of shape $d\times r$ and $A$ of shape $r\times k$, so the product has the shape of $W$.
+  - id: lorp-table-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does working out $Ax$ first give the same $(3,6,0,-3)$ as applying the full grid $BA$?
+    options:
+      - id: a
+        text: Row $i$ of $BA$ is $b_i$ times $A$, so its dot product with $x$ is $b_i$ times the single number $Ax$.
+        correct: true
+        feedback: Every row is a multiple of $A$, so each output entry is that multiple of $Ax=3$.
+      - id: b
+        text: The input $x$ has a zero entry, which removes the column of zeros from the grid.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The two ways agree for every input $x$, because $(BA)x=B(Ax)$ always.
+      - id: c
+        text: The grid $BA$ is all zeros, so both ways only count the entries of $B$.
+        correct: false
+        category: math_error
+        feedback: The grid has nonzero rows such as $(2,1,0,1)$. Only its third row is zero.
+      - id: d
+        text: The column $B$ and the row $A$ have the same four entries in a different order.
+        correct: false
+        category: math_error
+        feedback: Here $B=(1,2,0,-1)$ and $A=(2,1,0,1)$, which are different numbers.
+    solution: Row $i$ of $BA$ is entry $i$ of $B$ times the row $A$, so its dot product with $x$ is $b_i\times(Ax)$. With $Ax=3$, that gives $3\times(1,2,0,-1)=(3,6,0,-3)$.
+  - id: lorp-shapes
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A weight matrix $W$ is $6\times10$. A rank-2 LoRA change $BA$ is added to it. What shapes are $B$ and $A$?
+    options:
+      - id: a
+        text: $B$ is $6\times2$ and $A$ is $2\times10$.
+        correct: true
+        feedback: The inner sizes are both 2, and the outer sizes give $6\times10$, the shape of $W$.
+      - id: b
+        text: $B$ is $2\times6$ and $A$ is $10\times2$.
+        correct: false
+        category: math_error
+        feedback: Then $BA$ would need inner sizes 6 and 10 to match, and they don't.
+      - id: c
+        text: $B$ is $6\times10$ and $A$ is $10\times2$.
+        correct: false
+        category: misunderstood_definition
+        feedback: That $B$ is as big as $W$, and $BA$ would be $6\times2$, the wrong shape.
+    solution: $B$ needs as many rows as $W$ and $A$ as many columns, with the rank as the shared inner size, so $B$ is $6\times2$ and $A$ is $2\times10$.
+  - id: lorp-entry-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A rank-1 change $\Delta W=BA$ uses the column $B=({{=b1}},{{=b2}},{{=b3}})$ and the row $A=({{=a1}},{{=a2}})$. What is the entry of $\Delta W$ in row 3, column 2?
+    params:
+      b1:
+        min: 1
+        max: 4
+        step: 1
+      b2:
+        min: -3
+        max: 3
+        step: 1
+      b3:
+        min: -4
+        max: 4
+        step: 1
+      a1:
+        min: 1
+        max: 5
+        step: 1
+      a2:
+        min: 2
+        max: 5
+        step: 1
+    constraints:
+      - b3 != 0
+      - b3 != a2
+      - b2 != b3
+    answer_expr: b3 * a2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: b3 + a2
+        category: math_error
+        feedback: Each entry is a product, the entry of $B$ for its row times the entry of $A$ for its column.
+      - answer_expr: b2 * a2
+        category: math_error
+        feedback: Row 3 uses the third entry of $B$, not the second.
+    solution: Entry $(i,j)$ of $BA$ is $b_i$ times $a_j$. Row 3, column 2 is ${{=b3}}\times{{=a2}}={{=b3*a2}}$.
+  - id: lorp-apply-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: A rank-1 change $\Delta W=BA$ uses the column $B=(2,-1,3)$ and the row $A=(1,{{=a2}},2)$. For the input $x=({{=x1}},1,{{=x3}})$, what is the second entry of $\Delta Wx$?
+    params:
+      a2:
+        min: 0
+        max: 3
+        step: 1
+      x1:
+        min: 1
+        max: 4
+        step: 1
+      x3:
+        min: 1
+        max: 3
+        step: 1
+    answer_expr: -1 * (x1 + a2 + 2 * x3)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: x1 + a2 + 2 * x3
+        category: math_error
+        feedback: That is $Ax$. Multiply it by the second entry of $B$, which is $-1$.
+      - answer_expr: 2 * (x1 + a2 + 2 * x3)
+        category: math_error
+        feedback: That uses the first entry of $B$. The second entry of $B$ is $-1$.
+    solution: First $Ax=1\times{{=x1}}+{{=a2}}\times1+2\times{{=x3}}={{=x1+a2+2*x3}}$. The second entry of $B(Ax)$ is $-1\times{{=x1+a2+2*x3}}={{=-(x1+a2+2*x3)}}$.
+  - id: lorp-rows-multiple
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A rank-1 change is $\Delta W=BA$, where $B$ is a column and $A$ is a row. Which statement about $\Delta W$ is always true?
+    options:
+      - id: a
+        text: Every row of $\Delta W$ is a multiple of the row $A$.
+        correct: true
+        feedback: Row $i$ is the $i$th entry of $B$ times $A$.
+      - id: b
+        text: Every entry of $\Delta W$ is different from every other entry.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Entries can repeat, and a zero in $B$ makes a whole row of zeros.
+      - id: c
+        text: Every row of $\Delta W$ is a multiple of the column $B$.
+        correct: false
+        category: math_error
+        feedback: The rows come from $A$. It is each column of $\Delta W$ that is a multiple of $B$.
+    solution: Row $i$ of $BA$ is $b_i$ times $A$, so every row is a multiple of $A$. That is why one column and one row can only make a simple change, and LoRA uses $r$ of them.
+  - id: lorp-rank-shape-robot
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot's vision model has a $512\times256$ weight matrix $W$, which maps 256 inputs to 512 outputs. An engineer adds a rank-4 LoRA change $BA$. For one input $x$, what are the shapes of $Ax$ and $B(Ax)$?
+    options:
+      - id: a
+        text: $Ax$ has 4 entries and $B(Ax)$ has 512 entries.
+        correct: true
+        feedback: $A$ is $4\times256$, so $Ax$ has 4 entries. $B$ is $512\times4$, so $B(Ax)$ has 512.
+      - id: b
+        text: $Ax$ has 256 entries and $B(Ax)$ has 512 entries.
+        correct: false
+        category: math_error
+        feedback: $A$ has 4 rows, one per rank, so $Ax$ has only 4 entries.
+      - id: c
+        text: $Ax$ has 4 entries and $B(Ax)$ has 256 entries.
+        correct: false
+        category: math_error
+        feedback: $B$ has as many rows as $W$, 512, so $B(Ax)$ has 512 entries, like $Wx$.
+    solution: $A$ is $4\times256$ and $B$ is $512\times4$. So $Ax$ is 4 numbers, and $B(Ax)$ has 512 entries, the same size as $Wx$, so the two can be added.
+  - id: lora-count-savings-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: How many trainable parameters does a rank-$r$ LoRA change to a $d\times k$ weight matrix have?
+    options:
+      - id: a
+        text: $r(d+k)$, the $dr$ entries of $B$ plus the $rk$ entries of $A$.
+        correct: true
+        feedback: Only $B$ and $A$ are trained, and they hold $dr+rk$ numbers.
+      - id: b
+        text: $dk$, one for every entry of the weight matrix $W$.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is full fine-tuning. LoRA trains only $B$ and $A$.
+      - id: c
+        text: $rdk$, one for every entry of $W$ in each of the $r$ tables.
+        correct: false
+        category: math_error
+        feedback: The tables are never stored. Only the entries of $B$ and $A$ are trained.
+      - id: d
+        text: $d+k$, one for every row and every column of $W$.
+        correct: false
+        category: math_error
+        feedback: That is the rank-1 count. Rank $r$ multiplies it by $r$.
+    solution: $B$ is $d\times r$ and $A$ is $r\times k$, so LoRA trains $dr+rk=r(d+k)$ numbers.
+  - id: lorp-model-count-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is the count for one matrix, $65{,}536$, multiplied by 64?
+    options:
+      - id: a
+        text: LoRA is put on two matrices in each of 32 layers, and each one gets its own $B$ and $A$.
+        correct: true
+        feedback: $2\times32=64$ matrices, each with a rank-8 change of $65{,}536$ numbers.
+      - id: b
+        text: The rank $r=8$ is multiplied by itself, because $B$ and $A$ each have 8 columns.
+        correct: false
+        category: math_error
+        feedback: The rank is already inside $65{,}536=8\times8192$. The 64 counts matrices.
+      - id: c
+        text: Each matrix is $4096\times4096$, and 64 is the square root of 4096.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The size of each matrix is already in $65{,}536$. The 64 is the number of matrices.
+      - id: d
+        text: Each of the 64 numbers in $Ax$ needs its own copy of the matrix $B$.
+        correct: false
+        category: misunderstood_definition
+        feedback: With rank 8, $Ax$ has 8 numbers, and $B$ is stored once per matrix.
+    solution: The model has 32 layers with LoRA on two matrices in each, $W_Q$ and $W_V$, so there are 64 separate changes of $65{,}536$ numbers each.
+  - id: lorp-count-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A weight matrix has $d={{=d}}$ rows and $k={{=k}}$ columns. How many trainable parameters does a rank-{{=r}} LoRA change to it have?
+    params:
+      d:
+        min: 200
+        max: 800
+        step: 100
+      k:
+        min: 100
+        max: 600
+        step: 100
+      r:
+        min: 2
+        max: 8
+        step: 2
+    constraints:
+      - d != k
+    answer_expr: r * (d + k)
+    tolerance:
+      abs: 0.5
+    common_wrong:
+      - answer_expr: d * k
+        category: misunderstood_definition
+        feedback: That counts every entry of $W$, as full fine-tuning would. LoRA trains $B$ and $A$.
+      - answer_expr: d + k
+        category: math_error
+        feedback: That is the rank-1 count. Multiply by the rank $r$.
+      - answer_expr: r * d * k
+        category: math_error
+        feedback: LoRA stores $B$ with $dr$ entries and $A$ with $rk$, which add up to $r(d+k)$.
+    solution: $B$ has ${{=d}}\times{{=r}}={{=d*r}}$ entries and $A$ has ${{=r}}\times{{=k}}={{=r*k}}$, so LoRA trains ${{=r*(d+k)}}$ numbers.
+  - id: lorp-frozen-memory
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: During LoRA training, which of these must still be kept in memory for every pretrained weight?
+    options:
+      - id: a
+        text: The frozen weight itself, because the model needs it to make predictions.
+        correct: true
+        feedback: Every prediction still uses $Wx$, so the frozen weights stay in memory.
+      - id: b
+        text: A gradient for the weight, because every weight is updated on each pass.
+        correct: false
+        category: misunderstood_definition
+        feedback: Frozen weights are never updated, so their gradients don't need to be kept.
+      - id: c
+        text: A spare copy of the weight for every task the model will be adapted to.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each task needs only its small $B$ and $A$. The frozen weights are shared.
+    solution: The frozen weights are still used in every prediction, so they stay in memory. The savings come from not storing gradients and training extras for them.
+  - id: lorp-percent-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: A weight matrix is $1024\times1024$. A rank-{{=r}} LoRA change trains what percentage of the number of entries in the matrix? Give your answer as a percentage, to 2 decimal places.
+    params:
+      r:
+        min: 2
+        max: 16
+        step: 2
+    answer_expr: r * 2048 / 1048576 * 100
+    tolerance:
+      abs: 0.006
+    common_wrong:
+      - answer_expr: r * 1024 / 1048576 * 100
+        category: math_error
+        feedback: That counts only $B$. Add the $r\times1024$ entries of $A$ as well.
+      - answer_expr: r * 2048 / 1048576
+        category: math_error
+        feedback: That is the fraction. Multiply by 100 for a percentage.
+    solution: LoRA trains ${{=r}}\times(1024+1024)={{=r*2048}}$ numbers out of $1024\times1024=1{,}048{,}576$, which is about ${{=round(r*2048/1048576*10000)/100}}\%$.
+  - id: lorp-small-matrix
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: Someone says that a LoRA change always trains fewer numbers than changing the whole matrix. For a $3\times3$ matrix and rank $r=2$, which is true?
+    options:
+      - id: a
+        text: LoRA trains 12 numbers and the whole matrix has 9, so LoRA costs more here.
+        correct: true
+        feedback: $2\times(3+3)=12$, which is more than $3\times3=9$.
+      - id: b
+        text: LoRA trains 6 numbers and the whole matrix has 9, so LoRA costs less here.
+        correct: false
+        category: math_error
+        feedback: That forgets to multiply by the rank. Rank 2 gives $2\times(3+3)=12$.
+      - id: c
+        text: LoRA trains 4 numbers and the whole matrix has 9, so LoRA costs less here.
+        correct: false
+        category: math_error
+        feedback: The count is $r(d+k)$, not $r\times r$. Here that is 12.
+    solution: A rank-2 change trains $2\times(3+3)=12$ numbers, more than the 9 entries of the matrix. LoRA saves only when $r$ is much smaller than $d$ and $k$.
+  - id: lorp-why-low-rank
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: Why can a low-rank change $BA$ adapt a large pretrained model well, even though it can't express every possible change?
+    options:
+      - id: a
+        text: The change that fine-tuning needs is usually close to low rank, so a few column-times-row tables capture most of it.
+        correct: true
+        feedback: The needed change is mostly a few large scaled column-times-row tables, and a rank-$r$ change can match those.
+      - id: b
+        text: Freezing the weights makes the pretrained model already correct for every new task it meets.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The frozen model still needs a change, otherwise there would be nothing to train.
+      - id: c
+        text: A low-rank change has more trainable numbers than the full matrix, so it can express more.
+        correct: false
+        category: math_error
+        feedback: For large matrices, $r(d+k)$ is far smaller than $dk$.
+    solution: Any matrix is a sum of column-times-row tables, each scaled by a number, and keeping the few with the largest numbers gives a close low-rank approximation when the rest are small. The change fine-tuning needs is usually close to low rank, so a rank-$r$ change $BA$ can match most of it with far fewer numbers.
+  - id: lorp-raise-rank
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A team adapts a robot's language model to a new task with rank-2 LoRA changes. Full fine-tuning of the same model reaches a clearly lower loss on the task. What is a sensible next step?
+    options:
+      - id: a
+        text: Raise the rank or put LoRA on more matrices, so the change can capture more of what the task needs.
+        correct: true
+        feedback: A rank-2 change may be too small to express this task's change. A larger rank allows more.
+      - id: b
+        text: Lower the rank to 1, because a smaller change makes training reach a lower loss.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A smaller rank allows even less change, so it can only make the gap wider.
+      - id: c
+        text: Unfreeze nothing and keep training at rank 2, since the rank never limits what LoRA can learn.
+        correct: false
+        category: misunderstood_definition
+        feedback: The rank caps how complex $BA$ can be. That cap is the likely reason for the gap.
+    solution: A rank-2 change can't express every change. When full fine-tuning does clearly better, the needed change is probably not close to rank 2, so people raise $r$ or adapt more matrices.
+  - id: lora-merge-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does merging a trained LoRA change into its weight matrix do?
+    options:
+      - id: a
+        text: It adds the change into the frozen matrix once, $W'=W+BA$, giving one matrix of the same shape.
+        correct: true
+        feedback: After merging, the layer computes $W'x$, one product, just like the original layer.
+      - id: b
+        text: It joins $B$ and $A$ onto the side of $W$, giving a wider matrix with extra columns.
+        correct: false
+        category: misunderstood_definition
+        feedback: Merging adds $BA$, which has the shape of $W$, so the shape doesn't change.
+      - id: c
+        text: It averages the change $BA$ with $W$, so each entry moves halfway towards the change.
+        correct: false
+        category: misunderstood_definition
+        feedback: The change is added in full, $W'=W+BA$, so the merged layer matches the trained one.
+      - id: d
+        text: It keeps $W$, $B$ and $A$ separate and computes $Wx$ and $B(Ax)$ for each input.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is keeping the adapter separate. Merging replaces the two products with one.
+    solution: Merging computes $W'=W+BA$ once. $W'$ has the shape of $W$, so predictions cost the same as with the original model.
+  - id: lorp-merge-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does step 4 work out $Wx+B(Ax)$ as well as $W'x$?
+    options:
+      - id: a
+        text: It checks that the merged matrix gives the same output, $(4,2)$, as the separate pieces did during training.
+        correct: true
+        feedback: Merging should change only how the layer is computed, so both ways must give $(4,2)$.
+      - id: b
+        text: The merged matrix $W'$ needs the separate pieces as well before it can make a prediction.
+        correct: false
+        category: misunderstood_definition
+        feedback: After merging, $W'x$ alone gives the output. Step 4 is a check.
+      - id: c
+        text: It adds the change a second time, so the final output is $(4,2)+(1,2)=(5,4)$.
+        correct: false
+        category: math_error
+        feedback: The change is already inside $W'$. Adding it again would count it twice.
+      - id: d
+        text: It undoes the merge, recovering the frozen matrix $W$ from the output $(4,2)$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Undoing a merge subtracts $BA$ from $W'$. Step 4 compares two ways of finding the output.
+    solution: Step 4 computes the output the way training did, with $W$ and the separate change, and gets $(3,0)+(1,2)=(4,2)$, the same as $W'x$. That confirms merging keeps the trained layer's output.
+  - id: lorp-why-b-zero
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: LoRA starts training with $B$ all zeros and $A$ small random numbers. What does setting $B$ to zero achieve?
+    options:
+      - id: a
+        text: The change $BA$ starts at zero, so the model begins exactly as the pretrained one.
+        correct: true
+        feedback: Any matrix times a zero matrix is zero, so $Wx+BAx=Wx$ at the start.
+      - id: b
+        text: The matrix $B$ stays at zero for the whole of training, so only $A$ is learned.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $B$'s gradients contain $Ax$, which is not zero, so $B$ starts learning straight away.
+      - id: c
+        text: The frozen matrix $W$ is reset to zero, so the model starts from scratch.
+        correct: false
+        category: misunderstood_definition
+        feedback: $W$ is frozen and keeps its pretrained values. Only the change starts at zero.
+    solution: With $B=0$, the product $BA$ is zero, so $Wx+BAx=Wx$ and training starts from the pretrained model.
+  - id: lorp-merged-entry-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A frozen matrix $W$ has the entry ${{=w}}$ in row 2, column 1. A rank-1 change $BA$ uses the column $B=(3,{{=b2}})$ and the row $A=({{=a1}},2)$. What is the entry in row 2, column 1 of the merged matrix $W'=W+BA$?
+    params:
+      w:
+        min: 1
+        max: 5
+        step: 1
+      b2:
+        min: 1
+        max: 4
+        step: 1
+      a1:
+        min: 1
+        max: 4
+        step: 1
+    constraints:
+      - b2 != 3
+    answer_expr: w + b2 * a1
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: w + 3 * a1
+        category: math_error
+        feedback: Row 2 uses the second entry of $B$, not the first.
+      - answer_expr: b2 * a1
+        category: incomplete_explanation
+        feedback: That is the entry of $BA$ alone. Merging adds it to the entry of $W$.
+    solution: Entry $(2,1)$ of $BA$ is $b_2a_1={{=b2}}\times{{=a1}}={{=b2*a1}}$. Adding $W$'s entry gives ${{=w}}+{{=b2*a1}}={{=w+b2*a1}}$.
+  - id: lorp-both-zero
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A rank-1 LoRA change $BA$ has a column $B$ with entries $b_i$ and a row $A$. It changes the layer's output by $\Delta Wx=BAx$, and entry $i$ of $BAx$ is $b_i$ times the number $Ax$. If both $B$ and $A$ start as all zeros, what happens during training?
+    options:
+      - id: a
+        text: Neither ever moves, because every gradient for $B$ contains $Ax=0$ and every gradient for $A$ is built from the $b_i$, which are all 0.
+        correct: true
+        feedback: With all gradients zero, gradient descent subtracts nothing, so both stay at zero for ever.
+      - id: b
+        text: Both learn normally, because zero is a fine starting point for any weight.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The gradient for each $b_i$ contains $Ax$, which is zero, and the gradients for $A$ are built from the $b_i$, which are zero.
+      - id: c
+        text: Only $A$ learns, because the gradients for $A$ don't depend on $B$.
+        correct: false
+        category: math_error
+        feedback: Each gradient for an entry of $A$ adds up terms containing $b_i$, so with $B=0$ it is zero too.
+    solution: The gradient for $b_i$ contains $Ax$, and each gradient for an entry of $A$ adds up terms containing the $b_i$. If both start at zero, every gradient is zero, so neither ever changes. That is why $A$ starts random.
+  - id: lorp-tasks-storage
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: A model has 7 billion weights. One LoRA adapter for it has 4.2 million numbers. To serve 5 tasks, you keep one frozen copy of the model and 5 adapters. How many numbers is that in total, in billions? Give your answer to 2 decimal places.
+    answer: 7.02
+    tolerance:
+      abs: 0.006
+    common_wrong:
+      - answer: 35
+        category: incorrect_reasoning
+        feedback: That is 5 full copies of the model. The frozen model is shared, so it is stored once.
+      - answer: 35.02
+        category: incorrect_reasoning
+        feedback: The adapters all share one frozen copy, so the 7 billion is counted once.
+    solution: The frozen model is $7$ billion numbers and the adapters add $5\times4.2$ million $=21$ million $=0.021$ billion, so the total is about $7.02$ billion.
+  - id: lorp-unmerge
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot model's layer was merged with a LoRA change for a sorting task, $W'=W+BA$, and the original $W$ was not saved. The team still has $B$ and $A$. How can they get the original layer back?
+    options:
+      - id: a
+        text: Subtract the change from the merged matrix, $W=W'-BA$.
+        correct: true
+        feedback: Merging only added $BA$, so subtracting it gives back $W$ exactly.
+      - id: b
+        text: Divide the merged matrix by the change, entry by entry.
+        correct: false
+        category: math_error
+        feedback: Merging added $BA$. Undoing an addition means subtracting it.
+      - id: c
+        text: It can't be done, because merging destroys the original weights for good.
+        correct: false
+        category: incorrect_reasoning
+        feedback: As long as $B$ and $A$ are kept, $W=W'-BA$ recovers the original matrix.
+    solution: Merging computed $W'=W+BA$. With $B$ and $A$ still available, $W=W'-BA$ recovers the original weights exactly.
+  - id: lora-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: Explain how LoRA fine-tunes a $d\times k$ weight matrix $W$. Say how many numbers it trains and why that is far fewer, why such a low-rank change can be enough, and what happens to the change after training.
+    rubric:
+      - id: r1
+        criterion: Says $W$ is frozen and a change $\Delta W=BA$ is trained, with $B$ of shape $d\times r$ and $A$ of shape $r\times k$ and small $r$, and the layer computes $Wx+BAx$
+        weight: 1
+        required: true
+      - id: r2
+        criterion: Counts $r(d+k)$ trainable numbers against $dk$, notes this saves only when $r$ is much smaller than $d$ and $k$, and explains that the change needed is usually close to low rank
+        weight: 1
+        required: true
+      - id: r3
+        criterion: Says $B$ starts at zero so the model starts as the pretrained one, and that the change is merged as $W'=W+BA$ at no extra cost or kept as a separate adapter per task
+        weight: 1
+        required: true
+    exemplar: LoRA freezes the pretrained matrix $W$ and trains only a change built from two thin matrices, $\Delta W=BA$, where $B$ is $d\times r$, $A$ is $r\times k$ and the rank $r$ is small, so the layer computes $Wx+B(Ax)$. That trains $r(d+k)$ numbers instead of $dk$; for a $4096\times4096$ matrix at rank 8 that is $65{,}536$ instead of about 16.8 million, and gradients and training extras are needed only for those. A small change is enough because the change fine-tuning needs is usually close to low rank, so keeping its few largest scaled column-times-row tables captures most of it. Training starts with $B=0$, so the model begins as the pretrained one. Afterwards we can merge, $W'=W+BA$, so predicting costs the same as before, or keep the small adapter separate and swap it per task.

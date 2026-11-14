@@ -1,0 +1,276 @@
+concept: lora
+version: 1
+objective: |
+  **Goal:** fine-tune a model with LoRA by freezing its weight matrices and training a small change $BA$ for each, count that change's $r(d+k)$ trainable numbers for a $d\times k$ matrix, explain why a low-rank change can be enough, and merge it back into the weights.
+where_this_fits: |
+  ### What is LoRA?
+
+  LoRA, short for low-rank adaptation, is a cheap way to fine-tune a large model. It keeps the pretrained weights fixed and trains only a change to some of the weight matrices. That change is built from two thin matrices, each with only a few rows or columns.
+
+  Supervised fine-tuning keeps training a pretrained model on prompt–response pairs, and gradient descent updates every weight. For a model with billions of weights, that means storing a gradient for each one, and a whole new copy of the model for every task. LoRA rests on a fact about matrices: a big matrix can often be closely approximated by a low-rank one, which takes far fewer numbers to describe. The change fine-tuning needs is usually close to low rank.
+knowledge_points:
+  - id: lora-frozen-change
+    title: "Keep the weights, train a change"
+    explain: |
+      ### Fine-tuning changes every weight
+
+      In a model, each layer multiplies the vector coming in, $x$, by several weight matrices. We'll follow one of them, $W$. When supervised fine-tuning updates every weight, $W$ ends up as a new matrix, and we can write it as the old one plus a change, $W+\Delta W$. The symbol $\Delta$, the Greek capital delta, means "change in", so $\Delta W$ is a matrix with the same shape as $W$ that says how far each entry moved.
+
+      ### Keep W and learn only the change
+
+      LoRA's first move is to stop changing $W$ itself. **Freezing** a weight means leaving it out of training, so gradient descent never updates it. We freeze $W$ and keep the change $\Delta W$ as a separate matrix, the only thing training updates. This step saves nothing yet. It sets up the change that the next step describes with far fewer numbers. The layer then works out both products and adds them, where $h$ is the result for this matrix:
+
+      $$h=Wx+\Delta W x$$
+
+      Let's picture the simplest case, a $2\times3$ matrix $W$ and the input $x=(1,0,2)$. In the diagram, the input goes two ways. Along the top it meets the frozen grey $W$, and along the bottom it meets the orange $\Delta W$, which training has already adjusted. The two results, $(3,0)$ and $(0,3)$, add up to $h=(3,3)$. The worked example below shows both matrices and multiplies them out.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="The input x = (1, 0, 2) goes two ways. Along the top it is multiplied by the frozen grey matrix W, giving (3, 0). Along the bottom it is multiplied by the trained orange matrix delta W, giving (0, 3). The two results are added to give the output h = (3, 3)">
+      <defs><marker id="lo1-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="lo1-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="20" y="125" width="120" height="50" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="80" y="155" text-anchor="middle">x = (1, 0, 2)</text>
+      <rect x="210" y="40" width="150" height="50" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="285" y="62" text-anchor="middle">W</text><text x="285" y="80" text-anchor="middle" fill="#737373">frozen</text>
+      <rect x="210" y="210" width="150" height="50" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/><text x="285" y="232" text-anchor="middle" fill="#f59e0b">ΔW</text><text x="285" y="250" text-anchor="middle" fill="#f59e0b">trained</text>
+      <path d="M140 140 L206 72" stroke="#737373" stroke-width="2" marker-end="url(#lo1-muted)"/>
+      <path d="M140 160 L206 228" stroke="#f59e0b" stroke-width="2" marker-end="url(#lo1-amber)"/>
+      <path d="M360 65 L433 138" stroke="#737373" stroke-width="2" marker-end="url(#lo1-muted)"/>
+      <path d="M360 235 L433 162" stroke="#f59e0b" stroke-width="2" marker-end="url(#lo1-amber)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="405" y="88">Wx = (3, 0)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="405" y="222" fill="#f59e0b">ΔWx = (0, 3)</text>
+      <circle cx="450" cy="150" r="18" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="450" y="156" text-anchor="middle" font-size="20">+</text>
+      <path d="M468 150 L522 150" stroke="#737373" stroke-width="2" marker-end="url(#lo1-muted)"/>
+      <text x="530" y="155">h = (3, 3)</text>
+      </g>
+      </svg>
+      ```
+
+      Training starts with $\Delta W$ full of zeros. Then $\Delta Wx$ is all zeros too, so before the first update the model gives exactly the answers the pretrained model gave.
+
+      ### The same answer as changing W
+
+      Matrix multiplication distributes over addition, so adding the two products gives the same result as multiplying by the sum:
+
+      $$Wx+\Delta Wx=(W+\Delta W)x$$
+
+      So a frozen $W$ with a trained $\Delta W$ can make any change that fine-tuning $W$ directly could, and the pretrained weights stay untouched underneath.
+
+      Be careful not to think that freezing alone saves anything. A full $\Delta W$ has exactly as many entries as $W$, so we'd still be training as many numbers as before. The next step describes $\Delta W$ with far fewer numbers.
+    worked: |
+      Let's work out the layer's output from the diagram, with the frozen matrix $W$, a change $\Delta W$ that training has already adjusted, and the input $x=(1,0,2)$.
+
+      $$W=\begin{pmatrix}1&0&1\\0&1&0\end{pmatrix},\qquad \Delta W=\begin{pmatrix}0&1&0\\1&0&1\end{pmatrix}$$
+
+      1. **Multiply by the frozen matrix.** Each row of $W$ is dotted with $x$.
+         $$Wx=(1\times1+0\times0+1\times2,\ 0\times1+1\times0+0\times2)=(3,0)$$
+
+      2. **Multiply by the change.** Each row of $\Delta W$ is dotted with $x$ in the same way.
+         $$\Delta Wx=(0\times1+1\times0+0\times2,\ 1\times1+0\times0+1\times2)=(0,3)$$
+
+      3. **Add the two results.** The layer's output is their sum.
+         $$h=(3,0)+(0,3)=(3,3)$$
+
+      4. **Check against one combined matrix.** Adding the matrices entry by entry first should give the same output.
+         $$(W+\Delta W)x=\begin{pmatrix}1&1&1\\1&1&1\end{pmatrix}x=(3,3)$$
+
+      Both ways give $(3,3)$, so keeping the change in its own matrix leaves the layer's output the same, while training moves only the entries of $\Delta W$.
+    problems:
+      - lora-frozen-change-basics
+      - lorp-frozen-self-explain
+      - lorp-what-trains
+      - lorp-output-template
+      - lorp-start-zero
+      - lorp-full-change-count
+      - lorp-robot-freeze
+  - id: lora-two-thin-matrices
+    title: "Build the change from two thin matrices"
+    explain: |
+      ### One column times one row
+
+      $\Delta W$ is as big as $W$. LoRA describes it with far fewer numbers by building it from two thin matrices, while $\Delta W$ keeps its full shape. Let's start with a column $B$ and a row $A$, each with 4 entries. Here $B$ is $4\times1$ and $A$ is $1\times4$, so the inner sizes are both 1 and $BA$ is a $4\times4$ matrix.
+
+      Write $b_i$ for entry $i$ of $B$ and $a_j$ for entry $j$ of $A$. The entry in row $i$ and column $j$ of $BA$ is $b_ia_j$. So the product is a multiplication table, with $B$ down the side and $A$ along the top.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 330" aria-label="A multiplication table. The column B = (1, 2, 0, minus 1) runs down the left and the row A = (2, 1, 0, 1) runs along the top. Each cell of the 4 by 4 grid is its row's entry of B times its column's entry of A, so the rows of delta W = BA are (2, 1, 0, 1), (4, 2, 0, 2), (0, 0, 0, 0) and (minus 2, minus 1, 0, minus 1). The 16 entries come from 8 numbers">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="270" y="40" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/><text x="293.0" y="68.0" text-anchor="middle" font-weight="600">2</text><rect x="316" y="40" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/><text x="339.0" y="68.0" text-anchor="middle" font-weight="600">1</text><rect x="362" y="40" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/><text x="385.0" y="68.0" text-anchor="middle" font-weight="600">0</text><rect x="408" y="40" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/><text x="431.0" y="68.0" text-anchor="middle" font-weight="600">1</text>
+      <rect x="210" y="100" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/><text x="233.0" y="128.0" text-anchor="middle" font-weight="600">1</text><rect x="210" y="146" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/><text x="233.0" y="174.0" text-anchor="middle" font-weight="600">2</text><rect x="210" y="192" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/><text x="233.0" y="220.0" text-anchor="middle" font-weight="600">0</text><rect x="210" y="238" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/><text x="233.0" y="266.0" text-anchor="middle" font-weight="600">−1</text>
+      <rect x="270" y="100" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="293.0" y="128.0" text-anchor="middle">2</text><rect x="316" y="100" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="339.0" y="128.0" text-anchor="middle">1</text><rect x="362" y="100" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="385.0" y="128.0" text-anchor="middle">0</text><rect x="408" y="100" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="431.0" y="128.0" text-anchor="middle">1</text><rect x="270" y="146" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="293.0" y="174.0" text-anchor="middle">4</text><rect x="316" y="146" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="339.0" y="174.0" text-anchor="middle">2</text><rect x="362" y="146" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="385.0" y="174.0" text-anchor="middle">0</text><rect x="408" y="146" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="431.0" y="174.0" text-anchor="middle">2</text><rect x="270" y="192" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="293.0" y="220.0" text-anchor="middle">0</text><rect x="316" y="192" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="339.0" y="220.0" text-anchor="middle">0</text><rect x="362" y="192" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="385.0" y="220.0" text-anchor="middle">0</text><rect x="408" y="192" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="431.0" y="220.0" text-anchor="middle">0</text><rect x="270" y="238" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="293.0" y="266.0" text-anchor="middle">−2</text><rect x="316" y="238" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="339.0" y="266.0" text-anchor="middle">−1</text><rect x="362" y="238" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="385.0" y="266.0" text-anchor="middle">0</text><rect x="408" y="238" width="46" height="46" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="431.0" y="266.0" text-anchor="middle">−1</text>
+      <text x="198" y="68.0" text-anchor="end">row A, 1×4</text>
+      <text x="233.0" y="308" text-anchor="middle">column B,</text><text x="233.0" y="326" text-anchor="middle">4×1</text>
+      <text x="474" y="188">ΔW = BA, 4×4:</text>
+      <text x="474" y="208">16 entries from</text>
+      <text x="474" y="228">4 + 4 = 8 numbers</text>
+      <text x="282" y="308" text-anchor="start" fill="#737373">cell = entry of B × entry of A</text>
+      </g>
+      </svg>
+      ```
+
+      Every row of the grid is a multiple of $A$, for example row 2 is 2 times $A$.
+
+      ### Using more columns and rows
+
+      So one column and one row can only make a simple change. To allow more, we give $B$ a few columns and $A$ the same number of rows, and call that number $r$. Then $BA$ is a sum of $r$ multiplication tables, one for each column of $B$ and the matching row of $A$. Each table's rows are multiples of a different row of $A$, so the rows of the sum can follow different patterns. With $r=2$, $BA$ is column 1 of $B$ times row 1 of $A$, plus column 2 of $B$ times row 2 of $A$.
+
+      **LoRA** freezes a weight matrix $W$ with $d$ rows and $k$ columns, and trains a change made from a $d\times r$ matrix $B$ and an $r\times k$ matrix $A$, with $r$ much smaller than $d$ and $k$:
+
+      $$\Delta W=BA$$
+
+      The inner sizes are both $r$, so $BA$ is $d\times k$, the shape of $W$. The **rank** of a matrix is the smallest number of column-times-row tables that add up to it, so $BA$ has rank at most $r$, and the chosen $r$ is called the LoRA rank. Here $d$ and $k$ are just the two sizes of one weight matrix.
+
+      ### Never building the grid
+
+      The layer never builds the $d\times k$ grid. It works out $Ax$ first, which is just $r$ numbers, and then multiplies those by $B$:
+
+      $$\Delta Wx=B(Ax)$$
+    worked: |
+      Let's build the rank-1 change from the diagram and apply it to the input $x=(1,0,2,1)$ both ways. The column is $B=(1,2,0,-1)$, written down the side, and the row is $A=(2,1,0,1)$.
+
+      1. **Fill in the multiplication table.** Row $i$ of $BA$ is entry $i$ of $B$ times the row $A$.
+         $$BA=\begin{pmatrix}2&1&0&1\\4&2&0&2\\0&0&0&0\\-2&-1&0&-1\end{pmatrix}$$
+
+      2. **Apply the full grid to $x$.** Each row is dotted with $x$, for example $2\times1+1\times0+0\times2+1\times1=3$ for the first row.
+         $$(BA)x=(3,6,0,-3)$$
+
+      3. **Work out $Ax$ first instead.** The row $A$ dotted with $x$ is a single number.
+         $$Ax=2\times1+1\times0+0\times2+1\times1=3$$
+
+      4. **Multiply that number by the column $B$.** Each entry of $B$ is scaled by $3$.
+         $$B(Ax)=3\times(1,2,0,-1)=(3,6,0,-3)$$
+
+      Both ways give $(3,6,0,-3)$, but the second never built the 16-entry grid. It used only the 8 numbers in $B$ and $A$.
+    problems:
+      - lora-two-thin-matrices-basics
+      - lorp-table-self-explain
+      - lorp-shapes
+      - lorp-entry-template
+      - lorp-apply-template
+      - lorp-rows-multiple
+      - lorp-rank-shape-robot
+  - id: lora-count-savings
+    title: "Count the numbers LoRA trains"
+    explain: |
+      ### Counting the numbers to train
+
+      Fine-tuning a $d\times k$ matrix directly trains all $dk$ of its entries. A rank-$r$ LoRA change trains the $dr$ entries of $B$ and the $rk$ entries of $A$, so the number of **trainable parameters**, the numbers gradient descent updates, is
+
+      $$dr+rk=r(d+k)$$
+
+      Here are both counts:
+
+      | Shape | $r$ | $dk$ | $r(d+k)$ |
+      | --- | --- | --- | --- |
+      | $4\times4$ | 1 | 16 | 8 |
+      | $4\times4$ | 2 | 16 | 16 |
+      | $4\times4$ | 4 | 16 | 32 |
+      | $4096\times4096$ | 8 | 16,777,216 | 65,536 |
+
+      Be careful not to assume a low-rank change is always smaller. In the $4\times4$ matrix, rank 2 already costs as much as the full change, and rank 4 costs double. LoRA pays off for large matrices, where $r$ is far smaller than $d$ and $k$.
+
+      ### Why fewer trained numbers saves memory
+
+      Training stores a gradient for every trained number, and Adam, a common training method, keeps a running average of past gradients and of their squares for each one. Those costs now apply only to $B$ and $A$. Hu and colleagues, who introduced LoRA in 2021, reported that on GPT-3 it trained about 10,000 times fewer parameters than full fine-tuning and needed about a third of the GPU memory used in training. The memory saving is much smaller than the parameter saving because the frozen weights still fill memory.
+
+      ### Why a low-rank change is enough
+
+      The singular value decomposition (SVD) shows that any matrix can be written as a sum of column-times-row tables, each scaled by a number called a singular value. Keeping the few tables with the largest singular values gives a close low-rank approximation when the ones left out are small. So if the change that fine-tuning needs is mostly a few large tables, a rank-$r$ change $BA$ can match it closely. The LoRA authors found evidence that it usually is. In their GPT-3 experiments on two language tasks, a rank as small as 1 or 2 already scored close to larger ranks.
+
+      When the needed change is far from low rank, a small $r$ falls short, so people raise $r$ or put LoRA on more matrices.
+    worked: |
+      Let's count what LoRA trains in a whole model. Suppose the model has 32 layers, and in each one we put LoRA on two of its $4096\times4096$ weight matrices, with rank $r=8$. (In a transformer, these are two of the matrices used by attention, often called $W_Q$ and $W_V$. For counting, only their shape matters.) Suppose the model has 7 billion weights in all.
+
+      1. **Count one matrix's change.** Here $d=k=4096$, so we use $r(d+k)$.
+         $$8\times(4096+4096)=65{,}536$$
+
+      2. **Count the matrices.** There are two in each of 32 layers.
+         $$2\times32=64$$
+
+      3. **Count the whole change.** Each of the 64 matrices gets its own $B$ and $A$.
+         $$64\times65{,}536=4{,}194{,}304$$
+
+      4. **Compare with the whole model.** We divide by the 7 billion weights that full fine-tuning would train.
+         $$\frac{4{,}194{,}304}{7{,}000{,}000{,}000}\approx0.0006=0.06\%$$
+
+      LoRA trains about 4.2 million new numbers, about $0.06\%$ as many as the model has weights, and all 7 billion original weights stay frozen.
+    problems:
+      - lora-count-savings-basics
+      - lorp-model-count-self-explain
+      - lorp-count-template
+      - lorp-frozen-memory
+      - lorp-percent-template
+      - lorp-small-matrix
+      - lorp-why-low-rank
+      - lorp-raise-rank
+  - id: lora-merge
+    title: "Start B at zero, then merge"
+    explain: |
+      ### Starting from no change
+
+      We want training to start from the pretrained model, so $BA$ should start at zero. LoRA sets $B$ to all zeros and $A$ to small random numbers. Why not make both zero? Take the rank-1 case, where $B$ is a column with entries $b_i$ and $A$ is a row. Entry $i$ of $BAx$ is $b_i$ times the number $Ax=a_1x_1+\dots+a_kx_k$. Nudging $b_i$ moves that entry by $Ax$ times the nudge, and nudging $a_j$ moves it by $b_ix_j$ times the nudge. By the chain rule, the gradient for $b_i$ is $Ax$ times the loss's slope for entry $i$. The gradient for $a_j$ adds up $b_ix_j$ times the loss's slope for entry $i$, over every entry $i$. If $B$ and $A$ are both zero, then $Ax=0$ and every $b_i=0$, so every gradient is zero and nothing moves. With $A$ random, $Ax$ is almost never zero, so $B$ gets a gradient and moves. Once some $b_i$ is nonzero, $A$ gets gradients too.
+
+      In practice, LoRA code also multiplies $BA$ by a fixed number, so that the size of the change stays similar when $r$ is changed. It doesn't change the count $r(d+k)$. We leave it out here. With it, each $BA$ below becomes that number times $BA$.
+
+      ### Merging the change into W
+
+      After training, we can build $BA$ once and add it into the frozen matrix:
+
+      $$W'=W+BA$$
+
+      Here $W'$, read "W prime", is the new weight matrix. It has the same shape as $W$, so predicting with the merged model takes exactly the same work as predicting with the original one.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" aria-label="Left, during training: the frozen grey matrix W plus the trained orange product BA, two separate pieces. An arrow labelled merge points right to one green matrix W prime = W + BA, with the same shape as W, used after training">
+      <defs><marker id="lo4-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="20" y="30" fill="#737373">during training</text>
+      <rect x="20" y="60" width="110" height="80" rx="8" fill="#ffffff" stroke="#737373" stroke-width="2"/><text x="75" y="96" text-anchor="middle">W</text><text x="75" y="116" text-anchor="middle" fill="#737373">frozen</text>
+      <text x="152" y="108" text-anchor="middle" font-size="20">+</text>
+      <rect x="175" y="60" width="110" height="80" rx="8" fill="#ffffff" stroke="#f59e0b" stroke-width="2"/><text x="230" y="96" text-anchor="middle" fill="#f59e0b">BA</text><text x="230" y="116" text-anchor="middle" fill="#f59e0b">trained</text>
+      <path d="M300 100 L388 100" stroke="#737373" stroke-width="2" marker-end="url(#lo4-muted)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="344" y="88" text-anchor="middle">merge</text>
+      <text x="400" y="30" fill="#737373">after training</text>
+      <rect x="400" y="60" width="110" height="80" rx="8" fill="#ffffff" stroke="#10b981" stroke-width="2"/><text x="455" y="96" text-anchor="middle" fill="#10b981">W′ = W + BA</text><text x="455" y="116" text-anchor="middle" fill="#10b981">same shape</text>
+      <text x="400" y="170" fill="#737373">one matrix, same cost to run</text>
+      </g>
+      </svg>
+      ```
+
+      ### One frozen model, many tasks
+
+      We can also keep the change separate. All the trained pairs $B$ and $A$ for a task together are called a **LoRA adapter**. Since each adapter is tiny, we can keep one copy of the frozen model and a small adapter for each task, and swap between them.
+
+      Be careful not to think a merged model can switch tasks by itself. Once $BA$ is added in, $W'$ holds that one task's change. To serve several tasks from one copy of the frozen weights, we keep the adapters separate and pay for the extra products $Ax$ and $B(Ax)$ on each input.
+    worked: |
+      Let's merge a rank-1 change into the frozen $2\times3$ matrix below, and check that the merged matrix gives the same output for $x=(1,0,2)$ as the separate pieces. The change uses the column $B=(1,2)$ and the row $A=(1,1,0)$.
+
+      $$W=\begin{pmatrix}1&0&1\\0&1&0\end{pmatrix}$$
+
+      1. **Build the change.** Row $i$ of $BA$ is entry $i$ of $B$ times the row $A$.
+         $$BA=\begin{pmatrix}1&1&0\\2&2&0\end{pmatrix}$$
+
+      2. **Merge it into $W$.** We add the two matrices entry by entry.
+         $$W'=W+BA=\begin{pmatrix}2&1&1\\2&3&0\end{pmatrix}$$
+
+      3. **Predict with the merged matrix.** Each row of $W'$ is dotted with $x$.
+         $$W'x=(2+0+2,\ 2+0+0)=(4,2)$$
+
+      4. **Check with the separate pieces.** Here $Wx=(3,0)$ and $Ax=1$, so $B(Ax)=(1,2)$.
+         $$Wx+B(Ax)=(3,0)+(1,2)=(4,2)$$
+
+      The merged matrix gives the same $(4,2)$ with one matrix product, where the separate pieces needed three, $Wx$, $Ax$ and $B(Ax)$. That is why merging adds no cost when predicting.
+    problems:
+      - lora-merge-basics
+      - lorp-merge-self-explain
+      - lorp-why-b-zero
+      - lorp-merged-entry-template
+      - lorp-both-zero
+      - lorp-tasks-storage
+      - lorp-unmerge
+final: lora-explain
+summary: |
+  - LoRA freezes a pretrained weight matrix $W$ and trains only a change to it, so a layer computes $h=Wx+\Delta Wx$, which equals $(W+\Delta W)x$.
+  - The change is built from two thin matrices, $\Delta W=BA$, with $B$ of shape $d\times r$ and $A$ of shape $r\times k$, so it has rank at most $r$ and can be applied as $B(Ax)$.
+  - A rank-$r$ change to a $d\times k$ matrix trains $r(d+k)$ numbers instead of $dk$, which is a big saving only when $r$ is much smaller than $d$ and $k$. It works because the change fine-tuning needs is usually close to low rank.
+  - Training starts with $B=0$, so $BA=0$ and the model starts as the pretrained one. Afterwards, $W'=W+BA$ merges the change at no extra cost, or the small adapter is kept separate and swapped per task.
+
+  **Next:** In the reward models lesson, we train a model to score responses, using pairs of responses that a person compared. That score is the first step towards training a model on human preferences.
