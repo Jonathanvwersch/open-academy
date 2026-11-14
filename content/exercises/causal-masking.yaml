@@ -1,5 +1,28 @@
 concept: causal-masking
 exercises:
+  - id: lab-char-transformer-mask-leak
+    dimension: implementation
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: |
+      A decoder predicts each next character from a whole training window. Its attention code takes softmax over every key, then sets future weights to zero without rescaling the remaining weights. The future weights test passes, but the row-sum test fails. Explain the failure and describe a correction that also preserves causal prediction.
+    rubric:
+      - id: normalization
+        criterion: Explains that the removed future entries held some probability mass, so the remaining row generally sums to less than one.
+        weight: 1
+        required: true
+      - id: correction
+        criterion: Places negative infinity in future scores before softmax, keeping the diagonal allowed.
+        weight: 2
+        required: true
+      - id: causality
+        criterion: Explains that the corrected weights sum to one over allowed positions and later tokens cannot influence earlier outputs.
+        weight: 1
+        required: true
+    exemplar: Softmax shared probability mass with the future keys. Removing their weights leaves the allowed weights with a total below one, and their sizes still depend on the future scores through the original denominator. Fill the future scores with negative infinity before softmax and keep the diagonal. Softmax then normalizes over the allowed keys, so those weights sum to one and depend only on the visible prefix.
+    solution: Mask the future scores before softmax so its denominator uses only allowed keys. Zeroing future probabilities afterward loses mass and leaves a dependence on future scores.
   - id: dx-tf-4
     dimension: conceptual
     type: mc

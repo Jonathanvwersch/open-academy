@@ -1,0 +1,92 @@
+id: pca-numpy
+title: PCA from scratch
+status: authored
+est_hours: 3
+objective: Implement PCA in NumPy, compare covariance eigenvectors with the SVD, and measure how many image details survive compression.
+background: |
+  Principal component analysis (PCA) finds perpendicular directions along which a collection of vectors varies most. Keeping a few of these directions lets you store each example with fewer coordinates. You will apply it to 160 tiny grayscale images, each stored as a row of 64 pixel values.
+
+  The provided generator combines three 8 by 8 shapes with small random pixel changes. It uses a fixed seed and needs no downloads. Pixel values are real numbers; the preview clips them to the display range only when saving the picture.
+
+  A feature mean is the average value of one pixel across all images. Subtract these means to centre the data. The sample covariance matrix records how pairs of centred features vary together. With centred rows in `Xc`, it is `Xc.T @ Xc / (n - 1)`, where `n` counts images. Its diagonal entries measure each feature's spread. Its eigenvectors give the PCA directions.
+
+  The dot product gives a vector's coordinate along a unit direction. You will collect these coordinates with matrix multiplication, then map them back to pixels. Explained variance is the fraction of the total spread carried by each direction. Reconstruction error is the average squared difference across all original and reconstructed pixel entries.
+
+  Work in your editor. The app records results and never runs your Python code.
+
+  **Setup from the repository root**
+  ```bash
+  python3 -m pip install -r labs/pca-numpy/requirements.txt
+  python3 labs/pca-numpy/setup.py
+  # edit labs/pca-numpy/work/pca.py
+  python3 labs/verify.py pca-numpy
+  python3 labs/pca-numpy/preview.py
+  ```
+  Upload `labs/pca-numpy/work/results.json` here when you are done.
+prereqs: [vectors, dot-product, matrices, eigen-svd]
+tasks:
+  - id: t-centre
+    title: Move the data to its mean
+    md: |
+      Implement `centre(X)`. Average along axis 0 and return the centred rows and the feature mean of shape `(d,)`. Done means every centred column has average zero, including for constant images.
+  - id: t-covariance
+    title: Measure shared variation
+    md: |
+      Implement `covariance(Xc)` using the matrix product described above. Return a symmetric `(d, d)` matrix. Raise `ValueError` for fewer than two rows, since the sample divisor would be zero.
+  - id: t-eigen
+    title: Order the principal directions
+    md: |
+      Implement `eigen_pca(C)` with `np.linalg.eigh`, which handles symmetric matrices. It returns eigenvalues in ascending order and unit eigenvectors as columns. Sort the values largest first and reorder the columns with the same indices. Done means each returned column still satisfies the eigenvector equation for its paired value.
+  - id: t-svd
+    title: Compare with the SVD
+    md: |
+      Implement `svd_pca(Xc)` with `np.linalg.svd(Xc, full_matrices=False)`. Return `s**2 / (n - 1)` and `Vt.T`, where `s` holds singular values and `Vt` holds right singular vectors as rows. Implement `direction_agreement(V, W)` as the absolute dot product of each pair of corresponding unit columns. Compare the leading three directions from both routes. Their agreements should be near one even if a column changes sign. Equal eigenvalues can permit rotations within their shared space; the direction check uses distinct eigenvalues.
+  - id: t-project
+    title: Keep fewer coordinates
+    md: |
+      Implement `project(Xc, V, k)` using the first `k` columns of `V`. Return shape `(n, k)`. Allow integer `k` from zero through the number of columns. Raise `ValueError` otherwise. Done means a dot product with each retained direction gives one output coordinate.
+  - id: t-reconstruct
+    title: Return to the pixel space
+    md: |
+      Implement `reconstruct(Z, V, mean)`. Multiply by the transpose of the first `Z.shape[1]` columns and add the saved feature mean. Done means retaining every direction recovers the input, while retaining zero directions returns the mean image for every row.
+  - id: t-measure
+    title: Measure what was lost
+    md: |
+      Implement `reconstruction_error(X, reconstructed)` as the average squared difference over all entries. Implement `explained_variance(values)` as each eigenvalue divided by their sum. Clip negative roundoff to zero first. Return zeros if the total is zero. Done means fractions sum to one for a nonzero spectrum and exact reconstruction has zero error.
+  - id: t-inspect
+    title: Inspect the reconstructed images
+    md: |
+      Run the verifier and the provided `preview.py`. Open `work/reconstructions.pgm` with an image viewer. The first row shows originals; the next rows keep 0, 1, 2, 3 and 8 directions. Compare their printed errors and retained variance fractions. Done means you can describe which shape details return as you increase `k`.
+acceptance:
+  - All nine public checks pass.
+  - With three directions, average squared pixel error is below 0.0002.
+  - Three directions retain more than 0.98 of the total variance.
+  - Reconstruction error decreases as more directions are retained.
+tests:
+  - { id: test_centre, concepts: [vectors], dimension: math }
+  - { id: test_covariance, concepts: [matrices], dimension: implementation }
+  - { id: test_eigen_sorted, concepts: [eigen-svd], dimension: math }
+  - { id: test_svd_sign_invariant, concepts: [eigen-svd], dimension: math }
+  - { id: test_projection, concepts: [dot-product], dimension: math }
+  - { id: test_reconstruction, concepts: [matrices], dimension: implementation }
+  - { id: test_error, concepts: [vectors], dimension: math }
+  - { id: test_explained_variance, concepts: [eigen-svd], dimension: math }
+  - { id: test_image_compression, concepts: [eigen-svd], dimension: conceptual }
+metrics:
+  - {
+      id: reconstruction_error_k3,
+      label: Average squared pixel error at k=3,
+      threshold: 0.0002,
+      direction: below,
+    }
+  - {
+      id: explained_variance_k3,
+      label: Retained variance at k=3,
+      threshold: 0.98,
+      direction: above,
+    }
+reflection: [lab-pca-numpy-sign, lab-pca-numpy-retained, lab-pca-numpy-coordinates]
+follow_up:
+  - Compare the leading three directions after adding the same brightness offset to every image.
+  - Find the smallest k that retains at least 0.995 of the total variance.
+  - Try a generator with two equally strong shapes and compare the retained subspaces using their projection matrices.

@@ -1,5 +1,28 @@
 concept: autoregressive-lm
 exercises:
+  - id: lab-char-transformer-loss-and-samples
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: |
+      A character decoder's loss on fixed training windows falls from 3.3 to 1.1. Its generated text still repeats phrases and sometimes breaks words. Explain how these observations can occur together, and propose an evaluation that would give evidence about prediction on unseen text.
+    rubric:
+      - id: training
+        criterion: Explains that lower training cross-entropy means higher probability on the observed next characters given their true prefixes.
+        weight: 1
+        required: true
+      - id: generation
+        criterion: Explains that generation conditions on the model's own sampled characters, so errors can accumulate, or that a tiny repeated corpus encourages familiar phrases.
+        weight: 1
+        required: true
+      - id: evaluation
+        criterion: Proposes next-character loss on separate unseen text that is excluded from training, with the same tokenizer and causal evaluation.
+        weight: 1
+        required: true
+    exemplar: The loss measures next-character predictions after true training prefixes. A tiny repeated story can become easier to predict while encouraging repeated phrases. During generation the model sees its own samples, so an unusual character can lead to unfamiliar prefixes and more errors. Keep a separate paragraph out of training and measure causal next-character loss with the same vocabulary. That gives evidence about predictions beyond the memorized story.
+    solution: Training loss scores predictions on true training prefixes, while sampling feeds the model's own choices back into the context. Evaluate loss on separate unseen text to check whether the learned predictions transfer.
   - id: alm-next-basics
     dimension: conceptual
     type: mc

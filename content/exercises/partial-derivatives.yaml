@@ -1,5 +1,16 @@
 concept: partial-derivatives
 exercises:
+  - id: lab-gc-fixed-coordinate
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'For $f(x,y)=xy+y^2$, find $\partial f/\partial x$ at $(2,3)$.'
+    answer: 3
+    tolerance: { abs: 0.001 }
+    hints: ["Hold the other coordinate fixed."]
+    solution: 'Holding $y$ fixed gives $\partial f/\partial x=y$. At $(2,3)$ this is $3$.'
   - id: pd-hold-fixed-basics
     dimension: conceptual
     type: mc

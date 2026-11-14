@@ -662,3 +662,72 @@ exercises:
       Maximum likelihood ranks guesses by how probable they make the data. Logs keep that ranking
       while turning products into sums, and with Gaussian noise the log-likelihood is a constant minus
       the sum of squared errors over $2\sigma^2$.
+  - id: lab-gauss-front-factor
+    dimension: transfer
+    type: mc
+    role: core
+    difficulty: 3
+    est_minutes: 3
+    prompt: A learner fits both $\mu$ and $\sigma$ to distance readings. Each log height is
+      $\ln\frac{1}{\sigma\sqrt{2\pi}}-\frac{(x-\mu)^2}{2\sigma^2}$, and they leave out the first term
+      because it is the same for every $\mu$. They then try every $\sigma$ from 0.5 to 6 cm. Which
+      $\sigma$ gets the highest score?
+    options:
+      - id: a
+        text: 6 cm, the widest bell tried, since the remaining term only gets closer to 0 as $\sigma$ grows
+        correct: true
+        feedback:
+          With the first term gone, nothing penalises a wide bell, so the score keeps rising with
+          $\sigma$ up to the largest value tried.
+      - id: b
+        text: The usual best $\sigma$, since a term that is the same for every $\mu$ never moves the best guess
+        correct: false
+        category: misapplied_technique
+        feedback:
+          That term can be dropped while $\sigma$ stays fixed. It changes with $\sigma$, so dropping it
+          changes which $\sigma$ wins.
+      - id: c
+        text: 0.5 cm, the narrowest bell tried, since narrow bells are taller at the readings near the centre
+        correct: false
+        category: incorrect_reasoning
+        feedback:
+          The tall peak of a narrow bell comes from the first term, which was left out. Without it,
+          narrow bells only make the squared-distance term more negative.
+    solution:
+      The term $-\frac{(x-\mu)^2}{2\sigma^2}$ gets closer to 0 as $\sigma$ grows, and only the dropped term
+      $\ln\frac{1}{\sigma\sqrt{2\pi}}$ pulls the other way. Without it the search runs to the widest bell,
+      6 cm.
+  - id: lab-gauss-held-out-gap
+    dimension: conceptual
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt:
+      A Gaussian is fitted by maximum likelihood to 200 readings from a distance sensor. Its average
+      log-likelihood is $-2.10$ per reading on those 200 readings and $-2.15$ per reading on 200 other
+      readings from the same sensor. What best explains the gap?
+    options:
+      - id: a
+        text: The fit chose $\mu$ and $\sigma$ to suit the first 200 readings, so it scores them a little higher
+        correct: true
+        feedback:
+          Maximum likelihood makes the readings it was fitted on as likely as possible, so new readings
+          from the same sensor usually score slightly lower.
+      - id: b
+        text: The other 200 readings came out noisier, so the sensor must have changed between the two sets
+        correct: false
+        category: incorrect_reasoning
+        feedback:
+          A small gap is what we expect even when nothing changed. The fit was tuned to the first set
+          and never saw the second.
+      - id: c
+        text: The fit has a mistake, since a correct fit gives the same score on any readings from the sensor
+        correct: false
+        category: misunderstood_definition
+        feedback:
+          Even the true $\mu$ and $\sigma$ give different scores on different readings, and the fitted
+          values suit the readings they came from.
+    solution:
+      The fitted $\mu$ and $\sigma$ are the values that make the first 200 readings most likely, so they
+      score those readings slightly better than new ones. A gap of 0.05 per reading is small.

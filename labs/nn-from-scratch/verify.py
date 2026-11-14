@@ -6,6 +6,16 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
+FAILURE_TEST_IDS = (
+    "test_data_is_seeded_and_split",
+    "test_parameter_forward_and_gradient_shapes",
+    "test_forward_matches_reference",
+    "test_loss_matches_mean_binary_cross_entropy",
+    "test_gradients_match_numerical_differences",
+    "test_training_step_lowers_loss",
+    "test_training_reaches_validation_accuracy",
+    "test_hidden_layer_beats_linear_baseline",
+)
 
 
 def load_module(path, name):
@@ -42,13 +52,8 @@ def main():
         suite = load_module(ROOT / "tests" / "checks.py", "nn_from_scratch_checks")
         checks, metrics = suite.run_checks(model)
     except Exception as error:
-        checks = [
-            {
-                "id": "test_verifier_completed",
-                "passed": False,
-                "message": f"{type(error).__name__}: {error}",
-            }
-        ]
+        message = f"{type(error).__name__}: {error}"
+        checks = [{"id": test_id, "passed": False, "message": message} for test_id in FAILURE_TEST_IDS]
 
     result = {
         "project": "nn-from-scratch",

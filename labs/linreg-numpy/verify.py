@@ -11,6 +11,16 @@ import yaml
 ROOT = Path(__file__).parent
 TRUE_W = np.array([1.5, -2.0])
 TRUE_B = 0.7
+FAILURE_TEST_IDS = (
+    "test_predict_shape_and_values",
+    "test_mse_is_mean",
+    "test_gradients_match_finite_differences",
+    "test_fit_decreases_loss",
+    "test_split_is_disjoint_and_seeded",
+    "test_lr_0_1_converges",
+    "test_lr_1_diverges",
+    "test_recovers_true_weights",
+)
 
 
 def data():
@@ -88,5 +98,7 @@ if __name__ == "__main__":
             raise SystemExit(1)
     except Exception as error:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps({"project": "linreg-numpy", "version": 1, "tests": [{"id": "verifier_error", "passed": False, "message": type(error).__name__}], "metrics": {}, "generated_at": datetime.now(timezone.utc).isoformat()}, indent=2) + "\n")
+        message = f"{type(error).__name__}: {error}"
+        tests = [{"id": test_id, "passed": False, "message": message} for test_id in FAILURE_TEST_IDS]
+        args.output.write_text(json.dumps({"project": "linreg-numpy", "version": 1, "tests": tests, "metrics": {}, "generated_at": datetime.now(timezone.utc).isoformat()}, indent=2) + "\n")
         raise

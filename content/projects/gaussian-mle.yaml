@@ -1,0 +1,161 @@
+id: gaussian-mle
+title: Fitting a Gaussian
+status: authored
+est_hours: 3
+objective: "Fit a Gaussian to noisy sensor readings by maximum likelihood, score it on readings it never saw against worse fits, and measure it as a forecast with entropy and cross-entropy."
+background: |
+  A distance sensor is aimed at a wall 100 cm away. Its readings wobble around the true distance with Gaussian noise of standard deviation 2 cm, and it reports whole centimetres. You get 400 of these readings, made by a seeded generator so everyone sees the same numbers. The first 200 are training readings, which you fit. The other 200 are held-out readings, which you only use to score the fit.
+
+  In this unit you met each idea on its own: the mean and spread of a list, the bell-shaped density, maximum likelihood, and entropy and cross-entropy in bits. Here you put them together into one small program. You will compute the mean and spread, write the log of the bell's height, add those logs into a log-likelihood, and check that the best bell is the one the formulas give. Then you test the bell on the held-out readings, and finally score it as a forecast of which whole centimetre each reading lands on.
+
+  The starter file gives you the data generator and a helper that counts readings per centimetre. You write everything else in NumPy. The work runs on a laptop in a few seconds and needs no internet. The Academy server records your results but never runs your code.
+
+  **Setup**
+  ```bash
+  python3 -m pip install -r labs/gaussian-mle/requirements.txt
+  python3 labs/gaussian-mle/setup.py
+  # edit labs/gaussian-mle/work/gaussian.py
+  python3 labs/verify.py gaussian-mle
+  python3 labs/gaussian-mle/work/report.py
+  ```
+  Upload `labs/gaussian-mle/work/results.json` on this page when you are done.
+prereqs:
+  [
+    probability-basics,
+    descriptive-statistics,
+    gaussian-distribution,
+    maximum-likelihood,
+    information-theory,
+  ]
+tasks:
+  - id: t-centre-spread
+    title: Find the centre and spread
+    md: |
+      Implement `mean(x)`, `variance(x, sample=False)` and `std(x, sample=False)`. The mean adds the readings and divides by their count. The variance averages the squared deviations from the mean, so it divides by $n$. With `sample=True` it divides by $n-1$ instead, the sample variance $s^2$ from the statistics lesson. The standard deviation is the square root of the variance.
+
+      You are done when the readings 97, 99, 100, 101 and 103 give a mean of 100, a variance of 4 and a standard deviation of 2, and a sample variance of 5.
+  - id: t-log-density
+    title: Write the log of the bell's height
+    md: |
+      Implement `log_density(x, mu, sigma)`, the natural log of the normal density $f(x)=\frac{1}{\sigma\sqrt{2\pi}}e^{-(x-\mu)^2/(2\sigma^2)}$. Take the log on paper first. The log of a product is a sum, and $\ln(e^y)=y$, so you get two terms. Compute those two terms directly, without calling `np.exp`. It should work for one reading or a whole array.
+
+      Keep both terms. The first, $\ln\frac{1}{\sigma\sqrt{2\pi}}$, is the same for every $\mu$, but it changes with $\sigma$, and in this project you fit $\sigma$ too.
+
+      You are done when `log_density(100, 100, 2)` is about $-1.612$ and `log_density(102, 100, 2)` is exactly $0.5$ lower.
+  - id: t-log-likelihood
+    title: Add up the log heights
+    md: |
+      Implement `log_likelihood(x, mu, sigma)`. The readings are independent, so the likelihood is the product of their heights, and its log is the sum of their log heights. Use your `log_density` and add.
+
+      You are done when it gives a finite number for 5000 readings. Multiplying 5000 heights first would round to 0, and its log would be minus infinity.
+  - id: t-fit
+    title: Fit the bell to the training readings
+    md: |
+      Implement `fit_gaussian(x)` and return the guess $(\mu, \sigma)$ with the highest likelihood. In the maximum-likelihood lesson you found that, for a fixed $\sigma$, the best $\mu$ is the mean of the readings. For $\sigma$, use the divide-by-$n$ standard deviation from the first task. The next task checks that choice.
+
+      You are done when the training readings give a mean within 0.5 cm of 100 and a standard deviation within 0.3 cm of 2.
+  - id: t-sigma-search
+    title: Check the best spread by search
+    md: |
+      Implement `best_sigma(x, mu, sigmas)`. Keep $\mu$ fixed, work out the log-likelihood for every value in `sigmas`, and return the value that scores highest. The verifier tries every $\sigma$ from 0.5 to 6 cm in steps of 0.01.
+
+      Think about the two terms of a log height as $\sigma$ grows. The squared-distance term gets less negative, which favours wide bells. The first term gets more negative, which favours narrow ones. The best $\sigma$ balances them.
+
+      You are done when the search peaks within 0.01 cm of the spread from `fit_gaussian`. If it picks 6, the largest value tried, the first term is missing from `log_density`.
+  - id: t-held-out
+    title: Score the fit on readings it never saw
+    md: |
+      Implement `average_log_likelihood(x, mu, sigma)`, the log-likelihood divided by the number of readings, so data sets of different sizes compare fairly. Higher is better.
+
+      The verifier scores four bells on the held-out readings: your fit, one with its centre 2 cm too high, one twice as wide and one half as wide. Run `python3 labs/gaussian-mle/work/report.py` to see the scores on both the training and held-out readings.
+
+      You are done when your fit scores highest on the held-out readings, above $-2.25$ per reading.
+  - id: t-entropy
+    title: Measure average surprise in bits
+    md: |
+      Implement `entropy(p)` and `cross_entropy(p, q)` for discrete distributions given as arrays of probabilities. Entropy is $H(p)=p_1\log_2\frac{1}{p_1}+p_2\log_2\frac{1}{p_2}+\dots$. Cross-entropy uses the actual probabilities $p$ as weights and the forecast probabilities $q$ for the surprise, $H(p,q)=p_1\log_2\frac{1}{q_1}+p_2\log_2\frac{1}{q_2}+\dots$. Use `np.log2` so the answers are in bits.
+
+      An outcome with $p_i=0$ adds nothing, so skip it before taking a log. If the forecast gives $q_i=0$ to an outcome that can happen, return `float("inf")`.
+
+      You are done when $H(1/2,1/4,1/4)=1.5$ bits, $H(1,0,0,0)=0$, and $H(p,q)=1.75$ bits for $p=(1/2,1/4,1/4)$ and $q=(1/4,1/4,1/2)$.
+  - id: t-forecast
+    title: Use the bell as a forecast
+    md: |
+      The sensor reports whole centimetres, so each reading lands in one bin: 99, 100, 101 and so on. Implement `bell_forecast(bins, mu, sigma)`. As in the maximum-likelihood lesson, a bin's chance is about the bell's height there times the bin's width of 1 cm. Work out the height at each bin, then divide by their total so the forecast adds up to 1.
+
+      The starter's `bin_fractions` gives the actual fraction of held-out readings in each bin from 90 to 110. The verifier compares that with each bell's forecast using your `cross_entropy`.
+
+      You are done when your fitted bell has the lowest cross-entropy of the four bells, and that cross-entropy is at least the entropy of the held-out bins.
+acceptance:
+  - "All 11 verifier checks pass."
+  - "The fitted mean is within 0.5 cm of 100 and the fitted standard deviation is within 0.3 cm of 2."
+  - "The search over sigma peaks at the divide-by-n standard deviation of the training readings."
+  - "On the held-out readings, the fitted bell beats a shifted bell, a wider bell and a narrower bell, with an average log-likelihood above -2.25 per reading."
+  - "Entropy and cross-entropy are in bits, and the fitted bell has the lowest cross-entropy as a forecast of the held-out bins."
+tests:
+  - { id: test_mean_variance_std, concepts: [descriptive-statistics], dimension: implementation }
+  - {
+      id: test_log_density_matches_formula,
+      concepts: [gaussian-distribution],
+      dimension: implementation,
+    }
+  - {
+      id: test_log_likelihood_is_sum_of_log_densities,
+      concepts: [maximum-likelihood],
+      dimension: implementation,
+    }
+  - {
+      id: test_fit_uses_mean_and_spread,
+      concepts: [maximum-likelihood, descriptive-statistics],
+      dimension: implementation,
+    }
+  - {
+      id: test_sigma_search_agrees_with_fit,
+      concepts: [maximum-likelihood, gaussian-distribution],
+      dimension: implementation,
+    }
+  - {
+      id: test_fit_beats_worse_fits_on_held_out,
+      concepts: [maximum-likelihood],
+      dimension: implementation,
+    }
+  - {
+      id: test_entropy_in_bits,
+      concepts: [information-theory, probability-basics],
+      dimension: implementation,
+    }
+  - { id: test_cross_entropy_in_bits, concepts: [information-theory], dimension: implementation }
+  - {
+      id: test_bell_forecast_is_a_distribution,
+      concepts: [gaussian-distribution, probability-basics],
+      dimension: implementation,
+    }
+  - {
+      id: test_bell_forecast_cross_entropy,
+      concepts: [information-theory, maximum-likelihood],
+      dimension: implementation,
+    }
+  - {
+      id: test_fit_recovers_sensor_settings,
+      concepts: [maximum-likelihood, gaussian-distribution],
+      dimension: implementation,
+    }
+metrics:
+  - { id: mean_error, label: "Fitted mean error (cm)", threshold: 0.5, direction: below }
+  - {
+      id: sigma_error,
+      label: "Fitted standard deviation error (cm)",
+      threshold: 0.3,
+      direction: below,
+    }
+  - {
+      id: held_out_log_likelihood,
+      label: "Held-out average log-likelihood",
+      threshold: -2.25,
+      direction: above,
+    }
+reflection: [lab-gauss-front-factor, lab-gauss-held-out-gap, lab-gauss-forecast-gap]
+follow_up:
+  - "Replace one training reading with a misfire of 150 cm and refit. Watch how far the mean and the standard deviation move."
+  - "Fit with only 5, 20 and 100 training readings and compare how close each fit gets to 100 cm and 2 cm."
+  - "Compute the KL divergence of each bell's forecast from the held-out bins and check that it ranks the bells the same way as cross-entropy."

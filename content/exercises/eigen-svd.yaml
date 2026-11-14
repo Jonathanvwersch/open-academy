@@ -1,5 +1,45 @@
 concept: eigen-svd
 exercises:
+  - id: lab-pca-numpy-sign
+    dimension: conceptual
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: Two PCA implementations return unit directions $v$ and $-v$ for the same distinct eigenvalue. Both use their own directions for projection and reconstruction. How do their reconstructed vectors compare?
+    options:
+      - id: same
+        text: They are identical.
+        correct: true
+        feedback: Reversing both the coordinate and the direction preserves their product.
+      - id: negative
+        text: They have opposite signs.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The projected coordinate also changes sign, so mapping back reverses that sign change.
+      - id: zero
+        text: They both become zero.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A sign flip preserves the direction's length and its contribution.
+    solution: Reversing the direction reverses its projected coordinate. Multiplying the coordinate by the direction gives the same contribution to reconstruction.
+  - id: lab-pca-numpy-retained
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: A centred dataset has covariance eigenvalues 12, 6 and 2. What fraction of its total variance is retained by the best rank-2 PCA reconstruction? Give a decimal.
+    answer: 0.9
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 0.6
+        category: incorrect_reasoning
+        feedback: That keeps only the largest direction. Rank 2 keeps the two largest eigenvalues.
+      - answer: 0.1
+        category: incorrect_reasoning
+        feedback: That is the discarded fraction. The question asks for the retained fraction.
+    solution: Keep the two largest eigenvalues, giving $(12+6)/(12+6+2)=0.9$.
   - id: eig-stretch-directions-basics
     dimension: conceptual
     type: mc
