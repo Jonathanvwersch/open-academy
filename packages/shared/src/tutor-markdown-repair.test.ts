@@ -50,6 +50,19 @@ test.each([
   expect(repairTutorMarkdown(markdown)).toBe(expected);
 });
 
+test.each([
+  ['$$\u000ae^x\u000a$$', '$$\u000ae^x\u000a$$'],
+  ['$$\u000au_t = 1\u000a$$', '$$\u000au_t = 1\u000a$$'],
+  ['$$\u0009x + 1$$', '$$\u0009x + 1$$'],
+  ['$\u000au$', '$\\nu$'],
+  ['$$\u000aabla f$$', '$$\\nabla f$$'],
+  ['$$\u0009heta$$', '$$\\theta$$'],
+  ['$$\u0009hetax$$', '$$\u0009hetax$$'],
+  ['$\u000aunder$', '$\u000aunder$'],
+])('repairs only the specified math control-character escapes: %s', (markdown, expected) => {
+  expect(repairTutorMarkdown(markdown)).toBe(expected);
+});
+
 test('repairs tabs before letters only inside math', () => {
   expect(repairTutorMarkdown('a \u0009heta')).toBe('a \u0009heta');
 });
@@ -58,6 +71,14 @@ test.each([
   ['surprise is `\\log_2(1/p)` bits', 'surprise is $\\log_2(1/p)$ bits'],
   ['probabilities `1/2, 1/4, 1/4` here', 'probabilities $1/2, 1/4, 1/4$ here'],
 ])('converts mathematical backticks to math: %s', (markdown, expected) => {
+  expect(repairTutorMarkdown(markdown)).toBe(expected);
+});
+
+test.each([
+  ['```js\nconst value = `0.5`;\n```', '```js\nconst value = `0.5`;\n```'],
+  ['```\n`\\log x` and `$x$`\n```', '```\n`\\log x` and `$x$`\n```'],
+  ['see `1/2`\n```\n`1/2`\n```', 'see $1/2$\n```\n`1/2`\n```'],
+])('converts backticked math only outside fenced code: %s', (markdown, expected) => {
   expect(repairTutorMarkdown(markdown)).toBe(expected);
 });
 
