@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: academy
+      POSTGRES_PASSWORD: academy
+      POSTGRES_DB: academy
+    volumes:
+      - academy-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U academy -d academy"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: ..
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://academy:academy@db:5432/academy
+      PORT: "3001"
+      # Uncomment with the volume below to use a mounted pack.
+      # CONTENT_DIR: /pack
+    ports:
+      - "3000:3001"
+    # volumes:
+    #   - ../my-pack:/pack:ro
+
+volumes:
+  academy-postgres-data:
