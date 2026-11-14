@@ -1,6 +1,6 @@
 # Open Academy
 
-Open Academy is a self-hosted learning app that teaches you a subject the way Math Academy teaches maths. You work through short lessons, and each one ends with a quiz. Spaced reviews bring topics back before you forget them. A placement check skips what you already know. It keeps track of what you can actually do, not which pages you've opened.
+Open Academy is a self-hosted learning app that teaches you a subject the way [Math Academy](https://www.mathacademy.com) teaches maths. You work through short lessons, and each one ends with a quiz. Spaced reviews bring topics back before you forget them. A placement check skips what you already know. It records which topics you've passed and how well you still remember them, and plans each day from that.
 
 It comes with a set of courses on machine learning, AI and robotics. You can also write your own course on any subject, from scratch or from your own notes, papers and textbooks, and an AI coding agent can do most of that writing for you.
 
