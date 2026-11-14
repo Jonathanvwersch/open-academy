@@ -658,7 +658,7 @@ test('leaving after a step resumes on the next knowledge point', async ({ page }
   const resume = page.getByRole('link', { name: 'Resume session', exact: true });
   await expect(resume).toBeVisible();
   await resume.click();
-  await expect(page).toHaveURL(new RegExp(`/session/${sessionId}$`));
+  await expect(page).toHaveURL(new RegExp(`/session/${sessionId}(?:\\?.*)?$`));
   await expect(page.getByRole('heading', { name: nextTitle, exact: true })).toBeVisible();
   await expect(page.getByTestId('kp-checkpoint')).toHaveCount(0);
   await expect(page.getByTestId('lesson-problem')).toBeVisible();
@@ -1642,7 +1642,7 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await expect(lessonQuizEntry).toContainText('Lesson steps done; quiz not taken yet.');
   await lessonQuizEntry.getByRole('button', { name: 'Take the quiz' }).click();
   await expect(page.getByTestId('lesson-quiz-intro')).toBeVisible();
-  await expect(page).toHaveURL(new RegExp(`/session/${sessionId}$`));
+  await expect(page).toHaveURL(new RegExp(`/session/${sessionId}(?:\\?.*)?$`));
   await page.screenshot({ path: `${lessonQuizScreenshotDir}/quiz-intro.png`, fullPage: true });
   await page.getByRole('button', { name: 'Start quiz' }).click();
   await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
@@ -1841,8 +1841,8 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
     fullPage: true,
   });
   await failedLessonEntry.getByRole('button', { name: 'Go to the quiz' }).click();
-  await expect(page).toHaveURL(new RegExp(`/session/${sessionId}$`));
-  await expect(page).toHaveURL(/\/session\/[^/]+$/);
+  await expect(page).toHaveURL(new RegExp(`/session/${sessionId}(?:\\?.*)?$`));
+  await expect(page).toHaveURL(/\/session\/[^/?]+(?:\?.*)?$/);
   const failedSessionId = new URL(page.url()).pathname.split('/').at(-1);
   if (!failedSessionId) throw new Error('Expected an active quiz session');
   await expect(page.getByTestId('lesson-quiz-results')).toBeVisible();
@@ -1853,16 +1853,32 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
   await expect
     .poll(async () =>
       page.evaluate(
-        async ({ sessionId, conceptId }) => {
+        async ({ sessionId, activityId }) => {
           const session = await (await fetch(`/api/sessions/${sessionId}`)).json();
-          return session.activities.find(
-            (item: { conceptId: string }) => item.conceptId === conceptId,
-          )?.progress?.quizContinued;
+          const activity = session.activities.find(
+            (item: { id: string; progress?: { quizContinued?: boolean } }) =>
+              item.id === activityId,
+          );
+          return activity?.progress?.quizContinued;
         },
-        { sessionId: failedSessionId, conceptId },
+        { sessionId: failedSessionId, activityId: prepared.activityId },
       ),
     )
     .toBe(true);
+  const completeResponse = await page.evaluate(
+    async ({ sessionId, activityId }) => {
+      const response = await fetch(`/api/sessions/${sessionId}/activities/${activityId}/progress`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ complete: true, lessonRunnerContinued: true, quizContinued: true }),
+      });
+      return response.status;
+    },
+    { sessionId: failedSessionId, activityId: prepared.activityId },
+  );
+  expect(completeResponse).toBe(200);
+  await page.reload();
+  await expect(page.getByRole('status')).toHaveText('Supervised learning complete.');
   const endResponse = await page.evaluate(async (id) => {
     const response = await fetch(`/api/sessions/${id}/end`, { method: 'POST' });
     return response.status;

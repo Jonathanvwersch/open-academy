@@ -29,7 +29,9 @@ export function sessionActivityCandidates(activities: SessionActivity[], request
       item === active ||
       uncontinuedLesson(item) ||
       completedFinal(item) ||
-      (active && item.id === requestedId && item.status === 'completed'),
+      (active &&
+        item.id === requestedId &&
+        ['completed', 'in_progress', 'planned'].includes(item.status)),
   );
 }
 
@@ -64,13 +66,18 @@ export function selectSessionActivity(
     );
   });
   const final = activities.find(completedFinal);
-  const requested = activities.find(
+  const requestedActivity = activities.find(
+    (item) =>
+      item.id === requestedId && ['completed', 'in_progress', 'planned'].includes(item.status),
+  );
+  const requestedCompletedActivity = activities.find(
     (item) => item.id === requestedId && item.status === 'completed',
   );
   const active = activeActivity(activities);
   return {
-    activity: lesson ?? final ?? (requested && active ? requested : undefined) ?? active,
+    activity:
+      lesson ?? final ?? (requestedActivity && active ? requestedActivity : undefined) ?? active,
     completedFinal: final,
-    requestedCompletedActivity: requested,
+    requestedCompletedActivity,
   };
 }

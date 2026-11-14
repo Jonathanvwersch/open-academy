@@ -1,9 +1,9 @@
 export function sessionActivityLabel(kind: string) {
   const labels: Record<string, string> = {
     learn: 'New lesson',
-    practice: 'Practice',
+    practice: 'Continue lesson',
     remediate: 'Remediation',
-    transfer: 'Transfer',
+    transfer: 'Apply it',
     review: 'Review',
     quick_check: 'Quiz',
     assessment: 'Assessment',

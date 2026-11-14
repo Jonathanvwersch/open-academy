@@ -9,12 +9,16 @@ import { Progress } from '../../components/ui/progress.js';
 import { papersQueryOptions } from '../papers/queries.js';
 import { StreakCard } from '../progress/streak-card.js';
 import { todayQueryOptions } from '../sessions/queries.js';
+import { useStartSession } from '../sessions/start-session.js';
 import { CourseStartCard } from './course-start-card.js';
 import { courseQueryOptions, learnQueryOptions } from './queries.js';
 
 export function LearnPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { data } = useSuspenseQuery(learnQueryOptions());
+  const { data: courseData } = useSuspenseQuery(courseQueryOptions());
+  const today = data.today;
   const enterSession = async ({ id }: { id: string }) => {
     queryClient.setQueryData(learnQueryOptions().queryKey, (current) =>
       current ? { ...current, activeSessionId: id } : current,
@@ -23,15 +27,12 @@ export function LearnPage() {
       current ? { ...current, activeSessionId: id } : current,
     );
     await navigate({ to: '/session/$id', params: { id } });
-    // Revalidate the plan on the next Home visit without competing with lesson loading.
     await queryClient.invalidateQueries({
       queryKey: learnQueryOptions().queryKey,
       refetchType: 'none',
     });
   };
-  const { data } = useSuspenseQuery(learnQueryOptions());
-  const { data: courseData } = useSuspenseQuery(courseQueryOptions());
-  const today = data.today;
+  const startSession = useStartSession(today.sessionKind, enterSession);
   const chooseCourse = useMutation({
     mutationFn: async (courseId: string) => {
       const response = await apiFetch('/api/course/active', {
@@ -49,18 +50,6 @@ export function LearnPage() {
         queryClient.invalidateQueries({ queryKey: papersQueryOptions().queryKey }),
       ]);
     },
-  });
-  const startSession = useMutation({
-    mutationFn: async () => {
-      const response = await apiFetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ kind: today.sessionKind }),
-      });
-      if (!response.ok) throw new Error('Could not start session');
-      return response.json() as Promise<{ id: string }>;
-    },
-    onSuccess: enterSession,
   });
   const startChoice = useMutation({
     mutationFn: async (focusConceptId: string) => {
