@@ -216,9 +216,7 @@ test('overlapping course switches run in order and keep the last selected course
   await expect.poll(() => completedOrder.length, { timeout: 8000 }).toBe(2);
   expect(completedOrder).toEqual(['fixture-switching-course', 'fixture-course']);
   await page.reload();
-  await expect(
-    page.getByRole('heading', { name: 'Fixture course', exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
   await expect(
     page.getByRole('link', { name: /Fixture course, 0 of 9 topics done/ }),
   ).toHaveAttribute('data-active', 'true');
@@ -255,9 +253,7 @@ test('placement starts for the course selected in the course URL', async ({ page
       ),
     );
   await page.goto('/course?course=fixture-switching-course');
-  await expect(
-    page.getByRole('heading', { name: 'Start Fixture switching course' }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Start Fixture switching course' })).toBeVisible();
 
   const placementStart = page.waitForRequest(
     (request) => request.url().endsWith('/api/placement') && request.method() === 'POST',
