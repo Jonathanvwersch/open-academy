@@ -29,6 +29,7 @@ import { TooltipProvider } from '../components/ui/tooltip.js';
 import { coursesQueryOptions } from '../features/course/queries.js';
 import { reviewsQueryOptions } from '../features/reviews/queries.js';
 import { TutorContextProvider } from '../features/tutor/tutor-sidebar.js';
+import { useCurrentCourseId } from '../lib/current-course.js';
 
 const SIDEBAR_STORAGE_KEY = 'academy.app-sidebar.open';
 
@@ -80,6 +81,7 @@ function AppSidebarView({
   reviewsDue,
   loadingReviews,
 }: AppSidebarViewProps) {
+  const currentCourseId = useCurrentCourseId();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { isMobile, state, setOpenMobile } = useSidebar();
   const showCourseSection = state !== 'collapsed' || isMobile;
@@ -189,6 +191,7 @@ function AppSidebarView({
                     })
                   : activeCourses.map((course) => {
                       const isActive =
+                        currentCourseId === course.id ||
                         pathname === `/courses/${course.id}` ||
                         pathname.startsWith(`/courses/${course.id}/`);
                       const content = (

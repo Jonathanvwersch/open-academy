@@ -6,6 +6,7 @@ import { lessonProblems, lessonRuns } from '../../db/schema.js';
 import { deriveLessonState } from '../../learning/lesson-runner.js';
 import { masteryRank } from '../../learning/types.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
+import { resolveLessonCourse } from './course-context.js';
 
 export async function getLessonsByConceptId(deps: FeatureServices, request: FeatureRequest) {
   const { content } = deps;
@@ -77,6 +78,7 @@ export async function getLessonsByConceptIdReview(deps: FeatureServices, request
     ? await deps.db.select().from(lessonProblems).where(eq(lessonProblems.runId, run.id))
     : [];
   return serviceResult({
+    course: await resolveLessonCourse(deps.db, request.repo, index, request.userId, conceptId),
     lesson: serializeLesson({
       ...lesson,
       prerequisites: getLessonPrerequisites(index, conceptId),

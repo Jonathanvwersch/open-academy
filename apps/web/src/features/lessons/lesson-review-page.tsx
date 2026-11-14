@@ -5,6 +5,7 @@ import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Markdown } from '../../components/markdown.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
+import { useReportCurrentCourse } from '../../lib/current-course.js';
 import { exerciseQueryOptions } from '../exercises/queries.js';
 import {
   activeSessionQueryOptions,
@@ -13,6 +14,7 @@ import {
 } from '../sessions/queries.js';
 import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { LessonBlock } from './lesson-block.js';
+import { LessonCourseLine } from './lesson-course-line.js';
 import { lessonReviewQueryOptions, lessonRunQueryOptions } from './queries.js';
 
 const Route = getRouteApi('/lessons/$conceptId');
@@ -22,6 +24,7 @@ export function LessonReviewPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const reviewQuery = useSuspenseQuery(lessonReviewQueryOptions(conceptId));
+  useReportCurrentCourse(reviewQuery.data.course?.id ?? null);
   // Observe newer answers already in the cache without fetching the full run for a read-only page.
   const cachedRun = useQuery({ ...lessonRunQueryOptions(conceptId), enabled: false });
   const { lesson, checkAnswers, conceptTitle } = reviewQuery.data;
@@ -112,7 +115,10 @@ export function LessonReviewPage() {
           </Link>
         </Button>
       ) : null}
-      <h1 className="text-3xl font-semibold">{conceptTitle}</h1>
+      <div className="space-y-1">
+        <LessonCourseLine course={reviewQuery.data.course} />
+        <h1 className="text-3xl font-semibold">{conceptTitle}</h1>
+      </div>
       {runStatus === 'completed' ? (
         <p className="text-sm text-muted-foreground">Quiz passed</p>
       ) : runStatus === 'quiz' ? (

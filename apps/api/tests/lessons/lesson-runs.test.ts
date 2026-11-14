@@ -9,6 +9,7 @@ import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import {
   attempts,
+  courseEnrollments,
   lessonProblems,
   lessonQuizAttempts,
   lessonQuizItems,
@@ -69,6 +70,11 @@ test('full lesson review carries its rendered checks and the same derived run st
   const response = await app.request(`/api/lessons/${conceptId}/review`, { headers });
   expect(response.status).toBe(200);
   const review = await response.json();
+  expect(review.course).toMatchObject({
+    id: 'ml-foundations',
+    title: 'Machine Learning Foundations',
+  });
+  expect((await (await getRun()).json()).course).toEqual(review.course);
   expect(review.runStatus).toBe(started.run.status);
   const ids = Object.keys(review.checks);
   expect(ids).toEqual([review.lesson.final]);
@@ -78,6 +84,33 @@ test('full lesson review carries its rendered checks and the same derived run st
     expect(review.checks[id]).not.toHaveProperty('solution');
     expect(review.checks[id]).not.toHaveProperty('answer');
   }
+});
+
+test('planned session activities persist their course and return it on lesson payloads', async () => {
+  const conceptId = 'what-is-ml';
+  await db
+    .insert(courseEnrollments)
+    .values({ userId, courseId: 'ml-foundations', status: 'active', startMethod: 'beginning' });
+  const response = await app.request('/api/sessions', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ budgetMinutes: 60, focusConceptId: conceptId }),
+  });
+  expect(response.status).toBe(201);
+  const session = await response.json();
+  const [activity] = await db
+    .select()
+    .from(sessionActivities)
+    .where(
+      and(eq(sessionActivities.sessionId, session.id), eq(sessionActivities.conceptId, conceptId)),
+    );
+  expect(activity.reason).toMatchObject({ courseId: 'ml-foundations' });
+  const run = await (
+    await app.request(`/api/lessons/${conceptId}/run?activityId=${activity.id}`, { headers })
+  ).json();
+  const review = await (await app.request(`/api/lessons/${conceptId}/review`, { headers })).json();
+  expect(run.course).toMatchObject({ id: 'ml-foundations' });
+  expect(review.course).toEqual(run.course);
 });
 
 function concreteExercise(exerciseId: string, seed: number | null) {
@@ -273,7 +306,7 @@ async function rowCounts() {
 test('GET run is read-only and POST creates exactly one pending problem', async () => {
   const before = await rowCounts();
   const read = await getRun();
-  expect(await read.json()).toEqual({ run: null });
+  expect(await read.json()).toMatchObject({ run: null });
   expect(await rowCounts()).toEqual(before);
 
   const first = await startRun();

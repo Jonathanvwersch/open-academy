@@ -543,6 +543,29 @@ test('lesson session header shows the active step title', async ({ page }) => {
   }
 });
 
+test('lesson course context links to its course and highlights the sidebar', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await createSession(page);
+  const line = page.getByTestId('lesson-course');
+  await expect(line).toHaveText('Fixture course · Unit 1 · 1.4');
+  await expect(line.getByRole('link')).toHaveAttribute('href', '/courses/fixture-course');
+  const sidebarCourse = page.getByRole('navigation').getByRole('link', { name: /Fixture course/ });
+  await expect(sidebarCourse).toHaveAttribute('data-active', 'true');
+  const dir = '/home/ubuntu/screens/lesson-course';
+  mkdirSync(dir, { recursive: true });
+  await page.screenshot({ path: `${dir}/session-desktop.png` });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: `${dir}/session-mobile.png` });
+  await page.getByRole('link', { name: 'View full lesson' }).click();
+  await expect(line).toHaveText('Fixture course · Unit 1 · 1.4');
+  await page.screenshot({ path: `${dir}/full-mobile.png` });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(sidebarCourse).toHaveAttribute('data-active', 'true');
+  await page.screenshot({ path: `${dir}/full-desktop.png` });
+  await line.getByRole('link').click();
+  await expect(page).toHaveURL(/\/courses\/fixture-course$/);
+});
+
 test('lesson prose fills the recap width on desktop and mobile', async ({ page }, testInfo) => {
   test.skip(
     resolve(process.env.PLAYWRIGHT_CONTENT_DIR ?? 'tests/fixtures/content') !== resolve('content'),

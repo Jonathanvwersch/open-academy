@@ -56,6 +56,7 @@ export interface PriorityTerms {
 }
 
 export interface ActivityReason {
+  courseId?: string;
   terms: PriorityTerms;
   summary: string;
 }
@@ -656,6 +657,7 @@ function makeCandidate(
   terms.gap = gap;
   terms.cost = -adjustedMinutes / 10;
   const reason: ActivityReason = {
+    courseId: courseContext.course.id,
     terms,
     summary: summary ?? candidateSummary(kind, concept, terms, courseContext, project, content),
   };

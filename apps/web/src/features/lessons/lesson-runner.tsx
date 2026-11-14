@@ -12,6 +12,7 @@ import { ThinkingIndicator } from '../../components/thinking-indicator.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
+import { useReportCurrentCourse } from '../../lib/current-course.js';
 import { invalidateSidebarQueries } from '../course/queries.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
 import { FeedbackPanel, FinalRetryNote, isFinalRetryResult } from '../exercises/feedback-panel.js';
@@ -19,6 +20,7 @@ import { sessionQueryOptions } from '../sessions/queries.js';
 import { type LessonLink, SessionActivityHeader } from '../sessions/session-activity-header.js';
 import { TutorLauncher, useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { LessonBlock } from './lesson-block.js';
+import { LessonCourseLine } from './lesson-course-line.js';
 import { LessonSteps } from './lesson-steps.js';
 import { lessonQueryOptions, lessonRunQueryOptions } from './queries.js';
 import { QuizReview } from './quiz-review.js';
@@ -53,8 +55,9 @@ export function LessonRunner({
 }) {
   const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
-  const queryOptions = lessonRunQueryOptions(conceptId);
+  const queryOptions = lessonRunQueryOptions(conceptId, activityId);
   const query = useSuspenseQuery(queryOptions);
+  useReportCurrentCourse(query.data.course?.id ?? null);
   const lesson = useSuspenseQuery(lessonQueryOptions(conceptId)).data;
   const state = query.data.run;
   const reviewRequired = state?.quiz.reviewRequired ?? [];
@@ -215,7 +218,10 @@ export function LessonRunner({
 
   const updateState = useCallback(
     async (run: NonNullable<LessonRunPayload['run']>) => {
-      queryClient.setQueryData(queryOptions.queryKey, { run });
+      queryClient.setQueryData(queryOptions.queryKey, (previous: LessonRunPayload | undefined) => ({
+        course: previous?.course ?? null,
+        run,
+      }));
       await queryClient.invalidateQueries({ queryKey: queryOptions.queryKey });
     },
     [queryClient, queryOptions.queryKey],
@@ -503,7 +509,12 @@ export function LessonRunner({
   if (!state)
     return (
       <section className="space-y-6">
-        <SessionActivityHeader title={title} label={activityLabel} lessonLink={lessonLink} />
+        <SessionActivityHeader
+          context={<LessonCourseLine course={query.data.course} />}
+          title={title}
+          label={activityLabel}
+          lessonLink={lessonLink}
+        />
         <ThinkingIndicator />
       </section>
     );
@@ -662,6 +673,7 @@ export function LessonRunner({
   return (
     <section className="space-y-6">
       <SessionActivityHeader
+        context={<LessonCourseLine course={query.data.course} />}
         title={title}
         label={activityLabel}
         lessonLink={lessonLink}
