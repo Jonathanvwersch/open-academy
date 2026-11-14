@@ -64,7 +64,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "A residual sublayer receives $x=({{= a}},-3)$ and returns $f(x)=({{= b}},2)$. What is the first entry of $y=x+f(x)$?"
+    prompt: "A sublayer with a residual connection receives $x=({{= a}},-3)$, and the sublayer itself returns $f(x)=({{= b}},2)$. What is the first entry of the output after the residual connection?"
     params:
       a: { min: -8, max: 8, step: 1 }
       b: { min: 2, max: 7, step: 1 }
@@ -77,7 +77,12 @@ exercises:
           category: misunderstood_definition,
           feedback: "Include the input carried by the shortcut.",
         }
-    solution: "Add the matching entries from both paths: ${{= a}}+{{= b}}={{= a+b}}$."
+      - {
+          answer_expr: a,
+          category: misunderstood_definition,
+          feedback: "The shortcut doesn't skip the sublayer. Its output is added to the input.",
+        }
+    solution: "The residual connection adds the input to the sublayer's output, $x+f(x)$, so the first entry is ${{= a}}+{{= b}}={{= a+b}}$."
   - id: tbp-residual-width
     dimension: conceptual
     type: mc
@@ -180,10 +185,17 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot policy's sensor token starts at $(3,-4)$. Two consecutive residual sublayers return corrections $(2,1)$ and $(-1,5)$ respectively. What is the second entry after both additions?
+    prompt: A robot policy's sensor token starts at $(3,-4)$ and passes through two residual sublayers in a row. The first sublayer returns $(2,1)$ and the second returns $(-1,5)$. What is the token's second entry after both residual sublayers?
     answer: 2
     tolerance: { abs: 0.000001 }
-    solution: The shortcut preserves each intermediate vector, so the second entry becomes $-4+1+5=2$.
+    common_wrong:
+      - answer: 5
+        category: misunderstood_definition
+        feedback: That is the second sublayer's output alone. Each residual connection adds its sublayer's output to the vector it received.
+      - answer: 6
+        category: incomplete_explanation
+        feedback: That adds the two sublayer outputs but drops the starting vector carried by the shortcut.
+    solution: Each residual connection adds its sublayer's output to the vector it received, so the second entry goes from $-4$ to $-4+1=-3$ and then to $-3+5=2$.
   - id: tb-two-sublayers-basics
     dimension: conceptual
     type: mc
@@ -248,7 +260,7 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "An attention head gives two tokens weights {{= w}} and {{= 1-w}}, with value vectors $({{= a}},2)$ and $({{= b}},-2)$. What is the first entry of their weighted sum?"
+    prompt: "For one token, an attention head gives weights {{= w}} and {{= 1-w}} to two tokens whose value vectors are $({{= a}},2)$ and $({{= b}},-2)$. What is the first entry of the head's output for that token?"
     params:
       w: { min: 0.25, max: 0.75, step: 0.25 }
       a: { min: 2, max: 8, step: 2 }
@@ -262,7 +274,7 @@ exercises:
           category: misapplied_technique,
           feedback: "Multiply each value entry by its attention weight before adding.",
         }
-    solution: 'The first entry is ${{= w}}\times{{= a}}+{{= 1-w}}\times({{= b}})={{= w*a+(1-w)*b}}$, using the same weights for every entry.'
+    solution: 'Attention outputs the weighted sum of the values, so the first entry is ${{= w}}\times{{= a}}+{{= 1-w}}\times({{= b}})={{= w*a+(1-w)*b}}$, using the same weights for every entry.'
   - id: tbp-sublayers-order
     dimension: conceptual
     type: mc
@@ -327,10 +339,17 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: A transformer block has width $d=192$ and an MLP hidden layer of width $4d$. How many hidden neurons does that MLP have?
+    prompt: A transformer block has width $d=192$, and its MLP uses the usual hidden width for a transformer. How many hidden neurons does that MLP have?
     answer: 768
     tolerance: { abs: 0.000001 }
-    solution: The hidden width is $4\times192=768$, before the output layer returns it to width $192$.
+    common_wrong:
+      - answer: 192
+        category: recall_failure
+        feedback: That is the block's width. The MLP's hidden layer is usually several times wider.
+      - answer: 384
+        category: recall_failure
+        feedback: The usual hidden layer is $4d$ wide, four times the block's width.
+    solution: The hidden layer is usually $4d$ wide, so it has $4\times192=768$ neurons before the output layer returns it to width $192$.
   - id: tbp-sublayers-robot
     dimension: transfer
     type: numeric
@@ -424,10 +443,20 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "For the token vector $(-4,2,4,10)$, the mean is $3$. LayerNorm uses the square root of the mean squared deviation, dividing by $4$. What is that standard deviation? Ignore the small numerical stabilizer."
-    answer: 5
+    prompt: "LayerNorm receives the token vector $(-4,2,4,10)$. With gain $1$, shift $0$ and the small numerical stabilizer ignored, what does it turn the second entry, $2$, into?"
+    answer: -0.2
     tolerance: { abs: 0.000001 }
-    solution: The deviations are $(-7,-1,1,7)$, whose squared mean is $(49+1+1+49)/4=25$. Its square root is $5$.
+    common_wrong:
+      - answer: -1
+        category: incomplete_explanation
+        feedback: That subtracts the mean. LayerNorm also divides by the standard deviation.
+      - answer: 0.4
+        category: incomplete_explanation
+        feedback: That divides by the standard deviation without first subtracting the mean.
+      - answer: -0.04
+        category: math_error
+        feedback: That divides by the variance, $25$. LayerNorm divides by its square root, the standard deviation.
+    solution: The mean is $12/4=3$. The deviations are $(-7,-1,1,7)$, whose squares average $(49+1+1+49)/4=25$, so the standard deviation is $5$. The second entry becomes $(2-3)/5=-0.2$.
   - id: tbp-prenorm-add-original
     dimension: math
     type: numeric
@@ -628,10 +657,18 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 1
-    prompt: A block's weight matrices contain $12d^2$ parameters, of which $8d^2$ belong to its MLP. What fraction of these weight parameters belongs to the MLP? Give a decimal rounded to two decimal places, excluding biases and LayerNorm parameters.
+    prompt: A transformer block has width $d$ and an MLP hidden layer of width $4d$. Counting only weight matrices, with no biases or LayerNorm parameters, what fraction of the block's weights belongs to the MLP? Give a decimal rounded to two decimal places.
     answer: 0.67
     tolerance: { abs: 0.005 }
-    solution: Dividing the MLP count by the weight total gives $8d^2/(12d^2)=2/3$, which rounds to $0.67$.
+    common_wrong:
+      - answer: 0.5
+        category: misunderstood_definition
+        feedback: The MLP has two $4d\times d$ matrices, $8d^2$ weights, twice attention's $4d^2$.
+      - answer: 0.73
+        tolerance: { abs: 0.005 }
+        category: incomplete_explanation
+        feedback: Attention has four $d\times d$ matrices, including the output matrix $W_O$.
+    solution: Attention has four $d\times d$ matrices, $4d^2$ weights, and the MLP's $W_1$ and $W_2$ each hold $4d^2$, so $8d^2$. The MLP's share is $8d^2/(12d^2)=2/3$, which rounds to $0.67$.
   - id: tbp-stack-heads-count
     dimension: math
     type: mc
@@ -679,10 +716,17 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot policy reads ten sensor and action tokens of width $d=8$ through three transformer blocks, each with its own weights. Each block has $12d^2+13d$ parameters. How many parameters do the three blocks have together, excluding embeddings, the final LayerNorm and the output layer?
+    prompt: A robot policy reads ten sensor and action tokens of width $d=8$ through three standard pre-norm transformer blocks, each with its own weights. Each block's MLP has hidden width $4d$, every attention and MLP weight matrix has a bias, and both LayerNorms learn a gain and a shift. How many parameters do the three blocks have together, excluding embeddings, the final LayerNorm and the output layer?
     answer: 2616
     tolerance: { abs: 0.000001 }
-    solution: One block has $12\times8^2+13\times8=872$ parameters, and three have $3\times872=2616$. The token count does not change the number of learned block parameters.
+    common_wrong:
+      - answer: 872
+        category: incomplete_explanation
+        feedback: That is one block. Each of the three blocks has its own weights.
+      - answer: 2304
+        category: incomplete_explanation
+        feedback: That counts only the weight matrices. Add the biases and the LayerNorm gains and shifts.
+    solution: One block has $12d^2+13d$ parameters, $12\times8^2+13\times8=872$, and three have $3\times872=2616$. The token count does not change the number of learned block parameters.
   - id: tb-explain-block
     dimension: conceptual
     type: explain

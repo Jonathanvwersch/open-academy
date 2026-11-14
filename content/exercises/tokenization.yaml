@@ -6,34 +6,27 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "Why do most modern language models use subword tokenisation (e.g. BPE) rather than one token per whole word?"
+    prompt: "Why do most modern language models use subword tokenisation (e.g. BPE) instead of one token per whole word?"
     options:
-      - {
-          id: a,
-          text: "It represents any string, including rare or unseen words, with a bounded vocabulary while keeping common words as single tokens",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "It makes every token correspond to exactly one character, which simplifies the model",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "That describes character-level tokenisation. Subword vocabularies merge frequent character sequences into longer tokens.",
-        }
-      - {
-          id: c,
-          text: "It removes the need for an embedding layer",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Every token id still needs an embedding vector.",
-        }
-      - {
-          id: d,
-          text: "Words cannot be represented as integers",
-          correct: false,
-          category: incorrect_reasoning,
-        }
-    solution: "Word-level vocabularies explode in size and still fail on unseen words; character-level sequences are very long. Subword schemes such as BPE start from bytes/characters and merge frequent pairs, so frequent words become single tokens and anything else decomposes into pieces."
+      - id: a
+        text: Any word, even one never seen in training, can be built from a fixed-size vocabulary.
+        correct: true
+      - id: b
+        text: Every token is a single character, so the vocabulary stays very small.
+        correct: false
+        category: misunderstood_definition
+        feedback: That describes character-level tokenisation. Subword vocabularies merge frequent character sequences into longer tokens.
+      - id: c
+        text: Texts become shorter than they would be with one token per word.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Rare words split into several pieces, so texts take at least as many tokens as with whole words. The gain is that every word can be encoded.
+      - id: d
+        text: Words with similar meanings share one token, so the model learns faster.
+        correct: false
+        category: misunderstood_definition
+        feedback: Tokens come from how often character sequences appear in the training text. Meaning plays no part in the split.
+    solution: "Word-level vocabularies explode in size and still fail on unseen words, and character-level sequences are very long. Subword schemes such as BPE start from bytes or characters and merge frequent pairs, so frequent words become single tokens and any other word breaks into known pieces."
   - id: tok-ids-basics
     dimension: conceptual
     type: mc
@@ -403,27 +396,27 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: In the training text "the cat sat on the mat", the letter t appears $5$ times, more than any other letter. Why does BPE's first merge join a + t rather than doing something with t alone?
+    prompt: In the training text "the cat sat on the mat", the letter t appears $5$ times, more than any other letter. Yet BPE's first merge joins a + t. Why?
     options:
       - id: a
         text: BPE counts pairs of neighbours, and a followed by t is the most frequent pair.
         correct: true
         feedback: A new token must be two pieces that actually occur together, and a t occurs $3$ times.
       - id: b
-        text: BPE always starts with vowels, and a is the first vowel in the text.
+        text: BPE joins the most frequent letter, t, with the letter that most often comes before it.
         correct: false
-        category: misunderstood_definition
-        feedback: BPE has no rule about vowels. It joins whichever neighbouring pair is most frequent.
+        category: misapplied_technique
+        feedback: BPE doesn't start from the most frequent letter. It counts every pair of neighbours and joins the most frequent pair, whatever letters it holds.
       - id: c
         text: The letter t is already in the vocabulary, so BPE has to choose a different letter.
         correct: false
         category: incorrect_reasoning
         feedback: All the single letters are in the starting vocabulary. Each merge adds one new token made of two neighbouring tokens joined together.
       - id: d
-        text: BPE picks the pair whose letters come earliest in the alphabet.
+        text: BPE prefers pairs at the end of a word, like the a t at the end of cat.
         correct: false
         category: misunderstood_definition
-        feedback: The alphabet plays no part. Only how often the pair appears matters.
+        feedback: Where a pair sits in a word plays no part. Only how often the pair appears matters.
     solution: Every single letter is already a token, so BPE counts pairs of neighbouring tokens. a t appears $3$ times, in cat, sat and mat, which is more than any other pair.
   - id: tok-bpe-gpt2
     dimension: conceptual
@@ -555,23 +548,23 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: A rule of thumb for English text is that one token is about $4$ characters. A model can read at most ${{=M}}$ tokens at once. Roughly how many characters of English text is that?
+    prompt: A model can read at most ${{=M}}$ tokens at once. For English text, a BPE token is about $4$ characters long on average. How many more characters of English text fit in that limit with a BPE tokenizer than with a character tokenizer?
     params:
       M:
         min: 1000
         max: 8000
         step: 1000
-    answer_expr: 4 * M
+    answer_expr: 3 * M
     tolerance:
       rel: 0.001
     common_wrong:
-      - answer_expr: M / 4
-        category: math_error
-        feedback: Each token holds about $4$ characters, so there are more characters than tokens. Multiply by $4$.
+      - answer_expr: 4 * M
+        category: incomplete_explanation
+        feedback: That is how many characters fit with BPE. Subtract the number that fit with a character tokenizer.
       - answer_expr: M
         category: misunderstood_definition
-        feedback: A token is usually longer than one character, so the tokens hold more characters than their count.
-    solution: Each token covers about $4$ characters, so ${{=M}}$ tokens cover about $4\times{{=M}}={{=4*M}}$ characters.
+        feedback: That is how many characters fit with a character tokenizer, one per token. Find the BPE total and take the difference.
+    solution: A character tokenizer makes every character a token, so ${{=M}}$ tokens hold ${{=M}}$ characters. With BPE they hold about $4\times{{=M}}={{=4*M}}$ characters, which is ${{=3*M}}$ more.
   - id: tok-enc-bigger-vocab
     dimension: conceptual
     type: mc

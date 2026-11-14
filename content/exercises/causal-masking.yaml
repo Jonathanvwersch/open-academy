@@ -511,7 +511,7 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 2
-    prompt: Fill the blank so that every blocked score becomes minus infinity and the other scores are kept.
+    prompt: Fill the blank so that, after the softmax, every blocked position gets a weight of exactly 0 and the other scores are kept.
     code: |
       import numpy as np
       S = np.array([[1.0, 2.0], [3.0, 4.0]])
@@ -519,7 +519,7 @@ exercises:
       masked = np.where(blocked, ____, S)
       print(masked)
     accept: ["-np.inf", "float('-inf')", "-float('inf')"]
-    solution: "`np.where` takes the second argument where `blocked` is true, so `-np.inf` puts $-\\infty$ in the blocked cell and keeps the scores elsewhere."
+    solution: "`np.where` takes the second argument where `blocked` is true, so `-np.inf` puts $-\\infty$ in the blocked cell and keeps the scores elsewhere. The softmax turns $e^{-\\infty}=0$ into a weight of exactly 0."
   - id: cm-code-count
     dimension: implementation
     type: code_read
