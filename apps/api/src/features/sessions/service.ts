@@ -35,14 +35,9 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const now = request.now();
   const state = await repo.schedulerState(now);
   const user = await repo.user();
-  const prefs = (user?.prefs ?? {}) as {
-    scheduleMinutes?: number;
-    saturdayMinutes?: number;
-    sundayMinutes?: number;
-    goal?: string;
-  };
+  const prefs = (user?.prefs ?? {}) as SessionPreferences & { goal?: string };
   const sessionKind = sessionKindForDate(localDateKey(now, request.timeZone));
-  const budget = sessionBudget(sessionKind, prefs);
+  const budget = sessionBudget(sessionKind, prefs, localDateKey(now, request.timeZone));
   const plan = planSession(state, index, now, budget, sessionKind);
   const active = await repo.activeSession(now);
   const diagnostic = await repo.latestDiagnosticRun();
@@ -91,12 +86,10 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
   const sessionKind = body.data.kind ?? sessionKindForDate(localDateKey(now, request.timeZone));
   const state = await repo.schedulerState(now);
   const user = await repo.user();
-  const prefs = (user?.prefs ?? {}) as {
-    scheduleMinutes?: number;
-    saturdayMinutes?: number;
-    sundayMinutes?: number;
-  };
-  const budgetMinutes = body.data.budgetMinutes ?? sessionBudget(sessionKind, prefs);
+  const prefs = (user?.prefs ?? {}) as SessionPreferences;
+  const budgetMinutes =
+    body.data.budgetMinutes ??
+    sessionBudget(sessionKind, prefs, localDateKey(now, request.timeZone));
   if (body.data.focusConceptId) {
     const focusConcept = index.conceptsById.get(body.data.focusConceptId);
     if (!focusConcept) {

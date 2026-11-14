@@ -1,5 +1,5 @@
 import type { SessionKind, SessionPreferences } from './session-budget.js';
-import { sessionBudget } from './session-budget.js';
+import { dailyStudyMinutes, sessionBudget } from './session-budget.js';
 
 const XP_PER_REMAINING_TOPIC = 40;
 const DAY_MS = 86_400_000;
@@ -21,16 +21,11 @@ export function sessionKindForDate(localDate: string): Exclude<SessionKind, 'cus
 }
 
 function defaultAverageDailyXp(prefs?: SessionPreferences): number {
-  return (
-    (5 * sessionBudget('weekday', prefs) +
-      sessionBudget('saturday', prefs) +
-      sessionBudget('sunday', prefs)) /
-    7
-  );
+  return Object.values(dailyStudyMinutes(prefs)).reduce((sum, minutes) => sum + minutes, 0) / 7;
 }
 
 export function xpGoalFor(localDate: string, prefs?: SessionPreferences): number {
-  return sessionBudget(sessionKindForDate(localDate), prefs);
+  return sessionBudget(sessionKindForDate(localDate), prefs, localDate);
 }
 
 export function estimateTaskXp(

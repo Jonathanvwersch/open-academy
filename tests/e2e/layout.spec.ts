@@ -171,10 +171,16 @@ test('root auth pending renders the app-shell skeleton', async ({ page }) => {
 test('settings edits stay accessible and the save spinner keeps its geometry', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/settings');
-  await page.getByLabel('Daily study time', { exact: true }).fill('90');
-  await page.getByLabel('Saturday study time', { exact: true }).fill('120');
-  await page.getByLabel('Sunday study time', { exact: true }).fill('90');
-  await expect(page.getByText('11 hours / week')).toBeVisible();
+  for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']) {
+    await page.getByLabel(`${day} study goal`, { exact: true }).fill('90');
+  }
+  await expect(page.getByRole('spinbutton')).toHaveCount(7);
+  await expect(page.getByLabel('Learning start date')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Log out of all devices' })).toHaveCount(0);
+  await page.getByLabel('Tuesday study goal', { exact: true }).fill('60');
+  await page.getByLabel('Saturday study goal', { exact: true }).fill('120');
+  await page.getByLabel('Sunday study goal', { exact: true }).fill('90');
+  await expect(page.getByText('10.5 hours / week')).toBeVisible();
   let releaseSave: () => void = () => {};
   const waiting = new Promise<void>((resolve) => {
     releaseSave = resolve;
@@ -183,14 +189,14 @@ test('settings edits stay accessible and the save spinner keeps its geometry', a
     if (route.request().method() === 'PUT') await waiting;
     await route.continue();
   });
-  const save = page.getByRole('button', { name: 'Save settings' });
+  const save = page.getByRole('button', { name: 'Save goal' });
   await save.scrollIntoViewIfNeeded();
   const before = await save.boundingBox();
   await save.click();
   try {
     await expect(save).toHaveAttribute('aria-busy', 'true');
-    await expect(page.getByLabel('Daily study time', { exact: true })).toBeDisabled();
-    await expect(page.getByLabel('Learning start date')).toBeDisabled();
+    await expect(page.getByLabel('Monday study goal', { exact: true })).toBeDisabled();
+    await page.screenshot({ path: 'test-results/settings-goal-saving.png', fullPage: true });
     const during = await save.boundingBox();
     const spinner = await save.getByTestId('button-spinner').locator('svg').boundingBox();
     expect(during).toEqual(before);
@@ -202,16 +208,25 @@ test('settings edits stay accessible and the save spinner keeps its geometry', a
     releaseSave();
   }
   await expect(page.getByRole('status')).toContainText('Saved');
+  expect(await (await page.request.get('/api/today')).json()).toMatchObject({ budgetMinutes: 90 });
   await page.getByRole('link', { name: 'Home', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Settings', exact: true }).click();
-  await expect(page.getByLabel('Daily study time', { exact: true })).toHaveValue('90');
-  await expect(page.getByLabel('Saturday study time', { exact: true })).toHaveValue('120');
-  await expect(page.getByLabel('Sunday study time', { exact: true })).toHaveValue('90');
+  await expect(page.getByLabel('Monday study goal', { exact: true })).toHaveValue('90');
+  await expect(page.getByLabel('Saturday study goal', { exact: true })).toHaveValue('120');
+  await expect(page.getByLabel('Sunday study goal', { exact: true })).toHaveValue('90');
   await page.reload();
-  await expect(page.getByLabel('Daily study time', { exact: true })).toHaveValue('90');
-  await expect(page.getByLabel('Saturday study time', { exact: true })).toHaveValue('120');
-  await expect(page.getByLabel('Sunday study time', { exact: true })).toHaveValue('90');
+  await expect(page.getByLabel('Tuesday study goal', { exact: true })).toHaveValue('60');
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.screenshot({ path: `test-results/settings-goal-${width}.png`, fullPage: true });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  }
+  await expect(page.getByLabel('Monday study goal', { exact: true })).toHaveValue('90');
+  await expect(page.getByLabel('Saturday study goal', { exact: true })).toHaveValue('120');
+  await expect(page.getByLabel('Sunday study goal', { exact: true })).toHaveValue('90');
 });
 
 test('first visits wait for real layout data without inventing placeholder cards', async ({
@@ -266,7 +281,7 @@ test('first-visit loaders stay centered on mobile during auth and page loading',
     await expectCenteredPageLoader(page);
     releaseAuth();
     await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
-    await page.getByRole('button', { name: 'Save settings' }).waitFor();
+    await page.getByRole('button', { name: 'Save goal' }).waitFor();
     navigation = page.getByRole('link', { name: 'Course', exact: true }).click();
     await expectCenteredPageLoader(page);
     await page.screenshot({ path: '/tmp/academy-loading-mobile.png' });
@@ -402,7 +417,7 @@ test('plain Settings and Course pages do not load the Markdown and math renderer
       markdownRequests.push(request.url());
   });
   await page.goto('/settings');
-  await expect(page.getByRole('button', { name: 'Save settings' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save goal' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open tutor' })).toBeVisible();
   expect(markdownRequests).toEqual([]);
   await page.getByRole('link', { name: 'Course', exact: true }).click();
@@ -496,4 +511,31 @@ test('Course still renders formatted metadata when it needs Markdown and math', 
   await page.goto('/course');
   await expect(page.locator('.katex').first()).toBeVisible();
   await expect(page.locator('strong').filter({ hasText: 'Linear model' })).toBeVisible();
+});
+
+test('study goal save failures keep the draft available to retry', async ({ page }) => {
+  await page.goto('/settings');
+  await page.getByLabel('Wednesday study goal').fill('35');
+  await page.route('**/api/settings', async (route) => {
+    if (route.request().method() === 'PUT') {
+      await route.fulfill({ status: 503, json: { error: 'Unavailable' } });
+    } else {
+      await route.continue();
+    }
+  });
+  await page.getByRole('button', { name: 'Save goal' }).click();
+  await expect(page.getByRole('alert')).toContainText('Settings could not be saved.');
+  await expect(page.getByLabel('Wednesday study goal')).toHaveValue('35');
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.screenshot({
+      path: `test-results/settings-goal-error-${width}.png`,
+      fullPage: true,
+    });
+  }
+  await page.unroute('**/api/settings');
+  await page.getByRole('button', { name: 'Save goal' }).click();
+  await expect(page.getByRole('status')).toContainText('Saved');
+  await page.reload();
+  await expect(page.getByLabel('Wednesday study goal')).toHaveValue('35');
 });

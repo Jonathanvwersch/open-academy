@@ -356,15 +356,17 @@ function plannedActivities(
   timeZone: string,
   now: Date,
 ): PlannedActivity[] {
-  const prefs = (preferences ?? {}) as {
-    scheduleMinutes?: number;
-    saturdayMinutes?: number;
-    sundayMinutes?: number;
-  };
+  const prefs = (preferences ?? {}) as SessionPreferences;
   const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone }).format(now);
   const kind: SessionKind =
     weekday === 'Sat' ? 'saturday' : weekday === 'Sun' ? 'sunday' : 'weekday';
-  return planSession(state, index, now, sessionBudget(kind, prefs), kind).activities;
+  return planSession(
+    state,
+    index,
+    now,
+    sessionBudget(kind, prefs, localDateKey(now, timeZone)),
+    kind,
+  ).activities;
 }
 
 async function getProblemsByRun(db: Database, runIds: string[]) {

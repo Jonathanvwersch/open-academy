@@ -16,6 +16,8 @@ import { inferPrerequisite } from '../../learning/mastery.js';
 import { applyMastery } from '../../learning/mastery-service.js';
 import { activeCourseFor } from '../../learning/prerequisites.js';
 import { planSession, sessionBudget } from '../../learning/scheduler.js';
+import type { SessionPreferences } from '../../learning/session-budget.js';
+import { localDateKey, sessionKindForDate } from '../../learning/xp.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 
 export async function postDiagnostic(deps: FeatureServices, request: FeatureRequest) {
@@ -235,8 +237,10 @@ export async function getDiagnosticByIdResults(deps: FeatureServices, request: F
   const state = await repo.schedulerState(now);
   const activeCourse = activeCourseFor(index, state.activeCourseId);
   const user = await repo.user();
-  const prefs = (user?.prefs ?? {}) as { scheduleMinutes?: number };
-  const firstSession = planSession(state, index, now, sessionBudget('weekday', prefs));
+  const prefs = (user?.prefs ?? {}) as SessionPreferences;
+  const localDate = localDateKey(now, request.timeZone);
+  const kind = sessionKindForDate(localDate);
+  const firstSession = planSession(state, index, now, sessionBudget(kind, prefs, localDate), kind);
   const runState = run?.state as
     | {
         domains?: Record<
