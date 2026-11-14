@@ -17,4 +17,16 @@ export interface AnswerOptions {
   correct?: string[];
 }
 
+export interface AttemptResponse extends Record<string, unknown> {
+  activityCompleted?: boolean;
+  answerOptions?: AnswerOptions;
+  attemptId?: string;
+  attemptNo?: number;
+  correct?: number;
+  feedback?: string;
+  retryAllowed?: boolean;
+  status?: string;
+  yourAnswer?: string;
+}
+
 export type ExercisePayload = ClientExercise;

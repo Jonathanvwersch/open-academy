@@ -5,7 +5,7 @@ import { Markdown } from '../../components/markdown.js';
 import { PageLayoutSkeleton } from '../../components/page-layout-skeleton.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
-import { courseQueryOptions, learnQueryOptions } from '../course/queries.js';
+import { invalidateSidebarQueries, learnQueryOptions } from '../course/queries.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
 import { papersQueryOptions } from '../papers/queries.js';
 import { todayQueryOptions } from '../sessions/queries.js';
@@ -17,7 +17,7 @@ import {
 
 async function invalidatePlacementProgress(queryClient: ReturnType<typeof useQueryClient>) {
   await Promise.all([
-    queryClient.invalidateQueries({ queryKey: courseQueryOptions().queryKey }),
+    invalidateSidebarQueries(queryClient),
     queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey }),
     queryClient.invalidateQueries({ queryKey: todayQueryOptions().queryKey }),
     queryClient.invalidateQueries({ queryKey: papersQueryOptions().queryKey }),
@@ -29,6 +29,7 @@ export function PlacementPage({ initialRunId }: { initialRunId?: string }) {
   const queryClient = useQueryClient();
   const [runId, setRunId] = useState<string | null>(initialRunId ?? null);
   const startRequested = useRef(false);
+  const resultsNavigationRequested = useRef(false);
   const startPlacement = useMutation(startPlacementMutationOptions());
   const nextQuery = useQuery({
     ...placementNextQueryOptions(runId),
@@ -66,10 +67,13 @@ export function PlacementPage({ initialRunId }: { initialRunId?: string }) {
 
   const question = nextQuery.data;
   useEffect(() => {
-    if (!runId || !question?.complete) return;
-    void invalidatePlacementProgress(queryClient);
-    void navigate({ to: '/placement/results', search: { id: runId }, replace: true });
-  }, [navigate, queryClient, question, runId]);
+    if (!runId || !question?.complete || resultsNavigationRequested.current) return;
+    resultsNavigationRequested.current = true;
+    void (async () => {
+      await invalidatePlacementProgress(queryClient);
+      await navigate({ to: '/placement/results', search: { id: runId }, replace: true });
+    })();
+  }, [navigate, queryClient, question?.complete, runId]);
 
   const submit = (answer: unknown, dontKnow = false) => {
     if (!runId || !question || question.complete || answerPlacement.isPending) return;

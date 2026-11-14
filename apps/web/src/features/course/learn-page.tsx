@@ -6,12 +6,12 @@ import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { Progress } from '../../components/ui/progress.js';
-import { papersQueryOptions } from '../papers/queries.js';
 import { StreakCard } from '../progress/streak-card.js';
 import { todayQueryOptions } from '../sessions/queries.js';
 import { useStartSession } from '../sessions/start-session.js';
 import { CourseStartCard } from './course-start-card.js';
 import { courseQueryOptions, learnQueryOptions } from './queries.js';
+import { useSwitchCourse } from './use-switch-course.js';
 
 export function LearnPage() {
   const navigate = useNavigate();
@@ -33,24 +33,7 @@ export function LearnPage() {
     });
   };
   const startSession = useStartSession(today.sessionKind, enterSession);
-  const chooseCourse = useMutation({
-    mutationFn: async (courseId: string) => {
-      const response = await apiFetch('/api/course/active', {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ courseId }),
-      });
-      if (!response.ok) throw new Error('Could not choose this course');
-    },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: courseQueryOptions().queryKey }),
-        queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey }),
-        queryClient.invalidateQueries({ queryKey: todayQueryOptions().queryKey }),
-        queryClient.invalidateQueries({ queryKey: papersQueryOptions().queryKey }),
-      ]);
-    },
-  });
+  const chooseCourse = useSwitchCourse();
   const startChoice = useMutation({
     mutationFn: async (focusConceptId: string) => {
       const response = await apiFetch('/api/sessions', {

@@ -1,58 +1,271 @@
-import { Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { useQuery } from '@tanstack/react-query';
+import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
+import { Activity, BookOpen, House, RotateCcw, Settings } from 'lucide-react';
+import { useCallback, useState } from 'react';
 import { Toaster } from 'sonner';
 import { BrandLockup } from '../components/brand-lockup.js';
 import { useCapturePageLayout } from '../components/page-layout-skeleton.js';
 import { PageSkeleton } from '../components/skeletons.js';
-import { Button } from '../components/ui/button.js';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from '../components/ui/sidebar.js';
 import { Skeleton } from '../components/ui/skeleton.js';
 import { TooltipProvider } from '../components/ui/tooltip.js';
+import { courseQueryOptions } from '../features/course/queries.js';
+import { useSwitchCourse } from '../features/course/use-switch-course.js';
+import { reviewsQueryOptions } from '../features/reviews/queries.js';
 import { TutorContextProvider } from '../features/tutor/tutor-sidebar.js';
 
+const SIDEBAR_STORAGE_KEY = 'academy.app-sidebar.open';
+
 const navigation = [
-  { label: 'Home', to: '/' },
-  { label: 'Courses', to: '/course' },
-  { label: 'Reviews', to: '/reviews' },
-  { label: 'Progress', to: '/progress' },
-  { label: 'Settings', to: '/settings' },
+  { label: 'Home', to: '/', icon: House },
+  { label: 'Courses', to: '/course', icon: BookOpen },
+  { label: 'Reviews', to: '/reviews', icon: RotateCcw },
+  { label: 'Progress', to: '/progress', icon: Activity },
 ] as const;
+
+function isActive(pathname: string, to: string) {
+  return pathname === to || (to !== '/' && pathname.startsWith(to));
+}
+
+function initialSidebarOpen() {
+  return localStorage.getItem(SIDEBAR_STORAGE_KEY) !== 'false';
+}
+
+function AppSidebar() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const { isMobile, state, setOpenMobile } = useSidebar();
+  const navigate = useNavigate();
+  const { data: courseData } = useQuery(courseQueryOptions());
+  const { data: reviewsData } = useQuery(reviewsQueryOptions());
+  const startedCourses = courseData?.courses.filter((course) => course.started) ?? [];
+  const closeMobile = () => {
+    if (isMobile) setOpenMobile(false);
+  };
+  const switchCourse = useSwitchCourse(async () => {
+    await navigate({ to: '/course' });
+    closeMobile();
+  });
+
+  return (
+    <Sidebar
+      side="left"
+      collapsible="icon"
+      mobileWidth="18rem"
+      role="navigation"
+      aria-label="Main navigation"
+    >
+      <SidebarHeader className="h-14 shrink-0 border-b border-sidebar-border p-0">
+        <Link
+          to="/"
+          aria-label="Open Academy home"
+          onClick={closeMobile}
+          className="flex h-full w-full items-center rounded-md px-3 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        >
+          <BrandLockup hideNameWhenSidebarCollapsed />
+        </Link>
+      </SidebarHeader>
+      <SidebarContent className="py-2">
+        <SidebarGroup className="px-2 py-1">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navigation.map(({ label, to, icon: Icon }) => (
+                <SidebarMenuItem key={to}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={!isMobile && isActive(pathname, to)}
+                    tooltip={label}
+                    className="text-sm"
+                  >
+                    <Link to={to} aria-label={label} onClick={closeMobile}>
+                      <Icon aria-hidden="true" />
+                      <span>{label}</span>
+                      {label === 'Reviews' && reviewsData && reviewsData.dueNow > 0 ? (
+                        <SidebarMenuBadge data-testid="reviews-due-count">
+                          {reviewsData.dueNow}
+                        </SidebarMenuBadge>
+                      ) : null}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        {startedCourses.length > 0 && (state !== 'collapsed' || isMobile) ? (
+          <SidebarGroup className="px-2 py-1">
+            <SidebarGroupLabel>My courses</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {startedCourses.map((course) => {
+                  const content = (
+                    <>
+                      <span className="min-w-0 flex-1 truncate text-sm">{course.title}</span>
+                      <span className="ml-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
+                        {course.topicsDone}/{course.topicsTotal}
+                      </span>
+                    </>
+                  );
+                  return (
+                    <SidebarMenuItem key={course.id}>
+                      {course.active ? (
+                        <SidebarMenuButton
+                          asChild
+                          isActive={!isMobile}
+                          className="items-center text-sm"
+                        >
+                          <Link
+                            to="/course"
+                            aria-label={`${course.title}, ${course.topicsDone} of ${course.topicsTotal} topics done`}
+                            onClick={closeMobile}
+                          >
+                            {content}
+                          </Link>
+                        </SidebarMenuButton>
+                      ) : (
+                        <SidebarMenuButton
+                          asChild
+                          disabled={switchCourse.isPending}
+                          className="items-center text-sm"
+                        >
+                          <button
+                            type="button"
+                            aria-label={`Switch to ${course.title}`}
+                            onClick={() => switchCourse.mutate(course.id)}
+                          >
+                            {content}
+                          </button>
+                        </SidebarMenuButton>
+                      )}
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+              {switchCourse.isError ? (
+                <p role="alert" className="px-2 pt-2 text-xs text-destructive">
+                  {switchCourse.error.message}
+                </p>
+              ) : null}
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
+      </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={!isMobile && isActive(pathname, '/settings')}
+              tooltip="Settings"
+              className="text-sm"
+            >
+              <Link to="/settings" aria-label="Settings" onClick={closeMobile}>
+                <Settings aria-hidden="true" />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          {!isMobile ? (
+            <SidebarMenuItem>
+              <SidebarTrigger
+                aria-label={state === 'expanded' ? 'Collapse navigation' : 'Expand navigation'}
+                title={state === 'expanded' ? 'Collapse navigation' : 'Expand navigation'}
+                className="w-full justify-start"
+              />
+            </SidebarMenuItem>
+          ) : null}
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
+
+function MobileAppHeader() {
+  return (
+    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-card px-3 md:hidden">
+      <SidebarTrigger aria-label="Open navigation" title="Open navigation" />
+      <Link to="/" aria-label="Open Academy home" className="min-w-0">
+        <BrandLockup />
+      </Link>
+    </header>
+  );
+}
 
 export function AppShellSkeleton() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const isPaperReader = pathname.startsWith('/papers/');
+  const [sidebarOpen] = useState(initialSidebarOpen);
   return (
     <div
       aria-hidden="true"
       data-testid="app-shell-skeleton"
-      className="flex min-h-screen flex-col bg-background"
+      className="flex min-h-svh bg-background"
     >
-      <header className="h-14 border-b bg-card">
-        <div className="mx-auto flex h-full w-full max-w-3xl items-center justify-between gap-4 px-4 sm:px-6">
-          <div className="hidden items-center gap-2 text-sm font-semibold tracking-tight sm:flex">
-            <BrandLockup />
-          </div>
-          <nav className="flex min-w-0 flex-1 items-center justify-between gap-0 sm:w-auto sm:justify-end sm:gap-0.5">
-            {navigation.map((item) => (
-              <span
-                key={item.to}
-                className="relative inline-flex h-7 items-center px-1.5 text-xs max-[360px]:px-1 sm:px-3 sm:text-[0.8rem]"
-              >
-                <span className="invisible">{item.label}</span>
-                <Skeleton className="absolute inset-x-1.5 h-4 max-[360px]:inset-x-1 sm:inset-x-3" />
-              </span>
-            ))}
-          </nav>
-        </div>
-      </header>
-      <div
-        data-page-frame
-        className={
-          isPaperReader
-            ? 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0'
-            : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
-        }
+      <aside
+        data-collapsible={sidebarOpen ? '' : 'icon'}
+        className={`group hidden shrink-0 flex-col border-r bg-card py-4 md:flex ${
+          sidebarOpen ? 'w-64 px-3' : 'w-12 items-center px-1'
+        }`}
       >
-        <PageSkeleton />
-      </div>
+        <div className={`flex h-12 items-center ${sidebarOpen ? 'px-3' : 'justify-center'}`}>
+          <BrandLockup hideNameWhenSidebarCollapsed />
+        </div>
+        <nav className="mt-4 w-full space-y-1">
+          {navigation.map(({ label }) => (
+            <div
+              key={label}
+              className={`flex h-8 items-center rounded-md px-2 ${
+                sidebarOpen ? 'gap-3' : 'justify-center'
+              }`}
+            >
+              <Skeleton className="size-4 shrink-0" />
+              {sidebarOpen ? <Skeleton className="h-4 w-20" /> : null}
+            </div>
+          ))}
+          {sidebarOpen ? (
+            <div className="space-y-2 pt-5">
+              <Skeleton className="mx-2 h-3 w-16" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-4/5" />
+            </div>
+          ) : null}
+        </nav>
+        <div className="mt-auto w-full space-y-2 border-t pt-3">
+          <Skeleton className={`h-8 ${sidebarOpen ? 'w-full' : 'w-8'}`} />
+          <Skeleton className="h-8 w-8" />
+        </div>
+      </aside>
+      <main className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-card px-3 md:hidden">
+          <Skeleton className="size-8 rounded-md" />
+          <BrandLockup />
+        </header>
+        <div
+          data-page-frame
+          className={
+            isPaperReader
+              ? 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0'
+              : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
+          }
+        >
+          <PageSkeleton />
+        </div>
+      </main>
     </div>
   );
 }
@@ -74,6 +287,11 @@ function AppToaster() {
 export function RootLayout() {
   const contentRef = useCapturePageLayout();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const [sidebarOpen, setSidebarOpen] = useState(initialSidebarOpen);
+  const updateSidebarOpen = useCallback((open: boolean) => {
+    setSidebarOpen(open);
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(open));
+  }, []);
   if (pathname === '/login') {
     return (
       <>
@@ -85,59 +303,29 @@ export function RootLayout() {
   const isPaperReader = pathname.startsWith('/papers/');
   return (
     <TooltipProvider>
-      <TutorContextProvider
-        routeAllowed={!pathname.startsWith('/placement')}
-        pushSidebar={isPaperReader}
-      >
-        <div
-          className={`flex min-w-0 flex-col bg-background text-foreground ${
-            isPaperReader ? 'min-h-0 flex-1' : 'min-h-screen'
-          }`}
-        >
-          <header className="border-b bg-card">
-            <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between gap-4 px-4 sm:px-6">
-              <Link
-                to="/"
-                className="hidden items-center gap-2 text-sm font-semibold tracking-tight sm:flex"
-              >
-                <BrandLockup />
-              </Link>
-              <nav
-                aria-label="Main navigation"
-                className="flex min-w-0 flex-1 items-center justify-between gap-0 sm:w-auto sm:justify-end sm:gap-0.5"
-              >
-                {navigation.map((item) => (
-                  <Button
-                    key={item.to}
-                    asChild
-                    size="sm"
-                    className="px-1.5 text-xs max-[360px]:px-1 sm:px-3 sm:text-[0.8rem]"
-                    variant={
-                      pathname === item.to || (item.to !== '/' && pathname.startsWith(item.to))
-                        ? 'secondary'
-                        : 'ghost'
-                    }
-                  >
-                    <Link to={item.to}>{item.label}</Link>
-                  </Button>
-                ))}
-              </nav>
-            </div>
-          </header>
-          <div
-            ref={contentRef}
-            data-page-frame
-            className={
-              isPaperReader
-                ? 'flex w-full min-h-0 min-w-0 flex-1 px-0 py-0'
-                : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
-            }
+      <SidebarProvider open={sidebarOpen} onOpenChange={updateSidebarOpen} disableKeyboardShortcut>
+        <AppSidebar />
+        <SidebarInset className="min-w-0">
+          <MobileAppHeader />
+          <TutorContextProvider
+            routeAllowed={!pathname.startsWith('/placement')}
+            pushSidebar={isPaperReader}
           >
-            <Outlet />
-          </div>
-        </div>
-      </TutorContextProvider>
-      <AppToaster />
+            <div
+              ref={contentRef}
+              data-page-frame
+              className={
+                isPaperReader
+                  ? 'flex min-h-0 min-w-0 w-full flex-1 px-0 py-0'
+                  : 'mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pt-6 pb-20 sm:px-6 sm:py-8'
+              }
+            >
+              <Outlet />
+            </div>
+          </TutorContextProvider>
+        </SidebarInset>
+        <AppToaster />
+      </SidebarProvider>
     </TooltipProvider>
   );
 }

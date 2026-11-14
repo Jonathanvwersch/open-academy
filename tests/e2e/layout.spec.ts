@@ -7,6 +7,19 @@ import { enrollInDefaultCourse } from './course-start.js';
 const db = createDb(env.TEST_DATABASE_URL);
 let userId = '';
 
+async function clickSidebarLink(page: Page, label: string) {
+  if (await page.evaluate(() => window.innerWidth < 768)) {
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  }
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', {
+      name: label,
+      exact: true,
+    })
+    .click();
+}
+
 async function expectCenteredPageLoader(page: Page) {
   const indicator = page.getByTestId('page-loading-indicator');
   await expect(indicator).toBeVisible();
@@ -59,9 +72,7 @@ test.afterAll(async () => {
   await db.$client.end();
 });
 
-test('routes fit mobile viewports without horizontal page or navigation overflow', async ({
-  page,
-}) => {
+test('routes fit mobile viewports without horizontal page overflow', async ({ page }) => {
   for (const width of [320, 390, 768]) {
     await page.setViewportSize({ width, height: 844 });
     for (const route of [
@@ -98,27 +109,11 @@ test('routes fit mobile viewports without horizontal page or navigation overflow
         dimensions.documentWidth,
         `${route} overflows a ${dimensions.viewportWidth}px viewport`,
       ).toBeLessThanOrEqual(dimensions.viewportWidth);
-      const navigation = await page
-        .getByRole('navigation', { name: 'Main navigation' })
-        .evaluate((element) => ({
-          scrollWidth: element.scrollWidth,
-          clientWidth: element.clientWidth,
-          items: Array.from(element.children).map((item) => ({
-            text: item.textContent,
-            width: item.getBoundingClientRect().width,
-            padding: getComputedStyle(item).paddingInline,
-            fontSize: getComputedStyle(item).fontSize,
-          })),
-        }));
-      expect(
-        navigation.scrollWidth,
-        `navigation overflows at ${width}px: ${JSON.stringify(navigation)}`,
-      ).toBeLessThanOrEqual(navigation.clientWidth);
     }
   }
 });
 
-test('course route skeleton aligns with the Open Academy wordmark', async ({ page }) => {
+test('course route skeleton displays beside the app navigation', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   await page.route('**/api/course*', async (route) => {
@@ -131,12 +126,10 @@ test('course route skeleton aligns with the Open Academy wordmark', async ({ pag
   const skeleton = page.getByTestId('route-skeleton');
   await expect(skeleton).toBeVisible();
   const skeletonBounds = await skeleton.boundingBox();
-  const wordmark = page.getByRole('link', { name: 'Open Academy', exact: true });
+  const wordmark = page.getByRole('link', { name: 'Open Academy home', exact: true });
   await expect(wordmark.locator('svg')).toBeVisible();
-  const wordmarkBounds = await wordmark.boundingBox();
   expect(skeletonBounds).not.toBeNull();
-  expect(wordmarkBounds).not.toBeNull();
-  expect(Math.abs((skeletonBounds?.x ?? 0) - (wordmarkBounds?.x ?? 0))).toBeLessThanOrEqual(1);
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
   await navigation;
 });
 
@@ -151,10 +144,11 @@ test('root auth pending renders the app-shell skeleton', async ({ page }) => {
   await page.goto('/course');
   const shell = page.getByTestId('app-shell-skeleton');
   await expect(shell).toBeVisible();
-  await expect(shell.locator('header')).toBeVisible();
+  await expect(shell.locator('aside')).toBeVisible();
   await expect(shell.getByTestId('route-skeleton')).toBeVisible();
   await expect(shell.locator('nav > *')).toHaveCount(5);
   await expectCenteredPageLoader(page);
+  await page.screenshot({ path: 'test-results/sidebar-app-shell-skeleton-desktop.png' });
   await expect(shell).toBeHidden();
 });
 
@@ -199,9 +193,9 @@ test('settings edits stay accessible and the save spinner keeps its geometry', a
   }
   await expect(page.getByRole('status')).toContainText('Saved');
   expect(await (await page.request.get('/api/today')).json()).toMatchObject({ budgetMinutes: 90 });
-  await page.getByRole('link', { name: 'Home', exact: true }).click();
+  await clickSidebarLink(page, 'Home');
   await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Settings', exact: true }).click();
+  await clickSidebarLink(page, 'Settings');
   await expect(page.getByLabel('Monday study goal', { exact: true })).toHaveValue('90');
   await expect(page.getByLabel('Saturday study goal', { exact: true })).toHaveValue('120');
   await expect(page.getByLabel('Sunday study goal', { exact: true })).toHaveValue('90');
@@ -269,10 +263,15 @@ test('first-visit loaders stay centered on mobile during auth and page loading',
   try {
     await expect(page.getByTestId('app-shell-skeleton')).toBeVisible();
     await expectCenteredPageLoader(page);
+    await page.screenshot({ path: 'test-results/sidebar-app-shell-skeleton-mobile.png' });
     releaseAuth();
-    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    const appNavigation = page.getByRole('navigation', { name: 'Main navigation' });
+    await expect(appNavigation).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(appNavigation).toBeHidden();
     await page.getByRole('button', { name: 'Save goal' }).waitFor();
-    navigation = page.getByRole('link', { name: 'Courses', exact: true }).click();
+    navigation = clickSidebarLink(page, 'Courses');
     await expectCenteredPageLoader(page);
     await page.screenshot({ path: '/tmp/academy-loading-mobile.png' });
   } finally {

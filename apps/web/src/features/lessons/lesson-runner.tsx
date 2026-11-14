@@ -12,6 +12,7 @@ import { ThinkingIndicator } from '../../components/thinking-indicator.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
+import { invalidateSidebarQueries } from '../course/queries.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
 import { FeedbackPanel, FinalRetryNote, isFinalRetryResult } from '../exercises/feedback-panel.js';
 import { sessionQueryOptions } from '../sessions/queries.js';
@@ -299,7 +300,10 @@ export function LessonRunner({
     const data = (await response.json()) as LessonRunPayload & { error?: string };
     if (!response.ok || !data.run) throw new Error(data.error ?? 'Could not submit the quiz.');
     await updateState(data.run);
-    await queryClient.invalidateQueries({ queryKey: sessionQueryOptions(sessionId).queryKey });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: sessionQueryOptions(sessionId).queryKey }),
+      invalidateSidebarQueries(queryClient),
+    ]);
   };
 
   const submitLockedQuiz = async () => {
@@ -433,6 +437,7 @@ export function LessonRunner({
       setError('');
       try {
         await onContinue(state.status, 'done');
+        await invalidateSidebarQueries(queryClient);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : 'Could not save lesson progress.');
       } finally {

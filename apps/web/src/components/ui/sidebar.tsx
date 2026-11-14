@@ -56,6 +56,8 @@ function SidebarProvider({
   defaultOpen = true,
   open: openProp,
   onOpenChange: setOpenProp,
+  openMobile: openMobileProp,
+  onOpenMobileChange: setOpenMobileProp,
   disableKeyboardShortcut = false,
   className,
   style,
@@ -65,10 +67,13 @@ function SidebarProvider({
   defaultOpen?: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  openMobile?: boolean
+  onOpenMobileChange?: (open: boolean) => void
   disableKeyboardShortcut?: boolean
 }) {
   const isMobile = useIsMobile()
-  const [openMobile, setOpenMobile] = React.useState(false)
+  const [_openMobile, _setOpenMobile] = React.useState(false)
+  const openMobile = openMobileProp ?? _openMobile
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -88,16 +93,22 @@ function SidebarProvider({
     },
     [setOpenProp, open]
   )
+  const setOpenMobile = React.useCallback(
+    (value: boolean | ((value: boolean) => boolean)) => {
+      const openState = typeof value === "function" ? value(openMobile) : value
+      if (setOpenMobileProp) {
+        setOpenMobileProp(openState)
+      } else {
+        _setOpenMobile(openState)
+      }
+    },
+    [setOpenMobileProp, openMobile]
+  )
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
     if (isMobile) {
-      setOpen((open) => {
-        const next = !open
-        setOpenMobile(next)
-        return next
-      })
-      return
+      return setOpenMobile((open) => !open)
     }
     return setOpen((open) => !open)
   }, [isMobile, setOpen, setOpenMobile])
@@ -163,6 +174,7 @@ function Sidebar({
   side = "left",
   variant = "sidebar",
   collapsible = "offcanvas",
+  mobileWidth = SIDEBAR_WIDTH_MOBILE,
   className,
   children,
   dir,
@@ -173,8 +185,9 @@ function Sidebar({
   side?: "left" | "right"
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
+  mobileWidth?: string
 }) {
-  const { isMobile, state, open, setOpen } = useSidebar()
+  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
   if (collapsible === "none") {
     return (
@@ -195,7 +208,7 @@ function Sidebar({
 
   if (isMobile) {
     return (
-      <Sheet open={open} onOpenChange={setOpen} {...props}>
+      <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent
           dir={dir}
           role={role}
@@ -206,7 +219,7 @@ function Sidebar({
           className="w-(--sidebar-width) max-w-none sm:max-w-none data-[side=left]:w-(--sidebar-width) data-[side=right]:w-(--sidebar-width) data-[side=right]:left-0 data-[side=right]:right-auto data-[side=left]:sm:max-w-none data-[side=right]:sm:max-w-none bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+              "--sidebar-width": mobileWidth,
             } as React.CSSProperties
           }
           side={side}
@@ -322,7 +335,26 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   )
 }
 
-function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
+type SidebarInsetProps =
+  | ({ as: "div" } & React.ComponentProps<"div">)
+  | ({ as?: "main" } & React.ComponentProps<"main">)
+
+function SidebarInset(props: SidebarInsetProps) {
+  if (props.as === "div") {
+    const { className, ...divProps } = props
+    return (
+      <div
+        data-slot="sidebar-inset"
+        className={cn(
+          "relative flex w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
+          className
+        )}
+        {...divProps}
+      />
+    )
+  }
+
+  const { className, ...mainProps } = props
   return (
     <main
       data-slot="sidebar-inset"
@@ -330,7 +362,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
         "relative flex w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
         className
       )}
-      {...props}
+      {...mainProps}
     />
   )
 }

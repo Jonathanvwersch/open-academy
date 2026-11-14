@@ -92,7 +92,12 @@ function expectStableBox(
   for (const field of fields) expect(Math.abs(before[field] - after[field])).toBeLessThanOrEqual(1);
 }
 
-test.beforeEach(async () => {
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/**', (route) =>
+    route.continue({
+      headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
+    }),
+  );
   const db = createDb(env.TEST_DATABASE_URL);
   await db.delete(users);
   await db.insert(users).values({
@@ -262,7 +267,7 @@ test('session retries keep the action in place and reveal the answer only after 
     sessionId: session.id,
     idx: 0,
     kind: 'practice',
-    conceptId: 'linear-algebra-fixture-1',
+    conceptId: 'linear-algebra',
     exerciseIds: ['linear-algebra-fixture-1-basics'],
     plannedMinutes: 10,
     status: 'in_progress',

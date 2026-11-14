@@ -1,3 +1,4 @@
+import type { AttemptResponse } from '@academy/contracts/exercises';
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
 import { onScreenOptions } from '@academy/shared/shuffle';
 import { and, asc, desc, eq, gt, inArray } from 'drizzle-orm';
@@ -620,6 +621,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
   const retryAllowed =
     body.data.mode === 'practice' && attemptNo < 2 && (result.correct === 0 || followUp);
   const answerOptions = answerOptionsFor(exercise, body.data.answer, !retryAllowed);
+  let activityCompleted = false;
   if (activityRow && activity && !retryAllowed) {
     const progress = activity.progress as {
       completedExerciseIds?: string[];
@@ -663,6 +665,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     const completed =
       !lessonFinalNeedsQuiz &&
       (learningGoalMet || exerciseIds.every((id) => completedExerciseIds.includes(id)));
+    activityCompleted = completed;
     await updateActivityAndAdvance(db, {
       activityId: activity.id,
       completed,
@@ -692,6 +695,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     credit,
     mastery: masteryResult,
     retryAllowed,
+    activityCompleted,
     ...(followUp ? { followUp: true } : {}),
     ...(answerOptions ? { answerOptions } : {}),
     ...(!retryAllowed && !followUp && exercise.type !== 'explain' && exercise.solution
@@ -708,5 +712,5 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
           ...('rubric' in result ? { rubric: result.rubric } : {}),
         }
       : {}),
-  });
+  } satisfies AttemptResponse);
 }

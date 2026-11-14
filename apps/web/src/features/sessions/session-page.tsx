@@ -1,4 +1,4 @@
-import type { AnswerOptions } from '@academy/contracts/exercises';
+import type { AnswerOptions, AttemptResponse } from '@academy/contracts/exercises';
 import type { SessionActivity } from '@academy/contracts/sessions';
 import { useQueries, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
@@ -9,7 +9,7 @@ import { SessionSkeleton } from '../../components/skeletons.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
-import { learnQueryOptions } from '../course/queries.js';
+import { invalidateSidebarQueries, learnQueryOptions } from '../course/queries.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
 import { FeedbackPanel, FinalRetryNote, isFinalRetryResult } from '../exercises/feedback-panel.js';
 import { HintLadder } from '../exercises/hint-ladder.js';
@@ -253,7 +253,10 @@ export function SessionPage() {
         ...(activity.progress ?? {}),
         complete: true,
       });
-      await queryClient.invalidateQueries({ queryKey: ['session', id] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['session', id] }),
+        invalidateSidebarQueries(queryClient),
+      ]);
     } catch {
       setProgressError('Your progress was not saved. Please try again.');
     } finally {
@@ -277,7 +280,8 @@ export function SessionPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ exerciseId, activityId: activity.id, answer, mode }),
       });
-      const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+      const data = (await response.json().catch(() => ({}))) as AttemptResponse;
+      const { activityCompleted, ...attemptResult } = data;
       if (response.status === 409) {
         await queryClient.invalidateQueries({ queryKey: ['session', id] });
         return;
@@ -295,12 +299,15 @@ export function SessionPage() {
                 ...session,
                 activities: session.activities.map((item) =>
                   item.id === activity.id
-                    ? { ...item, lastAttempt: { ...data, exerciseId } }
+                    ? { ...item, lastAttempt: { ...attemptResult, exerciseId } }
                     : item,
                 ),
               }
             : session,
         );
+        if (activityCompleted === true) {
+          await invalidateSidebarQueries(queryClient);
+        }
         setHints([]);
         setTutorUnavailable(false);
       }
@@ -467,6 +474,7 @@ export function SessionPage() {
           queryKey: todayQueryOptions().queryKey,
           refetchType: 'none',
         }),
+        invalidateSidebarQueries(queryClient),
       ]);
       await navigate({ to: '/' });
     } catch {
@@ -625,7 +633,10 @@ export function SessionPage() {
           tutorEnabled={sessionQuery.data.tutorEnabled}
           onSkip={async () => {
             await saveActivityProgress(id, activity.id, { complete: true });
-            await queryClient.invalidateQueries({ queryKey: ['session', id] });
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: ['session', id] }),
+              invalidateSidebarQueries(queryClient),
+            ]);
           }}
         />
       </section>

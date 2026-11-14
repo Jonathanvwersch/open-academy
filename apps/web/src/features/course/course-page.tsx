@@ -1,21 +1,20 @@
 import type { CourseTopic } from '@academy/contracts/course';
-import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ChevronDown, ChevronRight, FileText, Wrench } from 'lucide-react';
 import { Collapsible } from 'radix-ui';
 import { useEffect, useState } from 'react';
-import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { Dialog, DialogContent, DialogTitle } from '../../components/ui/dialog.js';
-import { paperStatusLabel, papersQueryOptions } from '../papers/queries.js';
-import { todayQueryOptions } from '../sessions/queries.js';
+import { paperStatusLabel } from '../papers/queries.js';
 import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { CourseMetadata } from './course-metadata.js';
 import { CourseStartCard } from './course-start-card.js';
 import { foundationsHeading } from './foundations-heading.js';
-import { courseQueryOptions, learnQueryOptions } from './queries.js';
+import { courseQueryOptions } from './queries.js';
+import { useSwitchCourse } from './use-switch-course.js';
 import {
   isUnitOpen,
   readCourseUnitOpenOverrides,
@@ -24,31 +23,12 @@ import {
 
 export function CoursePage() {
   const { data } = useSuspenseQuery(courseQueryOptions());
-  const queryClient = useQueryClient();
   const tutorSidebar = useTutorSidebar();
   const [unitOpenOverrides, setUnitOpenOverrides] = useState(readCourseUnitOpenOverrides);
   const [coursesOpen, setCoursesOpen] = useState(false);
   const [foundationsOpen, setFoundationsOpen] = useState(false);
   const activeCourse = data.courses.find((course) => course.id === data.course.id);
-  const changeCourse = useMutation({
-    mutationFn: async (courseId: string) => {
-      const response = await apiFetch('/api/course/active', {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ courseId }),
-      });
-      if (!response.ok) throw new Error('Could not switch courses');
-    },
-    onSuccess: async () => {
-      setCoursesOpen(false);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: courseQueryOptions().queryKey }),
-        queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey }),
-        queryClient.invalidateQueries({ queryKey: todayQueryOptions().queryKey }),
-        queryClient.invalidateQueries({ queryKey: papersQueryOptions().queryKey }),
-      ]);
-    },
-  });
+  const changeCourse = useSwitchCourse(() => setCoursesOpen(false));
   useEffect(() => {
     tutorSidebar.setContext({
       page: 'course',

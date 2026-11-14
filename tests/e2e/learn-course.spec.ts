@@ -102,7 +102,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   ]);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Home' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Home', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
   const lessonTasks = page.locator('li').filter({ has: page.getByText('Lesson', { exact: true }) });
   await expect(lessonTasks.first()).toContainText('Vectors');
@@ -115,7 +115,7 @@ test('Home shows XP and tasks, starts a session, and Course links to lessons and
   ).toBeVisible();
   await expect(page.getByText(/^At your pace:/)).toBeVisible();
   await expect(page.getByText(/^At your daily goal:/)).toBeVisible();
-  await expect(page.getByText('Fixture course', { exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByText('Fixture course', { exact: true })).toBeVisible();
   await expect(page.getByText('Total XP').locator('..')).toContainText('45');
   await expect(page.getByRole('button', { name: 'Start learning' })).toBeEnabled();
   await page.screenshot({ path: `${screenshotDir}/learn-with-xp.png`, fullPage: true });
@@ -512,9 +512,10 @@ test('lab activities show project progress and finish without awarding XP', asyn
 
 test('navigation has four destinations and Lab redirects to Courses', async ({ page }) => {
   await page.goto('/');
-  const navigationLinks = page.locator('nav a');
-  await expect(navigationLinks).toHaveCount(5);
-  await expect(navigationLinks).toHaveText(['Home', 'Courses', 'Reviews', 'Progress', 'Settings']);
+  const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+  for (const label of ['Home', 'Courses', 'Reviews', 'Progress', 'Settings']) {
+    await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
+  }
 
   await page.goto('/lab');
   await expect(page).toHaveURL(/\/course$/);
