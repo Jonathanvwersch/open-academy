@@ -1,5 +1,6 @@
 import type { ReviewTopic } from '@academy/contracts/reviews';
 import { useSuspenseQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { Collapsible } from 'radix-ui';
 import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '../../components/ui/badge.js';
@@ -83,13 +84,21 @@ export function ReviewsPage() {
           {dueTopics.length > 0 ? (
             <>
               <TopicGroups groups={dueDateGroups} />
-              <Button
-                type="button"
-                onClick={() => startSession.mutate()}
-                loading={startSession.isPending}
-              >
-                Start reviews
-              </Button>
+              {today.activeSessionId ? (
+                <Button asChild>
+                  <Link to="/session/$id" params={{ id: today.activeSessionId }}>
+                    Continue reviews
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={() => startSession.mutate()}
+                  loading={startSession.isPending}
+                >
+                  Start reviews
+                </Button>
+              )}
               {startSession.isError ? (
                 <p role="alert" className="text-sm text-destructive">
                   {startSession.error.message}

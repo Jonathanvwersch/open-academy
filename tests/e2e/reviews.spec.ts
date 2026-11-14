@@ -224,6 +224,51 @@ test('Start reviews starts a session and navigates to it', async ({ page }) => {
   await expect(page).toHaveURL(/\/session\/[^/]+$/);
 });
 
+test('Continue reviews resumes the active session without starting another', async ({ page }) => {
+  const [session] = await db
+    .insert(studySessions)
+    .values({
+      userId,
+      kind: 'weekday',
+      plannedMinutes: 10,
+      startedAt: new Date('2026-01-01T12:00:00.000Z'),
+      status: 'active',
+    })
+    .returning();
+  if (!session) throw new Error('Could not create active review session');
+  await db.insert(sessionActivities).values({
+    sessionId: session.id,
+    idx: 0,
+    kind: 'review',
+    conceptId: 'supervised-learning',
+    exerciseIds: ['sl-explain-setup'],
+    plannedMinutes: 5,
+    status: 'in_progress',
+  });
+  const fsrs = newReviewCard(new Date('2026-01-01T12:00:00.000Z'));
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: 'supervised-learning',
+    dimension: 'conceptual',
+    fsrs,
+    dueAt: new Date('2026-01-01T00:00:00.000Z'),
+    reps: 0,
+    lapses: 0,
+  });
+
+  const continueLink = page.getByRole('link', { name: 'Continue reviews' });
+  await page.goto('/reviews');
+  await expect(continueLink).toHaveAttribute('href', `/session/${session.id}`);
+  await continueLink.click();
+  await expect(page).toHaveURL(`/session/${session.id}`);
+
+  const sessions = await db
+    .select({ id: studySessions.id })
+    .from(studySessions)
+    .where(eq(studySessions.userId, userId));
+  expect(sessions).toEqual([{ id: session.id }]);
+});
+
 test('review session header shows its label without an activity count', async ({ page }) => {
   const [session] = await db
     .insert(studySessions)
