@@ -1,0 +1,169 @@
+concept: sft
+version: 1
+objective: "**Goal:** Explain how supervised fine-tuning teaches a pretrained model to answer prompts, and implement a loss that scores only response tokens while keeping the prompt as context."
+recap:
+  - concept: pretraining
+    text: "Pretraining is an initial stage of language-model training; later stages adapt the pretrained model for a particular use."
+where_this_fits: |
+  ### What is supervised fine-tuning?
+
+  Supervised fine-tuning (SFT) continues training a pretrained language model on examples of the responses we want it to give. It helps turn that model into an assistant, a model used to answer requests, by changing its weights to make the example responses more likely.
+
+  SFT pairs requests with example answers called demonstrations. These show the content, style and format we want the assistant to produce.
+knowledge_points:
+  - id: sft-example-responses
+    title: Learn from example responses
+    explain: |
+      ### From continuing text to answering
+
+      A pretrained language model predicts the next token, a piece of text such as a word or word piece, from the tokens before it. We now give it examples of answering requests. Each example pairs a **prompt**, the request it sees, with a **response**, the answer we want.
+
+      Let's use the sentence “the cat sat on the mat”. One demonstration pairs “Continue: the cat sat on the” with “mat”. Another pairs “Read ‘the cat sat on the mat’. Which animal sat?” with “The cat.” These teach sentence completion and question answering using our sentence.
+
+      Training adjusts the model's weights to increase the probability of these example answers. Follow that process through the arrows in the picture.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 216" aria-label="A pretrained model enters training with a prompt and desired response. Training updates its weights to make responses like the demonstration more likely.">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" fill="#171717" text-anchor="middle">
+          <rect x="30" y="8" width="300" height="44" rx="5" fill="#d4d4d4"/>
+          <text x="180" y="35">Pretrained model</text>
+          <path d="M180 54 V76 M175 70 L180 76 L185 70" fill="#737373" stroke="#737373"/>
+          <rect x="30" y="80" width="300" height="56" rx="5" fill="#d4d4d4"/>
+          <text x="180" y="103">Train on prompt + desired response</text>
+          <text x="180" y="124">Update the model's weights</text>
+          <path d="M180 138 V160 M175 154 L180 160 L185 154" fill="#737373" stroke="#737373"/>
+          <rect x="30" y="164" width="300" height="44" rx="5" fill="#d4d4d4"/>
+          <text x="180" y="191">Example responses become likelier</text>
+        </g>
+      </svg>
+      ```
+
+      **Supervised fine-tuning** is further training on prompt–response demonstrations, starting from already learned weights. The desired response supplies the **targets**, the correct next tokens training asks the model to predict.
+
+      ### Marking who is speaking
+
+      How can the model tell where a request ends and an answer starts? A **chat template** arranges messages into a single list of tokens with markers for their roles, meaning who is speaking. The user supplies the request, and the assistant supplies the answer.
+
+      Real models have specific chat templates; use the markers and ordering that model was trained with. Our invented toy markers are `<user>` for the request, `<assistant>` for the answer and `<end>` to teach when to stop answering. The worked example joins the marked request and answer into one training sequence.
+
+      Be careful not to confuse formatting with training. Adding role markers arranges the text; training changes the weights.
+
+      ### Limitations
+
+      Demonstrations can teach mistakes. If “Continue: the cat sat on the” is paired with “dog” when we want the original sentence, training encourages that wrong continuation. Check the demonstrations and test on unseen prompts to see whether the model answers new requests well.
+    worked: |
+      Let's add chat markers to a demonstration from “the cat sat on the mat”, then use the same markers to ask the trained model a new request.
+
+      1. **Choose a prompt and response.** We want to teach sentence completion, so we supply the unfinished sentence and its desired continuation.
+         - Prompt: “Continue: the cat sat on the”.
+         - Desired response: “mat”.
+
+      2. **Format the demonstration.** We mark where the model should start and stop answering. Read the sequence as `<user>`, then the request text, then `<assistant>`, the answer `mat` and finally `<end>`. Training uses this complete sequence:
+         `<user>Continue: the cat sat on the<assistant>mat<end>`
+
+      3. **Ask a new request.** To test another prefix after training, we use “the cat sat on” and ask the model to complete it. We supply the marked request below; we want the model to generate “the mat”.
+         `<user>Continue: the cat sat on<assistant>`
+
+      The input ends immediately after `<assistant>`. The model predicts the answer tokens and then the ending token, one token at a time. Checking those predictions tells us whether it handled the new request.
+    problems:
+      - sft-pairs-basics
+      - sft-pair-self-explain
+      - sft-role-boundary
+      - sft-format-versus-training
+      - sft-behaviour-change
+      - sft-bad-demonstration
+      - sft-new-task
+  - id: sft-response-loss
+    title: Calculate the loss on responses
+    explain: |
+      ### Choose which prediction losses count
+
+      SFT teaches answers to prompts. We want training to concentrate on producing responses. Each prediction has a **loss**, a number training tries to reduce. **Response-only loss masking** selects the losses on response predictions and averages those. A list of zeros and ones controls this selection.
+
+      For a small calculation, shrink our sentence-completion task to four word-level toy tokens, “the cat sat on”. The prompt is “the cat”, and the response is “sat on”. We omit instruction text and chat markers. Each token needs a preceding position to predict it. The first token has none here, so it has no prediction loss.
+
+      The model predicts “sat” after “the cat”, then “on” after “the cat sat”. Training supplies the demonstrated earlier tokens, so each probability is evaluated in the intended context. In the picture, ones select the green response tokens' prediction losses.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 150" aria-label="Four input tokens are the, cat, sat, on. The prompt words the and cat have mask entries zero. The response tokens sat and on have mask entries one, selecting their prediction losses.">
+        <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="15" text-anchor="middle">
+          <text x="140" y="22" fill="#171717">Prompt</text><text x="280" y="22" fill="#171717">Response</text>
+          <path d="M75 30 H205 M219 30 H341" stroke="#d4d4d4" fill="#d4d4d4"/>
+          <g fill="#171717" text-anchor="start"><text x="4" y="62">Token</text><text x="4" y="108">Mask</text></g>
+          <g fill="#3b82f6"><text x="105" y="62">the</text><text x="175" y="62">cat</text><text x="105" y="108">0</text><text x="175" y="108">0</text></g>
+          <g fill="#10b981"><text x="245" y="62">sat</text><text x="315" y="62">on</text><text x="245" y="108">1</text><text x="315" y="108">1</text></g>
+          <text x="180" y="140" fill="#171717" font-size="14">Select the two response losses.</text>
+        </g>
+      </svg>
+      ```
+
+      ### Average the selected losses
+
+      Write $x_t$ for token number $t$ in a sequence of length $T$. The probability $p(x_{t+1}\mid x_1,\dots,x_t)$ means “probability of the next token given the preceding tokens”. Its **cross-entropy loss**, $\ell_{t+1}$, is minus the natural logarithm of that probability; higher probability gives smaller loss.
+
+      $$\ell_{t+1}=-\ln p(x_{t+1}\mid x_1,\dots,x_t).$$
+
+      Set $m_{t+1}=1$ when the predicted token $x_{t+1}$ belongs to the response, and $0$ otherwise. Multiplying a loss by zero removes it from the sum. The $\sum$ signs add entries. Divide the selected losses' sum by their count to get the mean $L$:
+
+      $$L=\frac{\sum_{t=1}^{T-1}m_{t+1}\ell_{t+1}}{\sum_{t=1}^{T-1}m_{t+1}}.$$
+
+      Positions $1$ to $T-1$ predict tokens $2$ to $T$. Here $t=2$ predicts $x_3$, “sat”, so $m_3\ell_3$ counts. The last prompt position predicts the first response token. In the full chat format, select the ending marker too, so the model learns to stop.
+
+      ### Keep the prompt in the input
+
+      The prompt stays in the input to help predict responses. The mask excludes the loss for predicting prompt tokens. Response predictions use weights that also process the prompt, so reducing response losses can update those weights. Be careful not to treat masking as deleting input or freezing weights.
+
+      Cutting a sequence too short can remove every response target. Reject examples with no selected targets because their mean would divide by zero.
+    worked: |
+      Let's compute response-only loss for the toy prompt “the cat” and response “sat on”. Here $T=4$, with $x_3$ being “sat” and $x_4$ being “on”. Suppose the model's next-token predictions after “the”, “the cat” and “the cat sat” assign probabilities $0.1$ to “cat”, $0.5$ to “sat” and $0.25$ to “on”, respectively. We include the prompt probability to see what the mask excludes. We will keep full precision while calculating and show results to two decimals.
+
+      1. **Select the response targets.** Put one mask entry under each token in “the cat sat on” to select its prediction loss. The first entry is zero because “the” has no prediction loss here; the second excludes the prompt-target loss for “cat”.
+         $$(m_1,m_2,m_3,m_4)=(0,0,1,1).$$
+
+      2. **Find each selected loss.** We take minus the natural logarithm of the probabilities for “sat” and “on”.
+         $$\ell_3=-\ln(0.5)\approx0.69,\qquad\ell_4=-\ln(0.25)\approx1.39.$$
+
+      3. **Average the selected losses.** We add the two response losses and divide by two.
+         $$L=\frac{-\ln(0.5)-\ln(0.25)}{2}\approx1.04.$$
+
+      The response-only mean is $1.04$. The prompt probability $0.1$ is excluded, so changing it would leave this mean unchanged.
+
+      This Python code pairs the probabilities and mask using `zip`. `None` marks the first token, which has no earlier token to predict it. Python treats zero as false and one as true, so `if keep` selects response entries. It never evaluates `log(None)`.
+
+      For each selected entry, `log` computes the natural logarithm and `append` adds the loss to a list. `raise` stops the program if no targets were selected, preventing division by zero.
+
+      Finally, `sum` adds the losses and `len` counts them. The last line prints the mean to two decimal places. Training would use this loss to update weights.
+
+      ```python
+      from math import log
+
+      probabilities = [None, 0.1, 0.5, 0.25]
+      mask = [0, 0, 1, 1]
+      losses = []
+      for p, keep in zip(probabilities, mask):
+          if keep:
+              losses.append(-log(p))
+      if not losses:
+          raise ValueError("No response targets")
+      loss = sum(losses) / len(losses)
+      print(f"{loss:.2f}")
+      # prints: 1.04
+      ```
+
+    problems:
+      - sft-mask-basics
+      - sft-mask-self-explain
+      - sft-first-response
+      - sft-mask-mean-template
+      - sft-mask-code
+      - sft-shifted-targets
+      - sft-empty-mask
+      - sft-context-still-learns
+final: sft-explain-training
+summary: |
+  - Supervised fine-tuning continues from pretrained weights and makes demonstrated responses to prompts more likely; the demonstrations can also teach errors.
+  - A chat template marks message roles and response endings, and the model should receive its expected format both during training and when asked to answer.
+  - Response-only loss averages $-\ln p(x_{t+1}\mid x_1,\dots,x_t)$ over response targets, including the first response token, while keeping prompt tokens available as context.
+  - Each mask entry selects the loss for predicting its corresponding token, and a training example with no selected targets must be rejected before taking the mean.
+
+  **Next:** LoRA adapts a pretrained model by training a small added set of weights, reducing how many weights need to change.

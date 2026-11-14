@@ -1,0 +1,946 @@
+concept: pretraining
+exercises:
+  - id: pt-training-data-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is pretraining data?
+    options:
+      - id: a
+        text: A list of question-and-answer pairs written by people to show good replies.
+        correct: false
+        feedback: Pretraining learns from ordinary text, where each next token supplies its own answer. People do not need to write question-and-answer pairs.
+      - id: b
+        text: A huge stream of cleaned, deduplicated text tokens cut into windows of a fixed length.
+        correct: true
+        feedback: "Pretraining data is filtered and deduplicated text, tokenized and packed into windows of $T$ tokens."
+      - id: c
+        text: The vocabulary of tokens, each paired with a short definition of its meaning.
+        correct: false
+        feedback: The vocabulary lists the tokens the tokenizer can produce. The training data is the text written in those tokens.
+      - id: d
+        text: A list of website addresses that a crawler has yet to visit.
+        correct: false
+        feedback: Website addresses tell a crawler where to look. Pretraining data is the text collected and cleaned from those pages.
+    solution: "Pretraining data is a long stream of filtered, deduplicated text that has been tokenized and cut into windows of a fixed length $T$."
+  - id: ptp-data-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, the cleaned collection has $11$ tokens. Why do they give only $6$ predictions?"
+    options:
+      - id: a
+        text: "They fill $2$ windows of $4$, and each window predicts the $3$ tokens after its first one."
+        correct: true
+        feedback: "Right. $11=2\\times4+3$, and each full window gives $T-1=3$ predictions, so $2\\times3=6$."
+      - id: b
+        text: "The [end] tokens are never predicted, so only the $9$ words count, minus the first."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The [end] tokens are predicted like any other token. The count comes from $2$ windows giving $3$ predictions each."
+      - id: c
+        text: "The duplicate document was removed, and that took away $5$ of the $11$ tokens."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The duplicate was removed before counting, so the $11$ tokens are already what is left after deduplication."
+      - id: d
+        text: "The $11$ tokens give $7$ predictions, because only the $4$ tokens in the first window are skipped."
+        correct: false
+        category: misunderstood_definition
+        feedback: "A window of $T$ tokens gives $T-1$ predictions, since its first token has nothing before it. The $3$ leftover tokens are too few for a third window, so this small example leaves them out."
+    solution: "The $11$ tokens fill $2$ full windows of $T=4$ with $3$ left over. Each window predicts every token after its first, $T-1=3$ of them, so the two windows give $2\\times3=6$ predictions."
+  - id: ptp-token-count-unit
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: How is the size of a pretraining dataset usually measured?
+    options:
+      - id: a
+        text: "In tokens, such as the $300$ billion that GPT-3 was trained on."
+        correct: true
+        feedback: Dataset sizes are counted in tokens. Within each window, every token after the first gives one next-token prediction during training.
+      - id: b
+        text: In web pages, since most of the text comes from crawled websites.
+        correct: false
+        category: misunderstood_definition
+        feedback: Pages vary hugely in length, so the count that matters for training is tokens.
+      - id: c
+        text: In words, because every word is always exactly one token.
+        correct: false
+        category: misunderstood_definition
+        feedback: A tokenizer can split a word into smaller pieces. Dataset sizes count the resulting tokens.
+      - id: d
+        text: In documents, because each document contributes the same amount of text.
+        correct: false
+        category: misunderstood_definition
+        feedback: Documents have different lengths. Counting tokens measures how much text they contain.
+    solution: "Pretraining datasets are counted in tokens. GPT-3 was trained on $300$ billion tokens, and Llama 3 on over $15$ trillion."
+  - id: ptp-dedupe-why
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why do teams remove duplicate copies of text before pretraining?
+    options:
+      - id: a
+        text: Copies are hard to tokenize, because the tokenizer has already seen those words.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The tokenizer handles a repeated page exactly like the first copy. The trouble is what repeats do to training.
+      - id: b
+        text: A model that sees one passage many times tends to memorise it, and the repeats add no new text.
+        correct: true
+        feedback: Repeats push the model to memorise that passage word for word, and repeated copies add no new text to learn from.
+      - id: c
+        text: Duplicate text makes the loss negative, which stops gradient descent from working.
+        correct: false
+        category: math_error
+        feedback: Cross-entropy loss is never negative. Duplicates still give ordinary losses; they encourage memorising the repeated passage.
+      - id: d
+        text: Copies take up too much disk space to store alongside the rest of the data.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The main risk is what the model learns: repeated passages encourage memorising them word for word."
+    solution: Deduplication removes repeated copies because a model trained on the same passage many times tends to memorise it, and the repeats add nothing new to learn.
+  - id: ptp-window-predictions-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A pretraining stream is cut into ${{= n }}$ windows of $T={{= T }}$ tokens each. In each window, every token after the first is predicted from the ones before it. How many next-token predictions do the windows give in total?"
+    hints:
+      - How many tokens in one window have at least one token before them?
+    params:
+      n:
+        min: 2
+        max: 9
+        step: 1
+      T:
+        min: 256
+        max: 2048
+        step: 256
+    answer_expr: n * (T - 1)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: n * T
+        category: misunderstood_definition
+        feedback: "A window's first token has nothing before it, so each window gives $T-1$ predictions, not $T$."
+    solution: "Each window gives $T-1={{= T-1 }}$ predictions, so ${{= n }}$ windows give ${{= n }}\\times{{= T-1 }}={{= n*(T-1) }}$."
+  - id: ptp-stream-windows-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Three documents have ${{= a }}$, ${{= b }}$ and ${{= c }}$ word tokens. One end-of-text token is added after each document, the documents are joined into one stream, and the stream is cut into windows of $T=4$ tokens. How many full windows are there?"
+    hints:
+      - Count the end-of-text tokens as well as the words.
+      - "Divide the total by $4$ and keep only the whole windows."
+    params:
+      a:
+        min: 3
+        max: 9
+        step: 1
+      b:
+        min: 3
+        max: 9
+        step: 1
+      c:
+        min: 3
+        max: 9
+        step: 1
+    constraints:
+      - floor((a + b + c + 3) / 4) != floor((a + b + c) / 4)
+    answer_expr: floor((a + b + c + 3) / 4)
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: floor((a + b + c) / 4)
+        category: math_error
+        feedback: Remember the three end-of-text tokens. They are part of the stream too.
+    solution: "The stream has ${{= a }}+{{= b }}+{{= c }}+3={{= a+b+c+3 }}$ tokens, counting the three end-of-text tokens. Since ${{= a+b+c+3 }}={{= floor((a+b+c+3)/4) }}\\times4+{{= mod(a+b+c+3,4) }}$, there are ${{= floor((a+b+c+3)/4) }}$ full windows."
+  - id: ptp-end-token
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: Documents are joined into one stream and packed into fixed-length windows, so one window can hold the end of one document and the start of the next. Why is an end-of-text token placed after each document?
+    options:
+      - id: a
+        text: It tells the model where one document stops and an unrelated one begins.
+        correct: true
+        feedback: The marker shows the boundary, so the model can learn that text after it starts fresh.
+      - id: b
+        text: It pads every document to the same length so each one fills a whole window.
+        correct: false
+        category: misunderstood_definition
+        feedback: Packing joins documents into one stream, so no padding is needed. The marker only shows where a document ends.
+      - id: c
+        text: It stops the loss from being computed for the tokens of the next document.
+        correct: false
+        category: misunderstood_definition
+        feedback: The tokens after the marker are predicted and scored like any others. The marker shows where the new document starts.
+      - id: d
+        text: It removes duplicates, since two copies would then end with the same token.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Deduplication is a separate stage done before tokenizing. Every document gets the same marker.
+    solution: Because packed windows can run across document boundaries, the end-of-text token marks where one document stops, so the model can tell that what follows is a new, unrelated text.
+  - id: ptp-filter-spam
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: A teammate argues that filtering out spam pages only throws away data, so it can only make the model worse. Which reply is correct?
+    options:
+      - id: a
+        text: Training on spam teaches the model to predict spam, so the quality of the text matters.
+        correct: true
+        feedback: "The model learns to imitate whatever it is trained on, so spam teaches patterns we don't want."
+      - id: b
+        text: "Spam pages can't be tokenized, so they would crash the training run if kept."
+        correct: false
+        category: incorrect_reasoning
+        feedback: A tokenizer can turn any text into tokens. The problem is what training on it teaches and what it costs.
+      - id: c
+        text: Filtering is needed only to make every document the same length.
+        correct: false
+        category: misunderstood_definition
+        feedback: Documents can have different lengths. Packing joins them into a stream and cuts that stream into fixed-length windows.
+      - id: d
+        text: "The teammate is right: more tokens of any kind always lower the loss on real text."
+        correct: false
+        category: incorrect_reasoning
+        feedback: The model learns to predict what it is trained on, so tokens of spam teach spam patterns.
+    solution: "The model learns to predict whatever text it trains on. Spam teaches patterns we don't want, which is why low-quality pages are filtered out."
+  - id: ptp-robot-logs
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 1
+    prompt: "A robotics company pretrains a model on text logs from its robots. One $30$-second demonstration was accidentally copied $10{,}000$ times into the logs. What is the main risk if they train on the logs as they are?"
+    options:
+      - id: a
+        text: The model memorises that one demonstration because it sees the same text so often.
+        correct: true
+        feedback: Seeing the same passage thousands of times encourages memorising it word for word, and each copy repeats the same text.
+      - id: b
+        text: The tokenizer will refuse to split text that repeats into tokens.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A tokenizer can process repeated text. The cost comes during training.
+      - id: c
+        text: "The copies will make every window shorter than $T$ tokens."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Packing always cuts the stream into full windows of $T$ tokens, however the text repeats."
+      - id: d
+        text: The model can no longer use cross-entropy, because the targets repeat.
+        correct: false
+        category: misunderstood_definition
+        feedback: Cross-entropy works for any targets. Repeats give the same losses again, which pushes the model towards memorising.
+    solution: This is a duplication problem. Training on thousands of copies pushes the model to memorise that one demonstration without teaching anything new, so the logs should be deduplicated first.
+  - id: pt-training-compute-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does $C\\approx6PD$ estimate?"
+    options:
+      - id: a
+        text: "The total number of floating-point operations needed to train a model with $P$ parameters on $D$ tokens."
+        correct: true
+        feedback: "$C$ is the training compute, counted in FLOPs, for $P$ parameters and $D$ training tokens."
+      - id: b
+        text: "The number of tokens a model with $P$ parameters needs before its loss stops falling."
+        correct: false
+        category: misunderstood_definition
+        feedback: "$D$ is the number of tokens we choose to train on. $C$ counts the operations that training takes."
+      - id: c
+        text: "The number of parameters a model needs to memorise a dataset of $D$ tokens."
+        correct: false
+        category: misunderstood_definition
+        feedback: "$P$ is the model's parameter count, given. $C$ is the compute of training it on $D$ tokens."
+      - id: d
+        text: "The time in seconds that one GPU takes to train a model on $D$ tokens."
+        correct: false
+        category: misunderstood_definition
+        feedback: "$C$ counts operations. Dividing it by a GPU's operations per second turns it into time."
+    solution: "$C\\approx6PD$ is the training compute: about $6$ FLOPs for each parameter and each training token, so $P$ parameters trained on $D$ tokens take about $6PD$ FLOPs."
+  - id: ptp-compute-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, why does each parameter cost $6$ FLOPs per token?"
+    options:
+      - id: a
+        text: The forward pass does one multiplication and one addition per weight, and finding the slopes costs about twice that.
+        correct: true
+        feedback: "Right. That is $2$ for the forward pass plus about $4$ for the slopes, $6$ in all."
+      - id: b
+        text: Each parameter is used once in each of the six layers that a small model has.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The $6$ doesn't depend on the number of layers. It comes from $2$ FLOPs forward and about $4$ for the slopes, per parameter."
+      - id: c
+        text: "The GPU does $6$ operations at once, so each step is counted as $6$ FLOPs."
+        correct: false
+        category: misunderstood_definition
+        feedback: "A FLOP is one addition or multiplication, whatever the GPU does in parallel. The $6$ counts work per parameter per token."
+      - id: d
+        text: "Cross-entropy needs $6$ operations to turn each score into a probability."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The loss adds very little. The $6$ comes from the weights: $2$ FLOPs forward and about $4$ for the slopes."
+    solution: "Multiplying a matrix by a vector multiplies each weight by a number and adds the result, $2$ FLOPs. Working out the slopes needs each weight's own slope and the slope it passes back, about $4$ more, so $6$ per parameter per token."
+  - id: ptp-double-tokens
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A team keeps the same model but trains it on twice as many tokens. What happens to the training compute?
+    options:
+      - id: a
+        text: It stays the same, because the model has the same number of parameters.
+        correct: false
+        category: misunderstood_definition
+        feedback: "Compute depends on the tokens too. $C\\approx6PD$, so doubling $D$ doubles $C$."
+      - id: b
+        text: It doubles, because compute grows in proportion to the number of tokens.
+        correct: true
+        feedback: "With $P$ fixed, $C\\approx6PD$ grows in step with $D$, so twice the tokens is twice the compute."
+      - id: c
+        text: It goes up four times, because both the forward pass and the slopes double.
+        correct: false
+        category: math_error
+        feedback: "Both parts do double, but together they still make one doubling of the total: $6P\\times2D=2\\times6PD$."
+      - id: d
+        text: It halves, because the model needs fewer passes over the larger dataset.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Each token costs about $6P$ FLOPs, so more tokens always means more compute."
+    solution: "Training compute is $C\\approx6PD$. With the same $P$, doubling $D$ doubles $C$, even though the model's size hasn't changed."
+  - id: ptp-compute-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A model has $P={{= a }}\\times10^8$ parameters and is trained on $D={{= b }}\\times10^{10}$ tokens. Using $C\\approx6PD$, what is its training compute in units of $10^{18}$ FLOPs? (For example, $3\\times10^{18}$ FLOPs is entered as $3$.)"
+    hints:
+      - "Multiply the numbers in front, then add the powers of ten: $10^8\\times10^{10}=10^{18}$."
+    params:
+      a:
+        min: 1
+        max: 9
+        step: 1
+      b:
+        min: 1
+        max: 9
+        step: 1
+    answer_expr: 6 * a * b
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 2 * a * b
+        category: misunderstood_definition
+        feedback: "That counts only the forward pass. Finding the slopes adds about $4$ more FLOPs per parameter per token, for $6$ in all."
+      - answer_expr: a * b
+        category: math_error
+        feedback: "Multiply by $6$ as well: each parameter costs about $6$ FLOPs per token."
+    solution: "$C\\approx6\\times{{= a }}\\times10^8\\times{{= b }}\\times10^{10}={{= 6*a*b }}\\times10^{18}$ FLOPs, so the answer is ${{= 6*a*b }}$."
+  - id: ptp-forward-only
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A trained model with $7\\times10^9$ parameters is used to predict one token, which needs only a forward pass and no slopes. About how many billion FLOPs does that take?"
+    answer: 14
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer: 42
+        category: misapplied_technique
+        feedback: "The $6$ in $6PD$ includes about $4$ FLOPs for finding slopes during training. Predicting with a trained model needs only the forward pass, $2$ per parameter."
+      - answer: 7
+        category: math_error
+        feedback: "Each weight needs a multiplication and an addition, so the forward pass costs $2$ FLOPs per parameter."
+    solution: "The forward pass costs about $2$ FLOPs per parameter per token, so $2\\times7\\times10^9=14\\times10^9$ FLOPs, which is $14$ billion."
+  - id: ptp-gpu-days-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A training run needs $C={{= c }}\\times10^{21}$ FLOPs. It runs on $100$ GPUs that each keep up $10^{14}$ FLOPs per second. About how many days does it take? A day has $86{,}400$ seconds. Give one decimal place."
+    hints:
+      - "First find how many FLOPs all $100$ GPUs do together each second."
+      - "Divide the compute by that rate to get seconds, then divide by $86{,}400$."
+    params:
+      c:
+        min: 1
+        max: 9
+        step: 1
+    answer_expr: c * 1e5 / 86400
+    tolerance:
+      abs: 0.06
+    common_wrong:
+      - answer_expr: c * 1e7 / 86400
+        category: math_error
+        feedback: "That is the time on one GPU. With $100$ GPUs sharing the work, it takes a hundredth as long."
+      - answer_expr: c * 1e5 / 3600
+        category: math_error
+        feedback: "That is the number of hours. Divide the seconds by $86{,}400$ to get days."
+    solution: "Together the GPUs do $100\\times10^{14}=10^{16}$ FLOPs per second, so the run takes ${{= c }}\\times10^{21}/10^{16}={{= c }}\\times10^5$ seconds. Dividing by $86{,}400$ gives about ${{= round(c*1e5/86400, 1) }}$ days."
+  - id: ptp-compare-runs
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "Run A trains a model with $10^9$ parameters on $10^{11}$ tokens. Run B trains a model with $10^{10}$ parameters on $10^{10}$ tokens. Which run needs more training compute?"
+    options:
+      - id: a
+        text: Run A, because it trains on ten times as many tokens.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Run A has more tokens, but Run B has ten times the parameters. Compute depends on the product $PD$."
+      - id: b
+        text: Run B, because its model has ten times as many parameters.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Run B has more parameters, but Run A has ten times the tokens. Compute depends on the product $PD$."
+      - id: c
+        text: "Neither: both need about $6\\times10^{20}$ FLOPs."
+        correct: true
+        feedback: "$PD=10^{20}$ in both runs, so $C\\approx6PD=6\\times10^{20}$ for each."
+      - id: d
+        text: "It can't be told without knowing how many GPUs each run uses."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The number of GPUs changes how long a run takes. The compute itself is about $6PD$."
+    solution: "Compute depends on the product of parameters and tokens. Run A has $10^9\\times10^{11}=10^{20}$ and Run B has $10^{10}\\times10^{10}=10^{20}$, so both need about $6\\times10^{20}$ FLOPs."
+  - id: ptp-robot-compute
+    dimension: transfer
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A team pretrains a model for a robot with $5\\times10^8$ parameters on $4\\times10^{10}$ tokens of text and robot logs. Using $C\\approx6PD$, what is its training compute in units of $10^{18}$ FLOPs?"
+    answer: 120
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer: 40
+        category: misunderstood_definition
+        feedback: "That counts only the forward pass. Training also finds slopes, so use $6$ FLOPs per parameter per token."
+      - answer: 20
+        category: math_error
+        feedback: "Multiply by $6$: each parameter costs about $6$ FLOPs per token."
+    solution: "$C\\approx6\\times5\\times10^8\\times4\\times10^{10}=120\\times10^{18}$ FLOPs, so the answer is $120$."
+  - id: pt-scaling-laws-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does a scaling law predict?
+    options:
+      - id: a
+        text: The test loss a model will reach, from the compute, parameters or data used to train it.
+        correct: true
+        feedback: A scaling law is a formula for loss in terms of the scale of training.
+      - id: b
+        text: The exact set of skills a model will have once it reaches a given size.
+        correct: false
+        category: misunderstood_definition
+        feedback: Scaling laws predict loss. Which skills appear at a given loss is much harder to forecast.
+      - id: c
+        text: How many FLOPs a run needs, from its number of parameters and tokens.
+        correct: false
+        category: misunderstood_definition
+        feedback: "That is the compute formula $C\\approx6PD$. A scaling law says what loss that compute buys."
+      - id: d
+        text: How long a training run will take on a given number of GPUs.
+        correct: false
+        category: misunderstood_definition
+        feedback: "Time comes from dividing compute by the GPUs' speed. A scaling law predicts the loss."
+    solution: "A scaling law is a formula that predicts a model's loss from the compute, parameters or data used to train it."
+  - id: ptp-scaling-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "In the worked example, why does replacing $D$ with $20P$ let us find the number of parameters?"
+    options:
+      - id: a
+        text: "The budget becomes $120P^2$, a formula with one unknown that we can solve for $P$."
+        correct: true
+        feedback: "Right. With $D=20P$, $C=6P\\times20P=120P^2$, so $P=\\sqrt{C/120}$."
+      - id: b
+        text: "It makes the compute the same for every model, so any $P$ would work."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The compute is the fixed budget. Writing $D$ in terms of $P$ leaves one unknown, which pins $P$ down."
+      - id: c
+        text: "The $20$ cancels the $6$ in the formula, so $C$ equals $P$."
+        correct: false
+        category: math_error
+        feedback: "Multiplying gives $6\\times20=120$, so $C=120P^2$. Nothing cancels."
+      - id: d
+        text: It turns tokens into FLOPs, so we can divide the budget by the GPU speed.
+        correct: false
+        category: misunderstood_definition
+        feedback: "GPU speed isn't part of this calculation. The substitution leaves one unknown, $P$, in $C=120P^2$."
+    solution: "Writing the tokens as $D=20P$ turns $C\\approx6PD$ into $C=120P^2$. With the budget fixed, that has one unknown, so $P^2=C/120=10^{14}$ and $P=10^7$."
+  - id: ptp-smaller-drops
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "On a scaling law where each tenfold increase in compute multiplies the loss by $0.9$, the loss goes $4$, $3.6$, $3.24$. Why is the second drop, $0.36$, smaller than the first, $0.4$?"
+    options:
+      - id: a
+        text: "The factor $0.9$ gets smaller each time, so each step does less."
+        correct: false
+        category: misunderstood_definition
+        feedback: "The factor stays $0.9$ every time. It is the loss it multiplies that gets smaller."
+      - id: b
+        text: "The same factor takes $10\\%$ off a loss that is already smaller."
+        correct: true
+        feedback: "Each step removes $10\\%$ of the current loss, and $10\\%$ of $3.6$ is less than $10\\%$ of $4$."
+      - id: c
+        text: The second step adds less compute than the first one did.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The second step adds much more compute, ten times as much. It still removes only $10\\%$ of the loss."
+      - id: d
+        text: The model ran out of new text, so the second step had no new data.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Running out of data isn't part of this law. The drop shrinks because $10\\%$ of a smaller loss is smaller."
+    solution: "Each tenfold step multiplies the loss by $0.9$, which removes $10\\%$ of whatever the loss is. From $4$ that is $0.4$; from $3.6$ it is only $0.36$, so improvements get more expensive."
+  - id: ptp-scaling-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A scaling law says that each tenfold increase in compute multiplies the loss by $0.9$. A starting run reaches a loss of ${{= L0 }}$. What loss does it predict for a run with $10^{ {{= k }} }$ times as much compute? Give two decimal places. Round only at the end."
+    hints:
+      - "How many tenfold steps make $10^k$?"
+      - "Multiply by $0.9$ once per step."
+    params:
+      L0:
+        min: 3
+        max: 5
+        step: 0.5
+      k:
+        min: 2
+        max: 4
+        step: 1
+    answer_expr: L0 * 0.9^k
+    tolerance:
+      abs: 0.006
+    common_wrong:
+      - answer_expr: L0 * 0.9
+        category: misapplied_technique
+        feedback: "Multiply by $0.9$ once for every tenfold step. $10^k$ times the compute is $k$ steps."
+      - answer_expr: L0 - 0.4 * k
+        category: misunderstood_definition
+        feedback: "The law multiplies the loss by the same factor each step; it doesn't subtract the same amount."
+    solution: "That is ${{= k }}$ tenfold steps, so $L={{= L0 }}\\times0.9^{ {{= k }} }\\approx{{= round(L0*0.9^k, 2) }}$."
+  - id: ptp-tokens-per-param-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A team splits its compute at about $20$ training tokens per parameter. Its model has ${{= a }}$ billion parameters. How many billion tokens should it be trained on?"
+    params:
+      a:
+        min: 1
+        max: 15
+        step: 1
+    answer_expr: 20 * a
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: a / 20
+        category: math_error
+        feedback: "The rule is $20$ tokens for every parameter, so multiply the parameters by $20$."
+    solution: "At $20$ tokens per parameter, $D=20\\times{{= a }}$ billion $={{= 20*a }}$ billion tokens."
+  - id: ptp-straight-line
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Loss is plotted against compute on axes where each tick along the bottom is ten times the one before, and multiplying the loss by a fixed factor always moves the same distance up the side. The points form a straight line going down. What does that tell us?
+    options:
+      - id: a
+        text: Each tenfold increase in compute multiplies the loss by the same factor.
+        correct: true
+        feedback: Equal steps along the bottom are tenfold steps, and equal steps down mean the same factor each time.
+      - id: b
+        text: Each extra FLOP lowers the loss by the same amount.
+        correct: false
+        category: misunderstood_definition
+        feedback: On a ten-times axis, equal distances are tenfold jumps, so each step needs ten times more FLOPs than the last.
+      - id: c
+        text: The loss will keep falling until it reaches exactly zero.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Multiplying by a factor like $0.9$ makes the loss smaller each time but never zero."
+      - id: d
+        text: The loss stops improving once the line is drawn past the last point.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A straight line suggests the trend continues, which is why labs extend it to predict bigger runs.
+    solution: On these axes, equal steps right are tenfold increases in compute, and equal steps down are multiplications by the same factor. A straight line therefore means each tenfold increase in compute multiplies the loss by the same factor.
+  - id: ptp-budget-split-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A team has a compute budget of $C={{= 12*a^2/10 }}\\times10^{16}$ FLOPs. It will train on $D=20P$ tokens, where $P$ is the number of parameters. Using $C\\approx6PD$, how many parameters should the model have, in units of $10^7$?"
+    hints:
+      - "Put $D=20P$ into $C\\approx6PD$ to get a formula in $P$ alone."
+      - "$C=120P^2$, so divide by $120$ and take the square root."
+    params:
+      a:
+        min: 1
+        max: 9
+        step: 1
+    answer_expr: a
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer_expr: a * sqrt(20)
+        category: math_error
+        feedback: "The $20$ belongs inside the formula as well: $C=6P\\times20P=120P^2$. Divide by $120$, not $6$, before taking the square root."
+    solution: "With $D=20P$, $C=6P\\times20P=120P^2$. So $P^2={{= 12*a^2/10 }}\\times10^{16}/120={{= a^2 }}\\times10^{14}$ and $P={{= a }}\\times10^7$."
+  - id: ptp-why-overtrain
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "Meta trained its $8$-billion-parameter Llama 3 model on over $15$ trillion tokens, far more than $20$ tokens per parameter. Why might a lab choose this?"
+    options:
+      - id: a
+        text: A smaller model is cheaper to run every time it answers, so extra training is worth it.
+        correct: true
+        feedback: Training costs are paid once, but running the model costs compute on every use, so a small, well-trained model can be the better deal.
+      - id: b
+        text: "The $20$ tokens per parameter rule applies only to models that use Wikipedia."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "The rule comes from comparing runs at fixed compute. It isn't tied to any data source."
+      - id: c
+        text: "Training past $20$ tokens per parameter makes the compute formula stop applying."
+        correct: false
+        category: misunderstood_definition
+        feedback: "$C\\approx6PD$ holds for any number of tokens. The lab just spends more compute than the compute-optimal split would."
+      - id: d
+        text: More tokens per parameter always gives the lowest loss for a fixed compute budget.
+        correct: false
+        category: misunderstood_definition
+        feedback: "For a fixed budget, about $20$ tokens per parameter gives the lowest loss. The lab goes past it to get a smaller model."
+    solution: "The $20$ tokens per parameter rule gives the lowest loss for a fixed training budget. A lab may train a smaller model on far more tokens because the smaller model is cheaper to run every time it is used."
+  - id: ptp-scaling-limits
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A lab's scaling law predicts that its next model will reach a test loss of $2.1$. Which question can that prediction answer?"
+    options:
+      - id: a
+        text: Whether the new model will be able to solve a particular kind of maths problem.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Scaling laws predict loss. Which skills appear at a given loss is much harder to forecast.
+      - id: b
+        text: "Roughly how much lower its loss will be than the lab's current models."
+        correct: true
+        feedback: "That is exactly what a scaling law forecasts: the loss a run of a given size will reach."
+      - id: c
+        text: Whether the model will correctly translate a particular sentence into French.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The scaling law predicts an overall loss. It cannot guarantee success on a particular translation.
+      - id: d
+        text: Which exact sentences from the training data the model has memorised.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "A loss is an average over many predictions. It can't say which passages were memorised."
+    solution: "A scaling law forecasts a run's loss, so it can say how much lower the loss will be. It can't say which particular skills a model will have at that loss."
+  - id: pt-training-pipeline-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which order lists the main stages of an LLM training pipeline?
+    options:
+      - id: a
+        text: Text data, tokenizer, pretraining, post-training, with evaluation alongside.
+        correct: true
+        feedback: The tokenizer splits text into tokens, pretraining gives a base model, and post-training turns it into an assistant.
+      - id: b
+        text: Tokenizer, post-training, text data, pretraining, with evaluation at the end.
+        correct: false
+        category: misunderstood_definition
+        feedback: Text is collected and turned into tokens before pretraining, and post-training needs a pretrained model.
+      - id: c
+        text: Pretraining, text data, tokenizer, post-training, with evaluation alongside.
+        correct: false
+        category: misunderstood_definition
+        feedback: Pretraining needs tokens to train on, so the data and the tokenizer come before it.
+      - id: d
+        text: Text data, post-training, tokenizer, pretraining, with evaluation at the end.
+        correct: false
+        category: misunderstood_definition
+        feedback: Post-training starts from a base model, which only exists after pretraining.
+    solution: The pipeline runs text data, then a tokenizer turns it into tokens, then pretraining, which gives a base model, then post-training, which turns it into an assistant. Evaluation runs alongside throughout.
+  - id: ptp-pipeline-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why is the compute ratio of pretraining to fine-tuning equal to their ratio of tokens?
+    options:
+      - id: a
+        text: "Both stages train the same model, so the $6P$ FLOPs per token cancels."
+        correct: true
+        feedback: "Right. $6PD_{\\text{pre}}/6PD_{\\text{fine}}=D_{\\text{pre}}/D_{\\text{fine}}$."
+      - id: b
+        text: Fine-tuning has no forward pass, so only the tokens are counted.
+        correct: false
+        category: misunderstood_definition
+        feedback: "Fine-tuning trains on next-token prediction too, with a forward pass and slopes. The $6P$ is the same in both, so it cancels."
+      - id: c
+        text: "Both stages use exactly $20$ tokens per parameter."
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Pretraining uses $20$ tokens per parameter here, but fine-tuning uses far fewer. The ratio works because $6P$ cancels."
+      - id: d
+        text: FLOPs and tokens are two names for the same quantity.
+        correct: false
+        category: misunderstood_definition
+        feedback: "Each token costs about $6P$ FLOPs, so they differ. Because $P$ is the same in both stages, that factor cancels in the ratio."
+    solution: "Both stages train the same model with $P$ parameters, so each token costs about $6P$ FLOPs in both. In the ratio $6PD_{\\text{pre}}/6PD_{\\text{fine}}$ the $6P$ cancels, leaving the ratio of tokens, $4000$."
+  - id: ptp-base-model
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: 'A base model, straight out of pretraining, is given the text "What is the boiling point of water?". What is it most likely to do?'
+    options:
+      - id: a
+        text: Refuse, because it was never told it is allowed to answer questions.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A base model has no instructions to follow or refuse. It continues the text as it was trained to.
+      - id: b
+        text: Continue the text the way similar text continues online, perhaps with more questions.
+        correct: true
+        feedback: A base model has learned to continue text, so it writes what tends to follow, which for a quiz-style question is often more questions.
+      - id: c
+        text: Ask the user to rephrase, because the question has no labelled answer.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Pretraining needs no labels, and a base model doesn't hold a conversation. It just continues the text."
+      - id: d
+        text: Always give a short, polite, correct answer, like an assistant.
+        correct: false
+        category: misunderstood_definition
+        feedback: Answering like an assistant comes from post-training. A base model only continues text.
+    solution: Pretraining teaches a model to continue text, so a base model writes whatever usually follows text like this. Answering like an assistant is learned later, in post-training.
+  - id: ptp-checkpoints
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does a pretraining team regularly save checkpoints during a run?
+    options:
+      - id: a
+        text: So that if hardware fails, training restarts from the last saved weights.
+        correct: true
+        feedback: A checkpoint is a copy of all the weights, so a crash only loses the work since it was saved.
+      - id: b
+        text: So that the model can memorise the text it saw before each checkpoint.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Saving weights doesn't change what the model learns. It protects the run from crashes."
+      - id: c
+        text: So that the tokenizer can be rebuilt from the weights after training.
+        correct: false
+        category: misunderstood_definition
+        feedback: "The tokenizer splits text into tokens. Checkpoints store the model's weights."
+      - id: d
+        text: "So that the run uses fewer FLOPs, because saved tokens aren't trained on again."
+        correct: false
+        category: misunderstood_definition
+        feedback: "Saving the weights doesn't change the compute per token. It only means a failure doesn't send training back to the start."
+    solution: A checkpoint is a copy of all the weights. Runs spread over thousands of GPUs can fail part-way, and checkpoints let training restart from the last copy; they also let the team compare models from different points in the run.
+  - id: ptp-fine-tune-ratio-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A model is pretrained on $2\\times10^{12}$ tokens. It is then fine-tuned on ${{= 2^n }}\\times10^4$ example conversations of $500$ tokens each. Both stages train the same model. How many times more training compute does pretraining use than fine-tuning?"
+    hints:
+      - Count the fine-tuning tokens first.
+      - "The $6P$ is the same in both stages, so divide the token counts."
+    params:
+      n:
+        min: 1
+        max: 4
+        step: 1
+    answer_expr: 400000 / 2^n
+    tolerance:
+      rel: 0.001
+    common_wrong:
+      - answer_expr: 2400000 / 2^n
+        category: math_error
+        feedback: "The $6P$ FLOPs per token appears in both stages, so it cancels. The ratio is just the ratio of tokens."
+      - answer_expr: 2e8 / 2^n
+        category: math_error
+        feedback: "Count the fine-tuning tokens: each conversation has $500$ tokens, so multiply the number of conversations by $500$."
+    solution: "Fine-tuning uses ${{= 2^n }}\\times10^4\\times500={{= 2^n*5 }}\\times10^6$ tokens. Both stages cost $6P$ FLOPs per token, so the compute ratio is the token ratio, $2\\times10^{12}/({{= 2^n*5 }}\\times10^6)={{= 400000/2^n }}$."
+  - id: ptp-which-stage
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A team's model knows a lot of facts, but when asked a question it rambles on with more questions instead of answering. Which stage most needs more work?"
+    options:
+      - id: a
+        text: Deduplication, because the model has memorised too many questions.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Duplicates affect memorising, but continuing with more questions is just what a base model does. Answering is taught in post-training.
+      - id: b
+        text: Tokenization, because the tokenizer splits questions into too many tokens.
+        correct: false
+        category: incorrect_reasoning
+        feedback: "Token splits don't decide whether a model answers. That behaviour is learned in post-training."
+      - id: c
+        text: Post-training, which teaches the model to respond to a question with an answer.
+        correct: true
+        feedback: The model already has the knowledge from pretraining. Post-training changes how it responds.
+      - id: d
+        text: Pretraining, because the model needs many more tokens of web text.
+        correct: false
+        category: misunderstood_definition
+        feedback: The model already knows the facts. More web text teaches it to continue text even better, which is the behaviour causing trouble.
+    solution: Knowledge comes mostly from pretraining, and the model has it. Answering instead of continuing the text is what post-training teaches, so that stage needs work.
+  - id: ptp-test-leak
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A team evaluates its model on a set of quiz questions and gets a surprisingly high score. They then find the same questions, with answers, on web pages in their pretraining data. Why is the score untrustworthy?
+    options:
+      - id: a
+        text: The model may have memorised those answers, so the test no longer measures new questions.
+        correct: true
+        feedback: Evaluation needs tests the model never trained on. Seeing the answers during pretraining lets memory stand in for skill.
+      - id: b
+        text: Web pages are filtered out of pretraining data, so the result must be a scoring error.
+        correct: false
+        category: misunderstood_definition
+        feedback: Web pages are the main source of pretraining data. Only low-quality pages are filtered out.
+      - id: c
+        text: "Quiz questions are too short to be tokenized, so they don't count as data."
+        correct: false
+        category: incorrect_reasoning
+        feedback: Any text can be tokenized, however short. The problem is that the model may have seen the answers.
+      - id: d
+        text: "A model can't be evaluated until post-training is finished."
+        correct: false
+        category: incorrect_reasoning
+        feedback: Teams evaluate throughout, including during pretraining. The problem is that these test questions were in the training data.
+    solution: Evaluation only tells us about new questions if the model never trained on the test. Here the test was in the pretraining data, so a high score may come from memorised answers.
+  - id: ptp-robot-pipeline
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "A company wants a robot that follows spoken instructions, starting from a language model. It has a huge archive of web text and a small set of $2{,}000$ example instructions paired with the right responses. How should it use them?"
+    options:
+      - id: a
+        text: "Pretrain on the web text, then post-train on the $2{,}000$ examples."
+        correct: true
+        feedback: Pretraining on the large archive gives the broad knowledge, and fine-tuning on the small set of examples teaches the model to respond to instructions.
+      - id: b
+        text: "Pretrain on the $2{,}000$ examples alone, since they are the most relevant."
+        correct: false
+        category: misunderstood_definition
+        feedback: "$2{,}000$ examples are far too few to pretrain on. Pretraining needs a huge amount of text, which the archive provides."
+      - id: c
+        text: "Post-train on the web text first, then pretrain on the $2{,}000$ examples."
+        correct: false
+        category: misunderstood_definition
+        feedback: Post-training starts from a pretrained base model, so pretraining on the large archive comes first.
+      - id: d
+        text: Mix both into one dataset and pretrain once, skipping post-training.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Pretraining on ordinary text comes first. Supervised fine-tuning on example responses afterwards is what teaches the model to follow instructions.
+    solution: The large archive suits pretraining, which gives the model broad knowledge, and the small set of examples suits supervised fine-tuning, which teaches it to respond to instructions.
+  - id: pt-explain-pipeline
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: Explain to a friend how a large language model is trained, from raw web text to an assistant. Say what happens at each stage, which stage uses most of the compute, and how a team can decide how big a model to train for its budget.
+    rubric:
+      - id: stages
+        criterion: "Names the stages in order: collect, filter and deduplicate text; tokenize; pretrain on next-token prediction; post-train; with evaluation alongside"
+        weight: 2
+        required: true
+      - id: compute
+        criterion: "Says pretraining uses by far the most compute, about $6PD$ FLOPs, and gives the model most of its knowledge, while post-training changes how it responds"
+        weight: 1
+        required: true
+      - id: scaling
+        criterion: "Explains that scaling laws predict loss from compute, and that a fixed budget gives the lowest loss at about $20$ tokens per parameter"
+        weight: 1
+        required: false
+    exemplar: "First the team gathers a huge amount of text, mostly from the web plus books and code, filters out spam and gibberish, and removes duplicates. A tokenizer turns the text into tokens, which are packed into fixed-length windows. Pretraining then trains the model to predict the next token across all of it, which takes about $6PD$ FLOPs for $P$ parameters and $D$ tokens; this is by far the most expensive stage and gives the model most of its knowledge. The result is a base model that continues text, so post-training fine-tunes it on example conversations, and often on people's preferences, to make it answer like an assistant. Throughout, the team evaluates on tests the model never trained on. To choose a size, the team uses scaling laws, which show the loss falling by a steady factor for each tenfold increase in compute, and splits its budget at about $20$ tokens per parameter."
+    solution: "A good answer walks through data, tokenizer, pretraining and post-training, with evaluation alongside. It says pretraining dominates the compute, about $6PD$, and that scaling laws plus about $20$ tokens per parameter guide the choice of model size."

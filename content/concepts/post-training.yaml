@@ -18,7 +18,7 @@ concepts:
           { text: "Mask the loss so only response tokens are trained", dimension: implementation },
         ],
       projects: [llm-post-training],
-      status: stub,
+      status: authored,
     }
   - {
       id: lora,
@@ -37,7 +37,7 @@ concepts:
           },
           { text: "Explain why a low-rank update can adapt a large model", dimension: conceptual },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: reward-models,
@@ -59,7 +59,7 @@ concepts:
             dimension: conceptual,
           },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: rlhf,
@@ -169,5 +169,5 @@ concepts:
           },
         ],
       projects: [llm-post-training],
-      status: stub,
+      status: authored,
     }

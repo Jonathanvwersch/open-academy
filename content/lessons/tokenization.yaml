@@ -1,0 +1,308 @@
+concept: tokenization
+version: 1
+objective: |
+  **Goal:** explain how byte-pair encoding builds a vocabulary of tokens by repeatedly merging the most frequent pair of neighbouring tokens, use its merges to split new text into token ids, and weigh what a bigger or smaller vocabulary costs.
+where_this_fits: |
+  ### What is tokenization?
+
+  A language model is a program that writes text, and tokenization is the first thing it does with text. It cuts the text into small pieces called tokens and gives each piece a whole number, its position in a fixed list. Everything the model does after that, it does with these numbers.
+
+  Why does it matter how we cut? A model can only do arithmetic on numbers, so the text must become numbers somehow. Giving every whole word its own number loses any word that wasn't in the list, and giving every letter a number makes the text very long. This lesson builds the method most language models use, byte-pair encoding, which learns pieces bigger than letters and smaller than rare words from example text.
+knowledge_points:
+  - id: tok-text-to-ids
+    title: "Turn text into a list of numbers"
+    explain: |
+      ### Pieces and their numbers
+
+      To turn text into numbers, we cut it into pieces, then replace each piece with its position in a fixed list.
+
+      Here we cut "the cat sat on the mat" at the spaces, so each word is one piece. The sentence has five different words, so the list on the right, called the vocabulary, has five entries, numbered from 0.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 240" aria-label="The sentence the cat sat on the mat cut at the spaces into six word tokens. Arrows take each token down to its id from the vocabulary on the right, which lists 0 the, 1 cat, 2 sat, 3 on, 4 mat. The ids are 0, 1, 2, 3, 0, 4, and both copies of the get id 0">
+      <defs><marker id="tk1-m" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="20" y="70" width="66" height="36" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="53" y="93" text-anchor="middle" font-size="14">the</text>
+      <path d="M53 110 V150" stroke="#737373" stroke-width="2" marker-end="url(#tk1-m)"/>
+      <rect x="20" y="156" width="66" height="36" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/><text x="53" y="179" text-anchor="middle" font-size="14">0</text>
+      <rect x="96" y="70" width="66" height="36" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="129" y="93" text-anchor="middle" font-size="14">cat</text>
+      <path d="M129 110 V150" stroke="#737373" stroke-width="2" marker-end="url(#tk1-m)"/>
+      <rect x="96" y="156" width="66" height="36" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/><text x="129" y="179" text-anchor="middle" font-size="14">1</text>
+      <rect x="172" y="70" width="66" height="36" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="205" y="93" text-anchor="middle" font-size="14">sat</text>
+      <path d="M205 110 V150" stroke="#737373" stroke-width="2" marker-end="url(#tk1-m)"/>
+      <rect x="172" y="156" width="66" height="36" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/><text x="205" y="179" text-anchor="middle" font-size="14">2</text>
+      <rect x="248" y="70" width="66" height="36" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="281" y="93" text-anchor="middle" font-size="14">on</text>
+      <path d="M281 110 V150" stroke="#737373" stroke-width="2" marker-end="url(#tk1-m)"/>
+      <rect x="248" y="156" width="66" height="36" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/><text x="281" y="179" text-anchor="middle" font-size="14">3</text>
+      <rect x="324" y="70" width="66" height="36" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="357" y="93" text-anchor="middle" font-size="14">the</text>
+      <path d="M357 110 V150" stroke="#737373" stroke-width="2" marker-end="url(#tk1-m)"/>
+      <rect x="324" y="156" width="66" height="36" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/><text x="357" y="179" text-anchor="middle" font-size="14">0</text>
+      <rect x="400" y="70" width="66" height="36" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="433" y="93" text-anchor="middle" font-size="14">mat</text>
+      <path d="M433 110 V150" stroke="#737373" stroke-width="2" marker-end="url(#tk1-m)"/>
+      <rect x="400" y="156" width="66" height="36" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="2"/><text x="433" y="179" text-anchor="middle" font-size="14">4</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="20" y="50" fill="#171717" text-anchor="start" font-size="14">text cut into tokens</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="20" y="222" fill="#3b82f6" text-anchor="start" font-size="14">token ids</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="500" y="50" fill="#171717" text-anchor="start" font-size="14">vocabulary</text>
+      <text x="500" y="80" fill="#3b82f6">0</text><text x="530" y="80">the</text>
+      <text x="500" y="106" fill="#3b82f6">1</text><text x="530" y="106">cat</text>
+      <text x="500" y="132" fill="#3b82f6">2</text><text x="530" y="132">sat</text>
+      <text x="500" y="158" fill="#3b82f6">3</text><text x="530" y="158">on</text>
+      <text x="500" y="184" fill="#3b82f6">4</text><text x="530" y="184">mat</text>
+      <path d="M485 30 V210" stroke="#d4d4d4"/>
+      </g>
+      </svg>
+      ```
+
+      ### Tokens, the vocabulary and token ids
+
+      A **token** is one piece of text that the model treats as a single unit. The **vocabulary** is the fixed list of every token the model knows, and a token's **token id** is its position in that list. We write $N$ for the vocabulary size and $T$ for the number of tokens in a text, and $x_1,\dots,x_T$ for the text's token ids in order, so $x_1$ is the first. Here $N=5$ and $T=6$, and the sentence becomes $(0,1,2,3,0,4)$. Turning text into ids is called **encoding**, and turning ids back into text is **decoding**. The whole process of cutting text into tokens and giving them ids is **tokenization**, and the program that does it is a **tokenizer**.
+
+      Be careful not to read meaning into the ids. Id $4$ isn't "more" than id $2$. The ids are just labels, like numbers on lockers. The model learns what each token means later, during training on lots of text.
+
+      ### Words or letters?
+
+      Cutting at the spaces has a problem. This vocabulary has no entry for "mats". A real word tokenizer gives such a word a single unknown-word id, so the model never sees which word it was. The other extreme makes every character a token, the space included. For our sentence:
+
+      | One token per | $N$ | $T$ |
+      | --- | --- | --- |
+      | word | $5$ | $6$ |
+      | character | $10$ | $22$ |
+
+      Characters can spell any word made from them, including "mats". But the $10$ characters, the $9$ letters and the space, give a list of $22$ tokens, $17$ letters and $5$ spaces. The model does work for every token, so a longer list is slower. So we'd like tokens that are shorter than words when a word is rare, and whole words when a word is common.
+    worked: |
+      Let's encode a new sentence, "the mat sat on the cat", with the word vocabulary from the picture, and then decode a list of ids back into text. In it, the is $0$, cat is $1$, sat is $2$, on is $3$ and mat is $4$.
+
+      1. **Cut the text into tokens.** We cut at the spaces, so each word is one token, giving the six tokens the, mat, sat, on, the, cat.
+
+      2. **Look up each token's id.** Each token is replaced by its position in the vocabulary, and both copies of "the" get the same id.
+         $$(x_1,\dots,x_6)=(0,4,2,3,0,1)$$
+
+      3. **Count the tokens.** There are six ids, one for each word.
+         $$T=6$$
+
+      4. **Decode a list of ids.** Decoding goes the other way, looking up the token at each position. The ids $(4,3,0,1)$ give "mat", "on", "the" and "cat", so the text is "mat on the cat".
+
+      The same five ids can be reused in any order, so this vocabulary can encode any sentence made only from its five words.
+    problems:
+      - tok-ids-basics
+      - tok-ids-self-explain
+      - tok-ids-encode
+      - tok-ids-decode
+      - tok-ids-char-template
+      - tok-ids-locker
+      - tok-ids-unknown
+      - tok-ids-robot
+  - id: tok-bpe-merges
+    title: "Build a vocabulary by merging pairs"
+    explain: |
+      ### Start from letters, then join the commonest pairs
+
+      **Byte-pair encoding**, or BPE, finds tokens in between letters and words. It starts with a vocabulary of single characters and then learns longer tokens from a large amount of example text called the training text. Over and over, it finds the pair of neighbouring tokens that appears most often and adds the two joined together as a new token. Common words end up as one token, and rare words are left as smaller pieces.
+
+      ### Three merges on our sentence
+
+      Let's pretend "the cat sat on the mat" is our whole training text. We first split it at the spaces and only join tokens inside a word, so no token ever contains a space. Real tokenizers keep the spaces, usually as part of the next word's token, so decoding gives back the exact text. We drop them here only to keep the example small. That leaves $17$ letters, and the starting vocabulary is the $9$ different letters, a, c, e, h, m, n, o, s and t.
+
+      Now we count every pair of neighbouring tokens. "a" followed by "t" appears $3$ times, in cat, sat and mat, which is more than any other pair. So the first merge joins them, "at" becomes a token, and the text shrinks from $17$ tokens to $14$. Two more rounds of counting give th and then the. Each orange box is the token made in that row.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 310" aria-label="Byte-pair encoding on the cat sat on the mat, one row per merge. Start: 17 single-letter tokens. Merge 1 joins a and t into at in cat, sat and mat, giving 14 tokens. Merge 2 joins t and h into th in both copies of the, giving 12. Merge 3 joins th and e into the, giving 10 tokens. Each new token is outlined in orange">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="20" y="30" fill="#171717" text-anchor="start" font-size="14">start, single letters: 17 tokens</text>
+      <rect x="20" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="31.5" y="63" text-anchor="middle" font-size="14">t</text>
+      <rect x="46" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="57.5" y="63" text-anchor="middle" font-size="14">h</text>
+      <rect x="72" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="83.5" y="63" text-anchor="middle" font-size="14">e</text>
+      <rect x="114" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="125.5" y="63" text-anchor="middle" font-size="14">c</text>
+      <rect x="140" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="151.5" y="63" text-anchor="middle" font-size="14">a</text>
+      <rect x="166" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="177.5" y="63" text-anchor="middle" font-size="14">t</text>
+      <rect x="208" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="219.5" y="63" text-anchor="middle" font-size="14">s</text>
+      <rect x="234" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="245.5" y="63" text-anchor="middle" font-size="14">a</text>
+      <rect x="260" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="271.5" y="63" text-anchor="middle" font-size="14">t</text>
+      <rect x="302" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="313.5" y="63" text-anchor="middle" font-size="14">o</text>
+      <rect x="328" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="339.5" y="63" text-anchor="middle" font-size="14">n</text>
+      <rect x="370" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="381.5" y="63" text-anchor="middle" font-size="14">t</text>
+      <rect x="396" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="407.5" y="63" text-anchor="middle" font-size="14">h</text>
+      <rect x="422" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="433.5" y="63" text-anchor="middle" font-size="14">e</text>
+      <rect x="464" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="475.5" y="63" text-anchor="middle" font-size="14">m</text>
+      <rect x="490" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="501.5" y="63" text-anchor="middle" font-size="14">a</text>
+      <rect x="516" y="42" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="527.5" y="63" text-anchor="middle" font-size="14">t</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="20" y="102" fill="#171717" text-anchor="start" font-size="14">merge 1, a + t → at: 14 tokens</text>
+      <rect x="20" y="114" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="31.5" y="135" text-anchor="middle" font-size="14">t</text>
+      <rect x="46" y="114" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="57.5" y="135" text-anchor="middle" font-size="14">h</text>
+      <rect x="72" y="114" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="83.5" y="135" text-anchor="middle" font-size="14">e</text>
+      <rect x="114" y="114" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="125.5" y="135" text-anchor="middle" font-size="14">c</text>
+      <rect x="140" y="114" width="49" height="32" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text x="164.5" y="135" text-anchor="middle" font-size="14">at</text>
+      <rect x="208" y="114" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="219.5" y="135" text-anchor="middle" font-size="14">s</text>
+      <rect x="234" y="114" width="49" height="32" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text x="258.5" y="135" text-anchor="middle" font-size="14">at</text>
+      <rect x="302" y="114" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="313.5" y="135" text-anchor="middle" font-size="14">o</text>
+      <rect x="328" y="114" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="339.5" y="135" text-anchor="middle" font-size="14">n</text>
+      <rect x="370" y="114" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="381.5" y="135" text-anchor="middle" font-size="14">t</text>
+      <rect x="396" y="114" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="407.5" y="135" text-anchor="middle" font-size="14">h</text>
+      <rect x="422" y="114" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="433.5" y="135" text-anchor="middle" font-size="14">e</text>
+      <rect x="464" y="114" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="475.5" y="135" text-anchor="middle" font-size="14">m</text>
+      <rect x="490" y="114" width="49" height="32" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text x="514.5" y="135" text-anchor="middle" font-size="14">at</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="20" y="174" fill="#171717" text-anchor="start" font-size="14">merge 2, t + h → th: 12 tokens</text>
+      <rect x="20" y="186" width="49" height="32" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text x="44.5" y="207" text-anchor="middle" font-size="14">th</text>
+      <rect x="72" y="186" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="83.5" y="207" text-anchor="middle" font-size="14">e</text>
+      <rect x="114" y="186" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="125.5" y="207" text-anchor="middle" font-size="14">c</text>
+      <rect x="140" y="186" width="49" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="164.5" y="207" text-anchor="middle" font-size="14">at</text>
+      <rect x="208" y="186" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="219.5" y="207" text-anchor="middle" font-size="14">s</text>
+      <rect x="234" y="186" width="49" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="258.5" y="207" text-anchor="middle" font-size="14">at</text>
+      <rect x="302" y="186" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="313.5" y="207" text-anchor="middle" font-size="14">o</text>
+      <rect x="328" y="186" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="339.5" y="207" text-anchor="middle" font-size="14">n</text>
+      <rect x="370" y="186" width="49" height="32" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text x="394.5" y="207" text-anchor="middle" font-size="14">th</text>
+      <rect x="422" y="186" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="433.5" y="207" text-anchor="middle" font-size="14">e</text>
+      <rect x="464" y="186" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="475.5" y="207" text-anchor="middle" font-size="14">m</text>
+      <rect x="490" y="186" width="49" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="514.5" y="207" text-anchor="middle" font-size="14">at</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="20" y="246" fill="#171717" text-anchor="start" font-size="14">merge 3, th + e → the: 10 tokens</text>
+      <rect x="20" y="258" width="75" height="32" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text x="57.5" y="279" text-anchor="middle" font-size="14">the</text>
+      <rect x="114" y="258" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="125.5" y="279" text-anchor="middle" font-size="14">c</text>
+      <rect x="140" y="258" width="49" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="164.5" y="279" text-anchor="middle" font-size="14">at</text>
+      <rect x="208" y="258" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="219.5" y="279" text-anchor="middle" font-size="14">s</text>
+      <rect x="234" y="258" width="49" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="258.5" y="279" text-anchor="middle" font-size="14">at</text>
+      <rect x="302" y="258" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="313.5" y="279" text-anchor="middle" font-size="14">o</text>
+      <rect x="328" y="258" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="339.5" y="279" text-anchor="middle" font-size="14">n</text>
+      <rect x="370" y="258" width="75" height="32" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text x="407.5" y="279" text-anchor="middle" font-size="14">the</text>
+      <rect x="464" y="258" width="23" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="475.5" y="279" text-anchor="middle" font-size="14">m</text>
+      <rect x="490" y="258" width="49" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="514.5" y="279" text-anchor="middle" font-size="14">at</text>
+      </g>
+      </svg>
+      ```
+
+      ### The rule
+
+      Each merge adds exactly one token, so
+
+      $$N=\text{starting characters}+\text{merges}.$$
+
+      For us that's $9+3=12$. We choose the vocabulary size in advance and stop once $N$ reaches it. The tokenizer also keeps the list of merges in the order it learned them, which the next step needs.
+
+      Be careful not to just pick the commonest letter. "t" is the commonest letter here, but BPE counts pairs of neighbours, because a new token has to be a piece that actually occurs together in the text.
+
+      GPT-2, an OpenAI language model, has a BPE tokenizer that starts from the $256$ possible bytes, the numbers computers store text as, so it can encode anything. It then learns $50{,}000$ merges. With one extra token that marks where a text ends, its vocabulary has $50{,}257$ tokens.
+    worked: |
+      Let's carry out merges 2 and 3 on "the cat sat on the mat", counting the pairs each time. After merge 1, the words are t h e, c at, s at, o n, t h e and m at, which is $14$ tokens.
+
+      1. **Count the pairs after merge 1.** We list every pair of neighbouring tokens inside a word and count it. The pairs t h and h e each appear twice, once in each "the". The pairs c at, s at, o n and m at appear once each.
+
+      2. **Choose merge 2.** Two pairs tie with a count of $2$. A tokenizer needs a fixed rule for ties, and ours is to take the pair that comes first in the text, which is t h. Both copies of "the" become th e, so the text loses $2$ tokens.
+         $$14-2=12$$
+
+      3. **Count again.** The h in each "the" is now part of th, so the pair h e has gone. Instead, th e appears twice, and every other pair still appears once.
+
+      4. **Choose merge 3.** th e is the most frequent pair, so it becomes the token "the", and the text loses $2$ more tokens.
+         $$12-2=10$$
+
+      5. **Count the vocabulary.** We started with $9$ letters and made $3$ merges.
+         $$N=9+3=12$$
+
+      The sentence now takes $10$ tokens instead of $17$, and the commonest word, "the", is a single token.
+    problems:
+      - tok-bpe-basics
+      - tok-bpe-self-explain
+      - tok-bpe-first-merge
+      - tok-bpe-vocab-template
+      - tok-bpe-shorten-template
+      - tok-bpe-letters
+      - tok-bpe-gpt2
+      - tok-bpe-two-merges
+  - id: tok-bpe-encode
+    title: "Split new text with the learned merges"
+    explain: |
+      ### Using the merges on new text
+
+      Training has given us a vocabulary and an ordered list of merges, and both now stay fixed. To split new text, we start from single characters and apply the merges one at a time, in the order they were learned, each one wherever its pair appears. Be careful not to count pairs again in the new text. Counting happens only once, during training. Splitting just replays the merges, so a word is always split the same way.
+
+      Our three merges were a + t, then t + h, then th + e. The picture applies them to two words that weren't in the training text.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 290" aria-label="The three learned merges applied in order to two words that were not in the training text. that: t h a t, then t h at after a + t, then th at after t + h, and no change after th + e, so 2 tokens. cats: c a t s, then c at s after a + t, and no change after t + h or th + e, so 3 tokens. Tokens made by a merge are outlined in orange">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="20" y="72" fill="#737373" text-anchor="start" font-size="14">start</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="20" y="136" fill="#737373" text-anchor="start" font-size="14">after a + t</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="20" y="200" fill="#737373" text-anchor="start" font-size="14">after t + h</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="20" y="264" fill="#737373" text-anchor="start" font-size="14">after th + e</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="200" y="30" fill="#171717" text-anchor="start" font-size="14">new word: that</text>
+      <rect x="200" y="50" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="213.5" y="71" text-anchor="middle" font-size="14">t</text>
+      <rect x="230" y="50" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="243.5" y="71" text-anchor="middle" font-size="14">h</text>
+      <rect x="260" y="50" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="273.5" y="71" text-anchor="middle" font-size="14">a</text>
+      <rect x="290" y="50" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="303.5" y="71" text-anchor="middle" font-size="14">t</text>
+      <rect x="200" y="114" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="213.5" y="135" text-anchor="middle" font-size="14">t</text>
+      <rect x="230" y="114" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="243.5" y="135" text-anchor="middle" font-size="14">h</text>
+      <rect x="260" y="114" width="57" height="32" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text x="288.5" y="135" text-anchor="middle" font-size="14">at</text>
+      <rect x="200" y="178" width="57" height="32" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text x="228.5" y="199" text-anchor="middle" font-size="14">th</text>
+      <rect x="260" y="178" width="57" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="288.5" y="199" text-anchor="middle" font-size="14">at</text>
+      <rect x="200" y="242" width="57" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="228.5" y="263" text-anchor="middle" font-size="14">th</text>
+      <rect x="260" y="242" width="57" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="288.5" y="263" text-anchor="middle" font-size="14">at</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="328" y="263" fill="#737373" text-anchor="start" font-size="13">no change</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="420" y="30" fill="#171717" text-anchor="start" font-size="14">new word: cats</text>
+      <rect x="420" y="50" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="433.5" y="71" text-anchor="middle" font-size="14">c</text>
+      <rect x="450" y="50" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="463.5" y="71" text-anchor="middle" font-size="14">a</text>
+      <rect x="480" y="50" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="493.5" y="71" text-anchor="middle" font-size="14">t</text>
+      <rect x="510" y="50" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="523.5" y="71" text-anchor="middle" font-size="14">s</text>
+      <rect x="420" y="114" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="433.5" y="135" text-anchor="middle" font-size="14">c</text>
+      <rect x="450" y="114" width="57" height="32" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text x="478.5" y="135" text-anchor="middle" font-size="14">at</text>
+      <rect x="510" y="114" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="523.5" y="135" text-anchor="middle" font-size="14">s</text>
+      <rect x="420" y="178" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="433.5" y="199" text-anchor="middle" font-size="14">c</text>
+      <rect x="450" y="178" width="57" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="478.5" y="199" text-anchor="middle" font-size="14">at</text>
+      <rect x="510" y="178" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="523.5" y="199" text-anchor="middle" font-size="14">s</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="548" y="199" fill="#737373" text-anchor="start" font-size="13">no change</text>
+      <rect x="420" y="242" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="433.5" y="263" text-anchor="middle" font-size="14">c</text>
+      <rect x="450" y="242" width="57" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="478.5" y="263" text-anchor="middle" font-size="14">at</text>
+      <rect x="510" y="242" width="27" height="32" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="523.5" y="263" text-anchor="middle" font-size="14">s</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="548" y="263" fill="#737373" text-anchor="start" font-size="13">no change</text>
+      </g>
+      </svg>
+      ```
+
+      So "that" becomes th and at, and "cats" becomes c, at and s. A word the tokenizer never saw still gets tokens, built from pieces it did see.
+
+      ### How big should the vocabulary be?
+
+      Each merge makes $N$ one bigger and $T$ smaller. For our training sentence:
+
+      | Merges | $N$ | $T$ |
+      | --- | --- | --- |
+      | $0$ | $9$ | $17$ |
+      | $1$ | $10$ | $14$ |
+      | $3$ | $12$ | $10$ |
+
+      Shorter texts mean less work for the model, but a bigger vocabulary means more tokens for the model to learn about, and rare tokens appear only a few times in the text the model is trained on. Real models settle on tens of thousands to a few hundred thousand tokens. A rule of thumb for English is that a token is about $4$ characters.
+
+      Be careful not to think a token is a word. A common word is often one token, but a rarer word can be several, and one token can be part of many words, like "at".
+
+      ### Limitations
+
+      Cutting text into multi-letter tokens causes three known problems. The model sees only token ids, and an id hides its letters, so a question like "how many r's are in strawberry?" is harder than it looks. Numbers get cut into uneven chunks, which gets in the way of digit-by-digit arithmetic. And a language that was rare in the training text gets split into smaller pieces, so its sentences take more tokens.
+    worked: |
+      Let's encode "the cats sat" with our three merges and turn it into token ids. We number the vocabulary with the $9$ letters in alphabetical order, a $0$, c $1$, e $2$, h $3$, m $4$, n $5$, o $6$, s $7$ and t $8$, followed by the merged tokens in the order they were made, at $9$, th $10$ and the $11$.
+
+      1. **Split at the spaces and into letters.** Merges never cross a space, so each word is handled on its own, giving t h e, c a t s and s a t.
+
+      2. **Apply merge 1, a + t.** Wherever a is followed by t, the two join, giving t h e, c at s and s at.
+
+      3. **Apply merge 2, t + h.** Only "the" has a t followed by an h, giving th e, c at s and s at.
+
+      4. **Apply merge 3, th + e.** This joins th e into the, giving the, c at s and s at.
+
+      5. **Look up the ids.** Each token is replaced by its position in the vocabulary.
+         $$(x_1,\dots,x_6)=(11,1,9,7,7,9)$$
+
+      The three words became $T=6$ tokens. "cats" took three, because no merge joined c with at, so how a word is split depends on which merges were learned and the order they were learned in.
+    problems:
+      - tok-enc-basics
+      - tok-enc-self-explain
+      - tok-enc-apply
+      - tok-enc-context-template
+      - tok-enc-bigger-vocab
+      - tok-enc-order
+      - tok-enc-spelling
+      - tok-enc-robot
+final: tok-explain-bpe
+summary: |
+  - Tokenization cuts text into tokens and replaces each with its token id, its position in a fixed vocabulary of $N$ tokens, so a text becomes the list of ids $x_1,\dots,x_T$.
+  - Word tokens give short lists but turn every word outside the vocabulary into one unknown-word id; character tokens can spell anything but make the lists long.
+  - Byte-pair encoding starts from single characters and repeatedly adds the most frequent pair of neighbouring tokens in the training text as a new token, so $N$ is the number of starting characters plus the number of merges.
+  - To split new text, a tokenizer applies the learned merges in order; more merges give shorter texts but a bigger vocabulary with rarer tokens.
+
+  **Next:** The embeddings lesson gives each token id its own list of learned numbers, which is what the model actually computes with.

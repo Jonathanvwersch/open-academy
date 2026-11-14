@@ -1,0 +1,742 @@
+concept: eigen-svd
+exercises:
+  - id: eig-stretch-directions-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is an eigenvector of a square matrix $A$?
+    options:
+      - id: a
+        text: A vector whose entries are the diagonal entries of $A$.
+        correct: false
+        category: misunderstood_definition
+        feedback: An eigenvector is defined by what $A$ does to it, $Av=\lambda v$; its entries need not appear in $A$ at all.
+      - id: b
+        text: A vector other than zero that $A$ only stretches, so $Av=\lambda v$ for some number $\lambda$.
+        correct: true
+        feedback: The output points along the same line as the input, scaled by the eigenvalue $\lambda$.
+      - id: c
+        text: Any vector that $A$ turns through a quarter turn.
+        correct: false
+        category: misunderstood_definition
+        feedback: A turned vector leaves its line; an eigenvector stays on its line.
+      - id: d
+        text: The zero vector, because $A0=0$ for every matrix.
+        correct: false
+        category: misunderstood_definition
+        feedback: The zero vector is left out on purpose, because $A0=\lambda0$ holds for every $\lambda$ and tells us nothing.
+    solution: An eigenvector is a vector other than zero that $A$ only stretches, $Av=\lambda v$; the number $\lambda$ is its eigenvalue.
+  - id: eigp-stretch-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, $A=\begin{bmatrix}2&1\\1&2\end{bmatrix}$ sends $(1,0)$ to $(2,1)$. Why does that show $(1,0)$ is not an eigenvector?
+    options:
+      - id: a
+        text: Any multiple $\lambda(1,0)$ has second entry $0$, but $(2,1)$ has second entry $1$.
+        correct: true
+        feedback: No number $\lambda$ makes $\lambda(1,0)$ equal $(2,1)$, so the output has left the line of $(1,0)$.
+      - id: b
+        text: The output $(2,1)$ is longer than the input $(1,0)$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Eigenvectors can get longer; $(1,1)$ becomes $(3,3)$. What matters is whether the output stays on the input's line.
+      - id: c
+        text: An eigenvector must have two entries that are not zero.
+        correct: false
+        category: misunderstood_definition
+        feedback: Entries can be zero; for $\begin{bmatrix}3&0\\0&-1\end{bmatrix}$, $(1,0)$ is an eigenvector with eigenvalue $3$.
+      - id: d
+        text: The first entry of the output, $2$, is different from the first entry of the input, $1$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Entries can change when an arrow is stretched; $(1,1)$ becomes $(3,3)$ and is still an eigenvector.
+    solution: For $(1,0)$ to be an eigenvector, $(2,1)$ would have to equal $\lambda(1,0)=(\lambda,0)$. Its second entry is $1$, so no $\lambda$ works.
+  - id: eigp-read-eigenvalue
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: For $A=\begin{bmatrix}3&1\\2&4\end{bmatrix}$, the vector $(1,2)$ is an eigenvector. What is its eigenvalue?
+    answer: 5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 10
+        category: math_error
+        feedback: $A(1,2)=(5,10)$, and $10$ is its second entry. Divide by the matching input entry, $2$, to get the stretch.
+    solution: $A(1,2)=(3+2,\;2+8)=(5,10)=5(1,2)$, so the eigenvalue is $5$.
+  - id: eigp-symmetric-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The vector $(1,-1)$ is an eigenvector of $A=\begin{bmatrix}{{=p}}&{{=q}}\\{{=q}}&{{=p}}\end{bmatrix}$. What is its eigenvalue?
+    params:
+      p:
+        min: 3
+        max: 9
+      q:
+        min: 1
+        max: 2
+    answer_expr: p-q
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: p+q
+        category: math_error
+        feedback: $p+q$ is the eigenvalue of $(1,1)$. For $(1,-1)$, each row gives $p\times1+q\times(-1)$.
+    solution: $A(1,-1)=({{=p}}-{{=q}},\;{{=q}}-{{=p}})=({{=p-q}},{{=q-p}})={{=p-q}}(1,-1)$, so the eigenvalue is ${{=p-q}}$.
+  - id: eigp-multiple-output
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A matrix $A$ has $A(1,1)=(3,3)$. What is $A(4,4)$?
+    options:
+      - id: a
+        text: $(7,7)$
+        correct: false
+        category: math_error
+        feedback: That adds $4$ to each entry. Since $(4,4)=4(1,1)$, the output is $4$ times $(3,3)$.
+      - id: b
+        text: $(12,12)$
+        correct: true
+        feedback: $(4,4)$ is on the same line as $(1,1)$, so it is stretched by the same eigenvalue $3$.
+      - id: c
+        text: $(3,3)$
+        correct: false
+        category: misunderstood_definition
+        feedback: A matrix scales with its input, $A(4v)=4Av$, so the output grows by $4$ too.
+      - id: d
+        text: It can't be found without the entries of $A$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Every multiple of an eigenvector is stretched by the same eigenvalue, so $A(4,4)=4\times(3,3)$.
+    solution: $(1,1)$ is an eigenvector with eigenvalue $3$, and so is any multiple of it. So $A(4,4)=3(4,4)=(12,12)$.
+  - id: eigp-not-eigenvector
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: Which vector is **not** an eigenvector of $A=\begin{bmatrix}4&-2\\1&1\end{bmatrix}$?
+    options:
+      - id: a
+        text: $(2,1)$
+        correct: false
+        category: math_error
+        feedback: $A(2,1)=(8-2,\;2+1)=(6,3)=3(2,1)$, so it is an eigenvector with eigenvalue $3$.
+      - id: b
+        text: $(1,1)$
+        correct: false
+        category: math_error
+        feedback: $A(1,1)=(4-2,\;1+1)=(2,2)=2(1,1)$, so it is an eigenvector with eigenvalue $2$.
+      - id: c
+        text: $(-2,-2)$
+        correct: false
+        category: incorrect_reasoning
+        feedback: $(-2,-2)$ is a multiple of $(1,1)$, so $A(-2,-2)=(-4,-4)=2(-2,-2)$.
+      - id: d
+        text: $(1,0)$
+        correct: true
+        feedback: $A(1,0)=(4,1)$, and no multiple of $(1,0)$ has second entry $1$.
+    solution: Multiply each candidate. $A(1,0)=(4,1)$ leaves the line of $(1,0)$, while $(2,1)$, $(1,1)$ and $(-2,-2)$ are each stretched along their own line.
+  - id: eigp-check-pair
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: For $A=\begin{bmatrix}5&-4\\2&-1\end{bmatrix}$, both $(1,1)$ and $(2,1)$ are eigenvectors. What do their two eigenvalues add up to?
+    answer: 4
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 6
+        category: math_error
+        feedback: Check $A(2,1)=(10-4,\;4-1)=(6,3)$, which is $3(2,1)$, so that eigenvalue is $3$.
+    solution: $A(1,1)=(1,1)$, eigenvalue $1$, and $A(2,1)=(6,3)=3(2,1)$, eigenvalue $3$. They add up to $4$.
+  - id: eig-find-eigenvalues-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: For $A=\begin{bmatrix}a&b\\c&d\end{bmatrix}$, which equation do the eigenvalues $\lambda$ solve?
+    options:
+      - id: a
+        text: $\lambda^2-(a+d)\lambda+(ad-bc)=0$
+        correct: true
+        feedback: Its two solutions add up to $a+d$ and multiply to $ad-bc$.
+      - id: b
+        text: $\lambda=a$ or $\lambda=d$
+        correct: false
+        category: misunderstood_definition
+        feedback: That only holds when $b$ or $c$ is zero; $\begin{bmatrix}2&1\\1&2\end{bmatrix}$ has eigenvalues $3$ and $1$.
+      - id: c
+        text: $\lambda^2+(a+d)\lambda+(ad-bc)=0$
+        correct: false
+        category: math_error
+        feedback: The middle sign is minus, so the solutions add up to $a+d$ instead of $-(a+d)$.
+      - id: d
+        text: $\lambda^2-(a+d)\lambda+(ad+bc)=0$
+        correct: false
+        category: math_error
+        feedback: The last term is $ad-bc$, from multiplying out $(a-\lambda)(d-\lambda)-bc$.
+    solution: The eigenvalues solve $\lambda^2-(a+d)\lambda+(ad-bc)=0$, so they add up to $a+d$ and multiply to $ad-bc$.
+  - id: eigp-solve-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 2
+    est_minutes: 2
+    prompt: In the worked example, step 3 writes $(2-3)x+y=0$ for $A=\begin{bmatrix}2&1\\1&2\end{bmatrix}$. Where does that equation come from?
+    options:
+      - id: a
+        text: It is the first row of $Av=3v$, with $3x$ moved to the left.
+        correct: true
+        feedback: The first row says $2x+y=3x$, which is $(2-3)x+y=0$.
+      - id: b
+        text: It is the eigenvalue equation $\lambda^2-4\lambda+3=0$ with $\lambda=3$ put in.
+        correct: false
+        category: incorrect_reasoning
+        feedback: That equation is about $\lambda$ alone and has no $x$ or $y$ in it.
+      - id: c
+        text: It says the eigenvalues add up to $2+2$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The sum fact is about the two eigenvalues; this equation links the entries $x$ and $y$ of one eigenvector.
+      - id: d
+        text: It is the second row of $Av=3v$.
+        correct: false
+        category: misunderstood_definition
+        feedback: The second row is $x+2y=3y$, which is $x+(2-3)y=0$. It gives the same line, $y=x$.
+    solution: The first row of $Av=3v$ is $2x+y=3x$. Moving $3x$ to the left gives $(2-3)x+y=0$, so $y=x$.
+  - id: eigp-sum-product
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: What is the larger eigenvalue of $A=\begin{bmatrix}5&1\\2&4\end{bmatrix}$?
+    answer: 6
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 5
+        category: misunderstood_definition
+        feedback: $5$ is the larger diagonal entry. Find two numbers that add to $9$ and multiply to $5\times4-1\times2=18$.
+    solution: $a+d=9$ and $ad-bc=20-2=18$, so $\lambda^2-9\lambda+18=(\lambda-6)(\lambda-3)=0$. The eigenvalues are $6$ and $3$.
+  - id: eigp-eigenvalue-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: What is the larger eigenvalue of $A=\begin{bmatrix}{{=p+1}}&{{=q-p-1}}\\1&{{=q-1}}\end{bmatrix}$?
+    params:
+      p:
+        min: 5
+        max: 8
+      q:
+        min: 1
+        max: 3
+    answer_expr: p
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: p+1
+        category: misunderstood_definition
+        feedback: That is the top-left entry. Find two numbers that add to the diagonal sum and multiply to $ad-bc$.
+    solution: The diagonal adds to ${{=p+1}}+{{=q-1}}={{=p+q}}$ and $ad-bc={{=(p+1)*(q-1)}}-({{=q-p-1}})={{=p*q}}$. Two numbers with sum ${{=p+q}}$ and product ${{=p*q}}$ are ${{=p}}$ and ${{=q}}$, so the larger eigenvalue is ${{=p}}$.
+  - id: eigp-diagonal-trap
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: What are the eigenvalues of $A=\begin{bmatrix}1&2\\2&1\end{bmatrix}$?
+    options:
+      - id: a
+        text: $1$ and $1$
+        correct: false
+        category: misunderstood_definition
+        feedback: Those are the diagonal entries, which are the eigenvalues only when the other entries are zero.
+      - id: b
+        text: $3$ and $-1$
+        correct: true
+        feedback: They add to $1+1=2$ and multiply to $1-4=-3$.
+      - id: c
+        text: $2$ and $2$
+        correct: false
+        category: misunderstood_definition
+        feedback: Those are the entries off the diagonal. The eigenvalues add to $2$ and multiply to $-3$.
+      - id: d
+        text: $3$ and $1$
+        correct: false
+        category: math_error
+        feedback: These multiply to $3$, but $ad-bc=1\times1-2\times2=-3$.
+    solution: $a+d=2$ and $ad-bc=1-4=-3$, so $\lambda^2-2\lambda-3=(\lambda-3)(\lambda+1)=0$, giving $3$ and $-1$.
+  - id: eigp-eigenvector-entry
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: The matrix $A=\begin{bmatrix}4&1\\2&3\end{bmatrix}$ has eigenvalue $2$. Its eigenvector for that eigenvalue can be written $(1,y)$. What is $y$?
+    answer: -2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 2
+        category: math_error
+        feedback: The first row gives $(4-2)\times1+y=0$, so $y$ is minus $2$.
+      - answer: 1
+        category: incorrect_reasoning
+        feedback: $(1,1)$ is the eigenvector for the other eigenvalue, $5$. Use $\lambda=2$ in $(a-\lambda)x+by=0$.
+    solution: The first row gives $(4-2)\times1+1\times y=0$, so $y=-2$. Check that $A(1,-2)=(2,-4)=2(1,-2)$.
+  - id: eigp-no-eigenvalues
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: Which matrix has no real eigenvalues?
+    options:
+      - id: a
+        text: $\begin{bmatrix}3&1\\0&2\end{bmatrix}$
+        correct: false
+        category: math_error
+        feedback: Its eigenvalues add to $5$ and multiply to $6$, so they are $3$ and $2$.
+      - id: b
+        text: $\begin{bmatrix}1&2\\2&1\end{bmatrix}$
+        correct: false
+        category: math_error
+        feedback: Its eigenvalues add to $2$ and multiply to $-3$, so they are $3$ and $-1$.
+      - id: c
+        text: $\begin{bmatrix}1&-2\\1&1\end{bmatrix}$
+        correct: true
+        feedback: Two numbers adding to $2$ and multiplying to $1+2=3$ don't exist, since $\lambda^2-2\lambda+3=(\lambda-1)^2+2$ is never zero.
+      - id: d
+        text: $\begin{bmatrix}0&1\\1&0\end{bmatrix}$
+        correct: false
+        category: math_error
+        feedback: Its eigenvalues add to $0$ and multiply to $-1$, so they are $1$ and $-1$.
+    solution: For $\begin{bmatrix}1&-2\\1&1\end{bmatrix}$ the equation is $\lambda^2-2\lambda+3=0$, and $(\lambda-1)^2+2$ is at least $2$, so it has no real solution.
+  - id: eigp-population-growth
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: 'A model counts young and adult animals as a vector $(y,a)$, and each year the counts become $A(y,a)$ with $A=\begin{bmatrix}1&4\\1&1\end{bmatrix}$. The counts start at $(200,100)$. How many young animals are there after two years?'
+    answer: 1800
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 600
+        category: math_error
+        feedback: That is after one year. $(200,100)$ is an eigenvector with eigenvalue $3$, so two years multiply the counts by $3\times3=9$.
+      - answer: 1200
+        category: math_error
+        feedback: Two years multiply by $3$ twice, which is $9$, so $200\times9=1800$.
+    solution: $A(200,100)=(200+400,\;200+100)=(600,300)=3(200,100)$, so each year multiplies the counts by $3$. After two years there are $9\times200=1800$ young animals.
+  - id: eig-svd-three-moves-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: The SVD writes a matrix as $A=USV^\top$. What do the three moves do to an input vector, in the order they happen?
+    options:
+      - id: a
+        text: $V^\top$ turns it, $S$ stretches along the axes, then $U$ turns it again.
+        correct: true
+        feedback: Matrices act from right to left, so $V^\top$ acts first and $U$ last. Either turn may also include a mirror flip.
+      - id: b
+        text: $U$ turns it, $S$ stretches along the axes, then $V^\top$ turns it again.
+        correct: false
+        category: misunderstood_definition
+        feedback: In $USV^\top x$ the matrix next to $x$ acts first, which is $V^\top$.
+      - id: c
+        text: $V^\top$ stretches it, $S$ turns it, then $U$ stretches it again.
+        correct: false
+        category: misunderstood_definition
+        feedback: $S$ is the diagonal matrix of stretches, and $U$ and $V^\top$ are the turns.
+      - id: d
+        text: It finds the eigenvectors of $A$ and stretches each one by its eigenvalue.
+        correct: false
+        category: misunderstood_definition
+        feedback: The SVD works for every matrix, including ones with no eigenvectors; its stretches are the singular values.
+    solution: Reading $USV^\top x$ from right to left, $V^\top$ turns the input, $S$ stretches along the axes by the singular values, and $U$ turns the result.
+  - id: eigp-svd-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 2
+    est_minutes: 2
+    prompt: In the worked example, $V^\top v_1=(1,0)$ for $v_1=(0.6,0.8)$ and $v_2=(-0.8,0.6)$. Why does it come out as exactly $(1,0)$?
+    options:
+      - id: a
+        text: The rows of $V^\top$ are $v_1$ and $v_2$; $v_1\cdot v_1=1$ because its length is $1$, and $v_2\cdot v_1=0$ because they're perpendicular.
+        correct: true
+        feedback: Each output entry is one row dotted with $v_1$, so the entries are $1$ and $0$.
+      - id: b
+        text: $V^\top$ is a stretch by $s_1=10$ along the first axis.
+        correct: false
+        category: misunderstood_definition
+        feedback: The stretch is $S$; $V^\top$ is a turn and keeps lengths, which is why the length stays $1$.
+      - id: c
+        text: Every vector of length $1$ comes out as $(1,0)$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A turn sends different arrows to different places; $v_2$ comes out as $(0,1)$.
+      - id: d
+        text: The entries $0.6$ and $0.8$ add up to more than $1$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The sum of the entries plays no part; the first output is $0.6^2+0.8^2=1$, the squared length.
+    solution: $V^\top$ dots the input with $v_1$ and with $v_2$. $v_1\cdot v_1=0.36+0.64=1$ and $v_2\cdot v_1=-0.48+0.48=0$, so the result is $(1,0)$.
+  - id: eigp-singular-sign
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Can a singular value be negative?
+    options:
+      - id: a
+        text: Yes, when the matrix flips arrows round.
+        correct: false
+        category: misunderstood_definition
+        feedback: A flip goes into $U$ or $V$, which keep lengths and may flip arrows over like a mirror, so the stretch stays a length.
+      - id: b
+        text: No. Singular values are output lengths of length-1 inputs, so they are never negative.
+        correct: true
+        feedback: $Av_i=s_iu_i$ with $u_i$ of length $1$, so $s_i$ is the length of $Av_i$.
+      - id: c
+        text: Yes, whenever the matrix has a negative eigenvalue.
+        correct: false
+        category: misunderstood_definition
+        feedback: $\begin{bmatrix}3&0\\0&-1\end{bmatrix}$ has eigenvalue $-1$, but its singular values are $3$ and $1$.
+      - id: d
+        text: Only for matrices that aren't square.
+        correct: false
+        category: misunderstood_definition
+        feedback: For every matrix, square or not, singular values are lengths and can't be negative.
+    solution: Since $Av_i=s_iu_i$ and $u_i$ has length $1$, $s_i$ is the length of the output $Av_i$, and a length is never negative.
+  - id: eigp-longest-output-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Let $A=\begin{bmatrix}{{=3*k}}&{{=-4*k}}\\{{=4*k}}&{{=3*k}}\end{bmatrix}$. What is the length of $A(0.6,0.8)$?
+    params:
+      k:
+        min: 1
+        max: 4
+    answer_expr: 5*k
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: 7*k
+        category: math_error
+        feedback: That adds the sizes of the entries in a row of $A$, ${{=3*k}}$ and ${{=4*k}}$. Multiply $A$ by $(0.6,0.8)$ first, then take the square root of the sum of the squared entries of the output.
+    solution: $A(0.6,0.8)={{=k}}\times(1.8-3.2,\;2.4+2.4)={{=k}}\times(-1.4,4.8)$, whose length is ${{=k}}\times\sqrt{1.96+23.04}={{=k}}\times5={{=5*k}}$.
+  - id: eigp-second-direction
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: For $B=\begin{bmatrix}4&-3\\6&8\end{bmatrix}$, the second input direction of its SVD is $v_2=(-0.8,0.6)$. What is the first entry of $Bv_2$?
+    answer: -5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 5
+        category: math_error
+        feedback: Keep the signs; $4\times(-0.8)=-3.2$ and $-3\times0.6=-1.8$.
+      - answer: -1.4
+        category: math_error
+        feedback: That adds $-3.2$ and $1.8$. The second product is $-3\times0.6=-1.8$.
+    solution: The first row dotted with $v_2$ is $4\times(-0.8)+(-3)\times0.6=-3.2-1.8=-5$. In fact $Bv_2=(-5,0)$, which is $5$ long, the second singular value.
+  - id: eigp-svd-no-eigen
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A $2\times2$ matrix has no real eigenvalues. What can you say about its SVD?
+    options:
+      - id: a
+        text: It has no SVD either.
+        correct: false
+        category: misunderstood_definition
+        feedback: Every matrix has an SVD; $\begin{bmatrix}4&-3\\6&8\end{bmatrix}$ has no eigenvalues and singular values $10$ and $5$.
+      - id: b
+        text: It still has an SVD, because every matrix does.
+        correct: true
+        feedback: Any $2\times2$ matrix that doesn't squash everything onto a line turns the circle of length-1 arrows into an ellipse, and the SVD reads off its longest and shortest directions.
+      - id: c
+        text: Its singular values are all zero.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A quarter turn has no eigenvalues, yet it keeps every length, so both its singular values are $1$.
+      - id: d
+        text: Its SVD exists only if the matrix equals its own transpose.
+        correct: false
+        category: misunderstood_definition
+        feedback: Every matrix, of any shape, has an SVD.
+    solution: Every matrix has an SVD. A matrix with no eigenvalues still turns length-1 arrows into an ellipse, whose longest and shortest directions give the singular values.
+  - id: eigp-robot-arm
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A $2\times2$ matrix turns small joint movements of a robot arm into movements of its hand. Its singular values are $2$ and $0.01$. What does that say about the hand?
+    options:
+      - id: a
+        text: The hand moves easily along one direction but barely moves along the perpendicular one, whatever the joints do.
+        correct: true
+        feedback: A length-1 joint movement moves the hand at most $2$ in one direction and at most $0.01$ in the other.
+      - id: b
+        text: The hand moves equally well in every direction.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Equal movement in every direction needs equal singular values; here one is $200$ times the other.
+      - id: c
+        text: The hand moves backwards along one direction, because $0.01$ is small.
+        correct: false
+        category: misunderstood_definition
+        feedback: Singular values are lengths; a small one means a short movement, and direction comes from $U$.
+      - id: d
+        text: Nothing, because only eigenvalues describe how a matrix moves things.
+        correct: false
+        category: misunderstood_definition
+        feedback: The singular values are exactly the longest and shortest output lengths for length-1 inputs.
+    solution: Length-1 joint movements send the hand along an ellipse with half-lengths $2$ and $0.01$, so the hand can barely move along the second output direction.
+  - id: eig-low-rank-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: How do you make the closest rank-1 matrix to $A$ from its SVD?
+    options:
+      - id: a
+        text: Keep only the piece $s_1u_1v_1^\top$ with the largest singular value.
+        correct: true
+        feedback: That keeps the biggest stretch, and the output is off by at most $s_2$ for any length-1 input.
+      - id: b
+        text: Keep only the piece with the smallest singular value.
+        correct: false
+        category: misunderstood_definition
+        feedback: That throws away the biggest stretch, so the error would be as large as $s_1$.
+      - id: c
+        text: Keep the first row of $A$ and set the rest to zero.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Rows of $A$ can be big in any direction; the SVD pieces put the biggest stretch first.
+      - id: d
+        text: Round every entry of $A$ to the nearest whole number.
+        correct: false
+        category: misunderstood_definition
+        feedback: Rounding changes every entry a little and has nothing to do with the biggest stretch. The closest rank-1 matrix is the piece with the largest singular value.
+    solution: The closest rank-1 matrix is $s_1u_1v_1^\top$, the piece with the largest singular value.
+  - id: eigp-low-rank-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 2
+    est_minutes: 2
+    prompt: In the worked example, why does $B_1v_2=(0,0)$ for $B_1=\begin{bmatrix}0&0\\6&8\end{bmatrix}$ and $v_2=(-0.8,0.6)$?
+    options:
+      - id: a
+        text: $B_1=10u_1v_1^\top$ dots the input with $v_1$ first, and $v_1\cdot v_2=0$ because they're perpendicular.
+        correct: true
+        feedback: $v_1^\top v_2=0.6\times(-0.8)+0.8\times0.6=0$, so the whole output is $0$.
+      - id: b
+        text: $B_1$ has a row of zeros.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The zero row only makes the first entry $0$; the second entry is $0$ because $6\times(-0.8)+8\times0.6=0$.
+      - id: c
+        text: $v_2$ has length $1$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: $v_1$ also has length $1$, and $B_1v_1=(0,10)$.
+      - id: d
+        text: The rank-1 copy sends every input to zero.
+        correct: false
+        category: misunderstood_definition
+        feedback: It keeps the first direction exactly, $B_1v_1=(0,10)$.
+    solution: $B_1v_2=10u_1(v_1\cdot v_2)$, and $v_1\cdot v_2=-0.48+0.48=0$, so the output is $(0,0)$.
+  - id: eigp-count-rank
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A $4\times4$ matrix has singular values $7$, $3$, $0$ and $0$. What is its rank?
+    answer: 2
+    tolerance:
+      abs: 0
+    common_wrong:
+      - answer: 4
+        category: misunderstood_definition
+        feedback: $4$ is the size. Rank counts the singular values that aren't zero.
+      - answer: 10
+        category: misunderstood_definition
+        feedback: That adds the singular values. Rank counts how many aren't zero.
+    solution: Two singular values, $7$ and $3$, aren't zero, so the rank is $2$.
+  - id: eigp-storage-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A matrix of shape ${{=m}}\times{{=n}}$ is replaced by its rank-{{=r}} approximation, stored as {{=r}} columns of length ${{=m}}$ and {{=r}} rows of length ${{=n}}$, with each singular value multiplied into its column. How many numbers are stored?
+    params:
+      m:
+        min: 100
+        max: 500
+        step: 100
+      n:
+        min: 200
+        max: 600
+        step: 100
+      r:
+        min: 2
+        max: 8
+    answer_expr: r*(m+n)
+    tolerance:
+      abs: 0
+    common_wrong:
+      - answer_expr: m*n
+        category: misunderstood_definition
+        feedback: That is the full matrix. The copy stores {{=r}} columns of ${{=m}}$ and {{=r}} rows of ${{=n}}$.
+      - answer_expr: r*m*n
+        category: math_error
+        feedback: Each piece is a column plus a row, ${{=m}}+{{=n}}$ numbers.
+    solution: Each piece needs ${{=m}}+{{=n}}={{=m+n}}$ numbers, so {{=r}} pieces need ${{=r}}\times{{=m+n}}={{=r*(m+n)}}$.
+  - id: eigp-drop-error
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A matrix has singular values $9$, $4$ and $0.5$. You keep the two biggest pieces of its SVD. For a length-1 input, what is the most the copy's output can be off by?
+    answer: 0.5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 4
+        category: incorrect_reasoning
+        feedback: $4$ is kept. The error is set by the first singular value you drop.
+      - answer: 4.5
+        category: math_error
+        feedback: The largest error is the first dropped singular value, not a sum.
+    solution: Keeping $9$ and $4$ drops only $0.5$, so the copy is off by at most $0.5$, along the third input direction.
+  - id: eigp-which-to-keep
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: Matrix $P$ has singular values $10$ and $9$. Matrix $Q$ has singular values $10$ and $0.1$. Which one does its rank-1 copy describe well, and why?
+    options:
+      - id: a
+        text: $Q$, because the dropped singular value $0.1$ is tiny, so outputs are off by at most $0.1$.
+        correct: true
+        feedback: For $P$ the copy can be off by $9$, almost as big as the kept stretch.
+      - id: b
+        text: $P$, because its singular values add up to more.
+        correct: false
+        category: incorrect_reasoning
+        feedback: What matters is how big the dropped singular value is; for $P$ it's $9$.
+      - id: c
+        text: Both equally, because both keep $s_1=10$.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The kept piece is the same size, but the error is the dropped one, $9$ against $0.1$.
+      - id: d
+        text: Neither, because a rank-1 copy is exact only for rank-1 matrices.
+        correct: false
+        category: incorrect_reasoning
+        feedback: It's exact only then, but it can still be close; $Q$'s copy is off by at most $0.1$.
+    solution: The rank-1 copy is off by up to the dropped singular value, $9$ for $P$ and $0.1$ for $Q$, so it describes $Q$ well.
+  - id: eigp-piece-entry
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An SVD piece has $s=4$, $u=(0.6,0.8)$ and $v=(0,1)$. What is the bottom-right entry of $s\,uv^\top$?
+    answer: 3.2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 0.8
+        category: math_error
+        feedback: That is $0.8\times1$. Multiply by $s=4$ as well.
+      - answer: 0
+        category: math_error
+        feedback: The bottom-right entry uses the second entries, $0.8$ of $u$ and $1$ of $v$.
+    solution: Row 2, column 2 is $s$ times the second entry of $u$ times the second entry of $v$, $4\times0.8\times1=3.2$.
+  - id: eigp-image-compress
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A grayscale image is a $600\times800$ matrix of brightness values. You store its rank-20 approximation as 20 columns of length $600$ and 20 rows of length $800$. How many numbers is that, as a percentage of the full image? Give the percentage to two decimal places, without the % sign.
+    answer: 5.833333333
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer: 28000
+        category: incorrect_reasoning
+        feedback: That is the count. Divide it by $600\times800=480{,}000$ and multiply by $100$.
+      - answer: 0.0583333
+        category: math_error
+        feedback: That is the fraction. Multiply by $100$ to get a percentage.
+    solution: The copy stores $20\times(600+800)=28{,}000$ numbers, against $480{,}000$ for the full image, which is $28{,}000/480{,}000\times100\approx5.83\%$.
+  - id: eig-explain-svd
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 5
+    prompt: Explain to a colleague what the SVD of a matrix does to an input vector, what the singular values measure, and why keeping only the biggest singular values gives a good copy of the matrix in fewer numbers.
+    exemplar: The SVD writes any matrix as $A=USV^\top$. Read right to left, $V^\top$ turns perpendicular input directions onto the axes, $S$ stretches each axis by a singular value, and $U$ turns the result to the output directions, so $Av_i=s_iu_i$. Either turn may include a mirror flip. Singular values are the lengths that $v_1$ and $v_2$ come out at, never negative. Keeping the $k$ biggest pieces $s_iu_iv_i^\top$ gives the closest rank-$k$ matrix, off by at most the first dropped singular value, and it needs $k(m+n)$ numbers in place of $mn$.
+    rubric:
+      - id: r1
+        criterion: "Describes the SVD as turn, stretch along the axes, turn ($V^\\top$, then $S$, then $U$), where a turn may include a mirror flip"
+        required: true
+        weight: 2
+      - id: r2
+        criterion: Singular values are how much each input direction is stretched (the output lengths of $v_1$ and $v_2$), never negative
+        required: true
+        weight: 2
+      - id: r3
+        criterion: Keeping the biggest pieces gives the closest low-rank copy, with error set by the dropped singular values
+        required: true
+        weight: 2
+      - id: r4
+        criterion: "A rank-k copy of an m×n matrix needs k(m+n) numbers in place of mn"
+        weight: 1

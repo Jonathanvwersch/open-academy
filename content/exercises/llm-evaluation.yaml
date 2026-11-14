@@ -1,0 +1,462 @@
+concept: llm-evaluation
+exercises:
+  - id: lev-benchmark-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What makes a collection of tasks a benchmark?
+    options:
+      - id: a
+        text: The tasks are fixed and have stated rules for scoring answers.
+        correct: true
+        feedback: A fixed task collection and scoring rules let us repeat the comparison.
+      - id: b
+        text: The tasks are included in every compared model's training data.
+        correct: false
+        feedback: Training exposure can contaminate the benchmark; it is not a requirement.
+      - id: c
+        text: The tasks are chosen after seeing which answers a model gets right.
+        correct: false
+        feedback: Selecting tasks to favour a model would undermine the comparison.
+    solution: A benchmark fixes both the tasks and the scoring rules. Its score describes performance on those tasks.
+  - id: lev-benchmark-why
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why does the worked example report 50% on the fresh questions as well as 70% on the mixed benchmark?
+    options:
+      - id: a
+        text: The fresh score proves training exposure caused exactly the whole difference.
+        correct: false
+        feedback: The groups can differ in difficulty too; the comparison does not isolate a causal effect.
+      - id: b
+        text: The fresh score separates six new questions from four already seen in training.
+        correct: true
+        feedback: The split shows which results came from questions not encountered in training.
+      - id: c
+        text: The fresh score shows the assistant's exact accuracy on all future requests.
+        correct: false
+        feedback: The score describes only these six questions. Measuring performance on other requests requires additional evaluation.
+    solution: The mixed set includes four questions seen in training, so it is not purely a test on new material. Reporting the fresh group makes that distinction visible without proving memorisation caused the gap.
+  - id: lev-contamination-route
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: An assistant's fine-tuning data contains close copies of a benchmark's questions and accepted answers. What is the concern?
+    options:
+      - id: a
+        text: Only pretraining exposure counts, so the benchmark remains unaffected.
+        correct: false
+        feedback: Test material can enter training during fine-tuning as well as pretraining.
+      - id: b
+        text: The model must now fail those questions because they are familiar.
+        correct: false
+        feedback: Familiarity can help the model answer; it does not force failure.
+      - id: c
+        text: Training exposure may raise the score without showing ability on new questions.
+        correct: true
+        feedback: Close copies can raise scores by making the test material familiar.
+    solution: This is benchmark contamination through fine-tuning. Familiar material in training may help the model answer these questions correctly.
+  - id: lev-accuracy-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      seen: { min: 2, max: 6, step: 2 }
+      fresh: { min: 2, max: 8, step: 2 }
+    prompt: "A benchmark has {{=seen}} questions seen in training and 10 fresh questions. A model answers every one of the {{=seen}} seen questions and {{=fresh}} fresh questions correctly. What percentage of the 10 fresh questions did it answer correctly? Enter a number from 0 to 100."
+    answer_expr: "100 * fresh / 10"
+    tolerance: { abs: 0.01 }
+    hints:
+      - Use only the fresh questions in both the numerator and denominator.
+      - Divide the correct fresh answers by 10, then multiply by 100.
+    solution: "The fresh accuracy is $100\\times{{=fresh}}/10={{= 100 * fresh / 10 }}\\%$. The seen questions are excluded because this score asks only about new questions."
+  - id: lev-clean-claim
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A team removes every exact training-data copy it finds from a benchmark. Which conclusion is justified?
+    options:
+      - id: a
+        text: The known copies are gone, but undiscovered or close copies may remain.
+        correct: true
+        feedback: An exact-match search cannot rule out every route by which test material entered training.
+      - id: b
+        text: The remaining score is a guarantee that every question is new to the model.
+        correct: false
+        feedback: The search may miss paraphrases, close copies or inaccessible training data.
+      - id: c
+        text: The remaining questions are unusable unless their answers enter training first.
+        correct: false
+        feedback: Keeping test answers out of training helps preserve the evaluation's usefulness.
+    solution: Removing known copies reduces a known source of contamination, but does not certify that all remaining material is unseen. Report how exposure was checked and what remains unknown.
+  - id: lev-clean-design
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A team repeatedly changes an assistant after inspecting a public benchmark's failures. Which plan best supports a final claim about new requests?
+    options:
+      - id: a
+        text: Keep changing the assistant until it answers every public benchmark question correctly, then report that score alone.
+        correct: false
+        feedback: Repeated selection around those failures uses the benchmark to guide development. Final reporting needs a separate test set.
+      - id: b
+        text: Prepare representative fresh questions, keep them out of development, and report their score after choosing the model.
+        correct: true
+        feedback: A separate untouched set better tests the chosen model on requests not used to guide changes.
+      - id: c
+        text: Add the public answers to fine-tuning, then describe that same benchmark as a test of unseen requests.
+        correct: false
+        feedback: Training on the answers directly contaminates the claimed unseen evaluation.
+    solution: Keep development questions separate from the final test and avoid choosing model changes from final-test results. Fresh, representative questions reduce known exposure and task-coverage problems, though no finite set proves universal ability.
+  - id: lev-domain-limit
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: An assistant scores highly on an uncontaminated reading benchmark. A team wants to use it to write robot-control code. What should the team do next?
+    options:
+      - id: a
+        text: Treat the reading score as sufficient because both uses involve producing text.
+        correct: false
+        feedback: Different text tasks can require very different abilities and checks.
+      - id: b
+        text: Reject the reading result because any high score must come from contamination.
+        correct: false
+        feedback: A high score can be genuine; the problem here is what tasks it covers.
+      - id: c
+        text: Evaluate representative code-writing tasks with checks for the mistakes that matter.
+        correct: true
+        feedback: Evaluate tasks that reflect how the assistant will be used.
+    solution: A clean test can still measure a different ability from the one needed in use. Add code-writing tasks and checks for the errors that matter.
+  - id: lev-pairwise-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does pairwise evaluation compare?
+    options:
+      - id: a
+        text: Two training datasets by counting how many words each contains.
+        correct: false
+        feedback: Dataset size is not a judgment of two answers to a request.
+      - id: b
+        text: Two answers to the same prompt under a stated judging rule.
+        correct: true
+        feedback: Holding the prompt fixed lets the judge compare the answers against the same task.
+      - id: c
+        text: Two unrelated prompts by choosing whichever is easier to answer.
+        correct: false
+        feedback: Comparing prompt difficulty is different from comparing model responses.
+    solution: Pairwise evaluation compares two answers to one prompt under explicit criteria. It can allow a tie when the answers are equally good under those criteria.
+  - id: lev-pairwise-why
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why does the worked example divide A's 2.5 points by four prompts rather than just A's two wins?
+    options:
+      - id: a
+        text: The denominator counts all final decisions, including the tie and the loss.
+        correct: true
+        feedback: Each of the four compared prompts contributes a final decision to the rate.
+      - id: b
+        text: The denominator gives A one extra win for every tie and every loss.
+        correct: false
+        feedback: Ties give half credit in the numerator, and losses give no credit.
+      - id: c
+        text: The denominator counts how many accepted answers appeared during training.
+        correct: false
+        feedback: The pairwise denominator counts prompts with final decisions.
+    solution: The rate measures credit per prompt with a final decision. Its denominator includes wins, ties and losses.
+  - id: lev-win-template
+    dimension: conceptual
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      wins: { min: 2, max: 6, step: 1 }
+      ties: { min: 0, max: 4, step: 1 }
+    prompt: "Across 10 prompts, A has a win count of {{=wins}}, a tie count of {{=ties}} and a loss count of {{= 10 - wins - ties }}. Each prompt has one final decision. Giving ties half credit, what is A's tie-adjusted win rate as a percentage? Enter a number from 0 to 100."
+    answer_expr: "100 * (wins + 0.5 * ties) / 10"
+    tolerance: { abs: 0.01 }
+    hints:
+      - Add the wins and half the ties, then divide by every evaluated prompt.
+      - There are 10 prompts in the denominator, even when some are losses.
+    solution: "A's percentage is $100\\times({{=wins}}+0.5\\times{{=ties}})/10={{= 100 * (wins + 0.5 * ties) / 10 }}\\%$. Losses earn zero credit but remain in the denominator."
+  - id: lev-drop-ties
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A has one win, two ties and one loss. A report drops ties and calls 1/2 its half-credit-for-ties calculation. Which assessment is right?
+    options:
+      - id: a
+        text: Dropping ties is the half-credit rule whenever wins equal losses.
+        correct: false
+        feedback: Equal numerical results in this case do not make the conventions identical.
+      - id: b
+        text: Half credit means treating both ties as full wins and dividing by four.
+        correct: false
+        feedback: Full wins would give each tie too much credit.
+      - id: c
+        text: The rules differ, even though half credit also gives (1 + 1)/4 = 1/2 here.
+        correct: true
+        feedback: Half credit keeps all prompts; removing ties is a different convention that happens to agree here.
+    solution: The half-credit rule gives $(1+0.5\times2)/4=1/2$. Dropping ties also gives $1/2$ in this symmetric case, but it uses a different denominator and need not agree in other cases.
+  - id: lev-both-wrong
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A judge prefers A to B on a factual question, but a human later finds both answers wrong. What does A's win establish?
+    options:
+      - id: a
+        text: A's answer was factually correct because a preference is an accuracy label.
+        correct: false
+        feedback: A comparison can prefer a less bad answer without finding it correct.
+      - id: b
+        text: The judge preferred A on that pair; the win alone did not establish correctness.
+        correct: true
+        feedback: Preference is relative to the other answer and the judging rule.
+      - id: c
+        text: The answer must become a tie because two wrong answers are always equally good.
+        correct: false
+        feedback: Wrong answers can differ in severity and in how well they meet other criteria.
+    solution: The win records a preference between these two answers. Report task-specific correctness checks separately when correctness matters.
+  - id: lev-opponent
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A beats B on a set of reading requests. Can we infer that A will beat a new model C on programming requests?
+    options:
+      - id: a
+        text: No; the opponent and the task mix both changed, so a new comparison is needed.
+        correct: true
+        feedback: A pairwise rate is tied to the models, prompts and judging rule actually used.
+      - id: b
+        text: Yes; any pairwise lead transfers unchanged to every opponent and every task.
+        correct: false
+        feedback: A lead on one comparison is not a universal ranking or task guarantee.
+      - id: c
+        text: Yes; changing both the opponent and the task cancels their effects on the rate.
+        correct: false
+        feedback: There is no rule that these changes cancel; they can each change the outcome.
+    solution: The original result is evidence only for the evaluated setting. Compare A and C on representative programming prompts before drawing that new conclusion.
+  - id: lev-report-counts
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: Two reports each show a half-credit tie-adjusted rate of 50%. One contains four ties; the other contains two wins and two losses. What information would a rate alone hide?
+    options:
+      - id: a
+        text: The reports must have compared different numbers of prompts to get the same rate.
+        correct: false
+        feedback: Both reports contain four prompts; their outcome counts differ.
+      - id: b
+        text: One model must have answered every question correctly while the other failed them all.
+        correct: false
+        feedback: Pairwise scores do not tell us absolute correctness.
+      - id: c
+        text: Equal credit can come from equal-quality pairs or from a mixture of wins and losses.
+        correct: true
+        feedback: Reporting the counts reveals this difference that the single rate compresses.
+    solution: Four half-credit ties and two full-credit wins both give two points out of four prompts. Counts show whether the comparison found ties throughout or mixed strengths and weaknesses.
+  - id: lev-judge-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is position bias in an LLM judge?
+    options:
+      - id: a
+        text: Preferring an answer because it follows the task's factual requirements.
+        correct: false
+        feedback: Following the rubric is the intended basis for judging answer quality.
+      - id: b
+        text: Letting an answer's displayed position influence its quality rating.
+        correct: true
+        feedback: A preference for the first or left answer can distort the model comparison.
+      - id: c
+        text: Preferring an answer because a human checked its support from the source.
+        correct: false
+        feedback: Checking evidence is not a preference for a displayed position.
+    solution: Position bias means the answer's placement influences the preference independently of quality. Swapping the same answers helps expose sensitivity to placement.
+  - id: lev-judge-why
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why does the worked example send the cat question to a human when the judge picks Left twice?
+    options:
+      - id: a
+        text: Left refers to different models after the swap, so the model-level preferences disagree.
+        correct: true
+        feedback: The first Left vote favours A, while the swapped Left vote favours B.
+      - id: b
+        text: Left always refers to A, so both calls establish a consistent final winner.
+        correct: false
+        feedback: The answer positions were swapped; model identities do not stay attached to Left.
+      - id: c
+        text: Left means the answers are equally good, so every repeated Left vote is a tie.
+        correct: false
+        feedback: Left selects a displayed answer; a tie is a separate equal-quality judgment.
+    solution: After mapping the displayed choices back to models, the decisions favour different models. The predeclared rule sends that disagreement for human resolution.
+  - id: lev-swap-map
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In a first presentation Left holds B and Right holds A; the judge picks Right. In the swapped presentation Left holds A and Right holds B; the judge picks Left. Under the rule that keeps a winner only when both orders select the same model, what is the result?
+    options:
+      - id: a
+        text: One win for B, because B appeared first in the initial presentation.
+        correct: false
+        feedback: Right in the first display selects A's answer. Check the model at the chosen position in each display.
+      - id: b
+        text: An unresolved comparison, because the displayed choices have different labels.
+        correct: false
+        feedback: Different position labels can refer to the same model after swapping.
+      - id: c
+        text: One win for A, because both displayed choices select A's answer.
+        correct: true
+        feedback: Right in the first call and Left in the second both map back to A.
+    solution: Map each choice to the model occupying that position before comparing decisions. Both judgments select A, so this prompt contributes one final win for A.
+  - id: lev-unresolved
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A study predeclares that disagreements between answer orders go to a human. One order says A wins, and the swapped order says tie. The human has not reviewed it. How should the prompt be reported now?
+    options:
+      - id: a
+        text: As a final tie, since one tie vote overrides any preference for a model.
+        correct: false
+        feedback: The declared rule requires both orders to say tie to keep a tie automatically.
+      - id: b
+        text: As unresolved, with both judgments retained until human review gives a final decision.
+        correct: true
+        feedback: Disagreement is not evidence that the answers are equally good.
+      - id: c
+        text: As two evaluated prompts, one giving A a win and the other a tie.
+        correct: false
+        feedback: There is one original prompt and answer pair, not two independent comparisons.
+    solution: Follow the predeclared disagreement rule and label this prompt unresolved until reviewed. Report unresolved counts alongside any rate computed from prompts that already have final decisions.
+  - id: lev-length-bias
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A task requests a brief factual answer. A judge favours a long, repetitive answer over an equally correct concise answer in both display orders. What concern remains?
+    options:
+      - id: a
+        text: The judge may reward length rather than the stated requirement for a brief answer.
+        correct: true
+        feedback: Agreement across orders does not remove a preference for irrelevant length.
+      - id: b
+        text: The judge has no remaining bias because swapping positions solved every problem.
+        correct: false
+        feedback: Swapping checks how changes in placement affect ratings. Other judging errors can persist.
+      - id: c
+        text: The concise answer must be wrong because it contains fewer words than its opponent.
+        correct: false
+        feedback: Fewer words do not imply factual error, especially when brevity is requested.
+    solution: A judge can consistently favour length in both orders. Compare its judgments with the rubric and human checks to see whether the extra detail helps meet the task's requirements.
+  - id: lev-order-design
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A team wants to compare two assistants using an LLM judge. Which plan best checks position bias while preserving one final decision per prompt?
+    options:
+      - id: a
+        text: Put A first on every prompt, show model names, and accept every decision as final.
+        correct: false
+        feedback: Always putting A first confounds model quality with position, and names add another influence.
+      - id: b
+        text: Swap both answers and the rubric together, then count the two calls as separate prompts.
+        correct: false
+        feedback: Changing the rubric prevents an isolated order check, and two calls are not two independent prompts.
+      - id: c
+        text: Hide names, fix the rubric, randomise then swap each pair, map votes to models, and resolve disagreements.
+        correct: true
+        feedback: This checks the same pair in both positions while retaining one outcome for the original prompt.
+    solution: Keep the task and rubric fixed while changing order, then translate displayed choices to model identities. Predeclare how disagreements are resolved and keep each prompt's two judgments with its one final decision.
+  - id: lev-agreement-limit
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: On every prompt, an LLM judge picks the same model in both answer orders. What is the strongest supported conclusion?
+    options:
+      - id: a
+        text: Every selected answer is correct, so human checks would add no information.
+        correct: false
+        feedback: The judge can consistently miss factual errors or favour style over the rubric.
+      - id: b
+        text: These decisions survived this order check, but other errors still need human sample checks.
+        correct: true
+        feedback: Agreement across orders shows these choices survived the position check. Human checks can still reveal factual errors or other biases.
+      - id: c
+        text: Every selected answer is wrong, because a reliable judge must sometimes change its choice.
+        correct: false
+        feedback: A reliable judge should keep preferring the better answer when that answer moves to the other position.
+    solution: The observed choices did not change model preference under these swaps. Human-reviewed samples are still needed because stable choices can reflect other biases or factual mistakes.
+  - id: lev-explain-evaluation
+    dimension: transfer
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: "You fine-tuned a reading assistant and want to compare it with its starting model. Explain why a public benchmark score might mislead you, how you would compute a pairwise score with ties, and how you would check an LLM judge's position bias without counting each prompt twice. Include one limitation that swapping order does not fix."
+    rubric:
+      - id: clean-tasks
+        criterion: Explains that training exposure to benchmark questions or answers can reward recall, and calls for fresh representative questions kept out of development.
+        weight: 1
+        required: true
+      - id: defined-score
+        criterion: Gives half-credit tie scoring as wins plus half the ties divided by all final decisions, and distinguishes relative preference from accuracy.
+        weight: 1
+        required: true
+      - id: judge-checks
+        criterion: Hides names, fixes a rubric, checks both orders, maps choices back to models, resolves disagreements with one final decision per prompt, and uses human checks of a sample for other judge errors.
+        weight: 1
+        required: true
+    exemplar: |
+      Public benchmark questions or answers may have entered pretraining or fine-tuning, so a high score can partly reflect familiar material. I would reserve fresh, representative questions and keep their answers out of development and training.
+
+      I would compare both models on the same prompts under explicit criteria. With ties worth half a win, the rate is (wins + 0.5 × ties) divided by all prompts with final decisions, including losses; I would report the counts and unresolved prompts too. This measures preference against the specified opponent under our criteria.
+
+      I would hide model names, keep the rubric fixed, randomise the initial order and judge each pair in both orders. After mapping displayed choices to models, I would keep a shared winner or a shared tie, but send disagreements for human resolution and count the prompt once. Human-reviewed samples, including agreements, are still needed because a judge can consistently favour length or miss factual errors even after swapping.

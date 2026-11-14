@@ -1,0 +1,275 @@
+concept: causal-masking
+version: 1
+objective: |
+  **Goal:** build a causal mask for a sentence, add it to the attention scores before the softmax so that each position gives zero weight to every later position, and explain why this lets a language model learn to predict each next word from the words before it.
+recap:
+  - concept: attention
+    text: "Attention lets each position gather information from others. Position $t$ scores $j$ with $q_t\\cdot k_j/\\sqrt{d_k}$; softmax makes weights $a_{tj}$ summing to 1, which mix values $v_j$."
+where_this_fits: |
+  ### What is causal masking?
+
+  Causal masking is a rule added to attention that stops each word in a sentence from looking at the words after it. Each position may attend only to itself and earlier positions.
+
+  We need it to train a language model, which learns to guess each next word from the earlier words. In training, the whole sentence goes in at once, so with plain attention every word could look ahead and copy the answer. The mask hides later words.
+
+knowledge_points:
+  - id: cm-hide-future
+    title: "Hide the words that come later"
+    explain: |
+      ### Guessing the next word
+
+      A language model writes text one token at a time. At each position $t$ it looks at the tokens so far, $x_1$ to $x_t$, and gives a probability to every possible next token $x_{t+1}$. In this lesson each word is one token.
+
+      Let's train on "the cat sat on", the first four words of the sentence "the cat sat on the mat". We write $T$ for the number of tokens, so here $T=4$. "The" should guess "cat", "cat" should guess "sat", "sat" should guess "on", and "on" should guess the word after it, the second "the" in the full sentence. Attention works on every position at once, so the model makes all four guesses in one run over the sentence, which is called a pass.
+
+      ### The problem with looking ahead
+
+      Plain attention lets every position attend to every position. So "cat" can give weight to "sat", the very word it must guess. A model trained this way learns to copy the next word from its input. When it later writes new text, there's no next word to copy, so its guesses fall apart.
+
+      ### Which positions each word may see
+
+      The grid has a row for each word that is looking and a column for each word it might look at. A cell is green when that word may look, and grey when it's blocked.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 330" aria-label="A 4 by 4 grid for the cat sat on. Each row is the word doing the attending and each column is a word it might attend to. Green cells on and below the diagonal are allowed, grey cells above it are blocked. Row 1, the, sees only the. Row 2, cat, sees the and cat. Row 3, sat, sees the, cat and sat. Row 4, on, sees all four words. 10 cells are allowed and 6 are blocked">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="250" y="18" text-anchor="middle" fill="#737373">attended to: position j</text>
+      <text x="34" y="148" text-anchor="middle" transform="rotate(-90 34 148)" fill="#737373">attending: position t</text>
+      <text x="160.0" y="52" text-anchor="middle">1 the</text>
+      <text x="220.0" y="52" text-anchor="middle">2 cat</text>
+      <text x="280.0" y="52" text-anchor="middle">3 sat</text>
+      <text x="340.0" y="52" text-anchor="middle">4 on</text>
+      <text x="118" y="87.0" text-anchor="end">1 the</text>
+      <rect x="130" y="60" width="60" height="44" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+      <text x="160.0" y="87.0" text-anchor="middle" fill="#ffffff">sees</text>
+      <rect x="190" y="60" width="60" height="44" fill="#d4d4d4" stroke="#ffffff" stroke-width="2"/>
+      <text x="220.0" y="87.0" text-anchor="middle" fill="#737373">×</text>
+      <rect x="250" y="60" width="60" height="44" fill="#d4d4d4" stroke="#ffffff" stroke-width="2"/>
+      <text x="280.0" y="87.0" text-anchor="middle" fill="#737373">×</text>
+      <rect x="310" y="60" width="60" height="44" fill="#d4d4d4" stroke="#ffffff" stroke-width="2"/>
+      <text x="340.0" y="87.0" text-anchor="middle" fill="#737373">×</text>
+      <text x="386" y="87.0" fill="#737373">1 allowed</text>
+      <text x="118" y="131.0" text-anchor="end">2 cat</text>
+      <rect x="130" y="104" width="60" height="44" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+      <text x="160.0" y="131.0" text-anchor="middle" fill="#ffffff">sees</text>
+      <rect x="190" y="104" width="60" height="44" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+      <text x="220.0" y="131.0" text-anchor="middle" fill="#ffffff">sees</text>
+      <rect x="250" y="104" width="60" height="44" fill="#d4d4d4" stroke="#ffffff" stroke-width="2"/>
+      <text x="280.0" y="131.0" text-anchor="middle" fill="#737373">×</text>
+      <rect x="310" y="104" width="60" height="44" fill="#d4d4d4" stroke="#ffffff" stroke-width="2"/>
+      <text x="340.0" y="131.0" text-anchor="middle" fill="#737373">×</text>
+      <text x="386" y="131.0" fill="#737373">2 allowed</text>
+      <text x="118" y="175.0" text-anchor="end">3 sat</text>
+      <rect x="130" y="148" width="60" height="44" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+      <text x="160.0" y="175.0" text-anchor="middle" fill="#ffffff">sees</text>
+      <rect x="190" y="148" width="60" height="44" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+      <text x="220.0" y="175.0" text-anchor="middle" fill="#ffffff">sees</text>
+      <rect x="250" y="148" width="60" height="44" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+      <text x="280.0" y="175.0" text-anchor="middle" fill="#ffffff">sees</text>
+      <rect x="310" y="148" width="60" height="44" fill="#d4d4d4" stroke="#ffffff" stroke-width="2"/>
+      <text x="340.0" y="175.0" text-anchor="middle" fill="#737373">×</text>
+      <text x="386" y="175.0" fill="#737373">3 allowed</text>
+      <text x="118" y="219.0" text-anchor="end">4 on</text>
+      <rect x="130" y="192" width="60" height="44" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+      <text x="160.0" y="219.0" text-anchor="middle" fill="#ffffff">sees</text>
+      <rect x="190" y="192" width="60" height="44" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+      <text x="220.0" y="219.0" text-anchor="middle" fill="#ffffff">sees</text>
+      <rect x="250" y="192" width="60" height="44" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+      <text x="280.0" y="219.0" text-anchor="middle" fill="#ffffff">sees</text>
+      <rect x="310" y="192" width="60" height="44" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+      <text x="340.0" y="219.0" text-anchor="middle" fill="#ffffff">sees</text>
+      <text x="386" y="219.0" fill="#737373">4 allowed</text>
+      <rect x="130" y="259" width="16" height="16" fill="#10b981"/><text x="154" y="272">allowed: j ≤ t</text>
+      <rect x="280" y="259" width="16" height="16" fill="#d4d4d4"/><text x="304" y="272">blocked: j &gt; t</text>
+      <text x="130" y="300" fill="#737373">10 allowed, 6 blocked</text>
+      </g></svg>
+      ```
+
+      A **causal mask** is a grid that lets position $t$ attend to position $j$ only when $j\le t$, that is, to itself and to earlier positions. It's called causal because each word can only be affected by itself and what came before it, the way a cause comes before its effect.
+
+      Row $t$ has $t$ allowed cells, so the first word has only itself to look at, while the last word sees the whole sentence. Adding up the rows gives $1+2+\dots+T=T(T+1)/2$ allowed cells out of $T^2$, a quick check on any mask you build.
+
+      Be careful not to block the diagonal. A word may attend to itself, because it's already known. The word it has to guess is the next one. If we blocked it, "the" would have nothing to attend to.
+    worked: |
+      Let's build the causal mask for "the cat sat on", one word per token, and check that no position can see the word it must guess.
+
+      1. **List what each position may see.** Position $t$ may attend to positions $1$ to $t$. The braces hold the words each position may see.
+         $$\begin{aligned}\text{the}&\to\{\text{the}\}\\ \text{cat}&\to\{\text{the},\text{cat}\}\\ \text{sat}&\to\{\text{the},\text{cat},\text{sat}\}\\ \text{on}&\to\{\text{the},\text{cat},\text{sat},\text{on}\}\end{aligned}$$
+
+      2. **Check each guess is hidden.** Position $t$ must guess token $x_{t+1}$, which sits in column $t+1$. That column is after $t$, so it's always blocked in row $t$. The answer for "on" is word 5, which is outside our four-word grid, so here are the other three guesses. Each shows the answer's column, then the guessing word's row.
+         $$\text{the}\to\text{cat}:\ 2>1,\qquad \text{cat}\to\text{sat}:\ 3>2,\qquad \text{sat}\to\text{on}:\ 4>3$$
+
+      3. **Count the cells.** Row $t$ has $t$ allowed cells, and the rest of the $4\times4=16$ cells are blocked.
+         $$1+2+3+4=10\ \text{allowed},\qquad 16-10=6\ \text{blocked}$$
+
+      Every position can use all the words before it and itself, and none can see the word it's trying to guess.
+    problems:
+      - cm-hide-basics
+      - cm-hide-self-explain
+      - cm-hide-which
+      - cm-hide-diagonal
+      - cm-hide-count-template
+      - cm-hide-blocked-template
+      - cm-hide-copy
+      - cm-hide-which-task
+  - id: cm-mask-scores
+    title: "Give later words zero weight"
+    explain: |
+      ### Why we can't just set the score to 0
+
+      We know which cells to block, so how do we make attention obey the grid? A natural first try is setting each blocked score to $0$. Recall how softmax turns position $t$'s scores into weights,
+
+      $$a_{tj}=\frac{e^{s_{tj}}}{\sum_{i=1}^{T}e^{s_{ti}}},$$
+
+      where $j$ is the word whose weight we want, and on the bottom $i$ runs over every position from $1$ to $T$, adding up all the $e^{s_{ti}}$. A blocked word needs a weight of exactly $0$. Setting its score to $0$ doesn't do that, because $e^0=1$, so it still gets a share. Very negative scores get close, for example $e^{-10}\approx0.00005$. The lower the score, the closer $e^s$ gets to $0$, so we use a score of minus infinity, $-\infty$, and take $e^{-\infty}$ as exactly $0$.
+
+      ### Adding the mask to the scores
+
+      Let's look at position 2, "cat", in "the cat sat on". Suppose its scores for the, cat, sat and on are $0$, $1$, $2$ and $0$. Without a mask, "sat" gets $e^2/(e^0+e^1+e^2+e^0)\approx7.39/12.11\approx0.61$ of the weight, and "sat" is the very word "cat" must guess.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 470 330" aria-label="Attention weights of position 2, cat, in the cat sat on, with scores 0, 1, 2 and 0. Left, without the mask, the weights are 0.08, 0.22, 0.61 and 0.08, so most of the weight lands on sat, the word cat must predict. Right, with the mask, the weights are 0.27, 0.73, 0 and 0">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="117" y="30" text-anchor="middle">without the mask</text>
+      <path d="M15 260 H219" stroke="#737373"/>
+      <rect x="23" y="243.48" width="36" height="16.52" fill="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="41" y="235.48" text-anchor="middle">0.08</text>
+      <text x="41" y="280" text-anchor="middle" fill="#737373">the</text>
+      <rect x="73" y="215.1" width="36" height="44.9" fill="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="91" y="207.1" text-anchor="middle">0.22</text>
+      <text x="91" y="280" text-anchor="middle" fill="#737373">cat</text>
+      <rect x="123" y="137.94" width="36" height="122.06" fill="#ef4444"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="141" y="129.94" text-anchor="middle">0.61</text>
+      <text x="141" y="280" text-anchor="middle" fill="#737373">sat</text>
+      <rect x="173" y="243.48" width="36" height="16.52" fill="#737373"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="191" y="235.48" text-anchor="middle">0.08</text>
+      <text x="191" y="280" text-anchor="middle" fill="#737373">on</text>
+      <text x="352" y="30" text-anchor="middle">with the causal mask</text>
+      <path d="M250 260 H454" stroke="#737373"/>
+      <rect x="258" y="206.21" width="36" height="53.79" fill="#10b981"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="276" y="198.21" text-anchor="middle">0.27</text>
+      <text x="276" y="280" text-anchor="middle" fill="#737373">the</text>
+      <rect x="308" y="113.79" width="36" height="146.21" fill="#10b981"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="326" y="105.79" text-anchor="middle">0.73</text>
+      <text x="326" y="280" text-anchor="middle" fill="#737373">cat</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="376" y="252.0" text-anchor="middle">0</text>
+      <text x="376" y="280" text-anchor="middle" fill="#737373">sat</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="426" y="252.0" text-anchor="middle">0</text>
+      <text x="426" y="280" text-anchor="middle" fill="#737373">on</text>
+      <text x="117" y="310" text-anchor="middle" fill="#ef4444">0.61 on sat, the answer</text>
+      <text x="352" y="310" text-anchor="middle" fill="#737373">later words blocked</text>
+      </g></svg>
+      ```
+
+      To use the grid, we turn it into numbers we can add to the scores, called **mask values**, with $m_{tj}=0$ for an allowed cell ($j\le t$) and $m_{tj}=-\infty$ for a blocked one ($j>t$). Causal masking adds them before the softmax.
+
+      $$a_{tj}=\frac{e^{s_{tj}+m_{tj}}}{\sum_{i=1}^{T}e^{s_{ti}+m_{ti}}}$$
+
+      Each blocked term becomes $e^{-\infty}=0$, so it drops out of the top and the bottom. The allowed weights are the softmax of the allowed scores alone, and they still add up to 1. For "cat" they are $0.27$ and $0.73$, rounded to 2 decimals.
+
+      Since every weight after column $t$ is $0$, the output sum stops at $t$, $o_t=\sum_{j=1}^{t}a_{tj}v_j$.
+
+      ### How the mask changes each row
+
+      - Position 1, "the", may see only itself, so its weight on itself is $1$.
+      - Position 2, "cat", splits the share that went to "sat" and "on" between "the" and "cat". So "the" goes from $0.08$ to $0.27$, and "cat" goes from $0.22$ to $0.73$.
+      - Position 3, "sat", has only "on" blocked.
+      - Position 4, "on", is last, so the mask changes nothing.
+    worked: |
+      Let's work out the output of position 2, "cat", in "the cat sat on" with the causal mask. Its scores for the four words are $0$, $1$, $2$ and $0$. The value vectors hold the information each word passes on when it's attended to. Here we make up small ones with 2 numbers each, $v_1=(1,0)$, $v_2=(0,1)$, $v_3=(1,1)$ and $v_4=(2,0)$.
+
+      1. **Add the mask.** Row 2 allows columns 1 and 2, so the mask adds $0$ there and $-\infty$ to columns 3 and 4.
+         $$(0,1,2,0)+(0,0,-\infty,-\infty)=(0,1,-\infty,-\infty)$$
+
+      2. **Raise $e$ to each score.** The blocked terms $e^{-\infty}$ become exactly $0$.
+         $$(e^0,e^1,e^{-\infty},e^{-\infty})\approx(1,\ 2.72,\ 0,\ 0)$$
+
+      3. **Divide by the total.** The total is $1+2.72=3.72$, and dividing makes the weights add up to 1. We round to 2 decimals at the end.
+         $$(a_{21},a_{22},a_{23},a_{24})\approx(0.27,\ 0.73,\ 0,\ 0)$$
+
+      4. **Mix the value vectors.** Only $v_1$ and $v_2$ get any weight.
+         $$o_2=0.27\,(1,0)+0.73\,(0,1)=(0.27,\ 0.73)$$
+
+      The output of "cat" is built only from "the" and "cat". Nothing from "sat", the word it has to guess, gets in.
+    problems:
+      - cm-zero-basics
+      - cm-zero-self-explain
+      - cm-zero-score-zero
+      - cm-zero-first
+      - cm-zero-template
+      - cm-zero-last-row
+      - cm-zero-output
+      - cm-zero-after-softmax
+  - id: cm-mask-code
+    title: "Build the mask in code"
+    explain: |
+      ### All the rows at once
+
+      We've masked one row by hand. A sentence of $T$ tokens has $T$ rows, and code handles them all at once. We put the scores in a $T\times T$ grid $S$, with $s_{tj}$ in row $t$ and column $j$. The mask is a grid $M$ of the same size, with $0$ on and below the diagonal and $-\infty$ above it. For "the cat sat on",
+
+      $$M=\begin{bmatrix}0&-\infty&-\infty&-\infty\\0&0&-\infty&-\infty\\0&0&0&-\infty\\0&0&0&0\end{bmatrix}$$
+
+      We add $S+M$ and take the softmax of each row. In the grid of weights that comes out, every cell above the diagonal is $0$. The mask is the same for every sentence of length $T$, so we build it once and reuse it.
+
+      ### What the mask guarantees
+
+      Row $t$ of the weights is $0$ after column $t$, so the output $o_t$ mixes only $v_1$ to $v_t$, with weights worked out from $q_t$ and $k_1$ to $k_t$. In the first attention layer, each of those vectors is made from its own token, so $o_t$ depends only on the first $t$ tokens. If we change the last word of "the cat sat on" to "by", the outputs of the first three positions stay exactly the same.
+
+      That's the effect we wanted. Every position's guess of the next word is made from its own word and the words before it, so one pass over a sentence trains all $T$ guesses without any position seeing its answer. It also matches how the model is used, because when it writes new text, the later words don't exist yet.
+
+      A real language model repeats attention many times, one layer after another, and every attention layer uses this mask. The layers in between work on each position by itself, without mixing positions. So each position only ever holds information from its own token and earlier ones, and nothing from a later word can reach it anywhere in the model.
+
+      Be careful not to think the mask removes later words from the input. Every word is still there, with its own vectors and its own guess. The mask only stops earlier positions from reading them.
+    worked: |
+      Let's mask every row of a score grid for "the cat sat on" at once. Suppose attention has worked out these scores. Row 2 holds the scores of "cat" for the, cat, sat and on.
+
+      $$S=\begin{bmatrix}1&0&2&1\\0&1&2&0\\1&0&0&2\\0&1&1&0\end{bmatrix}$$
+
+      1. **Mark the blocked cells.** These are the cells with $j>t$, the six above the diagonal, written as (row, column).
+         $$(1,2),(1,3),(1,4),(2,3),(2,4),(3,4)$$
+
+      2. **Add the mask.** Each blocked cell becomes $-\infty$, and the others keep their scores.
+         $$S+M=\begin{bmatrix}1&-\infty&-\infty&-\infty\\0&1&-\infty&-\infty\\1&0&0&-\infty\\0&1&1&0\end{bmatrix}$$
+
+      3. **Take the softmax of each row.** Row 3, for example, has $e^1+e^0+e^0\approx4.72$ on the bottom, so its weights are about $0.58$, $0.21$ and $0.21$, with $0$ for "on".
+         $$(a_{31},a_{32},a_{33},a_{34})\approx(0.58,\ 0.21,\ 0.21,\ 0)$$
+
+      Here is the same calculation in NumPy, the Python library for grids of numbers, loaded under the short name `np`. We write the scores with `np.array`. `S.shape` gives the grid's size as (rows, columns), and Python counts from 0, so `S.shape[0]` is the number of rows, $T$. To build the mask, we start from a $T\times T$ grid full of $-\infty$ with `np.full((T, T), -np.inf)`. Then `np.triu(..., k=1)` keeps only the part above the diagonal and sets everything else to $0$. The name "triu" stands for the upper triangle. The `k=1` makes the triangle start one place above the diagonal, so the diagonal stays allowed. After that we add `S + M`, raise $e$ to each number with `np.exp`, and divide each row by its total. `A.sum(axis=1, keepdims=True)` adds along each row and keeps the totals as a column, one per row, so each row is divided by its own total. The loop at the end prints each row rounded to 2 decimals.
+
+      ```python
+      import numpy as np
+      S = np.array([[1, 0, 2, 1],
+                    [0, 1, 2, 0],
+                    [1, 0, 0, 2],
+                    [0, 1, 1, 0]])
+      T = S.shape[0]
+      M = np.triu(np.full((T, T), -np.inf), k=1)
+      A = np.exp(S + M)
+      A = A / A.sum(axis=1, keepdims=True)
+      for row in A.round(2):
+          print(row.tolist())
+      # prints:
+      # [1.0, 0.0, 0.0, 0.0]
+      # [0.27, 0.73, 0.0, 0.0]
+      # [0.58, 0.21, 0.21, 0.0]
+      # [0.13, 0.37, 0.37, 0.13]
+      ```
+
+      Every number above the diagonal is $0$, and each row adds up to 1. The last row, for "on", has nothing blocked, so its weights are the softmax of all four of its scores.
+    problems:
+      - cm-code-basics
+      - cm-code-self-explain
+      - cm-code-complete
+      - cm-code-count
+      - cm-code-later-word
+      - cm-code-robot
+      - cm-code-debug
+      - cm-code-read
+final: cm-explain
+summary: |
+  - A causal mask lets position $t$ attend only to positions $j\le t$, itself and the words before it, so a sentence of $T$ tokens has $T(T+1)/2$ allowed pairs.
+  - Masking adds $0$ to allowed scores and $-\infty$ to blocked ones before the softmax, $a_{tj}=e^{s_{tj}+m_{tj}}/\sum_i e^{s_{ti}+m_{ti}}$. Blocked weights become exactly $0$ and the allowed weights still add up to 1.
+  - In code the mask is a $T\times T$ grid with $-\infty$ above the diagonal, built once with `np.triu(..., k=1)` and added to the whole score grid.
+  - With the mask, each output $o_t$ depends only on the first $t$ tokens, so one pass over a sentence trains every next-word guess without letting any position see its answer.
+
+  **Next:** The next lesson builds a full language model that writes text one token at a time, each from the ones before, and shows how one masked pass over a sentence gives it many training examples.

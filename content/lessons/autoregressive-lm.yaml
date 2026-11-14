@@ -1,0 +1,297 @@
+concept: autoregressive-lm
+version: 1
+objective: |
+  **Goal:** explain how a language model predicts the next token, how one sentence becomes many training examples with teacher forcing, and how the model writes new text by choosing one token at a time.
+recap:
+  - concept: causal-masking
+    text: "A causal mask makes the vector at each position depend only on the tokens up to it."
+  - concept: transformer-block
+    text: "A transformer turns each token into a vector."
+  - concept: classification-softmax
+    text: "Softmax turns one score per class into probabilities that are positive and add up to 1, $p_k=e^{z_k}/(e^{z_1}+\\dots+e^{z_K})$. The multiclass cross-entropy loss is $L=-\\ln p_{\\text{true}}$, minus the log of the true class's probability."
+where_this_fits: |
+  ### What is an autoregressive language model?
+
+  An autoregressive language model writes text one token at a time. It gives a probability to every token it knows for what comes next, picks one, adds it to the text and goes again.
+
+  Why is it useful? Any ordinary text can train it, with no labels written by people, because each word after the first is the right answer for the words before it. Once trained, the same model can write new text, for example by finishing a sentence we start.
+
+knowledge_points:
+  - id: alm-next-token
+    title: "Predict the next word"
+    explain: |
+      ### One prediction at each position
+
+      Let's use the sentence "the cat sat on the mat". To keep the numbers small, we'll treat each word as one token, so the vocabulary is just the five words the, cat, sat, on and mat (the appears twice in the sentence), and its size is $N=5$. So here "word" and "token" mean the same thing. Real models use tens of thousands to a few hundred thousand smaller tokens, often parts of words.
+
+      A transformer turns each token into a vector, and because of the causal mask, the vector at position $t$ has seen only the tokens $x_1,\dots,x_t$, where $x_t$ is the token at position $t$. To make a prediction, a final layer on top of the transformer multiplies that vector by a weight matrix to get one score for each of the $N$ tokens. They are the softmax's classes, so its $K$ is $N$ here. Softmax then turns the scores into probabilities. Suppose that after "the cat" the final layer gives a score of $1$ for sat and $0$ for each of the other four words. The blue bars show the probabilities this gives.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="The prefix the cat goes into the model, which gives a probability for each of the five words that could come next. The blue bars are 0.15 for the, 0.15 for cat, 0.40 for sat, 0.15 for on and 0.15 for mat, which add up to 1">
+      <defs><marker id="alm1-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="20" y="130" width="56" height="36" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="48" y="153" text-anchor="middle">the</text>
+      <rect x="84" y="130" width="56" height="36" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="112" y="153" text-anchor="middle">cat</text>
+      <path d="M146 148 H178" stroke="#737373" stroke-width="2" marker-end="url(#alm1-muted)"/>
+      <rect x="182" y="124" width="96" height="48" rx="8" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="230" y="153" text-anchor="middle">model</text>
+      <path d="M284 148 H316" stroke="#737373" stroke-width="2" marker-end="url(#alm1-muted)"/>
+      <path d="M324 250 H620" stroke="#737373"/>
+      <rect x="330" y="190.46" width="44" height="59.54" fill="#3b82f6"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="352" y="182.46" text-anchor="middle">0.15</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="352" y="272" fill="#737373" text-anchor="middle">the</text>
+      <rect x="390" y="190.46" width="44" height="59.54" fill="#3b82f6"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="412" y="182.46" text-anchor="middle">0.15</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="412" y="272" fill="#737373" text-anchor="middle">cat</text>
+      <rect x="450" y="88.16" width="44" height="161.84" fill="#3b82f6"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="472" y="80.16" text-anchor="middle">0.40</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="472" y="272" fill="#737373" text-anchor="middle">sat</text>
+      <rect x="510" y="190.46" width="44" height="59.54" fill="#3b82f6"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="532" y="182.46" text-anchor="middle">0.15</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="532" y="272" fill="#737373" text-anchor="middle">on</text>
+      <rect x="570" y="190.46" width="44" height="59.54" fill="#3b82f6"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="592" y="182.46" text-anchor="middle">0.15</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="592" y="272" fill="#737373" text-anchor="middle">mat</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="324" y="40">next word after “the cat”</text>
+      </g>
+      </svg>
+      ```
+
+      ### The next-token distribution
+
+      The result is a **next-token distribution**: a probability for every token in the vocabulary, saying how likely it is to come next after the tokens so far. We write it as
+
+      $$p(x_{t+1}\mid x_1,\dots,x_t)$$
+
+      and read it as "the probability that the next token $x_{t+1}$ is a particular word, when we know the first $t$ tokens". Left of the bar, $x_{t+1}$ stands for whichever word comes next, so asking this for each of the five words gives the five bars. This distribution at every position is what an **autoregressive language model** computes.
+
+      ### The chance of several words in a row
+
+      Think of counting real sentences. If half of all sentences that start with "the" go on with cat, and $40\%$ of those then go on with sat, then $0.4\times0.5=0.2$ of them go on with "cat sat". The model's probabilities combine in the same way, so we multiply the next-token probabilities one after another:
+
+      $$p(\text{cat sat}\mid\text{the})=p(\text{cat}\mid\text{the})\times p(\text{sat}\mid\text{the cat})$$
+
+      Be careful not to read $p(\text{sat}\mid\text{the cat})$ as the chance that sat appears somewhere in the sentence. It's the chance that sat comes next, straight after "the cat".
+    worked: |
+      Let's work out the next-token probabilities after "the cat" from the scores $1$ for sat and $0$ for the other four words, and then the chance of "cat sat" after "the". We'll keep the decimals shown along the way and round to 2 only at the end.
+
+      1. **Raise $e$ to each score.** Softmax first makes every score positive, so sat gets $e^1$ and each of the other four words gets $e^0$.
+         $$e^1\approx2.718,\qquad e^0=1$$
+
+      2. **Add them up.** The total is what the five words will share.
+         $$2.718+4\times1=6.718$$
+
+      3. **Divide each by the total.** This makes the five probabilities add up to 1. Each of the other four words gets $1/6.718\approx0.1489$, and sat gets
+         $$p(\text{sat}\mid\text{the cat})=\frac{2.718}{6.718}\approx0.4046$$
+
+      4. **Multiply along the sentence.** Suppose the model also gives $p(\text{cat}\mid\text{the})=0.5$. The chance of cat and then sat is the first probability times the second.
+         $$p(\text{cat sat}\mid\text{the})=0.5\times0.4046\approx0.20$$
+
+      Rounded, sat gets $0.40$ and each other word $0.15$, which add up to 1. After "the", the model expects "cat sat" about one time in five.
+    problems:
+      - alm-next-basics
+      - alm-next-self-explain
+      - alm-next-count
+      - alm-next-meaning
+      - alm-next-softmax-template
+      - alm-next-chain-template
+      - alm-next-longer
+      - alm-next-robot
+  - id: alm-teacher-forcing
+    title: "Turn one sentence into many training examples"
+    explain: |
+      ### Every word after the first is a target
+
+      Now that the model gives a next-token distribution, how do we train it? We need examples of a prefix together with the token that really came next, and any sentence is full of them. In "the cat sat on the mat", "the" is followed by cat, "the cat" by sat, and so on up to "the cat sat on the", which is followed by mat. Each of the last five words is the answer for the words before it, so a sentence of $T$ tokens gives $T-1$ training examples.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" aria-label="The sentence the cat sat on the mat split into five training examples. The top row holds the inputs, the, cat, sat, on, the, at positions 1 to 5. The bottom row holds the targets, the same sentence shifted left by one: cat, sat, on, the, mat. An arrow joins each position to its target. Position 3 is orange: it sees the cat sat and must predict on">
+      <defs><marker id="alm2-muted" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker><marker id="alm2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="20" y="81">input</text><text x="20" y="191">target</text>
+      <text x="150" y="36" text-anchor="middle" fill="#737373">t = 1</text>
+      <rect x="110" y="56" width="80" height="38" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="150" y="80" text-anchor="middle">the</text>
+      <path d="M150 100 V158" stroke="#737373" stroke-width="2" marker-end="url(#alm2-muted)"/>
+      <rect x="110" y="166" width="80" height="38" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="150" y="190" text-anchor="middle">cat</text>
+      <text x="250" y="36" text-anchor="middle" fill="#737373">t = 2</text>
+      <rect x="210" y="56" width="80" height="38" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="250" y="80" text-anchor="middle">cat</text>
+      <path d="M250 100 V158" stroke="#737373" stroke-width="2" marker-end="url(#alm2-muted)"/>
+      <rect x="210" y="166" width="80" height="38" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="250" y="190" text-anchor="middle">sat</text>
+      <text x="350" y="36" text-anchor="middle" fill="#737373">t = 3</text>
+      <rect x="310" y="56" width="80" height="38" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text x="350" y="80" text-anchor="middle">sat</text>
+      <path d="M350 100 V158" stroke="#f59e0b" stroke-width="2" marker-end="url(#alm2-amber)"/>
+      <rect x="310" y="166" width="80" height="38" rx="6" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/><text x="350" y="190" text-anchor="middle">on</text>
+      <text x="450" y="36" text-anchor="middle" fill="#737373">t = 4</text>
+      <rect x="410" y="56" width="80" height="38" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="450" y="80" text-anchor="middle">on</text>
+      <path d="M450 100 V158" stroke="#737373" stroke-width="2" marker-end="url(#alm2-muted)"/>
+      <rect x="410" y="166" width="80" height="38" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="450" y="190" text-anchor="middle">the</text>
+      <text x="550" y="36" text-anchor="middle" fill="#737373">t = 5</text>
+      <rect x="510" y="56" width="80" height="38" rx="6" fill="#ffffff" stroke="#737373" stroke-width="1.5"/><text x="550" y="80" text-anchor="middle">the</text>
+      <path d="M550 100 V158" stroke="#737373" stroke-width="2" marker-end="url(#alm2-muted)"/>
+      <rect x="510" y="166" width="80" height="38" rx="6" fill="#ffffff" stroke="#10b981" stroke-width="1.5"/><text x="550" y="190" text-anchor="middle">mat</text>
+      <text x="320" y="246" text-anchor="middle" fill="#f59e0b">position 3 sees “the cat sat” and must predict “on”</text>
+      </g>
+      </svg>
+      ```
+
+      The picture shows how we set this up. The input is the sentence without its last token, $x_1,\dots,x_{T-1}$, along the top. The targets are the same sentence shifted left by one, $x_2,\dots,x_T$, along the bottom. The output at position $t$ is scored against $x_{t+1}$. Each arrow shows only which target a position is scored against. The vector at that position has also seen every word to its left.
+
+      ### All the predictions in one run
+
+      Because of the causal mask, position $t$ sees only $x_1,\dots,x_t$, so one run of the transformer over the input makes all $T-1$ predictions at once, each from its own prefix. Without the mask, position $t$ could look at $x_{t+1}$, the very token it's meant to predict, and it would learn to copy it. We'd then need one run per prefix.
+
+      Each prediction is scored with cross-entropy, minus the log of the probability given to the true next token. The sentence's loss is the average over the positions:
+
+      $$L=-\frac{1}{T-1}\sum_{t=1}^{T-1}\ln p(x_{t+1}\mid x_1,\dots,x_t)$$
+
+      The $\sum$ adds up one term for each position $t$ from $1$ to $T-1$.
+
+      ### Training on the real earlier words
+
+      Every input prefix is the real text. We could instead let the model predict from its own guesses. Feeding it the true earlier tokens, even at positions where it would have guessed wrong, is called **teacher forcing**. Because every input is known before the run starts, the causal mask can then train all positions in the same run.
+
+      Be careful not to score position $t$ against $x_t$. The model already has $x_t$ as input, so its target is the token after it, $x_{t+1}$.
+    worked: |
+      Let's turn the four tokens "the cat sat on" into training examples and work out their loss. Suppose the model gives probability $0.5$ to cat after "the", $0.4046$ to sat after "the cat" and $0.5$ to on after "the cat sat". We'll keep the decimals shown along the way and round to 2 only at the end.
+
+      1. **Make the pairs.** With $T=4$ tokens there are $T-1=3$ examples, each a prefix and the word after it.
+         $$\text{the}\to\text{cat},\qquad\text{the cat}\to\text{sat},\qquad\text{the cat sat}\to\text{on}$$
+
+      2. **Score each prediction.** Cross-entropy is minus the natural log of the probability given to the true next word.
+         $$-\ln0.5\approx0.693,\qquad-\ln0.4046\approx0.905,\qquad-\ln0.5\approx0.693$$
+
+      3. **Average them.** The sentence's loss is the mean over its three positions.
+         $$L=\frac{0.693+0.905+0.693}{3}\approx0.76$$
+
+      Adding the three losses gives $2.291$. Because adding logs is the same as taking the log of a product, $\ln a+\ln b=\ln(ab)$, this is $-\ln(0.5\times0.4046\times0.5)=-\ln0.1012$, minus the log of the chance of "cat sat on" coming after "the". A smaller $-\ln$ means a bigger probability, so lowering this loss makes the model give the real text a higher chance.
+
+      Here is the same split in Python, for the whole six-word sentence, so it gives five examples. The tokens are stored as a Python list of words. `tokens[:-1]` is the list without its last item and `tokens[1:]` is the list without its first. Python counts positions from $0$, so the code's `t` is one less than the maths' $t$. The loop runs `t` through $0,1,2,3,4$, and `inputs[:t + 1]` keeps the first $t+1$ words, the prefix for that target. `" ".join(...)` puts spaces between the words.
+
+      ```python
+      tokens = ["the", "cat", "sat", "on", "the", "mat"]
+      inputs = tokens[:-1]   # x_1 ... x_(T-1)
+      targets = tokens[1:]   # x_2 ... x_T
+      for t in range(len(targets)):
+          print(" ".join(inputs[:t + 1]), "->", targets[t])
+      # prints five lines:
+      # the -> cat
+      # the cat -> sat
+      # the cat sat -> on
+      # the cat sat on -> the
+      # the cat sat on the -> mat
+      ```
+    problems:
+      - alm-tf-basics
+      - alm-tf-self-explain
+      - alm-tf-count-template
+      - alm-tf-target
+      - alm-tf-loss-template
+      - alm-tf-mask
+      - alm-tf-code
+      - alm-tf-total-loss
+      - alm-tf-batch
+  - id: alm-sampling
+    title: "Write new text one word at a time"
+    explain: |
+      ### Writing one token at a time
+
+      Once trained, the same model can write. We give it a prompt, such as "the cat sat", run it, and read the next-token distribution at the last position. We choose a token from it, add it to the end and run the model again on the longer text. We repeat until the text reaches a length limit, or until the model chooses a special end-of-text token. This extra vocabulary entry ends every training text, so the model learns when to stop. This loop is called **autoregressive generation**.
+
+      Suppose that after "the cat sat" the model gives these probabilities: $0.2$ for the, $0.1$ for cat, $0.1$ for sat, $0.5$ for on and $0.1$ for mat. Which word should we choose?
+
+      ### Taking the top word or drawing at random
+
+      **Greedy decoding** always takes the most probable token, which here is on. It's simple, but the same prompt always gives the same text, so we can't ask for several different answers. It can also get stuck repeating a phrase, if writing it makes the same phrase the most likely continuation again.
+
+      **Sampling** draws the next token at random, giving each token a chance equal to its probability. Picture the probabilities laid end to end along a line from 0 to 1. We pick a random number $u$ between 0 and 1 and take the token whose stretch it lands in.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 230" aria-label="A line from 0 to 1 split into stretches whose lengths are the next-word probabilities after the cat sat: the from 0 to 0.2, cat from 0.2 to 0.3, sat from 0.3 to 0.4, on from 0.4 to 0.9 and mat from 0.9 to 1. An orange marker at u equals 0.35 lands in the stretch for sat, and another at u equals 0.72 lands in the stretch for on">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="40" y="80" width="112" height="44" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="96" y="107" text-anchor="middle">the</text>
+      <text x="96" y="70" text-anchor="middle" fill="#3b82f6">0.2</text>
+      <rect x="152" y="80" width="56" height="44" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="180" y="107" text-anchor="middle">cat</text>
+      <text x="180" y="70" text-anchor="middle" fill="#3b82f6">0.1</text>
+      <rect x="208" y="80" width="56" height="44" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="236" y="107" text-anchor="middle">sat</text>
+      <text x="236" y="70" text-anchor="middle" fill="#3b82f6">0.1</text>
+      <rect x="264" y="80" width="280" height="44" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="404" y="107" text-anchor="middle">on</text>
+      <text x="404" y="70" text-anchor="middle" fill="#3b82f6">0.5</text>
+      <rect x="544" y="80" width="56" height="44" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="572" y="107" text-anchor="middle">mat</text>
+      <text x="572" y="70" text-anchor="middle" fill="#3b82f6">0.1</text>
+      <path d="M40 124 V132" stroke="#737373"/><text x="40" y="150" text-anchor="middle" fill="#737373">0</text>
+      <path d="M152 124 V132" stroke="#737373"/><text x="152" y="150" text-anchor="middle" fill="#737373">0.2</text>
+      <path d="M208 124 V132" stroke="#737373"/><text x="208" y="150" text-anchor="middle" fill="#737373">0.3</text>
+      <path d="M264 124 V132" stroke="#737373"/><text x="264" y="150" text-anchor="middle" fill="#737373">0.4</text>
+      <path d="M544 124 V132" stroke="#737373"/><text x="544" y="150" text-anchor="middle" fill="#737373">0.9</text>
+      <path d="M600 124 V132" stroke="#737373"/><text x="600" y="150" text-anchor="middle" fill="#737373">1</text>
+      <path d="M236 160 V128" stroke="#f59e0b" stroke-width="3"/><circle cx="236" cy="164" r="4" fill="#f59e0b"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="236" y="190" text-anchor="middle" fill="#f59e0b">u = 0.35</text>
+      <path d="M443.2 160 V128" stroke="#f59e0b" stroke-width="3"/><circle cx="443.2" cy="164" r="4" fill="#f59e0b"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="443.2" y="190" text-anchor="middle" fill="#f59e0b">u = 0.72</text>
+      <text x="40" y="30">next word after “the cat sat”, laid end to end from 0 to 1</text>
+      </g>
+      </svg>
+      ```
+
+      With $u=0.72$ we land in on's stretch, which runs from $0.4$ to $0.9$. With $u=0.35$ we land in sat's, from $0.3$ to $0.4$. Over many draws, on is picked half the time and sat a tenth of the time.
+
+      ### Where generation goes wrong
+
+      When the model writes, everything after the prompt is made of its own choices. Sometimes sampling picks a word that doesn't fit. That word stays in the text, and every later prediction is made from a prefix that contains it. With teacher forcing, training only showed the model real text, so it may predict badly after an odd word, and one bad word can lead to more.
+
+      Generation is also slow, because writing needs a new run for each token, using the token the last run chose, while training scored every position in one run.
+    worked: |
+      Let's write two more words after "the cat sat" by sampling, with the random numbers $u=0.72$ and then $u=0.30$.
+
+      1. **Add up the probabilities in order.** Adding them one after another, in the order the, cat, sat, on, mat, gives where each word's stretch ends.
+         $$0.2,\quad0.3,\quad0.4,\quad0.9,\quad1.0$$
+
+      2. **Find where $u$ lands.** We take the first word whose stretch ends above $u$. The stretch for on runs from $0.4$ to $0.9$.
+         $$0.4\le0.72<0.9\quad\Rightarrow\quad\text{on}$$
+
+      3. **Add it and predict again.** The text is now "the cat sat on". Suppose the model now gives $0.6$ to the and $0.1$ to each other word, so the stretches end at these points.
+         $$0.6,\quad0.7,\quad0.8,\quad0.9,\quad1.0$$
+
+      4. **Draw again.** The first stretch, for the, runs from $0$ to $0.6$.
+         $$0\le0.30<0.6\quad\Rightarrow\quad\text{the}$$
+
+      The text is now "the cat sat on the". Sampling picks this pair of words with chance $0.5\times0.6=0.3$, so other tries would often write something else.
+
+      Here are both draws in Python. `probs2` holds the new probabilities after "the cat sat on". `def` defines a function called `sample`, and `zip` pairs each word with its probability. The function walks along the words, adding each probability to `total` with `+=`, and returns the first word whose stretch ends above `u`. The function's last line, `return words[-1]`, returns the last word in the list, since `-1` counts from the end. It's a safety net, because sums of decimals on a computer can come out a hair below 1. In real use, `u` comes from `random.random()` in Python's `random` module, which gives a random number from 0 up to 1.
+
+      ```python
+      words = ["the", "cat", "sat", "on", "mat"]
+      probs = [0.2, 0.1, 0.1, 0.5, 0.1]
+
+      def sample(words, probs, u):
+          total = 0.0
+          for word, p in zip(words, probs):
+              total += p
+              if u < total:
+                  return word
+          return words[-1]
+
+      probs2 = [0.6, 0.1, 0.1, 0.1, 0.1]
+      print(sample(words, probs, 0.72))    # prints: on
+      print(sample(words, probs2, 0.30))   # prints: the
+      ```
+    problems:
+      - alm-gen-basics
+      - alm-gen-self-explain
+      - alm-gen-greedy
+      - alm-gen-draw
+      - alm-gen-two-draws-template
+      - alm-gen-greedy-repeat
+      - alm-gen-code
+      - alm-gen-drift
+      - alm-gen-robot
+final: alm-explain-final
+summary: |
+  - An autoregressive language model gives, at every position, a next-token distribution $p(x_{t+1}\mid x_1,\dots,x_t)$: a softmax over one score for each token in the vocabulary.
+  - Multiplying next-token probabilities one after another gives the chance of several words in a row after a start, such as $p(\text{cat sat}\mid\text{the})=p(\text{cat}\mid\text{the})\times p(\text{sat}\mid\text{the cat})$.
+  - A sentence of $T$ tokens gives $T-1$ training examples: the input is $x_1,\dots,x_{T-1}$ and the targets are the same tokens shifted left by one. With a causal mask and teacher forcing, one run scores them all, and the loss is the average of $-\ln$ of each true next token's probability.
+  - To write, the model repeatedly predicts, chooses a token, by greedy decoding or by sampling, and adds it to the input. Its own mistakes become its input, and each new token needs another run.
+
+  **Next:** The pretraining lesson trains models like this on huge amounts of text and looks at how data and compute shape the result.

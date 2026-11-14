@@ -1,0 +1,625 @@
+concept: autoregressive-lm
+exercises:
+  - id: alm-next-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does an autoregressive language model give at each position of a text?
+    options:
+      - id: a
+        text: A probability for every token in the vocabulary of coming next after the tokens so far.
+        correct: true
+        feedback: That is the next-token distribution $p(x_{t+1}\mid x_1,\dots,x_t)$.
+      - id: b
+        text: A probability for every token in the vocabulary of appearing anywhere in the text.
+        correct: false
+        category: misunderstood_definition
+        feedback: The model predicts the token straight after the prefix, at the next position only.
+      - id: c
+        text: A single score saying how likely the whole text is to be correct English.
+        correct: false
+        category: misunderstood_definition
+        feedback: The model gives one probability per vocabulary token at each position; whole-text chances come from multiplying them.
+      - id: d
+        text: A probability for every token in the vocabulary of having come just before the text.
+        correct: false
+        category: incorrect_reasoning
+        feedback: An autoregressive model predicts forwards, from the earlier tokens to the next one.
+    solution: At each position the model gives a next-token distribution, a probability for every vocabulary token of being the next one, given the tokens so far.
+  - id: alm-next-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does step 3 divide each $e$-power by the total $6.718$?
+    options:
+      - id: a
+        text: So that the five probabilities add up to 1 and can be read as chances.
+        correct: true
+        feedback: "Each word gets its share of the total: $0.40+4\\times0.15=1$ after rounding."
+      - id: b
+        text: So that sat's score of 1 is turned back into a probability of exactly 1.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Sat gets $2.718/6.718\approx0.40$; the other four words share the rest.
+      - id: c
+        text: So that the four words with score 0 get probability 0.
+        correct: false
+        category: math_error
+        feedback: "Each of them has $e^0=1$, so each gets $1/6.718\\approx0.15$, which is above 0."
+      - id: d
+        text: So that the result can be multiplied by $p(\text{cat}\mid\text{the})$ in step 4.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The division is what makes softmax outputs probabilities; step 4 uses one of them afterwards.
+    solution: Dividing each $e$-power by their total gives each word its share, so the five probabilities are positive and add up to 1.
+  - id: alm-next-count
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A model's vocabulary has $N=5$ tokens. After some prefix, all five next-token scores are equal. What probability does softmax give each token?
+    answer: 0.2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 1
+        category: math_error
+        feedback: Equal scores give equal shares of a total of 1, so each token gets $1/5$.
+    solution: Equal scores give equal $e$-powers, so each token gets the same share, $1/5=0.2$.
+  - id: alm-next-meaning
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A model gives $p(\text{sat}\mid\text{the cat})=0.4$. What does this say?
+    options:
+      - id: a
+        text: When the text so far is "the cat", the model gives sat a 40% chance of being the next word.
+        correct: true
+        feedback: The tokens after the bar are the known prefix, and sat is the candidate next token.
+      - id: b
+        text: In a sentence containing "the cat", the model gives sat a 40% chance of appearing somewhere later.
+        correct: false
+        category: misunderstood_definition
+        feedback: The probability is for the very next position, straight after "the cat".
+      - id: c
+        text: When the text so far is "sat", the model gives "the cat" a 40% chance of coming next.
+        correct: false
+        category: misunderstood_definition
+        feedback: The part after the bar is what is already known, so "the cat" is the prefix.
+      - id: d
+        text: The model gives the three-word text "the cat sat" a 40% chance of being a sentence.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A whole text's chance multiplies several next-token probabilities; this is one of them.
+    solution: The bar reads "given", so this is the chance that the next word is sat when the text so far is "the cat".
+  - id: alm-next-softmax-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A word-level model has a vocabulary of 5 words. After some prefix its next-word score for sat is {{=z}} and the other four scores are 0. Use a calculator to find the probability of sat, to 2 decimal places."
+    params:
+      z: { min: 1.5, max: 4, step: 0.5 }
+    answer_expr: exp(z)/(exp(z)+4)
+    tolerance: { abs: 0.005 }
+    common_wrong:
+      - answer_expr: z/(z+4)
+        category: math_error
+        feedback: Softmax raises $e$ to each score before dividing, so use $e^{z}$ and $e^0=1$.
+      - answer_expr: exp(z)/(exp(z)+1)
+        category: math_error
+        feedback: All four other words share the total, each with $e^0=1$, so the denominator has $+4$.
+    solution: "Sat gets $e^{{{=z}}}$ and each other word $e^0=1$, so $p=e^{{{=z}}}/(e^{{{=z}}}+4)\\approx{{=round(exp(z)/(exp(z)+4),2)}}$."
+  - id: alm-next-chain-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A model gives $p(\\text{cat}\\mid\\text{the})={{=a/10}}$ and $p(\\text{sat}\\mid\\text{the cat})={{=b/10}}$. What chance does it give to \"cat sat\" coming next after \"the\"?"
+    params:
+      a: { min: 2, max: 9 }
+      b: { min: 2, max: 9 }
+    answer_expr: a*b/100
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: (a+b)/10
+        category: math_error
+        feedback: Both words must come in turn, so multiply the two probabilities.
+    solution: "Multiply the next-token probabilities in order: ${{=a/10}}\\times{{=b/10}}={{=a*b/100}}$."
+  - id: alm-next-longer
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A model gives $p(\text{cat}\mid\text{the})=0.5$, $p(\text{sat}\mid\text{the cat})=0.4$ and $p(\text{on}\mid\text{the cat sat})=0.5$. What chance does it give to "cat sat on" coming next after "the"?
+    answer: 0.1
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 0.2
+        category: math_error
+        feedback: That stops after sat; multiply by the third probability, $0.5$, as well.
+      - answer: 1.4
+        category: math_error
+        feedback: Adding gives more than 1, which no probability can be; multiply instead.
+    solution: Each word must follow the ones before it, so multiply in order, $0.5\times0.4\times0.5=0.1$.
+  - id: alm-next-robot
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot's command model uses a vocabulary of $N=1000$ tokens and runs over a command of 4 tokens, predicting the next token at every position. How many probabilities does it produce in total?
+    answer: 4000
+    tolerance:
+      abs: 0.5
+    common_wrong:
+      - answer: 1000
+        category: incorrect_reasoning
+        feedback: That is one position's distribution; each of the 4 positions gives its own.
+      - answer: 4
+        category: misunderstood_definition
+        feedback: Each position gives a probability for every one of the 1000 tokens.
+    solution: Each of the 4 positions gives a next-token distribution with one probability per token, so $4\times1000=4000$.
+  - id: alm-tf-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is teacher forcing when training a language model?
+    options:
+      - id: a
+        text: Feeding the true earlier tokens as input at every position, even where the model's guess was wrong.
+        correct: true
+        feedback: Every prefix is real text, so all positions can be trained in one run.
+      - id: b
+        text: Feeding the model's own earlier guesses as input, so it learns from its mistakes.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is how the model writes after training; teacher forcing uses the real text.
+      - id: c
+        text: Showing the model the whole sentence, including later tokens, at every position.
+        correct: false
+        category: misunderstood_definition
+        feedback: The causal mask still hides later tokens; teacher forcing is about the prefix being real text.
+      - id: d
+        text: Having a person correct each word the model writes while it is generating text.
+        correct: false
+        category: incorrect_reasoning
+        feedback: No person is involved; the targets come straight from the training text.
+    solution: Teacher forcing trains every position on the true earlier tokens, so no prediction has to wait for the model's own output.
+  - id: alm-tf-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does adding the three losses give $-\ln(0.5\times0.4046\times0.5)$?
+    options:
+      - id: a
+        text: The log of a product is the sum of the logs, and the product is the chance of "cat sat on" after "the".
+        correct: true
+        feedback: "$-\\ln0.5-\\ln0.4046-\\ln0.5=-\\ln0.1012$, so a lower total means a likelier sentence."
+      - id: b
+        text: Cross-entropy multiplies the losses of the positions, so the total is a product.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The losses are added; it is the probabilities inside the log that multiply.
+      - id: c
+        text: The three probabilities add up to 1, so their logs add up to the log of their product.
+        correct: false
+        category: math_error
+        feedback: They add up to $1.4046$; the log rule holds for any positive numbers.
+      - id: d
+        text: Averaging the losses over three positions turns the sum into a product.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Averaging divides the sum by 3; the product comes from the log rule.
+    solution: Since $\ln a+\ln b+\ln c=\ln(abc)$, the summed loss is minus the log of the whole sentence's chance after "the", $0.5\times0.4046\times0.5$.
+  - id: alm-tf-count-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A training text is {{=T}} tokens long. How many next-token training examples does it give?"
+    params:
+      T: { min: 5, max: 40 }
+    answer_expr: T - 1
+    tolerance: { abs: 0.5 }
+    common_wrong:
+      - answer_expr: T
+        category: incorrect_reasoning
+        feedback: The last token has nothing after it to predict, so it is never an input with a target.
+    solution: "Every token after the first is the target for the tokens before it, so there are ${{=T}}-1={{=T-1}}$ examples."
+  - id: alm-tf-target
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A model trains on "the cat sat on the mat". The output at the position holding sat has seen "the cat sat". What is its target?
+    options:
+      - id: a
+        text: "on"
+        correct: true
+        feedback: The target is the token straight after the prefix.
+      - id: b
+        text: sat
+        correct: false
+        category: misunderstood_definition
+        feedback: Sat is already in the input there; the target is the next token.
+      - id: c
+        text: cat
+        correct: false
+        category: incorrect_reasoning
+        feedback: Cat is the target for the prefix "the".
+      - id: d
+        text: mat
+        correct: false
+        category: incorrect_reasoning
+        feedback: Mat is the target only for the prefix "the cat sat on the".
+    solution: The output after "the cat sat" is scored against the next word, on.
+  - id: alm-tf-loss-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A model trains on a 4-token sentence. It gives the true next token the probabilities ${{=k1/10}}$, ${{=k2/10}}$ and ${{=k3/10}}$ at the three positions. Use a calculator to find the average natural-log cross-entropy loss. Round only at the end, to 2 decimal places."
+    params:
+      k1: { min: 1, max: 9 }
+      k2: { min: 1, max: 9 }
+      k3: { min: 1, max: 9 }
+    answer_expr: -(log(k1/10)+log(k2/10)+log(k3/10))/3
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - answer_expr: -(log(k1/10)+log(k2/10)+log(k3/10))
+        category: math_error
+        feedback: That is the total; divide by the 3 positions for the average.
+      - answer_expr: (log(k1/10)+log(k2/10)+log(k3/10))/3
+        category: math_error
+        feedback: Cross-entropy is minus the log, so the loss is positive.
+    solution: "Average $-\\ln$ of each true token's probability: $-(\\ln{{=k1/10}}+\\ln{{=k2/10}}+\\ln{{=k3/10}})/3\\approx{{=round(-(log(k1/10)+log(k2/10)+log(k3/10))/3,2)}}$."
+  - id: alm-tf-mask
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A transformer scores every position of a sentence in one run during training. What would go wrong without the causal mask?
+    options:
+      - id: a
+        text: Each position could look at the very token it must predict and learn to copy it.
+        correct: true
+        feedback: The mask keeps each target hidden from the position that predicts it.
+      - id: b
+        text: The model could no longer turn its scores into probabilities with softmax.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Softmax works the same with or without the mask; the mask decides what each position can see.
+      - id: c
+        text: The sentence would give fewer training examples, one per sentence instead of one per position.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The number of targets stays the same; the problem is that each target becomes visible.
+      - id: d
+        text: The earlier tokens would be hidden, so each position would see only itself.
+        correct: false
+        category: misunderstood_definition
+        feedback: Removing the mask lets positions see more, including later tokens.
+    solution: Without the mask, position $t$ could look at $x_{t+1}$, its own target, so predicting it would be copying, and the model would learn nothing useful for writing.
+  - id: alm-tf-code
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: What does this Python code print?
+    code: |
+      tokens = ["the", "cat", "sat", "on", "the", "mat"]
+      inputs = tokens[:-1]
+      targets = tokens[1:]
+      print(inputs[2], targets[2])
+    accept: ["sat on"]
+    solution: "`inputs` drops the last token and `targets` drops the first, so index 2 (the third item) is sat in `inputs` and on in `targets`: the target for each input is the next token."
+  - id: alm-tf-total-loss
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: A model trains on a 6-token sentence. It gives the true next token probability $0.9$ at four of the five positions and $0.1$ at the remaining one. Use a calculator to find the average natural-log cross-entropy loss, to 2 decimal places.
+    answer: 0.5448
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer: 2.724
+        category: math_error
+        feedback: That is the total over five positions; divide it by 5.
+      - answer: 0.681
+        category: math_error
+        feedback: There are $6-1=5$ positions with targets, so divide by 5.
+    solution: "$(4\\times(-\\ln0.9)+(-\\ln0.1))/5=(0.421+2.303)/5\\approx0.54$; the single bad prediction makes up most of the loss."
+  - id: alm-tf-batch
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A training batch for a robot's command model holds 8 commands, each 101 tokens long. How many next-token predictions are scored in the batch?
+    answer: 800
+    tolerance:
+      abs: 0.5
+    common_wrong:
+      - answer: 808
+        category: incorrect_reasoning
+        feedback: The last token of each command has no next token, so each command gives $101-1$ targets.
+      - answer: 8
+        category: misunderstood_definition
+        feedback: Every position in a command is trained, so each command gives many examples.
+    solution: Each command of 101 tokens gives $100$ targets, so the batch scores $8\times100=800$ predictions.
+  - id: alm-gen-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is autoregressive generation?
+    options:
+      - id: a
+        text: Repeatedly choosing a next token from the model's distribution and adding it to the input.
+        correct: true
+        feedback: Each chosen token becomes part of the prefix for the next prediction.
+      - id: b
+        text: Predicting every token of the answer in a single run and printing them together.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each new token needs the one chosen before it, so generation takes one run per token.
+      - id: c
+        text: Feeding the model the true text so that every position trains in one run.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is teacher forcing, used during training.
+      - id: d
+        text: Choosing the token with the lowest probability so that the text stays varied.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Tokens are chosen from the distribution, usually the top one or a random draw weighted by probability.
+    solution: The model predicts, a token is chosen from the distribution and appended, and the loop repeats on the longer text.
+  - id: alm-gen-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does $u=0.72$ pick on?
+    options:
+      - id: a
+        text: Laid end to end, on's stretch runs from $0.4$ to $0.9$, and $0.72$ lands in it.
+        correct: true
+        feedback: The stretches before it end at $0.2$, $0.3$ and $0.4$, all at or below $0.72$.
+      - id: b
+        text: On has the highest probability, and sampling always takes the top word.
+        correct: false
+        category: misunderstood_definition
+        feedback: Always taking the top word is greedy decoding; with $u=0.35$ sampling picks sat.
+      - id: c
+        text: On's probability $0.5$ is the closest to $0.72$ of the five probabilities.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Sampling compares $u$ with where each stretch ends, the running totals.
+      - id: d
+        text: "$0.72$ is above $0.5$, so the word after the middle of the list is chosen."
+        correct: false
+        category: incorrect_reasoning
+        feedback: The list order matters only through the running totals $0.2,0.3,0.4,0.9,1.0$.
+    solution: The running totals are $0.2,0.3,0.4,0.9,1.0$; the first one above $0.72$ is $0.9$, which ends on's stretch.
+  - id: alm-gen-greedy
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: After "the cat sat on the", a model gives mat $0.5$, cat $0.2$, the $0.1$, sat $0.1$ and on $0.1$. Which word does greedy decoding choose?
+    options:
+      - id: a
+        text: mat
+        correct: true
+        feedback: Greedy decoding takes the most probable token.
+      - id: b
+        text: cat
+        correct: false
+        category: incorrect_reasoning
+        feedback: Cat is second most likely; greedy takes the top one.
+      - id: c
+        text: the
+        correct: false
+        category: incorrect_reasoning
+        feedback: The has probability $0.1$; greedy takes the highest probability.
+      - id: d
+        text: A random word
+        correct: false
+        category: misunderstood_definition
+        feedback: That is sampling; greedy has no randomness.
+    solution: Greedy decoding takes the token with the highest probability, mat at $0.5$.
+  - id: alm-gen-draw
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A model gives the $0.1$, cat $0.3$, sat $0.4$, on $0.1$ and mat $0.1$, laid end to end in that order. Sampling draws $u=0.45$. Which word is chosen?
+    options:
+      - id: a
+        text: sat
+        correct: true
+        feedback: The running totals are $0.1,0.4,0.8,0.9,1.0$, and sat's stretch runs from $0.4$ to $0.8$.
+      - id: b
+        text: cat
+        correct: false
+        category: math_error
+        feedback: Cat's stretch ends at $0.1+0.3=0.4$, which is below $0.45$.
+      - id: c
+        text: mat
+        correct: false
+        category: incorrect_reasoning
+        feedback: Mat's stretch starts at $0.9$, above $0.45$.
+      - id: d
+        text: the
+        correct: false
+        category: math_error
+        feedback: The's stretch runs only from $0$ to $0.1$.
+    solution: Running totals $0.1,0.4,0.8,0.9,1.0$; the first above $0.45$ is $0.8$, the end of sat's stretch.
+  - id: alm-gen-two-draws-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'Sampling from a model, the chance of drawing on after "the cat sat" is ${{=a/10}}$, and the chance of then drawing the after "the cat sat on" is ${{=b/10}}$. What is the chance that sampling writes "on the" next?'
+    params:
+      a: { min: 1, max: 9 }
+      b: { min: 1, max: 9 }
+    answer_expr: a*b/100
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: (a+b)/10
+        category: math_error
+        feedback: Both draws must happen in turn, so multiply the two probabilities.
+    solution: "Each draw picks a word with its probability, so the pair has chance ${{=a/10}}\\times{{=b/10}}={{=a*b/100}}$."
+  - id: alm-gen-greedy-repeat
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A chatbot uses greedy decoding. Two users type exactly the same prompt. What do they get back, and why?
+    options:
+      - id: a
+        text: The same text, because each step takes the top token and no step involves chance.
+        correct: true
+        feedback: The same prefix gives the same distribution, so the same top token, at every step.
+      - id: b
+        text: Different texts, because each step draws a random number to pick the token.
+        correct: false
+        category: misunderstood_definition
+        feedback: Random draws are sampling; greedy always takes the most probable token.
+      - id: c
+        text: The same first word, then different words, because later prefixes are new.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The later prefixes are also identical, since both runs chose the same words so far.
+      - id: d
+        text: Nothing useful, because greedy decoding works only during training.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Greedy decoding is a way to write text after training.
+    solution: Greedy decoding has no randomness, so the same prompt gives the same distribution, the same top token, and the same text every time.
+  - id: alm-gen-code
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: What does this Python code print?
+    code: |
+      words = ["the", "cat", "sat", "on", "mat"]
+      probs = [0.2, 0.1, 0.1, 0.5, 0.1]
+
+      def sample(words, probs, u):
+          total = 0.0
+          for word, p in zip(words, probs):
+              total += p
+              if u < total:
+                  return word
+          return words[-1]
+
+      print(sample(words, probs, 0.25))
+    accept: ["cat"]
+    solution: "`total` runs $0.2$, then $0.3$; $0.25$ is first below $0.3$, the end of cat's stretch, so it returns cat."
+  - id: alm-gen-drift
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A model trained with teacher forcing writes a story by sampling, and an unlikely word drawn early makes the rest of the story go off track. Why can one early mistake affect later words?
+    options:
+      - id: a
+        text: The drawn word stays in the text, and every later prediction is made from a prefix containing it.
+        correct: true
+        feedback: During training every prefix was real text; during writing the prefix includes the model's own choices.
+      - id: b
+        text: Sampling changes the model's weights after each word, so a bad word trains the model badly.
+        correct: false
+        category: misunderstood_definition
+        feedback: Generation leaves the weights unchanged; only the input text grows.
+      - id: c
+        text: The causal mask lets later positions see future words, which spreads the mistake.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The mask blocks later tokens; the mistake spreads forwards through the prefix.
+      - id: d
+        text: The model was trained on its own outputs, so it copies its mistakes on purpose.
+        correct: false
+        category: misunderstood_definition
+        feedback: With teacher forcing it trained on real text only, which is why its own mistakes are new to it.
+    solution: In generation each chosen token becomes input for the next prediction, so an unlikely word early in the text shapes every prediction after it.
+  - id: alm-gen-robot
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot's command model gets a prompt of 5 tokens and writes one new token per run until the text is 12 tokens long. How many runs of the model does it take?
+    answer: 7
+    tolerance:
+      abs: 0.5
+    common_wrong:
+      - answer: 12
+        category: incorrect_reasoning
+        feedback: The 5 prompt tokens are given, so only the new tokens need runs.
+      - answer: 1
+        category: misunderstood_definition
+        feedback: Each new token needs the one before it, so each takes its own run.
+    solution: It must write $12-5=7$ new tokens, and each needs a run because it depends on the token chosen before it.
+  - id: alm-explain-final
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: 'Explain to a colleague how a language model is trained on the sentence "the cat sat on the mat" and how it then writes new text: what it predicts at each position, how many training examples the sentence gives and how they are scored, and how one token is chosen at a time.'
+    rubric:
+      - id: r1
+        criterion: Says the model gives a next-token distribution at each position, a softmax over the vocabulary given the tokens so far
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Says the 6-token sentence gives 5 examples: inputs shifted against targets by one, scored together with a causal mask and teacher forcing, with loss the average of minus the log of each true next token's probability"
+        weight: 2
+        required: true
+      - id: r3
+        criterion: Describes generation as repeatedly choosing a token, greedily or by sampling, and appending it to the input
+        weight: 1
+        required: true
+      - id: r4
+        criterion: Notes that during generation the model's own earlier choices become its input, or that each new token needs another run
+        weight: 1
+    exemplar: At every position the model turns the vector for the tokens so far into one score per vocabulary word, and softmax makes them a next-token distribution. The sentence has 6 tokens, so it gives 5 examples, "the" to cat up to "the cat sat on the" to mat. The input is the sentence without its last token and the targets are the sentence shifted left by one; the causal mask and teacher forcing let one run score them all, and the loss is the average of minus the log of the probability of each true next word. To write, the model takes a prompt, chooses a next token, the top one or a random draw weighted by probability, appends it and runs again, so its own earlier choices become its input and each token needs another run.
+    solution: At every position the model turns the vector for the tokens so far into one score per vocabulary word, and softmax makes them a next-token distribution. The sentence has 6 tokens, so it gives 5 examples, "the" to cat up to "the cat sat on the" to mat. The input is the sentence without its last token and the targets are the sentence shifted left by one; the causal mask and teacher forcing let one run score them all, and the loss is the average of minus the log of the probability of each true next word. To write, the model takes a prompt, chooses a next token, the top one or a random draw weighted by probability, appends it and runs again, so its own earlier choices become its input and each token needs another run.

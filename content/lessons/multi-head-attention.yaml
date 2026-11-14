@@ -1,0 +1,326 @@
+concept: multi-head-attention
+version: 1
+objective: |
+  **Goal:** compute multi-head attention for a short sentence and track the shape of every matrix in it, from the $T\times d$ embeddings through each head's $T\times d_k$ queries, keys and values and $T\times T$ weights, back to a $T\times d$ output.
+recap:
+  - concept: attention
+    text: "Learned matrices $W_Q$, $W_K$ and $W_V$ turn each embedding $e_t$ into a query $q_t$, key $k_t$ and value $v_t$. Scores $q_t\\cdot k_j/\\sqrt{d_k}$ become softmax weights that mix the values."
+  - concept: embeddings
+    text: "Each token starts as a learned embedding $e_t$ of width $d$."
+where_this_fits: |
+  ### What is multi-head attention?
+
+  Multi-head attention runs several attention calculations, called **heads**, side by side on the same tokens and joins their results into one output per token.
+
+  In "the cat sat", "sat" needs both "cat" and its own meaning. One head splitting its attention weights between them blurs both values. Two heads can each favour one.
+knowledge_points:
+  - id: mha-heads
+    title: "Run attention heads side by side"
+    explain: |
+      ### Two heads reading "the cat sat"
+
+      Each head does ordinary attention with its own query, key and value matrices. We write a superscript $(i)$ on everything that belongs to head $i$.
+
+      Take the sentence "the cat sat", with whole words as tokens, and number the tokens 1, 2 and 3. Each embedding $e_t$ has width $d=4$, and we use $h=2$ heads. Each head's three matrices are $4\times2$, so they turn a 4-entry embedding into a query, key and value with $d_k=2$ entries each.
+
+      We skip the matrices and give only their results, chosen as small whole numbers. For "sat", head 1's query matrix gives $q^{(1)}_3=(1,1)$, head 2's gives $q^{(2)}_3=(2,0)$, and the key and value matrices give:
+
+      | token | head 1 key | head 1 value |
+      | --- | --- | --- |
+      | the | $(1,-1)$ | $(1,0)$ |
+      | cat | $(1,1)$ | $(0,2)$ |
+      | sat | $(-1,1)$ | $(1,0)$ |
+
+      | token | head 2 key | head 2 value |
+      | --- | --- | --- |
+      | the | $(0,1)$ | $(0,1)$ |
+      | cat | $(0,2)$ | $(1,0)$ |
+      | sat | $(1,0)$ | $(3,1)$ |
+
+      Head 1's query for "sat" matches the key of "cat" best, and head 2's matches "sat" itself. Head 1 puts $0.67$ of its weight on "cat" (blue), and head 2 puts $0.67$ on "sat" (orange). The bars show weights rounded to 2 decimals, which is why they add up to $0.99$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" aria-label="Two bar charts of the attention weights that the token sat gives to the, cat and sat. In head 1, in blue, the weights are 0.16, 0.67 and 0.16, so most weight goes to cat. In head 2, in orange, they are 0.16, 0.16 and 0.67, so most weight goes to sat itself">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="160" y="28" text-anchor="middle">head 1: weights from “sat”</text>
+      <path d="M30 210 H290" stroke="#d4d4d4"/>
+      <rect x="55" y="177.28" width="50" height="32.72" fill="#3b82f6" fill-opacity="0.8"/>
+      <text x="80" y="169.28" text-anchor="middle">0.16</text>
+      <text x="80" y="232" text-anchor="middle" fill="#737373">the</text>
+      <rect x="135" y="75.43" width="50" height="134.57" fill="#3b82f6" fill-opacity="0.8"/>
+      <text x="160" y="67.43" text-anchor="middle">0.67</text>
+      <text x="160" y="232" text-anchor="middle" fill="#737373">cat</text>
+      <rect x="215" y="177.28" width="50" height="32.72" fill="#3b82f6" fill-opacity="0.8"/>
+      <text x="240" y="169.28" text-anchor="middle">0.16</text>
+      <text x="240" y="232" text-anchor="middle" fill="#737373">sat</text>
+      <text x="480" y="28" text-anchor="middle">head 2: weights from “sat”</text>
+      <path d="M350 210 H610" stroke="#d4d4d4"/>
+      <rect x="375" y="177.28" width="50" height="32.72" fill="#f59e0b" fill-opacity="0.8"/>
+      <text x="400" y="169.28" text-anchor="middle">0.16</text>
+      <text x="400" y="232" text-anchor="middle" fill="#737373">the</text>
+      <rect x="455" y="177.28" width="50" height="32.72" fill="#f59e0b" fill-opacity="0.8"/>
+      <text x="480" y="169.28" text-anchor="middle">0.16</text>
+      <text x="480" y="232" text-anchor="middle" fill="#737373">cat</text>
+      <rect x="535" y="75.43" width="50" height="134.57" fill="#f59e0b" fill-opacity="0.8"/>
+      <text x="560" y="67.43" text-anchor="middle">0.67</text>
+      <text x="560" y="232" text-anchor="middle" fill="#737373">sat</text>
+      </g>
+      </svg>
+      ```
+
+      ### What each head computes
+
+      With $h$ heads, head $i$ has its own matrices $W_Q^{(i)}$, $W_K^{(i)}$ and $W_V^{(i)}$, each of shape $d\times d_k$ with $d_k=d/h$, so that the heads together come back to width $d$. Token $t$ scores its query against the key of every token $j$:
+
+      $$s^{(i)}_{tj}=\frac{q^{(i)}_t\cdot k^{(i)}_j}{\sqrt{d_k}}$$
+
+      A softmax over $j$ turns the scores into weights, and the weights average the values. Here $e\approx2.718$. In the bottom sum, $m$ runs over all the tokens, like $j$.
+
+      $$o^{(i)}_t=\sum_j a^{(i)}_{tj}\,v^{(i)}_j,\qquad a^{(i)}_{tj}=\frac{e^{s^{(i)}_{tj}}}{\sum_m e^{s^{(i)}_{tm}}}$$
+
+      Since $d_k<d$, it is tempting to picture each head reading only $d_k$ entries of the embedding. In fact every head's matrices multiply all $d$ entries of $e_t$. Only the query, key and value that come out have $d_k$ entries.
+    worked: |
+      Let's work out what each head gives "sat", using the queries, keys and values above. We keep every digit while calculating and show 3 decimals along the way, then round the outputs to 2 decimals at the end.
+
+      1. **Score head 1's query against every key.** Dotting $q^{(1)}_3=(1,1)$ with the keys $(1,-1)$, $(1,1)$ and $(-1,1)$ of "the", "cat" and "sat" gives $0$, $2$ and $0$. We divide each by $\sqrt{d_k}=\sqrt2\approx1.414$. Here $s^{(1)}_{3j}$ is head 1's score of token 3's query against token $j$'s key.
+         $$s^{(1)}_{31}=0,\qquad s^{(1)}_{32}=\frac{2}{\sqrt2}=1.414,\qquad s^{(1)}_{33}=0$$
+
+      2. **Turn head 1's scores into weights.** Softmax raises the number $e\approx2.718$ to each score, giving $e^0=1$, $e^{1.414}=4.113$ and $e^0=1$, and divides each by their total, $6.113$.
+         $$a^{(1)}_{31}=a^{(1)}_{33}=\frac{1}{6.113}=0.164,\qquad a^{(1)}_{32}=\frac{4.113}{6.113}=0.673$$
+
+      3. **Average head 1's values.** Each value is scaled by its weight and the results are added.
+         $$o^{(1)}_3=0.164\,(1,0)+0.673\,(0,2)+0.164\,(1,0)=(0.33,\,1.35)$$
+
+      4. **Do the same in head 2.** Its query $(2,0)$ dotted with the keys $(0,1)$, $(0,2)$ and $(1,0)$ gives $0$, $0$ and $2$. Dividing by $\sqrt2$ gives the scores $0$, $0$ and $1.414$, so the softmax gives $0.164$, $0.164$ and $0.673$, with the large weight now on "sat".
+         $$o^{(2)}_3=0.164\,(0,1)+0.164\,(1,0)+0.673\,(3,1)=(2.18,\,0.84)$$
+
+      So "sat" now has two outputs of width 2. Head 1's $(0.33,1.35)$ is pulled toward the value of "cat", $(0,2)$, and head 2's $(2.18,0.84)$ is pulled toward the value of "sat" itself, $(3,1)$. Head 1 mixed the value of "cat", the word that did the sitting, into the output for "sat", and head 2 kept mostly the value of "sat" itself.
+    problems:
+      - mha-heads-basics
+      - mhap-heads-self-explain
+      - mhap-head-width-template
+      - mhap-query-entry
+      - mhap-head-score-template
+      - mhap-whole-embedding
+      - mhap-two-key-output
+      - mhap-robot-heads
+  - id: mha-combine
+    title: "Join the heads into one output"
+    explain: |
+      ### Two outputs for one token
+
+      Each head has now given every token an output of width $d_k$. In the sentence "the cat sat", with embeddings of width $d=4$ and two heads of width $d_k=2$, the token "sat" got $(0.33,1.35)$ from head 1 and $(2.18,0.84)$ from head 2.
+
+      A model stacks several attention layers, one after another, and each layer takes in one vector of width $d$ per token, the way the first one takes in the embeddings. So the last part of multi-head attention joins the heads' outputs into one vector of width $d$, ready for the next layer.
+
+      ### Write the outputs side by side, then mix them
+
+      First we **concatenate** the head outputs, which means writing them one after another in a single vector. Two outputs of width 2 make $(0.33,1.35,2.18,0.84)$, of width 4. Since each head has width $d_k=d/h$, putting $h$ of them side by side always gives back width $d$.
+
+      In that vector, the first two entries come only from head 1 and the last two only from head 2. So we then multiply it by an **output matrix** $W_O$ of shape $d\times d$, learned along with the heads' matrices. Each entry of the result is the dot product of the whole concatenated vector with one column of $W_O$, so every entry can combine what all the heads found.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="Joining the two head outputs for sat. Head 1 output (0.33, 1.35) in blue and head 2 output (2.18, 0.84) in orange are written side by side as (0.33, 1.35, 2.18, 0.84). Multiplying by W O gives the green output (2.51, 1.35, 3.53, 0.84), whose first and third entries use numbers from both heads">
+      <defs><marker id="mha2-m" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="132" y="26" text-anchor="middle" fill="#3b82f6">head 1 output</text>
+      <rect x="76" y="36" width="56" height="34" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="104.0" y="58" text-anchor="middle">0.33</text>
+      <rect x="132" y="36" width="56" height="34" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="160.0" y="58" text-anchor="middle">1.35</text>
+      <text x="508" y="26" text-anchor="middle" fill="#f59e0b">head 2 output</text>
+      <rect x="452" y="36" width="56" height="34" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="480.0" y="58" text-anchor="middle">2.18</text>
+      <rect x="508" y="36" width="56" height="34" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="536.0" y="58" text-anchor="middle">0.84</text>
+      <path d="M132 72 L262 124" stroke="#737373" stroke-width="1.5" marker-end="url(#mha2-m)"/>
+      <path d="M508 72 L378 124" stroke="#737373" stroke-width="1.5" marker-end="url(#mha2-m)"/>
+      <rect x="208" y="130" width="56" height="34" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="236.0" y="152" text-anchor="middle">0.33</text>
+      <rect x="264" y="130" width="56" height="34" fill="#3b82f6" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="292.0" y="152" text-anchor="middle">1.35</text>
+      <rect x="320" y="130" width="56" height="34" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="348.0" y="152" text-anchor="middle">2.18</text>
+      <rect x="376" y="130" width="56" height="34" fill="#f59e0b" fill-opacity="0.15" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="404.0" y="152" text-anchor="middle">0.84</text>
+      <text x="200" y="152" text-anchor="end" fill="#737373">concatenated</text>
+      <path d="M320 166 L320 218" stroke="#737373" stroke-width="1.5" marker-end="url(#mha2-m)"/>
+      <text x="332" y="198">multiply by W<tspan font-size="13" dy="4">O</tspan></text>
+      <rect x="208" y="224" width="56" height="34" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <text x="236.0" y="246" text-anchor="middle">2.51</text>
+      <rect x="264" y="224" width="56" height="34" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <text x="292.0" y="246" text-anchor="middle">1.35</text>
+      <rect x="320" y="224" width="56" height="34" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <text x="348.0" y="246" text-anchor="middle">3.53</text>
+      <rect x="376" y="224" width="56" height="34" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.5"/>
+      <text x="404.0" y="246" text-anchor="middle">0.84</text>
+      <text x="200" y="246" text-anchor="end" fill="#737373">output for sat</text>
+      <text x="320" y="286" text-anchor="middle" fill="#10b981">entries 1 and 3 mix both heads</text>
+      </g>
+      </svg>
+      ```
+
+      ### The whole layer
+
+      Putting the steps together, **multi-head attention** gives token $t$ the output
+
+      $$o_t=\operatorname{concat}\big(o^{(1)}_t,\,o^{(2)}_t,\,\dots,\,o^{(h)}_t\big)\,W_O$$
+
+      Here $o^{(i)}_t$ is head $i$'s output for token $t$, and $\operatorname{concat}$ writes its inputs side by side. We treat the concatenated vector as a row, a $1\times d$ matrix. Multiplying it by the $d\times d$ matrix $W_O$ gives $o_t$ of width $d$.
+
+      Be careful not to add or average the head outputs instead. Averaging $(0.33,1.35)$ and $(2.18,0.84)$ gives width 2, which is too narrow, and it mixes every entry the same way. $W_O$ is learned, so each entry gets its own mix of the heads.
+    worked: |
+      Let's finish the output for "sat" in "the cat sat", starting from its two head outputs, $(0.33,1.35)$ from head 1 and $(2.18,0.84)$ from head 2, both rounded to 2 decimals. The output matrix is
+
+      $$W_O=\begin{bmatrix}1&0&0&0\\0&1&1&0\\1&0&1&0\\0&0&0&1\end{bmatrix}$$
+
+      1. **Concatenate the head outputs.** Head 1's output goes first, then head 2's. The order is always the same, so entries 1 and 2 of $c$, from head 1, always multiply rows 1 and 2 of $W_O$.
+         $$c=(0.33,\,1.35,\,2.18,\,0.84)$$
+
+      2. **Dot $c$ with column 1 of $W_O$.** Column 1 is $(1,0,1,0)$, so the entries times 0 drop out, and it adds entry 1, from head 1, to entry 3, from head 2.
+         $$0.33\times1+2.18\times1=2.51$$
+
+      3. **Dot $c$ with columns 2, 3 and 4.** Column 2 is $(0,1,0,0)$, so it keeps entry 2, $1.35$. Column 3 is $(0,1,1,0)$, so it adds entries 2 and 3. Column 4 is $(0,0,0,1)$, so it keeps entry 4, $0.84$.
+         $$1.35+2.18=3.53$$
+
+      4. **Write the four results in order.** They are the entries of the output for "sat".
+         $$o_3=(2.51,\,1.35,\,3.53,\,0.84)$$
+
+      The output has width 4, the same as the embedding $e_3$, and its first and third entries each mix one number from head 1 with one from head 2. We chose 0s and 1s in $W_O$ to keep the arithmetic easy. In a real model $W_O$ is learned along with the heads' matrices, so its entries are whatever numbers make the model's predictions best.
+    problems:
+      - mha-combine-basics
+      - mhap-combine-self-explain
+      - mhap-concat-width-template
+      - mhap-output-entry-template
+      - mhap-average-heads
+      - mhap-output-matrix-size
+      - mhap-joint-readings
+  - id: mha-shapes
+    title: "Follow the shapes for a whole sentence"
+    explain: |
+      ### All tokens at once
+
+      In code, a model works out every token's output at once with matrix products, and tracking each matrix's shape is the quickest way to check such code.
+
+      We stack the $T$ embeddings as the rows of a $T\times d$ matrix $X$. For head $i$, the queries are $Q^{(i)}=XW_Q^{(i)}$, a $(T\times d)(d\times d_k)=T\times d_k$ matrix whose row $t$ is $q^{(i)}_t$. The keys $K^{(i)}$ and values $V^{(i)}$ are made the same way.
+
+      The scores are $Q^{(i)}K^{(i)\top}/\sqrt{d_k}$. Here $K^{(i)\top}$ is $K^{(i)}$ transposed, with its rows turned into columns, so it is $d_k\times T$. The product $(T\times d_k)(d_k\times T)$ is $T\times T$, and row $t$ holds token $t$'s scores against every token. A softmax along each row gives the $T\times T$ weights, and multiplying them by $V^{(i)}$, which is $T\times d_k$, gives head $i$'s $T\times d_k$ output. The $h$ outputs side by side make $T\times d$, and $W_O$ keeps it $T\times d$. The picture uses $T=3$, $d=4$ and $h=2$.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 470" aria-label="Shapes through multi-head attention for 3 tokens, width 4 and 2 heads. The embeddings X are 3 by 4. Each head, head 1 in blue and head 2 in orange, makes queries, keys and values of shape 3 by 2, then weights of shape 3 by 3, then a head output of shape 3 by 2. The two head outputs are concatenated into 3 by 4, and multiplying by W O, which is 4 by 4, gives the green output of shape 3 by 4">
+      <defs><marker id="mha3-m" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <rect x="220.0" y="10" width="200" height="46" rx="6" fill="#737373" fill-opacity="0.12" stroke="#737373" stroke-width="1.5"/>
+      <text x="320" y="29" text-anchor="middle">embeddings X</text>
+      <text x="320" y="47" text-anchor="middle" fill="#737373">3 × 4</text>
+      <rect x="60.0" y="90" width="220" height="46" rx="6" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="170" y="109" text-anchor="middle">head 1: Q, K, V</text>
+      <text x="170" y="127" text-anchor="middle" fill="#737373">3 × 2 each</text>
+      <rect x="60.0" y="170" width="220" height="46" rx="6" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="170" y="189" text-anchor="middle">head 1: weights</text>
+      <text x="170" y="207" text-anchor="middle" fill="#737373">3 × 3</text>
+      <rect x="60.0" y="250" width="220" height="46" rx="6" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-width="1.5"/>
+      <text x="170" y="269" text-anchor="middle">head 1: output</text>
+      <text x="170" y="287" text-anchor="middle" fill="#737373">3 × 2</text>
+      <path d="M170 136 L170 166" stroke="#737373" stroke-width="1.5" marker-end="url(#mha3-m)"/>
+      <path d="M170 216 L170 246" stroke="#737373" stroke-width="1.5" marker-end="url(#mha3-m)"/>
+      <rect x="360.0" y="90" width="220" height="46" rx="6" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="470" y="109" text-anchor="middle">head 2: Q, K, V</text>
+      <text x="470" y="127" text-anchor="middle" fill="#737373">3 × 2 each</text>
+      <rect x="360.0" y="170" width="220" height="46" rx="6" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="470" y="189" text-anchor="middle">head 2: weights</text>
+      <text x="470" y="207" text-anchor="middle" fill="#737373">3 × 3</text>
+      <rect x="360.0" y="250" width="220" height="46" rx="6" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="470" y="269" text-anchor="middle">head 2: output</text>
+      <text x="470" y="287" text-anchor="middle" fill="#737373">3 × 2</text>
+      <path d="M470 136 L470 166" stroke="#737373" stroke-width="1.5" marker-end="url(#mha3-m)"/>
+      <path d="M470 216 L470 246" stroke="#737373" stroke-width="1.5" marker-end="url(#mha3-m)"/>
+      <path d="M290 56 L190 86" stroke="#737373" stroke-width="1.5" marker-end="url(#mha3-m)"/>
+      <path d="M350 56 L450 86" stroke="#737373" stroke-width="1.5" marker-end="url(#mha3-m)"/>
+      <path d="M190 296 L290 326" stroke="#737373" stroke-width="1.5" marker-end="url(#mha3-m)"/>
+      <path d="M450 296 L350 326" stroke="#737373" stroke-width="1.5" marker-end="url(#mha3-m)"/>
+      <rect x="220.0" y="330" width="200" height="46" rx="6" fill="#737373" fill-opacity="0.12" stroke="#737373" stroke-width="1.5"/>
+      <text x="320" y="349" text-anchor="middle">concatenated</text>
+      <text x="320" y="367" text-anchor="middle" fill="#737373">3 × 4</text>
+      <path d="M320 376 L320 406" stroke="#737373" stroke-width="1.5" marker-end="url(#mha3-m)"/>
+      <text x="334" y="396">multiply by W<tspan font-size="13" dy="4">O</tspan><tspan dy="-4" fill="#737373">, 4 × 4</tspan></text>
+      <rect x="220.0" y="410" width="200" height="46" rx="6" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="1.5"/>
+      <text x="320" y="429" text-anchor="middle">output</text>
+      <text x="320" y="447" text-anchor="middle" fill="#737373">3 × 4</text>
+      </g>
+      </svg>
+      ```
+
+      ### One big matrix for all the heads
+
+      Putting the $h$ query matrices side by side gives one $d\times d$ matrix, also named $W_Q$ as with one head. Then $XW_Q$ is $T\times d$, and its first $d_k$ columns are head 1's queries, the next $d_k$ are head 2's, and so on. Each column still uses all $d$ entries of the embedding. Code computes this one product, cuts it into heads, and does the same for $W_K$ and $W_V$.
+
+      The layer learns four $d\times d$ matrices, $W_Q$, $W_K$, $W_V$ and $W_O$, which is $4d^2$ numbers whatever $h$ is, so more heads add no learned numbers. With $d=4$, one head of width 4, two of width 2 and four of width 1 all learn $4\times4^2=64$ numbers. The base model in "Attention Is All You Need" (2017), the paper that introduced multi-head attention, used $d=512$ and $h=8$, so each head had $d_k=64$.
+
+      ### What more heads cost
+
+      More heads give more sets of attention weights, but each head is narrower. A head of width 1 turns each token into a single number, so its scores can compare tokens on only that one number. Each head also has its own $T\times T$ attention weights, so there are $h\times T\times T$ to compute and store, which grows quickly for long inputs.
+    worked: |
+      Let's track the shapes for "the cat sat", with $T=3$ tokens, embeddings of width $d=4$ and $h=2$ heads of width $d_k=2$, and then check them in code.
+
+      1. **Stack the embeddings.** One row per token, one column per embedding entry.
+         $$X:\ 3\times4$$
+
+      2. **Make all the queries in one product.** $W_Q$ is head 1's and head 2's $4\times2$ query matrices side by side, so it is $4\times4$.
+         $$XW_Q:\ (3\times4)(4\times4)=3\times4$$
+
+      3. **Cut it into heads.** Columns 1–2 are head 1's queries and columns 3–4 are head 2's. Keys and values are cut the same way.
+         $$Q^{(1)},\,Q^{(2)}:\ 3\times2\ \text{each}$$
+
+      4. **Score every pair of tokens in each head.** A $3\times2$ matrix times a $2\times3$ one is $3\times3$, one row per token. Dividing by $\sqrt{d_k}$ and the softmax keep this shape.
+         $$Q^{(i)}K^{(i)\top}:\ (3\times2)(2\times3)=3\times3$$
+
+      5. **Average the values in each head.** The $3\times3$ weights $A^{(i)}$ times the $3\times2$ values $V^{(i)}$ give $3\times2$.
+         $$A^{(i)}V^{(i)}:\ (3\times3)(3\times2)=3\times2$$
+
+      6. **Join and mix the heads.** Two $3\times2$ outputs side by side make $3\times4$, and $W_O$ keeps it that way.
+         $$(3\times4)(4\times4)=3\times4$$
+
+      Here is the same layer in NumPy, with random matrices because only the shapes matter. NumPy arrays can have more than two axes, numbered from 0, and an array of shape `(2, 3, 2)` is a stack of two $3\times2$ matrices, one per head.
+
+      ```python
+      import numpy as np
+      T, d, h = 3, 4, 2
+      dk = d // h
+      rng = np.random.default_rng(0)
+      X = rng.normal(size=(T, d))
+      W_Q, W_K, W_V, W_O = rng.normal(size=(4, d, d))
+      Q = (X @ W_Q).reshape(T, h, dk).transpose(1, 0, 2)
+      K = (X @ W_K).reshape(T, h, dk).transpose(1, 0, 2)
+      V = (X @ W_V).reshape(T, h, dk).transpose(1, 0, 2)
+      S = Q @ K.transpose(0, 2, 1) / np.sqrt(dk)
+      A = np.exp(S) / np.exp(S).sum(axis=-1, keepdims=True)
+      heads = A @ V
+      out = heads.transpose(1, 0, 2).reshape(T, d) @ W_O
+      print(Q.shape, A.shape, heads.shape, out.shape)
+      # prints (2, 3, 2) (2, 3, 3) (2, 3, 2) (3, 4)
+      ```
+
+      - `default_rng(0)` makes a random number generator, and the 0 makes every run give the same numbers. `rng.normal(size=(4, d, d))` makes four random $d\times d$ matrices, unpacked into `W_Q`, `W_K`, `W_V` and `W_O`.
+      - `reshape(T, h, dk)` cuts each row of width 4 into 2 pieces of width 2, giving shape `(3, 2, 2)`. `transpose(1, 0, 2)` moves axis 1, the head, to the front, giving `(2, 3, 2)`.
+      - On stacks like these, `@` multiplies the matrices of each head separately. `K.transpose(0, 2, 1)` keeps axis 0, the head, and swaps axes 1 and 2, so it transposes each head's keys.
+      - `axis=-1` means the last axis, so each sum runs along a row. `keepdims=True` keeps the sums in shape `(2, 3, 1)`, so each row of `np.exp(S)` is divided by its own sum.
+      - The line before `print` joins the heads. `transpose(1, 0, 2)` turns `(2, 3, 2)` back into `(3, 2, 2)`, `reshape(T, d)` writes each token's two head outputs side by side as a row of width 4, and `@ W_O` mixes them.
+
+      Each head's queries are $3\times2$, its weights $3\times3$ and its output $3\times2$, and the layer's output is $3\times4$, the same shape as $X$.
+    problems:
+      - mha-shapes-basics
+      - mhap-shapes-self-explain
+      - mhap-weight-count-template
+      - mhap-param-count-template
+      - mhap-head-columns
+      - mhap-more-heads
+      - mhap-long-sentence-shapes
+final: mha-explain-layer
+summary: |
+  - Multi-head attention runs $h$ attention heads side by side. Each head has its own $d\times d_k$ query, key and value matrices, with $d_k=d/h$, so each token gets its own set of weights from every head.
+  - Each head scores with $s^{(i)}_{tj}=q^{(i)}_t\cdot k^{(i)}_j/\sqrt{d_k}$, turns the scores into weights with a softmax and averages its values, giving every token an output of width $d_k$.
+  - The head outputs are concatenated back to width $d$ and multiplied by a $d\times d$ output matrix: $o_t=\operatorname{concat}(o^{(1)}_t,\dots,o^{(h)}_t)\,W_O$, so each output entry can use every head.
+  - For $T$ tokens the shapes run $X:T\times d$, then $T\times d_k$ queries, keys and values and $T\times T$ weights in each head, then $T\times d$ out. The layer learns $4d^2$ numbers whatever $h$ is.
+
+  **Next:** The positional representations lesson shows why attention can't tell the order of the tokens on its own, and how models add position to the embeddings.

@@ -1,0 +1,186 @@
+concept: llm-evaluation
+version: 1
+objective: "**Goal:** explain why contaminated benchmarks can exaggerate ability on new requests, compute a clearly defined pairwise score, and design an LLM-judge comparison that checks position bias."
+recap:
+  - concept: sft
+    text: "Supervised fine-tuning trains a model on prompt–response pairs to change how it responds, for example to follow instructions as an assistant."
+  - concept: evaluation-metrics
+    text: "An evaluation metric is a number summarising performance. Choose scores that reflect the task's costly errors, and keep the test set out of training and model selection."
+where_this_fits: |
+  ### What is LLM evaluation?
+
+  LLM evaluation means checking how well a large language model answers the kinds of requests we care about, using clear rules for judging its answers. It helps us choose an assistant for a particular task.
+
+  We need fresh requests to check whether this training improved its answers. We'll score test questions and compare pairs of answers. Then we'll ask another language model to rate those answers and check its decisions. We'll report the questions used, the score and how the judging decisions were checked.
+knowledge_points:
+  - id: lev-clean-benchmarks
+    title: Keep test answers out of training
+    explain: |
+      ### Seen questions can raise scores
+
+      Fine-tuning can change an assistant's answers, so we need a separate check of its ability. A **benchmark** is a fixed collection of test tasks with rules for scoring answers. It makes model comparisons repeatable. Its score describes performance on those tasks.
+
+      Imagine a reading assistant tested on ten short questions. Some ask about the sentence "the cat sat on the mat". Each question has one accepted answer. Four questions, including their answers, appeared in training. Six were unseen in training, which we'll call fresh. All ten form the mixed set. The orange group contains seen questions; the blue group contains fresh questions.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 154" aria-label="Ten benchmark questions split into four seen in training, shown in orange, and six fresh questions, shown in blue. The model answers all four seen questions and three of the six fresh questions correctly.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="10" y="24">10 benchmark questions</text>
+      <rect x="10" y="40" width="120" height="44" fill="#f59e0b"/><rect x="130" y="40" width="180" height="44" fill="#3b82f6"/>
+      <text x="70" y="67" text-anchor="middle">4 seen</text><text x="220" y="67" text-anchor="middle">6 fresh</text>
+      <text x="70" y="111" text-anchor="middle">4 of 4 correct</text><text x="220" y="111" text-anchor="middle">3 of 6 correct</text>
+      <text x="10" y="143">Width shows the question count.</text>
+      </g></svg>
+      ```
+
+      **Benchmark contamination** means test questions, answers or close copies, such as reworded questions, have entered training data. Recalling those seen questions and answers can raise the model's score. This can happen during the model's initial training (pretraining) or during later fine-tuning.
+
+      ### Count correct answers, then ask what they show
+
+      Accuracy is the fraction of questions answered correctly. Here each question is scored right or wrong.
+
+      $$\text{accuracy}=\frac{\text{correct answers}}{\text{questions scored}}.$$
+
+      The mixed score counts correct answers from both seen and fresh questions. The worked example compares that score with accuracy on the fresh group.
+
+      ### Limitations
+
+      If we don't know the training data, we may miss contamination. Check for exact and close copies where possible, and keep new evaluation questions and answers out of training. Before development, set aside two groups of questions. Use the first to choose model changes. Those choices can adapt the model to that group. Save the second until the model is chosen, so it gives an independent check for the final report.
+
+      Be careful not to call a benchmark clean just because known copies were removed. Also check that its tasks resemble the requests the assistant will actually receive; even a clean reading test says little about writing reliable code.
+    worked: |
+      Let's compare the reading assistant's accuracy on all ten questions with its accuracy on the six fresh questions.
+
+      1. **Count all correct answers.** Add the four correct answers to seen questions and the three correct answers to fresh questions.
+         $$\text{correct answers}=4+3=7.$$
+
+      2. **Score the mixed set.** There are ten questions in the full benchmark.
+         $$\frac{7}{10}=0.70=70\%.$$
+
+      3. **Score only the fresh group.** These six questions contain three correct answers.
+         $$\frac{3}{6}=0.50=50\%.$$
+
+      The mixed score includes four questions already encountered in training. The fresh score describes performance on these six questions. To measure how much exposure caused the difference, we would also need to account for differences in question difficulty.
+    problems:
+      - lev-benchmark-basics
+      - lev-benchmark-why
+      - lev-contamination-route
+      - lev-accuracy-template
+      - lev-clean-claim
+      - lev-clean-design
+      - lev-domain-limit
+  - id: lev-pairwise-scores
+    title: Compare two answers to each request
+    explain: |
+      ### Two answers can both be reasonable
+
+      An assistant can have several reasonable ways to answer one request. To compare two models, we can ask both to answer the same requests and judge each pair. A **pairwise evaluation** judges two answers to one prompt, using a stated rule for which answer is better and allowing a tie.
+
+      For our reading assistant, a **prompt** is the request given to the model. One prompt says, 'Using "the cat sat on the mat", answer in one sentence: where did the cat sit?' Model A says 'On the mat.' Model B says 'On the rug.' Our rule favours answers supported by the supplied sentence and following the instruction, so A wins this comparison.
+
+      ### Give each prompt one decision
+
+      Now suppose four reading prompts each receive one final decision. A wins two, the models tie on one, and B wins one. A tie means the answers are equally good under the rule.
+
+      A **tie-adjusted win rate** gives a model one point for each win, half for each tie and none for a loss, then divides by all final decisions. The table shows A's credit, or points, for each result.
+
+      | Result | Count | A's credit each |
+      | --- | --- | --- |
+      | A wins | 2 | 1 |
+      | Tie | 1 | 0.5 |
+      | B wins | 1 | 0 |
+
+      Here $W_A$ counts A's wins, $D$ counts draws (another word for ties), and $P$ counts all prompts with final decisions, including losses.
+
+      $$\text{A's rate}=\frac{W_A+0.5D}{P}.$$
+
+      Multiply the fraction by 100 to express it as a percentage. Some reports drop ties before dividing. Here we keep them and give half credit, so state that rule with the score.
+
+      ### Limitations
+
+      A's result depends on which opponent it faced. It also depends on the prompts and judging rule. Report wins, ties and losses alongside the rate, and use more representative prompts before trusting a small lead.
+
+      Be careful not to call a pairwise win rate accuracy. A can beat B even when both answers are wrong.
+    worked: |
+      Let's score model A's four reading comparisons, with two wins, one tie and one loss, giving each tie half credit.
+
+      1. **Check the denominator.** Every prompt with a final decision counts, even when A loses.
+         $$P=2+1+1=4.$$
+
+      2. **Add A's credit.** Wins contribute full points and the tie contributes half a point.
+         $$W_A+0.5D=2+0.5\times1=2.5.$$
+
+      3. **Divide by all four prompts.** This turns the credit into the stated tie-adjusted rate.
+         $$\text{A's rate}=\frac{2.5}{4}=0.625=62.5\%.$$
+
+      A has more credit than B in this tiny comparison. A broader comparison would need more prompts and a separate comparison for each additional model.
+    problems:
+      - lev-pairwise-basics
+      - lev-pairwise-why
+      - lev-win-template
+      - lev-drop-ties
+      - lev-both-wrong
+      - lev-opponent
+      - lev-report-counts
+  - id: lev-judge-bias
+    title: Check a model that rates answers
+    explain: |
+      ### The judge may favour Left
+
+      An **LLM judge** is a language model asked to compare answers against written criteria, called a **rubric**. This helps us score many pairs, so we need to check its decisions. For our reading task, the rubric checks support from the supplied sentence, then instruction following, with ties allowed when answers are equally good.
+
+      Return to the prompt asking where the cat sat in "the cat sat on the mat". A says 'On the mat.' B says 'On the rug.' Hide the model names and label the displayed answers Left and Right. Compare these same answers twice, swapping their places the second time.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 310" aria-label="Two presentations of the same answer pair. First presentation: Left contains A, On the mat; Right contains B, On the rug. Swapped presentation: Left contains B, On the rug; Right contains A, On the mat. An example biased judge picks Left both times, so its chosen model changes from A to B.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="10" y="22">First display</text>
+      <rect x="10" y="45" width="142" height="60" fill="#d4d4d4" fill-opacity="0" stroke="#737373"/><rect x="168" y="45" width="142" height="60" fill="#d4d4d4" fill-opacity="0" stroke="#737373"/>
+      <text x="81" y="67" text-anchor="middle">Left: A</text><text x="239" y="67" text-anchor="middle">Right: B</text>
+      <text x="81" y="87" text-anchor="middle">On the mat.</text><text x="239" y="87" text-anchor="middle">On the rug.</text>
+      <text x="10" y="128">Judge picks Left → A</text>
+      <text x="10" y="168">Swapped display</text>
+      <rect x="10" y="190" width="142" height="60" fill="#d4d4d4" fill-opacity="0" stroke="#737373"/><rect x="168" y="190" width="142" height="60" fill="#d4d4d4" fill-opacity="0" stroke="#737373"/>
+      <text x="81" y="212" text-anchor="middle">Left: B</text><text x="239" y="212" text-anchor="middle">Right: A</text>
+      <text x="81" y="232" text-anchor="middle">On the rug.</text><text x="239" y="232" text-anchor="middle">On the mat.</text>
+      <text x="10" y="285">Judge picks Left → B</text>
+      </g></svg>
+      ```
+
+      **Position bias** is a tendency for an answer's displayed place to influence its rating. The diagram shows a judge that always picks Left. A vote is the judge's choice of Left, Right or tie. Check many pairs to see whether one position repeatedly attracts votes.
+
+      ### Plan the comparison before seeing results
+
+      Choose prompts that resemble the requests your assistant will receive, and keep the rubric fixed. Hide model names so reputation cannot influence the rating. Collect two answers per prompt and reuse them in both display orders. You can flip a coin to choose the initial order; checking both orders checks position bias. Send each order to the LLM judge in a separate request containing only the prompt, rubric and displayed answers. Showing the judge an earlier verdict could influence its next judgment.
+
+      Translate each Left/Right vote into A or B using that display's positions. Keep both votes. Choose a human reviewer who understands the task, and decide a rule in advance. Here we keep a winner if both orders select that model, keep a tie if both say tie, and send disagreements to that reviewer. The reviewer applies the rubric to give one final decision. Until then, report the prompt as unresolved.
+
+      ### Limitations
+
+      A judge may favour longer answers or familiar wording. Swapping can leave these preferences unchanged. Ask a human to check a sample, including pairs where the judge selected the same model in both orders. Report where the human disagrees with the judge. Be careful not to assume that swapping makes a judge correct.
+    worked: |
+      Let's apply the two-order rule to the cat question, with A answering 'On the mat.' and B answering 'On the rug.' The example judge picks Left in both presentations.
+
+      1. **Interpret the first Left vote.** Left holds A in the first presentation, so picking Left records a preference for A.
+
+      2. **Interpret the swapped Left vote.** Left now holds B, so the same displayed choice records a preference for B. The judge's model-level choice changed after the swap.
+
+      3. **Resolve the disagreement.** Send the prompt, both answers, the cat sentence and the rubric to the human reviewer. The sentence says the cat sat on the mat, so the human records one final win for A.
+
+      The human review gives this prompt one final decision. Be careful not to count the two judge requests as two independent prompts: they judged the same answer pair. Also avoid turning disagreement into a tie, because a tie means equal quality.
+    problems:
+      - lev-judge-basics
+      - lev-judge-why
+      - lev-swap-map
+      - lev-unresolved
+      - lev-length-bias
+      - lev-order-design
+      - lev-agreement-limit
+final: lev-explain-evaluation
+summary: |
+  - A benchmark tests specified tasks with fixed scoring rules, but training exposure to its questions or answers can make its score exaggerate ability on new requests.
+  - Pairwise evaluation compares two answers to the same prompt under a stated rule; with half credit for ties, A's tie-adjusted win rate is $(W_A+0.5D)/P$, where $P$ includes wins, ties and losses.
+  - An LLM judge needs a clear rubric, hidden model identities and both answer orders; map choices back to models, resolve disagreements, and count each prompt once.
+  - Swapping order does not remove every bias, so check human-reviewed samples and report prompt coverage, counts, tie rules and unresolved decisions alongside the score.
+
+  **Next:** Put these checks into practice by comparing a fine-tuned assistant with its starting model on fresh requests.

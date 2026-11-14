@@ -1,0 +1,246 @@
+concept: embeddings
+version: 1
+objective: |
+  **Goal:** explain an embedding as a token's row of a learned table, find it by lookup or by multiplying a one-hot vector by the table, and compare two embeddings with the dot product.
+recap:
+  - concept: tokenization
+    text: "Tokenization splits text into tokens and gives each token in the model's vocabulary, its list of known tokens, an ID number."
+  - concept: matrices
+    text: "To multiply two matrices, we dot each row of the first with each column of the second. An $m\\times n$ matrix times an $n\\times p$ matrix gives an $m\\times p$ matrix, so the inner sizes must match."
+where_this_fits: |
+  ### What is an embedding?
+
+  A language model reads and writes text, and it splits text into small pieces called tokens. An embedding is a list of numbers, a vector, that the model uses to stand for one token. The model keeps one vector for every token it knows, as the rows of a table.
+
+  Why do we need it? A model works by doing arithmetic, but an ID is only a label, so arithmetic on IDs means nothing. An embedding gives each token numbers that the model adjusts as it learns, so tokens used in similar ways tend to get vectors pointing in similar directions.
+knowledge_points:
+  - id: emb-lookup-table
+    title: "Look up a vector for each token"
+    explain: |
+      ### A table with one row per token
+
+      We start from what tokenization gives us, a list of token IDs. Real tokenizers often split words into smaller pieces, but to keep the numbers small we'll use a toy vocabulary where each whole word is one token. Its four words are "cat", "on", "sat" and "the", enough for "the cat sat on". We number them alphabetically, so cat is 1, on is 2, sat is 3 and the is 4.
+
+      The model keeps a table with one row per token, and every row is a vector of 2 numbers. We call this table $E$. To find the vector for cat, we go to the row for its ID, row 1, and read off $(2,1)$, shown in blue.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 250" aria-label="The embedding table E with one row per token: ID 1 cat (2, 1), ID 2 on (1, 3), ID 3 sat (0, 2), ID 4 the (3, 1). The row for cat, ID 1, is highlighted in blue and an arrow reads it off as the green embedding of cat, (2, 1). E is a 4 by 2 matrix">
+      <defs><marker id="emb1-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="70" y="40" text-anchor="middle" font-size="13" fill="#737373">ID</text>
+      <text x="135" y="40" text-anchor="middle" font-size="13" fill="#737373">token</text>
+      <text x="250" y="40" text-anchor="middle" font-size="13" fill="#737373">row of E</text>
+      <text x="70" y="72" text-anchor="middle">1</text><text x="135" y="72" text-anchor="middle">cat</text>
+      <rect x="200" y="50" width="50" height="34" fill="#3b82f6" fill-opacity="0.2" stroke="#3b82f6" stroke-width="2"/><text x="225" y="72" text-anchor="middle">2</text>
+      <rect x="250" y="50" width="50" height="34" fill="#3b82f6" fill-opacity="0.2" stroke="#3b82f6" stroke-width="2"/><text x="275" y="72" text-anchor="middle">1</text>
+      <text x="70" y="106" text-anchor="middle" fill="#737373">2</text><text x="135" y="106" text-anchor="middle" fill="#737373">on</text>
+      <rect x="200" y="84" width="50" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="225" y="106" text-anchor="middle" fill="#737373">1</text>
+      <rect x="250" y="84" width="50" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="275" y="106" text-anchor="middle" fill="#737373">3</text>
+      <text x="70" y="140" text-anchor="middle" fill="#737373">3</text><text x="135" y="140" text-anchor="middle" fill="#737373">sat</text>
+      <rect x="200" y="118" width="50" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="225" y="140" text-anchor="middle" fill="#737373">0</text>
+      <rect x="250" y="118" width="50" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="275" y="140" text-anchor="middle" fill="#737373">2</text>
+      <text x="70" y="174" text-anchor="middle" fill="#737373">4</text><text x="135" y="174" text-anchor="middle" fill="#737373">the</text>
+      <rect x="200" y="152" width="50" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="225" y="174" text-anchor="middle" fill="#737373">3</text>
+      <rect x="250" y="152" width="50" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="275" y="174" text-anchor="middle" fill="#737373">1</text>
+      <path d="M310 67 L362 67" stroke="#737373" stroke-width="2" marker-end="url(#emb1-arrow)"/>
+      <text x="372" y="72" fill="#10b981">embedding of cat: (2, 1)</text>
+      <text x="320" y="225" text-anchor="middle" fill="#737373">E has 4 rows, one per token, and 2 columns: a 4 × 2 matrix</text>
+      </g>
+      </svg>
+      ```
+
+      ### The embedding table
+
+      Each row of the table is the **embedding** of its token, and the whole table is the **embedding table** $E$, with one row for every token in the vocabulary. With $N$ tokens in the vocabulary and $d$ numbers in each vector, $E$ is an $N\times d$ matrix, and we call $d$ the embedding width. So
+
+      $$\text{embedding of token } i=\text{row } i \text{ of } E.$$
+
+      Our table has $N=4$ and $d=2$, so it holds $4\times2=8$ numbers. Real tables are far bigger. The smallest version of GPT-2, a language model from OpenAI, for example, has 50,257 tokens and $d=768$, about 38.6 million numbers. Our numbers are made up, and the last step shows where a real model's numbers come from.
+
+      ### A sentence becomes a grid
+
+      Now take a whole sentence with $T$ tokens. We write $x_t$ for the ID of the token at position $t$, so the sentence is $x_1,\dots,x_T$, and if "the" comes first, $x_1=4$. We call the embedding at position $t$ $e_t$, and it is row $x_t$ of $E$. Stacking the embeddings gives a $T\times d$ grid, one row per position, and the model's later calculations work on that grid.
+
+      Be careful: since the grid has one row per position, you might think a token's vector depends on its position. It doesn't. In "the cat sat on the", the word "the" is at positions 1 and 5, and both positions get exactly the same row of $E$.
+    worked: |
+      Let's turn the sentence "the cat sat" into its grid of embeddings, using the table in the picture above.
+
+      1. **Turn the words into IDs.** The vocabulary gives the ID of each word, in the order the words appear in the sentence, and these IDs are $x_1,x_2,x_3$.
+         $$(x_1,x_2,x_3)=(4,1,3)$$
+
+      2. **Look up the first token.** The first word, the, has $x_1=4$, so its embedding is row 4 of $E$. The row comes from the ID, whatever the token's position.
+         $$e_1=(3,1)$$
+
+      3. **Look up the other two.** Cat has ID 1 and sat has ID 3, so we read rows 1 and 3.
+         $$e_2=(2,1),\qquad e_3=(0,2)$$
+
+      4. **Stack them in sentence order.** Each position's embedding becomes one row of the grid.
+         $$\begin{bmatrix}3&1\\2&1\\0&2\end{bmatrix}$$
+
+      The grid is $3\times2$, one row for each of the $T=3$ tokens, while the table is $4\times2$, one row for each of the $N=4$ words in the vocabulary. The row for "on" isn't used, because "on" isn't in this sentence.
+    problems:
+      - emb-lookup-table-basics
+      - embp-lookup-self-explain
+      - embp-table-size-template
+      - embp-grid-shape
+      - embp-why-not-ids
+      - embp-same-token
+      - embp-lookup-template
+      - embp-vocab-growth
+  - id: emb-onehot-product
+    title: "Write the lookup as a multiplication"
+    explain: |
+      ### Picking out a row with zeros and a one
+
+      A language model does most of its work by multiplying matrices, and it learns by adjusting the numbers in them, which are called its **weights**. If the lookup is a matrix product too, the table becomes one more matrix of weights that the model can learn. Can a matrix product pick out one row of the table?
+
+      Yes, if we multiply by a vector of zeros with a single 1. We keep the table from the last step. For cat, ID 1, we write $u=(1,0,0,0)$, with the 1 in place 1. As a $1\times4$ matrix, $u$ times the $4\times2$ table $E$ gives a $1\times2$ answer.
+
+      Each entry of the answer is $u$ dotted with one column of $E$. Since $u$ is 0 everywhere except place 1, every product in each sum is 0 except the one that uses row 1 of $E$. So $uE$ is $(2,1)$, the embedding of cat.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 275" aria-label="The orange one-hot row u = (1, 0, 0, 0), with one entry each for cat, on, sat and the, times the 4 by 2 table E, whose first row (2, 1) for cat is blue, equals the green 1 by 2 result (2, 1). Below, u dotted with column 1 of E is 1·2 + 0·1 + 0·0 + 0·3 = 2, and with column 2 is 1·1 + 0·3 + 0·2 + 0·1 = 1">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="55" y="58" text-anchor="middle" font-size="13" fill="#737373">cat</text><text x="105" y="58" text-anchor="middle" font-size="13" fill="#737373">on</text><text x="155" y="58" text-anchor="middle" font-size="13" fill="#737373">sat</text><text x="205" y="58" text-anchor="middle" font-size="13" fill="#737373">the</text>
+      <rect x="30" y="65" width="50" height="34" fill="#f59e0b" fill-opacity="0.25" stroke="#f59e0b" stroke-width="2"/><text x="55" y="87" text-anchor="middle">1</text>
+      <rect x="80" y="65" width="50" height="34" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="105" y="87" text-anchor="middle" fill="#737373">0</text>
+      <rect x="130" y="65" width="50" height="34" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="155" y="87" text-anchor="middle" fill="#737373">0</text>
+      <rect x="180" y="65" width="50" height="34" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/><text x="205" y="87" text-anchor="middle" fill="#737373">0</text>
+      <text x="130" y="125" text-anchor="middle" font-size="13" fill="#737373">u: 1 × 4</text>
+      <text x="255" y="105" text-anchor="middle" font-size="18">×</text>
+      <rect x="280" y="48" width="50" height="34" fill="#3b82f6" fill-opacity="0.2" stroke="#3b82f6" stroke-width="2"/><text x="305" y="70" text-anchor="middle">2</text>
+      <rect x="330" y="48" width="50" height="34" fill="#3b82f6" fill-opacity="0.2" stroke="#3b82f6" stroke-width="2"/><text x="355" y="70" text-anchor="middle">1</text>
+      <rect x="280" y="82" width="50" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="305" y="104" text-anchor="middle" fill="#737373">1</text>
+      <rect x="330" y="82" width="50" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="355" y="104" text-anchor="middle" fill="#737373">3</text>
+      <rect x="280" y="116" width="50" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="305" y="138" text-anchor="middle" fill="#737373">0</text>
+      <rect x="330" y="116" width="50" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="355" y="138" text-anchor="middle" fill="#737373">2</text>
+      <rect x="280" y="150" width="50" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="305" y="172" text-anchor="middle" fill="#737373">3</text>
+      <rect x="330" y="150" width="50" height="34" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/><text x="355" y="172" text-anchor="middle" fill="#737373">1</text>
+      <text x="330" y="205" text-anchor="middle" font-size="13" fill="#737373">E: 4 × 2</text>
+      <text x="415" y="105" text-anchor="middle" font-size="18">=</text>
+      <rect x="440" y="65" width="50" height="34" fill="#10b981" fill-opacity="0.2" stroke="#10b981" stroke-width="2"/><text x="465" y="87" text-anchor="middle">2</text>
+      <rect x="490" y="65" width="50" height="34" fill="#10b981" fill-opacity="0.2" stroke="#10b981" stroke-width="2"/><text x="515" y="87" text-anchor="middle">1</text>
+      <text x="490" y="125" text-anchor="middle" font-size="13" fill="#737373">uE: 1 × 2</text>
+      <text x="320" y="238" text-anchor="middle">u · column 1 = 1·2 + 0·1 + 0·0 + 0·3 = 2</text>
+      <text x="320" y="262" text-anchor="middle">u · column 2 = 1·1 + 0·3 + 0·2 + 0·1 = 1</text>
+      </g>
+      </svg>
+      ```
+
+      ### Vectors with a single 1
+
+      A **one-hot vector** for token $i$ has $N$ entries, all 0 except a 1 in place $i$. We'll write it $u_i$. Multiplying it by the embedding table gives that token's embedding:
+
+      $$u_iE=\text{row } i \text{ of } E.$$
+
+      So looking up an embedding is the same as multiplying a one-hot vector by $E$. For a sentence, we stack the one-hot rows of its $T$ tokens into a $T\times N$ matrix $U$. For "the cat", $U$ has rows $(0,0,0,1)$ and $(1,0,0,0)$. A $T\times N$ matrix times an $N\times d$ matrix is $T\times d$, so $UE$ is the same grid we built by lookup.
+
+      ### Lookup in practice
+
+      Code reads the row directly, because $uE$ spends $N\times d$ multiplications, almost all by 0, on the same answer. Both give the same numbers, so we can treat $E$ as a matrix of weights in a product, which is how it is learned.
+
+      Be careful not to mistake the one-hot vector for the embedding. It only says which token this is, and any two different one-hot vectors are at right angles, with dot product 0, so they treat every pair of tokens as equally different, even pairs used in similar ways. The embedding is the $d$-number vector it picks out.
+    worked: |
+      Let's find the embedding of sat, ID 3, by multiplication, using the same table $E$, whose columns are $(2,1,0,3)$ and $(1,3,2,1)$.
+
+      1. **Write the one-hot vector.** Sat has ID 3, so the 1 goes in place 3 of the 4 places.
+         $$u_3=(0,0,1,0)$$
+
+      2. **Check the sizes.** Counting rows and columns, a $1\times4$ row times a $4\times2$ matrix has matching inner sizes, so the answer is $1\times2$.
+         $$1\times4\text{ times }4\times2\text{ gives }1\times2$$
+
+      3. **Dot with column 1.** Only the third product survives, because every other entry of $u_3$ is 0.
+         $$0\times2+0\times1+1\times0+0\times3=0$$
+
+      4. **Dot with column 2.** Again only the third entry of the column counts.
+         $$0\times1+0\times3+1\times2+0\times1=2$$
+
+      5. **Compare with the lookup.** Row 3 of $E$ is sat's row.
+         $$u_3E=(0,2)=\text{row } 3 \text{ of } E$$
+
+      The multiplication gives exactly the row that the lookup reads, because the 1 in place 3 keeps row 3 and the zeros drop every other row.
+    problems:
+      - emb-onehot-product-basics
+      - embp-onehot-self-explain
+      - embp-onehot-write
+      - embp-onehot-entry-template
+      - embp-product-shape
+      - embp-two-ones
+      - embp-why-index
+      - embp-onehot-matrix
+  - id: emb-learned-similar
+    title: "How a model learns the table"
+    explain: |
+      ### Where the numbers come from
+
+      So far, our table has held made-up numbers. In a real model, $E$ starts out as small random numbers. Then **training** adjusts them. Training nudges all of a model's weights little by little so it gets better at its task, such as guessing the next token of a text. Nobody decides what each of the $d$ numbers means.
+
+      What does that do to the vectors? Suppose the vocabulary also had dog. Cat and dog appear in similar places, as in "the cat sat" and "the dog sat", so the model should make similar guesses after each. Similar vectors give similar guesses, so training tends to give cat and dog similar vectors, while the word on, which is used differently, points elsewhere.
+
+      ### One vector per token, whatever the context
+
+      As the first step showed, the table gives a token the same vector wherever it appears. So "bank" in "river bank" and in "bank account" gets one vector that has to cover both meanings, and the vector doesn't say where in the sentence the token sits either. Later parts of a language model fix this by computing new vectors from these, which take in the neighbouring tokens and positions. The stored rows of $E$ stay the same.
+
+      ### Comparing two embeddings
+
+      Recall that a dot product multiplies matching entries and adds them. For two arrows of given lengths, the dot product is largest when they point the same way and 0 at right angles. For vectors $a$ and $b$ with lengths $\|a\|$ and $\|b\|$, dividing the dot product by both lengths gives **cosine similarity**, the cosine of the angle between the arrows. It compares directions whatever the lengths:
+
+      $$\cos=\frac{a\cdot b}{\|a\|\,\|b\|}.$$
+
+      Our toy table was never trained, so the picture uses new made-up vectors of the kind training might produce, with $d=2$ and each of length 5. Cat is blue, dog is green and on is orange.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="90 10 360 455" aria-label="Three embeddings drawn as arrows from the origin, each of length 5: blue cat (3, 4), green dog (4, 3) and orange on (4, minus 3). Cat and dog point almost the same way, with dot product 24 and cosine 0.96. Cat and on are at right angles, dot product 0. Dog and on have dot product 7 and cosine 0.28">
+      <defs><marker id="emb3-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker><marker id="emb3-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker><marker id="emb3-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker></defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <path d="M100 200 H370 M160 20 V345" stroke="#d4d4d4"/>
+      <path d="M160 200 L280 40" stroke="#3b82f6" stroke-width="3" marker-end="url(#emb3-blue)"/>
+      <path d="M160 200 L320 80" stroke="#10b981" stroke-width="3" marker-end="url(#emb3-green)"/>
+      <path d="M160 200 L320 320" stroke="#f59e0b" stroke-width="3" marker-end="url(#emb3-amber)"/>
+      <circle cx="160" cy="200" r="4" fill="#171717"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="232" y="36" fill="#3b82f6" text-anchor="end">cat (3, 4)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="330" y="80" fill="#10b981">dog (4, 3)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="330" y="330" fill="#f59e0b">on (4, −3)</text>
+      <text x="270" y="380" text-anchor="middle">cat and dog: dot 24, cosine 0.96</text>
+      <text x="270" y="403" text-anchor="middle">cat and on: dot 0, cosine 0</text>
+      <text x="270" y="426" text-anchor="middle">dog and on: dot 7, cosine 0.28</text>
+      <text x="270" y="452" text-anchor="middle" fill="#737373">every arrow has length 5</text>
+      </g>
+      </svg>
+      ```
+
+      Cosine similarity runs from 1 for arrows pointing the same way, through 0 at right angles, to $-1$ for opposite arrows. Cat and dog point almost the same way, on is at a right angle to cat, and dog and on fall between, with cosine 0.28. People use it to see which tokens a trained model treats alike.
+    worked: |
+      Let's measure how alike cat $(3,4)$ and dog $(4,3)$ are, and compare that with cat and on $(4,-3)$.
+
+      1. **Take the dot product of cat and dog.** We multiply matching entries and add.
+         $$3\times4+4\times3=12+12=24$$
+
+      2. **Find the lengths.** We use Pythagoras for cat, and dog has the same two numbers swapped, so its length is also 5.
+         $$\|(3,4)\|=\sqrt{3^2+4^2}=\sqrt{25}=5$$
+
+      3. **Divide by the lengths.** Dividing removes the effect of how long the arrows are, leaving only their directions.
+         $$\cos=\frac{24}{5\times5}=0.96$$
+
+      4. **Repeat for cat and on.** On also has length 5, and the products cancel, so the dot product and the cosine are both 0.
+         $$\cos=\frac{3\times4+4\times(-3)}{5\times5}=\frac{0}{25}=0$$
+
+      Cat and dog have cosine similarity $0.96$, close to the largest possible value of 1, while cat and on have $0$. These vectors treat cat and dog as alike, and on as different from cat.
+    problems:
+      - emb-learned-similar-basics
+      - embp-similar-self-explain
+      - embp-dot-template
+      - embp-most-similar
+      - embp-cosine-compute
+      - embp-unused-row
+      - embp-same-vector-context
+      - embp-bigger-dot
+      - embp-robot-commands
+final: emb-explain-lookup
+summary: |
+  - An embedding is the vector a model uses for a token. The embedding table $E$ is an $N\times d$ matrix with one row per vocabulary token, and the embedding of token $i$ is row $i$ of $E$.
+  - A sentence of $T$ tokens becomes a $T\times d$ grid, one row per position, and the same token always gets the same row.
+  - Looking up a token's embedding is the same as multiplying its one-hot vector $u_i$, all 0s except a 1 in place $i$, by $E$: $u_iE=\text{row } i \text{ of } E$. This equivalence lets $E$ be learned like any other weight matrix.
+  - The table's numbers are learned during training, so tokens used in similar ways tend to get similar vectors, which we compare with cosine similarity, $\frac{a\cdot b}{\|a\|\,\|b\|}$.
+
+  **Next:** The attention lesson lets each token's vector take in information from the other tokens in the sentence, which is how a model starts to tell the two meanings of "bank" apart.

@@ -1,0 +1,194 @@
+concept: positional-encoding
+version: 1
+objective: |
+  **Goal:** explain why attention without position information follows token reorderings, and how learned, sinusoidal and rotary positional encodings give it access to order.
+recap:
+  - concept: attention
+    text: "Shared attention compares each query with every key, then softmax turns each query's scores into weights that mix the values. The same transformations apply at every token, so attention alone has no position information."
+where_this_fits: |
+  ### What is positional encoding?
+
+  Positional encoding gives attention information about where tokens occur in a sequence. It helps distinguish word order: “the cat sat on the mat” and “the mat sat on the cat” describe different scenes.
+
+  We'll follow a rearranged token's output, then encode positions by adding vectors to embeddings or rotating queries and keys.
+knowledge_points:
+  - id: pe-reordering
+    title: Follow a reordered token's output
+    explain: |
+      ### Two words in two orders
+
+      Can attention tell which word comes before “cat”? We'll use “the cat”, the first two words of “the cat sat on the mat”. To keep the arithmetic simple, we'll treat each word as one token. A slot means a numbered position in this sequence.
+
+      Compare “the cat” with “cat the”. Here every token can attend to every token. A token's embedding is its looked-up vector. Three matrices, named $W_Q$, $W_K$ and $W_V$, make queries, keys and values from embeddings. These are “shared transformations”: we apply the same matrices at every slot, without using its number.
+
+      Each output is a weighted mixture of value vectors. The picture labels them “o-the” and “o-cat” after their query tokens, with “o” for output. When the inputs swap, the corresponding outputs swap too.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 180" aria-label="Without position information, inputs the then cat give outputs o-the then o-cat. Swapping the inputs to cat then the swaps the outputs to o-cat then o-the.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="24" fill="#171717">
+      <text x="20" y="27">Input order</text><text x="345" y="27">Output order</text>
+      <text x="30" y="75">the</text><text x="150" y="75">cat</text><text x="355" y="75">o-the</text><text x="475" y="75">o-cat</text>
+      <text x="30" y="145">cat</text><text x="150" y="145">the</text><text x="355" y="145">o-cat</text><text x="475" y="145">o-the</text>
+      </g><g stroke="#737373" stroke-width="2" fill="#737373"><path d="M220 69 H310 M302 64 L310 69 L302 74"/><path d="M220 139 H310 M302 134 L310 139 L302 144"/></g>
+      </svg>
+      ```
+
+      ### Why scores stay the same
+
+      A moved token has the same embedding, so the shared query transformation gives it the same query. Each key also stays the same. A score is a scaled query-key dot product. Attention converts scores into positive weights adding to one. Unchanged queries and keys give the same scores and weights for each token pair.
+
+      When you move a token, its key and value move to the same new slot. Each value keeps its weight. Adding these weighted values in a different order gives the same mixture for that query.
+
+      **Permutation equivariance** means that reordering inputs reorders their corresponding outputs in exactly the same way. A permutation is a rearrangement. If the output sequence is $(o_1,o_2)$ before a swap, afterwards it is
+
+      $$
+      (o_2,o_1).
+      $$
+
+      Here $o_t$ is the output for the token in slot $t$ before the swap. Be careful: equivariance does not mean the output sequence stays unchanged. Its entries move with the tokens. Cat gets the same mixture in both orders, so it contains no information about whether “the” came before or after it. Language needs that distinction.
+    worked: |
+      Let's track the output for “cat” when we swap the two words “the cat”. Suppose its attention weights are $0.25$ for “the” and $0.75$ for “cat”, with values $v_{\text{the}}=(4,0)$ and $v_{\text{cat}}=(0,4)$.
+
+      1. **Mix the values in the original order.** The cat query weights each token's value, so its output in slot 2 is
+         $$o_2=0.25(4,0)+0.75(0,4)=(1,3).$$
+      2. **Keep each weight with its value.** In “cat the”, the cat query still gives the cat key weight $0.75$, because their vectors haven't changed. The cat output, now in slot 1, is
+         $$0.75(0,4)+0.25(4,0)=(1,3).$$
+
+      The mixture $(1,3)$ follows “cat” to slot 1. The output for “the” moves to the other slot by the same reasoning, even if its mixture differs from the cat mixture.
+    problems:
+      - pe-order-basics
+      - pe-order-worked
+      - pe-order-mixture
+      - pe-order-not-invariant
+      - pe-order-three
+      - pe-order-position-rule
+  - id: pe-add-position
+    title: Add a vector for each position
+    explain: |
+      ### Give each slot its own numbers
+
+      To let attention distinguish word orders, we can change what enters it. Use “the cat”, treating each word as one token. Choose embeddings $(2,0)$ for “the” and $(0,2)$ for “cat”. An embedding is a token's looked-up vector; $e_t$ names the embedding currently in slot $t$.
+
+      Choose position vectors $(1,0)$ for slot 1 and $(0,1)$ for slot 2 to make the sums easy. In the picture, we add the first entries together, then the second entries.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 155" aria-label="Slot 1 adds embedding (2,0) to position (1,0), giving (3,0). Slot 2 adds embedding (0,2) to position (0,1), giving (0,3). Each resulting vector still has two entries.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="24" fill="#171717"><text x="20" y="28">Slot</text><text x="115" y="28">Token vector</text><text x="285" y="28">Position vector</text><text x="475" y="28">Sum</text><text x="25" y="78">1: the</text><text x="130" y="78">(2, 0)</text><text x="240" y="78">+</text><text x="310" y="78" fill="#3b82f6">(1, 0)</text><text x="425" y="78">=</text><text x="485" y="78">(3, 0)</text><text x="25" y="133">2: cat</text><text x="130" y="133">(0, 2)</text><text x="240" y="133">+</text><text x="310" y="133" fill="#3b82f6">(0, 1)</text><text x="425" y="133">=</text><text x="485" y="133">(0, 3)</text></g>
+      </svg>
+      ```
+
+      ### Two ways to choose position vectors
+
+      An **additive positional encoding** adds a position vector $p_t$ to each token embedding $e_t$ before making queries, keys and values. With $z_t$ the combined input at position $t$, the rule is
+
+      $$
+      z_t=e_t+p_t.
+      $$
+
+      The width $d$ is the number of entries. Adding vectors with $d$ entries each gives $d$ entries, so attention can accept the combined input. A **learned positional encoding** stores one vector per slot in a table. Training adjusts the entries to help the model make better predictions.
+
+      A **sinusoidal positional encoding** computes vectors using fixed sine and cosine waves, giving a rule for generating them from position. Picture a point moving counterclockwise around a circle of radius 1. Its horizontal coordinate is called the cosine of its angle, and its vertical coordinate is the sine.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 230" aria-label="A circle of radius 1 centered at the origin. At zero turn the point is (1,0) on the right; at a quarter turn it is (0,1) at the top; at a half turn it is (-1,0) on the left; at three quarter turns it is (0,-1) at the bottom. Cosine is the horizontal coordinate and sine is the vertical coordinate.">
+      <circle cx="285" cy="125" r="75" fill="#d4d4d4" fill-opacity="0" stroke="#d4d4d4" stroke-width="2"/>
+      <path d="M180 125 H390 M285 220 V25" stroke="#737373"/>
+      <g fill="#3b82f6"><circle cx="360" cy="125" r="5"/><circle cx="285" cy="50" r="5"/><circle cx="210" cy="125" r="5"/><circle cx="285" cy="200" r="5"/></g>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="24" fill="#171717"><text x="370" y="119">Zero: (1, 0)</text><text x="300" y="45">Quarter: (0, 1)</text><text x="38" y="119">Half: (-1, 0)</text><text x="294" y="160" font-size="20">(0, 0)</text><text x="300" y="215">Three quarters: (0, -1)</text></g>
+      </svg>
+      ```
+
+      One toy pair is
+
+      $$
+      p_t=(\cos\theta_t,\sin\theta_t).
+      $$
+
+      Choose angle $\theta_t$ to be zero at slot 1, increasing a quarter turn per slot. Slots 1–4 give $(1,0)$, $(0,1)$, $(-1,0)$ and $(0,-1)$. Slot 5 returns to $(1,0)$, so this pair alone confuses slots 1 and 5. With four entries, a second sine/cosine pair can take eight slots per turn. At slot 5 it reaches halfway around, distinguishing slots 1 and 5.
+
+      ### Limitations
+
+      A learned table needs trained rows for the positions used. Wave rules can generate vectors for later slots; accuracy on longer sequences still needs testing. Be careful: different embedding/position pairs can have the same sum, as we'll check below.
+    worked: |
+      Let's check the combined inputs for “the cat”, with embeddings $(2,0)$ and $(0,2)$ and position vectors $p_1=(1,0)$ and $p_2=(0,1)$.
+
+      1. **Add at the original slots.** Each token gets its current slot's vector.
+         $$\begin{aligned}z_1&=(2,0)+(1,0)=(3,0),\\z_2&=(0,2)+(0,1)=(0,3).\end{aligned}$$
+      2. **Use the new slots.** In “cat the”, the embeddings move and we add the new slots' vectors.
+         $$\begin{aligned}z_1&=(0,2)+(1,0)=(1,2),\\z_2&=(2,0)+(0,1)=(2,1).\end{aligned}$$
+
+         To see how the changed inputs can affect attention, choose a simple $W_Q$ that copies its input. The cat query then changes from $(0,3)$ to $(1,2)$, so its comparisons with keys can change.
+
+      3. **Check a possible collision.** Addition can still give different embedding/position pairs the same combined vector.
+         $$\begin{aligned}(2,0)+(0,1)&=(2,1),\\(1,1)+(1,0)&=(2,1).\end{aligned}$$
+
+      The first two position vectors could be learned table rows or the values of our toy wave rule at slots 1 and 2. Each sum keeps two entries. In the collision, the query/key/value matrices receive $(2,1)$ in both cases. They therefore cannot tell which token/position pair produced it from this input alone. Addition lets position affect attention, but cannot guarantee a unique input for every pair.
+    problems:
+      - pe-add-basics
+      - pe-add-worked
+      - pe-add-entry
+      - pe-add-width
+      - pe-add-table-limit
+      - pe-add-waves
+      - pe-add-collision
+  - id: pe-rotate-position
+    title: Rotate queries and keys by position
+    explain: |
+      ### Rotate vectors before comparing them
+
+      Position can also enter through attention scores. **Rotary positional encoding** rotates pairs of query and key entries by position before their dot product. For example, split $(1,0,2,0)$ into $(1,0)$ and $(2,0)$, then rotate each as a two-entry vector. The resulting scores control the weights used to mix the unchanged value vectors.
+
+      Extend our example to the first three words of “the cat sat on the mat”. Treat each word as one token and use two-entry queries and keys, each starting as $(1,0)$. Each whole vector is one pair here. This lets us see how position alone changes comparisons. Reuse the circle's toy angles: zero at slot 1, a quarter turn at slot 2 and a half turn at slot 3, all counterclockwise.
+
+      The picture places all three vectors at $(0,0)$. Their equal lengths show that rotation changes direction while preserving size.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 260" aria-label="Equal-length vectors from (0,0): slot 1 points right to (1,0), slot 2 points up to (0,1), and slot 3 points left to (-1,0). Each later slot turns counterclockwise by another quarter turn.">
+      <g stroke="#d4d4d4" stroke-width="1"><path d="M95 170 H495 M295 220 V35"/></g>
+      <g stroke-width="4"><path d="M295 170 H395 M386 164 L395 170 L386 176" stroke="#3b82f6" fill="#3b82f6"/><path d="M295 170 V70 M289 79 L295 70 L301 79" stroke="#10b981" fill="#10b981"/><path d="M295 170 H195 M204 164 L195 170 L204 176" stroke="#f59e0b" fill="#f59e0b"/></g>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="24" fill="#171717"><text x="315" y="55">Slot 2: (0, 1)</text><text x="400" y="155">Slot 1: (1, 0)</text><text x="25" y="155">Slot 3: (-1, 0)</text><text x="305" y="198">(0, 0)</text></g>
+      </svg>
+      ```
+
+      ### Compare neighboring words
+
+      Write the original query and key as $q_t$ and $k_j$, where $t$ and $j$ are their positions. A tilde marks their rotated versions, $\tilde q_t$ and $\tilde k_j$. Their comparison score $s_{tj}$ is
+
+      $$
+      s_{tj}=\frac{\tilde q_t\cdot\tilde k_j}{\sqrt{d_k}}.
+      $$
+
+      The width $d_k$ counts query/key entries. Turning both vectors equally preserves their lengths and the angle between them, which preserves their dot product.
+
+      The gap $j-t$ counts the positions from query to key. Moving both one slot forward adds the same turn to both, preserving the dot product for fixed unrotated vectors. The positional effect therefore depends on the gap. This lets attention treat “one word away” similarly near the beginning or end of a sequence. For different token pairs, the original query/key vectors also affect their scores.
+
+      ### Limitations
+
+      Our quarter-turn toy confuses gaps that differ by four. A second pair of entries could rotate by an eighth turn per slot, still distinguishing those gaps when the first pair repeats. The model learns from training sequences, and may make worse predictions on much longer ones.
+    worked: |
+      Let's compare two neighboring pairs in “the cat sat”. Use unrotated queries and keys $(1,0)$, and turns of zero, one quarter turn and one half turn at slots 1, 2 and 3. We'll compute the dot products before dividing by $\sqrt{d_k}$.
+
+      1. **Compare slots 1 and 2.** The query points right and the key points up, so their dot product is
+         $$\tilde q_1\cdot\tilde k_2=(1,0)\cdot(0,1)=0.$$
+      2. **Move both slots forward.** The query now points up and the key points left, giving
+         $$\tilde q_2\cdot\tilde k_3=(0,1)\cdot(-1,0)=0.$$
+      3. **Change the gap.** Comparing slots 1 and 3 instead points the vectors in opposite directions.
+         $$\tilde q_1\cdot\tilde k_3=(1,0)\cdot(-1,0)=-1.$$
+
+      Attention divides these dot products by $\sqrt{d_k}$ to get scores. For a fixed query, a larger score gets a larger attention weight, so changing a gap can change how much a value contributes. If we change the original query for the last comparison to $(2,0)$, the dot product becomes $-2$, showing that token vectors also matter. Be careful: a negative score still gives a positive weight, so it doesn't make the mixture subtract that value.
+    problems:
+      - pe-rotary-basics
+      - pe-rotary-worked
+      - pe-rotary-quarter
+      - pe-rotary-dot
+      - pe-rotary-shift
+      - pe-rotary-content
+      - pe-rotary-repeat
+final: pe-connect-order
+summary: |
+  - Attention with shared transformations and no position-dependent rules is permutation-equivariant, which means reordering tokens reorders their corresponding outputs the same way.
+  - Learned position tables and fixed sinusoidal waves supply vectors that are added to embeddings as $z_t=e_t+p_t$, without changing the width.
+  - Rotary positional encoding turns query/key pairs before comparison, so the positional effect on their dot product depends on their relative gap.
+  - Fixed formulas can be evaluated at new positions; performance at lengths beyond training still needs testing.
+
+  **Next:** Transformer blocks combine position-aware attention with other operations to build a sequence model.

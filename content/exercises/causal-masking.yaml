@@ -6,7 +6,7 @@ exercises:
     role: diagnostic
     difficulty: 3
     est_minutes: 2
-    prompt: "In a decoder-only language model with a causal attention mask, which positions can the token at position 3 (1-indexed) attend to during training?"
+    prompt: "In a language model with a causal mask, which positions can the token at position 3 attend to during training? Positions are numbered from 1."
     options:
       - { id: a, text: "Positions 1, 2 and 3", correct: true }
       - {
@@ -14,19 +14,664 @@ exercises:
           text: "Positions 1 and 2 only",
           correct: false,
           category: misunderstood_definition,
-          feedback: "The causal mask blocks *future* positions; a token can attend to itself.",
+          feedback: "The causal mask blocks only later positions. A token can attend to itself.",
         }
       - {
           id: c,
           text: "All positions in the sequence",
           correct: false,
           category: misunderstood_definition,
-          feedback: "That is an encoder (bidirectional) attention pattern. It would let the model see the token it is trying to predict.",
+          feedback: "That is attention with no mask. It would let position 3 see token 4, the token it is trying to predict.",
         }
       - {
           id: d,
           text: "Only position 4, the token it predicts",
           correct: false,
           category: incorrect_reasoning,
+          feedback: "Position 4 comes later, so the mask blocks it. Position 3 must predict token 4 without seeing it.",
         }
-    solution: "The mask sets scores for $j > i$ to $-\\infty$ before the softmax, so position 3 mixes information from positions 1–3. Its output is used to predict token 4."
+    solution: "The mask sets the scores for $j > t$ to $-\\infty$ before the softmax, so position 3 mixes information from positions 1–3. Its output is used to predict token 4."
+  - id: cm-hide-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: In attention with a causal mask, which positions may the token at position $t$ attend to?
+    options:
+      - id: a
+        text: Position $t$ itself and every position before it.
+        correct: true
+        feedback: The mask allows position $j$ exactly when $j\le t$.
+      - id: b
+        text: Only the positions before $t$, never position $t$ itself.
+        correct: false
+        category: misunderstood_definition
+        feedback: The diagonal stays allowed. A token may attend to itself, because the token it must guess is the next one.
+      - id: c
+        text: Position $t$ itself and every position after it.
+        correct: false
+        category: misunderstood_definition
+        feedback: That is the reverse. The later positions are the ones blocked, because they hold the tokens still to be guessed.
+      - id: d
+        text: Every position in the sequence, with equal weight.
+        correct: false
+        category: misunderstood_definition
+        feedback: The mask blocks the later positions, and the weights on the allowed positions still come from the scores.
+    solution: A causal mask lets position $t$ attend to position $j$ only when $j\le t$, so each token sees itself and the tokens before it.
+  - id: cm-hide-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example for "the cat sat on", "cat" at position 2 may attend to itself but not to "sat" at position 3. Why is that the right line to draw?
+    options:
+      - id: a
+        text: '"cat" must guess "sat", so "sat" must stay hidden, while "cat" itself is already known.'
+        correct: true
+        feedback: Position $t$ guesses token $x_{t+1}$, and $t+1>t$, so the guess is always in a blocked column.
+      - id: b
+        text: '"sat" is a verb, and attention lets a noun look only at the words around it.'
+        correct: false
+        category: incorrect_reasoning
+        feedback: The mask depends only on positions. It never looks at what kind of word a token is.
+      - id: c
+        text: The mask blocks every position more than one place away from position 2.
+        correct: false
+        category: misunderstood_definition
+        feedback: '"cat" may attend to "the", which is one place back, and in a longer sentence it could attend to any earlier word. Only later positions are blocked.'
+      - id: d
+        text: Attending to "sat" would cost too much computing time, so the mask leaves it out.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The mask is there to hide the answer, which is the next word. Saving time is not its purpose.
+    solution: Position 2 has to guess the token at position 3. Letting it attend to position 3 would let it copy the answer, while attending to positions 1 and 2 uses only words that are already known.
+  - id: cm-hide-which
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A sentence of $T=5$ tokens goes through attention with a causal mask. Which positions may position 4 attend to?
+    options:
+      - id: a
+        text: Positions 1, 2, 3 and 4
+        correct: true
+        feedback: Position 4 may attend to every $j\le4$.
+      - id: b
+        text: Positions 1, 2 and 3 only
+        correct: false
+        category: misunderstood_definition
+        feedback: The mask allows $j\le t$, so position 4 also attends to itself.
+      - id: c
+        text: Positions 4 and 5 only
+        correct: false
+        category: misunderstood_definition
+        feedback: Position 5 comes later, so it is blocked, and the earlier positions are allowed.
+      - id: d
+        text: Positions 1 to 5
+        correct: false
+        category: misunderstood_definition
+        feedback: Position 5 holds the token that position 4 must guess, so the mask blocks it.
+    solution: The causal mask allows position $j$ when $j\le t$. For $t=4$ that is positions 1, 2, 3 and 4, and position 5 is blocked.
+  - id: cm-hide-diagonal
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A programmer builds a mask that lets position $t$ attend only to positions $j<t$, so each token is also blocked from attending to itself. What goes wrong at position 1?
+    options:
+      - id: a
+        text: Position 1 has no position it is allowed to attend to, so its weights can't be formed.
+        correct: true
+        feedback: With $j<1$ there are no allowed positions, so the softmax for row 1 has nothing to share its weight between.
+      - id: b
+        text: Position 1 can now see the token it must guess.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Blocking more cells can't reveal anything new. Position 2 is still blocked for position 1.
+      - id: c
+        text: Nothing goes wrong, because position 1 never attends to anything anyway.
+        correct: false
+        category: misunderstood_definition
+        feedback: Under a correct causal mask, position 1 attends to itself with weight 1. With the diagonal blocked, it has nothing at all.
+      - id: d
+        text: Position 1 spreads its weight evenly over all the later positions.
+        correct: false
+        category: misunderstood_definition
+        feedback: The later positions are still blocked, so they get no weight.
+    solution: The rule $j<t$ allows nothing for $t=1$, so row 1 has no allowed position. The diagonal must stay allowed, because a token's own word is already known and its guess is the next word.
+  - id: cm-hide-count-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A sentence has $T={{= T }}$ tokens and goes through attention with a causal mask. How many (attending position, attended position) pairs are allowed, counting each position attending to itself?
+    params:
+      T:
+        min: 3
+        max: 12
+    answer_expr: T * (T + 1) / 2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: T * T
+        category: misunderstood_definition
+        feedback: That counts every pair. The pairs where the attended position comes later are blocked.
+      - answer_expr: T * (T - 1) / 2
+        category: misunderstood_definition
+        feedback: That leaves out each position attending to itself. The diagonal is allowed.
+    solution: Row $t$ allows $t$ positions, so the total is $1+2+\dots+{{= T }}={{= T }}\times{{= T + 1 }}/2={{= T * (T + 1) / 2 }}$.
+  - id: cm-hide-blocked-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A causal mask is built for a sentence of $T={{= T }}$ tokens, as a grid with one row and one column per position. How many cells of the grid are blocked?
+    params:
+      T:
+        min: 3
+        max: 12
+    answer_expr: T * (T - 1) / 2
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer_expr: T * (T + 1) / 2
+        category: misunderstood_definition
+        feedback: That is the number of allowed cells. The blocked cells are the ones above the diagonal.
+      - answer_expr: T * T
+        category: misunderstood_definition
+        feedback: That is every cell in the grid. Only the cells where the column comes after the row are blocked.
+    solution: The grid has ${{= T }}\times{{= T }}={{= T * T }}$ cells, of which ${{= T * (T + 1) / 2 }}$ are allowed (on or below the diagonal). That leaves ${{= T * (T - 1) / 2 }}$ blocked.
+  - id: cm-hide-copy
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A language model is trained to guess each next word, with whole sentences fed in at once and no causal mask. Its training loss becomes very low, but when it writes new text one word at a time, its guesses are poor. What is the most likely reason?
+    options:
+      - id: a
+        text: Each position could attend to the next word and copy it, and that word isn't there when writing.
+        correct: true
+        feedback: Without the mask the answer sits in the input, so the model learns to copy it from the input.
+      - id: b
+        text: The training sentences were too short to teach the model how to write.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Short sentences don't explain a very low training loss alongside poor guesses. Seeing the answer does.
+      - id: c
+        text: Without a mask, attention can't mix the value vectors at all.
+        correct: false
+        category: misunderstood_definition
+        feedback: Attention mixes value vectors with or without a mask. The mask only decides which positions take part.
+      - id: d
+        text: The low loss shows that the learning rate was too large.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A learning rate that is too large usually stops the loss from falling well. Here the loss fell easily.
+    solution: Without a causal mask, position $t$ can attend to token $x_{t+1}$, the word it is meant to guess, so training rewards copying. When writing, the next word doesn't exist yet, so there is nothing to copy.
+  - id: cm-hide-which-task
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot logs 6 joint-angle readings, one per time step. A model with attention is trained in one pass to predict, at every step, the reading at the next step. With a causal mask, which readings may the model attend to when it predicts from the fourth reading?
+    options:
+      - id: a
+        text: Readings 1, 2, 3 and 4
+        correct: true
+        feedback: Step 4 may use itself and every earlier step, and must not see reading 5, which it predicts.
+      - id: b
+        text: Readings 1 to 6
+        correct: false
+        category: misapplied_technique
+        feedback: Readings 5 and 6 come later. Reading 5 is exactly what step 4 has to predict, so it must be hidden.
+      - id: c
+        text: Reading 5 only
+        correct: false
+        category: misunderstood_definition
+        feedback: Reading 5 is the answer for step 4, so it is the one reading that must be blocked.
+      - id: d
+        text: Readings 3 and 4 only
+        correct: false
+        category: misunderstood_definition
+        feedback: The mask blocks only later steps. Readings 1 and 2 are earlier, so they are allowed.
+    solution: The causal mask works the same way for any sequence. Step $t=4$ may attend to steps $j\le4$, which hides reading 5, the one it is trained to predict.
+  - id: cm-zero-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: A causal mask adds $-\infty$ to the score of each blocked position before the softmax. Why does it use $-\infty$?
+    options:
+      - id: a
+        text: Because $e^{-\infty}=0$, so the blocked position gets a weight of exactly 0.
+        correct: true
+        feedback: The softmax raises $e$ to each score, and only $-\infty$ gives exactly 0.
+      - id: b
+        text: Because a score of 0 would make the softmax divide by zero.
+        correct: false
+        category: math_error
+        feedback: A score of 0 gives $e^0=1$, a normal positive term, so nothing divides by zero.
+      - id: c
+        text: Because $-\infty$ makes the blocked position's weight negative, which cancels its value vector.
+        correct: false
+        category: misunderstood_definition
+        feedback: Softmax weights are never negative. $e^{-\infty}$ is exactly 0.
+      - id: d
+        text: Adding 0 would also give a weight of 0, so either choice works.
+        correct: false
+        category: math_error
+        feedback: Adding 0 leaves the score as it was, and even a score of 0 gives $e^0=1$, a real share of the weight.
+    solution: The softmax weight is $e^{s}$ divided by a total. Only $e^{-\infty}=0$ removes a position completely, while any ordinary score gives a positive share.
+  - id: cm-zero-self-explain
+    lesson_only: true
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, "cat" has masked scores $(0,1,-\infty,-\infty)$, and the total that each term is divided by is $1+2.72=3.72$. Why does that total leave out "sat" and "on"?
+    options:
+      - id: a
+        text: Their masked scores are $-\infty$, and $e^{-\infty}=0$, so they add nothing.
+        correct: true
+        feedback: The blocked terms are exactly 0, so the total is $e^0+e^1$.
+      - id: b
+        text: Their original scores, 2 and 0, are too small to matter.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A score of 2 gives $e^2\approx7.39$, the largest term of all. They are left out because the mask changed them to $-\infty$.
+      - id: c
+        text: The softmax always adds up only the first two positions.
+        correct: false
+        category: misunderstood_definition
+        feedback: The softmax adds a term for every position. Here two of those terms are 0.
+      - id: d
+        text: The mask removes "sat" and "on" from the sentence before attention starts.
+        correct: false
+        category: misunderstood_definition
+        feedback: The words stay in the sentence. The mask only sets their scores in row 2 to $-\infty$.
+    solution: Adding the mask turns the scores of "sat" and "on" into $-\infty$. Their terms $e^{-\infty}$ are 0, so the total is $e^0+e^1\approx3.72$.
+  - id: cm-zero-score-zero
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In a sentence of 3 tokens, position 1 has score 0 for itself. A buggy mask sets the scores of positions 2 and 3 to $0$ instead of $-\infty$. What weight does position 1 now give itself after the softmax? Round to 2 decimals.
+    answer: 0.33
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer: 1
+        category: misunderstood_definition
+        feedback: That would be the result with $-\infty$. A score of 0 still gives $e^0=1$.
+      - answer: 0
+        category: math_error
+        feedback: Position 1's own term is $e^0=1$, a positive share of the total.
+    solution: All three scores are 0, so each term is $e^0=1$ and each weight is $1/3\approx0.33$. Using $-\infty$ would have given position 1 a weight of 1.
+  - id: cm-zero-first
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In a sentence of 4 tokens, position 1 has scores $(3,-1,5,2)$ for positions 1 to 4. After the causal mask and the softmax, what weight does position 1 give itself?
+    answer: 1
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer: 0.11
+        tolerance:
+          abs: 0.005
+        category: misapplied_technique
+        feedback: That is the softmax over all four scores. The mask blocks positions 2, 3 and 4.
+      - answer: 0
+        category: misunderstood_definition
+        feedback: Position 1 may attend to itself. Only the later positions are blocked.
+    solution: The mask turns the scores of positions 2 to 4 into $-\infty$, so only $e^3$ remains, and $e^3/e^3=1$. Position 1 always gives itself all of its weight.
+  - id: cm-zero-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: In a sentence of 3 tokens, position 2 has scores $({{= a }},{{= b }},{{= c }})$ for positions 1, 2 and 3. Apply the causal mask, then the softmax. What weight does position 2 give itself? Round to 2 decimals.
+    params:
+      a:
+        min: 0
+        max: 1
+      b:
+        min: 0
+        max: 4
+      c:
+        min: 1
+        max: 3
+    constraints: ["a != b"]
+    answer_expr: exp(b) / (exp(a) + exp(b))
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer_expr: exp(b) / (exp(a) + exp(b) + exp(c))
+        tolerance:
+          abs: 0.005
+        category: misapplied_technique
+        feedback: That includes position 3, which the mask blocks. Leave its term out of the total.
+      - answer_expr: exp(a) / (exp(a) + exp(b))
+        tolerance:
+          abs: 0.005
+        category: math_error
+        feedback: That is the weight on position 1. The question asks for the weight position 2 gives itself.
+    solution: The mask turns the score of position 3 into $-\infty$, so the weight is $e^{ {{= b }} }/(e^{ {{= a }} }+e^{ {{= b }} })\approx{{= round(exp(b) / (exp(a) + exp(b)), 2) }}$.
+  - id: cm-zero-last-row
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A sentence has $T$ tokens. How does the causal mask change the attention weights of the last position, $t=T$?
+    options:
+      - id: a
+        text: It doesn't change them, because no position comes after $T$.
+        correct: true
+        feedback: Row $T$ allows every $j\le T$, which is every position, so the mask adds 0 everywhere.
+      - id: b
+        text: It sets them all to 0, because the last token has nothing to guess.
+        correct: false
+        category: misunderstood_definition
+        feedback: Row $T$ has no blocked cells, so its weights are the plain softmax of its scores.
+      - id: c
+        text: It puts all the weight on position $T$ itself.
+        correct: false
+        category: misunderstood_definition
+        feedback: That happens at position 1, which has only itself allowed. The last position has every position allowed.
+      - id: d
+        text: It halves each weight, because half the grid is blocked.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The mask works row by row, and the last row has no blocked cells.
+    solution: Position $T$ may attend to every $j\le T$, which is all positions. The mask adds 0 to every score in that row, so its weights are unchanged.
+  - id: cm-zero-output
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: In a sentence of 3 tokens, the value vectors are $v_1=(2,0)$, $v_2=(4,2)$ and $v_3=(0,6)$. Position 2 has scores $(1,1,4)$ for positions 1, 2 and 3. With the causal mask, what is the first entry of the attention output $o_2$?
+    answer: 3
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer: 0.27
+        tolerance:
+          abs: 0.005
+        category: misapplied_technique
+        feedback: That uses the weights without the mask, which put most of the weight on position 3. The mask blocks position 3.
+      - answer: 6
+        category: math_error
+        feedback: That adds the first entries without weighting them. Each weight is 0.5.
+    solution: The mask blocks position 3, and the remaining scores are equal, so the weights are $0.5$, $0.5$ and $0$. Then $o_2=0.5\,(2,0)+0.5\,(4,2)=(3,1)$, whose first entry is $3$.
+  - id: cm-zero-after-softmax
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: Position 2 has scores $(0,1,2,0)$ for four positions. Instead of masking the scores, a programmer takes the softmax first, getting about $(0.083,0.225,0.610,0.083)$, and then sets the weights of positions 3 and 4 to 0. What is wrong with the result?
+    options:
+      - id: a
+        text: The two remaining weights add up to only about 0.31, so the output is shrunk.
+        correct: true
+        feedback: Masking before the softmax gives about 0.27 and 0.73, which add up to 1.
+      - id: b
+        text: Nothing is wrong, because the blocked weights are 0 either way.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The blocked weights are 0, but the allowed ones were divided by a total that included the blocked terms.
+      - id: c
+        text: Position 2 can still see position 3 through its weight of 0.61.
+        correct: false
+        category: misunderstood_definition
+        feedback: That weight was set to 0, so position 3 adds nothing. The problem is in the weights that are left.
+      - id: d
+        text: The weights become negative after the blocked ones are removed.
+        correct: false
+        category: math_error
+        feedback: Setting weights to 0 can't make the others negative. They stay as about 0.083 and 0.225.
+    solution: The softmax divided every term by a total that included $e^2$ from position 3. Zeroing afterwards leaves weights of about $0.083$ and $0.225$, which add up to about $0.31$. Masking first gives about $0.27$ and $0.73$, which add up to 1.
+  - id: cm-code-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: The causal mask $M$ for $T$ tokens is a $T\times T$ grid added to the grid of scores $S$, with row $t$ for the attending position and column $j$ for the attended position. Which grid is it?
+    options:
+      - id: a
+        text: $0$ on and below the diagonal, $-\infty$ above it.
+        correct: true
+        feedback: Above the diagonal $j>t$, which is exactly where the later positions are.
+      - id: b
+        text: $-\infty$ on and below the diagonal, $0$ above it.
+        correct: false
+        category: misunderstood_definition
+        feedback: That blocks the earlier positions and allows the later ones, the reverse of a causal mask.
+      - id: c
+        text: $0$ below the diagonal, $-\infty$ on and above it.
+        correct: false
+        category: misunderstood_definition
+        feedback: That also blocks the diagonal, so position 1 would have nothing to attend to.
+      - id: d
+        text: $1$ on and below the diagonal, $0$ above it.
+        correct: false
+        category: implementation_error
+        feedback: Adding 0 above the diagonal blocks nothing. The blocked cells need $-\infty$.
+    solution: Row $t$ must allow columns $j\le t$ and block columns $j>t$, so $M$ has 0 on and below the diagonal and $-\infty$ above it.
+  - id: cm-code-self-explain
+    lesson_only: true
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example's code, the mask comes from `np.triu(np.full((T, T), -np.inf), k=1)`. Why `k=1` rather than `k=0`?
+    options:
+      - id: a
+        text: "`k=1` starts one place above the diagonal, so each token can still attend to itself."
+        correct: true
+        feedback: With `k=0` the diagonal would be blocked too, and row 1 would have nothing left.
+      - id: b
+        text: "`k=1` makes the code skip position 1, which never needs a mask."
+        correct: false
+        category: implementation_error
+        feedback: "`k` picks which diagonal the upper triangle starts from. Every row, including row 1, gets its mask."
+      - id: c
+        text: '`k=1` sets the blocked cells to 1 instead of $-\infty$.'
+        correct: false
+        category: implementation_error
+        feedback: The $-\infty$ comes from `np.full((T, T), -np.inf)`. `k` only chooses where the triangle starts.
+      - id: d
+        text: "`k=1` makes each row of weights add up to 1."
+        correct: false
+        category: misunderstood_definition
+        feedback: Dividing by `A.sum(axis=1, keepdims=True)` is what makes each row add up to 1.
+    solution: "`np.triu(..., k=1)` keeps the $-\\infty$ values strictly above the diagonal, the cells with $j>t$, and sets the rest to $0$. The diagonal stays allowed, which is what a causal mask needs."
+  - id: cm-code-complete
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: Fill the blank so that every blocked score becomes minus infinity and the other scores are kept.
+    code: |
+      import numpy as np
+      S = np.array([[1.0, 2.0], [3.0, 4.0]])
+      blocked = np.triu(np.ones((2, 2)), k=1) == 1
+      masked = np.where(blocked, ____, S)
+      print(masked)
+    accept: ["-np.inf", "float('-inf')", "-float('inf')"]
+    solution: "`np.where` takes the second argument where `blocked` is true, so `-np.inf` puts $-\\infty$ in the blocked cell and keeps the scores elsewhere."
+  - id: cm-code-count
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: What does this print?
+    code: |-
+      import numpy as np
+      print(int(np.triu(np.ones((5, 5)), k=1).sum()))
+    answer: 10
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 15
+        category: implementation_error
+        feedback: That would include the diagonal, which `k=0` keeps. With `k=1` the triangle starts one place above it.
+      - answer: 25
+        category: implementation_error
+        feedback: "`np.triu` sets everything below its starting diagonal to zero, so not all 25 ones remain."
+    solution: '`np.triu(..., k=1)` keeps the ones above the diagonal of a $5\times5$ grid, $4+3+2+1+0=10$ of them. These are the cells a causal mask blocks for 5 tokens.'
+  - id: cm-code-later-word
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: The four tokens "the cat sat on" go through attention with a causal mask. Then the last token is changed, giving "the cat sat by". Which attention outputs can change?
+    options:
+      - id: a
+        text: Only the output at position 4
+        correct: true
+        feedback: Positions 1 to 3 can't attend to position 4, so their outputs stay exactly the same.
+      - id: b
+        text: All four outputs
+        correct: false
+        category: misunderstood_definition
+        feedback: That would be true without a mask. With it, only position 4 can attend to position 4.
+      - id: c
+        text: Only the output at position 3
+        correct: false
+        category: misunderstood_definition
+        feedback: Position 3 is blocked from attending to position 4, so its output can't change.
+      - id: d
+        text: None of the outputs
+        correct: false
+        category: incorrect_reasoning
+        feedback: Position 4 attends to itself, and its own vectors changed.
+    solution: With the mask, output $o_t$ depends only on tokens 1 to $t$. Token 4 appears only in what position 4 can attend to, so only $o_4$ can change.
+  - id: cm-code-read
+    dimension: implementation
+    type: code_read
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: What does this print?
+    code: |-
+      import numpy as np
+      S = np.array([[2, 0, 1],
+                    [1, 1, 3],
+                    [0, 2, 2]], dtype=float)
+      T = S.shape[0]
+      blocked = np.triu(np.ones((T, T)), k=1) == 1
+      A = np.exp(np.where(blocked, -np.inf, S))
+      A = A / A.sum(axis=1, keepdims=True)
+      print(A[1, 0].round(2))
+    answer: 0.5
+    tolerance:
+      abs: 0.001
+    common_wrong:
+      - answer: 0.11
+        tolerance:
+          abs: 0.005
+        category: implementation_error
+        feedback: That is the weight without the mask. Row index 1 blocks column index 2, so its score of 3 drops out.
+      - answer: 1
+        category: implementation_error
+        feedback: That is the weight in row index 0. Row index 1 is the second row, which shares its weight between two columns.
+    solution: "`A[1, 0]` is the second row, first column. In that row the mask blocks the last column, leaving the equal scores 1 and 1, so the weight is $e^1/(e^1+e^1)=0.5$."
+  - id: cm-code-robot
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A model with causal attention reads a robot's 6 sensor readings, one per time step, and at every step outputs a prediction of the next reading. Reading 3 is replaced by a different value. At which steps can the model's attention output change?
+    options:
+      - id: a
+        text: Steps 3, 4, 5 and 6
+        correct: true
+        feedback: Step 3 and every later step may attend to step 3.
+      - id: b
+        text: Steps 1, 2 and 3
+        correct: false
+        category: misunderstood_definition
+        feedback: Steps 1 and 2 are blocked from attending to step 3, because it comes after them.
+      - id: c
+        text: Step 3 only
+        correct: false
+        category: misunderstood_definition
+        feedback: Later steps may attend to earlier ones, so steps 4 to 6 also read step 3.
+      - id: d
+        text: All six steps
+        correct: false
+        category: misapplied_technique
+        feedback: That would happen without a mask. With it, steps 1 and 2 can't see step 3.
+    solution: With a causal mask, the output at step $t$ depends only on steps 1 to $t$. Reading 3 is among those exactly when $t\ge3$, so steps 3 to 6 can change.
+  - id: cm-code-debug
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: 'A programmer builds the blocked cells with `np.triu(np.ones((T, T)), k=0) == 1`, puts $-\infty$ in them, raises $e$ to every entry and divides each row by its sum. What does the first row of weights come out as?'
+    options:
+      - id: a
+        text: All `nan`, because every cell of row 1 is blocked and the row sum is 0.
+        correct: true
+        feedback: With `k=0` the diagonal is blocked too, so row 1 has only $-\infty$ and the division is $0/0$.
+      - id: b
+        text: "`[1, 0, ..., 0]`, the same as with `k=1`."
+        correct: false
+        category: implementation_error
+        feedback: That needs the diagonal cell to stay allowed, and `k=0` blocks it.
+      - id: c
+        text: Equal weights of $1/T$, because all the scores in row 1 are the same.
+        correct: false
+        category: implementation_error
+        feedback: The scores are all $-\infty$, so every term is 0, and nothing is left to share.
+      - id: d
+        text: All 0, and every later row is unaffected.
+        correct: false
+        category: implementation_error
+        feedback: Dividing 0 by a row sum of 0 gives `nan`, and the other rows lose their diagonal too.
+    solution: '`k=0` includes the diagonal, so row 1 is entirely $-\infty$. Every $e^{-\infty}$ is 0, the row sum is 0, and $0/0$ gives `nan`. Use `k=1` so each token can attend to itself.'
+  - id: cm-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: Explain to a friend why a language model trained on whole sentences needs a causal mask in its attention, how the mask is built and applied to the scores, and what it guarantees about each position's output.
+    rubric:
+      - id: r1
+        criterion: Without a mask, each position could attend to the next token, which is the one it must predict, so it could copy the answer.
+        weight: 2
+        required: true
+      - id: r2
+        criterion: The mask is a $T\times T$ grid with 0 where $j\le t$ and $-\infty$ where $j>t$, added to the scores before the softmax, so blocked weights are exactly 0 and allowed weights still add up to 1.
+        weight: 2
+        required: true
+      - id: r3
+        criterion: With the mask, output $o_t$ depends only on tokens 1 to $t$, so one pass trains every next-token prediction honestly.
+        weight: 1
+    exemplar: A language model learns to predict each next token, and in training the whole sentence goes in at once. With plain attention, position $t$ could attend to token $x_{t+1}$ and copy it. The causal mask is a $T\times T$ grid with 0 on and below the diagonal and $-\infty$ above it. Adding it to the scores before the softmax gives every later position $e^{-\infty}=0$ weight, while the allowed weights still add up to 1. So each output $o_t$ mixes only $v_1$ to $v_t$ and depends only on the first $t$ tokens, which means every prediction in one pass is made without seeing its answer.

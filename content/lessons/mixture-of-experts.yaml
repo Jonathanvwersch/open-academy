@@ -1,0 +1,215 @@
+concept: mixture-of-experts
+version: 1
+objective: |
+  **Goal:** explain how a router chooses expert MLPs, count total and active parameters per token, and explain why training needs a load-balancing loss.
+recap:
+  - concept: transformer-block
+    text: "A transformer block combines attention with an MLP applied separately to each token's vector, using residual connections and normalization around these parts."
+  - concept: classification-softmax
+    text: "Softmax turns scores into positive probabilities that sum to one. A larger score gets a larger probability; dividing each probability by a shared total preserves their ordering."
+where_this_fits: |
+  ### What is a mixture of experts?
+
+  A **mixture of experts** is a layer with several neural networks, called experts, and a small router that chooses which few process each token. Each expert here is an MLP: weighted layers with a nonlinear activation between them.
+
+  Language models predict the next token: the token following the text so far. More parameters can help represent learned patterns. Running only a few experts lets us store more parameters while limiting each token's calculations.
+knowledge_points:
+  - id: moe-choose
+    title: Choose experts for each token
+    explain: |
+      ### A router scores the experts
+
+      We have several MLPs in place of one. How does a token choose between them? A **router** is a learned scoring layer that reads the token's vector and assigns one score to each expert.
+
+      We'll use the sentence “the cat sat on the mat” and treat each word as one token. For “cat,” let its vector at this point in the model be $x=(1,0)$, with width $d=2$. The router computes scores $(1,1,0,0)$ for four experts. The orange paths select the two highest scores. Given expert outputs $(2,0)$ and $(0,4)$, equal weights combine them into $(1,2)$. The worked example shows how.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 290" aria-label="The cat token vector (1,0) enters a router. Scores for experts 1 through 4 are 1,1,0,0. Orange paths select experts 1 and 2, each with weight one half, and combine their outputs. Experts 3 and 4 are skipped.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="180" y="22" text-anchor="middle">cat: x = (1,0)</text>
+      <path d="M180 30 V45 M180 85 V105 H45 V125 M180 105 H315 M135 105 V125 M225 105 V125 M315 105 V125" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+      <rect x="80" y="45" width="200" height="40" fill="#171717" fill-opacity="0" stroke="#171717"/>
+      <text x="180" y="70" text-anchor="middle">router scores: (1,1,0,0)</text>
+      <path d="M180 85 V105 H45 V125 M135 105 V125" fill="#171717" fill-opacity="0" stroke="#f59e0b" stroke-width="2"/>
+      <rect x="10" y="125" width="70" height="50" fill="#171717" fill-opacity="0" stroke="#f59e0b"/>
+      <rect x="100" y="125" width="70" height="50" fill="#171717" fill-opacity="0" stroke="#f59e0b"/>
+      <rect x="190" y="125" width="70" height="50" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+      <rect x="280" y="125" width="70" height="50" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+      <text x="45" y="146" text-anchor="middle">expert 1</text><text x="45" y="165" text-anchor="middle">(2,0)</text>
+      <text x="135" y="146" text-anchor="middle">expert 2</text><text x="135" y="165" text-anchor="middle">(0,4)</text>
+      <text x="225" y="155" text-anchor="middle" fill="#737373">expert 3</text><text x="315" y="155" text-anchor="middle" fill="#737373">expert 4</text>
+      <path d="M45 175 V235 H180 V250 M135 175 V235" fill="#171717" fill-opacity="0" stroke="#f59e0b" stroke-width="2"/>
+      <text x="50" y="205">weight ½</text><text x="140" y="222">weight ½</text>
+      <text x="180" y="273" text-anchor="middle">combined output: (1,2)</text>
+      </g></svg>
+      ```
+
+      ### Keep the highest-scoring experts
+
+      **Top-k routing** selects the $k$ highest-scoring experts out of $n$ available experts. We choose a **bias-free** router for this lesson, meaning it adds no constant to each score. That keeps its parameter count to $nd$. Its matrix $W_R$ has $n$ rows and $d$ columns, giving the score vector
+
+      $$r=W_R x.$$
+
+      Softmax gives probability $p_i$ for expert $i$:
+
+      $$p_i=\frac{e^{r_i}}{\sum_{j=1}^{n}e^{r_j}}.$$
+
+      The scores $r$ become probabilities $p$. We call the set of chosen experts $S$ and their rescaled weights $g$. In the worked example below, the two chosen probabilities add to about 0.73. Using them directly would shrink the output compared with a weighted average. One common choice, which we use throughout this lesson, is to divide by their sum to get weights $g_i$ adding to 1, then combine expert outputs $F_i(x)$. The sums below include only chosen experts, as indicated by $j\in S$ and $i\in S$.
+
+      $$g_i=\frac{p_i}{\sum_{j\in S}p_j},\qquad y=\sum_{i\in S}g_iF_i(x).$$
+
+      Each expert maps width $d$ back to width $d$, so these vectors can be added. Different tokens can choose different experts, and training shapes each expert's role.
+
+      A common confusion is thinking that a positive softmax probability means an expert runs. The router selects only $k$ experts. Choosing one gives it weight 1 after rescaling; choosing all $n$ runs every expert.
+    worked: |
+      Let's route the “cat” vector $x=(1,0)$ to two of four experts. We made up the router's rows for this example; training learns them in practice. We give the expert outputs $F_1(x)=(2,0)$ and $F_2(x)=(0,4)$ so we can focus on routing.
+
+      1. **Compute the scores.** Here is the router matrix:
+         $$W_R=\begin{pmatrix}1&0\\1&1\\0&1\\0&-1\end{pmatrix}.$$
+         Multiplying these rows by $(1,0)$ picks each row's first entry, giving $(1,1,0,0)$. The second column matters for other tokens: input $(0,1)$ would give scores $(0,1,1,-1)$.
+
+      2. **Apply softmax.** Experts 1 and 2 have the same score, 1, so they get the same probability. We round only the displayed values to two decimals. The other two probabilities are each $1/(2e+2)\approx0.13$.
+         $$p_1=p_2=\frac{e}{2e+2}\approx0.37.$$
+      3. **Keep experts 1 and 2.** Their probabilities add to $2e/(2e+2)=e/(e+1)\approx0.73$. Dividing each probability by this sum makes the two weights add to 1.
+         $$g_1=g_2=\frac{e/(2e+2)}{2e/(2e+2)}=\frac12.$$
+      4. **Combine their outputs.** We multiply both vectors by one half, then add their first entries together and their second entries together.
+         $$y=\tfrac12(2,0)+\tfrac12(0,4)=(1,2).$$
+
+      The output still has width 2, but experts 3 and 4 did no MLP calculation for this token.
+    problems:
+      [moe-route-basics, moe-route-why-half, moe-route-weight, moe-route-all, moe-route-output]
+  - id: moe-count
+    title: Count parameters stored and used
+    explain: |
+      ### Parameters we store and use
+
+      We ran two of four experts for “cat.” Why count what we store and what we use separately? The total determines the memory needed to store the layer's parameters. The active count helps estimate computation per token. Choosing a few experts lets the layer store more expert parameters while doing the same amount of expert calculation per token.
+
+      **Total parameters** count every weight and bias in the layer. **Active parameters per token** count the router and the selected experts.
+
+      Imagine four boxes, each storing 17 parameters. All four must be stored, but only the two orange boxes are used for this token. The router is always used too. We'll count the 17 parameters below.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 160" aria-label="Four equal expert boxes contain 17 parameters each. Experts 1 and 2 are orange and active. A router has 8 parameters and is always active. Total is 76; active per token is 42.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="180" y="22" text-anchor="middle">router: 8, always used</text>
+      <rect x="10" y="40" width="70" height="45" fill="#171717" fill-opacity="0" stroke="#f59e0b"/><rect x="100" y="40" width="70" height="45" fill="#171717" fill-opacity="0" stroke="#f59e0b"/>
+      <rect x="190" y="40" width="70" height="45" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/><rect x="280" y="40" width="70" height="45" fill="#171717" fill-opacity="0" stroke="#d4d4d4"/>
+      <text x="45" y="59" text-anchor="middle">expert 1</text><text x="45" y="77" text-anchor="middle">17</text><text x="135" y="59" text-anchor="middle">expert 2</text><text x="135" y="77" text-anchor="middle">17</text>
+      <text x="225" y="59" text-anchor="middle">expert 3</text><text x="225" y="77" text-anchor="middle">17</text><text x="315" y="59" text-anchor="middle">expert 4</text><text x="315" y="77" text-anchor="middle">17</text>
+      <text x="180" y="116" text-anchor="middle">stored: 4 × 17 + 8 = 76</text><text x="180" y="143" text-anchor="middle">used: 2 × 17 + 8 = 42</text>
+      </g></svg>
+      ```
+
+      ### Count one expert first
+
+      Use a two-layer expert with input width $d$, hidden width $m$, and output width $d$. Include a bias for every hidden and output unit. We use an activation with no learned parameters between the layers. The first weight matrix has shape $m\times d$ and the second $d\times m$. Each has $dm$ entries, so one expert has
+
+      $$C=2dm+m+d.$$
+
+      Our bias-free router has $nd$ weights. For $n$ equal-sized experts and top-$k$ routing, the counts are
+
+      $$C_{\text{total}}=nC+nd,\qquad C_{\text{active}}=kC+nd.$$
+
+      Adding equal-sized experts leaves the selected expert calculation unchanged when $k$ stays fixed. Increasing $k$ makes every token run more experts. The router grows with $n$, so adding experts still adds some scoring work.
+
+      ### Limitations
+
+      We are counting parameters in one expert layer. Attention and other layers also need memory and computation. Using half the expert parameters may take more than half the time. Routing takes time, as does communication: moving token vectors between processors when experts run on different processors.
+    worked: |
+      Let's count the four-expert layer from the picture. Each expert takes 2 inputs, computes 3 hidden values, and returns 2 outputs. We add biases in both layers of each expert. We use no bias in the router.
+
+      1. **Count one expert.** Its two weight matrices and two bias vectors all contribute.
+         $$C=2\times2\times3+3+2=17.$$
+      2. **Count the router.** The router has four rows, with two weights per row for the two input entries.
+         $$nd=4\times2=8.$$
+      3. **Count everything stored.** All four experts exist even when some are skipped.
+         $$C_{\text{total}}=4\times17+8=76.$$
+      4. **Count the active path.** Only two expert MLPs run for this token, but the whole router runs.
+         $$C_{\text{active}}=2\times17+8=42.$$
+
+      If we chose one expert, the active count would be $17+8=25$. Choosing all four would use all 76 parameters. These counts help us compare the work per token as we change how many experts run.
+    problems:
+      [
+        moe-count-basics,
+        moe-count-why-router,
+        moe-count-total,
+        moe-count-active,
+        moe-count-fixed,
+        moe-count-memory,
+      ]
+  - id: moe-balance
+    title: Avoid overloading one expert
+    explain: |
+      ### When most tokens pick one expert
+
+      To use the stored parameters well, we need tokens to reach different experts. For the balancing example we use a smaller layer: two experts, top-1, and four tokens, “the cat sat on.” If all four choose expert 1, expert 2 stays idle.
+
+      Big models can spread experts over several GPUs, processors that run neural-network calculations. Tokens go to the GPU holding their expert; if one GPU's expert gets most tokens, the others wait. Each orange bar counts tokens assigned to an expert. Concentrating almost all work on a few experts is called routing collapse.
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 190" aria-label="Top-1 routing of four tokens to two experts. Balanced assignment counts are 2 and 2. Collapsed assignment counts are 4 and 0. Orange bar lengths are proportional to token counts.">
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#171717">
+      <text x="10" y="22">Balanced</text><text x="10" y="49">expert 1</text><text x="10" y="77">expert 2</text>
+      <rect x="90" y="34" width="100" height="18" fill="#f59e0b"/><rect x="90" y="62" width="100" height="18" fill="#f59e0b"/>
+      <text x="198" y="49">2 tokens</text><text x="198" y="77">2 tokens</text>
+      <text x="10" y="112">Collapsed</text><text x="10" y="139">expert 1</text><text x="10" y="167">expert 2</text>
+      <rect x="90" y="124" width="200" height="18" fill="#f59e0b"/>
+      <text x="298" y="139">4 tokens</text><text x="98" y="167">0 tokens</text>
+      </g></svg>
+      ```
+
+      ### A penalty for uneven routing
+
+      A **load-balancing loss** encourages work to spread across experts. A batch is the group of tokens processed together in one training step. Let $f_i$ be the fraction assigned to expert $i$, and $P_i$ its router probability averaged over all batch tokens, whichever expert they chose. With $n$ experts, one penalty is
+
+      $$L_{\text{aux}}=n\sum_{i=1}^{n}f_iP_i.$$
+
+      “Aux” means auxiliary, or extra. A **gradient** tells how much the loss changes when a weight is nudged. Gradient descent uses it to adjust weights. The fraction $f_i$ comes from counting chosen tokens. Tiny weight changes leave that count unchanged until a token switches experts, giving zero gradient.
+
+      But $P_i$ moves with the weights. In $f_iP_i$, lowering $P_i$ reduces the penalty more when $f_i$ is large. Its gradient pushes the most-used experts' scores down, so later tokens can choose others. This spreads work.
+
+      We use probabilities before selection. Afterward, unchosen experts have weight 0 regardless of score. Nudging their scores leaves those weights unchanged, so they give zero gradient for adjusting those scores.
+
+      Under perfect balance, each $f_i=1/n$ and each $P_i=1/n$. We call this uniform. Each product is $1/n^2$. The factor $n$ makes the balanced value 1 for any $n$:
+
+      $$n\times n\times\frac{1}{n^2}=1.$$
+
+      Training multiplies this penalty by a small positive number $\alpha$ and adds it to the next-token cross-entropy loss $L_{\text{main}}$:
+
+      $$L=L_{\text{main}}+\alpha L_{\text{aux}}.$$
+
+      ### Limitations
+
+      Too large an $\alpha$ can send a token to an expert that is worse for it, raising prediction loss. Be careful: probabilities $(0.51,0.49)$ for every token send all tokens to expert 1 under top-1, despite looking nearly uniform.
+    worked: |
+      Let's compare two routers on the four tokens “the cat sat on,” using two experts and top-1. Probabilities below are given before selection.
+
+      1. **Average the balanced probabilities.** Suppose the first two tokens have $(0.8,0.2)$ and the last two have $(0.2,0.8)$. Each expert gets two tokens, so $f=(0.5,0.5)$. The mean for expert 1 is below; averaging expert 2's probabilities also gives $P_2=0.5$.
+         $$P_1=\frac{0.8+0.8+0.2+0.2}{4}=0.5.$$
+      2. **Compute the balanced penalty.** Multiply each assignment fraction by its average probability, then sum and multiply by the expert count.
+         $$L_{\text{aux}}=2(0.25+0.25)=1.$$
+      3. **Compare a collapsed router.** If every token has $(0.9,0.1)$, every choice goes to expert 1. Then $f=(1,0)$ and $P=(0.9,0.1)$.
+         $$L_{\text{aux}}=2(1\times0.9+0\times0.1)=1.8.$$
+      4. **Add the balanced penalty.** Choose a next-token cross-entropy loss of 2 and $\alpha=0.05$ just to see how the extra penalty changes the total.
+         $$L_{\text{balanced}}=2+0.05\times1=2.05.$$
+      5. **Add the collapsed penalty.** Keep the same prediction loss and $\alpha$ so only the routing penalty changes.
+         $$L_{\text{collapsed}}=2+0.05\times1.8=2.09.$$
+
+      This collapsed router's penalty is bigger than the perfectly balanced value of 1. With the same prediction loss, training prefers the balanced case.
+    problems:
+      [
+        moe-balance-basics,
+        moe-balance-why-raw,
+        moe-balance-penalty,
+        moe-balance-near-uniform,
+        moe-balance-tradeoff,
+      ]
+final: moe-explain
+summary: |
+  - Top-k routing scores every expert and runs only the selected expert MLPs. Rescaling their weights to add to 1 is one common choice, used here to combine their outputs into a vector of the original width.
+  - With $n$ experts of $C$ parameters each and a bias-free width-$d$ router, total parameters are $nC+nd$, while active parameters per token are $kC+nd$.
+  - Running only a few experts saves expert calculations, while all parameters still need storage and routing can add communication costs.
+  - A load-balancing loss encourages the router to share work across experts alongside the main prediction task, while allowing unequal assignments in individual batches.
+
+  **Next:** Pretraining at scale covers the data, compute and scaling behaviour of language-model pretraining.

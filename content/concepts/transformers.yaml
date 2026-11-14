@@ -10,7 +10,7 @@ concepts:
       dimensions: [conceptual],
       prereqs: [],
       objectives: [{ text: "Explain how BPE builds a vocabulary", dimension: conceptual }],
-      status: stub,
+      status: authored,
     }
   - {
       id: embeddings,
@@ -22,7 +22,7 @@ concepts:
       dimensions: [conceptual, math],
       prereqs: [{ id: tokenization }, { id: matrices }],
       objectives: [{ text: "Explain an embedding as a one-hot times a matrix", dimension: math }],
-      status: stub,
+      status: authored,
     }
   - {
       id: attention,
@@ -35,7 +35,7 @@ concepts:
       prereqs: [{ id: embeddings }, { id: dot-product }, { id: classification-softmax }],
       objectives:
         [{ text: "Compute scaled dot-product attention for a tiny example", dimension: math }],
-      status: stub,
+      status: authored,
     }
   - {
       id: multi-head-attention,
@@ -45,10 +45,10 @@ concepts:
       est_minutes: 25,
       goal_weight: 2,
       dimensions: [conceptual, implementation],
-      prereqs: [{ id: attention }],
+      prereqs: [{ id: attention }, { id: embeddings }],
       objectives:
         [{ text: "Track shapes through multi-head attention", dimension: implementation }],
-      status: stub,
+      status: authored,
     }
   - {
       id: positional-encoding,
@@ -61,7 +61,7 @@ concepts:
       prereqs: [{ id: attention }],
       objectives:
         [{ text: "Explain why attention is permutation-equivariant", dimension: conceptual }],
-      status: stub,
+      status: authored,
     }
   - {
       id: transformer-block,
@@ -80,7 +80,7 @@ concepts:
         ],
       objectives:
         [{ text: "Draw and explain a pre-norm transformer block", dimension: conceptual }],
-      status: stub,
+      status: authored,
     }
   - {
       id: causal-masking,
@@ -93,7 +93,7 @@ concepts:
       prereqs: [{ id: attention }],
       objectives:
         [{ text: "Build a causal mask and explain its effect", dimension: implementation }],
-      status: stub,
+      status: authored,
     }
   - {
       id: autoregressive-lm,
@@ -107,7 +107,7 @@ concepts:
       objectives:
         [{ text: "Explain how one sequence yields many training examples", dimension: conceptual }],
       projects: [char-transformer],
-      status: stub,
+      status: authored,
     }
   - {
       id: mixture-of-experts,
@@ -126,7 +126,7 @@ concepts:
           },
           { text: "Explain why a router needs a load-balancing loss", dimension: conceptual },
         ],
-      status: stub,
+      status: authored,
     }
   - {
       id: pretraining,
@@ -136,8 +136,8 @@ concepts:
       est_minutes: 25,
       goal_weight: 2,
       dimensions: [conceptual],
-      prereqs: [{ id: autoregressive-lm }],
+      prereqs: [{ id: autoregressive-lm }, { id: tokenization }],
       objectives:
         [{ text: "Describe the stages of an LLM training pipeline", dimension: conceptual }],
-      status: stub,
+      status: authored,
     }

@@ -1,0 +1,317 @@
+concept: sft
+exercises:
+  - id: sft-pairs-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does supervised fine-tuning do to a pretrained language model?
+    options:
+      - id: a
+        text: It changes weights using prompts paired with desired responses.
+        correct: true
+        feedback: The desired responses supply the targets for further training from pretrained weights.
+      - id: b
+        text: It adds role labels while leaving all model weights unchanged.
+        correct: false
+        feedback: Role labels format messages, but fine-tuning also trains the model's weights.
+      - id: c
+        text: It replaces learned weights with random ones before each request.
+        correct: false
+        feedback: Fine-tuning starts from pretrained weights and retains the changes made during training.
+    solution: SFT continues training from pretrained weights on prompt–response demonstrations. The supplied answers show the behaviour training should encourage.
+  - id: sft-pair-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why is the worked example's new input complete immediately after `<assistant>`, with `the mat<end>` left for the model to generate?
+    options:
+      - id: a
+        text: The model must generate the answer after seeing the request.
+        correct: true
+      - id: b
+        text: The model must forget the desired answer after training ends.
+        correct: false
+        feedback: Training retains weight changes; omitting the answer from the later input does not erase learning.
+      - id: c
+        text: Training never supplies a desired response for the model to learn from.
+        correct: false
+        feedback: During training the desired response is supplied as the answer to learn from; the later request leaves it for the model to produce.
+    solution: The complete pair is available during training, but a later request supplies only the prompt and answer boundary. The model has to produce the response itself.
+  - id: sft-role-boundary
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A toy chat template formats a pair as `<user>Continue: the cat sat on the<assistant>mat<end>`. Which text is the desired response, excluding its ending marker?"
+    options:
+      - id: a
+        text: "The text `Continue: the cat sat on the`."
+        correct: false
+        feedback: That is the request, between the user marker and the assistant marker.
+      - id: b
+        text: The text `mat` after the assistant marker.
+        correct: true
+      - id: c
+        text: The entire sequence of role markers and words.
+        correct: false
+        feedback: The formatted sequence contains both the prompt and the response; the role boundary distinguishes them.
+    solution: The assistant marker begins the desired response, so the response text is “mat”. The ending marker marks when that response should stop.
+  - id: sft-format-versus-training
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An engineer converts a dataset to a model's expected chat template but never runs training. Which statement describes the result?
+    options:
+      - id: a
+        text: The dataset is formatted, but the model's weights have not learned from it.
+        correct: true
+      - id: b
+        text: The model's weights have learned the answers because roles are now marked.
+        correct: false
+        feedback: Arranging stored text does not update model weights; training must use those demonstrations.
+      - id: c
+        text: The model's pretrained weights have been removed by the role markers.
+        correct: false
+        feedback: Changing the dataset's format does not erase or replace the model's weights.
+    solution: A chat template arranges the text so the model can distinguish message roles. Weight changes require training on the formatted examples.
+  - id: sft-behaviour-change
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A model can continue documents but often continues a question with another question. You want direct answers instead. Why can prompt–response demonstrations help?
+    options:
+      - id: a
+        text: They train the model to make direct answers more likely after requests.
+        correct: true
+      - id: b
+        text: They guarantee correct answers to every request after a single example.
+        correct: false
+        feedback: Demonstrations encourage behaviour, but do not guarantee correctness or generalisation to every request.
+      - id: c
+        text: They remove the need to predict tokens while producing an answer.
+        correct: false
+        feedback: The model still predicts the next token; the examples change which continuations training encourages.
+    solution: The demonstrations specify the behaviour desired after a request. The model produces its answers through next-token prediction.
+  - id: sft-bad-demonstration
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: "An SFT dataset repeatedly pairs “Which animal is in: the cat sat on the mat?” with “dog”. Training loss falls. What should you conclude?"
+    options:
+      - id: a
+        text: The model may be learning the wrong answer; fix the demonstrations and test unseen prompts.
+        correct: true
+      - id: b
+        text: The answer must be correct because a smaller training loss measures factual truth.
+        correct: false
+        feedback: Training loss measures agreement with supplied targets, which can themselves be wrong.
+      - id: c
+        text: The template must be invalid because training cannot learn incorrect demonstrations.
+        correct: false
+        feedback: A valid template can carry an incorrect answer, and training can make that answer more likely.
+    solution: A falling training loss shows closer agreement with the demonstrated answers, including incorrect ones. Check the targets and evaluate behaviour on prompts excluded from training.
+  - id: sft-new-task
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A team wants a pretrained model to answer maintenance requests with short numbered instructions. Which SFT dataset most directly teaches that behaviour?
+    options:
+      - id: a
+        text: Maintenance requests paired with checked answers written as short numbered instructions.
+        correct: true
+      - id: b
+        text: Unpaired manuals with no examples of requests or numbered answers to those requests.
+        correct: false
+        feedback: Manuals supply useful text, but do not directly demonstrate the requested input–output behaviour.
+      - id: c
+        text: Maintenance requests paired with unrelated numbered answers from a different task.
+        correct: false
+        feedback: Each desired response must address its paired request as well as demonstrate the requested format.
+    solution: Prompt–response pairs should demonstrate both the requested task and the desired answer format. Checked numbered answers teach that combination directly.
+  - id: sft-mask-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does response-only loss masking do during supervised fine-tuning?
+    options:
+      - id: a
+        text: It scores response targets while keeping the prompt available as context.
+        correct: true
+        feedback: Response targets contribute loss, while prompt tokens still help predict those responses.
+      - id: b
+        text: It removes the prompt so response predictions cannot depend on it.
+        correct: false
+        feedback: The prompt remains in the input; only its own target losses are excluded from the objective.
+      - id: c
+        text: It scores prompt targets while excluding every desired response target.
+        correct: false
+        feedback: That reverses the selection; response-only training scores the desired response targets.
+    solution: The mask chooses which target-token losses enter the training objective. Excluded prompt targets can still supply context for predicting the response.
+  - id: sft-mask-self-explain
+    dimension: conceptual
+    type: mc
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 2
+    prompt: Why does the worked example divide the losses for “sat” and “on” by two, although “the cat sat on” has four tokens?
+    options:
+      - id: a
+        text: Only the two response targets are selected for this mean loss.
+        correct: true
+      - id: b
+        text: Every next-token loss must be divided by two, whatever the response length.
+        correct: false
+        feedback: The divisor is the number of selected response targets, which can vary between examples.
+      - id: c
+        text: The prompt has been deleted, so the model sees only two words.
+        correct: false
+        feedback: The model still uses the prompt to predict the response; excluding its losses does not delete its tokens.
+    solution: The four-token sequence has three next-token predictions, and two of their targets belong to the response. The response-only mean divides the two selected losses by two; dividing their sum by all three predictions would also count the excluded prompt prediction in the divisor.
+  - id: sft-first-response
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the four-token sequence “the cat sat on”, “the cat” is the prompt and “sat on” is the response. With one mask entry under each token in this order, which mask selects only the response prediction losses?
+    options:
+      - id: a
+        text: The mask is `(0, 0, 1, 1)`.
+        correct: true
+      - id: b
+        text: The mask is `(0, 0, 0, 1)`.
+        correct: false
+        feedback: That drops the first response target “sat”; it counts even though the preceding prompt position predicts it.
+      - id: c
+        text: The mask is `(0, 1, 1, 0)`.
+        correct: false
+        feedback: That mask selects “cat” and “sat”. The response targets are “sat” and “on”.
+    solution: Positions three and four contain the response tokens, so their mask entries are one. The prompt entries are zero, including the first token, which has no prediction loss here.
+  - id: sft-mask-mean-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A response has {{=n}} selected targets, each with cross-entropy loss {{=a/10}}. All prompt losses are excluded. What is the mean response-only loss?"
+    params:
+      n: { min: 2, max: 4, step: 1 }
+      a: { min: 2, max: 9, step: 1 }
+    answer_expr: a / 10
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: n * a / 10
+        category: math_error
+        feedback: That is the sum; divide by the number of selected targets to get the mean.
+    solution: 'The sum is ${{=n}}\times{{=a/10}}={{=n*a/10}}$. Dividing by the {{=n}} selected targets gives ${{=a/10}}$, because every selected loss is the same.'
+  - id: sft-mask-code
+    dimension: implementation
+    type: code_complete
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "The nonempty list `losses` contains only selected response-target losses. Fill the blank with the name of Python's built-in function that returns the number of items in a list. Enter only the function name."
+    code: |
+      loss = sum(losses) / ____(losses)
+    accept:
+      - len
+    solution: "`len(losses)` counts the selected targets. Dividing their summed loss by that count gives a response-only mean."
+  - id: sft-shifted-targets
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A toy sequence has prompt “the cat” and response “sat on”. The predictions made after tokens at positions 1, 2 and 3 target “cat”, “sat” and “on”, respectively. Which predictions should enter response-only loss?"
+    options:
+      - id: a
+        text: Positions 2 and 3, whose targets are the response tokens.
+        correct: true
+      - id: b
+        text: Position 3 alone, because its input position is in the response.
+        correct: false
+        feedback: The prediction made after position 2 targets “sat”, the first response token, so its loss also counts.
+      - id: c
+        text: Positions 1 and 2, because both input positions are in the prompt.
+        correct: false
+        feedback: Position 1 targets prompt token “cat”, while position 3 targets response token “on”; the target determines inclusion.
+    solution: The predictions made after positions 2 and 3 target “sat” and “on”, so both count. When pairing next-token predictions with their targets, select losses according to the tokens being predicted.
+  - id: sft-empty-mask
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A data-processing bug produces a training sequence with every target-mask entry zero. What should a response-only mean-loss calculation do?
+    options:
+      - id: a
+        text: Reject the example because there are no selected targets to average.
+        correct: true
+      - id: b
+        text: Return zero because the model has answered every selected target correctly.
+        correct: false
+        feedback: No targets were selected, so there is no evidence of a correct answer; the mean would divide by zero.
+      - id: c
+        text: Score all prompt tokens instead so the mean always has a denominator.
+        correct: false
+        feedback: That silently changes the objective and conceals the data bug instead of fixing the missing response targets.
+    solution: An empty selection has denominator zero, so the mean is undefined. Reject the example and fix the processing or data that removed its response targets.
+  - id: sft-context-still-learns
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A model answers robot-maintenance requests using response-only loss. An engineer says this freezes every weight involved in processing the prompt. Is that correct?
+    options:
+      - id: a
+        text: No; response predictions use the prompt, so their losses can change those weights.
+        correct: true
+      - id: b
+        text: Yes; a zero prompt-target mask prevents any weight from processing that prompt.
+        correct: false
+        feedback: The mask excludes losses at prompt targets; it does not prevent the model from processing the prompt.
+      - id: c
+        text: Yes; response-only loss trains only the role markers and ignores response words.
+        correct: false
+        feedback: Response words are the targets being scored, and their predictions depend on weights processing the earlier context.
+    solution: Response probabilities depend on weights used to process the prompt, so reducing response loss can update those weights. The mask selects which prediction losses contribute to that update.
+  - id: sft-explain-training
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: Explain how you would turn a pretrained language model into an assistant using prompt–response demonstrations, a chat template and response-only loss. Say which targets count, how their mean is computed, and why the prompt still matters.
+    rubric:
+      - id: sft-demonstrations
+        criterion: Starts from pretrained weights and trains on desired responses in the model's expected chat format, while recognising that demonstrations can teach errors.
+        weight: 1
+        required: true
+      - id: sft-target-mask
+        criterion: Selects response targets including the first response token, averages their negative log probabilities over the selected-target count, and rejects an empty selection.
+        weight: 1
+        required: true
+      - id: sft-prompt-context
+        criterion: Keeps the prompt as context and distinguishes excluding prompt-target losses from blocking context or freezing weights.
+        weight: 1
+        required: true
+    exemplar: I continue training from pretrained weights on checked prompt–response pairs, formatted with the roles and endings that model expects. I select response targets, including the first response token and the response ending, and average their negative log probabilities over the selected-target count, rejecting examples with no targets. The prompt remains available to predict the response, so weights processing it can still learn; excluding its own target losses does not remove that context, and a lower loss can still mean learning mistakes in the demonstrations.
+    solution: SFT trains pretrained weights to make demonstrated answers more likely in the expected chat format. Response-only masking averages the selected response-target losses while preserving prompt context, and cannot guarantee that the demonstrations themselves are correct.

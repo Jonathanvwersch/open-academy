@@ -1,0 +1,367 @@
+concept: mixture-of-experts
+exercises:
+  - id: moe-route-basics
+    type: mc
+    dimension: conceptual
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does top-k routing in a mixture-of-experts layer do for each token?
+    options:
+      - {
+          id: a,
+          text: "It scores every expert and runs only the k selected experts.",
+          correct: true,
+          feedback: "Scoring precedes selection, so skipped experts do no MLP work.",
+        }
+      - {
+          id: b,
+          text: "It runs every expert and selects k outputs afterward.",
+          correct: false,
+          feedback: "Selection happens before the expert MLP calculations, so unselected experts are skipped.",
+        }
+      - {
+          id: c,
+          text: "It assigns one permanent expert to each word in the vocabulary.",
+          correct: false,
+          feedback: "The router reads the current token vector, so assignments are not fixed vocabulary labels.",
+        }
+    solution: The small router scores all experts first. Only the selected expert MLPs process the token, which avoids running the others.
+  - id: moe-route-why-half
+    type: mc
+    dimension: conceptual
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why do experts 1 and 2 each get weight one half in the worked example?
+    options:
+      - {
+          id: a,
+          text: "Their equal probabilities are divided by their combined probability.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Their original softmax probabilities must each already be one half.",
+          correct: false,
+          feedback: "The other two experts have positive softmax probabilities too, so the original values are below one half.",
+        }
+      - {
+          id: c,
+          text: "Top-2 routing always gives equal weights to the selected experts.",
+          correct: false,
+          feedback: "Equal weights arise here because the selected scores are equal; unequal scores would give unequal weights.",
+        }
+    solution: Both chosen experts have the same score and hence the same probability. Renormalizing these two equal values makes each one half.
+  - id: moe-route-weight
+    type: numeric
+    dimension: math
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "A four-expert top-2 router gives A probability ${{= a }}/10$, B probability ${{= b }}/10$, and C and D probability $(10-{{= a }}-{{= b }})/20$ each. It keeps A and B. After rescaling the kept probabilities to add to 1, what is A's weight?"
+    params:
+      a: { min: 3, max: 4 }
+      b: { min: 3, max: 4 }
+    answer_expr: a / (a + b)
+    tolerance: { abs: 0.005 }
+    solution: "Divide A's probability by the sum of the two kept probabilities. The factors of ten cancel, giving ${{= a }}/({{= a }}+{{= b }})$."
+  - id: moe-route-all
+    type: mc
+    dimension: conceptual
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A layer has four experts. What changes when its top-k setting changes from 2 to 4?
+    options:
+      - {
+          id: a,
+          text: "Every expert now processes each token, removing expert skipping.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "The router disappears because every expert has the same score.",
+          correct: false,
+          feedback: "Choosing all experts does not make their scores equal; the router can still set unequal combination weights.",
+        }
+      - {
+          id: c,
+          text: "Every token vector must now have four times as many entries.",
+          correct: false,
+          feedback: "Each expert returns the same width as its input, and adding outputs preserves that width.",
+        }
+    solution: With k equal to the expert count, all experts run for each token. Their weighted sum can still have unequal weights and keeps the original vector width.
+  - id: moe-route-output
+    type: numeric
+    dimension: transfer
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot's layer selects two experts with weights $1/4$ and $3/4$, which add to 1. Their outputs are $({{= u }},2)$ and $({{= v }},0)$. What is the first entry of their weighted sum?"
+    params:
+      u: { min: 2, max: 6, step: 2 }
+      v: { min: 4, max: 8, step: 2 }
+    answer_expr: (u + 3*v) / 4
+    tolerance: { abs: 0.001 }
+    solution: 'Multiply the matching first entries by their weights and add. This gives $({{= u }}+3\times{{= v }})/4$; the second entries do not enter this coordinate.'
+  - id: moe-count-basics
+    type: mc
+    dimension: conceptual
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which statement distinguishes total and active parameters in a layer that runs only a few of its experts per token?
+    options:
+      - {
+          id: a,
+          text: "Total counts all experts; active counts selected experts and the router.",
+          correct: true,
+          feedback: "Skipped experts remain stored but do not run for this token.",
+        }
+      - {
+          id: b,
+          text: "Total counts selected experts; active counts every stored expert.",
+          correct: false,
+          feedback: "This reverses the definitions: all experts are stored, but only selected ones run per token.",
+        }
+      - {
+          id: c,
+          text: "Total counts weights; active counts only nonzero output entries.",
+          correct: false,
+          feedback: "Both counts concern model parameters, not output entries or whether computed values are zero.",
+        }
+    solution: Total parameters include every expert and the router. Active parameters include the router plus only those experts used for the current token.
+  - id: moe-count-why-router
+    type: mc
+    dimension: conceptual
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why does the worked example add all 8 router parameters to the active count of 42?
+    options:
+      - {
+          id: a,
+          text: "The router scores all four experts before choosing the two to run.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Each chosen expert stores a separate copy of all router parameters.",
+          correct: false,
+          feedback: "The layer has one shared router, counted once, not one copy per selected expert.",
+        }
+      - {
+          id: c,
+          text: "The skipped experts' scoring rows are stored but inactive for this token.",
+          correct: false,
+          feedback: "The router must compute all four scores to decide which experts to skip, so every scoring row is active.",
+        }
+    solution: Selecting two experts saves the MLP calculations of the skipped experts. The full bias-free four-by-two router is active on every token.
+  - id: moe-count-total
+    type: numeric
+    dimension: math
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: 'A layer has $n={{= n }}$ experts. Each is a two-layer MLP of widths $2\to{{= m }}\to2$ with a bias per hidden and output unit. The router has no bias and has shape $n\times2$. How many total parameters does the layer have?'
+    params:
+      n: { min: 3, max: 6 }
+      m: { min: 2, max: 5 }
+    answer_expr: n * (5*m + 2) + 2*n
+    tolerance: { abs: 0.001 }
+    solution: "Each expert has $2(2)({{= m }})+{{= m }}+2=5({{= m }})+2$ parameters. Multiply by ${{= n }}$ experts and add $2({{= n }})$ router weights."
+  - id: moe-count-active
+    type: numeric
+    dimension: math
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    prompt: "A top-2 layer has ${{= n }}$ experts, each with ${{= c }}$ parameters. Its bias-free router reads width-3 vectors and scores every expert. How many parameters are active per token?"
+    params:
+      n: { min: 4, max: 8 }
+      c: { min: 24, max: 38, step: 7 }
+    answer_expr: 2*c + 3*n
+    tolerance: { abs: 0.001 }
+    solution: 'Only two expert parameter sets are active, giving $2\times{{= c }}$. Add all $3\times{{= n }}$ router weights, because selection still scores every expert.'
+  - id: moe-count-fixed
+    type: numeric
+    dimension: math
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A top-2 layer has 6 experts with 31 parameters each and a bias-free router reading width-4 vectors. How many parameters are active per token?
+    answer: 86
+    tolerance: { abs: 0.001 }
+    solution: Two expert sets contribute 62 parameters, and all 24 router weights are active. The sum is 86, regardless of which two experts are chosen.
+  - id: moe-count-memory
+    type: mc
+    dimension: transfer
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot has too little memory for all experts in its layer. An engineer lowers k but leaves the expert count and expert sizes unchanged. Does that solve parameter storage?
+    options:
+      - {
+          id: a,
+          text: "No; fewer experts run per token, but all their parameters still exist.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Yes; reducing k deletes the experts not chosen by the current token.",
+          correct: false,
+          feedback: "Unselected experts are skipped for a token, not removed; another token may choose them.",
+        }
+      - {
+          id: c,
+          text: "Yes; total parameters always equal the active parameters per token.",
+          correct: false,
+          feedback: "Running only selected experts lets the number of stored parameters exceed the number active per token.",
+        }
+    solution: Lowering k reduces the active expert path while every expert remains stored. The model still needs a storage strategy for every expert.
+  - id: moe-balance-basics
+    type: mc
+    dimension: conceptual
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Why add a load-balancing loss when training an expert router?
+    options:
+      - {
+          id: a,
+          text: "To discourage routing most work to only a few experts.",
+          correct: true,
+          feedback: "The additional training signal encourages use of otherwise idle experts.",
+        }
+      - {
+          id: b,
+          text: "To make the prediction loss unnecessary during training.",
+          correct: false,
+          feedback: "Sharing work does not teach the main prediction task; both objectives are needed.",
+        }
+      - {
+          id: c,
+          text: "To force each token to run through every available expert.",
+          correct: false,
+          feedback: "Balancing spreads different tokens across experts while each token can still use only a few.",
+        }
+    solution: Without a balancing incentive, routing can concentrate work on a few experts while leaving others unused. The extra loss encourages sharing work alongside learning the main task.
+  - id: moe-balance-why-raw
+    type: mc
+    dimension: conceptual
+    role: practice
+    lesson_only: true
+    difficulty: 1
+    est_minutes: 1
+    prompt: How does the collapsed worked example obtain P = (0.9,0.1) for its balancing calculation?
+    options:
+      - {
+          id: a,
+          text: "P averages router probabilities before top-k keeps only some experts.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "P records how many tokens were assigned to each expert.",
+          correct: false,
+          feedback: "The assignment fractions are f = (1,0); P measures probabilities, not assignment counts.",
+        }
+      - {
+          id: c,
+          text: "P averages the two expert output vectors after routing.",
+          correct: false,
+          feedback: "Expert outputs are representations, not the router probabilities used in this loss.",
+        }
+    solution: P is the mean of the original probability vectors across the batch. Hard assignments are recorded separately in f, so the calculation retains the router's confidence information.
+  - id: moe-balance-penalty
+    type: numeric
+    dimension: math
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: 'A two-expert top-1 layer sends every token to expert 1. Every token has router probabilities $({{= a }}/10,1-{{= a }}/10)$. Compute $L_{\text{aux}}=2(f_1P_1+f_2P_2)$, where f is the assignment fraction and P is the mean probability before selection.'
+    params:
+      a: { min: 6, max: 9 }
+    answer_expr: a/5
+    tolerance: { abs: 0.001 }
+    solution: 'All tokens choose expert 1, so $f=(1,0)$. The penalty is twice the mean probability for expert 1, giving $2\times{{= a }}/10$.'
+  - id: moe-balance-near-uniform
+    type: mc
+    dimension: conceptual
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Every token in a batch has router probabilities (0.51,0.49) for two experts. With top-1, what can we conclude?
+    options:
+      - {
+          id: a,
+          text: "All tokens choose expert 1 despite nearly uniform mean probabilities.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Half the tokens choose each expert because the probabilities are close.",
+          correct: false,
+          feedback: "Top-1 selects the largest score, rather than randomly sampling from the probabilities.",
+        }
+      - {
+          id: c,
+          text: "Each token runs both experts because both probabilities are positive.",
+          correct: false,
+          feedback: "A positive softmax probability does not override the top-1 selection rule.",
+        }
+    solution: Expert 1 has the larger probability for every token, so its assignment fraction is 1. Mean probabilities close to uniform do not guarantee balanced hard assignments.
+  - id: moe-balance-tradeoff
+    type: mc
+    dimension: transfer
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: Two routers for a robot have the same total and active parameter counts. Router A sends almost everything to one device; B spreads work evenly. Why might B finish faster, without this being guaranteed?
+    options:
+      - {
+          id: a,
+          text: "B may avoid a busy-device bottleneck, but communication and other work still matter.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "B must have fewer stored parameters because its assignments are more balanced.",
+          correct: false,
+          feedback: "The prompt fixes the parameter counts; routing distribution does not change how many parameters exist.",
+        }
+      - {
+          id: c,
+          text: "B always eliminates communication because every device receives equal work.",
+          correct: false,
+          feedback: "Balanced devices may still exchange token vectors; equal work does not remove communication.",
+        }
+    solution: Spreading assignments can reduce the wait for one overloaded expert device. Counts alone do not predict exact running time because communication and other model computations also contribute.
+  - id: moe-explain
+    type: explain
+    dimension: conceptual
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: Explain how a mixture-of-experts layer can store more parameters than it uses on one token, and why that saving does not remove the need for load balancing.
+    rubric:
+      - {
+          id: routing,
+          criterion: "Explains scoring all experts but running only the selected k and combining their outputs.",
+          weight: 1,
+        }
+      - {
+          id: counts,
+          criterion: "Distinguishes nC+nd total from kC+nd active for equal experts and a bias-free width-d router.",
+          weight: 1,
+        }
+      - {
+          id: balance,
+          criterion: "Explains unused experts or busy-device bottlenecks and balancing alongside the main prediction loss.",
+          weight: 1,
+        }
+    exemplar: The router scores all n experts, selects k for each token, and combines their outputs. With C parameters per expert and a bias-free width-d router, the layer stores nC+nd parameters but uses kC+nd per token. Different tokens can still crowd onto the same experts, leaving others idle and possibly creating device bottlenecks, so a balancing loss encourages sharing work while the main loss teaches prediction.
+    solution: Running only selected experts reduces work per token. The router also needs to spread tokens across experts to use them well and avoid bottlenecks.
