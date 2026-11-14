@@ -38,7 +38,7 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const { content, tutorProvider } = deps;
   const [index, repo] = [await content(), request.repo];
   const now = request.now();
-  const state = filterSchedulerStateForContent(index, await repo.schedulerState(now));
+  const state = filterSchedulerStateForContent(index, await repo.schedulerState(now, index));
   const user = await repo.user();
   const prefs = (user?.prefs ?? {}) as SessionPreferences & { goal?: string };
   const subjectTitle = index.curriculum?.subject?.title;
@@ -117,7 +117,7 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
   const [index, repo] = [await content(), request.repo];
   const now = request.now();
   const sessionKind = body.data.kind ?? sessionKindForDate(localDateKey(now, request.timeZone));
-  const state = filterSchedulerStateForContent(index, await repo.schedulerState(now));
+  const state = filterSchedulerStateForContent(index, await repo.schedulerState(now, index));
   const user = await repo.user();
   const prefs = (user?.prefs ?? {}) as SessionPreferences;
   const budgetMinutes =
@@ -473,10 +473,11 @@ export async function postSessionsByIdReplan(deps: FeatureServices, request: Fea
     return serviceResult({ error: 'Session not found' }, 404);
   }
   const now = request.now();
+  const index = await content();
   const body = z
     .object({ remainingBudgetMinutes: z.number().int().min(0).optional() })
     .safeParse(request.body);
-  const state = await request.repo.schedulerState(now);
+  const state = await request.repo.schedulerState(now, index);
   const activities = session.activities as unknown as PlannedActivity[];
   const existingMinutes = activities
     .filter((activity) => activity.status === 'completed' || activity.status === 'in_progress')
@@ -484,7 +485,6 @@ export async function postSessionsByIdReplan(deps: FeatureServices, request: Fea
   const remaining = body.success
     ? (body.data.remainingBudgetMinutes ?? Math.max(0, session.plannedMinutes - existingMinutes))
     : Math.max(0, session.plannedMinutes - existingMinutes);
-  const index = await content();
   const plan = replan(state, index, now, remaining, activities, session.kind);
   const planned = session.activities.filter((activity) => activity.status === 'planned');
   await Promise.all(

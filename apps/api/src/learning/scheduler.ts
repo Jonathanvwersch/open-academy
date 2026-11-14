@@ -73,6 +73,8 @@ export interface PlannedActivity {
 export interface SchedulerState {
   timezone?: string;
   activeCourseId: string | null;
+  studyCourseIds: string[];
+  recentLearnMinutesByConcept: Record<string, number>;
   mastery: MasteryRecord[];
   cards: Array<{
     conceptId: string;
@@ -116,10 +118,11 @@ interface Candidate {
   score: number;
   adjustedMinutes: number;
   newConcept: boolean;
+  courseId?: string;
 }
 
 interface SchedulerCourseContext {
-  course?: IndexedCourse;
+  course: IndexedCourse;
   currentUnit: number;
   unitTitle: string;
   unitPositions: Map<string, number>;
@@ -195,23 +198,48 @@ export function currentLearnerUnit(
   return units.length;
 }
 
-function schedulerCourseContext(
+function schedulerCourseContexts(
   state: SchedulerState,
   content: ContentIndex,
-): SchedulerCourseContext {
-  const course = activeCourseFor(content, state.activeCourseId);
-  const courseId = course?.id;
-  const currentUnit = currentLearnerUnit(state, content);
+): SchedulerCourseContext[] {
+  return state.studyCourseIds.flatMap((courseId) => {
+    const context = schedulerCourseContextFor(state, content, courseId);
+    return context ? [context] : [];
+  });
+}
+
+function schedulerCourseContextFor(
+  state: SchedulerState,
+  content: ContentIndex,
+  courseId: string,
+): SchedulerCourseContext | undefined {
+  const course = content.coursesById.get(courseId);
+  if (!course) return undefined;
+  const currentUnit = currentLearnerUnit({ ...state, activeCourseId: courseId }, content);
   return {
     course,
     currentUnit,
-    unitTitle: course?.units[currentUnit - 1]?.title ?? `Unit ${currentUnit}`,
+    unitTitle: course.units[currentUnit - 1]?.title ?? `Unit ${currentUnit}`,
     unitPositions: courseUnitPositions(content, courseId),
     newConceptIds: new Set([
       ...courseConceptIds(course),
       ...courseFoundationIds(content, courseId),
     ]),
   };
+}
+
+function fallbackCourseContext(
+  state: SchedulerState,
+  content: ContentIndex,
+  courseId?: string,
+): SchedulerCourseContext | undefined {
+  const fallbackId =
+    courseId ??
+    state.studyCourseIds[0] ??
+    state.activeCourseId ??
+    content.curriculum?.default_course ??
+    content.courses[0]?.id;
+  return fallbackId ? schedulerCourseContextFor(state, content, fallbackId) : undefined;
 }
 
 export function planSession(
@@ -295,6 +323,8 @@ function packWeekday(
       )
       .map((run) => run.conceptId),
   );
+  const courseContexts = schedulerCourseContexts(state, content);
+  const courseOrder = new Map(courseContexts.map((course, index) => [course.course.id, index]));
   const compareLearnCandidates = (left: Candidate, right: Candidate) => {
     const leftInProgress = left.activity.conceptId === state.inProgressConceptId;
     const rightInProgress = right.activity.conceptId === state.inProgressConceptId;
@@ -303,9 +333,14 @@ function packWeekday(
       left.activity.conceptId ?? '',
       right.activity.conceptId ?? '',
       content,
-      state.activeCourseId,
+      left.courseId ?? state.activeCourseId,
     );
-    return outlineOrder || right.score - left.score;
+    return (
+      (courseOrder.get(left.courseId ?? '') ?? Infinity) -
+        (courseOrder.get(right.courseId ?? '') ?? Infinity) ||
+      outlineOrder ||
+      right.score - left.score
+    );
   };
   for (const candidate of candidates
     .filter(
@@ -333,10 +368,47 @@ function packWeekday(
   }
   const learnCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'learn')
-    .sort(compareLearnCandidates);
+    .filter((candidate) => !unfinishedLessonConcepts.has(candidate.activity.conceptId ?? ''));
+  const candidatesByCourse = new Map<string, Candidate[]>();
   for (const candidate of learnCandidates) {
-    if (newConceptCount >= SCHEDULER_CONFIG.weekday.maxNewConcepts) break;
-    if (add(candidate)) newConceptCount += 1;
+    if (!candidate.courseId) continue;
+    const group = candidatesByCourse.get(candidate.courseId) ?? [];
+    group.push(candidate);
+    candidatesByCourse.set(candidate.courseId, group);
+  }
+  for (const group of candidatesByCourse.values()) group.sort(compareLearnCandidates);
+  const selectedLearnMinutesByCourse = new Map<string, number>();
+  while (newConceptCount < SCHEDULER_CONFIG.weekday.maxNewConcepts) {
+    const nextCourse = courseContexts
+      .filter((course) => candidatesByCourse.get(course.course.id)?.some(canAdd))
+      .sort((left, right) => {
+        const minutes = (course: SchedulerCourseContext) => {
+          const recentMinutes = Object.entries(state.recentLearnMinutesByConcept)
+            .filter(
+              ([conceptId]) =>
+                course.newConceptIds.has(conceptId) &&
+                courseContexts.find((candidate) => candidate.newConceptIds.has(conceptId))
+                  ?.course.id === course.course.id,
+            )
+            .reduce((sum, [, value]) => sum + value, 0);
+          return recentMinutes + (selectedLearnMinutesByCourse.get(course.course.id) ?? 0);
+        };
+        return minutes(left) - minutes(right);
+      })[0];
+    if (!nextCourse) break;
+    const nextCandidates = candidatesByCourse.get(nextCourse.course.id) ?? [];
+    const candidate = nextCandidates.find(canAdd);
+    if (!candidate || !add(candidate)) {
+      nextCandidates.length = 0;
+      continue;
+    }
+    newConceptCount += 1;
+    selectedLearnMinutesByCourse.set(
+      nextCourse.course.id,
+      (selectedLearnMinutesByCourse.get(nextCourse.course.id) ?? 0) +
+        candidate.activity.plannedMinutes,
+    );
+    nextCandidates.splice(nextCandidates.indexOf(candidate), 1);
   }
 
   const otherCandidates = candidates
@@ -349,6 +421,7 @@ function packWeekday(
     content,
     Math.max(0, budget - usedMinutes),
     selected.length,
+    selected.find((candidate) => candidate.activity.kind === 'learn')?.courseId,
   );
   const activities = [...selected.map((candidate) => candidate.activity), ...optionalActivities];
   return { activities, reasons: activities.map((activity) => activity.reason) };
@@ -356,9 +429,8 @@ function packWeekday(
 
 function generateCandidates(state: SchedulerState, content: ContentIndex, now: Date): Candidate[] {
   const candidates: Candidate[] = [];
-  const courseContext = schedulerCourseContext(state, content);
-  const projectId = courseContext.course?.units[courseContext.currentUnit - 1]?.project;
-  const project = projectId ? content.projectsById.get(projectId) : undefined;
+  const courseContexts = schedulerCourseContexts(state, content);
+  const newConceptIds = new Set(courseContexts.flatMap((course) => [...course.newConceptIds]));
   const masteryByKey = new Map(
     state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
   );
@@ -367,7 +439,7 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
       .filter((attempt) => daysSince(attempt.createdAt, now) < SCHEDULER_CONFIG.repeatWindowDays)
       .map((attempt) => attempt.exerciseId),
   );
-  for (const concept of content.concepts) {
+  for (const concept of courseContexts.length ? content.concepts : []) {
     if (concept.status === 'stub') {
       continue;
     }
@@ -381,12 +453,12 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
       );
     const allNotAssessed = states.every((record) => !record || record.state === 'not_assessed');
     const isNew =
-      courseContext.newConceptIds.has(concept.id) &&
+      newConceptIds.has(concept.id) &&
       prereqsReady &&
       (allNotAssessed || states.some((record) => record?.state === 'introduced'));
-    const isContinuing = states.some(
-      (record) => record?.state === 'introduced' || record?.state === 'assisted',
-    );
+    const isContinuing =
+      newConceptIds.has(concept.id) &&
+      states.some((record) => record?.state === 'introduced' || record?.state === 'assisted');
     const hasKnowledgePointLesson = hasKnowledgePointLessonContent(concept.id, content);
     const lessonRunStatus = state.lessonRuns?.find((run) => run.conceptId === concept.id)?.status;
     const shouldResumeLesson =
@@ -397,6 +469,11 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
         lessonRunStatus === 'quiz');
     const completedKnowledgePointLesson =
       hasKnowledgePointLesson && lessonRunStatus === 'completed';
+    const courseContext =
+      courseContexts.find((course) => course.newConceptIds.has(concept.id)) ?? courseContexts[0];
+    if (!courseContext) continue;
+    const projectId = courseContext.course.units[courseContext.currentUnit - 1]?.project;
+    const project = projectId ? content.projectsById.get(projectId) : undefined;
     if (shouldResumeLesson) {
       const finalId = content.lessonsByConcept.get(concept.id)?.final;
       const exercise = finalId ? content.exercisesById.get(finalId) : undefined;
@@ -510,14 +587,23 @@ function generateCandidates(state: SchedulerState, content: ContentIndex, now: D
     if (plannedNewConceptNeedsPrerequisite) {
       terms.review += 2;
     }
+    const reviewCourseContext =
+      courseContexts.find((course) => course.newConceptIds.has(concept.id)) ??
+      fallbackCourseContext(state, content);
+    if (!reviewCourseContext) continue;
+    const reviewProjectId =
+      reviewCourseContext.course.units[reviewCourseContext.currentUnit - 1]?.project;
+    const reviewProject = reviewProjectId
+      ? content.projectsById.get(reviewProjectId)
+      : undefined;
     const candidate = makeCandidate(
       state,
       content,
       concept,
       'review',
       exercises,
-      courseContext,
-      project,
+      reviewCourseContext,
+      reviewProject,
     );
     candidate.activity.reason.terms.review = terms.review;
     candidate.score = scoreTerms(candidate.activity.reason.terms, candidate.adjustedMinutes);
@@ -585,6 +671,7 @@ function makeCandidate(
     activity,
     adjustedMinutes,
     newConcept,
+    courseId: courseContext.course.id,
     score: scoreTerms(terms, adjustedMinutes),
   };
 }
@@ -661,10 +748,17 @@ function optionalProjectAndPaperActivities(
   content: ContentIndex,
   budget: number,
   activityCount: number,
+  courseId?: string,
 ): PlannedActivity[] {
-  if (budget <= 0 || activityCount >= SCHEDULER_CONFIG.weekday.maxActivities) return [];
-  const courseContext = schedulerCourseContext(state, content);
-  const currentUnit = courseContext.course?.units[courseContext.currentUnit - 1];
+  if (
+    budget <= 0 ||
+    activityCount >= SCHEDULER_CONFIG.weekday.maxActivities ||
+    state.studyCourseIds.length === 0
+  )
+    return [];
+  const courseContext = fallbackCourseContext(state, content, courseId);
+  if (!courseContext) return [];
+  const currentUnit = courseContext.course.units[courseContext.currentUnit - 1];
   const hasUnreadPaper = (currentUnit?.papers ?? []).some(
     (paperId) => !state.completedPaperIds.includes(paperId),
   );
@@ -683,9 +777,9 @@ function optionalProjectAndPaperActivities(
   const availableProjects = content.projects.filter(
     (project) => project.status === 'authored' && project.tests.length > 0,
   );
-  const courseProjectIds = (
-    courseContext.course?.units.slice(0, courseContext.currentUnit) ?? []
-  ).flatMap((unit) => (unit.project ? [unit.project] : []));
+  const courseProjectIds = courseContext.course.units
+    .slice(0, courseContext.currentUnit)
+    .flatMap((unit) => (unit.project ? [unit.project] : []));
   const activeProjectIds = new Set(courseProjectIds);
   const preferredProjectId =
     state.currentProjectId && activeProjectIds.has(state.currentProjectId)

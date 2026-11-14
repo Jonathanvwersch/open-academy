@@ -269,7 +269,7 @@ export async function getPlacementResults(deps: FeatureServices, request: Featur
   ).courses.find((entry) => entry.id === course.id);
   if (!courseProgress) return serviceResult({ error: 'Placement course not found' }, 404);
   const user = await request.repo.user();
-  const schedulerState = await request.repo.schedulerState(request.now());
+  const schedulerState = await request.repo.schedulerState(request.now(), content);
   const prefs = (user?.prefs ?? {}) as SessionPreferences;
   const localDate = localDateKey(request.now(), request.timeZone);
   const sessionKind = sessionKindForDate(localDate);

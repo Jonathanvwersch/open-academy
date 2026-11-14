@@ -286,7 +286,7 @@ export function registerTutorThreadRoutes(
     const pageConceptId = exercise?.concept ?? input.conceptId ?? null;
     const courseState =
       input.page === 'course'
-        ? await deps.withRepo(c).schedulerState(deps.requestNow(c))
+        ? await deps.withRepo(c).schedulerState(deps.requestNow(c), index)
         : undefined;
     const courseUnits = courseState
       ? buildCoursePayload(

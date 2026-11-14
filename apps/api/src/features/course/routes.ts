@@ -177,7 +177,7 @@ export function registerLearnCourseRoutes(
       : plannedActivities(
           filterSchedulerStateForContent(
             index,
-            await repo.schedulerState(now, {
+            await repo.schedulerState(now, index, {
               mastery,
               lessonRuns: runRows,
               projectProgress: projectRows,

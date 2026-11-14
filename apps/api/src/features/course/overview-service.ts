@@ -10,7 +10,7 @@ export async function getMap(deps: FeatureServices, request: FeatureRequest) {
   const { content } = deps;
   const index = await content();
   const requestedDomain = request.query.domain;
-  const state = await request.repo.schedulerState(request.now());
+  const state = await request.repo.schedulerState(request.now(), index);
   const activeCourse = activeCourseFor(index, state.activeCourseId);
   const currentUnit = currentLearnerUnit(state, index);
   const currentUnitDomain =
@@ -99,7 +99,7 @@ export async function getConceptsById(deps: FeatureServices, request: FeatureReq
 export async function getPlanWeek(deps: FeatureServices, request: FeatureRequest) {
   const { content } = deps;
   const index = await content();
-  const state = await request.repo.schedulerState(request.now());
+  const state = await request.repo.schedulerState(request.now(), index);
   return serviceResult({
     units: activeCourseFor(index, state.activeCourseId)?.units ?? [],
     mastery: state.mastery,

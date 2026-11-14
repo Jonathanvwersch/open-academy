@@ -357,6 +357,10 @@ test('lesson response includes ordered authored prerequisites', async () => {
 });
 
 test('planned Learn tasks and Course numbering are read-only', async () => {
+  await db
+    .update(users)
+    .set({ activeCourseId: content.curriculum?.default_course ?? content.courses[0]?.id ?? null })
+    .where(eq(users.id, userId));
   const before = await rowCounts();
   const learnResponse = await get('/learn');
   expect(learnResponse.status).toBe(200);
@@ -517,6 +521,19 @@ test('session creation matches the local-day preview kind and activities', async
 });
 
 test('lesson choices exclude locked, completed and stub concepts and retain the recommended lesson past five', async () => {
+  const defaultCourseId = content.curriculum?.default_course ?? content.courses[0]?.id;
+  if (!defaultCourseId) throw new Error('Expected a default course');
+  await db
+    .update(users)
+    .set({ activeCourseId: defaultCourseId })
+    .where(eq(users.id, userId));
+  await db.insert(courseEnrollments).values(
+    content.courses.map((course) => ({
+      userId,
+      courseId: course.id,
+      startMethod: 'beginning' as const,
+    })),
+  );
   const outlineIds = Array.from(
     new Set(content.courses.flatMap((course) => course.units.flatMap((unit) => unit.concepts))),
   );

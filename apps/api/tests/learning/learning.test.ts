@@ -17,6 +17,7 @@ import {
   recordLessonViewed,
 } from '../../src/learning/mastery.js';
 import {
+  courseFoundationIds,
   compareOutlinePosition,
   masteryKey,
   outlinePosition,
@@ -50,6 +51,8 @@ beforeAll(async () => {
 function emptyState(): SchedulerState {
   return {
     activeCourseId: null,
+    studyCourseIds: ['fixture-course'],
+    recentLearnMinutesByConcept: {},
     mastery: [],
     cards: [],
     recentAttempts: [],
@@ -57,6 +60,85 @@ function emptyState(): SchedulerState {
     projectProgress: [],
     completedPaperIds: [],
     startDate: '2026-01-05T00:00:00.000Z',
+  };
+}
+
+function studyState(
+  courseIds: string[],
+  index: ContentIndex = courseContent,
+): SchedulerState {
+  const courseConceptIds = new Set(
+    courseIds.flatMap(
+      (courseId) =>
+        index.coursesById
+          .get(courseId)
+          ?.units.flatMap((unit) => unit.concepts) ?? [],
+    ),
+  );
+  const hardPrerequisiteIds = new Set(
+    courseIds.flatMap(
+      (courseId) =>
+        index.coursesById
+          .get(courseId)
+          ?.units.flatMap((unit) => unit.concepts)
+          .flatMap(
+            (conceptId) =>
+              index.conceptsById
+                .get(conceptId)
+                ?.prereqs.filter((prerequisite) => prerequisite.strength === 'hard')
+                .map((prerequisite) => prerequisite.id) ?? [],
+          ) ?? [],
+    ),
+  );
+  const mastery = [...hardPrerequisiteIds].flatMap((conceptId) => {
+    const concept = index.conceptsById.get(conceptId);
+    return (concept?.dimensions ?? []).map((dimension) => ({
+      ...initialMastery(conceptId, dimension),
+      state: 'independent' as const,
+    }));
+  });
+  return {
+    ...emptyState(),
+    activeCourseId: courseIds[0] ?? null,
+    studyCourseIds: courseIds,
+    mastery: mastery.filter((record) => !courseConceptIds.has(record.conceptId)),
+  };
+}
+
+function studyCourseOwner(
+  conceptId: string,
+  courseIds: string[],
+  index: ContentIndex = courseContent,
+): string | undefined {
+  return courseIds.find((courseId) => {
+    const course = index.coursesById.get(courseId);
+    return (
+      course?.units.some((unit) => unit.concepts.includes(conceptId)) ||
+      courseFoundationIds(index, courseId).has(conceptId)
+    );
+  });
+}
+
+function schedulerContentWithTopics(
+  topicsByCourse: Record<string, string[]>,
+): ContentIndex {
+  const courses = content.courses.map((course) => {
+    const topics = topicsByCourse[course.id];
+    if (!topics) return course;
+    const firstUnit = course.units[0];
+    if (!firstUnit) return course;
+    return {
+      ...course,
+      units: [
+        { ...firstUnit, concepts: topics },
+        ...course.units.slice(1).map((unit) => ({ ...unit, concepts: [] })),
+      ],
+    };
+  });
+  return {
+    ...content,
+    courses,
+    coursesById: new Map(courses.map((course) => [course.id, course])),
   };
 }
 
@@ -423,6 +505,7 @@ test('new lessons follow outline order even when a later candidate has a higher 
     ),
   };
   const state = emptyState();
+  state.studyCourseIds = ['ml-foundations'];
   state.mastery = [{ ...initialMastery('vectors', 'conceptual'), inferred: true }];
   const masteryByKey = new Map(
     state.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
@@ -1295,7 +1378,11 @@ test('current unit is computed per active course, with null and unknown falling 
 
 test('a new concept only in another course is not offered', () => {
   const plan = planSession(
-    { ...emptyState(), activeCourseId: 'fixture-switching-course' },
+    {
+      ...emptyState(),
+      activeCourseId: 'fixture-switching-course',
+      studyCourseIds: ['fixture-switching-course'],
+    },
     content,
     now,
     60,
@@ -1334,6 +1421,7 @@ test.each(['in_progress', 'quiz'] as const)(
     const state = {
       ...emptyState(),
       activeCourseId: 'fixture-switching-course',
+      studyCourseIds: ['fixture-switching-course'],
       lessonRuns: [
         { conceptId: 'vectors', status: 'completed' as const },
         { conceptId: 'derivatives', status },
@@ -1352,6 +1440,7 @@ test('reviews outside the active course remain planned', () => {
   const state = {
     ...emptyState(),
     activeCourseId: 'fixture-switching-course',
+    studyCourseIds: ['fixture-switching-course'],
     mastery: [{ ...initialMastery('derivatives', 'math'), state: 'independent' as const }],
     cards: [{ conceptId: 'derivatives', dimension: 'math' as const, dueAt: now.toISOString() }],
   };
@@ -1361,6 +1450,111 @@ test('reviews outside the active course remain planned', () => {
       (activity) => activity.kind === 'review' && activity.conceptId === 'derivatives',
     ),
   ).toBe(true);
+});
+
+test('each study course receives a new lesson when the plan has room for two concepts', () => {
+  const courseIds = ['fixture-course', 'fixture-switching-course'];
+  const schedulerContent = schedulerContentWithTopics({
+    'fixture-course': ['vectors'],
+    'fixture-switching-course': ['supervised-learning'],
+  });
+  const plan = planSession(studyState(courseIds, schedulerContent), schedulerContent, now, 200);
+  const learnActivities = plan.activities.filter(
+    (activity) => activity.kind === 'learn' && activity.conceptId,
+  );
+  const scheduledCourseIds = new Set(
+    learnActivities.flatMap((activity) => {
+      const courseId = studyCourseOwner(activity.conceptId ?? '', courseIds, schedulerContent);
+      return courseId ? [courseId] : [];
+    }),
+  );
+
+  expect(scheduledCourseIds).toEqual(new Set(courseIds));
+});
+
+test('deficit scheduling gives the next new concept to the course with no recent learning', () => {
+  const courseIds = ['fixture-course', 'fixture-switching-course'];
+  const schedulerContent = schedulerContentWithTopics({
+    'fixture-course': ['vectors'],
+    'fixture-switching-course': ['supervised-learning'],
+  });
+  const firstCourse = required(
+    schedulerContent.coursesById.get(courseIds[0] ?? ''),
+    'first study course',
+  );
+  const firstCourseConcepts = new Set([
+    ...firstCourse.units.flatMap((unit) => unit.concepts),
+    ...courseFoundationIds(schedulerContent, firstCourse.id),
+  ]);
+  const state = {
+    ...studyState(courseIds, schedulerContent),
+    recentLearnMinutesByConcept: Object.fromEntries(
+      [...firstCourseConcepts].map((conceptId) => [conceptId, 60]),
+    ),
+  };
+  const firstLearn = planSession(state, schedulerContent, now, 200).activities.find(
+    (activity) => activity.kind === 'learn',
+  );
+
+  expect(firstLearn?.conceptId).toBeDefined();
+  expect(studyCourseOwner(firstLearn?.conceptId ?? '', courseIds, schedulerContent)).toBe(
+    'fixture-switching-course',
+  );
+});
+
+test('a concept shared by two study courses is scheduled only once', () => {
+  const courseIds = ['fixture-course', 'fixture-switching-course'];
+  const schedulerContent = schedulerContentWithTopics({
+    'fixture-course': ['linear-models'],
+    'fixture-switching-course': ['linear-models'],
+  });
+  const state = studyState(courseIds, schedulerContent);
+  const plan = planSession(state, schedulerContent, now, 180);
+
+  expect(
+    plan.activities.filter(
+      (activity) => activity.kind === 'learn' && activity.conceptId === 'linear-models',
+    ),
+  ).toHaveLength(1);
+});
+
+test('a paused course is not a new-lesson candidate but its due cards remain reviews', () => {
+  const concept = required(courseContent.conceptsById.get('perceptron'), 'perceptron');
+  const state = {
+    ...studyState(['robotics'], courseContent),
+    cards: [
+      {
+        conceptId: concept.id,
+        dimension: concept.dimensions[0] ?? 'conceptual',
+        dueAt: now.toISOString(),
+      },
+    ],
+  };
+  const plan = planSession(state, courseContent, now, 120);
+
+  expect(
+    plan.activities.some(
+      (activity) => activity.kind === 'learn' && activity.conceptId === concept.id,
+    ),
+  ).toBe(false);
+  expect(
+    plan.activities.some(
+      (activity) => activity.kind === 'review' && activity.conceptId === concept.id,
+    ),
+  ).toBe(true);
+});
+
+test('an empty study set plans due reviews only', () => {
+  const state = {
+    ...emptyState(),
+    studyCourseIds: [],
+    cards: [{ conceptId: 'vectors', dimension: 'math' as const, dueAt: now.toISOString() }],
+  };
+
+  const plan = planSession(state, content, now, 60);
+
+  expect(plan.activities.length).toBeGreaterThan(0);
+  expect(plan.activities.every((activity) => activity.kind === 'review')).toBe(true);
 });
 
 test.each(['weekday', 'saturday', 'sunday'] as const)(

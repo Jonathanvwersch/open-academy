@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lte } from 'drizzle-orm';
 import type { Card } from 'ts-fsrs';
 import type { Dimension } from '../content/schemas.js';
 import type { ContentIndex } from '../content/types.js';
@@ -184,10 +184,21 @@ export class LearnerRepository {
 
   async schedulerState(
     now: Date,
+    content: ContentIndex,
     loaded: Pick<Partial<SchedulerState>, 'mastery' | 'lessonRuns' | 'projectProgress'> = {},
   ): Promise<SchedulerState> {
     const user = await this.user();
-    const [masteryRows, cards, recentAttempts, flags, projects, lessonRunRows, paperRows] =
+    const [
+      masteryRows,
+      cards,
+      recentAttempts,
+      flags,
+      projects,
+      lessonRunRows,
+      paperRows,
+      studyCourseIds,
+      recentLearnActivities,
+    ] =
       await Promise.all([
         loaded.mastery ?? this.masteryRecords(),
         this.db.select().from(reviewCards).where(eq(reviewCards.userId, this.userId)),
@@ -214,10 +225,35 @@ export class LearnerRepository {
             .from(lessonRuns)
             .where(eq(lessonRuns.userId, this.userId)),
         this.db.select().from(paperProgress).where(eq(paperProgress.userId, this.userId)),
+        this.studyCourseIds(content),
+        this.db
+          .select({
+            conceptId: sessionActivities.conceptId,
+            plannedMinutes: sessionActivities.plannedMinutes,
+          })
+          .from(sessionActivities)
+          .innerJoin(studySessions, eq(sessionActivities.sessionId, studySessions.id))
+          .where(
+            and(
+              eq(studySessions.userId, this.userId),
+              eq(sessionActivities.kind, 'learn'),
+              eq(sessionActivities.status, 'completed'),
+              gte(sessionActivities.completedAt, new Date(now.getTime() - 7 * 86_400_000)),
+              lte(sessionActivities.completedAt, now),
+            ),
+          ),
       ]);
+    const recentLearnMinutesByConcept: Record<string, number> = {};
+    for (const activity of recentLearnActivities) {
+      if (!activity.conceptId) continue;
+      recentLearnMinutesByConcept[activity.conceptId] =
+        (recentLearnMinutesByConcept[activity.conceptId] ?? 0) + activity.plannedMinutes;
+    }
     return {
       timezone: user?.timezone ?? 'UTC',
       activeCourseId: user?.activeCourseId ?? null,
+      studyCourseIds,
+      recentLearnMinutesByConcept,
       mastery: masteryRows,
       cards: cards.map((card) => ({
         conceptId: card.conceptId,
