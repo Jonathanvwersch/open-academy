@@ -38,13 +38,29 @@ beforeAll(async () => {
       ...course,
       id: 'one',
       title: 'One',
-      units: [{ title: 'One', concepts: ['shared', 'first'] }],
+      units: [{ title: 'One', concepts: ['shared', 'first', 'untouched'] }],
     },
     {
       ...course,
       id: 'two',
       title: 'Two',
-      units: [{ title: 'Two', concepts: ['shared', 'second', 'untouched'] }],
+      units: [{ title: 'Two', concepts: ['shared', 'second'] }],
+    },
+    {
+      ...course,
+      id: 'tie',
+      title: 'Tie',
+      units: [
+        { title: 'Tie', concepts: ['shared', 'first', 'untouched'] },
+        { title: 'Repeated', concepts: ['shared', 'first'] },
+      ],
+    },
+    { ...course, id: 'small', title: 'Small', units: [{ title: 'Small', concepts: ['shared'] }] },
+    {
+      ...course,
+      id: 'all',
+      title: 'All',
+      units: [{ title: 'All', concepts: ['shared', 'first', 'second', 'untouched'] }],
     },
   ];
   content = {
@@ -54,7 +70,11 @@ beforeAll(async () => {
     courses,
     coursesById: new Map(courses.map((entry) => [entry.id, entry])),
     curriculum: loaded.curriculum
-      ? { ...loaded.curriculum, courses: ['one', 'two'], default_course: 'one' }
+      ? {
+          ...loaded.curriculum,
+          courses: ['one', 'two', 'tie', 'small', 'all'],
+          default_course: 'one',
+        }
       : undefined,
   };
   app = createApp({ db, content, tutorProvider: null });
@@ -106,7 +126,7 @@ test('deduplicates study topics, connects groups and shares course progress inpu
   expect(payload.groups.map((group) => group.id)).toEqual(['foundations', 'one', 'two']);
   expect(payload.nodes.filter((node) => node.id === 'shared')).toHaveLength(1);
   expect(payload.nodes.find((node) => node.id === 'shared')).toMatchObject({
-    groupId: 'one',
+    groupId: 'two',
     status: 'in_progress',
     placedOut: false,
   });
@@ -115,6 +135,11 @@ test('deduplicates study topics, connects groups and shares course progress inpu
     status: 'complete',
     placedOut: true,
   });
+  expect(payload.groups.map((group) => [group.id, group.sharedTopicGroupIds])).toEqual([
+    ['foundations', []],
+    ['one', ['two']],
+    ['two', []],
+  ]);
   expect(payload.nodes.find((node) => node.id === 'second')).toMatchObject({
     status: 'locked',
     missingPrereqTitles: ['first'],
@@ -138,6 +163,41 @@ test('deduplicates study topics, connects groups and shares course progress inpu
     }
   }
   expect(new Set(payload.nodes.map((node) => node.status)).size).toBeGreaterThan(2);
+});
+
+test('equal distinct topic counts use study-set order even when units repeat concepts', async () => {
+  await db
+    .insert(courseEnrollments)
+    .values(
+      ['tie', 'one'].map((courseId) => ({ userId, courseId, startMethod: 'beginning' as const })),
+    );
+  const payload: StudyMapPayload = await (await app.request('/api/study-map')).json();
+  expect(payload.nodes.find((node) => node.id === 'shared')?.groupId).toBe('one');
+  expect(payload.groups.find((group) => group.id === 'tie')?.sharedTopicGroupIds).toEqual(['one']);
+  expect(payload.nodes.filter((node) => node.groupId === 'tie')).toEqual([]);
+});
+
+test('a small course made entirely of shared topics owns its nodes and references are ordered and deduplicated', async () => {
+  await db.insert(courseEnrollments).values(
+    ['all', 'small', 'two', 'one'].map((courseId) => ({
+      userId,
+      courseId,
+      startMethod: 'beginning' as const,
+    })),
+  );
+  const payload: StudyMapPayload = await (await app.request('/api/study-map')).json();
+  expect(payload.nodes.filter((node) => node.groupId === 'small').map((node) => node.id)).toEqual([
+    'shared',
+  ]);
+  expect(payload.groups.find((group) => group.id === 'all')?.sharedTopicGroupIds).toEqual([
+    'one',
+    'two',
+    'small',
+  ]);
+  expect(payload.groups.find((group) => group.id === 'foundations')?.sharedTopicGroupIds).toEqual(
+    [],
+  );
+  expect(payload.nodes.filter((node) => node.groupId === 'all')).toEqual([]);
 });
 
 test('empty, paused and completed study sets have no map nodes', async () => {

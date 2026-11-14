@@ -6,7 +6,12 @@ export type CourseEnrollmentStatus = 'active' | 'paused' | 'completed';
 export type CourseTopicStatus = CourseTopic['status'];
 
 export interface StudyMapPayload {
-  groups: Array<{ id: string; title: string; kind: 'course' | 'foundations' }>;
+  groups: Array<{
+    id: string;
+    title: string;
+    kind: 'course' | 'foundations';
+    sharedTopicGroupIds: string[];
+  }>;
   nodes: Array<{
     id: string;
     title: string;

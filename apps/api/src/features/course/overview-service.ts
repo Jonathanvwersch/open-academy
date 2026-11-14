@@ -33,12 +33,22 @@ export async function getStudyMap(deps: FeatureServices, request: FeatureRequest
   ]);
   const topicState = courseTopicState(index, mastery, runs, placedOutConceptsFromRuns(placements));
   const groupByConcept = new Map<string, string>();
+  const courseConcepts = new Map<string, Set<string>>();
   for (const courseId of courseIds) {
     const course = index.coursesById.get(courseId);
     if (!course) continue;
-    payload.groups.push({ id: courseId, title: course.title, kind: 'course' });
-    for (const id of course.units.flatMap((unit) => unit.concepts)) {
-      if (!groupByConcept.has(id)) groupByConcept.set(id, courseId);
+    const concepts = new Set(course.units.flatMap((unit) => unit.concepts));
+    courseConcepts.set(courseId, concepts);
+    payload.groups.push({
+      id: courseId,
+      title: course.title,
+      kind: 'course',
+      sharedTopicGroupIds: [],
+    });
+    for (const id of concepts) {
+      const owner = groupByConcept.get(id);
+      if (!owner || concepts.size < (courseConcepts.get(owner)?.size ?? Infinity))
+        groupByConcept.set(id, courseId);
     }
   }
   const foundationIds = new Set(courseIds.flatMap((id) => [...courseFoundationIds(index, id)]));
@@ -46,7 +56,20 @@ export async function getStudyMap(deps: FeatureServices, request: FeatureRequest
     if (!groupByConcept.has(id)) groupByConcept.set(id, 'foundations');
   }
   if ([...groupByConcept.values()].includes('foundations')) {
-    payload.groups.unshift({ id: 'foundations', title: 'Foundations', kind: 'foundations' });
+    payload.groups.unshift({
+      id: 'foundations',
+      title: 'Foundations',
+      kind: 'foundations',
+      sharedTopicGroupIds: [],
+    });
+  }
+  for (const group of payload.groups) {
+    const owners = new Set(
+      [...(courseConcepts.get(group.id) ?? [])].map((id) => groupByConcept.get(id)),
+    );
+    group.sharedTopicGroupIds = payload.groups
+      .filter((other) => other.id !== group.id && owners.has(other.id))
+      .map((other) => other.id);
   }
   for (const [id, groupId] of groupByConcept) {
     const concept = index.conceptsById.get(id);
