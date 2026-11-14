@@ -63,7 +63,7 @@ test('unauthenticated API requests are rejected while health stays public', asyn
 test('auth can be disabled for local and existing application use', async () => {
   const response = await createApp({ db }).request('/api/auth/me');
   expect(response.status).toBe(200);
-  expect(await response.json()).toEqual({ authenticated: false, authRequired: false });
+  expect(await response.json()).toEqual({ authenticated: false, authRequired: false, demo: null });
   expect((await createApp({ db }).request('/api/today')).status).not.toBe(401);
 });
 
@@ -126,7 +126,7 @@ test('login sets a secure one-year cookie and stores only its hash', async () =>
 
   const me = await target.request('/api/auth/me', { headers: { cookie } });
   expect(me.status).toBe(200);
-  expect(await me.json()).toEqual({ authenticated: true, authRequired: true });
+  expect(await me.json()).toEqual({ authenticated: true, authRequired: true, demo: null });
 });
 
 test('expired sessions are rejected', async () => {
@@ -157,7 +157,7 @@ test('sessions renew after a day of inactivity', async () => {
   const response = await target.request('/api/auth/me', {
     headers: { cookie: sessionCookie(token) },
   });
-  expect(await response.json()).toEqual({ authenticated: true, authRequired: true });
+  expect(await response.json()).toEqual({ authenticated: true, authRequired: true, demo: null });
   expect(response.headers.get('set-cookie')).toContain('Max-Age=31536000');
   const [session] = await db.select().from(authSessions);
   expect(session?.lastSeenAt?.toISOString()).toBe(currentTime.toISOString());

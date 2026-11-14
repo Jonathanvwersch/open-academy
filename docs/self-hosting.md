@@ -7,7 +7,9 @@ Settings for both options:
 | Variable | Required | What it does |
 | --- | --- | --- |
 | `DATABASE_URL` | yes | Postgres connection string. |
-| `ACADEMY_PASSWORD` | yes | The sign-in password, at least 12 characters. The server won't start without it. |
+| `ACADEMY_PASSWORD` | personal mode | The sign-in password, at least 12 characters. Leave unset in demo mode. |
+| `ACADEMY_DEMO` | no | Set to `1` to enable public demo mode. |
+| `ACADEMY_DEMO_TTL_HOURS` | no | Demo learner lifetime in hours (positive integer, default 24). |
 | `OPENAI_API_KEY` | no | Turns on the tutor. Without it, everything else works. |
 | `OPENAI_MODEL` | no | The tutor's model. |
 | `TUTOR_DAILY_CALL_CAP` | no | Maximum tutor calls per day (default 200). |
@@ -23,6 +25,12 @@ Migrations run automatically, so there's no separate database step.
 4. Deploy. The build runs the migrations, so the database has to be reachable at build time. If Neon gives you a direct (unpooled) connection string as well, set it as `DATABASE_URL_UNPOOLED`, and migrations will use it.
 
 To use your own course pack, commit the pack folder to your copy of the repository and set `CONTENT_DIR` to its path, for example `packs/organic-chemistry`. The pack is bundled at build time, so push to redeploy after editing it.
+
+## Public demo
+
+Set `ACADEMY_DEMO=1` to allow visitors in without a password. Each browser gets its own throwaway learner through an HTTP-only cookie. Progress expires after `ACADEMY_DEMO_TTL_HOURS` (default 24). Expired learners are removed when new learners arrive, with cleanup running at most once every ten minutes per process. New learner creation is limited to 30 per IP per hour per process.
+
+Use a separate database for the demo. Leave `ACADEMY_PASSWORD` and `OPENAI_API_KEY` unset; the tutor is disabled in demo mode. Deploy a second Vercel project from the same repository so both projects update on every merge.
 
 ## Docker Compose
 

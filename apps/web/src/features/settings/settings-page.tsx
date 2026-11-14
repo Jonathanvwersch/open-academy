@@ -1,5 +1,6 @@
 import { studyDays } from '@academy/contracts/settings';
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { getRouteApi } from '@tanstack/react-router';
 import { Check, LogOut } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
@@ -22,6 +23,7 @@ import { todayQueryOptions } from '../sessions/queries.js';
 import { settingsQueryOptions } from './queries.js';
 
 export function SettingsPage() {
+  const { auth } = getRouteApi('__root__').useRouteContext();
   const queryClient = useQueryClient();
   const { data: settings } = useSuspenseQuery(settingsQueryOptions());
   const [saved, setSaved] = useState(false);
@@ -151,30 +153,32 @@ export function SettingsPage() {
           </CardFooter>
         </Card>
       </form>
-      <Card>
-        <CardHeader>
-          <CardTitle>Security</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {authError ? (
-            <Alert variant="destructive">
-              <AlertDescription>{authError}</AlertDescription>
-            </Alert>
-          ) : null}
-          <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-9"
-              loading={loggingOut}
-              onClick={() => void logout()}
-            >
-              <LogOut className="size-3.5" aria-hidden="true" />
-              Log out
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {auth?.authRequired ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Security</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {authError ? (
+              <Alert variant="destructive">
+                <AlertDescription>{authError}</AlertDescription>
+              </Alert>
+            ) : null}
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9"
+                loading={loggingOut}
+                onClick={() => void logout()}
+              >
+                <LogOut className="size-3.5" aria-hidden="true" />
+                Log out
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
     </section>
   );
 }

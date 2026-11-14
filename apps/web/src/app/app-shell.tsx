@@ -26,6 +26,7 @@ import {
 } from '../components/ui/sidebar.js';
 import { Skeleton } from '../components/ui/skeleton.js';
 import { TooltipProvider } from '../components/ui/tooltip.js';
+import { authQueryOptions } from '../features/auth/queries.js';
 import { coursesQueryOptions } from '../features/course/queries.js';
 import { reviewsQueryOptions } from '../features/reviews/queries.js';
 import { TutorContextProvider } from '../features/tutor/tutor-sidebar.js';
@@ -326,6 +327,7 @@ function AppToaster() {
 }
 
 export function RootLayout() {
+  const { data: me } = useQuery(authQueryOptions());
   const contentRef = useCapturePageLayout();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { sidebarOpen, updateSidebarOpen } = useAppSidebarOpenState();
@@ -348,6 +350,18 @@ export function RootLayout() {
             routeAllowed={!pathname.startsWith('/placement')}
             pushSidebar={isPaperReader}
           >
+            {me?.demo ? (
+              <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground sm:px-6">
+                Demo: your progress stays in this browser for {me.demo.ttlHours} hours, then it's
+                deleted.{' '}
+                <a
+                  className="underline underline-offset-2"
+                  href="https://github.com/Jonathanvwersch/open-academy/blob/main/docs/self-hosting.md"
+                >
+                  Run your own
+                </a>
+              </div>
+            ) : null}
             <div ref={contentRef} data-page-frame className={pageFrameClassName(pathname)}>
               <Outlet />
             </div>

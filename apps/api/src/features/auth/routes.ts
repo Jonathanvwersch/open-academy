@@ -22,6 +22,7 @@ interface AuthDependencies {
   db: Database;
   auth?: AuthOptions | null;
   now?: () => Date;
+  demo?: { ttlHours: number } | null;
 }
 
 const loginBodySchema = z.object({ password: z.string().max(200) });
@@ -36,7 +37,7 @@ function passwordMatches(candidate: string, configured: string): boolean {
   return timingSafeEqual(candidateDigest, configuredDigest);
 }
 
-function isSecureRequest(context: Context): boolean {
+export function isSecureRequest(context: Context): boolean {
   const forwardedProto = context.req
     .header('x-forwarded-proto')
     ?.split(',')[0]
@@ -64,14 +65,19 @@ function clearSessionCookie(context: Context): void {
   });
 }
 
-function requestIp(context: Context): string {
+export function requestIp(context: Context): string {
   const forwardedFor = context.req.header('x-forwarded-for');
   const forwardedIp = forwardedFor?.split(',')[0]?.trim();
   if (forwardedIp) return forwardedIp;
   return context.env?.incoming?.socket?.remoteAddress ?? 'unknown';
 }
 
-export function createAuth({ db, auth = null, now = () => new Date() }: AuthDependencies) {
+export function createAuth({
+  db,
+  auth = null,
+  now = () => new Date(),
+  demo = null,
+}: AuthDependencies) {
   const failuresByIp = new Map<string, number[]>();
   const globalFailures: number[] = [];
 
@@ -169,7 +175,7 @@ export function createAuth({ db, auth = null, now = () => new Date() }: AuthDepe
 
   routes.get('/me', async (context) => {
     const isAuthenticated = auth ? await authenticated(context) : false;
-    return context.json({ authenticated: isAuthenticated, authRequired: Boolean(auth) });
+    return context.json({ authenticated: isAuthenticated, authRequired: Boolean(auth), demo });
   });
 
   routes.post('/logout', async (context) => {
