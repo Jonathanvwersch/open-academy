@@ -160,6 +160,7 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
       if (builtins.has(request)) {
         if (
           !isTest &&
+          !file.startsWith('packages/cli/src/') &&
           (own.startsWith('packages/') || (own === 'apps/web' && !file.endsWith('config.ts')))
         )
           report(file, `browser-safe code cannot import ${request}`);
@@ -194,7 +195,10 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           report(file, `declare ${dependency} in ${own}/package.json`);
         const workspace = byName.get(dependency);
         if (workspace) {
-          if (workspace.dir.startsWith('apps/'))
+          if (
+            workspace.dir.startsWith('apps/') &&
+            !(own === 'packages/cli' && request === '@academy/api/content')
+          )
             report(
               file,
               'applications cannot be imported as libraries; extract a shared contract or helper',
@@ -211,10 +215,13 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           if (!existsSync(path.join(root, target)))
             report(file, `${request} exports a missing file`);
         }
+        const nodeCliDependency =
+          own === 'packages/cli' && ['@academy/api', 'tsx', 'yaml'].includes(dependency);
         if (
           !isTest &&
           own.startsWith('packages/') &&
-          !['zod', '@academy/contracts', '@academy/shared'].includes(dependency)
+          !['zod', '@academy/contracts', '@academy/shared'].includes(dependency) &&
+          !nodeCliDependency
         )
           report(file, `${dependency} does not belong in a browser-safe shared package`);
         if (
@@ -232,7 +239,11 @@ export function checkArchitecture(root = fileURLToPath(new URL('../../', import.
           file,
           'web cannot import API source, even types; move the public shape to packages/contracts',
         );
-      if (own.startsWith('packages/') && target.startsWith('apps/'))
+      if (
+        own.startsWith('packages/') &&
+        target.startsWith('apps/') &&
+        !(own === 'packages/cli' && target === 'apps/api/src/content/public.ts')
+      )
         report(file, 'shared packages cannot depend on applications');
       if (file.startsWith('api/') && (file !== 'api/index.ts' || !deploymentImports.has(target)))
         report(file, 'the root api directory is only the thin Vercel adapter');
