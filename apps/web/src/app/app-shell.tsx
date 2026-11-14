@@ -176,6 +176,15 @@ function AppSidebar() {
                             preload="intent"
                             aria-label={`Switch to ${course.title}`}
                             onClick={(event) => {
+                              if (
+                                event.button !== 0 ||
+                                event.metaKey ||
+                                event.ctrlKey ||
+                                event.shiftKey ||
+                                event.altKey
+                              ) {
+                                return;
+                              }
                               event.preventDefault();
                               closeMobile();
                               switchCourse.switchTo(course.id);

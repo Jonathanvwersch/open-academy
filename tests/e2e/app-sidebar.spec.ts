@@ -152,6 +152,29 @@ test('switching a My courses entry opens that course', async ({ page }) => {
   await page.screenshot({ path: 'test-results/sidebar-course.png', animations: 'disabled' });
 });
 
+test('modified course-row clicks open the course in a new tab without switching', async ({
+  page,
+  context,
+}) => {
+  let switchRequests = 0;
+  await page.route('**/api/course/active', async (route) => {
+    switchRequests += 1;
+    await route.continue();
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const currentUrl = page.url();
+  const newPagePromise = context.waitForEvent('page');
+  await page.getByRole('link', { name: 'Switch to Fixture switching course' }).click({
+    modifiers: ['Control'],
+  });
+  const newPage = await newPagePromise;
+  await expect(newPage).toHaveURL(/\/course\?course=fixture-switching-course$/);
+  expect(page.url()).toBe(currentUrl);
+  expect(switchRequests).toBe(0);
+  await newPage.close();
+});
+
 test('overlapping course switches run in order and keep the last selected course', async ({
   page,
 }) => {
