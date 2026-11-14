@@ -1,5 +1,16 @@
 concept: derivatives
 exercises:
+  - id: lab-gc-central-slope
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For $f(x)=x^3$, find the central-difference slope at $x=1$ with a distance of $0.5$ on each side."
+    answer: 3.25
+    tolerance: { abs: 0.001 }
+    hints: ["Find the two function values before dividing by the distance between the inputs."]
+    solution: "The nearby values are $f(1.5)=3.375$ and $f(0.5)=0.125$. Their difference divided by $1.5-0.5$ is $3.25$."
   - id: der-speed-at-instant-basics
     dimension: conceptual
     type: mc

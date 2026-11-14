@@ -10,6 +10,63 @@ const buggy = resolve('labs/linreg-numpy/_solution/buggy.py');
 const nnVerifier = resolve('labs/verify.py');
 const nnSolution = resolve('labs/nn-from-scratch/_solution/nn.py');
 
+test.each([
+  { implementation: '_solution/gradient_check.py', passed: true, failed: [] },
+  {
+    implementation: 'starter/gradient_check.py',
+    passed: false,
+    failed: ['test_derivative', 'test_partial_derivatives', 'test_edge_cases'],
+  },
+  {
+    implementation: '_solution/buggy.py',
+    passed: false,
+    failed: ['test_analytic_chain_rule', 'test_gradient_checker'],
+  },
+])('gradient checker verifier checks $implementation', ({ implementation, passed, failed }) => {
+  const directory = mkdtempSync(join(tmpdir(), 'academy-lab-gradient-'));
+  try {
+    const output = join(directory, 'results.json');
+    const run = () =>
+      execFileSync(
+        'python3',
+        [
+          nnVerifier,
+          'gradient-check',
+          '--implementation',
+          resolve('labs/gradient-check', implementation),
+          '--output',
+          output,
+        ],
+        { encoding: 'utf8' },
+      );
+    if (passed) run();
+    else expect(run).toThrow();
+    const result = JSON.parse(readFileSync(output, 'utf8')) as {
+      project: string;
+      tests: Array<{ id: string; passed: boolean; message: string }>;
+      metrics: { max_relative_error?: number; final_height?: number };
+    };
+    expect(result.project).toBe('gradient-check');
+    expect(result.tests).toHaveLength(7);
+    expect(result.tests.every((check) => check.passed)).toBe(passed);
+    for (const id of failed) {
+      expect(result.tests.find((check) => check.id === id)?.passed).toBe(false);
+    }
+    if (passed) {
+      expect(result.metrics.max_relative_error).toBeLessThan(1e-5);
+      expect(result.metrics.final_height).toBeLessThan(1e-8);
+    }
+    if (implementation.endsWith('buggy.py')) {
+      expect(result.tests.filter((check) => !check.passed).map((check) => check.id)).toEqual(
+        failed,
+      );
+      expect(result.tests.find((check) => check.id === failed[0])?.message).toContain('factor 2');
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('reference linear regression solution passes deterministic verifier checks', () => {
   const directory = mkdtempSync(join(tmpdir(), 'academy-lab-'));
   try {
