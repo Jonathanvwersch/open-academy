@@ -6,7 +6,7 @@ import type { LearnerRepository } from '../../db/repository.js';
 import {
   lessonProblems,
   lessonRuns,
-  masteryEvents,
+  diagnosticRuns,
   paperProgress,
   projectProgress,
   sessionActivities,
@@ -41,6 +41,19 @@ import { buildCoursePayload } from './service.js';
 type RouteContext = Context<ApiEnv>;
 type ActivityRecord = typeof sessionActivities.$inferSelect;
 
+function placedOutConceptsFromRuns(runs: readonly { state: unknown }[]): Set<string> {
+  const conceptIds = new Set<string>();
+  for (const run of runs) {
+    if (typeof run.state !== 'object' || run.state === null) continue;
+    const known = (run.state as { known?: unknown }).known;
+    if (!Array.isArray(known)) continue;
+    for (const conceptId of known) {
+      if (typeof conceptId === 'string') conceptIds.add(conceptId);
+    }
+  }
+  return conceptIds;
+}
+
 export function registerLearnCourseRoutes(
   api: Hono<ApiEnv>,
   deps: {
@@ -68,7 +81,15 @@ export function registerLearnCourseRoutes(
         .from(projectProgress)
         .where(eq(projectProgress.userId, userId)),
     ]);
-    const [mastery, user, events, active, placementRuns, enrollments, masteryEventRows] =
+    const [
+      mastery,
+      user,
+      events,
+      active,
+      placementRuns,
+      enrollments,
+      completedPlacementRuns,
+    ] =
       await Promise.all([
         repo.masteryRecords(),
         repo.user(),
@@ -76,7 +97,16 @@ export function registerLearnCourseRoutes(
         repo.activeSession(now),
         repo.activePlacementRuns(),
         repo.courseEnrollments(),
-        deps.db.select().from(masteryEvents).where(eq(masteryEvents.userId, userId)),
+        deps.db
+          .select({ state: diagnosticRuns.state })
+          .from(diagnosticRuns)
+          .where(
+            and(
+              eq(diagnosticRuns.userId, userId),
+              eq(diagnosticRuns.kind, 'placement'),
+              eq(diagnosticRuns.status, 'completed'),
+            ),
+          ),
       ]);
     const activeCourse = activeCourseFor(index, user?.activeCourseId);
     const startState = buildCourseStartState({
@@ -92,11 +122,7 @@ export function registerLearnCourseRoutes(
       mastery,
       lessonRuns: runRows,
     });
-    const placedOutConcepts = new Set(
-      masteryEventRows
-        .filter((event) => event.rule === 'placement_placed_out')
-        .map((event) => event.conceptId),
-    );
+    const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
     const prefs = (user?.prefs ?? {}) as SessionPreferences;
     const todayLocal = localDateKey(now, timeZone);
     const totalXp = events.reduce((total, event) => total + event.amount, 0);
@@ -342,7 +368,7 @@ export function registerLearnCourseRoutes(
       projectRows,
       enrollments,
       placementRuns,
-      events,
+      completedPlacementRuns,
     ] = await Promise.all([
       repo.masteryRecords(),
       repo.activeCourseId(),
@@ -361,9 +387,15 @@ export function registerLearnCourseRoutes(
       repo.courseEnrollments(),
       repo.activePlacementRuns(),
       deps.db
-        .select()
-        .from(masteryEvents)
-        .where(eq(masteryEvents.userId, context.get('userId'))),
+        .select({ state: diagnosticRuns.state })
+        .from(diagnosticRuns)
+        .where(
+          and(
+            eq(diagnosticRuns.userId, context.get('userId')),
+            eq(diagnosticRuns.kind, 'placement'),
+            eq(diagnosticRuns.status, 'completed'),
+          ),
+        ),
     ]);
     const paperStatuses = new Map<string, 'not_started' | 'reading' | 'completed'>(
       paperRows.map((row) => [row.paperId, row.completedAt ? 'completed' : 'reading'] as const),
@@ -377,11 +409,7 @@ export function registerLearnCourseRoutes(
       enrollments,
       placementRuns,
     });
-    const placedOutConcepts = new Set(
-      events
-        .filter((event) => event.rule === 'placement_placed_out')
-        .map((event) => event.conceptId),
-    );
+    const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
     return context.json(
       buildCoursePayload(
         index,

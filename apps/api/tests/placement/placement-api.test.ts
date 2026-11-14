@@ -462,3 +462,82 @@ test('placement results separate known foundations from course topics', async ()
     content = originalContent;
   }
 });
+
+test('a correctly answered single-dimension topic keeps its placed-out badge without an event', async () => {
+  const originalApp = app;
+  const originalContent = content;
+  const singleContent = await loadContent('tests/fixtures/content');
+  const baseCourse = singleContent.coursesById.get('fixture-course');
+  const baseConcept = singleContent.conceptsById.get('vectors');
+  const baseExercise = singleContent.exercises.find(
+    (exercise): exercise is Extract<IndexedExercise, { type: 'mc' }> => exercise.type === 'mc',
+  );
+  if (!baseCourse || !baseConcept || !baseExercise) {
+    throw new Error('Missing single-dimension placement fixtures');
+  }
+  const conceptId = 'single-dimension-topic';
+  const concept = {
+    ...baseConcept,
+    id: conceptId,
+    title: 'Single-dimension topic',
+    dimensions: ['math'] as ['math'],
+    prereqs: [],
+  };
+  const exercise = {
+    ...baseExercise,
+    id: 'single-dimension-probe',
+    concept: conceptId,
+    dimension: 'math' as const,
+    role: 'core' as const,
+    difficulty: 2,
+  };
+  const course = {
+    ...baseCourse,
+    units: [{ title: 'Single-dimension unit', concepts: [conceptId] }],
+  };
+  singleContent.curriculum = {
+    ...singleContent.curriculum,
+    courses: [course.id],
+    default_course: course.id,
+  };
+  singleContent.courses = [course];
+  singleContent.coursesById = new Map([[course.id, course]]);
+  singleContent.concepts.push(concept);
+  singleContent.conceptsById.set(conceptId, concept);
+  singleContent.exercises.push(exercise);
+  singleContent.exercisesById.set(exercise.id, exercise);
+  singleContent.exercisesByConcept.set(conceptId, [exercise]);
+  content = singleContent;
+  app = createApp({ db, content, tutorProvider: null });
+
+  try {
+    await chooseFixtureCourse();
+    const start = await post('/placement', {});
+    const { id } = (await start.json()) as { id: string };
+    const question = await get(`/placement/${id}/next`).then((response) => response.json());
+    expect(question.exercise.id).toBe(exercise.id);
+    const answer = await post(`/placement/${id}/answer`, {
+      exerciseId: exercise.id,
+      answer: correctAnswer(exercise),
+    });
+    expect(answer.status).toBe(200);
+    expect((await answer.json()).complete).toBe(true);
+    const events = await db.select().from(masteryEvents).where(eq(masteryEvents.userId, userId));
+    expect(
+      events.filter(
+        (event) =>
+          event.conceptId === conceptId && event.rule === 'placement_placed_out',
+      ),
+    ).toHaveLength(0);
+    const coursePayload = await get('/course').then((response) => response.json());
+    const topic = coursePayload.units
+      .flatMap((unit: { topics: Array<{ conceptId: string; status: string; placedOut: boolean }> }) =>
+        unit.topics,
+      )
+      .find((entry: { conceptId: string }) => entry.conceptId === conceptId);
+    expect(topic).toMatchObject({ status: 'complete', placedOut: true });
+  } finally {
+    app = originalApp;
+    content = originalContent;
+  }
+});
