@@ -321,7 +321,7 @@ describe('academy CLI', () => {
     }
   });
 
-  it('skips skeleton exercises whose IDs already exist', () => {
+  it('chooses a free skeleton ID when an existing exercise uses the base ID', () => {
     const parent = temporaryDirectory();
     try {
       const pack = join(parent, 'pack');
@@ -352,7 +352,15 @@ describe('academy CLI', () => {
         }),
       );
 
-      expect(run(['new', 'lesson', topicId, '--pack', pack]).status).toBe(0);
+      const before = runWithInitCwd(['check', pack], parent);
+      expect(before.status, before.stderr).toBe(0);
+      const created = run(['new', 'lesson', topicId, '--pack', pack]);
+      expect(created.status, created.stderr).toBe(0);
+
+      const lesson = parse(readFileSync(join(pack, 'lessons', `${topicId}.yaml`), 'utf8')) as {
+        knowledge_points: Array<{ problems: string[] }>;
+      };
+      expect(lesson.knowledge_points[0]?.problems[0]).toBe(`${topicId}-problem-1-2`);
 
       const exercises = parse(readFileSync(exerciseFile, 'utf8')) as {
         exercises: Array<{ id: string; role: string; prompt: string }>;
@@ -366,6 +374,22 @@ describe('academy CLI', () => {
         role: 'diagnostic',
         prompt: 'Existing diagnostic question.',
       });
+      expect(
+        exercises.exercises.find((exercise) => exercise.id === `${topicId}-problem-1-2`),
+      ).toMatchObject({
+        id: `${topicId}-problem-1-2`,
+        role: 'basics',
+      });
+
+      const checked = runWithInitCwd(['check', pack], parent);
+      expect(checked.status).toBe(1);
+      expect(checked.stderr).toContain('TODO field at .objective');
+      expect(
+        checked.stderr
+          .trim()
+          .split('\n')
+          .every((issue) => issue.includes('TODO field at ')),
+      ).toBe(true);
     } finally {
       rmSync(parent, { recursive: true, force: true });
     }

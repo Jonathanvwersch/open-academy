@@ -367,6 +367,22 @@ async function newLesson(topicId: string, directory: string) {
   const concept = content.conceptsById.get(topicId);
   if (!concept) fail(`Unknown topic "${topicId}".`);
   if (content.lessonsByConcept.has(topicId)) fail(`Lesson for "${topicId}" already exists.`);
+  const usedExerciseIds = new Set(
+    (content.exercisesByConcept.get(topicId) ?? []).map((exercise) => exercise.id),
+  );
+  function uniqueExerciseId(baseId: string): string {
+    let id = baseId;
+    for (let suffix = 2; usedExerciseIds.has(id); suffix += 1) {
+      id = `${baseId}-${suffix}`;
+    }
+    usedExerciseIds.add(id);
+    return id;
+  }
+  const problemIds = Array.from({ length: 5 }, (_, index) =>
+    uniqueExerciseId(`${topicId}-problem-${index + 1}`),
+  );
+  const selfExplanationId = uniqueExerciseId(`${topicId}-self-explanation`);
+  const finalId = uniqueExerciseId(`${topicId}-explain`);
   const conceptFile = conceptFileForTopic(directory, topicId, concept.domain);
   const source = editYaml(conceptFile, (document) => {
     const concepts = document.get('concepts', true);
@@ -375,9 +391,6 @@ async function newLesson(topicId: string, directory: string) {
     if (!isMap(item)) fail(`Could not find topic "${topicId}" in ${conceptFile}.`);
     item.set('status', 'authored');
   });
-  const problemIds = Array.from({ length: 5 }, (_, index) => `${topicId}-problem-${index + 1}`);
-  const selfExplanationId = `${topicId}-self-explanation`;
-  const finalId = `${topicId}-explain`;
   writeYaml(join(directory, 'lessons', `${topicId}.yaml`), {
     concept: topicId,
     version: 1,
@@ -467,15 +480,7 @@ async function newLesson(topicId: string, directory: string) {
     const exerciseSource = editYaml(exerciseFile, (document) => {
       const exercises = document.get('exercises', true);
       if (!isSeq(exercises)) fail(`Expected exercises sequence in ${exerciseFile}.`);
-      const existingIds = new Set<string>();
-      for (const exercise of exercises.items) {
-        if (!isMap(exercise)) continue;
-        const existingId = exercise.get('id');
-        if (typeof existingId === 'string') existingIds.add(existingId);
-      }
-      for (const exercise of skeletonExercises) {
-        if (!existingIds.has(exercise.id)) exercises.add(exercise);
-      }
+      for (const exercise of skeletonExercises) exercises.add(exercise);
     });
     writeFileSync(exerciseFile, exerciseSource);
   } else {
