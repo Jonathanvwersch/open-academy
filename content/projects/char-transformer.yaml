@@ -6,9 +6,9 @@ objective: "Implement and train a small decoder-only character-level transformer
 background: |
   A decoder-only transformer predicts the next token from the tokens we have already seen. Here each token is one character. We will turn a small story into IDs, mix earlier characters with attention, and train a one-block model to predict the next character.
 
-  We use 32-character windows, 32 embedding features and four attention heads. The original story in `text.txt` is committed with the code. Training and verification run offline after setup. The loss checks learning on this story. It gives no estimate of performance on new books, and samples may repeat familiar phrases.
+  We use 32-character windows, 32 embedding features and four attention heads. The original story in `text.txt` is committed with the code. Training uses the first 90% of characters. Validation loss measures next-character predictions on fixed windows in the final 10%, which training never uses. The story repeats, so validation can contain familiar phrases. It is a small check on held-out positions, and samples may repeat phrases too.
 
-  Work in your own editor. The Academy server reads your results file and never runs your Python code. Run these commands from the repository root. Installing the CPU dependency requires internet once.
+  Work in your own editor. The Academy server reads your results file and never runs your Python code. Run these commands from the repository root. Installing PyTorch from PyPI requires internet once and supports Apple Silicon Macs. Training and verification then run offline on CPU by default.
 
   ```bash
   python3 -m venv ~/ct-venv
@@ -19,6 +19,8 @@ background: |
   python3 labs/verify.py char-transformer
   python3 labs/char-transformer/run.py
   ```
+
+  For a CPU-only build on Linux, you can replace the dependency-install command with `pip install 'torch>=2.2,<3' --index-url https://download.pytorch.org/whl/cpu`.
 
   Upload `labs/char-transformer/work/results.json` below. The README has shape notes and debugging commands.
 prereqs:
@@ -76,7 +78,9 @@ tasks:
 
       The scaffold sets one CPU thread and calls `torch.manual_seed(seed)` before constructing the model. Its separate batch generator uses `seed + 1000`. It runs 250 AdamW updates with batch size 16, context length 32, step size 0.003 and weight decay 0.01. Each target window is the input window shifted one character forward. Cross-entropy averages over all batch positions.
 
-      Run `python3 labs/char-transformer/run.py`. The verifier uses seed 7 and compares the same fixed 16 windows before and after training. We are done when loss is below 2.1 and final loss divided by initial loss is below 0.7. These are learning checks on the training story.
+      The split falls at `int(0.9 * len(text))`. Every training input and target stays before that boundary. Validation windows start at offsets 0, 32, 64 and so on within the held-out suffix. We use each complete 32-character input and its shifted target.
+
+      Run `python3 labs/char-transformer/run.py`. The verifier uses seed 7 and compares the same fixed 16 training windows before and after training. We are done when training loss is below 2.1, final training loss divided by initial training loss is below 0.7, and held-out validation loss is below 1.8.
   - id: t-sample
     title: Draw the next character
     md: |
@@ -88,6 +92,7 @@ acceptance:
   - "Attention has the expected values and shapes, future weights are zero, and each row sums to one."
   - "Changing a future input leaves earlier decoder logits unchanged."
   - "Final fixed-batch cross-entropy is below 2.1 and the final-to-initial loss ratio is below 0.7."
+  - "Held-out validation cross-entropy is below 1.8 on fixed windows from the final 10% of characters."
   - "Sampling is seeded, respects temperature, preserves the prompt and works beyond the context length."
 tests:
   - { id: test_tokenization, concepts: [tokenization], dimension: conceptual }
@@ -106,6 +111,7 @@ tests:
 metrics:
   - { id: final_loss, label: "Final fixed-batch cross-entropy", threshold: 2.1, direction: below }
   - { id: loss_ratio, label: "Final / initial fixed-batch loss", threshold: 0.7, direction: below }
+  - { id: val_loss, label: "Held-out validation cross-entropy", threshold: 1.8, direction: below }
 reflection:
   - lab-char-transformer-mask-leak
   - lab-char-transformer-head-order

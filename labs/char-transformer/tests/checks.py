@@ -1,5 +1,6 @@
 """Public concept checks. Each check runs independently so TODOs stay actionable."""
 import math
+from pathlib import Path
 
 import torch
 from torch import nn
@@ -103,13 +104,38 @@ def run_checks(m):
             raise AssertionError("Reject context lengths outside 1..32.")
 
     def training():
-        _, _, initial, final = m.train(seed=7)
-        assert math.isfinite(initial) and initial > 0 and math.isfinite(final), (
+        numbered = torch.arange(100)
+        train_data, val_data = m.split_data(numbered)
+        assert torch.equal(train_data, numbered[:90]) and torch.equal(val_data, numbered[90:]), (
+            "Train on the first 90% of characters and hold out the final 10%."
+        )
+        empty_train, empty_val = m.split_data(torch.tensor([]))
+        assert empty_train.numel() == 0 and empty_val.numel() == 0
+        network, chars, initial, final, val_loss = m.train(seed=7)
+        assert all(parameter.device.type == "cpu" for parameter in network.parameters())
+        text = (Path(__file__).resolve().parents[1] / "text.txt").read_text(encoding="utf-8")
+        data = torch.tensor(m.encode(text, chars), dtype=torch.long)
+        held_out = data[int(0.9 * len(data)):]
+        starts = range(0, len(held_out) - m.CONTEXT, m.CONTEXT)
+        x = torch.stack([held_out[start:start + m.CONTEXT] for start in starts])
+        y = torch.stack([held_out[start + 1:start + m.CONTEXT + 1] for start in starts])
+        with torch.no_grad():
+            expected = F.cross_entropy(network(x).reshape(-1, len(chars)), y.reshape(-1)).item()
+        assert abs(val_loss - expected) < 1e-6, "Report loss on fixed held-out windows."
+        assert m.fixed_loss(network, held_out, len(chars)) == val_loss
+        for length in [0, m.CONTEXT]:
+            try:
+                m.fixed_loss(network, data[:length], len(chars))
+            except ValueError:
+                continue
+            raise AssertionError("Reject evaluation text shorter than one input-target window.")
+        assert math.isfinite(initial) and initial > 0 and math.isfinite(final) and math.isfinite(val_loss), (
             "Loss must be finite. Check that the mask keeps the diagonal and softmax has an allowed key."
         )
-        metrics.update(final_loss=final, loss_ratio=final / initial)
+        metrics.update(final_loss=final, loss_ratio=final / initial, val_loss=val_loss)
         assert final < 2.1, f"Final fixed-batch loss {final:.4f} must be below 2.1."
         assert final / initial < 0.7, "Loss must fall by more than 30%."
+        assert val_loss < 1.8, f"Held-out loss {val_loss:.4f} must be below 1.8."
 
     def sampling():
         logits = torch.tensor([[1.0, -1.0, 0.0]]).repeat(64, 1)

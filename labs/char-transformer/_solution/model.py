@@ -112,24 +112,32 @@ def generate(model, prompt, count, seed=7, temperature=1.0):
     return ids
 
 
+def split_data(data):
+    boundary = int(0.9 * len(data))
+    return data[:boundary], data[boundary:]
+
+
+@torch.no_grad()
+def fixed_loss(model, data, vocab_size):
+    if len(data) <= CONTEXT:
+        raise ValueError("evaluation needs at least 33 characters")
+    starts = torch.arange(0, len(data) - CONTEXT, CONTEXT)
+    x = torch.stack([data[start:start + CONTEXT] for start in starts])
+    y = torch.stack([data[start + 1:start + CONTEXT + 1] for start in starts])
+    return F.cross_entropy(model(x).reshape(-1, vocab_size), y.reshape(-1)).item()
+
+
 def train(seed=7, steps=250):
     torch.set_num_threads(1)
     torch.manual_seed(seed)
     text = (Path(__file__).resolve().parents[1] / "text.txt").read_text(encoding="utf-8")
     chars = vocabulary(text)
-    data = torch.tensor(encode(text, chars), dtype=torch.long)
+    data, validation = split_data(torch.tensor(encode(text, chars), dtype=torch.long))
     model = Decoder(len(chars))
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.003, weight_decay=0.01)
     batches = torch.Generator().manual_seed(seed + 1000)
-    starts = torch.arange(16) * CONTEXT
-    fixed_x = torch.stack([data[start:start + CONTEXT] for start in starts])
-    fixed_y = torch.stack([data[start + 1:start + CONTEXT + 1] for start in starts])
-
-    def evaluate():
-        with torch.no_grad():
-            return F.cross_entropy(model(fixed_x).reshape(-1, len(chars)), fixed_y.reshape(-1)).item()
-
-    initial = evaluate()
+    evaluation_data = data[:16 * CONTEXT + 1]
+    initial = fixed_loss(model, evaluation_data, len(chars))
     for _ in range(steps):
         starts = torch.randint(len(data) - CONTEXT, (16,), generator=batches)
         x = torch.stack([data[start:start + CONTEXT] for start in starts])
@@ -138,4 +146,6 @@ def train(seed=7, steps=250):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-    return model, chars, initial, evaluate()
+    final = fixed_loss(model, evaluation_data, len(chars))
+    val_loss = fixed_loss(model, validation, len(chars))
+    return model, chars, initial, final, val_loss

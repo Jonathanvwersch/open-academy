@@ -19,11 +19,19 @@ python3 labs/verify.py char-transformer
 python3 labs/char-transformer/run.py
 ```
 
-Install once with internet access. The pinned torch CPU wheel is for Linux/Windows
-x86-64. All training and checks then run locally and offline. Upload
+Install once with internet access. PyPI provides torch wheels for Apple Silicon
+Macs. All model parameters, data and random generators stay on CPU by default.
+The code requires neither CUDA nor MPS. All training and checks then run locally
+and offline. Upload
 `labs/char-transformer/work/results.json` on the project page.
 Setup refuses to overwrite existing work. Move your file aside if you want a reset.
 The verifier returns exit code 1 for failed checks and still writes results.
+
+For a CPU-only build on Linux, replace the dependency-install command with:
+
+```bash
+pip install 'torch>=2.2,<3' --index-url https://download.pytorch.org/whl/cpu
+```
 
 ## Shapes and order
 
@@ -56,22 +64,36 @@ There is no dropout.
 `torch.manual_seed(seed)` runs before model construction. A separate
 `torch.Generator` seeded with `seed + 1000` draws training windows.
 AdamW uses step size 0.003 and weight decay 0.01 for 250 updates.
-Cross-entropy averages over batch and time. Evaluation compares the same 16
-windows before and after training. This checks learning of the training story;
-it supplies no held-out estimate.
+Cross-entropy averages over batch and time. Split the character IDs at
+`int(0.9 * len(data))`. Training windows and their targets use only the first
+90%. The final 10% is held out from every optimizer update.
+Training evaluation compares the same 16 windows before and after training.
+Validation uses complete 32-character windows starting at offsets 0, 32, 64 and
+so on within the held-out suffix, each with its shifted next-character targets.
+It uses no random draws. The committed text gives 3,858 training characters and
+429 validation characters, with 13 validation windows.
+
+Validation loss checks prediction at held-out positions. The story repeats four
+times, so these windows contain phrases also found in training. This small check
+does not establish performance on a different book.
 
 The reference seed sweep on this VM gave:
 
-| Seed | Initial loss | Final loss | Ratio    | Training seconds |
-| ---- | ------------ | ---------- | -------- | ---------------- |
-| 1    | 3.352865     | 1.206232   | 0.359761 | 1.664            |
-| 7    | 3.331620     | 1.059369   | 0.317974 | 0.776            |
-| 19   | 3.347798     | 1.107687   | 0.330870 | 0.774            |
-| 42   | 3.317089     | 1.076445   | 0.324515 | 0.841            |
-| 123  | 3.332776     | 1.043715   | 0.313167 | 0.797            |
+| Seed | Initial train loss | Final train loss | Train ratio | Untrained val loss | Final val loss | Training seconds |
+| ---- | ------------------ | ---------------- | ----------- | ------------------ | -------------- | ---------------- |
+| 1    | 3.352865           | 0.946595         | 0.282324    | 3.353893           | 1.198988       | 0.780            |
+| 7    | 3.331620           | 1.039933         | 0.312140    | 3.334648           | 1.297887       | 0.853            |
+| 19   | 3.347798           | 1.009388         | 0.301508    | 3.331169           | 1.233843       | 0.764            |
+| 42   | 3.317089           | 1.045485         | 0.315182    | 3.324966           | 1.315971       | 0.755            |
+| 123  | 3.332776           | 1.038537         | 0.311613    | 3.336796           | 1.275457       | 0.793            |
 
-The first run includes optimizer startup. Thresholds of loss below 2.1 and ratio
-below 0.7 allow room for CPU variation. Verification uses seed 7.
+Measured with torch 2.5.1+cpu on this Linux VM. These timed training runs follow
+an untrained evaluation, so optimizer startup has already happened.
+The existing training thresholds stay at loss below 2.1 and ratio below 0.7.
+The validation threshold is 1.8, about 0.48 above the worst trained validation
+loss of 1.315971. It is clearly below the lowest untrained validation loss of
+3.324966. This margin allows room for CPU and torch version variation.
+Verification uses seed 7.
 Larger models and longer contexts can increase runtime quickly.
 
 `run.py --seed 19` trains and prints a sample with another seed.

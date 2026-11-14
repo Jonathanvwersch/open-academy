@@ -28,7 +28,7 @@ for (const variant of ['solution', 'starter', 'buggy'] as const) {
       const result = JSON.parse(readFileSync(output, 'utf8')) as {
         project: string;
         tests: Array<{ id: string; passed: boolean; message: string }>;
-        metrics: { final_loss?: number; loss_ratio?: number };
+        metrics: { final_loss?: number; loss_ratio?: number; val_loss?: number };
       };
       expect(result.project).toBe('char-transformer');
       expect(result.tests).toHaveLength(9);
@@ -37,6 +37,7 @@ for (const variant of ['solution', 'starter', 'buggy'] as const) {
         expect(result.tests.every((check) => check.passed)).toBe(true);
         expect(result.metrics.final_loss).toBeLessThan(2.1);
         expect(result.metrics.loss_ratio).toBeLessThan(0.7);
+        expect(result.metrics.val_loss).toBeLessThan(1.8);
       } else if (variant === 'starter') {
         expect(result.tests.every((check) => !check.passed)).toBe(true);
       } else {
