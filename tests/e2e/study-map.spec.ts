@@ -408,7 +408,7 @@ test('map loading, long titles and errors use the shared route surfaces', async 
   await expect(page.getByText('The study map is unavailable.')).toBeVisible();
 });
 
-test('complete and placed-out nodes share the green legend style and shared-only groups explain their topics', async ({
+test('complete graph nodes have green borders while status pills do not, and shared-only groups explain their topics', async ({
   page,
 }) => {
   const title = 'Mathematics for Machine Learning';
@@ -437,21 +437,30 @@ test('complete and placed-out nodes share the green legend style and shared-only
   const complete = page
     .getByRole('group', { name: 'Filter by status' })
     .getByRole('button', { name: 'Complete', exact: true });
+  await expect(complete).toHaveAttribute('aria-pressed', 'false');
+  await expect(complete).not.toHaveClass(/border-emerald|ring-2/);
+  await expect(complete).toHaveCSS('border-color', 'rgba(0, 0, 0, 0)');
   for (const name of ['Done: Complete', 'Placed: Placed out']) {
     const node = graph.getByRole('link', { name, exact: true });
     await expect(node).toHaveClass(/bg-emerald-50/);
     await expect(node).toHaveClass(/border-emerald-700/);
     const nodeColors = await node.evaluate((element) => {
       const style = getComputedStyle(element);
-      return [style.backgroundColor, style.borderColor];
+      return [style.backgroundColor, style.color];
     });
     expect(nodeColors).toEqual(
       await complete.evaluate((element) => {
         const style = getComputedStyle(element);
-        return [style.backgroundColor, style.borderColor];
+        return [style.backgroundColor, style.color];
       }),
     );
+    await expect(node.locator('[data-slot="badge"]')).not.toHaveClass(/border-emerald/);
+    await expect(node.locator('[data-slot="badge"]')).toHaveCSS('border-color', 'rgba(0, 0, 0, 0)');
   }
+  await complete.click();
+  await expect(complete).toHaveAttribute('aria-pressed', 'true');
+  await expect(complete).toHaveClass(/ring-2/);
+  await expect(complete).toHaveCSS('border-color', 'rgba(0, 0, 0, 0)');
   await expect(page.getByText(`All topics are shown in ${title}.`, { exact: true })).toHaveCount(2);
   const label = graph.locator('[data-id="title:maths"] [data-map-title]');
   await expect(label).toHaveText(title);

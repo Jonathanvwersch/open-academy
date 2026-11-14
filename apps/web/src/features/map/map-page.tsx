@@ -14,7 +14,11 @@ import {
 } from '@xyflow/react';
 import { Popover } from 'radix-ui';
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { topicStatusClasses, topicStatusLabels } from '../../components/topic-status.js';
+import {
+  completeTopicNodeClasses,
+  topicStatusClasses,
+  topicStatusLabels,
+} from '../../components/topic-status.js';
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
@@ -41,7 +45,7 @@ const TopicFocusContext = createContext<((id: string | null) => void) | null>(nu
 
 function TopicAction({ topic, graph = false }: { topic: Topic; graph?: boolean }) {
   const label = topicLabel(topic);
-  const className = `nodrag nopan pointer-events-auto flex w-full min-w-0 flex-col items-start justify-center gap-2 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring ${graph ? `h-full border p-3 shadow-sm ${topic.status === 'complete' ? topicStatusClasses('complete') : `bg-card ${topic.status === 'locked' ? 'border-dashed text-muted-foreground' : 'border-border hover:border-primary/50'}`}` : 'px-1 py-3'}`;
+  const className = `nodrag nopan pointer-events-auto flex w-full min-w-0 flex-col items-start justify-center gap-2 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring ${graph ? `h-full border p-3 shadow-sm ${topic.status === 'complete' ? completeTopicNodeClasses : `bg-card ${topic.status === 'locked' ? 'border-dashed text-muted-foreground' : 'border-border hover:border-primary/50'}`}` : 'px-1 py-3'}`;
   const children = (
     <>
       <span className="line-clamp-2 font-medium leading-5">{topic.title}</span>
@@ -221,7 +225,7 @@ function StatusFilters({
           variant="outline"
           size="sm"
           aria-pressed={selected.has(status)}
-          className={`h-auto rounded-full px-2 py-1 text-xs ${topicStatusClasses(status)} ${selected.has(status) ? 'ring-2 ring-ring ring-offset-1' : ''}`}
+          className={`h-auto rounded-full border-transparent px-2 py-1 text-xs ${topicStatusClasses(status)} ${selected.has(status) ? 'ring-2 ring-ring ring-offset-1' : ''}`}
           onClick={() => {
             const next = new Set(selected);
             if (next.has(status)) next.delete(status);
