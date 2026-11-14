@@ -327,6 +327,10 @@ function packWeekday(
     if (reviewMinutes + candidate.adjustedMinutes > reviewCap) continue;
     if (add(candidate)) reviewMinutes += candidate.adjustedMinutes;
   }
+  if (!selected.some((candidate) => candidate.activity.kind === 'review')) {
+    const fallbackReview = reviewCandidates.find(canAdd);
+    if (fallbackReview) add(fallbackReview);
+  }
   const learnCandidates = candidates
     .filter((candidate) => candidate.activity.kind === 'learn')
     .sort(compareLearnCandidates);

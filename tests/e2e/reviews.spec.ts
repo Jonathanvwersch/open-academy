@@ -194,6 +194,23 @@ test('Reviews page shows due and upcoming topics at desktop and mobile widths', 
   }
 });
 
+test('Reviews labels topics due tomorrow as Tomorrow', async ({ page }) => {
+  const fsrs = newReviewCard(new Date('2026-01-01T12:00:00.000Z'));
+  await db.insert(reviewCards).values({
+    userId,
+    conceptId: 'derivatives',
+    dimension: 'math',
+    fsrs,
+    dueAt: new Date('2026-01-02T12:00:00.000Z'),
+    reps: 0,
+    lapses: 0,
+  });
+
+  await page.goto('/reviews');
+
+  await expect(page.getByRole('button', { name: 'Tomorrow · 1', exact: true })).toBeVisible();
+});
+
 test('Reviews empty state explains how topics return', async ({ page }) => {
   await page.goto('/reviews');
   await expect(page.getByText('No reviews yet. Topics you finish come back here.')).toBeVisible();

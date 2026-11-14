@@ -1407,7 +1407,8 @@ test('planner omits paper reading when less than 30 minutes remain', () => {
   expect(plan.activities.some((activity) => activity.kind === 'paper')).toBe(false);
 });
 
-test.each([10, 60])('due reviews use at most 30%% of a %d-minute budget', (budget) => {
+test('due reviews use at most 30% of a normal budget', () => {
+  const budget = 60;
   const state = emptyState();
   state.cards = ['vectors', 'derivatives', 'linear-models'].map((conceptId) => ({
     conceptId,
@@ -1420,4 +1421,19 @@ test.each([10, 60])('due reviews use at most 30%% of a %d-minute budget', (budge
     .reduce((sum, activity) => sum + activity.plannedMinutes, 0);
 
   expect(reviewMinutes).toBeLessThanOrEqual(Math.floor(budget * 0.3));
+});
+
+test('planner schedules one due review when the budget is 10 minutes', () => {
+  const state = emptyState();
+  state.cards = [
+    {
+      conceptId: 'vectors',
+      dimension: 'math',
+      dueAt: now.toISOString(),
+    },
+  ];
+
+  const plan = planSession(state, content, now, 10);
+
+  expect(plan.activities.filter((activity) => activity.kind === 'review')).toHaveLength(1);
 });
