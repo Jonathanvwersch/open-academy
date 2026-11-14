@@ -204,7 +204,8 @@ test('adding a course from the beginning adds it to My courses', async ({ page }
       ),
     );
   await page.goto('/courses/fixture-switching-course');
-  await page.getByRole('button', { name: 'Add to my courses' }).click();
+  await expect(page.getByRole('button', { name: 'Add to my courses' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Take the placement check' })).toBeVisible();
   await page.getByRole('button', { name: "I'm new to this — start from the beginning" }).click();
   await expect(
     page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', {
@@ -226,6 +227,7 @@ test('removing a course keeps its due reviews and Undo restores it', async ({ pa
   await page.goto('/courses/fixture-switching-course');
   await page.getByRole('button', { name: 'Remove' }).click();
   await expect(page.getByRole('link', { name: 'Open Fixture switching course' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add to my courses' })).toBeVisible();
   await page.getByRole('button', { name: 'Undo' }).click();
   await expect(
     page.getByRole('link', { name: /Fixture switching course.*topics done/ }),
@@ -239,6 +241,18 @@ test('removing a course keeps its due reviews and Undo restores it', async ({ pa
 test('captures multi-course desktop and mobile screenshots', async ({ page }) => {
   const screenshots = '/home/ubuntu/shots/study-set';
   mkdirSync(screenshots, { recursive: true });
+  await page.route('**/api/courses', async (route) => {
+    const response = await route.fetch();
+    const catalog = (await response.json()) as {
+      subjects: Array<{ courses: Array<{ id: string; title: string }> }>;
+    };
+    const longTitleCourse = catalog.subjects
+      .flatMap((subject) => subject.courses)
+      .find((course) => course.id === 'fixture-switching-course');
+    if (!longTitleCourse) throw new Error('Missing fixture switching course in catalogue');
+    longTitleCourse.title = 'Mathematics for Machine Learning';
+    await route.fulfill({ response, json: catalog });
+  });
   for (const viewport of [
     { width: 1440, height: 900, suffix: 'desktop' },
     { width: 390, height: 844, suffix: 'mobile' },
@@ -253,6 +267,9 @@ test('captures multi-course desktop and mobile screenshots', async ({ page }) =>
 
     await page.goto('/courses');
     await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Mathematics for Machine Learning', exact: true }),
+    ).toBeVisible();
     await page.screenshot({
       path: `${screenshots}/catalogue-${viewport.suffix}.png`,
       animations: 'disabled',
@@ -267,6 +284,8 @@ test('captures multi-course desktop and mobile screenshots', async ({ page }) =>
     await expect(
       page.getByRole('heading', { name: 'Fixture third course', exact: true }),
     ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add to my courses' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Take the placement check' })).toBeVisible();
     await page.screenshot({
       path: `${screenshots}/not-started-detail-${viewport.suffix}.png`,
       animations: 'disabled',

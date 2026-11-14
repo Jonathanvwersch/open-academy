@@ -21,7 +21,7 @@ export function CoursesPage() {
           {data.subjects.length > 1 ? (
             <h2 className="text-lg font-semibold tracking-tight">{subject.title}</h2>
           ) : null}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             {subject.courses.map((course) => (
               <Link
                 key={course.id}
@@ -31,20 +31,21 @@ export function CoursesPage() {
               >
                 <Card className="h-full transition-colors group-hover:border-primary/50">
                   <CardContent className="space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="font-medium leading-6">{course.title}</h3>
-                      {course.status !== 'not_started' ? (
-                        <Badge variant="secondary" className="shrink-0">
-                          {statusLabels[course.status]}
-                        </Badge>
-                      ) : null}
-                    </div>
+                    <h3 className="font-medium leading-6">{course.title}</h3>
                     <p className="line-clamp-2 min-h-10 text-sm text-muted-foreground">
                       {course.description}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                       {course.topicsDone} of {course.topicsTotal} topics
-                    </p>
+                      {course.status !== 'not_started' ? (
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <Badge variant="secondary" className="font-normal">
+                            {statusLabels[course.status]}
+                          </Badge>
+                        </>
+                      ) : null}
+                    </div>
                   </CardContent>
                 </Card>
               </Link>

@@ -322,7 +322,7 @@ test('session loading starts lesson metadata and run state together without fetc
   expect(requests).not.toContain('/api/papers');
 });
 
-test('resuming shows the current question without loading later lessons or the final exercise', async ({
+test('resuming shows the current question without later lessons and prefetches its final exercise', async ({
   page,
 }) => {
   await page.goto('/');
@@ -350,7 +350,9 @@ test('resuming shows the current question without loading later lessons or the f
   await page.goto(`/session/${session.id}`);
   await expect(page.getByTestId('lesson-problem')).toBeVisible();
   expect(requests.filter((path) => path.startsWith('/api/lessons/vectors'))).toEqual([]);
-  expect(requests.filter((path) => path.startsWith('/api/exercises/'))).toEqual([]);
+  expect(requests.filter((path) => path.startsWith('/api/exercises/'))).toEqual([
+    '/api/exercises/sl-explain-setup',
+  ]);
 });
 
 test('full lessons and Back to session use one document and one review request', async ({

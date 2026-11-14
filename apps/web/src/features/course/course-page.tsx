@@ -30,6 +30,7 @@ export function CoursePage() {
   const [foundationsOpen, setFoundationsOpen] = useState(false);
   const enrollment = useCourseEnrollment(courseId, data.course.title);
   const courseProgress = data.courses.find((course) => course.id === courseId);
+  const showStartCard = data.status === 'not_started' || data.courseStart.needed;
   useEffect(() => {
     tutorSidebar.setContext({
       page: 'course',
@@ -49,7 +50,7 @@ export function CoursePage() {
             {courseProgress?.topicsDone ?? 0} of {courseProgress?.topicsTotal ?? 0} topics done
           </p>
         </div>
-        {data.status === 'active' ? (
+        {!showStartCard && data.status === 'active' ? (
           <Button
             type="button"
             variant="outline"
@@ -58,24 +59,12 @@ export function CoursePage() {
           >
             Remove
           </Button>
-        ) : data.status === 'paused' ? (
+        ) : !showStartCard && data.status === 'paused' ? (
           <Button
             type="button"
             variant="outline"
             loading={enrollment.isPending}
             onClick={() => enrollment.mutate('active')}
-          >
-            Add to my courses
-          </Button>
-        ) : data.status === 'not_started' ? (
-          <Button
-            type="button"
-            onClick={() =>
-              document.getElementById('course-start-card')?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-              })
-            }
           >
             Add to my courses
           </Button>
@@ -112,7 +101,7 @@ export function CoursePage() {
           </CardContent>
         </Card>
       ) : null}
-      {data.status === 'not_started' || data.courseStart.needed ? (
+      {showStartCard ? (
         <CourseStartCard
           courseId={data.course.id}
           courseTitle={data.course.title}

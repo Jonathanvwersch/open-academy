@@ -278,7 +278,8 @@ test('course detail shows prerequisite foundations and catalog navigation', asyn
   await page.goto('/courses');
   await page.getByRole('link', { name: new RegExp(targetCourseTitle) }).click();
   await expect(page.getByRole('heading', { name: targetCourseTitle, exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add to my courses' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add to my courses' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Take the placement check' })).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Start Fixture switching course', exact: true }),
   ).toBeVisible();
