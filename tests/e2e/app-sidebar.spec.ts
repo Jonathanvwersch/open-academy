@@ -592,7 +592,7 @@ test('removing a course keeps its due reviews and Undo restores it', async ({ pa
 });
 
 test('captures multi-course desktop and mobile screenshots', async ({ page }) => {
-  const screenshots = '/home/ubuntu/shots/study-set';
+  const screenshots = 'test-results/screenshots/study-set';
   mkdirSync(screenshots, { recursive: true });
   await page.route('**/api/courses', async (route) => {
     const response = await route.fetch();

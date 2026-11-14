@@ -551,7 +551,7 @@ test('lesson course context links to its course and highlights the sidebar', asy
   await expect(line.getByRole('link')).toHaveAttribute('href', '/courses/fixture-course');
   const sidebarCourse = page.getByRole('navigation').getByRole('link', { name: /Fixture course/ });
   await expect(sidebarCourse).toHaveAttribute('data-active', 'true');
-  const dir = '/home/ubuntu/screens/lesson-course';
+  const dir = 'test-results/screenshots/lesson-course';
   mkdirSync(dir, { recursive: true });
   await page.screenshot({ path: `${dir}/session-desktop.png` });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -1290,7 +1290,7 @@ test('asking the tutor does not block a correct answer from completing the step'
     tutor.getByTestId('tutor-assistant-message').filter({ hasText: `Tutor reply to: ${question}` }),
   ).toBeVisible();
   await page.getByText('Step complete', { exact: true }).scrollIntoViewIfNeeded();
-  await page.screenshot({ path: '/tmp/academy-streak-assisted.png', fullPage: false });
+  await page.screenshot({ path: 'test-results/academy-streak-assisted.png', fullPage: false });
   run = await nextProblemAndReload(page);
   run = await answerAndReload(page, true);
   expect(run.points[0]).toMatchObject({ status: 'passed', streak: 2 });

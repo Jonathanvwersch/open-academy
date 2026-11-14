@@ -51,7 +51,8 @@ export function createApp(deps: {
       }
       if (context.req.raw.body) {
         try {
-          await context.req.json();
+          const body = await context.req.text();
+          if (body.length > 0) await context.req.json();
         } catch {
           return context.json({ error: 'Invalid JSON request body.' }, 400);
         }

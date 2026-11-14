@@ -243,7 +243,7 @@ test('first visits wait for real layout data without inventing placeholder cards
     await expect(pending.locator('[data-layout-shape]')).toHaveCount(0);
     await expect(page.locator('[data-page-frame] [data-slot="card"]')).toHaveCount(0);
     await expectCenteredPageLoader(page);
-    await page.screenshot({ path: '/tmp/academy-loading-desktop.png' });
+    await page.screenshot({ path: 'test-results/academy-loading-desktop.png' });
   } finally {
     release();
   }
@@ -277,15 +277,15 @@ test('first-visit loaders stay centered on mobile during auth and page loading',
     await expectCenteredPageLoader(page);
     await page.screenshot({ path: 'test-results/sidebar-app-shell-skeleton-mobile.png' });
     releaseAuth();
+    await page.getByRole('button', { name: 'Save goal' }).waitFor();
     await page.getByRole('button', { name: 'Open navigation' }).click();
     const appNavigation = page.getByRole('navigation', { name: 'Main navigation' });
     await expect(appNavigation).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(appNavigation).toBeHidden();
-    await page.getByRole('button', { name: 'Save goal' }).waitFor();
     navigation = page.goto('/courses/fixture-course').then(() => {});
     await expectCenteredPageLoader(page);
-    await page.screenshot({ path: '/tmp/academy-loading-mobile.png' });
+    await page.screenshot({ path: 'test-results/academy-loading-mobile.png' });
   } finally {
     releaseAuth();
     releasePage();
