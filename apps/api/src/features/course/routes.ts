@@ -4,9 +4,9 @@ import type { ContentIndex } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
 import type { LearnerRepository } from '../../db/repository.js';
 import {
+  diagnosticRuns,
   lessonProblems,
   lessonRuns,
-  diagnosticRuns,
   paperProgress,
   projectProgress,
   sessionActivities,
@@ -81,15 +81,7 @@ export function registerLearnCourseRoutes(
         .from(projectProgress)
         .where(eq(projectProgress.userId, userId)),
     ]);
-    const [
-      mastery,
-      user,
-      events,
-      active,
-      placementRuns,
-      enrollments,
-      completedPlacementRuns,
-    ] =
+    const [mastery, user, events, active, placementRuns, enrollments, completedPlacementRuns] =
       await Promise.all([
         repo.masteryRecords(),
         repo.user(),

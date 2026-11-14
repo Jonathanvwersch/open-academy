@@ -485,8 +485,10 @@ test('a correctly answered single-dimension topic keeps its placed-out badge wit
     ...baseCourse,
     units: [{ title: 'Single-dimension unit', concepts: [conceptId] }],
   };
+  const curriculum = singleContent.curriculum;
+  if (!curriculum) throw new Error('Missing fixture curriculum');
   singleContent.curriculum = {
-    ...singleContent.curriculum,
+    ...curriculum,
     courses: [course.id],
     default_course: course.id,
   };
@@ -556,7 +558,7 @@ test('placement results keep their first topic after switching courses', async (
       if (!exercise) throw new Error('Missing placement exercise in content');
       const response = await post(`/placement/${id}/answer`, {
         exerciseId: exercise.id,
-        answer: correctAnswer(exercise),
+        dontKnow: true,
       });
       expect(response.status).toBe(200);
       complete = (await response.json()).complete;

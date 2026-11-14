@@ -164,7 +164,7 @@ test('a failed placement start can be retried', async ({ page }) => {
 
   await page.goto('/');
   await page.getByRole('button', { name: 'Start', exact: true }).first().click();
-  await page.getByRole('button', { name: 'Take the placement check' }).click();
+  await page.getByRole('link', { name: 'Take the placement check' }).click();
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Back to Courses' })).toBeVisible();
   await page.getByRole('button', { name: 'Try again' }).click();
