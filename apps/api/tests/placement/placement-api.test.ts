@@ -130,21 +130,11 @@ test('beginning enrolls in the active course without changing mastery', async ()
 });
 
 test('existing course evidence means no start card is needed without an enrollment', async () => {
-  const record = initialMastery('vectors', 'math');
-  record.state = 'introduced';
-  await db.insert(mastery).values({
+  await db.insert(lessonRuns).values({
     userId,
-    conceptId: record.conceptId,
-    dimension: record.dimension,
-    state: record.state,
-    provisional: false,
-    inferred: false,
-    evidence: {
-      independentItemIds: [],
-      independentDeterministicCount: 0,
-      lastIndependentCorrect: false,
-      attempts: [],
-    },
+    conceptId: 'vectors',
+    status: 'in_progress',
+    startedAt: new Date(now),
   });
   const [course, learn] = await Promise.all([
     get('/course').then((response) => response.json()),
@@ -154,7 +144,7 @@ test('existing course evidence means no start card is needed without an enrollme
   expect(learn.today.needsCourseChoice).toBe(false);
   expect(
     course.courses.find((entry: { id: string }) => entry.id === 'fixture-course').started,
-  ).toBe(false);
+  ).toBe(true);
   expect(
     await db.select().from(courseEnrollments).where(eq(courseEnrollments.userId, userId)),
   ).toHaveLength(0);

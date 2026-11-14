@@ -77,11 +77,23 @@ export function buildCourseStartState(input: {
     ]),
   );
   const activeCourse = activeCourseFor(input.content, input.activeCourseId);
+  const startedCourseIds = new Set(
+    input.content.courses.flatMap((course) =>
+      enrolledCourseIds.has(course.id) ||
+      courseHasEvidence(
+        course.units.flatMap((unit) => unit.concepts),
+        input.mastery,
+        input.lessonRuns,
+      )
+        ? [course.id]
+        : [],
+    ),
+  );
 
   return {
     courseStart: activeCourse
       ? (statuses.get(activeCourse.id) ?? { needed: false, placementRunId: null })
       : { needed: false, placementRunId: null },
-    startedCourseIds: enrolledCourseIds,
+    startedCourseIds,
   };
 }
