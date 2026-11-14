@@ -132,6 +132,48 @@ test('switching to an unknown course returns 404 without changing learner state'
   expect(user?.activeCourseId).toBeNull();
 });
 
+test('course outlines list shared-course dependents once', async () => {
+  const fixtureContent = await loadContent('tests/fixtures/content');
+  const fixtureApp = createApp({ db, content: fixtureContent, tutorProvider: null });
+  const response = await fixtureApp.request('/api/course', {
+    headers: { 'X-Now': '2026-01-07T12:00:00.000Z' },
+  });
+  expect(response.status).toBe(200);
+  expect(
+    fixtureContent.courses.filter((course) =>
+      course.units.some((unit) => unit.concepts.includes('linear-models')),
+    ),
+  ).toHaveLength(2);
+  const coursePayload = (await response.json()) as {
+    units: Array<{
+      topics: Array<{
+        conceptId: string;
+        leadsTo: Array<{ id: string }>;
+        leadsToMore: number;
+      }>;
+    }>;
+  };
+  const topics = coursePayload.units.flatMap((unit) => unit.topics);
+  const vectorDependents = [
+    ...new Set(
+      fixtureContent.courses
+        .flatMap((course) => course.units.flatMap((unit) => unit.concepts))
+        .filter((conceptId) =>
+          fixtureContent.conceptsById
+            .get(conceptId)
+            ?.prereqs.some((prerequisite) => prerequisite.id === 'vectors'),
+        ),
+    ),
+  ];
+  const vectors = topics.find((topic) => topic.conceptId === 'vectors');
+  expect(vectors?.leadsTo.map(({ id }) => id)).toEqual(vectorDependents.slice(0, 3));
+  expect(vectors?.leadsToMore).toBe(Math.max(0, vectorDependents.length - 3));
+
+  const supervisedLearning = topics.find((topic) => topic.conceptId === 'supervised-learning');
+  expect(supervisedLearning?.leadsTo.map(({ id }) => id)).toEqual(['linear-models']);
+  expect(supervisedLearning?.leadsToMore).toBe(0);
+});
+
 test('paper completion changes only its reading status, not learner progress', async () => {
   const defaultCourse = content.coursesById.get(content.curriculum?.default_course ?? '');
   const paperId = defaultCourse?.units.flatMap((unit) => unit.papers ?? [])[0];

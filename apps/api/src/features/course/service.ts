@@ -35,14 +35,12 @@ function buildUnits(
     masteryRecords.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
   );
   const lessonRunState = runs.map(({ conceptId, status }) => ({ conceptId, status }));
-  const outlineConcepts = index.courses.flatMap((entry) =>
-    entry.units.flatMap((entryUnit) =>
-      entryUnit.concepts.flatMap((id) => {
-        const candidate = index.conceptsById.get(id);
-        return candidate ? [candidate] : [];
-      }),
-    ),
-  );
+  const outlineConcepts = [
+    ...new Set(index.courses.flatMap((entry) => entry.units.flatMap((unit) => unit.concepts))),
+  ].flatMap((id) => {
+    const candidate = index.conceptsById.get(id);
+    return candidate ? [candidate] : [];
+  });
 
   return course.units.map((unit, unitIndex) => {
     const project = unit.project ? index.projectsById.get(unit.project) : undefined;
