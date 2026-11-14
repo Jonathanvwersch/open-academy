@@ -22,7 +22,7 @@ concepts:
       dimensions: [conceptual, math],
       prereqs: [{ id: tokenization }, { id: matrices }],
       objectives: [{ text: "Explain an embedding as a one-hot times a matrix", dimension: math }],
-      status: stub,
+      status: authored,
     }
   - {
       id: attention,

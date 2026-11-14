@@ -6,14 +6,657 @@ exercises:
     role: diagnostic
     difficulty: 2
     est_minutes: 2
-    prompt: "A model has a vocabulary of 50,000 tokens and an embedding dimension of 512. How many learnable parameters are in its token embedding table?"
+    prompt: "A model has a vocabulary of 50,000 tokens and an embedding width of 512. How many learnable weights are in its token embedding table?"
     answer: 25600000
     tolerance: { abs: 0.5 }
     common_wrong:
       - {
           answer: 50512,
           category: misunderstood_definition,
-          feedback: "The table has one 512-dimensional vector *per token*, so the sizes multiply.",
+          feedback: "The table has one vector of width 512 *per token*, so the sizes multiply.",
         }
     hints: ["The embedding table is a matrix with one row per token."]
-    solution: "The table is a $50{,}000 \\times 512$ matrix: $25{,}600{,}000$ parameters. Looking up token $i$ is the same as multiplying a one-hot vector by this matrix."
+    solution: "The table is a $50{,}000 \\times 512$ matrix: $25{,}600{,}000$ weights. Looking up token $i$ is the same as multiplying a one-hot vector by this matrix."
+  - id: emb-lookup-table-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What is an embedding table $E$ for $N$ vocabulary tokens and width $d$?
+    options:
+      - {
+          id: a,
+          text: "An $N\\times d$ matrix whose row $i$ is token $i$'s vector.",
+          correct: true,
+          feedback: "One row per token and $d$ entries per row gives shape $N\\times d$.",
+        }
+      - {
+          id: b,
+          text: "A $d\\times N$ matrix whose row $i$ is token $i$'s vector.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Each of the $N$ tokens needs a row containing $d$ numbers.",
+        }
+      - {
+          id: c,
+          text: "An $N\\times d$ matrix with one row per sentence position.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The table stores vocabulary tokens. A sentence grid has one row per position.",
+        }
+    hints: ["Count one row per vocabulary token."]
+    solution: The table has $N$ rows and $d$ columns. Row $i$ stores the vector for token ID $i$.
+  - id: embp-lookup-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, why does the first word, "the", use row 4 of $E$?
+    options:
+      - {
+          id: a,
+          text: "Every sentence starts by reading row 4.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The first row read depends on the first token's vocabulary ID.",
+        }
+      - { id: b, text: 'The vocabulary assigns "the" ID 4.', correct: true }
+      - {
+          id: c,
+          text: "The sentence contains four token positions.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The sentence has three positions; the token ID determines the table row.",
+        }
+    hints: ["Separate the sentence position from the token ID."]
+    solution: The word "the" has ID 4, so $e_1$ is row 4, $(3,1)$. The subscript 1 names its sentence position.
+  - id: embp-table-size-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: An embedding table has $N={{= N }}$ vocabulary tokens and width $d={{= d }}$. How many numbers does it store?
+    params:
+      N: { min: 10, max: 50, step: 10 }
+      d: { min: 2, max: 4 }
+    answer_expr: N*d
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: N+d,
+          category: misunderstood_definition,
+          feedback: "Each of the $N$ rows contains $d$ numbers, so multiply the sizes.",
+        }
+    hints: ["Multiply rows by columns."]
+    solution: There are {{= N }} rows with {{= d }} entries each, giving {{= N*d }} numbers.
+  - id: embp-grid-shape
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A word-level tokenizer splits "the cat sat on the mat" into $T=6$ tokens. Each embedding has width $d=4$. How many numbers are in the sentence's $T\times d$ grid?
+    answer: 24
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 20,
+          category: misunderstood_definition,
+          feedback: "There are five distinct words, but six positions. Each position gets a row.",
+        }
+    hints: ["Include both occurrences of 'the'."]
+    solution: The grid contains six rows of four entries, giving $6\times4=24$ numbers.
+  - id: embp-why-not-ids
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Why does a language model map token IDs to learned vectors before processing them?
+    options:
+      - {
+          id: a,
+          text: "Consecutive IDs guarantee similar word meanings.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Vocabulary IDs are labels; their spacing does not encode meaning.",
+        }
+      - {
+          id: b,
+          text: "Each ID measures its token's importance.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "An ID identifies a token and supplies no importance measurement.",
+        }
+      - {
+          id: c,
+          text: "Vectors provide adjustable numerical representations for tokens.",
+          correct: true,
+        }
+    hints: ["Think about what renumbering a vocabulary would mean."]
+    solution: An ID is a vocabulary label. A learned vector gives the model adjustable numbers to use in its calculations.
+  - id: embp-same-token
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: In "the cat sat on the mat", "the" has the same token ID at positions 1 and 5. What does a token embedding table return there?
+    options:
+      - { id: a, text: "Identical vectors from the same table row.", correct: true }
+      - {
+          id: b,
+          text: "Different vectors from rows 1 and 5.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Token IDs select table rows; sentence positions do not.",
+        }
+      - {
+          id: c,
+          text: "A vector first, then zeros for the repeat.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Every occurrence performs a lookup, including repeated tokens.",
+        }
+    hints: ["Both lookups use the same ID."]
+    solution: Both positions read the row for "the", so $e_1=e_5$ at the token lookup stage.
+  - id: embp-lookup-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "IDs 1 to 4 stand for cat, on, sat, the. Their rows in the $4\\times2$ table $E$ are $(2,1),(1,3),(0,2),(3,1)$. What is the second entry of the embedding for token ID {{= i }}?"
+    params:
+      i: { min: 1, max: 4 }
+    answer_expr: "i == 1 ? 1 : (i == 2 ? 3 : (i == 3 ? 2 : 1))"
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: "i == 1 ? 2 : (i == 2 ? 1 : (i == 3 ? 0 : 3))",
+          category: incorrect_reasoning,
+          feedback: "You read the first entry of the selected row. The question asks for its second entry.",
+        }
+    hints: ["Select the row by ID, then read its second entry."]
+    solution: "Select row {{= i }} by the token's ID. Its second entry is {{= i == 1 ? 1 : (i == 2 ? 3 : (i == 3 ? 2 : 1)) }}."
+  - id: embp-vocab-growth
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: An embedding table has $N=20$ tokens and width $d=4$. Its vocabulary grows by $k=3$ tokens while the width stays fixed. How many additional numbers must it store?
+    answer: 12
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 92,
+          category: incorrect_reasoning,
+          feedback: "That is the new total. Subtract the original 80 entries to find the increase.",
+        }
+    hints: ["Count entries in the three new rows."]
+    solution: Each added token requires four entries, so the increase is $k d=3\times4=12$.
+  - id: emb-onehot-product-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Let $u_i$ be a one-hot row with a 1 in place $i$ and $E$ an $N\times d$ embedding table. What is $u_iE$?
+    options:
+      - {
+          id: a,
+          text: "The sum of all rows of $E$.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Only row $i$ has coefficient 1; every other row has coefficient 0.",
+        }
+      - {
+          id: b,
+          text: "Row $i$ of $E$, the token's embedding.",
+          correct: true,
+          feedback: "The 1 keeps row $i$ while the zeros remove every other row.",
+        }
+      - {
+          id: c,
+          text: "Column $i$ of $E$, with $N$ entries.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A $1\\times N$ row times $N\\times d$ produces a $1\\times d$ row.",
+        }
+    hints: ["Treat the output as a weighted sum of rows."]
+    solution: The 1 keeps row $i$ and the zeros remove every other row, so $u_iE$ equals row $i$.
+  - id: embp-onehot-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example for sat, why does only the third product count when dotting $u_3$ with each column of $E$?
+    options:
+      - {
+          id: a,
+          text: "Each column of $E$ is zero outside entry 3.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The columns contain other nonzero entries. The zeros are in $u_3$.",
+        }
+      - {
+          id: b,
+          text: "The third sentence position determines every output.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Sat has vocabulary ID 3, which the one-hot vector encodes.",
+        }
+      - { id: c, text: "$u_3=(0,0,1,0)$ multiplies other entries by zero.", correct: true }
+    hints: ["Look at the coefficients supplied by $u_3$."]
+    solution: The first, second and fourth entries of $u_3$ are zero. Only the third entry has coefficient 1, keeping row 3.
+  - id: embp-onehot-write
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: A word vocabulary assigns cat ID 1, on ID 2, sat ID 3 and the ID 4. Which tuple is the one-hot row $u_2$ for "on"?
+    options:
+      - { id: a, text: "$(0,1,0,0)$", correct: true }
+      - {
+          id: b,
+          text: "$(0,2,0,0)$",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The nonzero entry of a one-hot vector is always 1.",
+        }
+      - {
+          id: c,
+          text: "$(1,0,0,0)$",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "With IDs starting at 1, the first entry selects cat; on uses the second.",
+        }
+    hints: ["Use four entries with the 1 at position 2."]
+    solution: There are four vocabulary tokens, so $u_2$ has four entries. Its second entry is 1, giving $(0,1,0,0)$.
+  - id: embp-onehot-entry-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "IDs 1 to 4 stand for cat, on, sat, the. Their rows in $E$ are $(2,1),(1,3),(0,2),({{= a }},{{= b }})$. For $u_4=(0,0,0,1)$, what is the second entry of $u_4E$?"
+    params:
+      a: { min: 1, max: 4 }
+      b: { min: 1, max: 4 }
+    constraints: ["not (a == 2 and b == 1) and not (a == 1 and b == 3) and not (a == 0 and b == 2)"]
+    answer_expr: b
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: b+6,
+          category: misunderstood_definition,
+          feedback: "Only row 4 survives; the other second-column entries are multiplied by zero.",
+        }
+    hints: ["Compute $0\\times1+0\\times3+0\\times2+1\\times b$."]
+    solution: The second entry is $0\times1+0\times3+0\times2+1\times{{= b }}={{= b }}$.
+  - id: embp-product-shape
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A sentence's one-hot matrix $U$ has shape $T\times N$ and its embedding table $E$ has shape $N\times d$. What shape does $UE$ have?
+    options:
+      - {
+          id: a,
+          text: "$N\\times N$",
+          correct: false,
+          category: math_error,
+          feedback: "The inner dimensions match, while the outer dimensions give the output shape.",
+        }
+      - { id: b, text: "$T\\times d$", correct: true }
+      - {
+          id: c,
+          text: "$d\\times T$",
+          correct: false,
+          category: math_error,
+          feedback: "Keep the left matrix's row count and the right matrix's column count in that order.",
+        }
+    hints: ["Keep the outer dimensions of $(T\\times N)(N\\times d)$."]
+    solution: $UE$ has $T$ rows and $d$ columns, one width-$d$ embedding per sentence position.
+  - id: embp-two-ones
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A word table $E$ has rows $(2,1),(1,3),(0,2),(3,1)$ for cat, on, sat, the (IDs 1 to 4). What is $uE$ for $u=(1,1,0,0)$?"
+    options:
+      - {
+          id: a,
+          text: "$(2,1)$, the first row.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Both of the first two rows have coefficient 1, so both contribute.",
+        }
+      - {
+          id: b,
+          text: "$(1.5,2)$, the average of rows 1 and 2.",
+          correct: false,
+          category: math_error,
+          feedback: "The multiplication adds rows without dividing by 2.",
+        }
+      - { id: c, text: "$(3,4)$, the sum of rows 1 and 2.", correct: true }
+    hints: ["Compute $1(2,1)+1(1,3)+0(0,2)+0(3,1)$."]
+    solution: Two coefficients are 1, so $uE=(2,1)+(1,3)=(3,4)$. This input combines two rows.
+  - id: embp-why-index
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: Why do implementations usually read a token's row of $E$ directly instead of explicitly multiplying a dense one-hot row by $E$?
+    options:
+      - {
+          id: a,
+          text: "Lookup gives the same vector while avoiding products by zero.",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Lookup changes the vector to account for nearby tokens.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Both procedures return the selected row without adding context information.",
+        }
+      - {
+          id: c,
+          text: "Lookup removes the need to store the embedding table.",
+          correct: false,
+          category: implementation_error,
+          feedback: "Lookup still reads the numbers stored in the table.",
+        }
+    hints: ["Almost every entry of a one-hot row is zero."]
+    solution: A dense product spends work multiplying other rows by zero. Reading the selected row gives the same $d$ numbers directly.
+  - id: embp-onehot-matrix
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A word table $E$ has rows $(2,1),(1,3),(0,2),(3,1)$ for cat, on, sat, the (IDs 1 to 4). A one-hot matrix $U$ has rows $(0,0,0,1),(1,0,0,0),(0,0,0,1)$. What is $UE$?"
+    options:
+      - {
+          id: a,
+          text: "Two rows $(3,1),(2,1)$.",
+          correct: false,
+          category: math_error,
+          feedback: "Each input position gets an output row, including the repeated token at position 3.",
+        }
+      - { id: b, text: "Three rows $(3,1),(2,1),(3,1)$.", correct: true }
+      - {
+          id: c,
+          text: "One row $(8,3)$.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That adds the three selected rows together. Matrix multiplication keeps one output row per row of $U$.",
+        }
+    hints: ["Read the token ID selected by each one-hot row, keeping their order."]
+    solution: The rows of $U$ select IDs 4, 1 and 4, spelling "the cat the". Thus $UE$ has three rows $(3,1),(2,1),(3,1)$, including the repeated embedding.
+  - id: emb-learned-similar-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: When a new language model is trained, how are the entries of its token embedding table usually set?
+    options:
+      - {
+          id: a,
+          text: "Each row permanently repeats its token's integer ID.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The entries are adjustable weights; the ID selects their row.",
+        }
+      - {
+          id: b,
+          text: "A person assigns a fixed value to every entry.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Training adjusts the entries according to the model's task.",
+        }
+      - {
+          id: c,
+          text: "They start randomly and are adjusted during training.",
+          correct: true,
+          feedback: "The table entries are trainable weights initialized before training begins.",
+        }
+    hints: ["The table is part of the model's trainable weights."]
+    solution: Training a new model usually initializes $E$ randomly. Updates then adjust its entries to help the model perform its task.
+  - id: embp-similar-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example comparing cat $(3,4)$ and dog $(4,3)$, why divide the dot product by both vector lengths to obtain cosine similarity?
+    options:
+      - { id: a, text: "To compare directions independently of vector lengths.", correct: true }
+      - {
+          id: b,
+          text: "To make the vectors become perpendicular to each other.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Rescaling a score does not rotate either vector.",
+        }
+      - {
+          id: c,
+          text: "To recover each token's integer vocabulary ID.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Cosine measures directional similarity and does not decode IDs.",
+        }
+    hints: ["A longer vector can have a larger dot product without changing direction."]
+    solution: Both lengths are 5, so dividing 24 by $5\times5$ gives $0.96$. Dividing by the lengths compares only the directions.
+  - id: embp-dot-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Two token embeddings are $a=({{= p }},{{= q }})$ and $b=(2,1)$. What is their dot product $a\\cdot b$?"
+    params:
+      p: { min: -3, max: 3 }
+      q: { min: 1, max: 4 }
+    answer_expr: 2*p+q
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer_expr: 2*p-q,
+          category: math_error,
+          feedback: "Add both matching-entry products; the second product is positive.",
+        }
+    hints: ["Use $a\\cdot b=a_1b_1+a_2b_2$."]
+    solution: The dot product is $ {{= p }}\times2+{{= q }}\times1={{= 2*p+q }}$.
+  - id: embp-most-similar
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Three embeddings are cat $(3,4)$, dog $(4,3)$ and on $(4,-3)$. Each has length 5. Which pair has the highest cosine similarity?"
+    options:
+      - {
+          id: a,
+          text: "Cat and on.",
+          correct: false,
+          category: math_error,
+          feedback: "Their dot product is $12-12=0$, giving cosine 0.",
+        }
+      - { id: b, text: "Cat and dog.", correct: true }
+      - {
+          id: c,
+          text: "Dog and on.",
+          correct: false,
+          category: math_error,
+          feedback: "Their dot product is 7, below cat and dog's 24; all length products are 25.",
+        }
+    hints: ["Equal lengths let you compare the dot products."]
+    solution: Cat and dog have cosine $24/25=0.96$. Cat and on have 0, while dog and on have $7/25=0.28$.
+  - id: embp-cosine-compute
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Two token embeddings are $a=(3,4)$ and $b=(0,5)$. Compute their cosine similarity $(a\\cdot b)/(\\|a\\|\\,\\|b\\|)$."
+    answer: 0.8
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - {
+          answer: 20,
+          category: misunderstood_definition,
+          feedback: "That is the dot product; divide it by the product of both vector lengths.",
+        }
+      - { answer: 4, category: math_error, feedback: "Divide by both lengths, each equal to 5." }
+    hints: ["Both vectors have length 5."]
+    solution: The dot product is $3\times0+4\times5=20$. Both lengths are 5, so cosine is $20/25=0.8$.
+  - id: embp-unused-row
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A sentence contains only cat and sat. Its one-hot matrix $U$ uses a vocabulary with cat, on, sat and the. What contribution does the row for "on" make to the sentence's input embeddings $UE$?
+    options:
+      - {
+          id: a,
+          text: "It is added once to every position's embedding.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The column of $U$ for on contains only zeros, so the row contributes zero.",
+        }
+      - {
+          id: b,
+          text: "It replaces the least frequent token's embedding.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Each one-hot row selects its own token ID; frequency does not replace rows.",
+        }
+      - { id: c, text: "It is multiplied by zero, giving no effect on $UE$.", correct: true }
+    hints: ["No sentence position selects the ID for 'on'."]
+    solution: Every entry in the column of $U$ for "on" is zero. Its row in $E$ therefore contributes zero to every row of $UE$.
+  - id: embp-same-vector-context
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A word vocabulary gives "bank" one token ID. Before adding context or position information, what does its token embedding table return for "bank" in "river bank" and "bank account"?
+    options:
+      - { id: a, text: "The same row vector for both occurrences.", correct: true }
+      - {
+          id: b,
+          text: "Different rows selected by the neighboring words.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Lookup uses only the token ID; later computations can incorporate neighbors.",
+        }
+      - {
+          id: c,
+          text: "The average of the neighboring words' rows.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Lookup selects the row for bank itself.",
+        }
+    hints: ["Both occurrences have the same ID."]
+    solution: Both occurrences select the row assigned to "bank". Context-sensitive representations require further computation.
+  - id: embp-bigger-dot
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "Embeddings $a=(1,2)$ and $b=(2,1)$ have dot product 4. Replace $a$ with $a'=(2,4)$. What happens to the dot product with $b$ and cosine similarity with $b$?"
+    options:
+      - {
+          id: a,
+          text: "Both the dot product and cosine double.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Doubling $a$ also doubles its length, canceling the factor in cosine.",
+        }
+      - { id: b, text: "The dot product doubles to 8; cosine stays unchanged.", correct: true }
+      - {
+          id: c,
+          text: "Both the dot product and cosine stay unchanged.",
+          correct: false,
+          category: math_error,
+          feedback: "The new dot product is $2\\times2+4\\times1=8$.",
+        }
+    hints: ["Compare how the cosine numerator and denominator change."]
+    solution: Doubling $a$ doubles its dot product and its length. These factors cancel in cosine, which stays $0.8$.
+  - id: embp-robot-commands
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "A robot uses command tokens stop, left, right with IDs 1, 2, 3. Their table $E$ has rows $(0,1),(2,1),(1,2)$. It receives left then stop. Which input grid does lookup produce, and how many entries are added if a fourth command is added at the same width?"
+    options:
+      - {
+          id: a,
+          text: "Rows $(0,1),(2,1)$; two additional entries.",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Command order is left then stop, so select rows 2 then 1.",
+        }
+      - {
+          id: b,
+          text: "Rows $(2,1),(0,1)$; four additional entries.",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "One new command adds a width-2 row, requiring two entries.",
+        }
+      - { id: c, text: "Rows $(2,1),(0,1)$; two additional entries.", correct: true }
+    hints: ["Look up IDs in command order, then count entries in one new row."]
+    solution: Left selects row 2 and stop selects row 1, giving rows $(2,1),(0,1)$. One new command adds two entries.
+  - id: emb-explain-lookup
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: Explain how a token ID becomes an embedding by table lookup and by multiplying a one-hot vector by a matrix. Describe the shapes for vocabulary size $N$ and width $d$, why both methods give the same result, and how the table's numbers are learned.
+    rubric:
+      - {
+          id: r1,
+          criterion: "Describes an $N\\times d$ table $E$ with one learned width-$d$ row per vocabulary token, selected by token ID",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "Describes $u_i$ as a $1\\times N$ row with a 1 at token ID $i$ and zeros elsewhere",
+          weight: 1,
+          required: true,
+        }
+      - {
+          id: r3,
+          criterion: "Explains that $u_iE$ has shape $1\\times d$ and equals row $i$ because every other row is multiplied by zero",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r4,
+          criterion: "States that training adjusts the randomly initialized table entries as model weights",
+          weight: 1,
+          required: true,
+        }
+    hints: ["Describe each row's coefficient in the product."]
+    exemplar: The table $E$ has $N$ rows and $d$ columns, one vector per vocabulary token. Token ID $i$ selects row $i$. Its one-hot row $u_i$ has $N$ entries with a 1 in place $i$ and zeros elsewhere. The product $u_iE$ has shape $1\times d$ and keeps row $i$, since every other row is multiplied by zero. Lookup reads that same row directly. The table starts randomly, and training adjusts its entries as model weights.
+    solution: The $1\times N$ one-hot row $u_i$ selects row $i$ of the $N\times d$ table $E$, producing a $1\times d$ embedding. Its zeros remove every other row, so multiplication and direct lookup agree; training learns the entries.
