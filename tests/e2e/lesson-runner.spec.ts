@@ -30,6 +30,7 @@ const lastTryScreenshotDir = 'test-results/screenshots/last-try';
 const failedQuizScreenshotDir = 'test-results/screenshots/failed-quiz';
 const quizRetryScreenshotDir = 'test-results/screenshots/quiz-retry';
 const quizReviseScreenshotDir = 'test-results/screenshots/quiz-revise';
+const explainItScreenshotDir = 'test-results/screenshots/explain-it';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
@@ -45,6 +46,7 @@ mkdirSync(lastTryScreenshotDir, { recursive: true });
 mkdirSync(failedQuizScreenshotDir, { recursive: true });
 mkdirSync(quizRetryScreenshotDir, { recursive: true });
 mkdirSync(quizReviseScreenshotDir, { recursive: true });
+mkdirSync(explainItScreenshotDir, { recursive: true });
 
 type QuizItemForForm = {
   id: string;
@@ -1249,7 +1251,7 @@ test('explains when a final explain question is locked after the last try', asyn
   if (!activity) throw new Error('Could not create final-question activity');
 
   await page.goto(`/session/${session.id}`);
-  await expect(page.getByText('Final question', { exact: true })).toBeVisible();
+  await expect(page.getByText('Explain it in your own words', { exact: true })).toBeVisible();
   await expect(page.getByTestId('exercise-prompt')).toBeVisible();
 
   const answer = page.getByLabel('Your answer');
@@ -1386,7 +1388,33 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
   expect(run.status).toBe('quiz');
   await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.locator('section > header h2')).toHaveText('Final question');
+  await expect(page.locator('section > header h2')).toHaveText('Explain it in your own words');
+  await expect(page.getByTestId('explain-memory-note')).toHaveText(
+    "Write it from memory, without looking back at the steps. It isn't part of the quiz score.",
+  );
+  await expect(page.getByRole('link', { name: 'View full lesson' })).toHaveCount(0);
+  const stepChips = page.getByTestId('lesson-step-chip');
+  await expect(stepChips).not.toHaveCount(0);
+  for (const stepChip of await stepChips.all()) {
+    await expect(stepChip).toHaveText(/^✓ Step \d+$/);
+    await expect(stepChip.locator('button')).toHaveCount(0);
+  }
+  const explainChip = page.getByTestId('lesson-explain-chip');
+  await expect(explainChip).toHaveAttribute('aria-label', 'Explain it, current');
+  await expect(explainChip).toHaveText('Explain it');
+  const quizChip = page.getByTestId('lesson-quiz-chip');
+  await expect(quizChip).toHaveAttribute('aria-label', 'Lesson quiz, upcoming');
+  await page.screenshot({
+    path: `${explainItScreenshotDir}/final-before-1280.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${explainItScreenshotDir}/final-before-390.png`,
+    fullPage: true,
+  });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1280, height: 900 });
   await expect(page.getByTestId('exercise-prompt')).toContainText(
     "Explain what a vector's magnitude represents.",
   );
@@ -1434,16 +1462,40 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
     await expect(nextStep).toHaveCount(0);
   }
   await expect(page.getByText('Model answer', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'View full lesson' })).toBeVisible();
   await expect(page.getByText('Partly correct', { exact: true })).toBeVisible();
   await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
   await expect(page.getByLabel('Your answer')).toHaveAttribute('readonly', '');
+  await page.screenshot({
+    path: `${explainItScreenshotDir}/final-after-1280.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${explainItScreenshotDir}/final-after-390.png`,
+    fullPage: true,
+  });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.screenshot({
     path: `${finalContinueScreenshotDir}/after-submit.png`,
     fullPage: true,
   });
   await continueButton.click();
   await expect(page.getByTestId('lesson-quiz-intro')).toBeVisible();
+  await expect(explainChip).toHaveText('✓ Explain it');
+  await expect(quizChip).toHaveAttribute('aria-label', 'Lesson quiz, current');
   await expect(page.getByText('Your answer:', { exact: true })).toHaveCount(0);
+  const lessonStepsRow = page.getByRole('list', { name: 'Lesson steps' });
+  await lessonStepsRow.screenshot({
+    path: `${explainItScreenshotDir}/quiz-chips-1280.png`,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await lessonStepsRow.screenshot({
+    path: `${explainItScreenshotDir}/quiz-chips-390.png`,
+  });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.screenshot({
     path: `${finalContinueScreenshotDir}/after-single-continue.png`,
     fullPage: true,
