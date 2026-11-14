@@ -820,9 +820,7 @@ export function TutorContextProvider({
                             <p className="w-full text-left text-xs font-medium text-muted-foreground">
                               Tutor
                             </p>
-                            <MessageContent
-                              style={{ '--katex-cover': 'var(--sidebar)' } as React.CSSProperties}
-                            >
+                            <MessageContent>
                               <TutorMarkdown>{repairTutorMarkdown(greeting.text)}</TutorMarkdown>
                             </MessageContent>
                           </Message>
@@ -844,14 +842,7 @@ export function TutorContextProvider({
                             >
                               {message.role === 'user' ? 'You' : 'Tutor'}
                             </p>
-                            <MessageContent
-                              style={
-                                {
-                                  '--katex-cover':
-                                    message.role === 'user' ? 'var(--secondary)' : 'var(--sidebar)',
-                                } as React.CSSProperties
-                              }
-                            >
+                            <MessageContent>
                               <TutorMarkdown>
                                 {message.role === 'assistant'
                                   ? repairTutorMarkdown(message.content)
@@ -870,11 +861,7 @@ export function TutorContextProvider({
                               <p className="w-full text-right text-xs font-medium text-muted-foreground">
                                 You
                               </p>
-                              <MessageContent
-                                style={
-                                  { '--katex-cover': 'var(--secondary)' } as React.CSSProperties
-                                }
-                              >
+                              <MessageContent>
                                 <TutorMarkdown>{visiblePendingSend.content}</TutorMarkdown>
                               </MessageContent>
                             </Message>

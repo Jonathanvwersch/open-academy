@@ -4,6 +4,8 @@ Open Academy is a self-hosted learning app that teaches you a subject the way [M
 
 It comes with a set of courses on machine learning, AI and robotics. You can also write your own course on any subject, from scratch or from your own notes, papers and textbooks, and an AI coding agent can do most of that writing for you.
 
+Try the demo at [open-academy-demo.vercel.app](https://open-academy-demo.vercel.app). There's no sign-in. Your progress stays in your browser for 24 hours and is then deleted. The tutor is off in the demo.
+
 ![The Home page](docs/images/home.png)
 
 ## How it works

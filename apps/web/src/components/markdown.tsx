@@ -87,7 +87,7 @@ export const Markdown = React.memo(function Markdown({
         const svg = plainText(codeChildren).replace(/\n$/, '');
         const label = svg.match(/\baria-label\s*=\s*["']([^"']+)["']/)?.[1] ?? '';
         return (
-          <figure className="my-6 flex max-w-full justify-center">
+          <figure className="my-6 flex max-w-full justify-center rounded-xl border border-border bg-card p-4">
             <img
               src={`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`}
               alt={label}

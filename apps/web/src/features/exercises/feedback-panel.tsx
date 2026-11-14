@@ -1,5 +1,4 @@
 import { Info } from 'lucide-react';
-import type * as React from 'react';
 import { Markdown } from '../../components/markdown.js';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert.js';
 
@@ -85,20 +84,8 @@ export function FeedbackPanel({
         : partial
           ? 'border-amber-300 bg-amber-50 text-amber-950'
           : 'border-red-300 bg-red-50 text-red-950';
-  const katexCover =
-    result.status === 'self_check_required'
-      ? 'var(--color-amber-50)'
-      : correct
-        ? 'var(--color-green-50)'
-        : partial
-          ? 'var(--color-amber-50)'
-          : 'var(--color-red-50)';
   return (
-    <Alert
-      role="status"
-      className={`${statusClass} text-base leading-7`}
-      style={{ '--katex-cover': katexCover } as React.CSSProperties}
-    >
+    <Alert role="status" className={`${statusClass} text-base leading-7`}>
       {title ? <AlertTitle>{title}</AlertTitle> : null}
       {showFeedback ? (
         <AlertDescription className="mt-1 text-base leading-7 text-inherit">
