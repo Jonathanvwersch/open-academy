@@ -367,9 +367,7 @@ async function newLesson(topicId: string, directory: string) {
   const concept = content.conceptsById.get(topicId);
   if (!concept) fail(`Unknown topic "${topicId}".`);
   if (content.lessonsByConcept.has(topicId)) fail(`Lesson for "${topicId}" already exists.`);
-  const usedExerciseIds = new Set(
-    (content.exercisesByConcept.get(topicId) ?? []).map((exercise) => exercise.id),
-  );
+  const usedExerciseIds = new Set(content.exercisesById.keys());
   function uniqueExerciseId(baseId: string): string {
     let id = baseId;
     for (let suffix = 2; usedExerciseIds.has(id); suffix += 1) {
