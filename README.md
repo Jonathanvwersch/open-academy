@@ -1,61 +1,76 @@
-# Academy
+# Open Academy
 
-Local starter for a single-user adaptive learning app. Requires Node 24, pnpm, and Docker Compose.
+Open Academy is a self-hosted learning app that teaches you a subject the way Math Academy teaches maths. You work through short lessons, and each one ends with a quiz. Spaced reviews bring topics back before you forget them. A placement check skips what you already know. It keeps track of what you can actually do, not which pages you've opened.
+
+It comes with a set of courses on machine learning, AI and robotics. You can also write your own course on any subject, from scratch or from your own notes, papers and textbooks, and an AI coding agent can do most of that writing for you.
+
+![The Home page](docs/images/home.png)
+
+## How it works
+
+- **Topics and prerequisites.** A subject is a graph of topics, and each topic lists the topics it needs first. A course is a path through that graph, split into units.
+- **Placement.** The first time you start a course you can take a short adaptive placement check, or start from the beginning. Topics you place out of count as done and go straight into reviews.
+- **Lessons.** A lesson is a few short steps, each with a worked example and a question or two, followed by a quiz. You pass the topic by passing the quiz.
+- **Reviews.** Every topic you've learned comes back on a spaced schedule ([FSRS](https://github.com/open-spaced-repetition/ts-fsrs)). If you miss a review, the lesson opens up again.
+- **Daily plan.** Each day it picks your reviews and next lessons to fit the time you set for that day.
+- **Tutor (optional).** With an OpenAI API key, a tutor sits beside every lesson. It can see the question you're on and the answer key, and it never marks your work. Grading is plain code.
+
+## Run it locally
+
+You need Node 24, pnpm and Docker.
 
 ```sh
+git clone https://github.com/Jonathanvwersch/open-academy.git
+cd open-academy
 pnpm bootstrap
 pnpm dev
 ```
 
-`pnpm dev` starts PostgreSQL on port 5433, waits for it to become ready, applies migrations, seeds the default user, and starts the API on port 3001 and web app on port 5173. The web server proxies `/api` requests to the API.
+Open http://localhost:5173. The demo courses load by default. Set `OPENAI_API_KEY` in your environment to turn on the tutor.
 
-Useful commands:
+## Make your own course
+
+A course pack is a folder of YAML files: topics, lessons, questions and courses. The `academy` CLI creates one and checks it.
 
 ```sh
-pnpm db:generate
-pnpm db:migrate
-pnpm db:seed
-pnpm db:reset
-pnpm check
-pnpm test:unit
-pnpm test
-pnpm test:e2e
-pnpm typecheck
-pnpm lint
-pnpm format
-pnpm build
+pnpm academy init ~/courses/organic-chemistry --title "Organic chemistry"
+pnpm academy dev ~/courses/organic-chemistry
 ```
 
-Vitest uses the separate `academy_test` database. `pnpm test:e2e` starts the local dev stack through Playwright's web server configuration.
-Concurrent browser runs can isolate learner and login state with separate `TEST_DATABASE_URL`,
-`PLAYWRIGHT_API_PORT`, `PLAYWRIGHT_WEB_PORT`, and `PLAYWRIGHT_STORAGE_STATE_PATH` values.
-`pnpm db:reset` truncates learner state in the development database and reseeds the default learner.
+To write it with an agent, open the pack folder in Claude Code, Codex or a similar tool and ask for what you want: "Plan a first-year organic chemistry course and write the first unit." The pack includes an `AGENTS.md` and skills for planning a course, writing lessons and working from your own sources, and the agent runs `academy check` until everything passes.
 
-`pnpm check` runs structure/import checks, Biome, TypeScript, curriculum validation and the
-architecture checker's tests without PostgreSQL or provider credentials. `pnpm bootstrap` also
-installs repository-local pre-commit checks; it leaves an existing custom hooks configuration intact.
-Python lab tests require the dependencies in `labs/linreg-numpy/requirements.txt` and
-`labs/nn-from-scratch/requirements.txt` in the `python3` environment used for testing.
+If you have lecture notes or a textbook, add them first and the lessons will be written from them, with citations:
 
-Playwright uses the small fixture curriculum by default. Tests requiring authored lessons are
-explicitly skipped in that mode; run a matching test with `PLAYWRIGHT_CONTENT_DIR=content`, for
-example `PLAYWRIGHT_CONTENT_DIR=content pnpm test:e2e tests/e2e/final-question-repeat.spec.ts`.
+```sh
+pnpm academy sources add ~/Downloads/week-3-notes.pdf --pack ~/courses/organic-chemistry
+```
 
-The workspace separates `apps/web` (React/Vite) and `apps/api` (Hono). Shared API definitions live
-in `packages/contracts`, pure common helpers in `packages/shared`, and product behavior in
-feature folders. See [architecture](docs/architecture.md) and the scoped `AGENTS.md` files.
+Your source files stay on your machine and aren't committed. [Writing your first course](docs/first-course.md) walks through the whole thing.
 
-Inject runtime secrets through your secret manager before running commands. `.env.example`
-documents environment variable names; do not put real secrets into tracked files or plaintext
-`.env` files. API configuration validates injected values without printing them.
+## Host it
 
-## Deployment
+- **Vercel and Neon:** [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FJonathanvwersch%2Fopen-academy&env=DATABASE_URL,ACADEMY_PASSWORD&envDescription=A%20Postgres%20URL%20(Neon%20works)%20and%20a%20sign-in%20password%20of%20at%20least%2012%20characters&envLink=https%3A%2F%2Fgithub.com%2FJonathanvwersch%2Fopen-academy%2Fblob%2Fmain%2Fdocs%2Fself-hosting.md)
+- **Your own server:** `docker compose -f deploy/docker-compose.yml up -d`
 
-Set `ACADEMY_PASSWORD` as a deployment secret before starting the public app. Production startup
-requires a password of at least 12 characters. The Ample service declares this secret in
-`ample.toml`; configure its value through Ample's secret management, not in the repository.
-Locally, leaving it unset disables login and prints a warning from `pnpm dev`.
+Both are covered in [Self-hosting](docs/self-hosting.md). Each instance is for one learner and is protected by a password you set (`ACADEMY_PASSWORD`).
 
-The Vercel build validates the curriculum and serializes its indexed data beside the API bundle.
-Cold functions load this artifact instead of parsing and validating every YAML file again.
-Keep the Node 24 build and runtime versions aligned; curriculum changes require a new deployment.
+## Project layout
+
+| Path                                    | What's there                                                    |
+| --------------------------------------- | --------------------------------------------------------------- |
+| `apps/web`                              | The React app                                                   |
+| `apps/api`                              | The API: content loading, grading, mastery, scheduling, tutor   |
+| `packages/cli`                          | The `academy` CLI                                               |
+| `packages/contracts`, `packages/shared` | Types and helpers shared by the web app and the API             |
+| `content`                               | The demo course pack (machine learning, AI and robotics)        |
+| `labs`                                  | Starter code and tests for the demo pack's programming projects |
+
+[Architecture](docs/architecture.md) and [Content format](docs/CONTENT_FORMAT.md) go into more detail.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+MIT
