@@ -13,6 +13,7 @@ import { paperStatusLabel, papersQueryOptions } from '../papers/queries.js';
 import { todayQueryOptions } from '../sessions/queries.js';
 import { useTutorSidebar } from '../tutor/tutor-sidebar.js';
 import { CourseMetadata } from './course-metadata.js';
+import { CourseStartCard } from './course-start-card.js';
 import { foundationsHeading } from './foundations-heading.js';
 import { courseQueryOptions, learnQueryOptions } from './queries.js';
 import {
@@ -98,7 +99,7 @@ export function CoursePage() {
                       loading={changeCourse.isPending && changeCourse.variables === course.id}
                       onClick={() => changeCourse.mutate(course.id)}
                     >
-                      Switch
+                      {course.started ? 'Switch' : 'Start'}
                     </Button>
                   )}
                 </CardContent>
@@ -112,6 +113,12 @@ export function CoursePage() {
           ) : null}
         </DialogContent>
       </Dialog>
+      {data.courseStart.needed ? (
+        <CourseStartCard
+          courseTitle={data.course.title}
+          placementRunId={data.courseStart.placementRunId}
+        />
+      ) : null}
       {data.foundations.length > 0 ? (
         <Collapsible.Root open={foundationsOpen} onOpenChange={setFoundationsOpen}>
           <Card className="gap-0">
@@ -232,7 +239,9 @@ export function CoursePage() {
                                                 : ''
                                           }
                                         >
-                                          {COURSE_STATUS_LABEL[topic.status]}
+                                          {topic.placedOut
+                                            ? 'Placed out'
+                                            : COURSE_STATUS_LABEL[topic.status]}
                                         </Badge>
                                       ) : null}
                                       {topic.status !== 'locked' &&

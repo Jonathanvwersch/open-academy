@@ -32,7 +32,6 @@ export type ActivityKind =
   | 'lab'
   | 'reflect'
   | 'teachback'
-  | 'diagnostic'
   | 'paper';
 
 export const SCHEDULER_CONFIG = {
@@ -382,7 +381,7 @@ function packWeekday(
         concept?.prereqs.some((prerequisite) => prerequisite.id === candidate.activity.conceptId),
       );
     if (dependent) {
-      candidate.activity.reason.summary = `Confirm diagnostic result before ${dependent.title}.`;
+      candidate.activity.reason.summary = `Confirm placement result before ${dependent.title}.`;
     }
     if (selected.length < SCHEDULER_CONFIG.weekday.maxActivities - 1) add(candidate);
   }
@@ -711,7 +710,7 @@ function candidateSummary(
   project: { id: string; prereqs: string[] } | undefined,
   content: ContentIndex,
 ): string {
-  if (kind === 'quick_check') return `Confirm the diagnostic result for ${concept.title}.`;
+  if (kind === 'quick_check') return `Confirm the placement result for ${concept.title}.`;
   const parts: string[] = [];
   if (
     terms.week_fit > 0 &&

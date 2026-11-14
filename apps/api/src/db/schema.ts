@@ -62,6 +62,7 @@ export const diagnosticKindEnum = pgEnum('diagnostic_kind', [
   'day30',
   'day60',
   'day90',
+  'placement',
 ]);
 export const diagnosticStatusEnum = pgEnum('diagnostic_status', [
   'active',
@@ -406,6 +407,31 @@ export const diagnosticRuns = pgTable(
     summary: jsonb('summary').notNull().default({}),
   },
   (table) => [index('diagnostic_runs_user_status_idx').on(table.userId, table.status)],
+);
+
+export const courseEnrollments = pgTable(
+  'course_enrollments',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    courseId: text('course_id').notNull(),
+    status: text('status').$type<'active' | 'paused' | 'completed'>().notNull().default('active'),
+    startMethod: text('start_method').$type<'placement' | 'beginning'>().notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    completedAt: timestamp('completed_at', { withTimezone: true, mode: 'date' }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.courseId] }),
+    check(
+      'course_enrollments_status_check',
+      sql`${table.status} in ('active', 'paused', 'completed')`,
+    ),
+    check(
+      'course_enrollments_start_method_check',
+      sql`${table.startMethod} in ('placement', 'beginning')`,
+    ),
+  ],
 );
 
 export const remediationFlags = pgTable(

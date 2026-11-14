@@ -451,22 +451,6 @@ export const ExerciseFileSchema = z
   })
   .strict();
 
-export const DiagnosticSchema = z
-  .object({
-    domains: z
-      .array(
-        z
-          .object({
-            domain: IdSchema,
-            ladder: z.array(IdSchema).min(1),
-            start: z.number().int().positive(),
-          })
-          .strict(),
-      )
-      .min(1),
-  })
-  .strict();
-
 export const ProjectSchema = z
   .object({
     id: IdSchema,
@@ -563,7 +547,6 @@ export type Course = z.infer<typeof CourseSchema>;
 export type Concept = z.infer<typeof ConceptSchema>;
 export type NotationRegistry = z.infer<typeof NotationSchema>;
 export type Exercise = z.infer<typeof ExerciseSchema>;
-export type Diagnostic = z.infer<typeof DiagnosticSchema>;
 export type Project = z.infer<typeof ProjectSchema>;
 export type Paper = z.infer<typeof PaperSchema>;
 export type Dimension = z.infer<typeof DimensionSchema>;

@@ -9,7 +9,6 @@ import {
   ConceptSchema,
   CourseSchema,
   CurriculumSchema,
-  DiagnosticSchema,
   ExerciseSchema,
   IdSchema,
   LessonSchema,
@@ -196,16 +195,6 @@ export async function loadContent(
       id: '<file>',
       message: 'notation registry is required',
     });
-  }
-
-  const diagnosticRaw = await readYaml(join(root, 'diagnostic.yaml'), 'diagnostic.yaml', issues);
-  if (diagnosticRaw !== undefined) {
-    const parsed = DiagnosticSchema.safeParse(diagnosticRaw);
-    if (parsed.success) {
-      data.diagnostic = { value: parsed.data, file: 'diagnostic.yaml' };
-    } else {
-      addZodIssues(issues, 'diagnostic.yaml', diagnosticRaw, parsed.error);
-    }
   }
 
   for (const file of await yamlFiles(join(root, 'projects'))) {

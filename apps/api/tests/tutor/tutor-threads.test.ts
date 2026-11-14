@@ -941,10 +941,10 @@ test('provider failure stores no thread or messages; another user cannot read a 
   await db.delete(users).where(eq(users.id, secondUserId));
 });
 
-test('diagnostic exercises and review activities are forbidden', async () => {
-  const diagnostic = content.exercises.find((item) => item.role === 'diagnostic');
+test('placement exercises and review activities are forbidden', async () => {
+  const placementExercise = content.exercises.find((item) => item.role === 'diagnostic');
   const regular = content.exercisesById.get('sl-check-target');
-  if (!diagnostic || !regular) throw new Error('Missing guard test exercises');
+  if (!placementExercise || !regular) throw new Error('Missing guard test exercises');
   const [session] = await db
     .insert(studySessions)
     .values({
@@ -970,7 +970,7 @@ test('diagnostic exercises and review activities are forbidden', async () => {
         sessionId: session.id,
         idx: 1,
         kind: 'practice',
-        conceptId: diagnostic.concept,
+        conceptId: placementExercise.concept,
         plannedMinutes: 5,
         status: 'in_progress',
       },
@@ -987,8 +987,8 @@ test('diagnostic exercises and review activities are forbidden', async () => {
   ).toBe(403);
   expect(
     (
-      await send('diagnostic help', undefined, {
-        exerciseId: diagnostic.id,
+      await send('placement help', undefined, {
+        exerciseId: placementExercise.id,
         activityId: practiceActivity.id,
       })
     ).status,

@@ -9,6 +9,7 @@ import {
 } from '../../db/schema.js';
 import { answerDisplay } from '../../learning/answer-display.js';
 import { answerOptionsFor } from '../../learning/answer-options.js';
+import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
 import { recordLessonViewed } from '../../learning/mastery.js';
 import {
@@ -39,15 +40,29 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const sessionKind = sessionKindForDate(localDateKey(now, request.timeZone));
   const budget = sessionBudget(sessionKind, prefs, localDateKey(now, request.timeZone));
   const plan = planSession(state, index, now, budget, sessionKind);
-  const active = await repo.activeSession(now);
-  const diagnostic = await repo.latestDiagnosticRun();
+  const [active, enrollments, placementRuns] = await Promise.all([
+    repo.activeSession(now),
+    repo.courseEnrollments(),
+    repo.activePlacementRuns(),
+  ]);
+  const startState = buildCourseStartState({
+    content: index,
+    activeCourseId: user?.activeCourseId,
+    mastery: state.mastery,
+    lessonRuns: state.lessonRuns ?? [],
+    enrollments,
+    placementRuns,
+  });
   const course = activeCourseFor(index, state.activeCourseId);
   const unit = currentLearnerUnit(state, index);
   const unitFocus = course?.units[unit - 1];
   return serviceResult({
-    needsDiagnostic: (!diagnostic || diagnostic.status === 'active') && Boolean(index.diagnostic),
-    diagnosticActive: diagnostic?.status === 'active',
-    diagnosticRunId: diagnostic?.status === 'active' ? diagnostic.id : null,
+    needsCourseChoice: needsCourseChoice({
+      activeCourseId: user?.activeCourseId,
+      mastery: state.mastery,
+      lessonRuns: state.lessonRuns ?? [],
+    }),
+    courseStart: startState.courseStart,
     objective: unitFocus?.title ?? prefs.goal ?? 'Build a steady foundation in machine learning.',
     courseTitle: course?.title ?? '',
     unitTitle: unitFocus?.title ?? `Unit ${unit}`,

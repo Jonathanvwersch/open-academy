@@ -5,13 +5,6 @@ import { isTemplate } from '../../src/content/templates.js';
 import type { ContentIndex } from '../../src/content/types.js';
 import { deriveLearningDebt } from '../../src/learning/debt.js';
 import {
-  createDiagnosticState,
-  diagnosticComplete,
-  markDiagnosticUnassessed,
-  nextDiagnosticExercise,
-  recordDiagnosticAnswer,
-} from '../../src/learning/diagnostic.js';
-import {
   mapReviewRating,
   newReviewCard,
   scheduleInitialReview,
@@ -21,7 +14,6 @@ import { countHintsSincePreviousAttempt } from '../../src/learning/hints.js';
 import {
   calculateCredit,
   DefaultMasteryModel,
-  inferPrerequisite,
   recordLessonViewed,
 } from '../../src/learning/mastery.js';
 import {
@@ -205,7 +197,7 @@ test('hint counts reset after the previous attempt and respect activity scope', 
   ).toBe(1);
 });
 
-test('diagnostic success is provisional and hard prerequisites are inferred', () => {
+test('placement success is provisional', () => {
   const model = new DefaultMasteryModel();
   const result = model.applyAttempt(
     undefined,
@@ -224,7 +216,6 @@ test('diagnostic success is provisional and hard prerequisites are inferred', ()
     now,
   );
   expect(result.mastery).toMatchObject({ state: 'independent', provisional: true });
-  expect(inferPrerequisite(undefined, 'vectors', 'conceptual', now).mastery.inferred).toBe(true);
   expect(recordLessonViewed(undefined, 'vectors', 'math', now).mastery.state).toBe('introduced');
 });
 
@@ -319,45 +310,6 @@ test('a newly scheduled review is due no earlier than the next learner calendar 
   expect(scheduled.card.reps).toBeGreaterThan(0);
   expect(scheduled.card.due.getTime()).toBeGreaterThan(now.getTime());
   expect(dateInZone(scheduled.card.due)).not.toBe(dateInZone(now));
-});
-
-test('diagnostic ladders interleave domains and move up or down one rung', () => {
-  const state = createDiagnosticState(content);
-  const math = required(nextDiagnosticExercise(state, content), 'math diagnostic exercise');
-  expect(math.id).toBe('dx-vectors');
-  const first = recordDiagnosticAnswer(state, math, true, content, now);
-  expect(first.state.domains.math?.position).toBe(1);
-  expect(first.inferredPrerequisiteIds).toEqual([]);
-  const next = required(nextDiagnosticExercise(first.state, content), 'next diagnostic exercise');
-  expect(next.id).toBe('dx-loss-functions');
-  const second = recordDiagnosticAnswer(first.state, next, false, content, now);
-  expect(second.state.domains.ml?.position).toBe(0);
-  const skipped = markDiagnosticUnassessed(second.state, 'math', now, content);
-  expect(skipped.domains.math?.status).toBe('partially_assessed');
-  expect(diagnosticComplete(skipped)).toBe(false);
-});
-
-test('skipping a diagnostic domain advances in curriculum ladder order', () => {
-  const state = createDiagnosticState(content);
-  const reordered = {
-    ...state,
-    domains: Object.fromEntries(Object.entries(state.domains).reverse()),
-  };
-  const skipped = markDiagnosticUnassessed(reordered, 'math', now, content);
-  expect(nextDiagnosticExercise(skipped, content)?.id).toBe('dx-loss-functions');
-});
-
-test('skipping a diagnostic domain after an answer preserves partial evidence', () => {
-  const state = createDiagnosticState(content);
-  const exercise = required(nextDiagnosticExercise(state, content), 'math diagnostic exercise');
-  const answered = recordDiagnosticAnswer(state, exercise, true, content, now).state;
-  const skipped = markDiagnosticUnassessed(answered, 'math', now, content);
-
-  expect(skipped.domains.math).toMatchObject({
-    answers: 1,
-    status: 'partially_assessed',
-    correctConceptIds: [exercise.concept],
-  });
 });
 
 test('learning debt derives implementation gaps, demotions, hints, and open flags', () => {
@@ -642,7 +594,7 @@ test('weekday plans avoid duplicate concepts, cap activities, and never add empt
   expect(plan.activities.every((activity) => activity.exerciseIds.length > 0)).toBe(true);
 });
 
-test('quick checks are limited to diagnostic-provisional prerequisites of planned learn targets', () => {
+test('quick checks are limited to placement-provisional prerequisites of planned learn targets', () => {
   const state = emptyState();
   state.mastery = [
     {
@@ -1313,7 +1265,7 @@ test('all completed course concepts put the learner in the last unit', () => {
   expect(currentLearnerUnit(state, courseContent)).toBe(course.units.length);
 });
 
-test('diagnostic-inferred mastery counts as met for the current unit', () => {
+test('placement-inferred mastery counts as met for the current unit', () => {
   const firstUnit = required(
     courseContent.coursesById.get('ml-foundations')?.units[0],
     'first default unit',

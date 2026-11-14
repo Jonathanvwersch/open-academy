@@ -1,12 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
-import {
-  diagnosticRuns,
-  sessionActivities,
-  studySessions,
-  users,
-} from '../../apps/api/src/db/schema.js';
+import { sessionActivities, studySessions, users } from '../../apps/api/src/db/schema.js';
+import { enrollInDefaultCourse } from './course-start.js';
 
 const conceptId = 'mlp-forward-pass';
 
@@ -23,13 +19,7 @@ test.beforeEach(async () => {
     })
     .returning({ id: users.id });
   if (!user) throw new Error('Could not create final question learner');
-  await db.insert(diagnosticRuns).values({
-    userId: user.id,
-    status: 'completed',
-    state: {},
-    startedAt: new Date('2026-01-01T12:00:00.000Z'),
-    completedAt: new Date('2026-01-01T12:00:00.000Z'),
-  });
+  await enrollInDefaultCourse(db, user.id);
   await db.$client.end();
 });
 

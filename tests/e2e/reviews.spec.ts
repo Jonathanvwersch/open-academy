@@ -3,13 +3,13 @@ import { expect, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
-  diagnosticRuns,
   reviewCards,
   sessionActivities,
   studySessions,
   users,
 } from '../../apps/api/src/db/schema.js';
 import { newReviewCard } from '../../apps/api/src/learning/fsrs.js';
+import { enrollInDefaultCourse } from './course-start.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const screenshotDir = 'test-results/screenshots/screenshots/spaced-review';
@@ -34,13 +34,7 @@ test.beforeEach(async ({ page }) => {
     .returning();
   if (!user) throw new Error('Could not create spaced review learner');
   userId = user.id;
-  await db.insert(diagnosticRuns).values({
-    userId,
-    status: 'completed',
-    state: {},
-    startedAt: new Date('2026-01-01T10:00:00.000Z'),
-    completedAt: new Date('2026-01-01T10:10:00.000Z'),
-  });
+  await enrollInDefaultCourse(db, userId);
 });
 
 test.afterAll(async () => {

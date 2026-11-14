@@ -265,7 +265,7 @@ export function registerTutorThreadRoutes(
       };
     }
     if (exercise?.role === 'diagnostic')
-      return c.json({ error: 'Tutor unavailable for this activity' }, 403);
+      return c.json({ error: 'Placement check exercises do not allow tutor answers.' }, 403);
     if (activityId) {
       const [activity] = await db
         .select({ kind: sessionActivities.kind })

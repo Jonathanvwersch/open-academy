@@ -529,45 +529,6 @@ export function validateContent(data: ContentSourceData): ContentIssue[] {
     }
   }
 
-  const diagnostic = data.diagnostic;
-  if (diagnostic) {
-    const seenDiagnosticDomains = new Set<string>();
-    for (const ladder of diagnostic.value.domains) {
-      if (seenDiagnosticDomains.has(ladder.domain)) {
-        addIssue(issues, diagnostic.file, ladder.domain, 'duplicate diagnostic domain ladder');
-      }
-      seenDiagnosticDomains.add(ladder.domain);
-      if (ladder.start > ladder.ladder.length) {
-        addIssue(
-          issues,
-          diagnostic.file,
-          ladder.domain,
-          `start index ${ladder.start} exceeds ladder length`,
-        );
-      }
-      for (const exerciseId of ladder.ladder) {
-        const exercise = exercises.get(exerciseId);
-        if (!exercise) {
-          addIssue(
-            issues,
-            diagnostic.file,
-            ladder.domain,
-            `diagnostic ladder references missing exercise "${exerciseId}"`,
-          );
-        } else {
-          if (exercise.value.role !== 'diagnostic') {
-            addIssue(
-              issues,
-              diagnostic.file,
-              ladder.domain,
-              `ladder item "${exerciseId}" is not diagnostic role`,
-            );
-          }
-        }
-      }
-    }
-  }
-
   if (data.curriculum) {
     const curriculum = data.curriculum.value;
     for (const goal of curriculum.goals) {

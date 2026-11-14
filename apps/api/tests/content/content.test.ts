@@ -41,7 +41,6 @@ test('loads the fixture graph and builds lookup indexes', async () => {
     'fixture-paper-one',
   ]);
   expect(content.papersById.has('fixture-paper-two')).toBe(true);
-  expect(content.diagnostic?.domains).toHaveLength(2);
   expect(content.edges).toContainEqual({
     conceptId: 'gradient-descent',
     prerequisiteId: 'gradients',

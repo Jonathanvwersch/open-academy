@@ -9,6 +9,7 @@ import { localDateKey } from '../learning/xp.js';
 import type { Database } from './client.js';
 import {
   attempts,
+  courseEnrollments,
   diagnosticRuns,
   hintEvents,
   lessonRuns,
@@ -276,33 +277,62 @@ export class LearnerRepository {
       .returning();
   }
 
-  async diagnosticRun(runId: string) {
+  async placementRun(runId: string) {
     const [run] = await this.db
       .select()
       .from(diagnosticRuns)
       .where(and(eq(diagnosticRuns.id, runId), eq(diagnosticRuns.userId, this.userId)))
       .limit(1);
-    return run;
+    return run?.kind === 'placement' ? run : undefined;
   }
 
-  async latestDiagnosticRun() {
-    const [run] = await this.db
-      .select()
-      .from(diagnosticRuns)
-      .where(eq(diagnosticRuns.userId, this.userId))
-      .orderBy(desc(diagnosticRuns.startedAt))
-      .limit(1);
-    return run;
+  async activePlacementRun(courseId: string) {
+    const runs = await this.activePlacementRuns();
+    return runs.find((run) => (run.state as { courseId?: unknown }).courseId === courseId);
   }
 
-  async latestCompletedDiagnosticRun() {
-    const [run] = await this.db
+  async activePlacementRuns() {
+    return this.db
       .select()
       .from(diagnosticRuns)
-      .where(and(eq(diagnosticRuns.userId, this.userId), eq(diagnosticRuns.status, 'completed')))
-      .orderBy(desc(diagnosticRuns.startedAt))
+      .where(
+        and(
+          eq(diagnosticRuns.userId, this.userId),
+          eq(diagnosticRuns.kind, 'placement'),
+          eq(diagnosticRuns.status, 'active'),
+        ),
+      )
+      .orderBy(desc(diagnosticRuns.startedAt));
+  }
+
+  async courseEnrollments() {
+    return this.db
+      .select()
+      .from(courseEnrollments)
+      .where(eq(courseEnrollments.userId, this.userId));
+  }
+
+  async courseEnrollment(courseId: string) {
+    const [enrollment] = await this.db
+      .select()
+      .from(courseEnrollments)
+      .where(
+        and(eq(courseEnrollments.userId, this.userId), eq(courseEnrollments.courseId, courseId)),
+      )
       .limit(1);
-    return run;
+    return enrollment;
+  }
+
+  async startCourse(courseId: string, startMethod: 'placement' | 'beginning', startedAt: Date) {
+    await this.db
+      .insert(courseEnrollments)
+      .values({
+        userId: this.userId,
+        courseId,
+        startMethod,
+        startedAt,
+      })
+      .onConflictDoNothing();
   }
 
   async logs(cardId: string) {

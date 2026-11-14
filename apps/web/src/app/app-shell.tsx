@@ -10,7 +10,7 @@ import { TutorContextProvider } from '../features/tutor/tutor-sidebar.js';
 
 const navigation = [
   { label: 'Home', to: '/' },
-  { label: 'Course', to: '/course' },
+  { label: 'Courses', to: '/course' },
   { label: 'Reviews', to: '/reviews' },
   { label: 'Progress', to: '/progress' },
   { label: 'Settings', to: '/settings' },
@@ -86,7 +86,7 @@ export function RootLayout() {
   return (
     <TooltipProvider>
       <TutorContextProvider
-        routeAllowed={!pathname.startsWith('/diagnostic')}
+        routeAllowed={!pathname.startsWith('/placement')}
         pushSidebar={isPaperReader}
       >
         <div

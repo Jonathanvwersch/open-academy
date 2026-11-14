@@ -193,7 +193,7 @@ export function SessionPage() {
       tutorSidebar.clearContext();
       return;
     }
-    const allowed = !['diagnostic', 'review', 'quick_check', 'assessment'].includes(activity.kind);
+    const allowed = !['review', 'quick_check', 'assessment'].includes(activity.kind);
     tutorSidebar.setContext({
       conceptId: activity.conceptId ?? undefined,
       conceptTitle: activity.conceptTitle ?? undefined,
@@ -259,7 +259,7 @@ export function SessionPage() {
     setSubmittingAnswer(true);
     setSubmitError('');
     const mode =
-      activity.kind === 'quick_check' || activity.kind === 'diagnostic'
+      activity.kind === 'quick_check'
         ? 'assessment'
         : activity.kind === 'review'
           ? 'review'
@@ -501,7 +501,7 @@ export function SessionPage() {
   const mode =
     activity.kind === 'review'
       ? 'review'
-      : activity.kind === 'quick_check' || activity.kind === 'diagnostic'
+      : activity.kind === 'quick_check'
         ? 'assessment'
         : 'practice';
   const activityLabel = sessionActivityLabel(activity.kind);
@@ -514,7 +514,7 @@ export function SessionPage() {
         ? 'Review'
         : activity.kind === 'lab'
           ? 'Project'
-          : ['quick_check', 'diagnostic', 'assessment'].includes(activity.kind)
+          : ['quick_check', 'assessment'].includes(activity.kind)
             ? 'Quiz'
             : sessionActivityLabel(activity.kind));
   const lessonLink =
