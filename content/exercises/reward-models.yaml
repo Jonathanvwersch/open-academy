@@ -1,5 +1,25 @@
 concept: reward-models
 exercises:
+  - id: lab-post-training-reward-offset
+    dimension: conceptual
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: A reward model gives two responses to the same prompt scores of 0.7 and 0.2. A second version gives them 5.7 and 5.2. How does the Bradley-Terry probability of preferring the first response change?
+    options:
+      - id: a
+        text: It stays the same because the score difference is unchanged.
+        correct: true
+      - id: b
+        text: It rises because the preferred response has a higher score.
+        correct: false
+        feedback: Both scores rose by the same amount. The preference probability uses their difference.
+      - id: c
+        text: It falls because the ratio of the two scores is smaller.
+        correct: false
+        feedback: Bradley-Terry applies the sigmoid to a score difference. The score ratio does not enter this model.
+    solution: Both pairs have a score difference of 0.5, so the preference probability is unchanged. Absolute reward levels can shift while every predicted preference stays fixed.
   - id: rm-comparisons-basics
     dimension: conceptual
     type: mc

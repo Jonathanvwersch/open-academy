@@ -1,5 +1,25 @@
 concept: sft
 exercises:
+  - id: lab-post-training-mask-dilution
+    dimension: implementation
+    type: mc
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: An SFT implementation sets prompt-target losses to zero, then takes the mean over every target position. More prompt tokens are added while the response tokens and their predicted probabilities stay fixed. What happens to the reported loss?
+    options:
+      - id: a
+        text: It falls because the denominator grows.
+        correct: true
+      - id: b
+        text: It stays fixed because the response is unchanged.
+        correct: false
+        feedback: That would hold if the mean used only the response targets. This code also counts prompt positions in its denominator.
+      - id: c
+        text: It rises because each prompt adds a positive loss.
+        correct: false
+        feedback: The code sets those prompt losses to zero, so they increase only the denominator.
+    solution: The response losses have the same sum, but the mean divides by more positions. Divide by the number of selected response targets to keep the intended objective.
   - id: sft-pairs-basics
     dimension: conceptual
     type: mc
