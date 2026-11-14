@@ -165,28 +165,28 @@ exercises:
     role: core
     difficulty: 2
     est_minutes: 2
-    prompt: "Your training labels contain a few wildly wrong values (sensor glitches). You fit a linear model with MSE and the fit is pulled noticeably toward those points. What is the best explanation and the simplest fix?"
+    prompt: Your training labels contain a few wildly wrong values (sensor glitches). You fit a linear model with MSE and the fit is pulled noticeably toward those points. What is the best explanation and the simplest fix?
     options:
-      - {
-          id: a,
-          text: "Squaring makes those few large residuals dominate the loss and its gradient; use MAE or a Huber loss, or clean the labels",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "MSE ignores large errors; switch to a loss that squares them",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "MSE does not ignore large errors: squaring gives them more influence. Think about whether a robust loss should reduce or amplify the effect of extreme residuals.",
-        }
-      - {
-          id: c,
-          text: "The model needs more training steps",
-          correct: false,
-          category: misapplied_technique,
-          feedback: "More steps only get closer to the same MSE minimum, and the few large residuals still pull that minimum toward them.",
-        }
-    solution: "MSE's gradient grows with the error, so outliers pull hard. MAE or Huber caps that influence."
+      - id: a
+        text: Squaring makes the few huge errors dominate the loss; use MAE or clean the labels
+        correct: true
+        feedback: Each squared error grows with the square of the miss, so a handful of glitches can outweigh many good points.
+      - id: b
+        text: MSE gives every error the same weight; use a loss that squares them instead
+        correct: false
+        category: misunderstood_definition
+        feedback: MSE already squares the errors, and that is why large misses pull so hard.
+      - id: c
+        text: The model stopped too early; run more training steps so the fit moves back
+        correct: false
+        category: incorrect_reasoning
+        feedback: More steps take MSE closer to its own minimum, which is the fit pulled towards the glitches.
+      - id: d
+        text: The model is too simple; add features so it can fit the wrong labels as well
+        correct: false
+        category: incorrect_reasoning
+        feedback: Fitting the glitches makes predictions worse on real data; the problem is how much the loss rewards fitting them.
+    solution: MSE squares each error, so a few huge errors dominate the loss and its slope, and the fit moves towards them. MAE grows only in proportion to the miss, so it is pulled much less; cleaning the bad labels also fixes it.
   - id: loss-review-grad
     dimension: math
     type: expression
@@ -660,25 +660,28 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt:
-      A robot takes 10, 10 and 60 minutes on three recorded trips. Which constant is less pulled
-      by the one long trip?
+    prompt: A robot takes 10, 10 and 60 minutes on three recorded trips on one route. You must predict one constant time for the route. Which loss's best constant ignores how long the long trip was, and what is that constant?
     options:
       - id: a
-        text: The MAE choice of 10 minutes, the median
+        text: MAE, at 10 minutes
         correct: true
+        feedback: MAE's best constant is the median, 10, which stays at 10 however long the third trip is.
       - id: b
-        text: The MSE choice of about 26.67 minutes, the mean
+        text: MSE, at 10 minutes
         correct: false
-        category: incorrect_reasoning
-        feedback: The mean includes all 60 minutes in the total and is pulled upwards.
+        category: misapplied_technique
+        feedback: MSE's best constant is the mean, $(10+10+60)/3\approx26.67$, which rises with the long trip.
       - id: c
-        text: Both choices are equally pulled towards 60 minutes
+        text: MAE, at about 26.67 minutes
         correct: false
-        category: incorrect_reasoning
-        feedback: The middle value stays at 10 even with the long trip.
-    solution: The median remains at the typical short trip, while the mean is (10 + 10 + 60)/3, so
-      squared error favours a larger constant.
+        category: misapplied_technique
+        feedback: 26.67 is the mean, which minimises MSE. MAE's best constant is the median.
+      - id: d
+        text: MSE, at 35 minutes
+        correct: false
+        category: math_error
+        feedback: 35 is halfway between the shortest and longest trips, which neither loss chooses.
+    solution: MAE is minimised by the median, 10 minutes, and it stays at 10 if the long trip gets longer. MSE is minimised by the mean, $(10+10+60)/3\approx26.67$, which the long trip pulls upward.
   - id: lossp-measure-self-explain
     lesson_only: true
     dimension: conceptual

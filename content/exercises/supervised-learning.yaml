@@ -214,28 +214,23 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "A house-price model has average squared loss 200 with one set of settings and 1700 with another, on the same past sales. What does training choose in supervised learning?"
+    prompt: A house-price model has average squared loss 200 with one set of settings and 1700 with another, on the same past sales. What does training choose in supervised learning?
     options:
-      - {
-          id: a,
-          text: "The model parameters that minimise the average loss on the training data",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "The targets that best fit the inputs",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Targets are the observed outcomes in the past sales, not values chosen by the training procedure. Training adjusts the model settings to reduce loss against those outcomes.",
-        }
-      - {
-          id: c,
-          text: "The loss function",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The loss is chosen by the engineer, not learned.",
-        }
-    solution: "Training chooses the adjustable model settings that make the average loss on the known examples as small as possible. Here the settings with average loss 200 fit the sales better than those with loss 1700."
+      - id: a
+        text: The model parameters that minimise the average loss on the training data
+        correct: true
+        feedback: Training adjusts the settings, so the setting with average loss 200 beats the one with 1700.
+      - id: b
+        text: The targets that minimise the average loss on the training data
+        correct: false
+        category: misunderstood_definition
+        feedback: Targets are the observed outcomes in the past sales, not values chosen by training. Training adjusts the model settings to reduce loss against those outcomes.
+      - id: c
+        text: The loss function that gives the smallest average on the training data
+        correct: false
+        category: misunderstood_definition
+        feedback: The loss is chosen by the engineer before training; training then picks the settings that make it small.
+    solution: Training chooses the adjustable model settings that make the average loss on the known examples as small as possible. Here the settings with average loss 200 fit the sales better than those with loss 1700.
   - id: sl-explain-setup
     dimension: conceptual
     type: explain
@@ -521,76 +516,67 @@ exercises:
     role: review
     difficulty: 1
     est_minutes: 1
-    prompt: "Working in hundreds of thousands of pounds, a house-price model predicts 7 for a house that sold for 5. What is the squared error, $(\\hat y-y)^2$?"
+    prompt: Working in hundreds of thousands of pounds, a house-price model predicts 7 for a house that sold for 5. What is its squared error?
     answer: 4
-    tolerance: { abs: 0.000001 }
-    solution: "The error is 7 − 5 = 2. Squaring it gives 2² = 4."
+    tolerance:
+      abs: 1.0e-06
+    solution: The error is 7 − 5 = 2. Squaring it gives 2² = 4.
   - id: slp-argmin
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "We compare settings for a house-price model by their average squared error on past sales. In the training formula, what does $\\arg\\min_\\theta$ ask us to find?"
+    prompt: We compare settings for a house-price model by their average squared error on past sales. In the training formula, what does $\arg\min_\theta$ ask us to find?
     options:
-      - {
-          id: a,
-          text: "The value of $\\theta$ that makes the following average loss as small as possible",
-          correct: true,
-        }
-      - {
-          id: b,
-          text: "The largest possible loss",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "An argmin looks for a setting that makes the objective small; it does not search for the largest loss. Keep track of whether the operation is minimizing or maximizing.",
-        }
-      - {
-          id: c,
-          text: "The number of houses in the dataset",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The number of houses describes the dataset size, not the value selected by `argmin`. Focus on what appears as the subscript to the optimization operation.",
-        }
-      - {
-          id: d,
-          text: "The average of the model's parameters",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Averaging parameter values is different from selecting settings according to their loss. Look at which quantity the formula asks to minimize.",
-        }
-    solution: "$\\arg\\min_\\theta$ asks for the adjustable settings that make the following average loss as small as possible. It names the settings, not the size of the loss."
+      - id: a
+        text: The value of $\theta$ that makes the average loss as small as possible
+        correct: true
+        feedback: $\arg\min_\theta$ names the setting that gives the smallest loss.
+      - id: b
+        text: The smallest value that the average loss can reach for any $\theta$
+        correct: false
+        category: misunderstood_definition
+        feedback: That is $\min_\theta$, the size of the smallest loss. $\arg\min_\theta$ asks for the setting that achieves it.
+      - id: c
+        text: The value of $\theta$ that makes every house's error exactly zero
+        correct: false
+        category: misunderstood_definition
+        feedback: Usually no setting fits every house exactly; argmin picks the setting with the smallest average loss, even if that loss is above zero.
+      - id: d
+        text: The smallest of the adjustable numbers $w_1$, $w_2$ and $b$ in $\theta$
+        correct: false
+        category: misunderstood_definition
+        feedback: Argmin compares settings by the loss they give, not by the sizes of the parameters themselves.
+    solution: $\arg\min_\theta$ asks for the adjustable settings that make the following average loss as small as possible. It names the settings, not the size of the loss.
   - id: slp-best-setting
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: "Setting A has average squared error 200 and Setting B has average squared error 1700 on the same sales. Which setting fits those sales better?"
+    prompt: Four houses are priced by two settings of a model, in thousands of pounds. Setting A's errors are $+10$, $-10$, $+10$ and $-10$. Setting B's errors are $0$, $0$, $0$ and $+30$. Using mean squared error, which setting fits these sales better?
     options:
-      - { id: a, text: "Setting A, because its average loss is smaller", correct: true }
-      - {
-          id: b,
-          text: "Setting B, because its average loss is larger",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "A larger squared error means the predictions are farther from the observed values on average, not a better fit. Compare the scores using the same loss on the same sales.",
-        }
-      - {
-          id: c,
-          text: "They fit equally well",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "The two settings have different average errors, so they do not fit these sales equally under this measure. Use the lower loss to compare fit.",
-        }
-      - {
-          id: d,
-          text: "There is not enough information to compare their losses",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Both losses use the same metric on the same houses, so they are directly comparable. Check what the smaller score says about the fit.",
-        }
-    solution: "Both averages use the same squared-error measure on the same sales. The smaller average, 200, means Setting A fits these sales better."
+      - id: a
+        text: Setting A, because its mean squared error is 100 against 225
+        correct: true
+        feedback: A's squared errors are all 100, so its MSE is 100; B's are 0, 0, 0 and 900, so its MSE is 225.
+      - id: b
+        text: Setting B, because it prices three of the four houses exactly
+        correct: false
+        category: incorrect_reasoning
+        feedback: MSE averages the squared error over every house, so B's one miss of 30 adds 900 and outweighs its three exact prices.
+      - id: c
+        text: Setting B, because its misses add up to 30 against A's 40
+        correct: false
+        category: misapplied_technique
+        feedback: That compares absolute errors. Squaring makes B's single miss of 30 count as 900, more than A's four misses of 100 each.
+      - id: d
+        text: They fit equally well, because each setting's largest miss is a multiple of 10
+        correct: false
+        category: incorrect_reasoning
+        feedback: The size of the largest miss does not settle the fit; work out each setting's average squared error.
+    solution: Setting A's MSE is $(100+100+100+100)/4=100$. Setting B's is $(0+0+0+900)/4=225$. The smaller MSE, Setting A, fits better, because squaring makes B's one large miss count heavily.
   - id: slp-new-houses
     dimension: conceptual
     type: mc
@@ -663,93 +649,84 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 1
-    prompt: "A travel app predicts that a journey will take 25 minutes so you can decide when to leave. Is predicting the number of minutes regression or classification?"
+    prompt: A travel app uses a journey's distance, the weather (sunny, rainy or snowy) and the time of day to predict how long the journey will take, rounded to the nearest minute. Is this regression or classification?
     options:
-      - { id: a, text: "Regression, because the target is a number", correct: true }
-      - {
-          id: b,
-          text: "Classification, because journey times are categories",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "A duration measured in minutes is a numerical quantity, not a category. Decide based on what the app is asked to output.",
-        }
-      - {
-          id: c,
-          text: "Classification, because the app uses inputs",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Using inputs does not make a task classification; both task types use inputs. The distinction is whether the output is a measured number or a label.",
-        }
-      - {
-          id: d,
-          text: "Neither, because the target is not a house price",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "A predicted quantity need not be a house price to be regression. Look at whether this target is numerical or categorical.",
-        }
-    solution: "The target is a number of minutes, so this is regression."
+      - id: a
+        text: Regression, because the target is an amount of time that can take many values
+        correct: true
+        feedback: The output is a measured amount, so this is regression, even though the inputs include a category.
+      - id: b
+        text: Classification, because the weather input is one of three categories
+        correct: false
+        category: misunderstood_definition
+        feedback: The task type depends on the target, not the inputs. Here the target is a journey time.
+      - id: c
+        text: Classification, because rounding to whole minutes makes each time a category
+        correct: false
+        category: misunderstood_definition
+        feedback: Rounding changes the precision of a number but it is still an amount; 26 minutes is more than 25.
+      - id: d
+        text: Regression, because the distance and time of day are numbers
+        correct: false
+        category: incorrect_reasoning
+        feedback: Numeric inputs don't make a task regression; it's regression because the target is a number.
+    solution: The target is a journey time in minutes, an amount, so this is regression. The task type is decided by the target, whatever the inputs look like.
   - id: slp-target-type-parcel
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 3
     est_minutes: 1
-    prompt: "A delivery service chooses between two labels, today and tomorrow, to tell a customer when a parcel will arrive. What kind of prediction task is this?"
+    prompt: A delivery service uses a parcel's weight in kilograms and its distance in kilometres to predict whether it will arrive on time or late. What kind of prediction task is this?
     options:
-      - { id: a, text: "Classification, because the target is a category", correct: true }
-      - {
-          id: b,
-          text: "Regression, because the target is a number",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "The arrival choice is one of two labels, not a measured amount. The number of possible labels does not determine whether the task is regression.",
-        }
-      - {
-          id: c,
-          text: "Regression, because there are two possible answers",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Two possible answers can still be categories; the count alone does not make them numerical values. Consider what “today” and “tomorrow” mean here.",
-        }
-      - {
-          id: d,
-          text: "Neither, because delivery status cannot be predicted",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "Delivery status can be predicted from information such as tracking history. Focus on whether the desired output is one of two labels or a numerical measurement.",
-        }
-    solution: "Today and tomorrow are categories, so predicting which one applies is classification."
+      - id: a
+        text: Classification, because the target is one of two outcomes, on time or late
+        correct: true
+        feedback: On time and late are categories, so predicting which one applies is classification.
+      - id: b
+        text: Regression, because the weight and distance inputs are numbers
+        correct: false
+        category: misunderstood_definition
+        feedback: The task type is decided by the target, not the inputs. Here the target is on time or late.
+      - id: c
+        text: Regression, because lateness depends on how many kilometres the parcel travels
+        correct: false
+        category: incorrect_reasoning
+        feedback: The inputs can be numbers that the answer depends on, but the output is still a category.
+      - id: d
+        text: Classification, because the model uses exactly two inputs
+        correct: false
+        category: incorrect_reasoning
+        feedback: The number of inputs doesn't decide the task type; the kind of target does.
+    solution: The target is on time or late, which are categories, so this is classification, even though both inputs are numbers.
   - id: slp-low-training-loss
     dimension: conceptual
     type: mc
     role: practice
     difficulty: 3
     est_minutes: 1
-    prompt: "A model has average loss 1 on the 100 houses used to choose its settings. A family wants to price a different house. Why does the small training loss alone not show that the model will help them?"
+    prompt: A model has average loss 1 on the 100 houses used to choose its settings. A family wants to price a different house. Why does the small training loss alone not show that the model will help them?
     options:
-      - { id: a, text: "It may still predict poorly for houses it has not seen", correct: true }
-      - {
-          id: b,
-          text: "A small average loss means the target was a category",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "A small loss measures prediction error; it does not tell you whether the target was a category. The prompt describes a numeric price, but training performance alone says little about unseen houses.",
-        }
-      - {
-          id: c,
-          text: "The training loss must always be larger than the loss on new houses",
-          correct: false,
-          category: incorrect_reasoning,
-          feedback: "Nothing forces the training loss to be larger than the loss on held-back sales; a model often fits its training examples especially well. Ask what a low training score tells you about houses not used to tune the settings.",
-        }
-      - {
-          id: d,
-          text: "A small loss means the model did not use its inputs",
-          correct: false,
-          category: misunderstood_definition,
-          feedback: "A small loss does not imply that the model ignored its inputs. It summarizes performance on the examples used to choose settings; consider how performance might change on a new house.",
-        }
-    solution: "A model can fit its training houses well but still predict new houses badly, so we test it on houses it did not train on."
+      - id: a
+        text: It may have fitted those 100 houses closely and still predict other houses poorly
+        correct: true
+        feedback: Training loss only measures houses used to choose the settings, so new houses need their own check.
+      - id: b
+        text: Nothing is missing, because the loss on a new house will also be about 1
+        correct: false
+        category: incorrect_reasoning
+        feedback: A model can fit its training houses far better than new ones, so the training loss can be much lower than the loss on new houses.
+      - id: c
+        text: The loss will be even smaller on new houses, because 100 houses is plenty of data
+        correct: false
+        category: incorrect_reasoning
+        feedback: Nothing makes the loss on new houses smaller than the training loss; it is usually larger.
+      - id: d
+        text: A loss of 1 is in squared units, so it says nothing until it is square-rooted
+        correct: false
+        category: incorrect_reasoning
+        feedback: Squared units affect how you read the number, but the real gap is that these houses were used to choose the settings.
+    solution: A model can fit its training houses well but still predict new houses badly, so we test it on houses it did not train on.
   - id: slp-recover-prediction
     dimension: math
     type: numeric
