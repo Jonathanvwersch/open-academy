@@ -2,14 +2,14 @@ import type { AnswerOptions, AttemptResponse } from '@academy/contracts/exercise
 import type { SessionActivity } from '@academy/contracts/sessions';
 import { useQueries, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
 import { Markdown } from '../../components/markdown.js';
 import { SessionSkeleton } from '../../components/skeletons.js';
+import { ThinkingIndicator } from '../../components/thinking-indicator.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
-import { Skeleton } from '../../components/ui/skeleton.js';
 import { readBrowserStorage, writeBrowserStorage } from '../../lib/browser-storage.js';
 import { invalidateSidebarQueries, learnQueryOptions } from '../course/queries.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
@@ -74,6 +74,14 @@ export function SessionPage() {
   const [markingLessonViewed, setMarkingLessonViewed] = useState(false);
   const [stepRecap, setStepRecap] = useState<{ activityId: string; pointId: string } | null>(null);
   const hintButton = useRef<HTMLButtonElement>(null);
+  const questionFrame = useRef<HTMLDivElement>(null);
+  const questionContent = useRef<HTMLDivElement>(null);
+  const lastQuestionLayout = useRef<{ width: number; height: number; kind: string } | null>(null);
+  const [questionLayout, setQuestionLayout] = useState<{
+    key: string;
+    width: number;
+    height: number;
+  } | null>(null);
   const [timeAnchor, setTimeAnchor] = useState<{ serverTime: number; clientTime: number } | null>(
     null,
   );
@@ -182,6 +190,62 @@ export function SessionPage() {
     ...exerciseQueryOptions(lessonRunnerActive ? null : (exerciseId ?? null)),
     throwOnError: true,
   });
+  const questionLayoutKey = activity && exerciseId ? `${activity.id}:${exerciseId}` : '';
+  useLayoutEffect(() => {
+    const frame = questionFrame.current;
+    if (!frame || !questionLayoutKey || lessonRunnerActive) return;
+    const content =
+      !exerciseQuery.isPending &&
+      !currentResult &&
+      !recapPoint &&
+      !hints.length &&
+      !submitError &&
+      !tutorUnavailable
+        ? questionContent.current
+        : null;
+    let active = true;
+    const update = () => {
+      if (!active || !frame.isConnected || frame.getBoundingClientRect().width <= 0) return;
+      const width = Math.round(frame.getBoundingClientRect().width);
+      const previous = lastQuestionLayout.current;
+      setQuestionLayout((current) => {
+        if (current?.key === questionLayoutKey && current.width === width) return current;
+        return previous?.width === width && previous.kind === activity?.kind
+          ? { key: questionLayoutKey, width, height: previous.height }
+          : null;
+      });
+      // The minimum lives on the outer card, so its inner content remains an
+      // intrinsic measurement. Never record feedback or carry an imposed floor forward.
+      if (content && content.getBoundingClientRect().height > 0) {
+        lastQuestionLayout.current = {
+          width,
+          height: content.getBoundingClientRect().height,
+          kind: activity?.kind ?? '',
+        };
+      }
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(frame);
+    if (content) observer.observe(content);
+    void document.fonts.ready.then(update);
+    return () => {
+      active = false;
+      observer.disconnect();
+    };
+  }, [
+    activity?.kind,
+    currentResult,
+    exerciseQuery.isPending,
+    hints.length,
+    lessonRunnerActive,
+    questionLayoutKey,
+    recapPoint,
+    submitError,
+    tutorUnavailable,
+  ]);
+  const questionMinHeight =
+    questionLayout?.key === questionLayoutKey ? questionLayout.height : undefined;
   const activityScrollKey = activity
     ? `${activity.id}:${activity.progress?.lessonViewed ?? ''}`
     : '';
@@ -816,7 +880,7 @@ export function SessionPage() {
           </div>
         </section>
       ) : null}
-      <div hidden={Boolean(recapPoint)} className="space-y-6">
+      <div ref={questionFrame} hidden={Boolean(recapPoint)} className="space-y-6">
         {progressError ? (
           <p role="alert" className="text-sm text-destructive">
             {progressError}
@@ -828,22 +892,22 @@ export function SessionPage() {
             role="status"
             aria-label="Loading question"
             aria-busy="true"
+            style={{ minHeight: questionMinHeight }}
           >
-            <CardContent className="flex min-h-[34rem] flex-col gap-5 sm:min-h-[26rem]">
+            <CardContent className="flex flex-1 flex-col gap-5">
               <QuestionProgress states={questionStates} />
-              <div className="space-y-2" aria-hidden="true">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-11/12" />
-                <Skeleton className="h-4 w-2/3" />
+              <div className="flex flex-1 items-center justify-center py-6">
+                <ThinkingIndicator />
               </div>
-              <div className="h-24 rounded-md border" aria-hidden="true" />
-              <Skeleton className="mt-auto h-10 w-48 max-w-full" />
-              <span className="sr-only">Loading question</span>
             </CardContent>
           </Card>
         ) : exerciseQuery.data ? (
-          <Card data-testid="session-exercise" data-exercise-container="">
-            <CardContent className="space-y-5">
+          <Card
+            data-testid="session-exercise"
+            data-exercise-container=""
+            style={{ minHeight: questionMinHeight }}
+          >
+            <CardContent ref={questionContent} className="space-y-5">
               <QuestionProgress states={questionStates} />
               <div data-testid="exercise-prompt">
                 <Markdown>{exerciseQuery.data.prompt}</Markdown>
