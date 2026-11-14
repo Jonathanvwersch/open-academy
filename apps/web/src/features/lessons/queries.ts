@@ -27,14 +27,14 @@ export const lessonReviewQueryOptions = (conceptId: string) =>
       ),
   });
 
-export const lessonRunQueryOptions = (conceptId: string | null) =>
+export const lessonRunQueryOptions = (conceptId: string | null, activityId?: string) =>
   queryOptions({
     queryKey: ['lesson-run', conceptId] as const,
     queryFn: () =>
       conceptId
         ? getJson<LessonRunPayload>(
-            `/api/lessons/${encodeURIComponent(conceptId)}/run`,
+            `/api/lessons/${encodeURIComponent(conceptId)}/run${activityId ? `?activityId=${encodeURIComponent(activityId)}` : ''}`,
             'Lesson progress unavailable',
           )
-        : Promise.resolve({ run: null }),
+        : Promise.resolve({ run: null, course: null }),
   });

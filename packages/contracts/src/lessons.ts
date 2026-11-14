@@ -26,6 +26,7 @@ export interface LessonPayload {
 }
 
 export interface LessonReviewPayload {
+  course: LessonCourse | null;
   lesson: LessonPayload;
   checkAnswers: Record<string, string>;
   checks: Record<string, ExercisePayload>;
@@ -34,6 +35,7 @@ export interface LessonReviewPayload {
 }
 
 export interface LessonRunPayload {
+  course: LessonCourse | null;
   run: null | {
     id: string;
     needsProgressSync?: boolean;
@@ -152,6 +154,13 @@ export interface LessonRunAnswerPayload {
 }
 
 export type LessonPrerequisite = { id: string; title: string; recap?: string };
+export type LessonCourse = {
+  id: string;
+  title: string;
+  unitNumber: number;
+  unitTitle: string;
+  position: string;
+};
 
 export type QuizReviewPayload = {
   attemptId: string;

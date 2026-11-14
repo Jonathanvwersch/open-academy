@@ -35,6 +35,7 @@ import {
   xpForPassedPoint,
 } from '../../learning/lesson-runner.js';
 import { calculateCredit } from '../../learning/mastery.js';
+import { resolveLessonCourse } from './course-context.js';
 
 type LessonContext = Context<ApiEnv>;
 
@@ -390,6 +391,14 @@ export function registerLessonRunRoutes(
       .where(and(eq(lessonRuns.userId, context.get('userId')), eq(lessonRuns.conceptId, conceptId)))
       .limit(1);
     return context.json({
+      course: await resolveLessonCourse(
+        deps.db,
+        deps.withRepo(context),
+        resolved.index,
+        context.get('userId'),
+        conceptId,
+        context.req.query('activityId'),
+      ),
       run: run ? await runState(context, resolved.lesson, resolved.index, run) : null,
     });
   });
@@ -521,7 +530,17 @@ export function registerLessonRunRoutes(
       });
       return existing;
     });
-    return context.json({ run: await runState(context, resolved.lesson, resolved.index, run) });
+    return context.json({
+      course: await resolveLessonCourse(
+        deps.db,
+        deps.withRepo(context),
+        resolved.index,
+        context.get('userId'),
+        conceptId,
+        body.data.activityId,
+      ),
+      run: await runState(context, resolved.lesson, resolved.index, run),
+    });
   });
 
   api.post('/lessons/:conceptId/run/practice', async (context) => {
@@ -657,6 +676,14 @@ export function registerLessonRunRoutes(
       .where(eq(lessonRuns.id, result.run.id))
       .limit(1);
     return context.json({
+      course: await resolveLessonCourse(
+        deps.db,
+        deps.withRepo(context),
+        resolved.index,
+        context.get('userId'),
+        conceptId,
+        body.data.activityId,
+      ),
       run: run ? await runState(context, resolved.lesson, resolved.index, run) : null,
     });
   });
@@ -1032,6 +1059,14 @@ export function registerLessonRunRoutes(
       .where(eq(lessonRuns.id, result.runId))
       .limit(1);
     return context.json({
+      course: await resolveLessonCourse(
+        deps.db,
+        deps.withRepo(context),
+        resolved.index,
+        context.get('userId'),
+        conceptId,
+        body.data.activityId,
+      ),
       run: run ? await runState(context, resolved.lesson, resolved.index, run) : null,
     });
   });
@@ -1114,6 +1149,14 @@ export function registerLessonRunRoutes(
       .limit(1);
     return context.json({
       saved: true,
+      course: await resolveLessonCourse(
+        deps.db,
+        deps.withRepo(context),
+        resolved.index,
+        context.get('userId'),
+        conceptId,
+        body.data.activityId,
+      ),
       run: run ? await runState(context, resolved.lesson, resolved.index, run) : null,
     });
   });
@@ -1376,6 +1419,14 @@ export function registerLessonRunRoutes(
     const state = run ? await runState(context, resolved.lesson, resolved.index, run) : null;
     return context.json({
       run: state,
+      course: await resolveLessonCourse(
+        deps.db,
+        deps.withRepo(context),
+        resolved.index,
+        context.get('userId'),
+        conceptId,
+        body.data.activityId,
+      ),
       xpAwarded: result.kind === 'submitted' ? result.xpAwarded : 0,
     });
   });

@@ -2,6 +2,7 @@ import type { ContentIndex, IndexedConcept, IndexedCourse } from '../../content/
 import type { LearnerRepository } from '../../db/repository.js';
 import type { lessonRuns } from '../../db/schema.js';
 import { lowestMasteryState, masteryLabel, topicStatus } from '../../learning/course-status.js';
+import { courseTopicPosition } from '../../learning/lesson-course-context.js';
 import {
   activeCourseFor,
   compareOutlinePosition,
@@ -157,7 +158,7 @@ function buildUnits(
         const concept = index.conceptsById.get(conceptId);
         if (!concept) {
           return {
-            number: `${unitIndex + 1}.${topicIndex + 1}`,
+            number: courseTopicPosition(unitIndex, topicIndex),
             conceptId,
             title: conceptId,
             hasLesson: false,
@@ -187,7 +188,7 @@ function buildUnits(
           candidate.prereqs.some((prerequisite) => prerequisite.id === concept.id),
         );
         return {
-          number: `${unitIndex + 1}.${topicIndex + 1}`,
+          number: courseTopicPosition(unitIndex, topicIndex),
           conceptId,
           title: concept.title,
           hasLesson: index.lessonsByConcept.has(concept.id),

@@ -36,7 +36,7 @@ export const Route = createFileRoute('/session/$id')({
       const [lesson] = await Promise.all([
         queryClient.ensureQueryData(lessonQueryOptions(activity.conceptId)),
         activity.kind === 'learn'
-          ? queryClient.ensureQueryData(lessonRunQueryOptions(activity.conceptId))
+          ? queryClient.ensureQueryData(lessonRunQueryOptions(activity.conceptId, activity.id))
           : Promise.resolve(null),
       ]);
       await Promise.all([

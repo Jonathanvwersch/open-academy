@@ -117,6 +117,10 @@ export class LearnerRepository {
       this.studySetInitialized = true;
     }
 
+    return this.activeStudyCourseIds(content);
+  }
+
+  async activeStudyCourseIds(content: ContentIndex): Promise<string[]> {
     const activeCourseIds = new Set(
       (await this.courseEnrollments())
         .filter((enrollment) => enrollment.status === 'active')
