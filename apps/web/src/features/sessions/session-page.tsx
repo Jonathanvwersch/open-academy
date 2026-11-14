@@ -763,8 +763,15 @@ export function SessionPage() {
           aria-label="Loading question"
           aria-busy="true"
         >
-          <CardContent>
-            <Skeleton className="h-64 w-full" />
+          <CardContent className="flex min-h-[36rem] flex-col gap-5 sm:min-h-[26rem]">
+            <QuestionProgress states={questionStates} />
+            <div className="space-y-2" aria-hidden="true">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-11/12" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+            <div className="h-24 rounded-md border" aria-hidden="true" />
+            <Skeleton className="mt-auto h-10 w-48 max-w-full" />
             <span className="sr-only">Loading question</span>
           </CardContent>
         </Card>

@@ -104,27 +104,45 @@ test('prefetches the next review topic before continuing and keeps the page moun
   for (const id of nextIds) expect(requests.filter((request) => request === id)).toHaveLength(1);
 });
 
-test('a delayed next question loads only its card', async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  let release!: () => void;
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
+for (const viewport of [
+  { width: 1440, height: 900, name: 'desktop' },
+  { width: 390, height: 844, name: 'mobile' },
+]) {
+  test(`a delayed next question loads only its card at ${viewport.name}`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize(viewport);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(`**/api/exercises/${nextIds[0]}`, async (route) => {
+      await gate;
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await route.fallback();
+    });
+    await page.goto(`/session/${sessionId}`);
+    await finishFirstTopic(page);
+    await observeTransition(page);
+    release();
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Derivatives', exact: true })).toBeVisible();
+    await expect(page.getByTestId('question-loading')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Review', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'View full lesson' })).toBeVisible();
+    await expect(
+      page.getByTestId('question-loading').getByTestId('question-progress'),
+    ).toBeVisible();
+    const loadingBox = await page.getByTestId('question-loading').boundingBox();
+    await page.screenshot({ path: testInfo.outputPath('delayed-question.png') });
+    await expect(page.getByTestId('session-exercise')).toBeVisible();
+    const loadedBox = await page.getByTestId('session-exercise').boundingBox();
+    console.log(
+      `Question card heights (${viewport.name}): loading=${loadingBox?.height}, loaded=${loadedBox?.height}`,
+    );
+    expect(loadingBox).not.toBeNull();
+    expect(loadedBox).not.toBeNull();
+    expect(Math.abs((loadingBox?.height ?? 0) - (loadedBox?.height ?? 0))).toBeLessThanOrEqual(24);
+    expect(await page.evaluate(() => Reflect.get(window, 'transitionState').skeleton)).toBe(false);
   });
-  await page.route(`**/api/exercises/${nextIds[0]}`, async (route) => {
-    await gate;
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    await route.fallback();
-  });
-  await page.goto(`/session/${sessionId}`);
-  await finishFirstTopic(page);
-  await observeTransition(page);
-  release();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Derivatives', exact: true })).toBeVisible();
-  await expect(page.getByTestId('question-loading')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Review', exact: true })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'View full lesson' })).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath('delayed-question.png') });
-  await expect(page.getByTestId('session-exercise')).toBeVisible();
-  expect(await page.evaluate(() => Reflect.get(window, 'transitionState').skeleton)).toBe(false);
-});
+}
