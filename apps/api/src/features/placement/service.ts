@@ -269,7 +269,7 @@ export async function getPlacementResults(deps: FeatureServices, request: Featur
   const sessionKind = sessionKindForDate(localDate);
   const firstTopic =
     planSession(
-      schedulerState,
+      { ...schedulerState, activeCourseId: state.courseId },
       content,
       request.now(),
       sessionBudget(sessionKind, prefs, localDate),

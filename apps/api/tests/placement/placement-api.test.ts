@@ -525,17 +525,76 @@ test('a correctly answered single-dimension topic keeps its placed-out badge wit
     const events = await db.select().from(masteryEvents).where(eq(masteryEvents.userId, userId));
     expect(
       events.filter(
-        (event) =>
-          event.conceptId === conceptId && event.rule === 'placement_placed_out',
+        (event) => event.conceptId === conceptId && event.rule === 'placement_placed_out',
       ),
     ).toHaveLength(0);
     const coursePayload = await get('/course').then((response) => response.json());
     const topic = coursePayload.units
-      .flatMap((unit: { topics: Array<{ conceptId: string; status: string; placedOut: boolean }> }) =>
-        unit.topics,
+      .flatMap(
+        (unit: { topics: Array<{ conceptId: string; status: string; placedOut: boolean }> }) =>
+          unit.topics,
       )
       .find((entry: { conceptId: string }) => entry.conceptId === conceptId);
     expect(topic).toMatchObject({ status: 'complete', placedOut: true });
+  } finally {
+    app = originalApp;
+    content = originalContent;
+  }
+});
+
+test('placement results keep their first topic after switching courses', async () => {
+  const originalApp = app;
+  const originalContent = content;
+  const realContent = await loadContent('content');
+  content = realContent;
+  app = createApp({ db, content, tutorProvider: null });
+
+  try {
+    const placementCourseId = 'ml-foundations';
+    const activeCourse = await put('/course/active', { courseId: placementCourseId });
+    expect(activeCourse.status).toBe(200);
+    const start = await post('/placement', {});
+    const { id } = (await start.json()) as { id: string };
+    let complete = false;
+    for (let answerCount = 0; answerCount < 16 && !complete; answerCount += 1) {
+      const question = await get(`/placement/${id}/next`).then((response) => response.json());
+      if (question.complete) {
+        complete = true;
+        break;
+      }
+      const exercise = realContent.exercisesById.get(question.exercise.id);
+      if (!exercise) throw new Error('Missing placement exercise in content');
+      const response = await post(`/placement/${id}/answer`, {
+        exerciseId: exercise.id,
+        answer: correctAnswer(exercise),
+      });
+      expect(response.status).toBe(200);
+      complete = (await response.json()).complete;
+    }
+    expect(complete).toBe(true);
+
+    const todayBeforeSwitch = await get('/today').then((response) => response.json());
+    const firstLearnId = todayBeforeSwitch.plan.activities.find(
+      (activity: { kind: string; conceptId?: string }) => activity.kind === 'learn',
+    )?.conceptId;
+    if (!firstLearnId) throw new Error('Placement course has no next learning topic');
+
+    let switchedCourse = false;
+    for (const course of realContent.courses.filter((entry) => entry.id !== placementCourseId)) {
+      const switched = await put('/course/active', { courseId: course.id });
+      expect(switched.status).toBe(200);
+      const today = await get('/today').then((response) => response.json());
+      const firstLearn = today.plan.activities.find(
+        (activity: { kind: string; conceptId?: string }) => activity.kind === 'learn',
+      )?.conceptId;
+      if (firstLearn && firstLearn !== firstLearnId) {
+        switchedCourse = true;
+        break;
+      }
+    }
+    expect(switchedCourse).toBe(true);
+    const results = await get(`/placement/${id}/results`).then((response) => response.json());
+    expect(results.firstTopic).toBe(realContent.conceptsById.get(firstLearnId)?.title);
   } finally {
     app = originalApp;
     content = originalContent;
