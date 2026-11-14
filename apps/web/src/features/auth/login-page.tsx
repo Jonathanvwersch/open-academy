@@ -2,12 +2,12 @@ import { getRouteApi } from '@tanstack/react-router';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
+import { BrandLockup } from '../../components/brand-lockup.js';
 import { Alert, AlertDescription } from '../../components/ui/alert.js';
 import { Button } from '../../components/ui/button.js';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
+import { Card, CardContent, CardHeader } from '../../components/ui/card.js';
 import { Input } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
-import { Logo } from '../../components/ui/logo.js';
 
 const Route = getRouteApi('/login');
 function safeRedirectPath(path: string | undefined): string {
@@ -53,8 +53,9 @@ export function LoginPage() {
     <main className="flex min-h-svh items-center justify-center bg-background px-4 py-8">
       <Card className="w-full max-w-sm gap-6">
         <CardHeader className="gap-3">
-          <Logo className="size-8" />
-          <CardTitle className="text-xl">Open Academy</CardTitle>
+          <h1>
+            <BrandLockup />
+          </h1>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={login}>

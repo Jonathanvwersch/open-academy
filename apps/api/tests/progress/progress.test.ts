@@ -21,6 +21,7 @@ function progressInput(
     flags: [],
     submissions: [],
     sessions: [],
+    xpEvents: [],
     now: new Date('2026-01-02T00:30:00.000Z'),
     timeZone: 'UTC',
     ...overrides,
@@ -79,7 +80,7 @@ describe('buildProgress', () => {
     expect(result.hours).toBe(2);
   });
 
-  it('stops elapsed-time accumulation for abandoned sessions and keeps their study day', () => {
+  it('stops elapsed-time accumulation for abandoned sessions without awarding a streak', () => {
     const result = buildProgress(
       progressInput({
         now: new Date('2026-01-02T00:30:00.000Z'),
@@ -98,7 +99,7 @@ describe('buildProgress', () => {
       }),
     );
     expect(result.hours).toBeCloseTo(1 / 3);
-    expect(result.streakDays).toBe(2);
+    expect(result.streakDays).toBe(0);
   });
 
   it('does not accrue stale active-session time after the learner local day changes', () => {
@@ -118,11 +119,15 @@ describe('buildProgress', () => {
     expect(result.hours).toBeCloseTo(1 / 6);
   });
 
-  it('counts a streak by local dates across a UTC date boundary', () => {
+  it('counts a streak using XP dates recorded in the learner timezone', () => {
     const result = buildProgress(
       progressInput({
         now: new Date('2026-01-02T00:30:00.000Z'),
         timeZone: 'America/Los_Angeles',
+        xpEvents: [
+          { amount: 10, localDate: '2026-01-01' },
+          { amount: 10, localDate: '2025-12-31' },
+        ],
         sessions: [
           {
             activeSeconds: 600,

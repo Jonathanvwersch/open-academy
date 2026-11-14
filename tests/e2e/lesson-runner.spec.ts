@@ -542,9 +542,10 @@ test('lesson runner shows pulsing Thinking while preparing a question', async ({
     await createSession(page, true, false);
     const thinking = page.getByRole('status', { name: 'Thinking', exact: true });
     await expect(thinking).toBeVisible();
-    await expect(thinking.getByText('Thinking…')).toHaveCSS('animation-name', 'pulse');
+    const animatedTortoise = thinking.locator('span').first();
+    await expect(animatedTortoise).toHaveCSS('animation-name', 'pulse');
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await expect(thinking.getByText('Thinking…')).toHaveCSS('animation-name', 'none');
+    await expect(animatedTortoise).toHaveCSS('animation-name', 'none');
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await expect(page.getByTestId('route-skeleton')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('question-loading-desktop.png') });
@@ -1813,7 +1814,7 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
       await expect(action).toBeEnabled();
       await expect(action).not.toHaveAttribute('data-loading', 'true');
       await expect(action).toHaveAttribute('data-variant', 'default');
-      await expect(action).toHaveCSS('background-color', 'oklch(0.205 0 0)');
+      await expect(action).toHaveCSS('background-color', 'rgb(60, 73, 57)');
     }
   };
   await prepareQuizRetryScreenshot('Retry');

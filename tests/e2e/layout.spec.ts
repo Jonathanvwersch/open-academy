@@ -142,7 +142,7 @@ test('course route skeleton aligns with the Open Academy wordmark', async ({ pag
   await expect(skeleton).toBeVisible();
   const skeletonBounds = await skeleton.boundingBox();
   const wordmark = page.getByRole('link', { name: 'Open Academy', exact: true });
-  await expect(wordmark.locator('svg')).toHaveAttribute('viewBox', '0 0 16 16');
+  await expect(wordmark.locator('svg')).toBeVisible();
   const wordmarkBounds = await wordmark.boundingBox();
   expect(skeletonBounds).not.toBeNull();
   expect(wordmarkBounds).not.toBeNull();

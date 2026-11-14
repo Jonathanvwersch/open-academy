@@ -108,6 +108,21 @@ test('learners can switch to a listed course', async () => {
     active: true,
     topicsTotal: expect.any(Number),
   });
+  const learnPayload = await (await get('/learn')).json();
+  expect(learnPayload.streak).toMatchObject({
+    current: expect.any(Number),
+    longest: expect.any(Number),
+    todayComplete: expect.any(Boolean),
+    days: expect.any(Array),
+  });
+  expect(learnPayload.streak.days).toHaveLength(7);
+  expect(learnPayload.course).toMatchObject({
+    title: 'Robotics',
+    topicsTotal: coursePayload.units.reduce(
+      (total: number, unit: { topics: unknown[] }) => total + unit.topics.length,
+      0,
+    ),
+  });
 });
 
 test('switching to an unknown course returns 404 without changing learner state', async () => {

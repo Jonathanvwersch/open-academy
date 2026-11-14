@@ -23,6 +23,7 @@ import {
 } from '../../learning/prerequisites.js';
 import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
 import { planSession, type SessionKind, sessionBudget } from '../../learning/scheduler.js';
+import { buildStreak } from '../../learning/streak.js';
 import {
   averageDailyXp,
   coursePercent,
@@ -277,6 +278,7 @@ export function registerLearnCourseRoutes(
         ? estimatedFinishDate(topics.length - topicsDone, 0, todayLocal, prefs)
         : null;
     return context.json({
+      streak: buildStreak(events, todayLocal),
       today: {
         needsDiagnostic:
           (!diagnostic || diagnostic.status === 'active') && Boolean(index.diagnostic),
