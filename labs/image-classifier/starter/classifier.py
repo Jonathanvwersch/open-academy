@@ -11,12 +11,12 @@ def normalize(train, validation, test):
 def build_model(seed):
     torch.manual_seed(seed)
     # TODO: Conv2d(1, 8, 3, padding=1), ReLU, MaxPool2d(2), Flatten,
-    # Dropout(0.25), Linear(8 * 6 * 6, 1). Return the Sequential model.
+    # Dropout(0.25), Linear(8 * 6 * 6, 1). Return the Sequential model on device="cpu".
     raise NotImplementedError("Implement build_model")
 
 
 def train_epoch(model, x, y, optimizer, batch_size, seed):
-    order = torch.randperm(len(x), generator=torch.Generator().manual_seed(seed))
+    order = torch.randperm(len(x), generator=torch.Generator(device="cpu").manual_seed(seed), device="cpu")
     # TODO: Enable training mode. For each group in order.split(batch_size),
     # clear gradients, calculate binary_cross_entropy_with_logits on squeezed
     # model outputs, backpropagate, and update the supplied optimizer.

@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 from data import data
-from experiment import experiment
+from experiment import EPOCHS, SETTINGS, experiment
 
 
 IDS = ["test_train_only_normalization", "test_cnn_shapes_and_seed",
@@ -121,17 +121,30 @@ def run(candidate, seed):
         nonlocal records
         rows, selected, test_loss, test_accuracy = experiment(candidate, seed)
         records = rows
-        assert len(rows) == 24 and {r["weight_decay"] for r in rows} == {0.0, 0.01}
+        assert len(rows) == EPOCHS * len(SETTINGS)
+        assert {(r["weight_decay"], r["dropout"]) for r in rows} == set(SETTINGS)
         assert selected == min(range(len(rows)), key=lambda i: rows[i]["validation_loss"]), "Select across both runs using validation loss."
         assert all(math.isfinite(r[k]) for r in rows for k in ("train_loss", "validation_loss")), "Training produced nonfinite losses."
         metrics.update(validation_accuracy=rows[selected]["validation_accuracy"],
                        test_accuracy=test_accuracy, test_loss=test_loss)
+        baseline = [r for r in rows if r["weight_decay"] == 0]
+        regularized = [r for r in rows if r["weight_decay"] > 0]
+        best_baseline = min(baseline, key=lambda r: r["validation_loss"])
+        best_regularized = min(regularized, key=lambda r: r["validation_loss"])
+        rise = baseline[-1]["validation_loss"] - best_baseline["validation_loss"]
+        gain = best_baseline["validation_loss"] - best_regularized["validation_loss"]
+        metrics.update(baseline_overfit_rise=rise, regularization_gain=gain)
+        assert best_baseline["epoch"] < EPOCHS - 5, "The baseline should reach its validation minimum before training ends."
+        assert baseline[-1]["train_loss"] < best_baseline["train_loss"] * 0.5, "After the baseline validation minimum, training loss should fall by more than half. Check that training continues for all epochs."
+        assert rise > 0.2, "The unregularised baseline should overfit: final validation loss must exceed its minimum by more than 0.20. Check that baseline dropout and weight decay are both zero."
+        assert gain > 0.01, "Regularisation should lower best validation loss by more than 0.01. Check dropout, weight decay and evaluation mode."
+        assert rows[selected]["weight_decay"] > 0, "Keep the regularised checkpoint with the lowest validation loss."
 
     def quality():
         assert metrics, "Complete the controlled regularization experiment first."
-        assert metrics["validation_accuracy"] >= 0.9, "Validation accuracy should reach 0.90. Check training mode, gradients and image layout."
-        assert metrics["test_accuracy"] >= 0.9, "The selected model should reach 0.90 on unseen test images."
-        assert metrics["test_loss"] < 0.3, "Test binary loss should fall below 0.30."
+        assert metrics["validation_accuracy"] > 0.74, "Validation accuracy should exceed 0.74. Check training mode, gradients and image layout."
+        assert metrics["test_accuracy"] > 0.65, "The selected model should exceed 0.65 accuracy on unseen test images."
+        assert metrics["test_loss"] < 0.65, "Test binary loss should fall below 0.65."
 
     for name, function in zip(IDS, (normalization, architecture, minibatches, evaluation, selection, comparison, quality)):
         check(name, function)

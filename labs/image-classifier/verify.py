@@ -25,6 +25,7 @@ def main():
     parser.add_argument("--output", type=Path, default=ROOT / "work/results.json")
     parser.add_argument("--seed", type=int, default=7)
     args = parser.parse_args()
+    torch.set_default_device("cpu")
     torch.set_num_threads(1)
     torch.use_deterministic_algorithms(True)
     suite = load(ROOT / "tests/checks.py", "image_checks")

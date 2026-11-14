@@ -6,28 +6,28 @@ exercises:
     role: core
     difficulty: 3
     est_minutes: 3
-    prompt: "Two image-classifier runs use the same data split, starting weights and mini-batch order. Run A uses weight decay 0 and has best validation loss 0.18. Run B uses weight decay 0.01 and has best validation loss 0.22. Which run would you keep? Explain the purpose of weight decay and what this comparison tells you about using it on other datasets."
+    prompt: "Two image-classifier runs use the same data split, starting weights and mini-batch order. Run A uses weight decay 0 and dropout 0, with best validation loss 0.54. Run B uses weight decay 0.1 and dropout 0.25, with best validation loss 0.48. Which run would you keep? Explain how the two methods affect training and whether this comparison shows which method contributed more."
     rubric:
       - {
           id: choice,
-          criterion: "Keeps run A because its best validation loss is lower.",
+          criterion: "Keeps run B because its best validation loss is lower.",
           weight: 1,
           required: true,
         }
       - {
           id: mechanism,
-          criterion: "Explains that weight decay shrinks weights and can reduce overfitting.",
+          criterion: "Explains that weight decay shrinks weights and dropout randomly removes activations during training, which can reduce overfitting.",
           weight: 1,
           required: true,
         }
       - {
           id: limits,
-          criterion: "Limits the conclusion to this controlled comparison and avoids claiming that weight decay always helps or always hurts.",
+          criterion: "Explains that changing both methods together measures their combined effect and proposes separate runs to distinguish their contributions.",
           weight: 1,
           required: true,
         }
-    exemplar: "I would keep run A because 0.18 is the lower validation loss. Weight decay shrinks weights and can reduce overfitting, but here the tested nonzero setting did worse. The comparison holds the split and random choices fixed, so it isolates this setting within these runs. Other datasets or decay strengths could give different results."
-    solution: "Keep run A by validation loss. Weight decay can reduce overfitting by shrinking weights, but its benefit depends on the data and setting."
+    exemplar: "I would keep run B because 0.48 is the lower validation loss. Weight decay shrinks weights. Dropout randomly removes activations during training, which limits reliance on particular activations. Both can reduce overfitting. Since both settings changed, this comparison shows their combined benefit. I would also run each method alone with the same split and seeds to separate their contributions."
+    solution: "Keep run B by validation loss. Separate runs with weight decay alone and dropout alone are needed to distinguish their contributions."
   - id: rg-penalty-basics
     dimension: conceptual
     type: mc

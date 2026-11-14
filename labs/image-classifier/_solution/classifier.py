@@ -13,14 +13,14 @@ def build_model(seed):
     return nn.Sequential(
         nn.Conv2d(1, 8, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),
         nn.Flatten(), nn.Dropout(0.25), nn.Linear(8 * 6 * 6, 1),
-    )
+    ).to(device="cpu")
 
 
 def train_epoch(model, x, y, optimizer, batch_size, seed):
     model.train()
     if len(x) == 0:
         return
-    order = torch.randperm(len(x), generator=torch.Generator().manual_seed(seed))
+    order = torch.randperm(len(x), generator=torch.Generator(device="cpu").manual_seed(seed), device="cpu")
     for indices in order.split(batch_size):
         optimizer.zero_grad()
         logits = model(x[indices]).squeeze(1)

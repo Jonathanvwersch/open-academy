@@ -4,9 +4,9 @@ status: authored
 est_hours: 5
 objective: "Train a small CNN on a provided image dataset in PyTorch, diagnose overfitting, and compare regularisation strategies."
 background: |
-  A small convolutional network can learn to tell horizontal bars from vertical bars. You will train one on 400 generated grayscale images. Each image has one channel and measures 12 by 12 pixels. The bars move between images, and each background contains noise.
+  A small convolutional network can learn to tell horizontal bars from vertical bars. You will train one using just 96 generated grayscale images, with 400 validation images and 400 test images held aside. Each image has one channel and measures 12 by 12 pixels. The bars move between images, and strong background noise makes their direction harder to see. About one label in eight is deliberately reversed to model annotation mistakes.
 
-  You already know how convolutions share weights, how mini-batches estimate gradients, and how validation curves guide training choices. Here you will put those ideas together in PyTorch. You will also fix a planted evaluation bug and compare two weight-decay settings. This simple dataset can reveal training mistakes, but success here says little about performance on photographs.
+  You already know how convolutions share weights, how mini-batches estimate gradients, and how validation curves guide training choices. Here you will put those ideas together in PyTorch. The unregularised network learns training details that hurt validation predictions. You will diagnose that overfitting, compare it with weight decay plus dropout, and fix a planted evaluation bug. Success on these generated images says little about performance on photographs.
 
   The generator, split, optimizer setup, checkpoint storage and final test scoring are provided. Everything runs locally on a laptop CPU. The verifier needs no network access after installation. The app records your results without running your code.
 
@@ -35,13 +35,13 @@ tasks:
   - id: t-normalize
     title: Scale the images
     md: |
-      Inspect `data.py`. It creates independent training, validation and test sets of 240, 80 and 80 images. Each split has equal numbers of both classes. Label 0 means horizontal; label 1 means vertical. The image layout is `(batch, channel, height, width)`.
+      Inspect `data.py`. It creates independent training, validation and test sets of 96, 400 and 400 images. Each split has equal numbers of both target labels. Label 0 means horizontal; label 1 means vertical before deliberate annotation mistakes reverse about one in eight labels. Pixel noise has standard deviation 0.5, and each bar adds 0.8 to its pixels. These generated intensities can fall outside the usual display range. The image layout is `(batch, channel, height, width)`.
 
       Implement `normalize(train, validation, test)`. Compute a single mean and population standard deviation from training pixels. Clamp the standard deviation to at least `1e-6`. Use those two values to scale all three splits. Return three new tensors in the same order and leave the inputs unchanged. You are done when the training pixels have mean near zero and standard deviation near one, and `test_train_only_normalization` passes.
   - id: t-cnn
     title: Build a small network
     md: |
-      Implement `build_model(seed)` using the seeded initialization in the starter. Return a `Sequential` model with `Conv2d(1, 8, 3, padding=1)`, `ReLU`, `MaxPool2d(2)`, `Flatten`, `Dropout(0.25)` and `Linear(8 * 6 * 6, 1)` in that order. Pooling halves each spatial dimension, so the linear layer receives 288 values per image.
+      Implement `build_model(seed)` using the seeded initialization in the starter. Return a `Sequential` model on `device="cpu"` with `Conv2d(1, 8, 3, padding=1)`, `ReLU`, `MaxPool2d(2)`, `Flatten`, `Dropout(0.25)` and `Linear(8 * 6 * 6, 1)` in that order. Pooling halves each spatial dimension, so the linear layer receives 288 values per image. The experiment runner turns dropout off for the unregularised baseline.
 
       Return raw logits of shape `(batch, 1)`. A logit at least zero predicts label 1. The binary loss used next handles the sigmoid internally. You are done when batches of 1 and 5 images produce finite outputs with the required shape and `test_cnn_shapes_and_seed` passes.
   - id: t-minibatch
@@ -61,20 +61,22 @@ tasks:
     md: |
       Implement `choose_checkpoint(records)`. Return the index of the smallest `validation_loss`, keeping the first record on ties. Each record also contains `train_loss`, so check which field your code uses. An empty list should raise `ValueError`.
 
-      Read `experiment.py`. It trains for 12 epochs with Adam at learning rate 0.01 and batch size 32. It compares weight decay 0 and 0.01 with the same initialization and batch-order seeds. It saves each checkpoint, asks your function to select one across both runs, restores that checkpoint, and scores test images once. You are done when `test_validation_selection` passes.
+      Read `experiment.py`. It trains for 100 epochs with Adam at learning rate 0.01 and batch size 32. The baseline uses weight decay 0 and dropout 0. The regularised run uses weight decay 0.1 and dropout 0.25. Both start with the same weights and use the same batch-order seeds. This comparison tests the combined effect of two regularisation methods. It saves each checkpoint, asks your function to select one across both runs, restores that checkpoint, and scores test images once. You are done when `test_validation_selection` passes.
   - id: t-compare
     title: Compare the training curves
     md: |
-      Run the full verifier. Open `work/history.json`, which records training loss, validation loss and validation accuracy after each epoch for both weight-decay settings. Make a small table or plot of both loss curves. Find the best validation epoch for each setting, then compare their validation losses in `work/notes.md`.
+      Run the full verifier. Open `work/history.json`, which records training loss, validation loss and validation accuracy after each epoch for both settings. Plot both loss curves or make a table with each run's best validation epoch, training loss at that epoch, final training loss and final validation loss. Record the best validation loss for each run in `work/notes.md`.
 
-      If training loss falls while validation loss rises, explain what that suggests and which checkpoint you would keep. If you see no such interval, say so. Regularisation can help on harder data without improving this easy task. Keep the setting with the lowest validation loss even when it is the run without weight decay. All choices are finished before the final test score. You are done when all seven checks pass and the reported metrics meet the acceptance limits.
+      The baseline validation loss reaches a minimum early, then rises while training loss continues falling. Explain why this is overfitting and how the small training set and incorrect labels contribute. The regularised run has a lower best validation loss. Quantify that improvement and keep its best checkpoint. The checker requires baseline validation loss to rise by more than 0.20 after its minimum and regularisation to improve the best loss by more than 0.01. All choices are finished before the final test score. You are done when all seven checks pass and your notes connect both curves to the chosen checkpoint.
 acceptance:
   - "All seven public verifier checks pass."
   - "Training-only normalization, seeded initialization and mini-batch updates match the function contracts."
   - "Evaluation disables dropout and gradient recording, and repeated scores agree."
-  - "Both weight-decay runs use the same split, initialization and batch orders. Validation loss selects the checkpoint before test scoring."
-  - "Validation and test accuracy are at least 0.90, and test binary loss is below 0.30."
-  - "Your notes explain the planted bug and compare the two validation curves."
+  - "Both runs use the same split, initialization and batch orders. Validation loss selects the regularised checkpoint before test scoring."
+  - "After the baseline validation minimum, its training loss falls by more than half and its final validation loss rises by more than 0.20."
+  - "Weight decay plus dropout lowers the best validation loss by more than 0.01 compared with the baseline."
+  - "Validation accuracy exceeds 0.74, test accuracy exceeds 0.65, and test binary loss is below 0.65."
+  - "Your notes explain the planted bug, diagnose baseline overfitting and quantify the regularisation benefit."
 tests:
   - { id: test_train_only_normalization, concepts: [images-as-tensors], dimension: implementation }
   - { id: test_cnn_shapes_and_seed, concepts: [convolutions], dimension: implementation }
@@ -84,11 +86,23 @@ tests:
   - { id: test_regularization_comparison, concepts: [regularization], dimension: conceptual }
   - { id: test_held_out_accuracy, concepts: [convolutions], dimension: implementation }
 metrics:
-  - { id: validation_accuracy, label: "Validation accuracy", threshold: 0.90, direction: above }
-  - { id: test_accuracy, label: "Test accuracy", threshold: 0.90, direction: above }
-  - { id: test_loss, label: "Test binary loss", threshold: 0.30, direction: below }
+  - { id: validation_accuracy, label: "Validation accuracy", threshold: 0.74, direction: above }
+  - { id: test_accuracy, label: "Test accuracy", threshold: 0.65, direction: above }
+  - { id: test_loss, label: "Test binary loss", threshold: 0.65, direction: below }
+  - {
+      id: baseline_overfit_rise,
+      label: "Baseline validation loss rise",
+      threshold: 0.20,
+      direction: above,
+    }
+  - {
+      id: regularization_gain,
+      label: "Best validation loss improvement",
+      threshold: 0.01,
+      direction: above,
+    }
 reflection:
   [lab-image-classifier-dropout, lab-image-classifier-selection, lab-image-classifier-decay]
 follow_up:
   - "Generate noisier images and compare the validation curves with the same training budget. Keep a fresh test split for the final experiment."
-  - "Compare dropout probabilities 0 and 0.25 while holding weight decay fixed. Choose by validation loss."
+  - "Compare dropout alone, weight decay alone and their combination with the same seeds. Use validation loss to separate their effects."
