@@ -3,6 +3,7 @@ title: Mathematics for Machine Learning
 description: The linear algebra, calculus and probability that machine learning uses, as a course of its own.
 units:
   - title: Linear algebra
+    project: pca-numpy
     intro: "Vectors, dot products and matrices: how models store and combine numbers, plus eigenvalues and the SVD."
     concepts:
       - vectors

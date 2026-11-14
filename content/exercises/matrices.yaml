@@ -1,5 +1,22 @@
 concept: matrices
 exercises:
+  - id: lab-pca-numpy-coordinates
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: A batch contains 40 row vectors with 64 features each. Each vector is projected onto 3 retained directions. How many numbers are in the resulting coordinate matrix?
+    answer: 120
+    tolerance: { abs: 0 }
+    common_wrong:
+      - answer: 192
+        category: incorrect_reasoning
+        feedback: That counts entries in the direction matrix. The output has one row per example.
+      - answer: 2560
+        category: incorrect_reasoning
+        feedback: That counts entries before projection. Each output row has three coordinates.
+    solution: The coordinate matrix has 40 rows and 3 columns, so it contains $40\times3=120$ numbers.
   - id: mat-rows-shapes-basics
     dimension: conceptual
     type: mc

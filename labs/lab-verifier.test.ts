@@ -10,6 +10,54 @@ const buggy = resolve('labs/linreg-numpy/_solution/buggy.py');
 const nnVerifier = resolve('labs/verify.py');
 const nnSolution = resolve('labs/nn-from-scratch/_solution/nn.py');
 
+test.each([
+  ['reference', '_solution/pca.py', true, 9],
+  ['starter', 'starter/pca.py', false, 0],
+  ['uncentred', '_solution/buggy.py', false, 7],
+] as const)('PCA %s produces the expected evidence', (_name, implementation, passes, count) => {
+  const directory = mkdtempSync(join(tmpdir(), 'academy-lab-pca-'));
+  try {
+    const output = join(directory, 'results.json');
+    const run = () =>
+      execFileSync(
+        'python3',
+        [
+          nnVerifier,
+          'pca-numpy',
+          '--implementation',
+          resolve('labs/pca-numpy', implementation),
+          '--output',
+          output,
+        ],
+        { encoding: 'utf8' },
+      );
+    if (passes) run();
+    else expect(run).toThrow();
+    const result = JSON.parse(readFileSync(output, 'utf8')) as {
+      project: string;
+      tests: Array<{ id: string; passed: boolean; message: string }>;
+      metrics: { reconstruction_error_k3?: number; explained_variance_k3?: number };
+    };
+    expect(result.project).toBe('pca-numpy');
+    expect(result.tests).toHaveLength(9);
+    expect(result.tests.filter((check) => check.passed)).toHaveLength(count);
+    expect(result.tests.find((check) => check.id === 'test_centre')?.passed).toBe(passes);
+    if (passes) {
+      expect(result.metrics.reconstruction_error_k3).toBeLessThan(0.0002);
+      expect(result.metrics.explained_variance_k3).toBeGreaterThan(0.98);
+      expect(result.tests.find((check) => check.id === 'test_svd_sign_invariant')?.passed).toBe(
+        true,
+      );
+    } else {
+      expect(result.tests.find((check) => check.id === 'test_centre')?.message).toContain(
+        'Subtract column means',
+      );
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('reference linear regression solution passes deterministic verifier checks', () => {
   const directory = mkdtempSync(join(tmpdir(), 'academy-lab-'));
   try {
