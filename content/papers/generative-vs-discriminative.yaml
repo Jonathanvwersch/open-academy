@@ -1,0 +1,45 @@
+id: generative-vs-discriminative
+title: "On Discriminative vs. Generative Classifiers: A comparison of logistic regression and naive Bayes"
+authors: Andrew Y. Ng and Michael I. Jordan
+year: 2001
+est_minutes: 60
+source:
+  url: https://proceedings.neurips.cc/paper_files/paper/2001/file/7b7a53e239400a13bd6be6c91c4f6c4e-Paper.pdf
+concepts:
+  - logistic-regression
+  - maximum-likelihood
+why_this_week: You have learned logistic regression and maximum likelihood. This paper compares fitting the probability of a label given the input with fitting a joint model of inputs and labels. It shows why the amount of training data can change which classifier works best.
+how_to_read: Read Sections 1 and 2 for the two ways of fitting a classifier. Naive Bayes estimates class probabilities and feature probabilities within each class, then combines them to predict a label. Read the opening and conclusions of Section 3, leaving its sample-complexity proofs for later. Study Figure 1 and Sections 4 and 5. Track how test error changes with training-set size, and read the discussion's caution about regularization.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What two patterns of performance can appear as the training set grows, and how can a model with a higher limiting error still be useful?
+  - id: method
+    kind: method
+    prompt: What probabilities does the generative classifier fit, and what does the discriminative classifier fit? How does each produce a label prediction?
+  - id: evidence
+    kind: evidence
+    prompt: Choose a pair of crossing curves in Figure 1. Explain how they support the paper's claim about training-set size, and describe a case where the expected crossover is absent.
+  - id: limitations
+    kind: limitations
+    prompt: Why does the discussion's treatment of regularization limit how directly these results predict the best classifier for a practical task?
+summary:
+  prompt: In about five sentences, explain the two fitting approaches, why their learning curves can cross, the experimental evidence, and one limit on the comparison.
+  rubric:
+    - id: contribution
+      criterion: Explains that naive Bayes can work better with small training sets while the discriminative model can reach a lower error with more data
+      weight: 2
+      required: true
+    - id: method
+      criterion: Distinguishes fitting a joint model of inputs and labels from fitting label probabilities given inputs or directly fitting a classifier
+      weight: 2
+      required: true
+    - id: evidence
+      criterion: Describes the learning curves on the UCI datasets and notes that the predicted crossover appears in many cases but is absent in some small datasets
+      weight: 1
+      required: false
+    - id: limitation
+      criterion: Notes that the comparison uses specific model pairs and that practical regularization can change the model family and performance
+      weight: 1
+      required: false
+  exemplar: Ng and Jordan compare naive Bayes with its discriminative counterpart, logistic regression. The generative approach fits a joint model of inputs and labels, while the discriminative approach fits label predictions directly. Naive Bayes can approach its limiting error with fewer examples, so it can win on small training sets even when the discriminative model eventually reaches a lower error. Learning curves on UCI datasets support this pattern, though some small datasets show no crossover. Practical regularization can change the model family and the comparison.

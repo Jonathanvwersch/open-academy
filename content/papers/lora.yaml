@@ -1,0 +1,44 @@
+id: lora
+title: "LoRA: Low-Rank Adaptation of Large Language Models"
+authors: Hu et al.
+year: 2021
+est_minutes: 60
+source:
+  arxiv: 2106.09685v2
+concepts:
+  - lora
+why_this_week: You have learned how low-rank matrices can make fine-tuning cheaper. LoRA shows how to train small matrix factors while sharing the pretrained weights across tasks. Its experiments connect the choice of rank to the number of trainable parameters and task quality.
+how_to_read: Read Section 1 and Figure 1, then Sections 4.1 and 4.2 for the factorized update, merging and practical limits. Read Table 4 with Section 5.5 and Table 6 with Section 7.2. Compare task scores as well as parameter counts. Skip the detailed baselines, subspace analysis in Section 7.3 and the appendices on a first pass.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What does LoRA claim about the weight changes needed to adapt a pretrained language model to a task?
+  - id: method
+    kind: method
+    prompt: In Section 4.1, which weights are frozen, which matrices are trained, and how can their update be merged for inference?
+  - id: evidence
+    kind: evidence
+    prompt: How do Tables 4 and 6 support the claim that useful adaptation can use few trainable parameters? What happens when the rank increases?
+  - id: limitations
+    kind: limitations
+    prompt: Section 4.2 describes a batching problem after merging the weights. Why is serving several tasks in the same batch harder in this case?
+summary:
+  prompt: In about five sentences, explain LoRA's update, why it saves training resources, its experimental support, and one deployment limit.
+  rubric:
+    - id: contribution
+      criterion: Explains that task adaptation can use a low-rank weight change with far fewer trainable parameters
+      weight: 2
+      required: true
+    - id: method
+      criterion: Describes frozen pretrained weights plus a product of two trainable matrices, which can be merged into the weights for inference
+      weight: 2
+      required: true
+    - id: evidence
+      criterion: Uses the GPT-3 task comparisons or rank sweep to explain that small updates can achieve competitive scores and larger rank gives no consistent gain on the tested tasks
+      weight: 1
+      required: false
+    - id: limitation
+      criterion: Explains that merging different task updates produces different weight matrices, complicating mixed-task batches, or notes that small rank may fail on other tasks
+      weight: 1
+      required: false
+  exemplar: LoRA adapts a pretrained model by learning a low-rank change to selected weight matrices. It freezes the original weights and trains two smaller matrices whose product supplies the change. This reduces the gradients and optimizer state that training must store, and the update can be merged into the original weights for inference. The GPT-3 comparisons and rank sweep show competitive task scores with few trainable parameters, with no consistent benefit from increasing rank on the tested tasks. Merging task updates makes it harder to serve inputs for different tasks together in one batch.

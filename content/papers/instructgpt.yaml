@@ -1,0 +1,46 @@
+id: instructgpt
+title: Training language models to follow instructions with human feedback
+authors: Ouyang et al.
+year: 2022
+est_minutes: 75
+source:
+  arxiv: 2203.02155v1
+concepts:
+  - sft
+  - reward-models
+  - rlhf
+why_this_week: You have learned supervised fine-tuning, reward models and RLHF. InstructGPT connects them in one training process. It also shows why judging instruction following needs human evaluations alongside language-model benchmarks.
+how_to_read: Start with Figures 1 and 2 and Section 1. Read Sections 3.1 and 3.5 to follow demonstrations, comparisons and policy training. Read Section 4.1 for human evaluations and Sections 5.2 and 5.3 for whose preferences are learned and where the models still fail. Skim the reward equations, related work and public benchmark details. Skip the long appendices on the first pass.
+questions:
+  - id: claim
+    kind: claim
+    prompt: What does the comparison between the smaller InstructGPT model and the larger GPT-3 model show about improving instruction following?
+  - id: method
+    kind: method
+    prompt: What role do demonstrations, ranked responses and the learned reward each play in the three training stages?
+  - id: evidence
+    kind: evidence
+    prompt: How are the models compared in Figure 1 and Section 4.1? What makes that evidence relevant to the goal of following user instructions?
+  - id: limitations
+    kind: limitations
+    prompt: According to Sections 5.2 and 5.3, whose preferences shape InstructGPT, and what limits does that place on claims about alignment?
+summary:
+  prompt: In about five sentences, describe the training process, its human-evaluation evidence, and one limit on what the learned preferences guarantee.
+  rubric:
+    - id: contribution
+      criterion: Explains that fine-tuning with human feedback improves instruction following as judged by the study's labelers
+      weight: 2
+      required: true
+    - id: method
+      criterion: Describes supervised fine-tuning on demonstrations, reward learning from ranked outputs and PPO policy training with a penalty for drifting from the supervised model
+      weight: 2
+      required: true
+    - id: evidence
+      criterion: Notes that labelers prefer the 1.3B InstructGPT model to the 175B GPT-3 model on the study's API prompt distribution
+      weight: 1
+      required: false
+    - id: limitation
+      criterion: Identifies the limited labeler population and instructions as sources of the learned preferences, or notes remaining hallucinations and harmful outputs
+      weight: 1
+      required: false
+  exemplar: InstructGPT improves a pretrained model's instruction following through human feedback. It first learns from demonstrations, then a reward model learns from ranked responses. PPO trains the language model using that reward with a penalty for drifting from the supervised model. On the study's API prompts, labelers prefer the 1.3B InstructGPT model to the 175B GPT-3 model. These results reflect the study's labelers and instructions, and the models still make up facts and produce harmful outputs.

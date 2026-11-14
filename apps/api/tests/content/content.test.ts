@@ -138,14 +138,49 @@ test('source citations reject duplicate IDs, unknown references, and grounded le
   );
 });
 
-test('real authored papers load and are attached to course units', async () => {
+test('real authored papers load and every course unit has reading', async () => {
   const content = await loadContent('content');
 
   expect(content.papers.length).toBeGreaterThan(0);
   expect(content.papersById.size).toBe(content.papers.length);
-  expect(
-    content.courses.flatMap((course) => course.units.flatMap((unit) => unit.papers ?? [])),
-  ).toHaveLength(content.papers.length);
+  const units = content.courses.flatMap((course) => course.units);
+  expect(units.every((unit) => (unit.papers?.length ?? 0) > 0)).toBe(true);
+  expect(new Set(units.flatMap((unit) => unit.papers ?? []))).toEqual(
+    new Set(content.papers.map((paper) => paper.id)),
+  );
+});
+
+test('a paper can be assigned to multiple course units', async () => {
+  const data = await notationFixture();
+  const course = required(data.courses[0], 'course');
+  const unit = required(course.value.units[0], 'unit');
+  const secondUnit = required(course.value.units[1], 'second unit');
+  const paperId = required(unit.papers?.[0], 'paper assignment');
+  secondUnit.papers = [...(secondUnit.papers ?? []), paperId];
+  expect(validateContent(data)).toEqual([]);
+});
+
+test.each([
+  'arxiv.org',
+  'homes.cs.washington.edu',
+  'proceedings.neurips.cc',
+  'people.math.harvard.edu',
+])('paper validation accepts HTTPS PDFs on %s', async (host) => {
+  const data = await notationFixture();
+  firstPaper(data).value.source = { url: `https://${host}/paper.pdf` };
+  expect(validateContent(data)).toEqual([]);
+});
+
+test.each([
+  'http://proceedings.neurips.cc/paper.pdf',
+  'https://people.math.harvard.edu.example.com/paper.pdf',
+  'https://proceedings.neurips.cc/paper.html',
+])('paper validation rejects unsafe PDF URL %s', async (url) => {
+  const data = await notationFixture();
+  firstPaper(data).value.source = { url };
+  expect(validateContent(data).some((issue) => issue.message.includes('paper URL must be'))).toBe(
+    true,
+  );
 });
 
 test('authored neural-network project loads with its reflection exercises', async () => {

@@ -1,0 +1,45 @@
+id: dpo
+title: "Direct Preference Optimization: Your Language Model is Secretly a Reward Model"
+authors: Rafailov et al.
+year: 2023
+est_minutes: 75
+source:
+  arxiv: 2305.18290v3
+concepts:
+  - dpo
+  - reward-models
+why_this_week: This unit introduced reward models and DPO as ways to learn from preferred responses. This paper connects a reward-based objective to a loss computed directly from response probabilities. It helps explain the role of the reference model in preference training.
+how_to_read: Read Sections 1 and 3, then Section 4 and its paragraphs explaining the update and the DPO outline. Track the preferred response, rejected response and reference model in Equation 7. Read Sections 6.2 through 6.4 and the limitations in Section 7. Skip the proofs in Section 5 and the appendices on a first pass. Treat the GPT-4 evaluations as judgments whose wording needs checking.
+questions:
+  - id: claim
+    kind: claim
+    prompt: How does DPO simplify the process of training a language model from preferences?
+  - id: method
+    kind: method
+    prompt: In Equation 7, how do the preferred and rejected responses and the reference model enter the training loss? What determines which pairs receive larger updates?
+  - id: evidence
+    kind: evidence
+    prompt: What does the CNN/DailyMail experiment in Section 6.3 test, and how does Table 1 support the paper's claim about generalization?
+  - id: limitations
+    kind: limitations
+    prompt: What does Section 6.4 reveal about using GPT-4 to judge summaries? How should this affect your interpretation of the reported win rates?
+summary:
+  prompt: In about five sentences, explain DPO's training idea, the role of the reference model, one experimental result, and one evaluation limit.
+  rubric:
+    - id: contribution
+      criterion: Explains that DPO trains directly on preference pairs without a separately trained reward model or an RL training loop
+      weight: 2
+      required: true
+    - id: method
+      criterion: Describes comparing preferred and rejected response log probabilities relative to a fixed reference, with larger weight for pairs the implicit reward orders incorrectly
+      weight: 2
+      required: true
+    - id: evidence
+      criterion: Describes the CNN/DailyMail test as a shift from Reddit summarization and notes that DPO beats PPO in the reported GPT-4 win rates
+      weight: 1
+      required: false
+    - id: limitation
+      criterion: Notes that GPT-4 judgments depend on the evaluation prompt and can favour longer summaries, limiting how broadly win rates can be interpreted
+      weight: 1
+      required: false
+  exemplar: DPO trains a language model directly from pairs of preferred and rejected responses. It compares their log probabilities relative to a fixed reference model and gives larger updates to pairs its implicit reward orders incorrectly. This provides preference training without a separate reward model or an RL training loop. On CNN/DailyMail articles, the DPO summarizer trained on Reddit data beats the PPO comparison in the reported GPT-4 win rates. Those judgments depend on the evaluation prompt, which can change how strongly GPT-4 favours longer summaries.
