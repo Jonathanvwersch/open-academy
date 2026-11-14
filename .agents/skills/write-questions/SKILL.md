@@ -54,7 +54,7 @@ Every idea in a step gets at least two questions from different angles. Cover th
 
 ## 5. Templates
 
-- Choose ranges so the answer never equals a parameter, a number shown in the stem, or a constant.
+- Choose ranges so the answer is never constant and is not simply one parameter or one number shown in the stem. The exception is a question whose task is to pick a shown value, such as a table row or the best epoch.
 - `common_wrong` answers must never equal the right answer for any parameter values. `content:check` enforces this.
 - Write negative values in parentheses so substituted text never reads `+ -3`.
 - Check every parameter combination by script against the tolerance and the rounding the stem asks for.
