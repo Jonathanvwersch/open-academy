@@ -1,7 +1,106 @@
 id: rl-sim
 title: "RL policy in simulation"
-status: stub
+status: authored
 est_hours: 5
-objective: "Train and evaluate a policy-gradient or PPO agent on a small control environment."
-background: ""
+objective: "Implement REINFORCE and PPO in NumPy, then compare their returns and PPO probability ratios in a seeded gridworld."
+background: |
+  A policy-gradient agent learns by increasing the probability of actions that lead to better returns. In this project, we will build that update and compare it with PPO in a small simulation.
+
+  Our provided gridworld has five rows and five columns. Each reset draws a seeded start from the 24 non-goal cells. The bottom-right cell is the goal. Reaching it gives reward $r_{t+1}=1$. Every other transition gives $-0.02$. An episode ends at the goal or after 50 actions. We will represent each state $s$ with a one-hot feature vector and sample actions $a$ from the policy $\pi_\theta(a\mid s)$.
+
+  We will estimate the advantage $\hat A_t$ by subtracting a fitted state-value baseline from the sampled return $G_t$. The value $V^\pi(s)$ averages returns from a state. The value $Q^\pi(s,a)$ averages returns after choosing an action there. Their difference tells us how much better that action is than the policy's usual choice.
+
+  Everything runs offline on a CPU after installing NumPy. The environment, training loops and baseline fitting are provided. We will write seven small functions.
+
+  **Setup from the repository root**
+  ```bash
+  python3 -m pip install -r labs/rl-sim/requirements.txt
+  python3 labs/rl-sim/setup.py
+  # edit labs/rl-sim/work/policy.py
+  python3 labs/verify.py rl-sim
+  ```
+  Setup preserves existing work. Upload `labs/rl-sim/work/results.json` below. The lab README gives the shapes and equations for each function.
 prereqs: [policy-gradients, ppo, simulation-for-rl]
+tasks:
+  - id: t-episode
+    title: Collect one episode
+    md: |
+      We first need an interaction record. Read `environment.py`, then implement `collect_episode(env, theta, seed, rng)`. Reset once with the supplied seed. Sample each action using the supplied random generator and `action_probs`. Return aligned arrays containing the state before each action, the action, and its reward $r_{t+1}$. Stop when `done` is true. Done means the two-transition check records both rewards and stops at termination. This function will run once `action_probs` is implemented.
+  - id: t-returns
+    title: Discount the future rewards
+    md: |
+      We can now turn each reward sequence into returns. Implement `returns_to_go(rewards, gamma)` by working backwards from a final return of zero. Use $G_t=r_{t+1}+\gamma G_{t+1}$, where $\gamma$ is the discount. Empty rewards give an empty array. Done means rewards `[1, 1, 1]` with discount `0.9` give `[2.71, 1.9, 1]`.
+  - id: t-probabilities
+    title: Turn state logits into action probabilities
+    md: |
+      Our parameter array has shape `(25, 4)`. The row for state $s$ contains four action logits. Implement `action_probs(theta, state)` by subtracting that row's largest logit, exponentiating, and dividing by the sum. Done means the probabilities sum to one and adding 9000 to every logit leaves them unchanged.
+  - id: t-log-probability
+    title: Keep log probabilities finite
+    md: |
+      The update uses the log probability of the sampled action. Implement `log_prob(theta, state, action)` directly from the shifted logits and their log-sum-exp. Done means it agrees with the natural log of an ordinary probability and stays finite for an action whose probability underflows to zero.
+  - id: t-gradient
+    title: Find the policy gradient by hand
+    md: |
+      We next need the gradient of the log probability. Implement `grad_log_prob(theta, state, action)` with the same shape as `theta`. In the active state row, subtract the action probabilities from a vector that is one at the chosen action and zero elsewhere. Set every other row to zero. Done means the gradient matches central finite differences and each row sums to zero.
+  - id: t-reinforce
+    title: Take an advantage-weighted step
+    md: |
+      The supplied loop computes $\hat A_t=G_t-V(s_t)$ before fitting the baseline to this batch. Implement `reinforce_update(theta, states, actions, advantages, eta)`. Average the advantage-weighted log-probability gradients and add learning rate $\eta$ times that mean to the parameters. Return a new array and preserve the input. Done means the one-step check matches this ascent update and zero advantages leave the parameters unchanged.
+  - id: t-ppo
+    title: Limit the incentive for large policy changes
+    md: |
+      We will now reuse a batch for several PPO updates. Implement `ppo_clipped_objective`, returning the mean surrogate and its ascent gradient. The ratio $\rho_t(\theta)$ is the current action probability divided by its probability when the batch was collected. Compute it from the difference of log probabilities. Keep the supplied old log probabilities and advantages fixed across epochs.
+
+      For clip range $c=0.2$, average the smaller of $\rho_t(\theta)\hat A_t$ and $\operatorname{clip}(\rho_t(\theta),1-c,1+c)\hat A_t$. The PPO paper calls this clip range $\epsilon$. A sample's gradient is zero when its advantage is positive and its ratio exceeds $1+c$, or when its advantage is negative and its ratio falls below $1-c$. Otherwise use its ratio times its advantage times the log-probability gradient. At a boundary, use this latter gradient. Done means both advantage signs pass the exact-value checks and the batch gradient matches finite differences.
+  - id: t-verify
+    title: Compare the trained policies
+    md: |
+      Run `python3 labs/verify.py rl-sim`. We train each method for 100 batches of 12 episodes with discount $\gamma=0.97$. REINFORCE uses learning rate $\eta=8$. PPO takes six steps per batch with $\eta=2$. The baseline moves halfway toward each visited state's batch mean return after the policy update.
+
+      Compare random, REINFORCE and PPO on 100 held-out evaluation seeds. These seeds select start cells and action-sampling sequences. Training and evaluation share the same grid. Done means all ten checks pass, each trained policy scores above 0.5, and each improves on random by more than 0.7. Inspect the ratio probe too. Its 20 small ascent steps should finish between 1.19 and 1.3. Clipping removes an incentive to move farther; arbitrary parameter updates can still cross the clip range.
+acceptance:
+  - "All ten public checks pass, including episode alignment, discounted returns, and numerical gradients."
+  - "The random policy's mean evaluation return is below zero. REINFORCE and PPO each score above 0.5 and improve on random by more than 0.7."
+  - "The controlled PPO ratio probe finishes strictly between 1.19 and 1.3 with clip range 0.2."
+  - "The implementation preserves input parameters during the REINFORCE update and PPO objective calculation."
+tests:
+  - { id: collect-episode, concepts: [simulation-for-rl], dimension: implementation }
+  - { id: returns-to-go, concepts: [policies-returns], dimension: math }
+  - { id: policy-probabilities, concepts: [policy-gradients], dimension: implementation }
+  - { id: policy-gradient, concepts: [policy-gradients], dimension: math }
+  - {
+      id: reinforce-update,
+      concepts: [policy-gradients, value-functions],
+      dimension: implementation,
+    }
+  - { id: ppo-objective, concepts: [ppo], dimension: conceptual }
+  - { id: ppo-gradient, concepts: [ppo], dimension: math }
+  - {
+      id: reinforce-evaluation,
+      concepts: [policy-gradients, simulation-for-rl],
+      dimension: transfer,
+    }
+  - { id: ppo-evaluation, concepts: [ppo, simulation-for-rl], dimension: transfer }
+  - { id: ppo-ratio-clip, concepts: [ppo], dimension: conceptual }
+metrics:
+  - { id: random-return, label: "Random mean return", threshold: 0, direction: below }
+  - { id: reinforce-return, label: "REINFORCE mean return", threshold: 0.5, direction: above }
+  - { id: ppo-return, label: "PPO mean return", threshold: 0.5, direction: above }
+  - { id: reinforce-gain, label: "REINFORCE gain over random", threshold: 0.7, direction: above }
+  - { id: ppo-gain, label: "PPO gain over random", threshold: 0.7, direction: above }
+  - {
+      id: ppo-probe-ratio,
+      label: "Controlled PPO probability ratio",
+      threshold: 1.3,
+      direction: below,
+    }
+reflection:
+  - rlsim-discounted-return
+  - rlsim-baseline-advantage
+  - rlsim-negative-clip
+  - rlsim-ratio-overshoot
+  - rlsim-evaluation-claim
+follow_up:
+  - "Compare five training seeds and record the lowest evaluation return for each method."
+  - "Change the number of PPO epochs while keeping the collected batch and old probabilities fixed. Compare return and ratio movement."
+  - "Add seeded action slips to the environment and measure how both policies perform under those changed dynamics."

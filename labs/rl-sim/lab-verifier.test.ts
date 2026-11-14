@@ -3,8 +3,13 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { expect, test } from 'vitest';
+import { parse } from 'yaml';
 
 const root = resolve('labs/rl-sim');
+const project = parse(readFileSync('content/projects/rl-sim.yaml', 'utf8')) as {
+  tests: Array<{ id: string }>;
+  metrics: Array<{ id: string; threshold: number; direction: 'above' | 'below' }>;
+};
 const ids = [
   'collect-episode',
   'returns-to-go',
@@ -24,6 +29,19 @@ type Results = {
   tests: Array<{ id: string; passed: boolean; message: string }>;
   metrics: Record<string, number>;
 };
+
+test('failure ids exactly match the project declarations', () => {
+  const script = [
+    'import json, runpy, sys',
+    'module = runpy.run_path(sys.argv[1])',
+    'print(json.dumps(module["FAILURE_TEST_IDS"]))',
+  ].join('; ');
+  const failureIds = JSON.parse(
+    execFileSync('python3', ['-c', script, join(root, 'verify.py')], { encoding: 'utf8' }),
+  ) as string[];
+  expect([...failureIds].sort()).toEqual(project.tests.map(({ id }) => id).sort());
+  expect([...ids].sort()).toEqual([...failureIds].sort());
+});
 
 test.each([
   ['reference', '_solution/policy.py', []],
@@ -48,6 +66,9 @@ test.each([
     expect(process.error).toBeUndefined();
     expect(process.status, process.stdout + process.stderr).toBe(failures.length ? 1 : 0);
     const result = JSON.parse(readFileSync(output, 'utf8')) as Results;
+    expect(
+      Object.keys(result.metrics).every((id) => project.metrics.some((metric) => metric.id === id)),
+    ).toBe(true);
     expect(result.project).toBe('rl-sim');
     expect(result.version).toBe(1);
     expect(result.tests.map(({ id }) => id)).toEqual(ids);
@@ -58,6 +79,17 @@ test.each([
     } else {
       expect(result.metrics['reinforce-return']).toBeGreaterThan(0.5);
       expect(result.metrics['ppo-return']).toBeGreaterThan(0.5);
+    }
+    if (_name === 'reference') {
+      expect(Object.keys(result.metrics).sort()).toEqual(
+        project.metrics.map(({ id }) => id).sort(),
+      );
+      for (const metric of project.metrics) {
+        const actual = result.metrics[metric.id];
+        expect(Number.isFinite(actual)).toBe(true);
+        if (metric.direction === 'above') expect(actual).toBeGreaterThan(metric.threshold);
+        else expect(actual).toBeLessThan(metric.threshold);
+      }
     }
     if (_name === 'unclipped') {
       expect(result.metrics['ppo-probe-ratio']).toBeGreaterThan(3);

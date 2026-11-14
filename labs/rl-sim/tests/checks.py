@@ -127,7 +127,7 @@ def run_checks(model):
             previous = np.array([np.log(0.25 / ratio)])
             value, grad = model.ppo_clipped_objective(t, np.array([0]), np.array([0]), previous, np.array([advantage]))
             expected = min(ratio * advantage, np.clip(ratio, 0.8, 1.2) * advantage)
-            np.testing.assert_allclose(value, expected, err_msg="Use min(rho*A_hat, clip(rho,1-c,1+c)*A_hat), including negative advantages.")
+            np.testing.assert_allclose(value, expected, err_msg="Take the smaller of ratio times advantage and clipped ratio times advantage, including negative advantages.")
             if (ratio > 1.2 and advantage > 0) or (ratio < 0.8 and advantage < 0):
                 np.testing.assert_allclose(grad, 0, atol=1e-12, err_msg="The clipped branch is flat. Its gradient must be zero.")
 
@@ -150,6 +150,8 @@ def run_checks(model):
         score = evaluate(model, train(model, method))
         metrics["random-return"] = random
         metrics[method + "-return"] = score
+        metrics[method + "-gain"] = score - random
+        assert random < 0, f"Random return {random:.4f}; expected below zero. Check episode collection and reward alignment."
         assert np.isfinite(score) and score > 0.5 and score - random > 0.7, (
             f"{method} return {score:.4f}, random {random:.4f}; need return > 0.5 and gain > 0.7. Check ascent sign, baseline and discounted returns.")
 
@@ -160,7 +162,7 @@ def run_checks(model):
         ratio = ratio_probe(model)
         metrics["ppo-probe-ratio"] = ratio
         assert 1.19 < ratio < 1.3, (
-            f"PPO probe ratio {ratio:.4f}; expected 1.19 < rho < 1.3. Freeze old log probabilities across epochs and zero the clipped gradient. An unclipped ratio keeps growing.")
+            f"PPO probe ratio {ratio:.4f}; expected 1.19 < ratio < 1.3. Freeze old log probabilities across epochs and zero the clipped gradient. An unclipped ratio keeps growing.")
 
     check("ppo-ratio-clip", "Small repeated PPO steps should stop near 1+c; clipping is not a hard ratio constraint.", clipping)
     return checks, {k: v for k, v in metrics.items() if np.isfinite(v)}
