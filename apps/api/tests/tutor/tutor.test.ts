@@ -42,13 +42,26 @@ function buildTutorInput(
 function testDatabase(dailyCount = 0) {
   let loggedCall: Record<string, unknown> | undefined;
   const db = {
-    select: () => ({ from: () => ({ where: async () => [{ value: dailyCount }] }) }),
+    select: () => ({
+      from: () => ({
+        where: () =>
+          Object.assign(Promise.resolve([{ value: dailyCount }]), { for: async () => [] }),
+      }),
+    }),
     insert: () => ({
       values: (value: Record<string, unknown>) => {
         loggedCall = value;
         return { returning: async () => [{ id: 'call-id' }] };
       },
     }),
+    update: () => ({
+      set: (value: Record<string, unknown>) => ({
+        where: async () => {
+          loggedCall = { ...loggedCall, ...value };
+        },
+      }),
+    }),
+    transaction: async (run: (tx: Database) => Promise<unknown>) => run(db),
   } as unknown as Database;
   return { db, loggedCall: () => loggedCall };
 }
@@ -296,6 +309,21 @@ describe('tutor contracts', () => {
         feedback_md: 'Good start.',
       }).score,
     ).toBe(0.625);
+  });
+
+  it('treats an omitted required rubric criterion as missing', () => {
+    expect(
+      scoreRubric(
+        [
+          { id: 'required', criterion: 'Names slope', weight: 1, required: true },
+          { id: 'reason', criterion: 'Explains change', weight: 3, required: false },
+        ],
+        {
+          criteria: [{ id: 'reason', judgement: 'met', evidence: 'Explained.' }],
+          feedback_md: 'The slope is missing.',
+        },
+      ).score,
+    ).toBe(0);
   });
 
   it('counts a tutor-generated hint at the normal authored hint credit', () => {

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { ContentIndex, IndexedPaper } from '../../content/types.js';
@@ -171,7 +171,9 @@ export function registerPaperRoutes(
         target: [paperProgress.userId, paperProgress.paperId],
         set: {
           ...(body.data.lastPage !== undefined ? { lastPage: body.data.lastPage } : {}),
-          ...(body.data.notes ? { notes: { ...(existing?.notes ?? {}), ...body.data.notes } } : {}),
+          ...(body.data.notes
+            ? { notes: sql`${paperProgress.notes} || ${JSON.stringify(body.data.notes)}::jsonb` }
+            : {}),
           updatedAt: deps.requestNow(c),
         },
       })

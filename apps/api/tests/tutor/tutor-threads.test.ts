@@ -925,7 +925,12 @@ test('provider failure stores no thread or messages; another user cannot read a 
   expect((await send('fail')).status).toBe(503);
   expect(await db.select().from(tutorThreads)).toHaveLength(0);
   expect(await db.select().from(tutorMessages)).toHaveLength(0);
-  expect(await db.select().from(llmCalls)).toHaveLength(llmCallsBefore.length);
+  const callsAfter = await db.select().from(llmCalls);
+  expect(callsAfter).toHaveLength(llmCallsBefore.length + 1);
+  const previousIds = new Set(llmCallsBefore.map((call) => call.id));
+  expect(callsAfter.filter((call) => !previousIds.has(call.id))).toMatchObject([
+    { status: 'fallback' },
+  ]);
   failing = false;
   const response = await send('private');
   const thread = (await response.json()).thread;

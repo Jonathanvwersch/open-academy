@@ -72,6 +72,8 @@ export function gradeExpression(
     return invalid('Enter a mathematical expression.');
   }
 
+  if (answer.length > 1024) return invalid('Keep your expression under 1,024 characters.');
+
   let expected: MathNode;
   let learner: MathNode;
   let commonWrong: Array<{
@@ -84,6 +86,9 @@ export function gradeExpression(
   try {
     expected = parseExpression(exercise.answer) as MathNode;
     learner = parseExpression(learnerExpression) as MathNode;
+    if (!isScalarExpression(learner)) {
+      return invalid('Use a scalar expression with arithmetic and supported math functions.');
+    }
     commonWrong = (exercise.common_wrong ?? []).map((entry) => ({
       node: parseExpression(normalizeLearnerExpression(entry.answer, variables)) as MathNode,
       category: entry.category,
@@ -137,6 +142,37 @@ function splitVariables(identifier: string, variables: string[]): string[] | und
   }
 
   return splitFrom(0);
+}
+
+// Mathjs also supports allocation, assignment and dynamic evaluation. Learner
+// answers only need bounded scalar arithmetic; reject other nodes before compile.
+function isScalarExpression(node: MathNode): boolean {
+  let valid = true;
+  let nodes = 0;
+  const operators = new Set(['+', '-', '*', '/', '^', '%']);
+  node.traverse((child) => {
+    nodes += 1;
+    if (nodes > 256) valid = false;
+    switch (child.type) {
+      case 'ConstantNode':
+        if (typeof (child as MathNode & { value: unknown }).value !== 'number') valid = false;
+        break;
+      case 'SymbolNode':
+      case 'ParenthesisNode':
+        break;
+      case 'OperatorNode':
+        if (!operators.has((child as MathNode & { op: string }).op)) valid = false;
+        break;
+      case 'FunctionNode': {
+        const fn = (child as MathNode & { fn: MathNode & { name?: string } }).fn;
+        if (fn.type !== 'SymbolNode' || !expressionFunctionSet.has(fn.name ?? '')) valid = false;
+        break;
+      }
+      default:
+        valid = false;
+    }
+  });
+  return valid;
 }
 
 function findUnknownSymbols(node: MathNode, variables: string[]): string[] {

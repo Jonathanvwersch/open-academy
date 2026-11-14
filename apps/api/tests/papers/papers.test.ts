@@ -247,3 +247,26 @@ test('summary grading stores judgement, completes a linked activity, and disable
     reason: 'Tutor grading failed.',
   });
 });
+
+test('concurrent question autosaves preserve every note on insert and update', async () => {
+  for (const round of ['first', 'edited']) {
+    const notes = Object.fromEntries(
+      ['claim', 'method', 'evidence', 'limitations'].map((id) => [id, `${round} ${id}`]),
+    );
+    const responses = await Promise.all(
+      Object.entries(notes).map(([id, note]) =>
+        app.request('/api/papers/fixture-paper-one/progress', {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ notes: { [id]: note } }),
+        }),
+      ),
+    );
+    expect(responses.every((response) => response.status === 200)).toBe(true);
+    const [progress] = await db
+      .select()
+      .from(paperProgress)
+      .where(eq(paperProgress.userId, userId));
+    expect(progress?.notes).toEqual(notes);
+  }
+});

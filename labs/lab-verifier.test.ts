@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { expect, test } from 'vitest';
@@ -45,6 +45,29 @@ test('verifier rejects an implementation missing the 2/n gradient factor', () =>
     };
     expect(
       result.tests.find((check) => check.id === 'test_gradients_match_finite_differences')?.passed,
+    ).toBe(false);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('linear regression verifier rejects validation examples leaked from training', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'academy-lab-leak-'));
+  try {
+    const implementation = join(directory, 'leaky.py');
+    writeFileSync(
+      implementation,
+      `import runpy\nglobals().update(runpy.run_path(${JSON.stringify(solution)}))\ndef train_val_split(X, y, val_frac=0.2, seed=42):\n    split = int(len(y) * (1 - val_frac))\n    return X[:split], X[:len(y)-split], y[:split], y[:len(y)-split]\n`,
+    );
+    const output = join(directory, 'results.json');
+    expect(() =>
+      execFileSync('python3', [verifier, '--implementation', implementation, '--output', output]),
+    ).toThrow();
+    const result = JSON.parse(readFileSync(output, 'utf8')) as {
+      tests: Array<{ id: string; passed: boolean }>;
+    };
+    expect(
+      result.tests.find((check) => check.id === 'test_split_is_disjoint_and_seeded')?.passed,
     ).toBe(false);
   } finally {
     rmSync(directory, { recursive: true, force: true });

@@ -9,6 +9,9 @@ apps/api/dist-vercel
 **/.env
 .env.*
 **/.env.*
+.venv
+**/.venv
+tests/e2e/.auth
 coverage
 **/coverage
 playwright-report

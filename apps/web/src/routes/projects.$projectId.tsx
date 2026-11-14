@@ -9,5 +9,6 @@ export const Route = createFileRoute('/projects/$projectId')({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(projectQueryOptions(params.projectId)),
   errorComponent: () => <RouteLoadError message="Project unavailable." role="alert" />,
+  remountDeps: ({ params }) => params,
   component: ProjectPage,
 });

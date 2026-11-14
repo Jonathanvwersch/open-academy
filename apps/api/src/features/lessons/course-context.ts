@@ -13,28 +13,37 @@ export async function resolveLessonCourse(
   conceptId: string,
   activityId?: string,
 ) {
-  const activities = await db
-    .select({ reason: sessionActivities.reason })
-    .from(sessionActivities)
-    .innerJoin(studySessions, eq(studySessions.id, sessionActivities.sessionId))
-    .where(
-      and(
-        eq(studySessions.userId, userId),
-        eq(sessionActivities.conceptId, conceptId),
-        activityId ? eq(sessionActivities.id, activityId) : undefined,
-      ),
-    )
-    .orderBy(desc(studySessions.startedAt), desc(sessionActivities.idx));
-  const preferredCourseId = activities
-    .map(({ reason }) => {
-      const value = (reason as { courseId?: unknown }).courseId;
-      return typeof value === 'string' ? value : undefined;
-    })
-    .find((value) => value !== undefined);
+  const containing = content.courses.filter((course) =>
+    course.units.some((unit) => unit.concepts.includes(conceptId)),
+  );
+  let preferredCourseId: string | undefined;
+  let studyCourseIds: string[] = [];
+  // A unique course cannot be changed by activity history or study membership.
+  if (containing.length > 1) {
+    const activities = await db
+      .select({ reason: sessionActivities.reason })
+      .from(sessionActivities)
+      .innerJoin(studySessions, eq(studySessions.id, sessionActivities.sessionId))
+      .where(
+        and(
+          eq(studySessions.userId, userId),
+          eq(sessionActivities.conceptId, conceptId),
+          activityId ? eq(sessionActivities.id, activityId) : undefined,
+        ),
+      )
+      .orderBy(desc(studySessions.startedAt), desc(sessionActivities.idx));
+    preferredCourseId = activities
+      .map(({ reason }) => {
+        const value = (reason as { courseId?: unknown }).courseId;
+        return typeof value === 'string' ? value : undefined;
+      })
+      .find((value) => value !== undefined);
+    studyCourseIds = await repo.activeStudyCourseIds(content);
+  }
   const result = lessonCourseContext(content, {
     conceptId,
     preferredCourseId,
-    studyCourseIds: await repo.activeStudyCourseIds(content),
+    studyCourseIds,
   });
   return result
     ? {

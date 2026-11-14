@@ -1432,6 +1432,8 @@ export function registerLessonRunRoutes(
   });
 
   api.get('/lessons/:conceptId/quiz/:attemptId/review', async (context) => {
+    if (!z.string().uuid().safeParse(context.req.param('attemptId')).success)
+      return context.json({ error: 'Quiz attempt not found' }, 404);
     const conceptId = context.req.param('conceptId');
     const resolved = await lessonFor(conceptId);
     if (!resolved) return context.json({ error: 'Knowledge-point lesson not found' }, 404);

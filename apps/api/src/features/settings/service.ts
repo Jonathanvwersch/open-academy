@@ -22,7 +22,7 @@ export async function putSettings(deps: FeatureServices, request: FeatureRequest
       scheduleMinutes: z.number().int().min(5).max(600).optional(),
       saturdayMinutes: z.number().int().min(5).max(600).optional(),
       sundayMinutes: z.number().int().min(5).max(600).optional(),
-      startDate: z.string().min(1).optional(),
+      startDate: z.iso.date().optional(),
       goal: z.string().optional(),
     })
     .refine((value) => value.dailyMinutes !== undefined || value.scheduleMinutes !== undefined)

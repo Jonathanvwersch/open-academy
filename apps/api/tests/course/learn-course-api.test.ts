@@ -875,6 +875,27 @@ test('all verifier tests still require every project metric to pass', async () =
   expect(project.status).toBe('in_progress');
 });
 
+test.each([
+  ['validation_accuracy', 0.9, 'completed'],
+  ['final_train_loss', 0.1, 'in_progress'],
+  ['max_gradient_check_relative_error', 0.00001, 'in_progress'],
+])(
+  'project metric %s honors its inclusive or strict threshold',
+  async (metricId, value, status) => {
+    const results = nnFromScratchResults(undefined, {
+      ...nnFromScratchPassingMetrics,
+      [metricId]: value,
+    });
+    const response = await app.request('/api/projects/nn-from-scratch/results', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(results),
+    });
+    expect(response.status).toBe(201);
+    expect((await response.json()).status).toBe(status);
+  },
+);
+
 test('all verifier tests and metrics complete the project', async () => {
   const results = nnFromScratchResults();
   const response = await app.request('/api/projects/nn-from-scratch/results', {

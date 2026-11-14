@@ -1,5 +1,7 @@
 import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { z } from 'zod';
+import type { Database } from '../../db/client.js';
+import { LearnerRepository } from '../../db/repository.js';
 import {
   attempts,
   masteryEvents,
@@ -312,7 +314,7 @@ export async function getSessionsActive(deps: FeatureServices, request: FeatureR
   const now = request.now();
   const session = await request.repo.activeSession(now);
   const index = await content();
-  const fullSession = session ? await request.repo.session(session.id) : null;
+  const fullSession = session ? await request.repo.session(session.id, session) : null;
   const activities =
     fullSession?.activities.filter((activity) => sessionActivityIsInContent(index, activity)) ?? [];
   return serviceResult(
@@ -439,6 +441,23 @@ export async function postSessionsByIdActivitiesByAidProgress(
   deps: FeatureServices,
   request: FeatureRequest,
 ) {
+  if (!z.string().uuid().safeParse(request.params.id).success)
+    return serviceResult({ error: 'Session not found' }, 404);
+  return deps.db.transaction(async (tx) => {
+    await tx
+      .select({ id: studySessions.id })
+      .from(studySessions)
+      .where(and(eq(studySessions.id, request.params.id), eq(studySessions.userId, request.userId)))
+      .for('update');
+    const db = tx as unknown as Database;
+    return updateActivityProgress(
+      { ...deps, db },
+      { ...request, repo: new LearnerRepository(db, request.userId) },
+    );
+  });
+}
+
+async function updateActivityProgress(deps: FeatureServices, request: FeatureRequest) {
   const { db, content } = deps;
   const body = z.record(z.string(), z.unknown()).safeParse(request.body);
   if (!body.success) {
@@ -514,6 +533,23 @@ export async function postSessionsByIdActivitiesByAidProgress(
 }
 
 export async function postSessionsByIdReplan(deps: FeatureServices, request: FeatureRequest) {
+  if (!z.string().uuid().safeParse(request.params.id).success)
+    return serviceResult({ error: 'Session not found' }, 404);
+  return deps.db.transaction(async (tx) => {
+    await tx
+      .select({ id: studySessions.id })
+      .from(studySessions)
+      .where(and(eq(studySessions.id, request.params.id), eq(studySessions.userId, request.userId)))
+      .for('update');
+    const db = tx as unknown as Database;
+    return replanSession(
+      { ...deps, db },
+      { ...request, repo: new LearnerRepository(db, request.userId) },
+    );
+  });
+}
+
+async function replanSession(deps: FeatureServices, request: FeatureRequest) {
   const { db, content } = deps;
   const session = await request.repo.session(request.params.id);
   if (!session) {
@@ -522,16 +558,16 @@ export async function postSessionsByIdReplan(deps: FeatureServices, request: Fea
   const now = request.now();
   const index = await content();
   const body = z
-    .object({ remainingBudgetMinutes: z.number().int().min(0).optional() })
+    .object({ remainingBudgetMinutes: z.number().int().min(0).max(600).optional() })
     .safeParse(request.body);
+  if (!body.success) return serviceResult({ error: 'Invalid replan request' }, 400);
   const state = await request.repo.schedulerState(now, index);
   const activities = session.activities as unknown as PlannedActivity[];
   const existingMinutes = activities
     .filter((activity) => activity.status === 'completed' || activity.status === 'in_progress')
     .reduce((total, activity) => total + activity.plannedMinutes, 0);
-  const remaining = body.success
-    ? (body.data.remainingBudgetMinutes ?? Math.max(0, session.plannedMinutes - existingMinutes))
-    : Math.max(0, session.plannedMinutes - existingMinutes);
+  const remaining =
+    body.data.remainingBudgetMinutes ?? Math.max(0, session.plannedMinutes - existingMinutes);
   const plan = replan(state, index, now, remaining, activities, session.kind);
   const planned = session.activities.filter((activity) => activity.status === 'planned');
   await Promise.all(
@@ -540,6 +576,7 @@ export async function postSessionsByIdReplan(deps: FeatureServices, request: Fea
     ),
   );
   const preserved = session.activities.filter((activity) => activity.status !== 'planned');
+  const nextIndex = Math.max(-1, ...preserved.map((activity) => activity.idx)) + 1;
   const created = await Promise.all(
     plan.activities
       .filter((activity) => activity.status !== 'in_progress')
@@ -554,7 +591,7 @@ export async function postSessionsByIdReplan(deps: FeatureServices, request: Fea
           .insert(sessionActivities)
           .values({
             sessionId: session.id,
-            idx: preserved.length + idx,
+            idx: nextIndex + idx,
             kind: activity.kind,
             conceptId: activity.conceptId,
             projectId: activity.projectId,

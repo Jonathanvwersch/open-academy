@@ -27,8 +27,7 @@ export function LessonSteps({
       {state.points.map((item, index) => {
         const passed = item.status === 'passed';
         const current = item.id === state.currentPointId;
-        const available =
-          passed || current || state.status === 'quiz' || state.status === 'completed';
+        const available = passed || current;
         const statusClass = passed
           ? 'border-green-300 bg-green-50 text-green-900'
           : current
@@ -75,7 +74,9 @@ export function LessonSteps({
       {explain ? (
         <li data-testid="lesson-explain-chip" aria-label={`Explain it, ${explain}`}>
           <Badge
+            asChild={explain === 'current' && viewingPastStep && !readOnly}
             variant="outline"
+            aria-current={explain === 'current' && !viewingPastStep ? 'step' : undefined}
             className={
               explain === 'done'
                 ? 'border-green-300 bg-green-50 text-green-900'
@@ -84,7 +85,13 @@ export function LessonSteps({
                   : 'border-border text-muted-foreground'
             }
           >
-            {explain === 'done' ? '✓ ' : ''}Explain it
+            {explain === 'current' && viewingPastStep && !readOnly ? (
+              <button type="button" onClick={returnToCurrentStep}>
+                Explain it
+              </button>
+            ) : (
+              <>{explain === 'done' ? '✓ ' : ''}Explain it</>
+            )}
           </Badge>
         </li>
       ) : null}

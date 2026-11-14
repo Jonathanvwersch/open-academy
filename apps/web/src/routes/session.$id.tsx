@@ -76,5 +76,6 @@ export const Route = createFileRoute('/session/$id')({
       className="text-sm text-destructive"
     />
   ),
+  remountDeps: ({ params }) => params,
   component: SessionPage,
 });

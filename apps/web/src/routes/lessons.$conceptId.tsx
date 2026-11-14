@@ -34,5 +34,6 @@ export const Route = createFileRoute('/lessons/$conceptId')({
       className="text-sm text-destructive"
     />
   ),
+  remountDeps: ({ params }) => params,
   component: LessonReviewPage,
 });

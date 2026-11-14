@@ -1,8 +1,7 @@
 FROM node:24-bookworm-slim AS base
 
 WORKDIR /app
-ENV COREPACK_HOME=/opt/corepack
-RUN corepack enable && corepack prepare pnpm@12.16.1 --activate
+RUN npm install --global pnpm@12.16.1
 
 FROM base AS build
 
@@ -11,7 +10,6 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm build
 
 FROM base AS runtime
-RUN chown -R node:node /opt/corepack
 COPY --from=build --chown=node:node /app /app
 
 ENV NODE_ENV=production

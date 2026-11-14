@@ -90,7 +90,13 @@ export function InlineLessonCheck({
           </>
         ) : null}
         {!result ? (
-          <Button type="button" variant="link" className="px-0" onClick={onDone}>
+          <Button
+            type="button"
+            variant="link"
+            className="px-0"
+            disabled={submitting}
+            onClick={onDone}
+          >
             Skip this check
           </Button>
         ) : null}

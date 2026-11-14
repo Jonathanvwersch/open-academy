@@ -531,7 +531,7 @@ test('modified course-row clicks open the course in a new tab without changing e
   const currentUrl = page.url();
   const newPagePromise = context.waitForEvent('page');
   await page.getByRole('link', { name: 'Open Fixture switching course' }).click({
-    modifiers: ['Control'],
+    modifiers: ['ControlOrMeta'],
   });
   const newPage = await newPagePromise;
   await expect(newPage).toHaveURL('/courses/fixture-switching-course');

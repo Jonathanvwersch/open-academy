@@ -12,7 +12,6 @@ import {
   attempts,
   lessonProblems,
   lessonRuns,
-  llmCalls,
   paperFiles,
   paperPages,
   paperProgress,
@@ -124,6 +123,8 @@ export function registerTutorThreadRoutes(
     );
   });
   api.get('/tutor/threads/:id', async (c) => {
+    if (!z.string().uuid().safeParse(c.req.param('id')).success)
+      return c.json({ error: 'Thread not found' }, 404);
     const [thread] = await db
       .select({
         id: tutorThreads.id,
@@ -152,6 +153,8 @@ export function registerTutorThreadRoutes(
     return c.json({ thread, messages });
   });
   const send = async (c: Ctx, requestedThreadId?: string) => {
+    if (requestedThreadId && !z.string().uuid().safeParse(requestedThreadId).success)
+      return c.json({ error: 'Thread not found' }, 404);
     const body: unknown = await c.req.json().catch(() => ({}));
     const parsed = tutorThreadBodySchema.safeParse(body);
     if (!parsed.success) {
@@ -429,7 +432,6 @@ export function registerTutorThreadRoutes(
       index,
     );
     if (result.status !== 'ok' || !result.value) {
-      if (result.callId) await db.delete(llmCalls).where(eq(llmCalls.id, result.callId));
       return c.json({ error: 'Tutor unavailable' }, 503);
     }
     const reply = result.value.message_md;

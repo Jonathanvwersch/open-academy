@@ -130,3 +130,28 @@ test('startup rejects ambiguous demo and password configuration', () => {
   expect(productionAuth(true)).toBeNull();
   expect(() => productionAuth(false)).toThrow('at least 12 characters');
 });
+
+test('demo cleanup and cookies cannot delete or adopt a permanent learner', async () => {
+  const [permanent] = await db
+    .insert(users)
+    .values({
+      displayName: 'Permanent',
+      createdAt: new Date('2025-01-01T00:00:00Z'),
+    })
+    .returning();
+  if (!permanent) throw new Error('Missing permanent learner');
+  const response = await app().request('/api/auth/me', {
+    headers: { cookie: `academy_demo=${permanent.id}` },
+  });
+  const rows = await db.select().from(users);
+  expect(rows).toHaveLength(2);
+  expect(rows.some((row) => row.id === permanent.id)).toBe(true);
+  expect(cookie(response)).not.toBe(`academy_demo=${permanent.id}`);
+});
+
+test('new demo learners start on their local date', async () => {
+  now = new Date('2026-01-01T02:00:00Z');
+  await app().request('/api/auth/me', { headers: { 'X-Time-Zone': 'America/Los_Angeles' } });
+  const [user] = await db.select().from(users);
+  expect(user?.startDate).toBe('2025-12-31');
+});

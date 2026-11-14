@@ -84,7 +84,13 @@ tests:
     }
 metrics:
   - { id: final_train_loss, label: "Final training loss", threshold: 0.1, direction: below }
-  - { id: validation_accuracy, label: "Validation accuracy", threshold: 0.9, direction: above }
+  - {
+      id: validation_accuracy,
+      label: "Validation accuracy",
+      threshold: 0.9,
+      direction: above,
+      inclusive: true,
+    }
   - {
       id: max_gradient_check_relative_error,
       label: "Maximum gradient-check relative error",

@@ -89,6 +89,7 @@ export function ExerciseForm({
         Boolean(targetElement.closest(EXERCISE_CONTAINER_SELECTOR));
       if (
         event.key !== 'Enter' ||
+        event.isComposing ||
         event.shiftKey ||
         event.altKey ||
         event.ctrlKey ||
@@ -214,6 +215,7 @@ export function ExerciseForm({
     onSubmit(answer);
   };
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLFormElement>) => {
+    if (event.nativeEvent.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
     if (
       event.key === 'Enter' &&
       !event.shiftKey &&

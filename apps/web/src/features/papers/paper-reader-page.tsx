@@ -67,7 +67,8 @@ function paperFeedbackResult(
 ): Record<string, unknown> {
   const decisions = new Map(judgement.criteria?.map((criterion) => [criterion.id, criterion]));
   const requiredMissing = rubric.some(
-    (criterion) => criterion.required && decisions.get(criterion.id)?.judgement === 'missing',
+    (criterion) =>
+      criterion.required && (decisions.get(criterion.id)?.judgement ?? 'missing') === 'missing',
   );
   const totalWeight = rubric.reduce((total, criterion) => total + criterion.weight, 0);
   const earnedWeight = rubric.reduce((total, criterion) => {
@@ -148,12 +149,17 @@ export function PaperReaderPage() {
   const [pdfError, setPdfError] = useState(false);
   const [retry, setRetry] = useState(0);
   const [notes, setNotes] = useState<Record<string, string>>(data.progress?.notes ?? {});
-  const [noteStatuses, setNoteStatuses] = useState<Record<string, 'saving' | 'saved'>>({});
+  const [noteStatuses, setNoteStatuses] = useState<Record<string, 'saving' | 'saved' | 'error'>>(
+    {},
+  );
+  const noteWrites = useRef(new Map<string, Promise<void>>());
+  const savedNotes = useRef({ ...data.progress?.notes });
   const [summary, setSummary] = useState(data.progress?.summary ?? '');
   const [judgement, setJudgement] = useState(
     data.progress?.summaryJudgement as PaperSummaryJudgement | null,
   );
   const [rubric, setRubric] = useState(data.paper.summary.rubric ?? []);
+  const [summaryError, setSummaryError] = useState('');
   const [gradingReason, setGradingReason] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(Boolean(data.progress?.summary));
   const [submitting, setSubmitting] = useState(false);
@@ -213,12 +219,16 @@ export function PaperReaderPage() {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ lastPage: boundedPage }),
-      }).then((response) => {
-        if (response.ok && !progressCreated.current) {
-          progressCreated.current = true;
-          void queryClient.invalidateQueries({ queryKey: ['papers'] });
-        }
-      });
+      })
+        .then((response) => {
+          if (response.ok && !progressCreated.current) {
+            progressCreated.current = true;
+            void queryClient.invalidateQueries({ queryKey: ['papers'] });
+          }
+        })
+        .catch(() => {
+          /* A later page change retries this optional position update. */
+        });
     }, 1000);
     return () => window.clearTimeout(timeout);
   }, [boundedPage, paperId, queryClient]);
@@ -226,26 +236,37 @@ export function PaperReaderPage() {
   useEffect(() => {
     const timers = data.paper.questions.map((question) => {
       const text = notes[question.id];
-      if (text === undefined || text === (data.progress?.notes[question.id] ?? ''))
+      if (
+        text === undefined ||
+        (text === (savedNotes.current[question.id] ?? '') && !noteWrites.current.has(question.id))
+      )
         return undefined;
       return window.setTimeout(() => {
-        setNoteStatuses((current) => ({ ...current, [question.id]: 'saving' }));
-        void apiFetch(`/api/papers/${encodeURIComponent(paperId)}/progress`, {
-          method: 'PUT',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ notes: { [question.id]: text } }),
-        })
-          .then((response) => {
+        const previousWrite = noteWrites.current.get(question.id) ?? Promise.resolve();
+        const write = previousWrite
+          .then(async () => {
+            if (notesRef.current[question.id] !== text) return;
+            if (text === (savedNotes.current[question.id] ?? '')) {
+              setNoteStatuses((current) => ({ ...current, [question.id]: 'saved' }));
+              return;
+            }
+            setNoteStatuses((current) => ({ ...current, [question.id]: 'saving' }));
+            const response = await apiFetch(`/api/papers/${encodeURIComponent(paperId)}/progress`, {
+              method: 'PUT',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ notes: { [question.id]: text } }),
+            });
+            if (response.ok) savedNotes.current[question.id] = text;
             setNoteStatuses((current) => {
               if (notesRef.current[question.id] !== text) return current;
               if (!response.ok) {
-                const next = { ...current };
-                delete next[question.id];
-                return next;
+                return { ...current, [question.id]: 'error' };
               }
               return { ...current, [question.id]: 'saved' };
             });
             if (response.ok) {
+              // Reconcile the latest draft even when it matches the originally loaded note.
+              setNotes((current) => ({ ...current }));
               if (!progressCreated.current) {
                 progressCreated.current = true;
                 void queryClient.invalidateQueries({ queryKey: ['papers'] });
@@ -256,11 +277,14 @@ export function PaperReaderPage() {
           .catch(() => {
             setNoteStatuses((current) => {
               if (notesRef.current[question.id] !== text) return current;
-              const next = { ...current };
-              delete next[question.id];
-              return next;
+              return { ...current, [question.id]: 'error' };
             });
+          })
+          .finally(() => {
+            if (noteWrites.current.get(question.id) === write)
+              noteWrites.current.delete(question.id);
           });
+        noteWrites.current.set(question.id, write);
       }, 700);
     });
     return () => {
@@ -268,7 +292,7 @@ export function PaperReaderPage() {
         if (timer) window.clearTimeout(timer);
       }
     };
-  }, [data.paper.questions, data.progress?.notes, notes, paperId, queryClient]);
+  }, [data.paper.questions, notes, paperId, queryClient]);
 
   useEffect(() => {
     tutor.setContext({
@@ -338,6 +362,9 @@ export function PaperReaderPage() {
   };
 
   const submitSummary = async () => {
+    if (submitting) return;
+    setSummaryError('');
+    setSubmitted(false);
     setSubmitting(true);
     try {
       const response = await apiFetch(`/api/papers/${encodeURIComponent(paperId)}/summary`, {
@@ -352,7 +379,7 @@ export function PaperReaderPage() {
         error?: string;
       };
       if (!response.ok) {
-        setGradingReason(result.error ?? 'Summary could not be saved.');
+        setSummaryError(result.error ?? 'Summary could not be saved.');
         return;
       }
       setJudgement(result.judgement);
@@ -365,6 +392,8 @@ export function PaperReaderPage() {
         queryClient.invalidateQueries({ queryKey: ['course'] }),
         queryClient.invalidateQueries({ queryKey: studyMapQueryOptions().queryKey }),
       ]);
+    } catch {
+      setSummaryError('Summary could not be saved. Check your connection and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -584,8 +613,8 @@ export function PaperReaderPage() {
                     setNotes((current) => ({ ...current, [question.id]: value }));
                     setNoteStatuses((current) => {
                       const next = { ...current };
-                      const saved = data.progress?.notes[question.id];
-                      if (value === (saved ?? '')) {
+                      const saved = savedNotes.current[question.id];
+                      if (value === (saved ?? '') && !noteWrites.current.has(question.id)) {
                         if (saved === undefined) delete next[question.id];
                         else next[question.id] = 'saved';
                         return next;
@@ -595,9 +624,26 @@ export function PaperReaderPage() {
                   }}
                 />
                 {noteStatuses[question.id] ? (
-                  <span className="text-xs text-muted-foreground">
-                    {noteStatuses[question.id] === 'saving' ? 'Saving…' : 'Saved'}
+                  <span
+                    role={noteStatuses[question.id] === 'error' ? 'alert' : 'status'}
+                    className="text-xs text-muted-foreground"
+                  >
+                    {noteStatuses[question.id] === 'saving'
+                      ? 'Saving…'
+                      : noteStatuses[question.id] === 'error'
+                        ? 'Note was not saved.'
+                        : 'Saved'}
                   </span>
+                ) : null}
+                {noteStatuses[question.id] === 'error' ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setNotes((current) => ({ ...current }))}
+                  >
+                    Retry saving note
+                  </Button>
                 ) : null}
               </section>
             ))}
@@ -608,7 +654,14 @@ export function PaperReaderPage() {
                 aria-label="Paper summary"
                 value={summary}
                 maxLength={4000}
-                onChange={(event) => setSummary(event.target.value)}
+                disabled={submitting}
+                onChange={(event) => {
+                  setSummary(event.target.value);
+                  setSubmitted(false);
+                  setSummaryError('');
+                  setGradingReason(null);
+                  setJudgement(null);
+                }}
               />
               <Button
                 disabled={!summary.trim()}
@@ -617,6 +670,11 @@ export function PaperReaderPage() {
               >
                 Submit summary
               </Button>
+              {summaryError ? (
+                <p role="alert" className="text-sm text-destructive">
+                  {summaryError}
+                </p>
+              ) : null}
               {judgement ? <FeedbackPanel result={paperFeedbackResult(judgement, rubric)} /> : null}
               {gradingReason ? (
                 <p className="text-sm text-muted-foreground">{gradingReason}</p>

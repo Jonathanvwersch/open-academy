@@ -32,6 +32,12 @@ Set `ACADEMY_DEMO=1` to allow visitors in without a password. Each browser gets 
 
 Use a separate database for the demo. Leave `ACADEMY_PASSWORD` and `OPENAI_API_KEY` unset; the tutor is disabled in demo mode. Deploy a second Vercel project from the same repository so both projects update on every merge.
 
+The app's login and demo-creation rate limits are held in each server process. For a public
+deployment, configure rate limiting at your hosting provider or reverse proxy as well, and
+have the proxy replace untrusted `X-Forwarded-For` headers. App limits are not shared across
+replicas or serverless instances. Demo progress is stored in Postgres; the browser holds only
+the learner cookie. Expired records are deleted during cleanup rather than exactly at expiry.
+
 ## Docker Compose
 
 This works on any machine with Docker: a VPS, a home server, or your laptop.
@@ -39,9 +45,13 @@ This works on any machine with Docker: a VPS, a home server, or your laptop.
 ```sh
 git clone https://github.com/Jonathanvwersch/open-academy.git
 cd open-academy
-cp deploy/.env.example deploy/.env    # then set ACADEMY_PASSWORD (and OPENAI_API_KEY if you want the tutor)
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
+
+Inject `ACADEMY_PASSWORD` into your shell or deployment environment through your secret
+manager before running Compose. It must have at least 12 characters. Inject `OPENAI_API_KEY`
+the same way if you want the tutor. `deploy/.env.example` documents the variable names;
+do not put real credentials in tracked files or plaintext `.env` files.
 
 Open http://localhost:3000 and sign in with your password. The database is kept in the `academy-postgres-data` volume, so it survives restarts and rebuilds.
 

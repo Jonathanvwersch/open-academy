@@ -520,6 +520,7 @@ export const ProjectSchema = z
             label: z.string().min(1),
             threshold: z.number(),
             direction: z.enum(['below', 'above']),
+            inclusive: z.boolean().optional(),
           })
           .strict(),
       )

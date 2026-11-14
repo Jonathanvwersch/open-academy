@@ -1,8 +1,10 @@
 import { emptyAnswerMessage } from '@academy/shared/answer-validation';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { serializeExercise } from '../../content/serialize.js';
-import { attempts, diagnosticRuns, lessonRuns, masteryEvents } from '../../db/schema.js';
+import type { Database } from '../../db/client.js';
+import { LearnerRepository } from '../../db/repository.js';
+import { attempts, diagnosticRuns, lessonRuns, masteryEvents, users } from '../../db/schema.js';
 import { gradeExercise } from '../../learning/grading/index.js';
 import { applyMastery, ensureReviewCard } from '../../learning/mastery-service.js';
 import {
@@ -102,6 +104,17 @@ async function completeRun(
 }
 
 export async function postPlacement(deps: FeatureServices, request: FeatureRequest) {
+  return deps.db.transaction(async (tx) => {
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, request.userId)).for('update');
+    const db = tx as unknown as Database;
+    return startPlacement(
+      { ...deps, db },
+      { ...request, repo: new LearnerRepository(db, request.userId) },
+    );
+  });
+}
+
+async function startPlacement(deps: FeatureServices, request: FeatureRequest) {
   const content = await deps.content();
   const body = request.body as { courseId?: unknown } | null;
   const storedCourseId = await request.repo.activeCourseId();
@@ -160,6 +173,25 @@ export async function getPlacementNext(deps: FeatureServices, request: FeatureRe
 }
 
 export async function postPlacementAnswer(deps: FeatureServices, request: FeatureRequest) {
+  if (!z.string().uuid().safeParse(request.params.id).success)
+    return serviceResult({ error: 'Placement not found' }, 404);
+  return deps.db.transaction(async (tx) => {
+    await tx
+      .select({ id: diagnosticRuns.id })
+      .from(diagnosticRuns)
+      .where(
+        and(eq(diagnosticRuns.id, request.params.id), eq(diagnosticRuns.userId, request.userId)),
+      )
+      .for('update');
+    const db = tx as unknown as Database;
+    return answerPlacement(
+      { ...deps, db },
+      { ...request, repo: new LearnerRepository(db, request.userId) },
+    );
+  });
+}
+
+async function answerPlacement(deps: FeatureServices, request: FeatureRequest) {
   const body = answerBody.safeParse(request.body);
   if (!body.success) return serviceResult({ error: 'Invalid placement answer' }, 400);
   const run = await request.repo.placementRun(request.params.id);

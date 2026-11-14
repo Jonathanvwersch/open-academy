@@ -1516,15 +1516,13 @@ test('a legacy v1 learn activity resumes through the KP runner and final questio
   await expect(page.getByTestId('lesson-steps-complete')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.locator('section > header h2')).toHaveText('Explain it in your own words');
-  await expect(page.getByTestId('explain-memory-note')).toHaveText(
-    "Write it from memory, without looking back at the steps. It isn't part of the quiz score.",
-  );
+  await expect(page.getByTestId('explain-memory-note')).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'View full lesson' })).toHaveCount(0);
   const stepChips = page.getByTestId('lesson-step-chip');
   await expect(stepChips).not.toHaveCount(0);
   for (const stepChip of await stepChips.all()) {
     await expect(stepChip).toHaveText(/^✓ Step \d+$/);
-    await expect(stepChip.locator('button')).toHaveCount(0);
+    await expect(stepChip.locator('button')).toHaveCount(1);
   }
   const explainChip = page.getByTestId('lesson-explain-chip');
   await expect(explainChip).toHaveAttribute('aria-label', 'Explain it, current');

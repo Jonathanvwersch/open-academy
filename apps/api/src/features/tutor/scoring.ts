@@ -10,7 +10,8 @@ export function scoreRubric(
   const byId = new Map(judgement.criteria.map((entry) => [entry.id, entry]));
   if (
     rubric.some(
-      (criterion) => criterion.required && byId.get(criterion.id)?.judgement === 'missing',
+      (criterion) =>
+        criterion.required && (byId.get(criterion.id)?.judgement ?? 'missing') === 'missing',
     )
   ) {
     return { score: 0, feedback: judgement.feedback_md };

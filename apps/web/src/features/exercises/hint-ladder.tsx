@@ -25,13 +25,16 @@ export function HintLadder({
   buttonRef?: RefObject<HTMLButtonElement | null>;
 }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [level, setLevel] = useState(0);
   const [solutionShown, setSolutionShown] = useState(false);
   const [hasMore, setHasMore] = useState(tutorEnabled);
   const canRequestHint = level < hintCount || (tutorEnabled && hasMore);
   const showSolution = !canRequestHint;
   const requestHint = async () => {
+    if (loading) return;
     setLoading(true);
+    setError('');
     try {
       const response = await apiFetch('/api/hints', {
         method: 'POST',
@@ -45,6 +48,7 @@ export function HintLadder({
         }),
       });
       const data = await response.json();
+      if (!response.ok) throw new Error('The hint could not load. Please try again.');
       if (response.ok) {
         if (data.revealedSolution) {
           onHint(data);
@@ -58,21 +62,30 @@ export function HintLadder({
           setHasMore(false);
         }
       }
+    } catch {
+      setError('The hint could not load. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
   };
   if (solutionShown) return null;
   return (
-    <Button
-      ref={buttonRef}
-      type="button"
-      loading={loading}
-      onClick={requestHint}
-      variant="outline"
-      size="sm"
-    >
-      {showSolution ? 'Show solution' : mode === 'review' ? 'Show a hint' : 'Hint'}
-    </Button>
+    <div className="space-y-2">
+      <Button
+        ref={buttonRef}
+        type="button"
+        loading={loading}
+        onClick={requestHint}
+        variant="outline"
+        size="sm"
+      >
+        {showSolution ? 'Show solution' : mode === 'review' ? 'Show a hint' : 'Hint'}
+      </Button>
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }

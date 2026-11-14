@@ -2,6 +2,9 @@ node_modules/
 dist/
 apps/api/dist-vercel/
 .env
+.env.*
+!.env.example
+.venv/
 .vite/
 .tanstack/
 coverage/

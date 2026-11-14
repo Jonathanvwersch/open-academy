@@ -9,13 +9,14 @@ background: |
   You will work in your own editor. The app only shows instructions and records results; your code never runs on the Academy server.
 
   **Setup**
+  From the repository root:
   ```bash
-  cd labs/linreg-numpy
-  python setup.py
-  # edit work/linreg.py
-  python verify.py
+  python3 -m pip install -r labs/linreg-numpy/requirements.txt
+  python3 labs/linreg-numpy/setup.py
+  # edit labs/linreg-numpy/work/linreg.py
+  python3 labs/verify.py linreg-numpy
   ```
-  Upload `work/results.json` on this page when you are done.
+  Setup keeps existing work files. Upload `labs/linreg-numpy/work/results.json` on this page when you are done.
 prereqs: [linear-regression, loss-functions, gradient-descent, train-test-split]
 tasks:
   - id: t-predict
@@ -35,7 +36,7 @@ tasks:
     md: "Implement `train_val_split(X, y, val_frac, seed)` with a seeded shuffle. Fit on train only; report validation MSE."
   - id: t-plot
     title: Diagnostic plot
-    md: "Run `python work/plot.py` to save `work/loss.png` (loss vs step, log scale) and `work/params.png` (trajectory of the two weights). Look at them before answering the reflection questions."
+    md: "Implement the plot in `labs/linreg-numpy/work/plot.py`, then run `python3 labs/linreg-numpy/work/plot.py` to save `labs/linreg-numpy/work/loss.png` (loss vs step, log scale) and `labs/linreg-numpy/work/params.png` (trajectory of the two weights). Look at them before answering the reflection questions."
   - id: t-lr
     title: Learning-rate experiment
     md: "Train with learning rates $\\eta = 0.01$, $0.1$ and $1.0$ on the provided data. Note which converge, which are slow, and which diverge. You will be asked to predict and explain this."
