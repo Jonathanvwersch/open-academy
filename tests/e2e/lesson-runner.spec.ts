@@ -28,6 +28,7 @@ const spacedReviewScreenshotDir = 'test-results/screenshots/screenshots/spaced-r
 const lastTryScreenshotDir = 'test-results/screenshots/last-try';
 const failedQuizScreenshotDir = 'test-results/screenshots/failed-quiz';
 const quizRetryScreenshotDir = 'test-results/screenshots/quiz-retry';
+const quizReviseScreenshotDir = 'test-results/screenshots/quiz-revise';
 mkdirSync(screenshotDir, { recursive: true });
 mkdirSync(lessonCardScreenshotDir, { recursive: true });
 mkdirSync(stepReviewScreenshotDir, { recursive: true });
@@ -42,6 +43,101 @@ mkdirSync(spacedReviewScreenshotDir, { recursive: true });
 mkdirSync(lastTryScreenshotDir, { recursive: true });
 mkdirSync(failedQuizScreenshotDir, { recursive: true });
 mkdirSync(quizRetryScreenshotDir, { recursive: true });
+mkdirSync(quizReviseScreenshotDir, { recursive: true });
+
+type QuizItemForForm = {
+  id: string;
+  exercise: {
+    id: string;
+    type: string;
+    multi?: boolean;
+    options?: Array<{ id: string; text: string }>;
+    code?: string;
+    fix_options?: Array<{ id: string; text: string }>;
+  };
+};
+
+function wrongQuizAnswer(item: QuizItemForForm, answer: unknown): unknown {
+  if (item.exercise.type === 'mc') {
+    const correctIds = new Set(Array.isArray(answer) ? answer : [answer]);
+    const wrongOption = item.exercise.options?.find((option) => !correctIds.has(option.id));
+    return item.exercise.multi ? [wrongOption?.id ?? 'incorrect-option'] : wrongOption?.id;
+  }
+  if (item.exercise.type === 'debug') {
+    const correct = answer as { line: number; fixId: string };
+    const lineCount = item.exercise.code?.split(/\\n|\n/).length ?? 0;
+    const wrongLine = correct.line === 1 ? 2 : 1;
+    const wrongFix = item.exercise.fix_options?.find((option) => option.id !== correct.fixId);
+    return {
+      line: wrongLine <= lineCount ? wrongLine : correct.line + 1,
+      fixId: wrongFix?.id ?? '',
+    };
+  }
+  return typeof answer === 'number' ? answer + 1_000_000 : `${String(answer)} incorrect`;
+}
+
+async function fillQuizAnswer(page: Page, item: QuizItemForForm, answer: unknown) {
+  if (item.exercise.type === 'mc') {
+    const selectedIds = new Set(
+      (Array.isArray(answer) ? answer : [answer]).filter(
+        (value): value is string => typeof value === 'string',
+      ),
+    );
+    for (const option of item.exercise.options ?? []) {
+      const controlId = `${item.exercise.id}-${option.id}`;
+      const control = page.locator(`#${controlId}`);
+      const selected = (await control.getAttribute('aria-checked')) === 'true';
+      if (selected !== selectedIds.has(option.id)) {
+        await page.locator(`label[for="${controlId}"]`).click();
+      }
+    }
+    return;
+  }
+  if (item.exercise.type === 'debug') {
+    const value = answer as { line: number; fixId: string };
+    const fix = item.exercise.fix_options?.find((option) => option.id === value.fixId);
+    if (!fix) throw new Error(`Missing debug fix option ${value.fixId}`);
+    await page.getByLabel('Buggy line').click();
+    await page.getByRole('option', { name: `Line ${value.line}` }).click();
+    await page.getByLabel('Fix').click();
+    await page.getByRole('option').filter({ hasText: fix.text }).click();
+    return;
+  }
+  const value =
+    typeof answer === 'object' && answer !== null && 'text' in answer
+      ? (answer as { text: unknown }).text
+      : answer;
+  await page.getByLabel('Your answer').fill(String(value ?? ''));
+}
+
+async function expectQuizAnswerPrefilled(page: Page, item: QuizItemForForm, answer: unknown) {
+  if (item.exercise.type === 'mc') {
+    const selectedIds = new Set(
+      (Array.isArray(answer) ? answer : [answer]).filter(
+        (value): value is string => typeof value === 'string',
+      ),
+    );
+    for (const option of item.exercise.options ?? []) {
+      await expect(page.locator(`#${item.exercise.id}-${option.id}`)).toHaveAttribute(
+        'aria-checked',
+        String(selectedIds.has(option.id)),
+      );
+    }
+    return;
+  }
+  if (item.exercise.type === 'debug') {
+    const value = answer as { line: number; fixId: string };
+    const fix = item.exercise.fix_options?.find((option) => option.id === value.fixId);
+    await expect(page.getByLabel('Buggy line')).toHaveText(`Line ${value.line}`);
+    if (fix) await expect(page.getByLabel('Fix')).toContainText(fix.text);
+    return;
+  }
+  const value =
+    typeof answer === 'object' && answer !== null && 'text' in answer
+      ? (answer as { text: unknown }).text
+      : answer;
+  await expect(page.getByLabel('Your answer')).toHaveValue(String(value ?? ''));
+}
 
 test.beforeEach(async () => {
   const db = createDb(env.TEST_DATABASE_URL);
@@ -1572,6 +1668,8 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
     );
 
   const quizRun = await currentRun(page);
+  const questionCount = quizRun.quiz.current.items.length;
+  expect(questionCount).toBeGreaterThan(1);
   const quizItemsDb = createDb(env.TEST_DATABASE_URL);
   const quizItemPoints = await quizItemsDb
     .select({ id: lessonQuizItems.id, pointId: lessonQuizItems.knowledgePointId })
@@ -1585,41 +1683,55 @@ test('lesson quiz results are hidden until submit, resume after reload, and allo
     const run = await (await fetch(`/api/lessons/${concept}/run`)).json();
     return run.run.quiz.current.items[0];
   }, conceptId);
-  const firstAnswer = await page.evaluate(
-    async ({ concept, item, activityId, answerWrong }) => {
-      const expected = await (await fetch(`/api/test/lesson-quiz-items/${item.id}/answer`)).json();
-      let answer = expected.answer;
-      if (answerWrong && item.exercise.type === 'mc') {
-        const correctIds = Array.isArray(answer) ? answer : [answer];
-        const other = item.exercise.options.find(
-          (option: { id: string }) => !correctIds.includes(option.id),
-        )?.id;
-        answer = item.exercise.multi ? [other] : other;
-      } else if (answerWrong && typeof answer === 'number') {
-        answer += 1_000_000;
-      } else if (answerWrong) {
-        answer = `${String(answer)} incorrect`;
-      }
-      const response = await fetch(`/api/lessons/${concept}/quiz/answer`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ itemId: item.id, answer, activityId }),
-      });
-      return response.status;
-    },
-    {
-      concept: conceptId,
-      item: firstItem,
-      activityId: currentActivityId,
-      answerWrong: missedPointIds.includes(itemPointIds[firstItem.id]),
-    },
-  );
-  expect(firstAnswer).toBe(200);
+  if (!firstItem.exercise) throw new Error('Could not load the first quiz question');
+  const firstAnswer = await page.evaluate(async (itemId) => {
+    const response = await fetch(`/api/test/lesson-quiz-items/${itemId}/answer`);
+    return (await response.json()).answer;
+  }, firstItem.id);
+  const firstWrongAnswer = wrongQuizAnswer(firstItem, firstAnswer);
+  await fillQuizAnswer(page, firstItem, firstWrongAnswer);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `Question 2 of ${questionCount}` })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `Question 1 of ${questionCount}` })).toBeVisible();
+  await expectQuizAnswerPrefilled(page, firstItem, firstWrongAnswer);
+  await fillQuizAnswer(page, firstItem, firstAnswer);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `Question 2 of ${questionCount}` })).toBeVisible();
+  await page.screenshot({
+    path: `${quizReviseScreenshotDir}/question-with-back-1280.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${quizReviseScreenshotDir}/question-with-back-390.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.reload();
   await expect(page.getByTestId('lesson-quiz-question')).toBeVisible();
+  await expect(page.getByRole('heading', { name: `Question 2 of ${questionCount}` })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `Question 1 of ${questionCount}` })).toBeVisible();
+  await expectQuizAnswerPrefilled(page, firstItem, firstAnswer);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByRole('heading', { name: `Question 2 of ${questionCount}` })).toBeVisible();
   await answerAttempt(true, false, missedPointIds, itemPointIds);
   await page.reload();
   const failed = page.getByTestId('lesson-quiz-results');
+  const finalQuizState = await currentRun(page);
+  const finalQuizItemsDb = createDb(env.TEST_DATABASE_URL);
+  const finalQuizItems = await finalQuizItemsDb
+    .select({ id: lessonQuizItems.id, correct: lessonQuizItems.correct })
+    .from(lessonQuizItems)
+    .where(eq(lessonQuizItems.quizAttemptId, finalQuizState.quiz.last.attemptId));
+  await finalQuizItemsDb.$client.end();
+  expect(finalQuizItems.find((item) => item.id === firstItem.id)?.correct).toBe(1);
+  expect(finalQuizState.quiz.last.correctCount).toBe(
+    finalQuizItems.filter((item) => item.correct === 1).length,
+  );
   await expect(failed).toContainText(/Not passed · \d+ of \d+ \(you need \d+\)/);
   await expect(failed.getByText(/Your answer:|Correct answer:|Question \d+/)).toHaveCount(0);
   await expect(failed).toContainText('You missed questions on:');

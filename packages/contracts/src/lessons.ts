@@ -123,6 +123,7 @@ export interface LessonRunPayload {
           position: number;
           exercise: ClientExercise | null;
           answered: boolean;
+          answer?: unknown;
         }>;
       };
       last?: {
