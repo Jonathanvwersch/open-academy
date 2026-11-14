@@ -1,4 +1,3 @@
-import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
@@ -14,10 +13,6 @@ import { newReviewCard } from '../../apps/api/src/learning/fsrs.js';
 import { enrollInDefaultCourse } from './course-start.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
-const screenshotDir = '/home/ubuntu/shots/reviews';
-const sessionScreenshotDir = 'test-results/screenshots/screenshots/spaced-review';
-mkdirSync(screenshotDir, { recursive: true });
-mkdirSync(sessionScreenshotDir, { recursive: true });
 let userId = '';
 
 test.beforeEach(async ({ page }) => {
@@ -127,7 +122,6 @@ test('Reviews page shows due and upcoming topics at desktop and mobile widths', 
     'aria-expanded',
     'false',
   );
-  await page.screenshot({ path: `${screenshotDir}/reviews-default-desktop.png` });
 
   const sunday = dayStrip.getByRole('button', { name: /Sun.*1/ });
   await sunday.click();
@@ -146,25 +140,19 @@ test('Reviews page shows due and upcoming topics at desktop and mobile widths', 
   await expect(
     page.getByRole('heading', { name: /Fixture switching course/ }).first(),
   ).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/reviews-day-open-desktop.png` });
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/reviews');
   await expect(page.getByRole('heading', { name: 'Due now · 1' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  await page.screenshot({ path: `${screenshotDir}/reviews-default-mobile.png` });
   await page
     .getByRole('group', { name: 'Upcoming reviews for the next seven days' })
     .getByRole('button', { name: /Sat.*1/ })
     .click();
-  await page.screenshot({ path: `${screenshotDir}/reviews-day-open-mobile.png` });
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Home' })).toBeAttached();
-  await page.screenshot({ path: `${screenshotDir}/home-desktop.png` });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: `${screenshotDir}/home-mobile.png` });
 
   for (const viewport of [
     { width: 1440, height: 900, name: 'desktop' },
@@ -185,9 +173,6 @@ test('Reviews page shows due and upcoming topics at desktop and mobile widths', 
     });
     const courseNavigation = page.goto('/course', { waitUntil: 'domcontentloaded' });
     await expect(page.getByTestId('route-skeleton')).toBeVisible();
-    await page.screenshot({
-      path: `${screenshotDir}/course-loading-skeleton-${viewport.name}.png`,
-    });
     release();
     await courseNavigation;
     await page.unroute('**/api/course');
@@ -295,14 +280,6 @@ test('review session header shows its label without an activity count', async ({
   await expect(page.getByRole('heading', { name: 'Supervised learning' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible();
   await expect(page.getByText(/Activity \d+ of \d+ today/)).toHaveCount(0);
-  await page.screenshot({
-    path: `${sessionScreenshotDir}/review-session-header-desktop.png`,
-    fullPage: true,
-  });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  await page.screenshot({
-    path: `${sessionScreenshotDir}/review-session-header-mobile.png`,
-    fullPage: true,
-  });
 });
