@@ -275,7 +275,7 @@ async function init(directory: string, title: string) {
   writeFileSync(join(directory, 'sources', '.gitignore'), '*\n!index.yaml\n!.gitignore\n');
   writeFileSync(
     join(directory, 'README.md'),
-    `This folder is a course pack for ${title}.\nRun \`academy dev\` to launch Open Academy with this pack.\nRun \`academy check\` to validate the pack.\n`,
+    `This folder is a course pack for ${title}.\nRun \`academy dev\` to launch Open Academy with this pack.\nRun \`academy check\` to validate the pack.\nUse a separate database per pack, or give every topic an ID that's unique across your packs.\n`,
   );
   if ((await check(directory)) !== 0) fail('Generated course pack did not pass academy check.');
 }
