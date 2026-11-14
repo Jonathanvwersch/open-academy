@@ -136,7 +136,7 @@ describe('academy CLI', () => {
       ).toBe(0);
       const checked = run(['check', pack]);
       expect(checked.status).toBe(0);
-      expect(checked.stdout).toContain('2 topics, 0 lessons, 0 questions, 2 courses');
+      expect(checked.stdout).toContain('3 topics, 0 lessons, 0 questions, 2 courses');
     } finally {
       rmSync(parent, { recursive: true, force: true });
     }
@@ -147,7 +147,15 @@ describe('academy CLI', () => {
     try {
       const pack = join(parent, 'pack');
       expect(run(['init', pack, '--title', 'Applied Science']).status).toBe(0);
-      const created = run(['new', 'topic', 'second-topic', '--title', 'Second topic', '--pack', pack]);
+      const created = run([
+        'new',
+        'topic',
+        'second-topic',
+        '--title',
+        'Second topic',
+        '--pack',
+        pack,
+      ]);
       expect(created.status).toBe(0);
       expect(created.stdout).toContain('Added second-topic to Applied Science basics, unit 1.');
       const course = parse(
@@ -190,7 +198,7 @@ describe('academy CLI', () => {
       if (!stub) throw new Error('Expected a stub topic in post-training.yaml');
       expect(run(['new', 'lesson', stub.id, '--pack', pack]).status).toBe(0);
 
-      const checked = run(['check', pack]);
+      const checked = runWithInitCwd(['check', pack], parent);
       expect(checked.status).toBe(1);
       const issues = checked.stderr.trim().split('\n').filter(Boolean);
       expect(issues.length).toBeGreaterThan(0);
@@ -256,6 +264,7 @@ describe('academy CLI', () => {
       run(['init', pack, '--title', 'Applied Science']);
       const topicId = 'applied-science-first-topic';
       const exerciseFile = join(pack, 'exercises', `${topicId}.yaml`);
+      mkdirSync(join(pack, 'exercises'), { recursive: true });
       writeFileSync(
         exerciseFile,
         stringify({
@@ -286,15 +295,15 @@ describe('academy CLI', () => {
       const exercises = parse(readFileSync(exerciseFile, 'utf8')) as {
         exercises: Array<{ id: string; role: string; prompt: string }>;
       };
-      expect(exercises.exercises.filter((exercise) => exercise.id === `${topicId}-problem-1`)).toEqual(
-        [
-          {
-            id: `${topicId}-problem-1`,
-            role: 'diagnostic',
-            prompt: 'Existing diagnostic question.',
-          },
-        ],
+      const existingDiagnostic = exercises.exercises.filter(
+        (exercise) => exercise.id === `${topicId}-problem-1`,
       );
+      expect(existingDiagnostic).toHaveLength(1);
+      expect(existingDiagnostic[0]).toMatchObject({
+        id: `${topicId}-problem-1`,
+        role: 'diagnostic',
+        prompt: 'Existing diagnostic question.',
+      });
       const checked = run(['check', pack]);
       expect(checked.status).toBe(1);
       expect(checked.stderr).toContain('TODO field at .objective');
@@ -391,13 +400,7 @@ describe('academy CLI', () => {
           directory,
         ],
         (directory: string) => ['sources', 'list', '--pack', directory],
-        (directory: string) => [
-          'sources',
-          'add',
-          join(parent, 'missing.pdf'),
-          '--pack',
-          directory,
-        ],
+        (directory: string) => ['sources', 'add', join(parent, 'missing.pdf'), '--pack', directory],
       ];
       for (const directory of [missingDirectory, emptyDirectory]) {
         const expected = `No course pack at ${directory} (missing curriculum.yaml).`;
