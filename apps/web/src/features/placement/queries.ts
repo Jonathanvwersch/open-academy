@@ -32,11 +32,20 @@ export const placementResultsQueryOptions = (runId: string | null) =>
         : Promise.resolve(null),
   });
 
-export const startPlacementMutationOptions = () =>
+export const startPlacementMutationOptions = (courseId?: string) =>
   mutationOptions({
     mutationKey: ['placement', 'start'] as const,
     mutationFn: async () => {
-      const response = await apiFetch('/api/placement', { method: 'POST' });
+      const response = await apiFetch(
+        '/api/placement',
+        courseId
+          ? {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ courseId }),
+            }
+          : { method: 'POST' },
+      );
       if (!response.ok) throw new Error('Could not start the placement check');
       return (await response.json()) as PlacementStartPayload;
     },

@@ -417,9 +417,14 @@ export function registerLearnCourseRoutes(
         ),
     ]);
     const mastery = filterMasteryRecordsForContent(index, masteryRows);
-    const activeCourseId = index.coursesById.has(activeCourseIdStored ?? '')
+    const requestedCourseId = context.req.query('course');
+    const storedActiveCourseId = index.coursesById.has(activeCourseIdStored ?? '')
       ? (activeCourseIdStored ?? null)
       : null;
+    const activeCourseId =
+      requestedCourseId && index.coursesById.has(requestedCourseId)
+        ? requestedCourseId
+        : storedActiveCourseId;
     const runs = runsRaw.filter((run) => index.conceptsById.has(run.conceptId));
     const projectRows = projectRowsRaw.filter((project) =>
       index.projectsById.has(project.projectId),
@@ -468,13 +473,20 @@ export function registerLearnCourseRoutes(
   });
 
   api.post('/course/start', async (context) => {
-    const body = (await context.req.json().catch(() => null)) as { method?: unknown } | null;
+    const body = (await context.req.json().catch(() => null)) as {
+      method?: unknown;
+      courseId?: unknown;
+    } | null;
     if (body?.method !== 'beginning') {
       return context.json({ error: 'Invalid course start method' }, 400);
     }
     const index = await deps.content();
     const repo = deps.withRepo(context);
-    const activeCourse = activeCourseFor(index, await repo.activeCourseId());
+    const requestedCourseId =
+      typeof body.courseId === 'string' && index.coursesById.has(body.courseId)
+        ? body.courseId
+        : null;
+    const activeCourse = activeCourseFor(index, requestedCourseId ?? (await repo.activeCourseId()));
     if (!activeCourse) return context.json({ error: 'No active course' }, 404);
     await repo.startCourse(activeCourse.id, 'beginning', deps.requestNow(context));
     return context.json({ courseId: activeCourse.id, method: 'beginning' });

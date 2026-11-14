@@ -1,3 +1,4 @@
+import type { CoursePayload } from '@academy/contracts/course';
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -7,7 +8,7 @@ import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { Input } from '../../components/ui/input.js';
 import { Label } from '../../components/ui/label.js';
-import { courseQueryOptions } from '../course/queries.js';
+import { courseQueryKeyRoot } from '../course/queries.js';
 import { projectQueryOptions } from './queries.js';
 
 const Route = getRouteApi('/projects/$projectId');
@@ -60,7 +61,7 @@ export function ProjectPage() {
             }
           : current,
       );
-      queryClient.setQueryData(courseQueryOptions().queryKey, (current) =>
+      queryClient.setQueriesData<CoursePayload>({ queryKey: courseQueryKeyRoot }, (current) =>
         current
           ? {
               ...current,

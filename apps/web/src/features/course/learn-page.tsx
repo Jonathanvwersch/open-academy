@@ -71,7 +71,7 @@ export function LearnPage() {
                     type="button"
                     size="sm"
                     loading={chooseCourse.isPending && chooseCourse.variables === course.id}
-                    onClick={() => chooseCourse.mutate(course.id)}
+                    onClick={() => chooseCourse.switchTo(course.id)}
                   >
                     Start
                   </Button>
@@ -93,6 +93,7 @@ export function LearnPage() {
       <section className="space-y-6">
         <h1 className="sr-only">Home</h1>
         <CourseStartCard
+          courseId={courseData.course.id}
           courseTitle={courseData.course.title}
           placementRunId={today.courseStart.placementRunId}
         />

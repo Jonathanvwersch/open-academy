@@ -24,13 +24,19 @@ async function invalidatePlacementProgress(queryClient: ReturnType<typeof useQue
   ]);
 }
 
-export function PlacementPage({ initialRunId }: { initialRunId?: string }) {
+export function PlacementPage({
+  initialRunId,
+  initialCourseId,
+}: {
+  initialRunId?: string;
+  initialCourseId?: string;
+}) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [runId, setRunId] = useState<string | null>(initialRunId ?? null);
   const startRequested = useRef(false);
   const resultsNavigationRequested = useRef(false);
-  const startPlacement = useMutation(startPlacementMutationOptions());
+  const startPlacement = useMutation(startPlacementMutationOptions(initialCourseId));
   const nextQuery = useQuery({
     ...placementNextQueryOptions(runId),
     enabled: runId !== null,

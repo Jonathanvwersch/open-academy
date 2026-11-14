@@ -176,7 +176,9 @@ test('starting from the beginning enrolls without a placement run', async ({ pag
   await page.goto('/');
   await page.getByRole('button', { name: 'Start', exact: true }).first().click();
   await page.getByRole('button', { name: "I'm new to this — start from the beginning" }).click();
-  await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
+  await expect(page).toHaveURL(/\/course\?course=fixture-course$/);
+  await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^Start / })).toHaveCount(0);
   await page.goto('/course');
   await expect(page.getByRole('heading', { name: /^Start / })).toHaveCount(0);
 });
