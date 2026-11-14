@@ -164,5 +164,5 @@ def run_checks(model):
         assert 1.19 < ratio < 1.3, (
             f"PPO probe ratio {ratio:.4f}; expected 1.19 < ratio < 1.3. Freeze old log probabilities across epochs and zero the clipped gradient. An unclipped ratio keeps growing.")
 
-    check("ppo-ratio-clip", "Small repeated PPO steps should stop near 1+c; clipping is not a hard ratio constraint.", clipping)
+    check("ppo-ratio-clip", "Small repeated PPO steps should stop near 1+c. Finite updates can still cross the clip boundary.", clipping)
     return checks, {k: v for k, v in metrics.items() if np.isfinite(v)}

@@ -82,7 +82,7 @@ exercises:
       - id: b
         text: Clipping projects each probability ratio into the interval; this result shows an implementation error.
         correct: false
-        feedback: The objective clips a surrogate term. It does not project the updated parameters or their probability ratios.
+        feedback: The objective clips a surrogate term. A finite update can still move the ratio outside the interval without any error.
       - id: c
         text: Clipping resets the old probability after each step; this result shows an outdated denominator.
         correct: false
