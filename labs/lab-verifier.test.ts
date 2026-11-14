@@ -57,8 +57,11 @@ test.each([
       );
     }
     if (passed) {
-      expect(result.metrics.binary_accuracy).toBeGreaterThan(0.9);
-      expect(result.metrics.multiclass_accuracy).toBeGreaterThan(0.9);
+      expect(result.metrics.binary_accuracy).toBeGreaterThan(0.85);
+      expect(result.metrics.binary_accuracy).toBeLessThanOrEqual(0.92);
+      expect(result.metrics.multiclass_accuracy).toBeGreaterThan(0.83);
+      expect(result.metrics.multiclass_accuracy).toBeGreaterThanOrEqual(0.85);
+      expect(result.metrics.multiclass_accuracy).toBeLessThanOrEqual(0.92);
     }
   } finally {
     rmSync(directory, { recursive: true, force: true });

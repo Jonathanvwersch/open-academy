@@ -6,7 +6,8 @@ def make_data(classes=2, seed=17):
         raise ValueError("classes must be 2 or 3")
     rng = np.random.default_rng(seed)
     centers = np.array([[-2, -1], [2, -1], [0, 2.5]])[:classes]
-    X = np.concatenate([rng.normal(center, 0.8, (200, 2)) for center in centers])
+    spread = 1.6 if classes == 2 else 1.4
+    X = np.concatenate([rng.normal(center, spread, (200, 2)) for center in centers])
     y = np.repeat(np.arange(classes), 200)
     order = rng.permutation(len(y))
     split = int(0.8 * len(y))

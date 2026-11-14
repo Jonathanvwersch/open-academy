@@ -15,7 +15,7 @@ Edit `labs/classifier-numpy/work/classifier.py`. Setup preserves existing work. 
 
 ## Data and shapes
 
-`make_data(classes=2, seed=17)` generates 200 examples per class from two-dimensional Gaussian blobs with spread 0.8. It shuffles with a fixed seed and returns `X_train, y_train, X_val, y_val`. The 80/20 split is already implemented. Use only the training split to update weights.
+`make_data(classes=2, seed=17)` generates 200 examples per class from two-dimensional Gaussian blobs with spread 1.6 for binary data and 1.4 for three-class data. The blobs overlap, so both models make some validation errors. It shuffles with a fixed seed and returns `X_train, y_train, X_val, y_val`. The 80/20 split is already implemented. Use only the training split to update weights.
 
 Each row of `X` is one example. Targets `y` have shape `(n,)`. Binary weights have shape `(d,)` and bias is a scalar. Multiclass weights have shape `(d, k)` and bias has shape `(k,)`. Scores are `X @ w + b`.
 
@@ -38,9 +38,9 @@ python3 labs/classifier-numpy/report.py
 python3 labs/verify.py classifier-numpy
 ```
 
-The reporting script trains both classifiers with learning rate 0.1 for 600 full-batch steps. It uses a threshold of 0.5 for binary probabilities and the largest probability for multiclass predictions. It prints the held-out confusion matrices, accuracy, precision and recall. Inspect which true classes are confused.
+The reporting script trains both classifiers with learning rate 0.1 for 600 full-batch steps. It uses a threshold of 0.5 for binary probabilities and the largest probability for multiclass predictions. It prints the validation confusion matrices, accuracy, precision and recall. Inspect which true classes are confused.
 
-The verifier independently measures held-out accuracy. Both models must exceed 0.90. Upload `labs/classifier-numpy/work/results.json` on the project page. Failed checks include a message identifying the contract to revisit.
+The verifier independently measures validation accuracy. Binary accuracy must exceed 0.85 and three-class accuracy must exceed 0.83. Upload `labs/classifier-numpy/work/results.json` on the project page. Failed checks include a message identifying the contract to revisit.
 
 ## Checker evidence
 

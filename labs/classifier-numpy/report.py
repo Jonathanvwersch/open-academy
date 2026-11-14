@@ -16,7 +16,7 @@ for classes in (2, 3):
     matrix = model.confusion_matrix(y_val, predicted, classes)
     accuracy, precision, recall = model.metrics(matrix)
     print(f"{classes} classes: loss {history[0]:.4f} -> {history[-1]:.4f}")
-    print("Held-out confusion matrix (true rows, predicted columns):")
+    print("Validation confusion matrix (true rows, predicted columns):")
     print(matrix)
     print(f"Accuracy: {accuracy:.4f}")
     print("Precision by class:", precision)

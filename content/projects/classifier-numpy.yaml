@@ -2,9 +2,9 @@ id: classifier-numpy
 title: "Classifier from scratch"
 status: authored
 est_hours: 4
-objective: "Implement logistic regression and softmax regression in NumPy trained with cross-entropy, then evaluate them on held-out data with accuracy, precision, recall and a confusion matrix."
+objective: "Implement logistic regression and softmax regression in NumPy trained with cross-entropy, then evaluate them on validation data with accuracy, precision, recall and a confusion matrix."
 background: |
-  Logistic regression turns a score into a binary probability. Softmax extends this to several classes. In this project you will connect these probabilities to cross-entropy, gradient descent and held-out evaluation.
+  Logistic regression turns a score into a binary probability. Softmax extends this to several classes. In this project you will connect these probabilities to cross-entropy, gradient descent and validation evaluation.
 
   You will build both classifiers in NumPy. Fixed-seed Gaussian data and the split are provided. Each example has two features. The binary dataset has 400 examples and the three-class dataset has 600. Train on 80% and reserve 20% for validation.
 
@@ -51,7 +51,7 @@ tasks:
       Return weights, bias and a history containing the initial loss and the loss after each update. Zero steps should return the initial parameters and one loss.
       Done means the one-step check passes for both classifiers. Use learning rate 0.1 and 600 steps for the supplied data.
   - id: t-confusion
-    title: Count held-out predictions
+    title: Count validation predictions
     md: |
       Implement `confusion_matrix(y, predicted, classes)` with true labels in rows and predicted labels in columns.
       Use a probability threshold of 0.5 for binary predictions and the largest softmax probability for multiclass predictions.
@@ -60,14 +60,14 @@ tasks:
     title: Report what the classifiers get right
     md: |
       Implement `metrics(matrix)`. Return accuracy and one precision and recall value per class.
-      Use zero when a denominator is zero. The README provides a reporting script that prints the held-out matrix and all three scores for both models.
-      Done means the asymmetric-matrix and empty-matrix checks pass, and both held-out accuracies exceed 0.90.
+      Use zero when a denominator is zero. The README provides a reporting script that prints the validation matrix and all three scores for both models.
+      Done means the asymmetric-matrix and empty-matrix checks pass, binary validation accuracy exceeds 0.85, and three-class validation accuracy exceeds 0.83.
 acceptance:
   - All nine public checks pass.
   - Binary and multiclass cross-entropy gradients match numerical differences.
   - Softmax and multiclass loss remain finite for large positive and negative logits.
-  - Binary and three-class held-out accuracy each exceed 0.90.
-  - Report held-out accuracy, per-class precision and recall, and a confusion matrix for both models.
+  - Binary validation accuracy exceeds 0.85 and three-class validation accuracy exceeds 0.83.
+  - Report validation accuracy, per-class precision and recall, and a confusion matrix for both models.
 tests:
   - { id: test_sigmoid, concepts: [logistic-regression], dimension: implementation }
   - { id: test_stable_softmax_logsumexp, concepts: [classification-softmax], dimension: math }
@@ -79,11 +79,11 @@ tests:
   - { id: test_binary_held_out, concepts: [logistic-regression], dimension: implementation }
   - { id: test_multiclass_held_out, concepts: [classification-softmax], dimension: math }
 metrics:
-  - { id: binary_accuracy, label: Binary held-out accuracy, threshold: 0.90, direction: above }
+  - { id: binary_accuracy, label: Binary validation accuracy, threshold: 0.85, direction: above }
   - {
       id: multiclass_accuracy,
-      label: Three-class held-out accuracy,
-      threshold: 0.90,
+      label: Three-class validation accuracy,
+      threshold: 0.83,
       direction: above,
     }
 reflection:
@@ -91,5 +91,5 @@ reflection:
   - lab-classifier-precision
   - lab-classifier-recall
 follow_up:
-  - Change the Gaussian spread and record how the held-out confusion matrices change.
+  - Change the Gaussian spread and record how the validation confusion matrices change.
   - Try binary thresholds of 0.2 and 0.8. Compare precision and recall for class 1.
