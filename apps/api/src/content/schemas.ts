@@ -161,6 +161,16 @@ export const NotationSchema = z
           .strict(),
       )
       .default([]),
+    avoid: z
+      .array(
+        z
+          .object({
+            pattern: z.string().min(1),
+            use: z.string().min(1),
+          })
+          .strict(),
+      )
+      .optional(),
   })
   .strict();
 

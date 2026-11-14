@@ -685,6 +685,83 @@ test('real content has a valid course graph', async () => {
   expect(content.courses).toHaveLength(8);
 });
 
+test('avoid patterns report prohibited words in learner prompts with their source location', async () => {
+  const data = await notationFixture();
+  addAvoidPattern(data);
+  const exercise = data.exercises.find((entry) => entry.concept === 'derivatives');
+  if (!exercise) throw new Error('Missing fixture derivatives exercise');
+  exercise.value.prompt = 'Train with lr = 0.1.';
+
+  expect(validateContent(data)).toContainEqual({
+    file: exercise.file,
+    id: exercise.value.id,
+    message: '"lr": write "learning rate" or $\\eta$',
+  });
+});
+
+test('avoid patterns ignore code spans, fenced code, code fields, and IDs', async () => {
+  const data = await notationFixture();
+  addAvoidPattern(data);
+  const exercise = data.exercises.find((entry) => entry.concept === 'derivatives');
+  if (!exercise) throw new Error('Missing fixture derivatives exercise');
+  exercise.value.id = 'lr-foo';
+  exercise.value.prompt =
+    'Use `lr = 0.1` and the value {{=lr}}.\n\n```python\nlr = 0.1\n```\n\n~~~python\nlr = 0.2\n~~~';
+  const codeExercise = data.exercises.find(({ value }) => value.type === 'debug');
+  if (codeExercise?.value.type !== 'debug') {
+    throw new Error('Missing fixture debug exercise');
+  }
+  codeExercise.value.code = 'lr = 0.1';
+
+  expect(validateContent(data)).not.toContainEqual(
+    expect.objectContaining({ message: '"lr": write "learning rate" or $\\eta$' }),
+  );
+});
+
+test('avoid patterns inspect lesson and project prose', async () => {
+  const data = await notationFixture();
+  addAvoidPattern(data);
+  const lesson = data.lessons.find(({ value }) => value.concept === 'derivatives');
+  const lessonBlock = lesson?.value.blocks.find((block) => 'md' in block);
+  const project = data.projects[0];
+  if (!lesson || !lessonBlock || !('md' in lessonBlock) || !project) {
+    throw new Error('Missing fixture lesson or project');
+  }
+  lessonBlock.md = 'Train with lr = 0.1.';
+  project.value.tasks.push({
+    id: 'avoid-test-task',
+    title: 'Training',
+    md: 'Train with lr = 0.1.',
+  });
+
+  expect(validateContent(data)).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        file: lesson.file,
+        id: lesson.value.concept,
+        message: '"lr": write "learning rate" or $\\eta$',
+      }),
+      expect.objectContaining({
+        file: project.file,
+        id: project.value.id,
+        message: '"lr": write "learning rate" or $\\eta$',
+      }),
+    ]),
+  );
+});
+
+test('an absent avoid list does not reject otherwise allowed prose', async () => {
+  const data = await notationFixture();
+  data.notation = { file: 'notation.yaml', value: { terms: [] } };
+  const exercise = data.exercises.find((entry) => entry.concept === 'derivatives');
+  if (!exercise) throw new Error('Missing fixture derivatives exercise');
+  exercise.value.prompt = 'Train with lr = 0.1.';
+
+  expect(validateContent(data)).not.toContainEqual(
+    expect.objectContaining({ message: '"lr": write "learning rate" or $\\eta$' }),
+  );
+});
+
 test('notation used without an introducing hard prerequisite is an issue', async () => {
   const data = await notationFixture();
   addNotationTerm(data);
@@ -1378,6 +1455,21 @@ function addNotationTerm(data: ContentSourceData, teachIntro = true) {
           label: 'needle notation',
           match: ['needle'],
           introduced_by: ['vectors'],
+        },
+      ],
+    },
+  };
+}
+
+function addAvoidPattern(data: ContentSourceData) {
+  data.notation = {
+    file: 'notation.yaml',
+    value: {
+      terms: [],
+      avoid: [
+        {
+          pattern: '\\b[Ll][Rr]\\b',
+          use: 'write "learning rate" or $\\eta$',
         },
       ],
     },

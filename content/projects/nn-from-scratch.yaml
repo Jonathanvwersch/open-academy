@@ -42,7 +42,7 @@ tasks:
   - id: t-train
     title: Train and evaluate
     md: |
-      Implement full-batch gradient descent and binary `accuracy`. Update parameters with `parameter -= lr * gradient`; return the loss history. Train on the training split, then report accuracy on the held-out validation split.
+      Implement full-batch gradient descent and binary `accuracy`. Update parameters with `parameter -= lr * gradient` (`lr` is the learning rate $\eta$); return the loss history. Train on the training split, then report accuracy on the held-out validation split.
   - id: t-baseline
     title: Compare with a linear classifier
     md: |
