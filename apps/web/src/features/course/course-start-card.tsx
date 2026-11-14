@@ -47,7 +47,7 @@ export function CourseStartCard({
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button asChild>
-            <Link to="/placement" search={{ id: placementRunId ?? undefined }}>
+            <Link to="/placement" search={{ id: placementRunId ?? undefined, course: courseId }}>
               {placementRunId ? 'Continue placement check' : 'Take the placement check'}
             </Link>
           </Button>

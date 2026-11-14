@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { and, eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
@@ -186,6 +187,31 @@ test('course switching shows the new course before the active-course request res
   await expect(
     page.getByRole('heading', { name: 'Fixture switching course', exact: true }),
   ).toBeVisible();
+});
+
+test('placement starts for the course selected in the course URL', async ({ page }) => {
+  await db
+    .delete(courseEnrollments)
+    .where(
+      and(
+        eq(courseEnrollments.userId, userId),
+        eq(courseEnrollments.courseId, 'fixture-switching-course'),
+      ),
+    );
+  await page.goto('/course?course=fixture-switching-course');
+  await expect(
+    page.getByRole('heading', { name: 'Start Fixture switching course' }),
+  ).toBeVisible();
+
+  const placementStart = page.waitForRequest(
+    (request) => request.url().endsWith('/api/placement') && request.method() === 'POST',
+  );
+  await page.getByRole('link', { name: 'Take the placement check' }).click();
+  const request = await placementStart;
+  expect(JSON.parse(request.postData() ?? '{}')).toEqual({
+    courseId: 'fixture-switching-course',
+  });
+  await expect(page.getByRole('heading', { name: /Placement check ·/ })).toBeVisible();
 });
 
 test('Reviews badge and Start reviews work from the sidebar', async ({ page }) => {

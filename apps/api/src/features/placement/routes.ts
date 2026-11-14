@@ -10,7 +10,10 @@ import {
 
 export function registerPlacementRoutes(api: Hono<ApiEnv>, deps: ApiServices) {
   api.post('/placement', async (context) => {
-    const response = await postPlacement(deps, featureRequest(context, deps));
+    const response = await postPlacement(
+      deps,
+      featureRequest(context, deps, await context.req.json().catch(() => null)),
+    );
     return context.json(response.body, response.status);
   });
   api.get('/placement/:id/next', async (context) => {

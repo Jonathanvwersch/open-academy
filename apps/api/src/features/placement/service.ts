@@ -103,7 +103,13 @@ async function completeRun(
 
 export async function postPlacement(deps: FeatureServices, request: FeatureRequest) {
   const content = await deps.content();
-  const course = activeCourseFor(content, await request.repo.activeCourseId());
+  const body = request.body as { courseId?: unknown } | null;
+  const storedCourseId = await request.repo.activeCourseId();
+  const courseId =
+    typeof body?.courseId === 'string' && content.coursesById.has(body.courseId)
+      ? body.courseId
+      : storedCourseId;
+  const course = activeCourseFor(content, courseId);
   if (!course) return serviceResult({ error: 'No active course' }, 404);
   const activeRun = await request.repo.activePlacementRun(course.id);
   if (activeRun) {

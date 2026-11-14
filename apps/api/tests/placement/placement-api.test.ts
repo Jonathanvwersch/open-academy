@@ -101,6 +101,30 @@ test('a new learner chooses a course before course start is needed', async () =>
   ).toBe(false);
 });
 
+test('placement starts the requested course and falls back for an unknown course id', async () => {
+  await chooseFixtureCourse();
+
+  const requested = await post('/placement', { courseId: 'fixture-switching-course' });
+  expect(requested.status).toBe(201);
+  const requestedId = (await requested.json()).id as string;
+  const [requestedRun] = await db
+    .select({ state: diagnosticRuns.state })
+    .from(diagnosticRuns)
+    .where(eq(diagnosticRuns.id, requestedId));
+  expect(requestedRun?.state).toMatchObject({ courseId: 'fixture-switching-course' });
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  expect(user?.activeCourseId).toBe('fixture-course');
+
+  const fallback = await post('/placement', { courseId: 'unknown-course' });
+  expect(fallback.status).toBe(201);
+  const fallbackId = (await fallback.json()).id as string;
+  const [fallbackRun] = await db
+    .select({ state: diagnosticRuns.state })
+    .from(diagnosticRuns)
+    .where(eq(diagnosticRuns.id, fallbackId));
+  expect(fallbackRun?.state).toMatchObject({ courseId: 'fixture-course' });
+});
+
 test('beginning enrolls in the active course without changing mastery', async () => {
   await chooseFixtureCourse();
   const before = await db.select().from(mastery).where(eq(mastery.userId, userId));
