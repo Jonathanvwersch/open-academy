@@ -175,4 +175,4 @@ concepts:
     objectives:
       - { text: "Find the eigenvalues of a 2×2 matrix", dimension: math }
       - { text: "Explain SVD as rotate, stretch, rotate", dimension: conceptual }
-    status: stub
+    status: authored
