@@ -1,0 +1,572 @@
+concept: multi-head-attention
+exercises:
+  - id: mha-heads-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: What does multi-head attention do with a sequence of token embeddings?
+    options:
+      - id: a
+        text: It runs several attention heads side by side, each with its own query, key and value matrices.
+        correct: true
+        feedback: Every head reads all the tokens with its own matrices, so each one can weight the tokens differently.
+      - id: b
+        text: It runs one attention calculation several times in a row, feeding each output into the next.
+        correct: false
+        feedback: The heads run side by side on the same embeddings; none of them reads another head's output.
+      - id: c
+        text: It splits the tokens into groups and gives each group its own attention head to work on.
+        correct: false
+        feedback: Every head works on all the tokens; what differs between heads is their matrices.
+      - id: d
+        text: It gives each token several embeddings and averages them before running a single attention head.
+        correct: false
+        feedback: Each token keeps one embedding; the heads each turn it into their own queries, keys and values.
+    solution: Multi-head attention runs $h$ attention heads side by side on the same tokens. Each head has its own query, key and value matrices, so each gives every token its own set of weights.
+  - id: mhap-heads-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, both heads start from the same embeddings of "the", "cat" and "sat". Why does head 1 put most of the weight from "sat" on "cat", while head 2 puts it on "sat"?
+    options:
+      - id: a
+        text: Each head has its own query and key matrices, so its query for "sat" scores highest against a different key.
+        correct: true
+        feedback: Head 1's scores are $0$, $1.414$ and $0$, and head 2's are $0$, $0$ and $1.414$, so the large weight lands on a different token.
+      - id: b
+        text: Head 2 divides its scores by a larger $\sqrt{d_k}$, which moves the large weight onto the last token.
+        correct: false
+        category: misunderstood_definition
+        feedback: Both heads have $d_k=2$ and divide by $\sqrt2$; the difference comes from their queries and keys.
+      - id: c
+        text: Head 2 reads only the last two entries of each embedding, and those entries favour "sat".
+        correct: false
+        category: misunderstood_definition
+        feedback: Each head's matrices multiply all four entries of the embedding; only the head's results have 2 entries.
+      - id: d
+        text: The softmax in head 2 always gives the largest weight to the last token in the sentence.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Softmax has no preference for position; it gives the largest weight to the largest score.
+    solution: The heads share the embeddings but have different matrices. Head 1's query $(1,1)$ scores highest against the key of "cat", and head 2's query $(2,0)$ scores highest against the key of "sat".
+  - id: mhap-head-width-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A multi-head attention layer has embedding width $d={{=h*k}}$ and $h={{=h}}$ heads. How many entries does each head's query vector have?
+    params:
+      h: { min: 2, max: 8 }
+      k: { min: 16, max: 64, step: 16 }
+    answer_expr: k
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: h * k * h
+        category: misunderstood_definition
+        feedback: The heads share out the width $d$, so divide by the number of heads.
+      - answer_expr: h * k
+        category: misunderstood_definition
+        feedback: That is the full embedding width $d$; each head's vectors have width $d_k=d/h$.
+    solution: Each head has width $d_k=d/h={{=h*k}}/{{=h}}={{=k}}$.
+  - id: mhap-query-entry
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: |
+      One attention head has the $4\times2$ query matrix
+
+      $$W_Q=\begin{bmatrix}1&0\\2&1\\0&-1\\1&1\end{bmatrix}$$
+
+      A token's embedding is $e=(2,1,3,0)$. Its query is $q=eW_Q$, with 2 entries. What is the second entry of $q$?
+    answer: -2
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer: 4
+        category: math_error
+        feedback: That is the first entry, from column 1; the second entry uses column 2, $(0,1,-1,1)$.
+      - answer: -3
+        category: math_error
+        feedback: "That misses the term $1\\times1$. Pair each embedding entry with the matching entry of column 2: $2\\times0+1\\times1+3\\times(-1)+0\\times1$."
+    solution: The second entry is the dot product of $e$ with column 2 of $W_Q$, $(0,1,-1,1)$, which is $2\times0+1\times1+3\times(-1)+0\times1=-2$.
+  - id: mhap-head-score-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In one attention head of width $d_k=4$, a token's query is $q=({{=a}},1,0,2)$ and another token's key is $k=(2,{{=b}},5,1)$. What is the scaled score $q\cdot k/\sqrt{d_k}$?
+    params:
+      a: { min: 1, max: 4 }
+      b: { min: 1, max: 4 }
+    answer_expr: (2 * a + b + 2) / 2
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: 2 * a + b + 2
+        category: misunderstood_definition
+        feedback: Divide the dot product by $\sqrt{d_k}=\sqrt4=2$.
+      - answer_expr: (2 * a + b + 2) / 4
+        category: misunderstood_definition
+        feedback: The score is divided by $\sqrt{d_k}=2$, the square root of the width.
+    solution: The dot product is ${{=a}}\times2+1\times{{=b}}+0\times5+2\times1={{=2*a+b+2}}$. Dividing by $\sqrt4=2$ gives ${{=(2*a+b+2)/2}}$.
+  - id: mhap-whole-embedding
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A multi-head attention layer has embedding width $d=8$ and $h=2$ heads, so each head has width $d_k=4$. A student says head 2 only ever looks at entries 5 to 8 of each token's embedding. What is actually true?
+    options:
+      - id: a
+        text: Head 2's matrices are $8\times4$, so they multiply all 8 entries; only head 2's results have 4 entries.
+        correct: true
+        feedback: Each head's query, key and value matrices are $d\times d_k$, so they read the whole embedding.
+      - id: b
+        text: The student is right, because head 1 reads entries 1 to 4 and head 2 reads entries 5 to 8.
+        correct: false
+        category: misunderstood_definition
+        feedback: The split is in the heads' outputs; each head's matrices still multiply all $d=8$ entries.
+      - id: c
+        text: Head 2 reads all 8 entries, but only for the second half of the tokens in the sentence.
+        correct: false
+        category: misunderstood_definition
+        feedback: Every head works on every token; the heads differ only in their matrices.
+      - id: d
+        text: Head 2's matrices are $4\times4$, so it reads 4 of the entries, chosen during training.
+        correct: false
+        category: misunderstood_definition
+        feedback: A head's matrices are $d\times d_k=8\times4$, with one row for each of the 8 embedding entries.
+    solution: Each head's matrices have shape $d\times d_k=8\times4$, so they multiply the whole 8-entry embedding and give vectors of width 4.
+  - id: mhap-two-key-output
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: One attention head has width $d_k=4$. A token's query has dot products $q\cdot k_1=4$ and $q\cdot k_2=0$ with the keys of the two tokens in the input, whose values are $v_1=(10,0,0,0)$ and $v_2=(0,10,0,0)$. What is the first entry of this head's output for the token? Give 2 decimal places.
+    answer: 8.808
+    tolerance: { abs: 0.01 }
+    common_wrong:
+      - answer: 9.820
+        tolerance: { abs: 0.01 }
+        category: misunderstood_definition
+        feedback: Divide the dot products by $\sqrt{d_k}=2$ before the softmax, giving scores $2$ and $0$.
+      - answer: 10
+        tolerance: { abs: 0.01 }
+        category: misunderstood_definition
+        feedback: Attention averages all the values with softmax weights; it doesn't just copy the best match.
+      - answer: 5
+        tolerance: { abs: 0.01 }
+        category: math_error
+        feedback: Equal weights would need equal scores; here the scores are $2$ and $0$.
+    solution: The scores are $4/2=2$ and $0/2=0$. The weights are $e^2/(e^2+1)=7.389/8.389=0.881$ and $0.119$. The first entry is $0.881\times10+0.119\times0=8.81$.
+  - id: mhap-robot-heads
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot's model turns its last 4 joint-angle readings into 4 tokens and runs attention over them. For each reading, it needs to take in both the newest reading and the readings most similar to it. Why does multi-head attention suit this better than one head?
+    options:
+      - id: a
+        text: Each head has its own weights, so one head can put most weight on the newest reading and another on similar ones.
+        correct: true
+        feedback: One head's weights add up to 1, so it struggles to put a lot of weight on two different readings at once.
+      - id: b
+        text: With one head per reading, every reading gets a head to itself.
+        correct: false
+        category: misunderstood_definition
+        feedback: Every head works on all the readings, each with its own matrices.
+      - id: c
+        text: Several heads let each reading's weights add up to more than 1, so it can take in more.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each head's weights for a token still add up to 1; the gain is having several separate sets of weights.
+      - id: d
+        text: One head can't compare a reading with itself, so it can never take in the newest reading.
+        correct: false
+        category: incorrect_reasoning
+        feedback: A single head scores each token against every key, including its own.
+    solution: A single head gives each token one set of weights that adds up to 1. Several heads give several sets, so one can follow the newest reading while another follows similar readings.
+  - id: mha-combine-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: After every head has produced its output for a token, how does multi-head attention turn them into the token's final output?
+    options:
+      - id: a
+        text: It writes them side by side in one vector and multiplies that vector by an output matrix $W_O$.
+        correct: true
+        feedback: Concatenating gives back width $d$, and $W_O$ lets every output entry use every head.
+      - id: b
+        text: It adds them up and divides by the number of heads, giving their average as the output.
+        correct: false
+        feedback: An average has width $d_k$ and blends the heads together; multi-head attention concatenates them.
+      - id: c
+        text: It keeps only the output of the head whose weights are largest and drops the other heads.
+        correct: false
+        feedback: Every head's output is kept and written into the concatenated vector.
+      - id: d
+        text: It runs a softmax over the head outputs so that their entries add up to 1 like weights.
+        correct: false
+        feedback: Softmax is used inside each head, on the scores; the outputs are concatenated and multiplied by $W_O$.
+    solution: The head outputs are concatenated into one vector of width $d$, and that vector is multiplied by the $d\times d$ output matrix $W_O$.
+  - id: mhap-combine-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example, the concatenated vector's first entry, $0.33$, comes only from head 1. Why does the first entry of the final output, $2.51$, depend on both heads?
+    options:
+      - id: a
+        text: Column 1 of $W_O$ is $(1,0,1,0)$, so it adds entry 1, from head 1, to entry 3, from head 2.
+        correct: true
+        feedback: Each output entry is the concatenated vector dotted with a column of $W_O$, which can pick up entries from any head.
+      - id: b
+        text: Concatenating had already mixed the heads, and $W_O$ only rescales each entry.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Concatenating only writes the outputs side by side; entry 1 is still head 1's $0.33$.
+      - id: c
+        text: The softmax in head 2 changed head 1's output while the two heads were being joined.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Each head's softmax only affects its own weights; the heads meet for the first time at $W_O$.
+      - id: d
+        text: $W_O$ averages all four entries, and that average happens to be $2.51$.
+        correct: false
+        category: math_error
+        feedback: The average of the four entries is about $1.18$; column 1 adds $0.33$ and $2.18$.
+    solution: Output entry 1 is $c$ dotted with column 1 of $W_O$, $(1,0,1,0)$, which gives $0.33+2.18=2.51$, one number from each head.
+  - id: mhap-concat-width-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: Each of the $h={{=h}}$ heads in a multi-head attention layer gives a token an output with $d_k={{=k}}$ entries. How many entries does the concatenated vector of head outputs have?
+    params:
+      h: { min: 2, max: 12 }
+      k: { min: 16, max: 128, step: 16 }
+    answer_expr: h * k
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: k
+        category: misunderstood_definition
+        feedback: That would be one head's output, or an average of them; concatenating writes all $h$ outputs side by side.
+      - answer_expr: h
+        category: misunderstood_definition
+        feedback: Each head contributes $d_k$ entries, so multiply the number of heads by $d_k$.
+    solution: Concatenating writes the ${{=h}}$ outputs of width ${{=k}}$ side by side, giving ${{=h}}\times{{=k}}={{=h*k}}$ entries.
+  - id: mhap-output-entry-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In a multi-head attention layer with two heads, a token gets the output $({{=a}},{{=b}})$ from head 1 and $({{=m}},{{=n}})$ from head 2. The outputs are concatenated in head order and multiplied by an output matrix $W_O$ whose first column is $(1,0,2,-1)$. What is the first entry of the result?
+    params:
+      a: { min: 0, max: 5 }
+      b: { min: 0, max: 5 }
+      m: { min: 0, max: 5 }
+      n: { min: 0, max: 5 }
+    constraints: ["b != m", "a + 2 * m - n != a + 2 * m + n"]
+    answer_expr: a + 2 * m - n
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: a + 2 * b - n
+        category: math_error
+        feedback: The concatenated vector is $(a,b,m,n)$ in head order, so the column's 2 multiplies head 2's first entry.
+      - answer_expr: a + 2 * m + n
+        category: math_error
+        feedback: The column's last entry is $-1$, so subtract head 2's second entry.
+    solution: The concatenated vector is $({{=a}},{{=b}},{{=m}},{{=n}})$. Its dot product with $(1,0,2,-1)$ is ${{=a}}+0+2\times{{=m}}-{{=n}}={{=a+2*m-n}}$.
+  - id: mhap-average-heads
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: In a layer with embedding width $d=8$ and $h=2$ heads, a student suggests averaging the two head outputs for each token instead of concatenating them. What goes wrong?
+    options:
+      - id: a
+        text: The average has width 4 instead of 8, and it blends the heads so later layers can't tell them apart.
+        correct: true
+        feedback: Concatenating keeps all 8 numbers, each in its own place, and $W_O$ then decides how to mix them.
+      - id: b
+        text: Nothing goes wrong, because averaging and concatenating give the same vector, just written differently.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Averaging $(1,0,0,0)$ and $(0,0,0,1)$ gives 4 numbers, while concatenating gives 8.
+      - id: c
+        text: The averaged entries no longer add up to 1, which the next layer needs from its input.
+        correct: false
+        category: misunderstood_definition
+        feedback: Only the attention weights add up to 1; outputs and embeddings can have any entries.
+      - id: d
+        text: Averaging needs a softmax over the heads first, and the heads have no scores to use.
+        correct: false
+        category: misunderstood_definition
+        feedback: Averaging needs no softmax; the real problem is that it shrinks the width and blends the heads.
+    solution: Each head output has width $d_k=4$, so their average has width 4 and mixes the two heads entry by entry. Concatenating gives width 8 and keeps each head's numbers separate.
+  - id: mhap-output-matrix-size
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: A multi-head attention layer has embedding width $d=512$ and $h=8$ heads. How many numbers does its output matrix $W_O$ hold?
+    answer: 262144
+    tolerance: { abs: 0.5 }
+    common_wrong:
+      - answer: 32768
+        category: misunderstood_definition
+        feedback: That is $64\times512$. $W_O$ takes the whole concatenated vector of width $512$ and returns width $512$, so it is $512\times512$.
+      - answer: 4096
+        category: misunderstood_definition
+        feedback: That is $64\times64$, one head's width squared; $W_O$ works on all heads together, so it is $d\times d$.
+    solution: $W_O$ is $d\times d=512\times512$, which holds $262{,}144$ numbers.
+  - id: mhap-joint-readings
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A robot's model turns each of its last 10 joint readings into a token with an embedding of width 32, and runs multi-head attention with 4 heads. What does the layer give for each reading?
+    options:
+      - id: a
+        text: One vector of width 32, made by concatenating four head outputs of width 8 and multiplying by $W_O$.
+        correct: true
+        feedback: Each head has width $32/4=8$, the four outputs side by side make 32, and $W_O$ keeps width 32.
+      - id: b
+        text: Four vectors of width 32, one from each head, which the next layer has to choose between.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each head's output has width $d_k=8$, and the four are joined into one vector.
+      - id: c
+        text: One vector of width 8, the average of the four heads' outputs for that reading.
+        correct: false
+        category: misunderstood_definition
+        feedback: The head outputs are concatenated, giving width 32; averaging would shrink it to 8.
+      - id: d
+        text: One vector of width 128, the four heads' outputs of width 32 written side by side.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each head has width $d/h=8$, so the concatenated vector has width 32.
+    solution: Each head works at width $d_k=32/4=8$. Concatenating the four outputs gives width 32, and multiplying by the $32\times32$ matrix $W_O$ keeps it at 32.
+  - id: mha-shapes-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: In multi-head attention over $T$ tokens, what is the shape of one head's matrix of attention weights?
+    options:
+      - id: a
+        text: $T\times T$, with one row for each token and one column for each token it attends to.
+        correct: true
+        feedback: Row $t$ holds token $t$'s weights for every token, and each row adds up to 1.
+      - id: b
+        text: $T\times d_k$, with one row for each token and one column for each entry of the head's vectors.
+        correct: false
+        feedback: That is the shape of the head's queries, keys, values and output.
+      - id: c
+        text: $d\times d_k$, with one row for each embedding entry and one column for each head entry.
+        correct: false
+        feedback: That is the shape of one of the head's learned matrices, such as its query matrix.
+      - id: d
+        text: $h\times T$, with one row for each head and one column for each token in the input.
+        correct: false
+        feedback: Each head has its own weights for every pair of tokens, so one head alone needs $T\times T$.
+    solution: Each head scores every token against every token, so its weights form a $T\times T$ matrix, one row per token.
+  - id: mhap-shapes-self-explain
+    lesson_only: true
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: In the worked example's code, why is `X @ W_Q`, of shape `(3, 4)`, reshaped and transposed into shape `(2, 3, 2)`?
+    options:
+      - id: a
+        text: Columns 1–2 are head 1's queries and columns 3–4 are head 2's, so this gives each head its own $3\times2$ block.
+        correct: true
+        feedback: After the reshape and transpose, the first axis picks the head, and each head's queries are a $3\times2$ matrix.
+      - id: b
+        text: The reshape is what makes each row of attention weights add up to 1 later on.
+        correct: false
+        category: incorrect_reasoning
+        feedback: The softmax line makes the rows add up to 1; the reshape only rearranges the queries by head.
+      - id: c
+        text: It cuts the 3 tokens into 2 groups, so each head works on a different group of tokens.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each head still has all 3 tokens, the 3 in the middle of `(2, 3, 2)`; what's cut is the width.
+      - id: d
+        text: It shrinks each query from 4 entries to 2 to halve the number of learned numbers.
+        correct: false
+        category: misunderstood_definition
+        feedback: No numbers are dropped; the 4 entries are shared out as 2 for each of the 2 heads.
+    solution: One product $XW_Q$ computes both heads' queries, with head 1 in columns 1–2 and head 2 in columns 3–4. The reshape and transpose stack these into two $3\times2$ matrices, one per head.
+  - id: mhap-weight-count-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: A multi-head attention layer with $h={{=h}}$ heads runs over $T={{=T}}$ tokens. Each head gives every token one weight for every token. How many attention weights does the layer work out in total, across all heads?
+    params:
+      h: { min: 2, max: 8 }
+      T: { min: 3, max: 10 }
+    constraints: ["h != T"]
+    answer_expr: h * T * T
+    tolerance: { abs: 0.001 }
+    common_wrong:
+      - answer_expr: T * T
+        category: misunderstood_definition
+        feedback: That is one head's $T\times T$ weights; every head has its own.
+      - answer_expr: h * T
+        category: misunderstood_definition
+        feedback: Each token has $T$ weights in each head, one per token, so multiply by $T$ again.
+    solution: Each head has a ${{=T}}\times{{=T}}$ weight matrix, so ${{=h}}$ heads give ${{=h}}\times{{=T}}\times{{=T}}={{=h*T*T}}$ weights.
+  - id: mhap-param-count-template
+    dimension: implementation
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A multi-head attention layer has embedding width $d={{=d}}$ and $h={{=h}}$ heads. Counting the query, key and value matrices of every head and the output matrix, with no biases, how many numbers does it learn?
+    params:
+      d: { min: 64, max: 448, step: 64 }
+      h: { min: 2, max: 8 }
+    constraints: ["mod(d, h) == 0"]
+    answer_expr: 4 * d * d
+    tolerance: { abs: 0.5 }
+    common_wrong:
+      - answer_expr: 4 * d * d * h
+        category: misunderstood_definition
+        feedback: Each head's matrices are only $d\times d_k$, so all the heads together fill one $d\times d$ matrix per role.
+      - answer_expr: 4 * d * d / h
+        category: misunderstood_definition
+        feedback: That divides by $h$ when it shouldn't. There are $h$ heads, and together their $d\times d_k$ matrices for one role make $d\times d$, so the total is $4d^2$.
+      - answer_expr: 3 * d * d
+        category: math_error
+        feedback: Include the $d\times d$ output matrix $W_O$ as well as the query, key and value matrices.
+    solution: Each head's query, key and value matrices are $d\times d_k$, and the ${{=h}}$ heads together make three $d\times d$ matrices. With $W_O$ that is $4d^2=4\times{{=d}}^2={{=4*d*d}}$ numbers.
+  - id: mhap-head-columns
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: A layer with embedding width $d=12$ and $h=3$ heads computes every head's queries at once as $Q=XW_Q$, a $T\times12$ matrix, and then cuts it into heads in order. Which columns of $Q$ hold head 2's queries?
+    options:
+      - id: a
+        text: Columns 5 to 8, since each head has $d_k=4$ columns and head 1 has columns 1 to 4.
+        correct: true
+        feedback: The heads take consecutive blocks of $d_k=12/3=4$ columns.
+      - id: b
+        text: Columns 2, 5, 8 and 11, since the heads take turns, one column each.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each head's query matrix is a block of $d_k$ consecutive columns of $W_Q$, so its queries are too.
+      - id: c
+        text: Columns 7 to 12, since head 2 takes the second half of the columns.
+        correct: false
+        category: math_error
+        feedback: With 3 heads, each takes a third of the columns, $12/3=4$.
+      - id: d
+        text: Columns 4 to 6, since each head has $d_k=3$ columns, one for each head.
+        correct: false
+        category: math_error
+        feedback: The head width is $d_k=d/h=12/3=4$; the number of heads is 3.
+    solution: Each head has width $d_k=12/3=4$, so head 1 has columns 1 to 4, head 2 has columns 5 to 8 and head 3 has columns 9 to 12.
+  - id: mhap-more-heads
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A multi-head attention layer has embedding width $d=512$ and $8$ heads. An engineer changes it to $16$ heads and keeps $d=512$. What changes?
+    options:
+      - id: a
+        text: Each head's width drops from 64 to 32 and there are twice as many weight matrices, with the same number of learned numbers.
+        correct: true
+        feedback: The four $512\times512$ matrices are just shared out among more, narrower heads.
+      - id: b
+        text: The number of learned numbers doubles, because every new head brings its own query, key and value matrices.
+        correct: false
+        category: misunderstood_definition
+        feedback: Each new head is narrower, $512\times32$ per matrix, so the totals stay at four $512\times512$ matrices.
+      - id: c
+        text: Each head keeps width 64, so the concatenated output grows from width 512 to width 1024.
+        correct: false
+        category: misunderstood_definition
+        feedback: The head width is $d_k=d/h$, so with $d$ fixed it halves, and the output stays at width 512.
+      - id: d
+        text: The shapes stay the same, and the 8 extra heads reuse the first 8 heads' matrices.
+        correct: false
+        category: incorrect_reasoning
+        feedback: Every head has its own matrices; the head width halves to $512/16=32$.
+    solution: With $d$ fixed, $d_k=d/h$ falls from $64$ to $32$, and there are 16 weight matrices of size $T\times T$ instead of 8. The layer still learns $4d^2$ numbers.
+  - id: mhap-long-sentence-shapes
+    dimension: implementation
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 2
+    prompt: A model runs multi-head attention over $T=10$ tokens with embedding width $d=768$ and $h=12$ heads. In NumPy, its attention weights for all heads are stored in one array with the head first. What is that array's shape?
+    options:
+      - id: a
+        text: "`(12, 10, 10)`, one $10\\times10$ weight matrix for each of the 12 heads."
+        correct: true
+        feedback: Each head scores every token against every token, and there are 12 heads.
+      - id: b
+        text: "`(12, 10, 64)`, one $10\\times64$ matrix for each of the 12 heads."
+        correct: false
+        category: misunderstood_definition
+        feedback: That is the shape of the heads' queries, keys, values or outputs, with $d_k=768/12=64$.
+      - id: c
+        text: "`(10, 768)`, one row of width 768 for each of the 10 tokens."
+        correct: false
+        category: misunderstood_definition
+        feedback: That is the shape of the embeddings and of the layer's output.
+      - id: d
+        text: "`(12, 768, 768)`, one $768\\times768$ matrix for each of the 12 heads."
+        correct: false
+        category: misunderstood_definition
+        feedback: The weights compare tokens, so their size depends on $T$; each head's learned matrices are $768\times64$.
+    solution: Each head has a $T\times T=10\times10$ matrix of weights, and stacking the 12 heads first gives shape `(12, 10, 10)`.
+  - id: mha-explain-layer
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: Explain how multi-head attention turns $T$ token embeddings of width $d$ into $T$ outputs of width $d$, giving the shape at each stage, and why running $h$ heads is useful.
+    rubric:
+      - id: r1
+        criterion: "Says each head has its own $d\\times d_k$ query, key and value matrices with $d_k=d/h$, giving $T\\times d_k$ queries, keys and values and a $T\\times T$ matrix of softmax weights"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "Says each head's $T\\times d_k$ outputs are concatenated into $T\\times d$ and multiplied by a $d\\times d$ output matrix $W_O$, so every output entry can use every head"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: Explains that each head gives every token its own set of weights, so different heads can attend to different tokens, while the layer still learns $4d^2$ numbers whatever $h$ is
+        weight: 1
+        required: true
+    exemplar: "We stack the embeddings into a $T\\times d$ matrix $X$. Each of the $h$ heads multiplies $X$ by its own $d\\times d_k$ query, key and value matrices, with $d_k=d/h$, giving $T\\times d_k$ queries, keys and values. Its scores $QK^\\top/\\sqrt{d_k}$ form a $T\\times T$ matrix, a softmax along each row turns them into weights, and multiplying by the values gives a $T\\times d_k$ output. Writing the $h$ outputs side by side gives $T\\times d$, and the $d\\times d$ output matrix $W_O$ mixes the heads and keeps the shape $T\\times d$. It's useful because one head's weights for a token add up to 1, so whatever it needs from the sentence has to share that total; with several heads each token gets several separate sets of weights, for example one on its subject and one on itself. Since the heads share out the width, the layer still learns four $d\\times d$ matrices, $4d^2$ numbers."
+    solution: "We stack the embeddings into a $T\\times d$ matrix $X$. Each of the $h$ heads multiplies $X$ by its own $d\\times d_k$ query, key and value matrices, with $d_k=d/h$, giving $T\\times d_k$ queries, keys and values. Its scores $QK^\\top/\\sqrt{d_k}$ form a $T\\times T$ matrix, a softmax along each row turns them into weights, and multiplying by the values gives a $T\\times d_k$ output. Writing the $h$ outputs side by side gives $T\\times d$, and the $d\\times d$ output matrix $W_O$ mixes the heads and keeps the shape $T\\times d$. It's useful because one head's weights for a token add up to 1, so whatever it needs from the sentence has to share that total; with several heads each token gets several separate sets of weights, for example one on its subject and one on itself. Since the heads share out the width, the layer still learns four $d\\times d$ matrices, $4d^2$ numbers."

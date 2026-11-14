@@ -48,7 +48,7 @@ concepts:
       prereqs: [{ id: attention }],
       objectives:
         [{ text: "Track shapes through multi-head attention", dimension: implementation }],
-      status: stub,
+      status: authored,
     }
   - {
       id: positional-encoding,
