@@ -106,8 +106,13 @@ test.each([
   ['Keep 0–1 and pages 3–5 unchanged.', 'Keep 0–1 and pages 3–5 unchanged.'],
   ['Keep 0 – 1 and 3 – 5 unchanged.', 'Keep 0 – 1 and 3 – 5 unchanged.'],
   ['Keep $a — b$ and $$x – y$$ unchanged.', 'Keep $a — b$ and $$x – y$$ unchanged.'],
+  ['Here $p$—the chance', 'Here $p$, the chance'],
+  ['Here $p$ — the chance', 'Here $p$, the chance'],
   ['Keep `a — b` and ``x – y`` unchanged.', 'Keep `a — b` and ``x – y`` unchanged.'],
   ['```\na — b\n```', '```\na — b\n```'],
+  ['See [a—b](https://x.org/a—b) now', 'See [a, b](https://x.org/a—b) now'],
+  ['Go to https://x.org/a—b now', 'Go to https://x.org/a—b now'],
+  ['<https://x.org/a—b>', '<https://x.org/a—b>'],
 ])('replaces tutor dashes without changing protected or retained cases: %s', (input, output) => {
   expect(replaceTutorDashes(input)).toBe(output);
 });
