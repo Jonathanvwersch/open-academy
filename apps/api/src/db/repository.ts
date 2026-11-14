@@ -94,9 +94,6 @@ export class LearnerRepository {
           ),
         )
         .map((course) => course.id);
-      if (user.activeCourseId && content.coursesById.has(user.activeCourseId)) {
-        startedCourseIds.add(user.activeCourseId);
-      }
       for (const courseId of started) startedCourseIds.add(courseId);
       const courseOrder = content.curriculum?.courses ?? content.courses.map((course) => course.id);
       const backfill = courseOrder.filter((courseId) => startedCourseIds.has(courseId));
