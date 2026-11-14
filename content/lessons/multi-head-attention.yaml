@@ -323,4 +323,4 @@ summary: |
   - The head outputs are concatenated back to width $d$ and multiplied by a $d\times d$ output matrix: $o_t=\operatorname{concat}(o^{(1)}_t,\dots,o^{(h)}_t)\,W_O$, so each output entry can use every head.
   - For $T$ tokens the shapes run $X:T\times d$, then $T\times d_k$ queries, keys and values and $T\times T$ weights in each head, then $T\times d$ out. The layer learns $4d^2$ numbers whatever $h$ is.
 
-  **Next:** A follow-on lesson shows why attention can't tell the order of the tokens on its own, and how models add position to the embeddings.
+  **Next:** The positional representations lesson shows why attention can't tell the order of the tokens on its own, and how models add position to the embeddings.

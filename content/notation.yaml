@@ -164,7 +164,7 @@ terms:
   - {
       id: positional-encoding,
       label: "positional representations / encoding",
-      match: ['\bpositional representations?\b', '\bpositional encodings?\b'],
+      match: ['\bpositional representations?\b(?!\s+lesson\b)', '\bpositional encodings?\b'],
       introduced_by: [positional-encoding],
     }
   - {
@@ -210,16 +210,11 @@ terms:
       match: ["response-only loss masking"],
       introduced_by: [sft],
     }
-  - {
-      id: lora-rank,
-      label: "LoRA rank $r$",
-      match: ["LoRA rank", 'rank\s*\$?r\$?'],
-      introduced_by: [lora],
-    }
+  - { id: lora-rank, label: "LoRA rank $r$", match: ["LoRA rank"], introduced_by: [lora] }
   - {
       id: lora-weight-update,
       label: "LoRA weight change $\\Delta W=BA$",
-      match: ['\\Delta\s*W', "ΔW"],
+      match: ['\\Delta\s*W\s*=\s*BA'],
       introduced_by: [lora],
     }
   - { id: lora-adapter, label: "LoRA adapter", match: ["LoRA adapter"], introduced_by: [lora] }
