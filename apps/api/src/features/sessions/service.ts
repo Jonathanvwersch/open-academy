@@ -37,6 +37,7 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const state = await repo.schedulerState(now);
   const user = await repo.user();
   const prefs = (user?.prefs ?? {}) as SessionPreferences & { goal?: string };
+  const subjectTitle = index.curriculum?.subject?.title;
   const sessionKind = sessionKindForDate(localDateKey(now, request.timeZone));
   const budget = sessionBudget(sessionKind, prefs, localDateKey(now, request.timeZone));
   const plan = planSession(state, index, now, budget, sessionKind);
@@ -63,7 +64,10 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
       lessonRuns: state.lessonRuns ?? [],
     }),
     courseStart: startState.courseStart,
-    objective: unitFocus?.title ?? prefs.goal ?? 'Build a steady foundation in machine learning.',
+    objective:
+      unitFocus?.title ??
+      prefs.goal ??
+      (subjectTitle ? `Make steady progress in ${subjectTitle}.` : 'Make steady progress.'),
     courseTitle: course?.title ?? '',
     unitTitle: unitFocus?.title ?? `Unit ${unit}`,
     unit,

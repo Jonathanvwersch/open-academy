@@ -401,6 +401,7 @@ export function registerTutorThreadRoutes(
         page_content: pageContent,
       },
       status === 'unanswered' ? 'nudge' : status === 'retrying' ? 'hint' : 'worked_step',
+      index,
     );
     if (result.status !== 'ok' || !result.value) {
       if (result.callId) await db.delete(llmCalls).where(eq(llmCalls.id, result.callId));
