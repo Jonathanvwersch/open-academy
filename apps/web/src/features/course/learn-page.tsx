@@ -2,14 +2,15 @@ import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-q
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowRight } from 'lucide-react';
 import { apiFetch } from '../../api/authenticated-fetch.js';
-import { AcademyMascot } from '../../components/academy-mascot.js';
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card.js';
 import { Progress } from '../../components/ui/progress.js';
+import { papersQueryOptions } from '../papers/queries.js';
 import { StreakCard } from '../progress/streak-card.js';
 import { todayQueryOptions } from '../sessions/queries.js';
-import { learnQueryOptions } from './queries.js';
+import { CourseStartCard } from './course-start-card.js';
+import { courseQueryOptions, learnQueryOptions } from './queries.js';
 
 export function LearnPage() {
   const navigate = useNavigate();
@@ -29,7 +30,26 @@ export function LearnPage() {
     });
   };
   const { data } = useSuspenseQuery(learnQueryOptions());
+  const { data: courseData } = useSuspenseQuery(courseQueryOptions());
   const today = data.today;
+  const chooseCourse = useMutation({
+    mutationFn: async (courseId: string) => {
+      const response = await apiFetch('/api/course/active', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ courseId }),
+      });
+      if (!response.ok) throw new Error('Could not choose this course');
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: courseQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: todayQueryOptions().queryKey }),
+        queryClient.invalidateQueries({ queryKey: papersQueryOptions().queryKey }),
+      ]);
+    },
+  });
   const startSession = useMutation({
     mutationFn: async () => {
       const response = await apiFetch('/api/sessions', {
@@ -57,31 +77,53 @@ export function LearnPage() {
   const maxXp = Math.max(1, ...data.xp.week.flatMap((day) => [day.xp, day.goal]));
   const dayTotal = data.xp.week.reduce((total, day) => total + day.xp, 0);
 
-  if (today.needsDiagnostic) {
+  if (today.needsCourseChoice) {
     return (
       <section className="space-y-6">
         <h1 className="sr-only">Home</h1>
         <Card>
           <CardHeader>
-            <CardTitle>Welcome to Open Academy</CardTitle>
+            <CardTitle>Choose a course</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <AcademyMascot className="size-24" />
-            <p className="max-w-[70ch] text-base leading-7 text-muted-foreground">
-              Begin with a short diagnostic so your first sessions start at the right level.
-            </p>
-            <Button asChild>
-              <Link
-                to="/diagnostic"
-                search={{
-                  runId: today.diagnosticActive ? (today.diagnosticRunId ?? undefined) : undefined,
-                }}
-              >
-                {today.diagnosticActive ? 'Resume diagnostic' : 'Start diagnostic'}
-              </Link>
-            </Button>
+          <CardContent className="space-y-3">
+            {courseData.courses.map((course) => (
+              <Card key={course.id} size="sm">
+                <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    <h2 className="font-medium">{course.title}</h2>
+                    <p className="line-clamp-2 text-sm text-muted-foreground">
+                      {course.description}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    loading={chooseCourse.isPending && chooseCourse.variables === course.id}
+                    onClick={() => chooseCourse.mutate(course.id)}
+                  >
+                    Start
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+            {chooseCourse.isError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {chooseCourse.error.message}
+              </p>
+            ) : null}
           </CardContent>
         </Card>
+      </section>
+    );
+  }
+  if (today.courseStart.needed) {
+    return (
+      <section className="space-y-6">
+        <h1 className="sr-only">Home</h1>
+        <CourseStartCard
+          courseTitle={courseData.course.title}
+          placementRunId={today.courseStart.placementRunId}
+        />
       </section>
     );
   }

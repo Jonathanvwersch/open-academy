@@ -6,7 +6,6 @@ export function sessionActivityLabel(kind: string) {
     transfer: 'Transfer',
     review: 'Review',
     quick_check: 'Quiz',
-    diagnostic: 'Quiz',
     assessment: 'Assessment',
     lab: 'Project',
     teachback: 'Teach-back',

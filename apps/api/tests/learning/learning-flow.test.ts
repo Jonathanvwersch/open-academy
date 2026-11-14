@@ -9,7 +9,6 @@ import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import {
   attempts,
-  diagnosticRuns,
   hintEvents,
   lessonQuizItems,
   lessonRuns,
@@ -532,40 +531,6 @@ test('a correct practice answer returns its solution when no retry is pending', 
     retryAllowed: false,
     solution: exercise.solution,
   });
-});
-
-test('a correct diagnostic answer returns the solution', async () => {
-  await resetLearner();
-  const runResponse = await app.request('/api/diagnostic', {
-    method: 'POST',
-    headers: headersAt(now),
-    body: JSON.stringify({}),
-  });
-  expect(runResponse.status).toBe(201);
-  const run = await runResponse.json();
-  const nextResponse = await app.request(`/api/diagnostic/${run.id}/next`, {
-    headers: headersAt(now),
-  });
-  const next = await nextResponse.json();
-  const exercise = content.exercisesById.get(next.exercise.id);
-  if (!exercise?.solution) throw new Error('Expected a diagnostic exercise with a solution');
-
-  const response = await app.request(`/api/diagnostic/${run.id}/answer`, {
-    method: 'POST',
-    headers: headersAt(now),
-    body: JSON.stringify({
-      exerciseId: exercise.id,
-      answer: correctAnswer(exercise.id, null),
-    }),
-  });
-  expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({
-    correct: 1,
-    solution: exercise.solution,
-  });
-  expect(
-    await db.select().from(reviewCards).where(eq(reviewCards.userId, userId)),
-  ).not.toHaveLength(0);
 });
 
 test('repeated failures no longer insert remediation flags', async () => {
@@ -1566,57 +1531,4 @@ test('stale sessions are hidden for today, abandoned by new sessions, and keep l
     headers: headersAt(dayTwo),
   });
   expect((await activeAfterStart.json()).id).toBe(newSession.id);
-});
-
-test('an unknown diagnostic answer records one gap without skipping its topic', async () => {
-  await resetLearner();
-  const run = await (
-    await app.request('/api/diagnostic', { method: 'POST', headers: headersAt(now), body: '{}' })
-  ).json();
-  const current = await (
-    await app.request(`/api/diagnostic/${run.id}/next`, { headers: headersAt(now) })
-  ).json();
-  const response = await app.request(`/api/diagnostic/${run.id}/answer`, {
-    method: 'POST',
-    headers: headersAt(now),
-    body: JSON.stringify({ exerciseId: current.exercise.id, dontKnow: true }),
-  });
-  expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({
-    status: 'graded',
-    correct: 0,
-    credit: 0,
-    graded_by: 'self',
-  });
-  const recorded = await db.select().from(attempts).where(eq(attempts.userId, userId));
-  expect(recorded).toHaveLength(1);
-  expect(recorded[0]).toMatchObject({
-    exerciseId: current.exercise.id,
-    answer: { dontKnow: true },
-    correct: 0,
-    credit: 0,
-    mode: 'diagnostic',
-    gradedBy: 'self',
-  });
-  const [saved] = await db.select().from(diagnosticRuns).where(eq(diagnosticRuns.id, run.id));
-  expect(saved?.state).toMatchObject({
-    answerCount: 1,
-    domains: { [current.domainId]: { answers: 1, gapConceptIds: [current.exercise.concept] } },
-  });
-  if (!saved) throw new Error('Expected the saved diagnostic run');
-  expect(
-    (saved.state as { domains: Record<string, { status: string }> }).domains[current.domainId]
-      ?.status,
-  ).not.toBe('unassessed');
-  const next = await (
-    await app.request(`/api/diagnostic/${run.id}/next`, { headers: headersAt(now) })
-  ).json();
-  expect(next.exercise?.id).not.toBe(current.exercise.id);
-  const stale = await app.request(`/api/diagnostic/${run.id}/answer`, {
-    method: 'POST',
-    headers: headersAt(now),
-    body: JSON.stringify({ exerciseId: current.exercise.id, dontKnow: true }),
-  });
-  expect(stale.status).toBe(409);
-  expect(await db.select().from(attempts).where(eq(attempts.userId, userId))).toHaveLength(1);
 });

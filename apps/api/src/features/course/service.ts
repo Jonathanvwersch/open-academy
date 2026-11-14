@@ -23,6 +23,7 @@ function buildUnits(
   runs: RunRecords,
   paperStatuses: PaperStatuses,
   projectStatuses: ProjectStatuses,
+  placedOutConcepts: ReadonlySet<string>,
 ) {
   const masteryByConcept = new Map<string, typeof masteryRecords>();
   for (const record of masteryRecords) {
@@ -81,6 +82,7 @@ function buildUnits(
             hasLesson: false,
             status: 'not_started' as const,
             mastery: 'Not started' as const,
+            placedOut: false,
             buildsOn: [],
             leadsTo: [],
             leadsToMore: 0,
@@ -128,6 +130,8 @@ function buildUnits(
           hasLesson: index.lessonsByConcept.has(concept.id),
           status,
           mastery: masteryLabel(lowestMasteryState(dimensionStates)),
+          placedOut:
+            status === 'complete' && runStatus === undefined && placedOutConcepts.has(concept.id),
           buildsOn,
           leadsTo: nextConcepts.slice(0, 3).map((candidate) => ({
             id: candidate.id,
@@ -148,11 +152,25 @@ export function buildCoursePayload(
   runs: RunRecords,
   paperStatuses: PaperStatuses = new Map(),
   projectStatuses: ProjectStatuses = new Map(),
+  placedOutConcepts: ReadonlySet<string> = new Set(),
+  startedCourseIds: ReadonlySet<string> = new Set(),
+  courseStart: { needed: boolean; placementRunId: string | null } = {
+    needed: false,
+    placementRunId: null,
+  },
 ) {
   const activeCourse = activeCourseFor(index, activeCourseId);
   const resolvedCourseId = activeCourse?.id;
   const units = activeCourse
-    ? buildUnits(index, activeCourse, masteryRecords, runs, paperStatuses, projectStatuses)
+    ? buildUnits(
+        index,
+        activeCourse,
+        masteryRecords,
+        runs,
+        paperStatuses,
+        projectStatuses,
+        placedOutConcepts,
+      )
     : [];
   const done = (topic: { status: string }) => topic.status === 'complete';
   const courses = index.courses.map((course) => {
@@ -163,6 +181,7 @@ export function buildCoursePayload(
       runs,
       paperStatuses,
       projectStatuses,
+      placedOutConcepts,
     ).flatMap((unit) => unit.topics);
     return {
       id: course.id,
@@ -171,6 +190,7 @@ export function buildCoursePayload(
       topicsDone: topics.filter(done).length,
       topicsTotal: topics.length,
       active: course.id === resolvedCourseId,
+      started: startedCourseIds.has(course.id),
     };
   });
   const foundations = activeCourse
@@ -207,7 +227,15 @@ export function buildCoursePayload(
             course.units.some((unit) => unit.concepts.includes(concept.id)),
           );
           const topics = source
-            ? buildUnits(index, source, masteryRecords, runs, paperStatuses, projectStatuses)
+            ? buildUnits(
+                index,
+                source,
+                masteryRecords,
+                runs,
+                paperStatuses,
+                projectStatuses,
+                placedOutConcepts,
+              )
                 .flatMap((unit) => unit.topics)
                 .filter((topic) => topic.conceptId === concept.id)
             : [];
@@ -221,6 +249,7 @@ export function buildCoursePayload(
                 hasLesson: index.lessonsByConcept.has(concept.id),
                 status: 'not_started' as const,
                 mastery: 'Not started' as const,
+                placedOut: false,
                 buildsOn: [],
                 leadsTo: [],
                 leadsToMore: 0,
@@ -233,6 +262,7 @@ export function buildCoursePayload(
     lessonRuns: runs.map(({ conceptId, status }) => ({ conceptId, status })),
   };
   return {
+    courseStart,
     course: activeCourse
       ? { id: activeCourse.id, title: activeCourse.title, description: activeCourse.description }
       : { id: '', title: '', description: '' },

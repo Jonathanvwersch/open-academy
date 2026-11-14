@@ -110,7 +110,6 @@ export function buildContentIndex(data: ContentSourceData): ContentIndex {
     exercisesByRole,
     lessons,
     lessonsByConcept,
-    diagnostic: data.diagnostic?.value,
     projects,
     projectsById,
     papers,

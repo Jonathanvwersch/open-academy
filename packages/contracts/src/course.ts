@@ -3,10 +3,7 @@ import type { TodayPayload } from './sessions.js';
 
 export interface LearnPayload {
   streak: StreakPayload;
-  today: Pick<
-    TodayPayload,
-    'needsDiagnostic' | 'diagnosticActive' | 'diagnosticRunId' | 'sessionKind'
-  >;
+  today: Pick<TodayPayload, 'needsCourseChoice' | 'courseStart' | 'sessionKind'>;
   xp: {
     total: number;
     today: number;
@@ -48,6 +45,7 @@ export interface LearnPayload {
 
 export interface CoursePayload {
   course: { id: string; title: string; description: string };
+  courseStart: { needed: boolean; placementRunId: string | null };
   courses: Array<{
     id: string;
     title: string;
@@ -55,6 +53,7 @@ export interface CoursePayload {
     topicsDone: number;
     topicsTotal: number;
     active: boolean;
+    started: boolean;
   }>;
   currentUnit: number;
   foundations: CourseTopic[];
@@ -86,6 +85,7 @@ export interface CourseTopic {
   title: string;
   hasLesson: boolean;
   status: 'locked' | 'not_started' | 'in_progress' | 'quiz' | 'complete';
+  placedOut: boolean;
   mastery: 'Not started' | 'Attempted' | 'Familiar' | 'Proficient' | 'Mastered';
   needs?: Array<{ id: string; title: string; quiz?: boolean }>;
   buildsOn: Array<{ id: string; title: string }>;

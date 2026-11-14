@@ -5,7 +5,6 @@ import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
   attempts,
-  diagnosticRuns,
   lessonProblems,
   lessonQuizItems,
   lessonRuns,
@@ -13,6 +12,7 @@ import {
   studySessions,
   users,
 } from '../../apps/api/src/db/schema.js';
+import { enrollInDefaultCourse } from './course-start.js';
 
 const conceptId = 'supervised-learning';
 const screenshotDir = 'test-results/screenshots/screenshots/shadcn';
@@ -155,13 +155,7 @@ test.beforeEach(async () => {
     })
     .returning({ id: users.id });
   if (!user) throw new Error('Could not create lesson runner learner');
-  await db.insert(diagnosticRuns).values({
-    userId: user.id,
-    status: 'completed',
-    state: {},
-    startedAt: new Date(),
-    completedAt: new Date(),
-  });
+  await enrollInDefaultCourse(db, user.id);
   await db.$client.end();
 });
 

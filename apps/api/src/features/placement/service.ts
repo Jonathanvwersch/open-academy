@@ -1,0 +1,298 @@
+import { emptyAnswerMessage } from '@academy/shared/answer-validation';
+import { eq } from 'drizzle-orm';
+import { z } from 'zod';
+import { serializeExercise } from '../../content/serialize.js';
+import { attempts, diagnosticRuns, lessonRuns, masteryEvents } from '../../db/schema.js';
+import { topicIsComplete } from '../../learning/course-status.js';
+import { gradeExercise } from '../../learning/grading/index.js';
+import { applyMastery, ensureReviewCard } from '../../learning/mastery-service.js';
+import {
+  createPlacementState,
+  nextPlacementExercise,
+  PLACEMENT_MAX_QUESTIONS,
+  type PlacementState,
+  placementComplete,
+  recordPlacementAnswer,
+} from '../../learning/placement.js';
+import { activeCourseFor, masteryKey } from '../../learning/prerequisites.js';
+import { planSession, sessionBudget } from '../../learning/scheduler.js';
+import { initialMastery, masteryRank } from '../../learning/types.js';
+import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
+
+const answerBody = z.union([
+  z.object({ exerciseId: z.string(), dontKnow: z.literal(true) }),
+  z.object({ exerciseId: z.string(), answer: z.unknown() }),
+]);
+
+async function placementProgress(request: FeatureRequest) {
+  const [mastery, lessonRunRows] = await Promise.all([
+    request.repo.masteryRecords(),
+    request.repo.db
+      .select({ conceptId: lessonRuns.conceptId, status: lessonRuns.status })
+      .from(lessonRuns)
+      .where(eq(lessonRuns.userId, request.userId)),
+  ]);
+  return { mastery, lessonRuns: lessonRunRows };
+}
+
+function stateFor(run: { state: unknown }): PlacementState {
+  return run.state as PlacementState;
+}
+
+async function creditPlacedOut(
+  request: FeatureRequest,
+  state: PlacementState,
+  content: Awaited<ReturnType<FeatureServices['content']>>,
+) {
+  const { mastery } = await placementProgress(request);
+  const now = request.now();
+  const masteryByKey = new Map(
+    mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
+  for (const conceptId of state.known) {
+    const concept = content.conceptsById.get(conceptId);
+    if (!concept) continue;
+    for (const dimension of concept.dimensions) {
+      const key = masteryKey(conceptId, dimension);
+      const record = masteryByKey.get(key) ?? initialMastery(conceptId, dimension);
+      const fromState = record.state;
+      if (masteryRank(record.state) < masteryRank('independent')) {
+        record.state = 'independent';
+        record.provisional = true;
+        record.lastAssessedAt = now.toISOString();
+        await request.repo.saveMastery(record);
+        masteryByKey.set(key, record);
+      }
+      await request.repo.db.insert(masteryEvents).values({
+        userId: request.userId,
+        conceptId,
+        dimension,
+        fromState,
+        toState: record.state,
+        rule: 'placement_placed_out',
+        createdAt: now,
+      });
+      await ensureReviewCard({
+        repo: request.repo,
+        userId: request.userId,
+        conceptId,
+        dimension,
+        correct: 1,
+        hintsUsed: 0,
+        attemptNo: 1,
+        now,
+        timeZone: request.timeZone,
+      });
+    }
+  }
+}
+
+async function completeRun(
+  request: FeatureRequest,
+  runId: string,
+  state: PlacementState,
+  content: Awaited<ReturnType<FeatureServices['content']>>,
+) {
+  const now = request.now();
+  await creditPlacedOut(request, state, content);
+  await request.repo.db
+    .update(diagnosticRuns)
+    .set({ state, status: 'completed', completedAt: now, summary: state })
+    .where(eq(diagnosticRuns.id, runId));
+  await request.repo.startCourse(state.courseId, 'placement', now);
+}
+
+export async function postPlacement(deps: FeatureServices, request: FeatureRequest) {
+  const content = await deps.content();
+  const course = activeCourseFor(content, await request.repo.activeCourseId());
+  if (!course) return serviceResult({ error: 'No active course' }, 404);
+  const activeRun = await request.repo.activePlacementRun(course.id);
+  if (activeRun) {
+    const state = stateFor(activeRun);
+    const progress = await placementProgress(request);
+    if (placementComplete(state, content, progress.mastery, progress.lessonRuns)) {
+      await completeRun(request, activeRun.id, state, content);
+    }
+    return serviceResult({ id: activeRun.id }, 200);
+  }
+
+  const state = createPlacementState(course.id);
+  const progress = await placementProgress(request);
+  const complete = placementComplete(state, content, progress.mastery, progress.lessonRuns);
+  const [run] = await deps.db
+    .insert(diagnosticRuns)
+    .values({
+      userId: request.userId,
+      kind: 'placement',
+      status: complete ? 'completed' : 'active',
+      state,
+      startedAt: request.now(),
+      completedAt: complete ? request.now() : null,
+      summary: complete ? state : {},
+    })
+    .returning();
+  if (complete) await request.repo.startCourse(course.id, 'placement', request.now());
+  return serviceResult({ id: run.id }, 201);
+}
+
+export async function getPlacementNext(deps: FeatureServices, request: FeatureRequest) {
+  const run = await request.repo.placementRun(request.params.id);
+  if (!run) return serviceResult({ error: 'Placement not found' }, 404);
+  const state = stateFor(run);
+  const content = await deps.content();
+  const progress = await placementProgress(request);
+  const exercise = nextPlacementExercise(state, content, progress.mastery, progress.lessonRuns);
+  if (!exercise) return serviceResult({ complete: true });
+  const course = content.coursesById.get(state.courseId);
+  return serviceResult({
+    complete: false,
+    courseTitle: course?.title ?? '',
+    questionNumber: state.answers.length + 1,
+    maxQuestions: PLACEMENT_MAX_QUESTIONS,
+    exercise: serializeExercise(exercise, request.userId),
+  });
+}
+
+export async function postPlacementAnswer(deps: FeatureServices, request: FeatureRequest) {
+  const body = answerBody.safeParse(request.body);
+  if (!body.success) return serviceResult({ error: 'Invalid placement answer' }, 400);
+  const run = await request.repo.placementRun(request.params.id);
+  if (!run) return serviceResult({ error: 'Placement not found' }, 404);
+  if (run.status !== 'active') return serviceResult({ error: 'Placement is not active' }, 409);
+  const content = await deps.content();
+  const state = stateFor(run);
+  const progress = await placementProgress(request);
+  const exercise = nextPlacementExercise(state, content, progress.mastery, progress.lessonRuns);
+  if (!exercise || exercise.id !== body.data.exerciseId) {
+    return serviceResult({ error: 'This is not the current placement item.' }, 409);
+  }
+  let answer: unknown;
+  let result: Awaited<ReturnType<typeof gradeExercise>>;
+  if ('answer' in body.data) {
+    answer = body.data.answer;
+    const emptyMessage = emptyAnswerMessage(exercise.type, answer);
+    if (emptyMessage) return serviceResult({ error: emptyMessage }, 422);
+    result = await gradeExercise(exercise, answer);
+  } else {
+    answer = { dontKnow: true };
+    result = { status: 'graded', correct: 0, credit: 0, feedback: '', graded_by: 'self' };
+  }
+  if (result.status !== 'graded') {
+    return serviceResult({ error: 'Answer could not be graded' }, 422);
+  }
+  const now = request.now();
+  const [attempt] = await deps.db
+    .insert(attempts)
+    .values({
+      userId: request.userId,
+      exerciseId: exercise.id,
+      exerciseVersion: exercise.contentVersion,
+      conceptId: exercise.concept,
+      dimension: exercise.dimension,
+      mode: 'diagnostic',
+      answer,
+      correct: result.correct,
+      credit: result.credit,
+      hintsUsed: 0,
+      attemptNo: 1,
+      gradedBy: result.graded_by ?? 'deterministic',
+      feedback: { message: result.feedback },
+      createdAt: now,
+    })
+    .returning();
+  await applyMastery({
+    repo: request.repo,
+    userId: request.userId,
+    exercise,
+    attemptId: attempt.id,
+    correct: result.correct,
+    credit: result.credit,
+    hintsUsed: 0,
+    attemptNo: 1,
+    mode: 'diagnostic',
+    gradedBy: result.graded_by ?? 'deterministic',
+    now,
+    timeZone: request.timeZone,
+  });
+  const nextState = recordPlacementAnswer(
+    state,
+    {
+      conceptId: exercise.concept,
+      exerciseId: exercise.id,
+      correct: result.correct >= 1,
+    },
+    content,
+    progress.mastery,
+    progress.lessonRuns,
+  );
+  const updatedProgress = await placementProgress(request);
+  const complete = placementComplete(
+    nextState,
+    content,
+    updatedProgress.mastery,
+    updatedProgress.lessonRuns,
+  );
+  if (complete) {
+    await completeRun(request, run.id, nextState, content);
+  } else {
+    await deps.db
+      .update(diagnosticRuns)
+      .set({ state: nextState })
+      .where(eq(diagnosticRuns.id, run.id));
+  }
+  return serviceResult({ complete });
+}
+
+export async function getPlacementResults(deps: FeatureServices, request: FeatureRequest) {
+  const run = await request.repo.placementRun(request.params.id);
+  if (!run) return serviceResult({ error: 'Placement not found' }, 404);
+  if (run.status !== 'completed') {
+    return serviceResult({ error: 'Placement is not complete' }, 409);
+  }
+  const content = await deps.content();
+  const state = stateFor(run);
+  const course = content.coursesById.get(state.courseId);
+  if (!course) return serviceResult({ error: 'Placement course not found' }, 404);
+  const progress = await placementProgress(request);
+  const unitConcepts = [...new Set(course.units.flatMap((unit) => unit.concepts))];
+  const masteryByKey = new Map(
+    progress.mastery.map((record) => [masteryKey(record.conceptId, record.dimension), record]),
+  );
+  const runsByConcept = new Map(
+    progress.lessonRuns.map((lessonRun) => [lessonRun.conceptId, lessonRun.status]),
+  );
+  const topicsDone = unitConcepts.filter((conceptId) => {
+    const concept = content.conceptsById.get(conceptId);
+    return (
+      concept &&
+      topicIsComplete(
+        runsByConcept.get(conceptId),
+        concept.dimensions.map(
+          (dimension) =>
+            masteryByKey.get(masteryKey(conceptId, dimension))?.state ?? 'not_assessed',
+        ),
+      )
+    );
+  }).length;
+  const user = await request.repo.user();
+  const schedulerState = await request.repo.schedulerState(request.now());
+  const prefs = (user?.prefs ?? {}) as { scheduleMinutes?: number };
+  const firstTopic =
+    planSession(
+      schedulerState,
+      content,
+      request.now(),
+      sessionBudget('weekday', prefs),
+    ).activities.find((activity) => activity.kind === 'learn')?.conceptId ?? null;
+  return serviceResult({
+    courseId: course.id,
+    courseTitle: course.title,
+    placedOut: state.known.flatMap((conceptId) => {
+      const concept = content.conceptsById.get(conceptId);
+      return concept ? [concept.title] : [];
+    }),
+    topicsTotal: unitConcepts.length,
+    topicsDone,
+    firstTopic: firstTopic ? (content.conceptsById.get(firstTopic)?.title ?? firstTopic) : null,
+  });
+}

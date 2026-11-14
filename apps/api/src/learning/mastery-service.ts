@@ -1,4 +1,5 @@
 import { and, eq } from 'drizzle-orm';
+import type { Dimension } from '../content/schemas.js';
 import type { IndexedExercise } from '../content/types.js';
 import type { LearnerRepository } from '../db/repository.js';
 import { masteryEvents, reviewCards } from '../db/schema.js';
@@ -60,42 +61,66 @@ export async function applyMastery(input: {
     input.createReviewCard !== false &&
     masteryRank(result.mastery.state) >= masteryRank('assisted')
   ) {
-    const existingCard = await input.repo.db
-      .select()
-      .from(reviewCards)
-      .where(
-        and(
-          eq(reviewCards.userId, input.userId),
-          eq(reviewCards.conceptId, input.exercise.concept),
-          eq(reviewCards.dimension, input.exercise.dimension),
-        ),
-      )
-      .limit(1);
-    if (!existingCard[0]) {
-      const card = newReviewCard(input.now);
-      const rating = mapReviewRating({
-        correct: input.correct,
-        hintsUsed: input.hintsUsed,
-        attemptNo: input.attemptNo,
-      });
-      const scheduled = scheduleInitialReview(
-        card,
-        input.now,
-        rating,
-        input.timeZone,
-        process.env.NODE_ENV !== 'test',
-      );
-      await input.repo.db.insert(reviewCards).values({
-        userId: input.userId,
-        conceptId: input.exercise.concept,
-        dimension: input.exercise.dimension,
-        fsrs: scheduled.card,
-        dueAt: scheduled.card.due,
-        lastReviewAt: input.now,
-        reps: scheduled.card.reps,
-        lapses: scheduled.card.lapses,
-      });
-    }
+    await ensureReviewCard({
+      repo: input.repo,
+      userId: input.userId,
+      conceptId: input.exercise.concept,
+      dimension: input.exercise.dimension,
+      correct: input.correct,
+      hintsUsed: input.hintsUsed,
+      attemptNo: input.attemptNo,
+      now: input.now,
+      timeZone: input.timeZone,
+    });
   }
   return { mastery: result.mastery, event: result.event, credit: result.credit };
+}
+
+export async function ensureReviewCard(input: {
+  repo: LearnerRepository;
+  userId: string;
+  conceptId: string;
+  dimension: Dimension;
+  correct: number;
+  hintsUsed: number;
+  attemptNo: number;
+  now: Date;
+  timeZone: string;
+}) {
+  const existingCard = await input.repo.db
+    .select()
+    .from(reviewCards)
+    .where(
+      and(
+        eq(reviewCards.userId, input.userId),
+        eq(reviewCards.conceptId, input.conceptId),
+        eq(reviewCards.dimension, input.dimension),
+      ),
+    )
+    .limit(1);
+  if (existingCard[0]) return;
+
+  const card = newReviewCard(input.now);
+  const rating = mapReviewRating({
+    correct: input.correct,
+    hintsUsed: input.hintsUsed,
+    attemptNo: input.attemptNo,
+  });
+  const scheduled = scheduleInitialReview(
+    card,
+    input.now,
+    rating,
+    input.timeZone,
+    process.env.NODE_ENV !== 'test',
+  );
+  await input.repo.db.insert(reviewCards).values({
+    userId: input.userId,
+    conceptId: input.conceptId,
+    dimension: input.dimension,
+    fsrs: scheduled.card,
+    dueAt: scheduled.card.due,
+    lastReviewAt: input.now,
+    reps: scheduled.card.reps,
+    lapses: scheduled.card.lapses,
+  });
 }

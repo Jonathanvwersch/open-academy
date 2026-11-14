@@ -37,7 +37,7 @@ function repairBacktickedMath(markdown: string): string {
         .replace(/(?<!`)`(\$[^$`\n]+\$)`(?!`)/g, '$1')
         .replace(/(?<!`)`([^`\n]+)`(?!`)/g, (match, content: string) => {
           const latexCommand = /\\[A-Za-z]{2,}/.test(content);
-          const numericExpression = /^(?=.*\d)[0-9 ,.\/+^()-]+$/.test(content);
+          const numericExpression = /^(?=.*\d)[0-9 ,./+^()-]+$/.test(content);
           return latexCommand || numericExpression ? `$${content}$` : match;
         });
     })

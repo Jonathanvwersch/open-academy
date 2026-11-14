@@ -721,7 +721,8 @@ test('tutor chat sends optimistically and supports chat-list navigation', async 
   );
   expect(restoreCls, 'restoring the tutor sidebar on Learn CLS').toBeLessThan(0.02);
 
-  await page.goto('/diagnostic');
+  await page.goto('/placement');
+  await expect(page.getByRole('heading', { name: /Placement check ·/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open tutor' })).toHaveCount(0);
   await expect(page.getByRole('complementary', { name: 'Tutor' })).toHaveCount(0);
 });

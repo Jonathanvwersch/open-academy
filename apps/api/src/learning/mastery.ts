@@ -88,7 +88,7 @@ export class DefaultMasteryModel implements MasteryModel {
       if (input.mode === 'diagnostic' && independentItemIds.length === 1) {
         state = 'independent';
         provisional = true;
-        rule = 'diagnostic_provisional_independent';
+        rule = 'placement_provisional_independent';
       } else if (
         independentItemIds.length >= 2 &&
         independentDeterministicCount >= 1 &&
@@ -111,7 +111,7 @@ export class DefaultMasteryModel implements MasteryModel {
     } else if (independent && input.correct === 0) {
       lastIndependentCorrect = false;
       if (masteryRank(state) >= masteryRank('independent')) {
-        state = state === 'retained' ? 'independent' : 'assisted';
+        state = provisional ? 'introduced' : state === 'retained' ? 'independent' : 'assisted';
         provisional = false;
         rule = 'independent_failure_demotion';
       }
@@ -174,30 +174,6 @@ export function recordLessonViewed(
   return {
     mastery,
     event: createEvent(existing, 'introduced', 'lesson_viewed', undefined, now.toISOString()),
-  };
-}
-
-export function inferPrerequisite(
-  previous: MasteryRecord | undefined,
-  conceptId: string,
-  dimension: Dimension,
-  now: Date,
-): { mastery: MasteryRecord; event?: MasteryEvent } {
-  const existing = previous ?? initialMastery(conceptId, dimension);
-  if (existing.inferred) {
-    return { mastery: existing };
-  }
-  const mastery: MasteryRecord = { ...existing, inferred: true };
-  return {
-    mastery,
-    event: {
-      conceptId,
-      dimension,
-      fromState: existing.state,
-      toState: existing.state,
-      rule: 'diagnostic_prerequisite_inferred',
-      createdAt: now.toISOString(),
-    },
   };
 }
 

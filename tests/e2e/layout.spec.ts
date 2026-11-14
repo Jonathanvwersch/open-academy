@@ -1,12 +1,8 @@
 import { expect, type Page, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
-import {
-  diagnosticRuns,
-  sessionActivities,
-  studySessions,
-  users,
-} from '../../apps/api/src/db/schema.js';
+import { sessionActivities, studySessions, users } from '../../apps/api/src/db/schema.js';
+import { enrollInDefaultCourse } from './course-start.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 let userId = '';
@@ -56,13 +52,7 @@ test.beforeEach(async ({ page }) => {
     .returning();
   if (!user) throw new Error('Could not create layout E2E learner');
   userId = user.id;
-  await db.insert(diagnosticRuns).values({
-    userId,
-    status: 'completed',
-    state: {},
-    startedAt: new Date('2026-01-01T10:00:00.000Z'),
-    completedAt: new Date('2026-01-01T10:10:00.000Z'),
-  });
+  await enrollInDefaultCourse(db, userId);
 });
 
 test.afterAll(async () => {
@@ -137,7 +127,7 @@ test('course route skeleton aligns with the Open Academy wordmark', async ({ pag
       headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
     });
   });
-  const navigation = page.getByRole('link', { name: 'Course', exact: true }).click();
+  const navigation = page.getByRole('link', { name: 'Courses', exact: true }).click();
   const skeleton = page.getByTestId('route-skeleton');
   await expect(skeleton).toBeVisible();
   const skeletonBounds = await skeleton.boundingBox();
@@ -267,7 +257,7 @@ test('first-visit loaders stay centered on mobile during auth and page loading',
     releaseAuth();
     await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
     await page.getByRole('button', { name: 'Save settings' }).waitFor();
-    navigation = page.getByRole('link', { name: 'Course', exact: true }).click();
+    navigation = page.getByRole('link', { name: 'Courses', exact: true }).click();
     await expectCenteredPageLoader(page);
     await page.screenshot({ path: '/tmp/academy-loading-mobile.png' });
   } finally {
@@ -405,7 +395,7 @@ test('plain Settings and Course pages do not load the Markdown and math renderer
   await expect(page.getByRole('button', { name: 'Save settings' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open tutor' })).toBeVisible();
   expect(markdownRequests).toEqual([]);
-  await page.getByRole('link', { name: 'Course', exact: true }).click();
+  await page.getByRole('link', { name: 'Courses', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Unit 1 · ML fundamentals' })).toBeVisible();
   expect(markdownRequests).toEqual([]);
 });

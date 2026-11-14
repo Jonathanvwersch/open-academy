@@ -3,7 +3,8 @@ import { expect, type Page, test } from '@playwright/test';
 import { and, eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
-import { diagnosticRuns, lessonRuns, users } from '../../apps/api/src/db/schema.js';
+import { lessonRuns, users } from '../../apps/api/src/db/schema.js';
+import { enrollInDefaultCourse } from './course-start.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const screenshotDir = 'test-results/screenshots/shots/lesson-quiz';
@@ -29,13 +30,7 @@ test.beforeEach(async () => {
     .returning({ id: users.id });
   if (!user) throw new Error('Could not create lesson prerequisites learner');
   userId = user.id;
-  await db.insert(diagnosticRuns).values({
-    userId,
-    status: 'completed',
-    state: {},
-    startedAt: new Date(),
-    completedAt: new Date(),
-  });
+  await enrollInDefaultCourse(db, userId);
 });
 
 test.afterAll(async () => {

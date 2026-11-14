@@ -8,11 +8,11 @@
   "exports": {
     "./auth": "./src/auth.ts",
     "./course": "./src/course.ts",
-    "./diagnostic": "./src/diagnostic.ts",
     "./exercises": "./src/exercises.ts",
     "./health": "./src/health.ts",
     "./lessons": "./src/lessons.ts",
     "./papers": "./src/papers.ts",
+    "./placement": "./src/placement.ts",
     "./progress": "./src/progress.ts",
     "./projects": "./src/projects.ts",
     "./reviews": "./src/reviews.ts",

@@ -11,15 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CourseRouteImport } from './routes/course'
-import { Route as DiagnosticRouteImport } from './routes/diagnostic'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PlacementRouteImport } from './routes/placement'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as ReviewsRouteImport } from './routes/reviews'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as DiagnosticResultsRouteImport } from './routes/diagnostic.results'
 import { Route as LessonsConceptIdRouteImport } from './routes/lessons.$conceptId'
 import { Route as PapersPaperIdRouteImport } from './routes/papers.$paperId'
+import { Route as PlacementIndexRouteImport } from './routes/placement.index'
+import { Route as PlacementResultsRouteImport } from './routes/placement.results'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 import { Route as SessionIdRouteImport } from './routes/session.$id'
 
@@ -33,11 +34,6 @@ const CourseRoute = CourseRouteImport.update({
   path: '/course',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DiagnosticRoute = DiagnosticRouteImport.update({
-  id: '/diagnostic',
-  path: '/diagnostic',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LabRoute = LabRouteImport.update({
   id: '/lab',
   path: '/lab',
@@ -46,6 +42,11 @@ const LabRoute = LabRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlacementRoute = PlacementRouteImport.update({
+  id: '/placement',
+  path: '/placement',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProgressRoute = ProgressRouteImport.update({
@@ -63,11 +64,6 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DiagnosticResultsRoute = DiagnosticResultsRouteImport.update({
-  id: '/results',
-  path: '/results',
-  getParentRoute: () => DiagnosticRoute,
-} as any)
 const LessonsConceptIdRoute = LessonsConceptIdRouteImport.update({
   id: '/lessons/$conceptId',
   path: '/lessons/$conceptId',
@@ -77,6 +73,16 @@ const PapersPaperIdRoute = PapersPaperIdRouteImport.update({
   id: '/papers/$paperId',
   path: '/papers/$paperId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PlacementIndexRoute = PlacementIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PlacementRoute,
+} as any)
+const PlacementResultsRoute = PlacementResultsRouteImport.update({
+  id: '/results',
+  path: '/results',
+  getParentRoute: () => PlacementRoute,
 } as any)
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
   id: '/projects/$projectId',
@@ -92,103 +98,107 @@ const SessionIdRoute = SessionIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/course': typeof CourseRoute
-  '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
+  '/placement': typeof PlacementRouteWithChildren
   '/progress': typeof ProgressRoute
   '/reviews': typeof ReviewsRoute
   '/settings': typeof SettingsRoute
-  '/diagnostic/results': typeof DiagnosticResultsRoute
   '/lessons/$conceptId': typeof LessonsConceptIdRoute
   '/papers/$paperId': typeof PapersPaperIdRoute
+  '/placement/results': typeof PlacementResultsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/session/$id': typeof SessionIdRoute
+  '/placement/': typeof PlacementIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/course': typeof CourseRoute
-  '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
   '/progress': typeof ProgressRoute
   '/reviews': typeof ReviewsRoute
   '/settings': typeof SettingsRoute
-  '/diagnostic/results': typeof DiagnosticResultsRoute
   '/lessons/$conceptId': typeof LessonsConceptIdRoute
   '/papers/$paperId': typeof PapersPaperIdRoute
+  '/placement/results': typeof PlacementResultsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/session/$id': typeof SessionIdRoute
+  '/placement': typeof PlacementIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/course': typeof CourseRoute
-  '/diagnostic': typeof DiagnosticRouteWithChildren
   '/lab': typeof LabRoute
   '/login': typeof LoginRoute
+  '/placement': typeof PlacementRouteWithChildren
   '/progress': typeof ProgressRoute
   '/reviews': typeof ReviewsRoute
   '/settings': typeof SettingsRoute
-  '/diagnostic/results': typeof DiagnosticResultsRoute
   '/lessons/$conceptId': typeof LessonsConceptIdRoute
   '/papers/$paperId': typeof PapersPaperIdRoute
+  '/placement/results': typeof PlacementResultsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/session/$id': typeof SessionIdRoute
+  '/placement/': typeof PlacementIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/course'
-    | '/diagnostic'
     | '/lab'
     | '/login'
+    | '/placement'
     | '/progress'
     | '/reviews'
     | '/settings'
-    | '/diagnostic/results'
     | '/lessons/$conceptId'
     | '/papers/$paperId'
+    | '/placement/results'
     | '/projects/$projectId'
     | '/session/$id'
+    | '/placement/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/course'
-    | '/diagnostic'
     | '/lab'
     | '/login'
     | '/progress'
     | '/reviews'
     | '/settings'
-    | '/diagnostic/results'
     | '/lessons/$conceptId'
     | '/papers/$paperId'
+    | '/placement/results'
     | '/projects/$projectId'
     | '/session/$id'
+    | '/placement'
   id:
     | '__root__'
     | '/'
     | '/course'
-    | '/diagnostic'
     | '/lab'
     | '/login'
+    | '/placement'
     | '/progress'
     | '/reviews'
     | '/settings'
-    | '/diagnostic/results'
     | '/lessons/$conceptId'
     | '/papers/$paperId'
+    | '/placement/results'
     | '/projects/$projectId'
     | '/session/$id'
+    | '/placement/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CourseRoute: typeof CourseRoute
-  DiagnosticRoute: typeof DiagnosticRouteWithChildren
   LabRoute: typeof LabRoute
   LoginRoute: typeof LoginRoute
+  PlacementRoute: typeof PlacementRouteWithChildren
   ProgressRoute: typeof ProgressRoute
   ReviewsRoute: typeof ReviewsRoute
   SettingsRoute: typeof SettingsRoute
@@ -214,13 +224,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CourseRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/diagnostic': {
-      id: '/diagnostic'
-      path: '/diagnostic'
-      fullPath: '/diagnostic'
-      preLoaderRoute: typeof DiagnosticRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/lab': {
       id: '/lab'
       path: '/lab'
@@ -233,6 +236,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/placement': {
+      id: '/placement'
+      path: '/placement'
+      fullPath: '/placement'
+      preLoaderRoute: typeof PlacementRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/progress': {
@@ -256,13 +266,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/diagnostic/results': {
-      id: '/diagnostic/results'
-      path: '/results'
-      fullPath: '/diagnostic/results'
-      preLoaderRoute: typeof DiagnosticResultsRouteImport
-      parentRoute: typeof DiagnosticRoute
-    }
     '/lessons/$conceptId': {
       id: '/lessons/$conceptId'
       path: '/lessons/$conceptId'
@@ -276,6 +279,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/papers/$paperId'
       preLoaderRoute: typeof PapersPaperIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/placement/': {
+      id: '/placement/'
+      path: '/'
+      fullPath: '/placement/'
+      preLoaderRoute: typeof PlacementIndexRouteImport
+      parentRoute: typeof PlacementRoute
+    }
+    '/placement/results': {
+      id: '/placement/results'
+      path: '/results'
+      fullPath: '/placement/results'
+      preLoaderRoute: typeof PlacementResultsRouteImport
+      parentRoute: typeof PlacementRoute
     }
     '/projects/$projectId': {
       id: '/projects/$projectId'
@@ -294,24 +311,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface DiagnosticRouteChildren {
-  DiagnosticResultsRoute: typeof DiagnosticResultsRoute
+interface PlacementRouteChildren {
+  PlacementResultsRoute: typeof PlacementResultsRoute
+  PlacementIndexRoute: typeof PlacementIndexRoute
 }
 
-const DiagnosticRouteChildren: DiagnosticRouteChildren = {
-  DiagnosticResultsRoute: DiagnosticResultsRoute,
+const PlacementRouteChildren: PlacementRouteChildren = {
+  PlacementResultsRoute: PlacementResultsRoute,
+  PlacementIndexRoute: PlacementIndexRoute,
 }
 
-const DiagnosticRouteWithChildren = DiagnosticRoute._addFileChildren(
-  DiagnosticRouteChildren,
+const PlacementRouteWithChildren = PlacementRoute._addFileChildren(
+  PlacementRouteChildren,
 )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CourseRoute: CourseRoute,
-  DiagnosticRoute: DiagnosticRouteWithChildren,
   LabRoute: LabRoute,
   LoginRoute: LoginRoute,
+  PlacementRoute: PlacementRouteWithChildren,
   ProgressRoute: ProgressRoute,
   ReviewsRoute: ReviewsRoute,
   SettingsRoute: SettingsRoute,

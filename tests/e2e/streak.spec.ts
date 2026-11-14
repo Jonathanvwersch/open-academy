@@ -2,7 +2,8 @@ import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
-import { diagnosticRuns, users, xpEvents } from '../../apps/api/src/db/schema.js';
+import { users, xpEvents } from '../../apps/api/src/db/schema.js';
+import { enrollInDefaultCourse } from './course-start.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const screenshots = 'test-results/screenshots/streak';
@@ -30,12 +31,7 @@ test('The tortoise and the streak reflect persisted XP on Home and Progress at b
     .values({ displayName: 'Streak learner', timezone: 'UTC', startDate: '2026-01-01' })
     .returning();
   if (!user) throw new Error('Missing learner');
-  await db.insert(diagnosticRuns).values({
-    userId: user.id,
-    status: 'completed',
-    state: {},
-    completedAt: new Date('2026-01-01T10:00:00Z'),
-  });
+  await enrollInDefaultCourse(db, user.id);
   await db.insert(xpEvents).values({
     userId: user.id,
     kind: 'activity',

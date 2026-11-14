@@ -1,8 +1,5 @@
 export {
   PageLayoutSkeleton as CourseSkeleton,
-  PageLayoutSkeleton as DiagnosticQuestionSkeleton,
-  PageLayoutSkeleton as DiagnosticResultsSkeleton,
-  PageLayoutSkeleton as DiagnosticSkeleton,
   PageLayoutSkeleton as LearnSkeleton,
   PageLayoutSkeleton as LessonReviewSkeleton,
   PageLayoutSkeleton as PageSkeleton,

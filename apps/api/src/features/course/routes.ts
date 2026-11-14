@@ -6,6 +6,7 @@ import type { LearnerRepository } from '../../db/repository.js';
 import {
   lessonProblems,
   lessonRuns,
+  masteryEvents,
   paperProgress,
   projectProgress,
   sessionActivities,
@@ -13,6 +14,7 @@ import {
   xpEvents,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
+import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
 import { topicIsComplete } from '../../learning/course-status.js';
 import { deriveLessonState } from '../../learning/lesson-runner.js';
 import {
@@ -66,14 +68,35 @@ export function registerLearnCourseRoutes(
         .from(projectProgress)
         .where(eq(projectProgress.userId, userId)),
     ]);
-    const [mastery, user, events, active, diagnostic] = await Promise.all([
-      repo.masteryRecords(),
-      repo.user(),
-      deps.db.select().from(xpEvents).where(eq(xpEvents.userId, userId)),
-      repo.activeSession(now),
-      repo.latestDiagnosticRun(),
-    ]);
+    const [mastery, user, events, active, placementRuns, enrollments, masteryEventRows] =
+      await Promise.all([
+        repo.masteryRecords(),
+        repo.user(),
+        deps.db.select().from(xpEvents).where(eq(xpEvents.userId, userId)),
+        repo.activeSession(now),
+        repo.activePlacementRuns(),
+        repo.courseEnrollments(),
+        deps.db.select().from(masteryEvents).where(eq(masteryEvents.userId, userId)),
+      ]);
     const activeCourse = activeCourseFor(index, user?.activeCourseId);
+    const startState = buildCourseStartState({
+      content: index,
+      activeCourseId: user?.activeCourseId,
+      mastery,
+      lessonRuns: runRows,
+      enrollments,
+      placementRuns,
+    });
+    const needsChoice = needsCourseChoice({
+      activeCourseId: user?.activeCourseId,
+      mastery,
+      lessonRuns: runRows,
+    });
+    const placedOutConcepts = new Set(
+      masteryEventRows
+        .filter((event) => event.rule === 'placement_placed_out')
+        .map((event) => event.conceptId),
+    );
     const prefs = (user?.prefs ?? {}) as SessionPreferences;
     const todayLocal = localDateKey(now, timeZone);
     const totalXp = events.reduce((total, event) => total + event.amount, 0);
@@ -261,6 +284,9 @@ export function registerLearnCourseRoutes(
       runRows,
       new Map(),
       projectStatuses,
+      placedOutConcepts,
+      startState.startedCourseIds,
+      startState.courseStart,
     );
     const topics = coursePayload.units.flatMap((unit) => unit.topics);
     const topicsDone = topics.filter((topic) => topic.status === 'complete').length;
@@ -280,10 +306,8 @@ export function registerLearnCourseRoutes(
     return context.json({
       streak: buildStreak(events, todayLocal),
       today: {
-        needsDiagnostic:
-          (!diagnostic || diagnostic.status === 'active') && Boolean(index.diagnostic),
-        diagnosticActive: diagnostic?.status === 'active',
-        diagnosticRunId: diagnostic?.status === 'active' ? diagnostic.id : null,
+        needsCourseChoice: needsChoice,
+        courseStart: startState.courseStart,
         sessionKind: sessionKindForDate(todayLocal),
       },
       xp: {
@@ -310,7 +334,16 @@ export function registerLearnCourseRoutes(
   api.get('/course', async (context) => {
     const index = await deps.content();
     const repo = deps.withRepo(context);
-    const [mastery, activeCourseId, runs, paperRows, projectRows] = await Promise.all([
+    const [
+      mastery,
+      activeCourseId,
+      runs,
+      paperRows,
+      projectRows,
+      enrollments,
+      placementRuns,
+      events,
+    ] = await Promise.all([
       repo.masteryRecords(),
       repo.activeCourseId(),
       deps.db
@@ -325,13 +358,42 @@ export function registerLearnCourseRoutes(
         .select({ projectId: projectProgress.projectId, status: projectProgress.status })
         .from(projectProgress)
         .where(eq(projectProgress.userId, context.get('userId'))),
+      repo.courseEnrollments(),
+      repo.activePlacementRuns(),
+      deps.db
+        .select()
+        .from(masteryEvents)
+        .where(eq(masteryEvents.userId, context.get('userId'))),
     ]);
     const paperStatuses = new Map<string, 'not_started' | 'reading' | 'completed'>(
       paperRows.map((row) => [row.paperId, row.completedAt ? 'completed' : 'reading'] as const),
     );
     const projectStatuses = new Map(projectRows.map((row) => [row.projectId, row.status]));
+    const startState = buildCourseStartState({
+      content: index,
+      activeCourseId,
+      mastery,
+      lessonRuns: runs,
+      enrollments,
+      placementRuns,
+    });
+    const placedOutConcepts = new Set(
+      events
+        .filter((event) => event.rule === 'placement_placed_out')
+        .map((event) => event.conceptId),
+    );
     return context.json(
-      buildCoursePayload(index, activeCourseId, mastery, runs, paperStatuses, projectStatuses),
+      buildCoursePayload(
+        index,
+        activeCourseId,
+        mastery,
+        runs,
+        paperStatuses,
+        projectStatuses,
+        placedOutConcepts,
+        startState.startedCourseIds,
+        startState.courseStart,
+      ),
     );
   });
 
@@ -346,6 +408,19 @@ export function registerLearnCourseRoutes(
     }
     await deps.withRepo(context).setActiveCourseId(body.courseId);
     return context.json({ courseId: body.courseId });
+  });
+
+  api.post('/course/start', async (context) => {
+    const body = (await context.req.json().catch(() => null)) as { method?: unknown } | null;
+    if (body?.method !== 'beginning') {
+      return context.json({ error: 'Invalid course start method' }, 400);
+    }
+    const index = await deps.content();
+    const repo = deps.withRepo(context);
+    const activeCourse = activeCourseFor(index, await repo.activeCourseId());
+    if (!activeCourse) return context.json({ error: 'No active course' }, 404);
+    await repo.startCourse(activeCourse.id, 'beginning', deps.requestNow(context));
+    return context.json({ courseId: activeCourse.id, method: 'beginning' });
   });
 }
 
@@ -386,7 +461,7 @@ function activityLabel(
   if (kind === 'review') return 'Review';
   if (kind === 'lab') return 'Project';
   if (kind === 'paper') return 'Paper';
-  if (kind === 'quick_check' || kind === 'diagnostic') return 'Quiz';
+  if (kind === 'quick_check') return 'Quiz';
   return 'Practice';
 }
 
@@ -395,7 +470,6 @@ function titleForKind(kind: string): string {
   if (kind === 'quick_check') return 'Quick check';
   if (kind === 'reflect') return 'Reflection';
   if (kind === 'teachback') return 'Teach-back';
-  if (kind === 'diagnostic') return 'Diagnostic';
   if (kind === 'practice') return 'Mixed practice';
   return activityLabel(kind);
 }

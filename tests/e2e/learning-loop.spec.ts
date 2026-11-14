@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { env } from '../../apps/api/src/config.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import { sessionActivities, studySessions, users } from '../../apps/api/src/db/schema.js';
+import { enrollInDefaultCourse } from './course-start.js';
 
 const screenshotDir = 'test-results/screenshots/screenshots/shadcn';
 mkdirSync(screenshotDir, { recursive: true });
@@ -28,122 +29,8 @@ test.beforeEach(async () => {
     .returning();
   if (!user) throw new Error('Could not create E2E learner');
   userId = user.id;
+  await enrollInDefaultCourse(db, userId);
   await db.$client.end();
-});
-
-test('diagnostic to KP runner starts point one and preserves progress', async ({ page }) => {
-  let now = '2026-01-01T12:00:00.000Z';
-  await page.route('**/api/**', (route) =>
-    route.continue({
-      headers: { ...route.request().headers(), 'x-now': now },
-    }),
-  );
-  let interceptInlineCheck = true;
-  await page.route('**/api/attempts', async (route) => {
-    if (interceptInlineCheck) {
-      interceptInlineCheck = false;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ status: 'correct', correct: 1, feedback: 'Correct.' }),
-      });
-      return;
-    }
-    await route.continue({
-      headers: { ...route.request().headers(), 'x-now': now },
-    });
-  });
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Welcome to Open Academy' })).toBeVisible();
-  await page.evaluate(async () => {
-    await fetch('/api/settings', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ scheduleMinutes: 60, startDate: '2026-01-01' }),
-    });
-  });
-
-  await page.getByRole('link', { name: 'Start diagnostic' }).click();
-  await expect(page.getByRole('heading', { name: 'Diagnostic' })).toBeVisible();
-  const firstSkip = page.waitForResponse(
-    (response) => response.url().includes('/skip') && response.request().method() === 'POST',
-  );
-  await page.getByRole('button', { name: 'Skip topic' }).click();
-  const firstSkipResult = await (await firstSkip).json();
-  expect(firstSkipResult).toMatchObject({
-    complete: false,
-    state: { domains: { math: { status: 'unassessed' }, ml: { status: 'active' } } },
-  });
-  await expect(page.getByText('Machine learning', { exact: true })).toBeVisible();
-  const finalSkip = page.waitForResponse(
-    (response) => response.url().includes('/skip') && response.request().method() === 'POST',
-  );
-  await page.getByRole('button', { name: 'Skip topic' }).click();
-  await finalSkip;
-  await expect(page.getByRole('heading', { name: 'Your starting point' })).toBeVisible({
-    timeout: 15_000,
-  });
-  await expect(page.getByRole('heading', { name: 'Your plan' })).toBeVisible();
-  await expect(page.getByText('90-day path')).toBeVisible();
-  const runId = await page.evaluate(() => window.sessionStorage.getItem('diagnosticRunId'));
-  expect(runId).toBeTruthy();
-  await page.evaluate(() => window.sessionStorage.clear());
-  await page.goto(`/diagnostic/results?id=${runId}`);
-  await expect(page.getByText('unassessed · 0 answers', { exact: false }).first()).toBeVisible();
-  await expect(page.getByText('Unit 1: ML fundamentals')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'First session' })).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'First session' }).locator('..').locator('li').first(),
-  ).toBeVisible();
-  await page.evaluate(() => window.sessionStorage.clear());
-  await page.goto('/diagnostic/results');
-  await expect(page.getByText('Unit 1: ML fundamentals')).toBeVisible();
-
-  await page.getByRole('link', { name: 'View Learn' }).click();
-  await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Current week' })).toHaveCount(0);
-  await page.screenshot({ path: `${screenshotDir}/today-plan.png`, fullPage: true });
-  await page.getByRole('button', { name: 'Start learning' }).click();
-  await expect(page.getByText('Question 1', { exact: true })).toBeVisible();
-  const run = await page.evaluate(async () => (await fetch('/api/lessons/vectors/run')).json());
-  expect(run.run.currentPointId).toBe('vectors-fixture-1');
-  expect(run.run.pendingProblem.id).toBeTruthy();
-  const today = await page.evaluate(async () => (await fetch('/api/today')).json());
-  expect(today.dueReviews).toBe(0);
-  const concepts = today.plan.activities
-    .map((activity: { conceptId?: string }) => activity.conceptId)
-    .filter(Boolean);
-  expect(new Set(concepts).size).toBe(concepts.length);
-  expect(today.plan.activities.length).toBeLessThanOrEqual(6);
-
-  await page.goto('/progress');
-  await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/progress.png`, fullPage: true });
-
-  now = '2026-01-15T12:00:00.000Z';
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
-  await expect(
-    page
-      .getByRole('link', { name: 'Resume session' })
-      .or(page.getByRole('button', { name: 'Start learning' })),
-  ).toBeVisible();
-});
-
-test('diagnostic uses radios, renders option math, and resets answers between questions', async ({
-  page,
-}) => {
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Start diagnostic' }).click();
-  await expect(page.getByRole('radio')).toHaveCount(2);
-  await expect(page.locator('.katex').first()).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/diagnostic.png`, fullPage: true });
-  await page.getByRole('radio').first().click();
-  await expect(page.getByRole('radio').first()).toHaveAttribute('aria-checked', 'true');
-  await page.getByRole('button', { name: 'Submit answer' }).click();
-  await expect(page.getByLabel('Your answer')).toBeVisible();
-  await expect(page.getByLabel('Your answer')).toHaveValue('');
 });
 
 test('project uploads fixture results, records evidence, and reveals reflection', async ({
@@ -214,12 +101,12 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
   };
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Welcome to Open Academy' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
   await assertStable('/');
   for (const route of [
     { name: 'Progress', path: '/progress', heading: 'Progress' },
     { name: 'Settings', path: '/settings', heading: 'Settings' },
-    { name: 'Course', path: '/course', heading: 'Fixture course' },
+    { name: 'Courses', path: '/course', heading: 'Fixture course' },
   ]) {
     await page.getByRole('link', { name: route.name }).click();
     await expect(page.getByRole('heading', { name: route.heading })).toBeVisible();
@@ -239,17 +126,6 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
   });
 
   await page.getByRole('link', { name: 'Home', exact: true }).click();
-  await page.getByRole('link', { name: 'Start diagnostic' }).click();
-  await expect(page.getByRole('heading', { name: 'Diagnostic' })).toBeVisible();
-  await page.getByRole('button', { name: 'Skip topic' }).click();
-  await page.getByRole('button', { name: 'Skip topic' }).click();
-  await expect(page.getByRole('heading', { name: 'Your starting point' })).toBeVisible();
-  const runId = await page.evaluate(() => window.sessionStorage.getItem('diagnosticRunId'));
-  expect(runId).toBeTruthy();
-  await page.goto(`/diagnostic/results?id=${runId}`);
-  await expect(page.getByRole('link', { name: 'View Learn' })).toBeVisible();
-  await page.screenshot({ path: `${screenshotDir}/diagnostic-results.png`, fullPage: true });
-  await page.getByRole('link', { name: 'View Learn' }).click();
   await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Start learning|Resume session/ })).toBeVisible();
   const db = createDb(env.TEST_DATABASE_URL);
@@ -283,38 +159,4 @@ test('route loaders keep content stable under 300ms latency', async ({ page }) =
     'Which statement best describes the main idea',
   );
   await assertStable('/session/:id');
-});
-
-test('diagnostic distinguishes an unknown answer from skipping an entire topic', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/diagnostic');
-  const submit = page.getByRole('button', { name: 'Submit answer', exact: true });
-  const unknown = page.getByRole('button', { name: 'I don’t know', exact: true });
-  const skip = page.getByRole('button', { name: 'Skip topic', exact: true });
-  await expect(submit).toBeVisible();
-  for (const width of [320, 390]) {
-    await page.setViewportSize({ width, height: 844 });
-    const submitBounds = await submit.boundingBox();
-    const unknownBounds = await unknown.boundingBox();
-    const skipBounds = await skip.boundingBox();
-    expect(submitBounds?.y).toBe(unknownBounds?.y);
-    expect(skipBounds?.y).toBeGreaterThan((submitBounds?.y ?? 0) + (submitBounds?.height ?? 0));
-  }
-  await expect(page.getByText('Assessment — no help')).toHaveCount(0);
-  await expect(page.getByText('Getting started', { exact: true })).toHaveCount(0);
-  const answered = page.waitForResponse(
-    (response) => response.url().endsWith('/answer') && response.request().method() === 'POST',
-  );
-  await unknown.click();
-  const answerResponse = await answered;
-  expect(answerResponse.request().postDataJSON()).toMatchObject({ dontKnow: true });
-  expect(await answerResponse.json()).toMatchObject({ correct: 0 });
-  await expect(unknown).toBeEnabled();
-  const skipped = page.waitForResponse(
-    (response) => response.url().endsWith('/skip') && response.request().method() === 'POST',
-  );
-  await skip.click();
-  expect((await skipped).ok()).toBe(true);
 });

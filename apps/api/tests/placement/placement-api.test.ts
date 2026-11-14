@@ -1,0 +1,371 @@
+import { eq } from 'drizzle-orm';
+import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest';
+import { createApp } from '../../src/app.js';
+import { env } from '../../src/config.js';
+import { loadContent } from '../../src/content/load.js';
+import type { ContentIndex, IndexedExercise } from '../../src/content/types.js';
+import { createDb } from '../../src/db/client.js';
+import {
+  courseEnrollments,
+  diagnosticRuns,
+  lessonRuns,
+  mastery,
+  reviewCards,
+  sessionActivities,
+  users,
+} from '../../src/db/schema.js';
+import { initialMastery } from '../../src/learning/types.js';
+
+const db = createDb(env.TEST_DATABASE_URL);
+const userId = '00000000-0000-4000-8000-000000000123';
+const otherUserId = '00000000-0000-4000-8000-000000000124';
+const now = '2026-01-07T12:00:00.000Z';
+let app: ReturnType<typeof createApp>;
+let content: ContentIndex;
+
+beforeAll(async () => {
+  content = await loadContent('tests/fixtures/content');
+  app = createApp({ db, content, tutorProvider: null });
+});
+
+beforeEach(async () => {
+  await db.delete(users);
+  await db.insert(users).values({
+    id: userId,
+    displayName: 'Placement API learner',
+    timezone: 'UTC',
+    startDate: '2026-01-01',
+    prefs: { scheduleMinutes: 60 },
+  });
+});
+
+afterAll(async () => {
+  await db.delete(users);
+  await db.$client.end();
+});
+
+function headers() {
+  return { 'Content-Type': 'application/json', 'X-Now': now };
+}
+
+async function get(path: string) {
+  return app.request(`/api${path}`, { headers: headers() });
+}
+
+async function post(path: string, body: unknown) {
+  return app.request(`/api${path}`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(body),
+  });
+}
+
+function put(path: string, body: unknown) {
+  return app.request(`/api${path}`, {
+    method: 'PUT',
+    headers: headers(),
+    body: JSON.stringify(body),
+  });
+}
+
+async function chooseFixtureCourse() {
+  const response = await put('/course/active', { courseId: 'fixture-course' });
+  expect(response.status).toBe(200);
+}
+
+function correctAnswer(exercise: IndexedExercise): unknown {
+  if (exercise.type === 'mc') {
+    return exercise.options.find((option) => option.correct)?.id ?? '';
+  }
+  if (exercise.type === 'numeric' && 'answer' in exercise) return exercise.answer;
+  if (exercise.type === 'expression') return exercise.answer;
+  throw new Error(`Unexpected placement exercise type ${exercise.type}`);
+}
+
+function incorrectAnswer(exercise: IndexedExercise): unknown {
+  if (exercise.type === 'mc') {
+    return exercise.options.find((option) => !option.correct)?.id ?? '';
+  }
+  if (exercise.type === 'numeric' && 'answer' in exercise) return exercise.answer + 100;
+  if (exercise.type === 'expression') return exercise.answer === '0' ? '999' : '0';
+  if (exercise.type === 'explain') return 'wrong answer';
+  throw new Error(`Unexpected placement exercise type ${exercise.type}`);
+}
+
+test('a new learner chooses a course before course start is needed', async () => {
+  const learnBefore = (await (await get('/learn')).json()) as {
+    today: { needsCourseChoice: boolean };
+  };
+  expect(learnBefore.today.needsCourseChoice).toBe(true);
+
+  await chooseFixtureCourse();
+  const [course, learn] = await Promise.all([
+    get('/course').then((response) => response.json()),
+    get('/learn').then((response) => response.json()),
+  ]);
+  expect(course.courseStart).toEqual({ needed: true, placementRunId: null });
+  expect(learn.today.needsCourseChoice).toBe(false);
+  expect(learn.today.courseStart.needed).toBe(true);
+  expect(
+    course.courses.find((entry: { id: string }) => entry.id === 'fixture-course').started,
+  ).toBe(false);
+});
+
+test('beginning enrolls in the active course without changing mastery', async () => {
+  await chooseFixtureCourse();
+  const before = await db.select().from(mastery).where(eq(mastery.userId, userId));
+  const response = await post('/course/start', { method: 'beginning' });
+  expect(response.status).toBe(200);
+  const after = await db.select().from(mastery).where(eq(mastery.userId, userId));
+  expect(after).toEqual(before);
+  expect(
+    await db.select().from(courseEnrollments).where(eq(courseEnrollments.userId, userId)),
+  ).toMatchObject([{ courseId: 'fixture-course', status: 'active', startMethod: 'beginning' }]);
+  const course = await (await get('/course')).json();
+  expect(course.courseStart.needed).toBe(false);
+  expect(
+    course.courses.find((entry: { id: string }) => entry.id === 'fixture-course').started,
+  ).toBe(true);
+});
+
+test('existing course evidence means no start card is needed without an enrollment', async () => {
+  const record = initialMastery('vectors', 'math');
+  record.state = 'introduced';
+  await db.insert(mastery).values({
+    userId,
+    conceptId: record.conceptId,
+    dimension: record.dimension,
+    state: record.state,
+    provisional: false,
+    inferred: false,
+    evidence: {
+      independentItemIds: [],
+      independentDeterministicCount: 0,
+      lastIndependentCorrect: false,
+      attempts: [],
+    },
+  });
+  const [course, learn] = await Promise.all([
+    get('/course').then((response) => response.json()),
+    get('/learn').then((response) => response.json()),
+  ]);
+  expect(course.courseStart.needed).toBe(false);
+  expect(learn.today.needsCourseChoice).toBe(false);
+  expect(
+    course.courses.find((entry: { id: string }) => entry.id === 'fixture-course').started,
+  ).toBe(false);
+  expect(
+    await db.select().from(courseEnrollments).where(eq(courseEnrollments.userId, userId)),
+  ).toHaveLength(0);
+});
+
+test('an abandoned placement resumes on the same question and rejects stale or empty answers', async () => {
+  await chooseFixtureCourse();
+  const start = await post('/placement', {});
+  expect(start.status).toBe(201);
+  const { id } = (await start.json()) as { id: string };
+  const firstQuestion = await (await get(`/placement/${id}/next`)).json();
+  expect(firstQuestion.complete).toBe(false);
+  const [resume, sameQuestion] = await Promise.all([
+    post('/placement', {}),
+    get(`/placement/${id}/next`).then((response) => response.json()),
+  ]);
+  expect(resume.status).toBe(200);
+  expect((await resume.json()).id).toBe(id);
+  expect(sameQuestion.exercise.id).toBe(firstQuestion.exercise.id);
+  const course = await (await get('/course')).json();
+  expect(course.courseStart).toEqual({ needed: true, placementRunId: id });
+  expect(
+    await post(`/placement/${id}/answer`, { exerciseId: 'stale', answer: 'answer' }).then(
+      (response) => response.status,
+    ),
+  ).toBe(409);
+  expect(
+    await post(`/placement/${id}/answer`, {
+      exerciseId: firstQuestion.exercise.id,
+      answer: '',
+    }).then((response) => response.status),
+  ).toBe(422);
+});
+
+test('placement answers are private to their learner and unknown runs return 404', async () => {
+  await chooseFixtureCourse();
+  expect(
+    await get('/placement/00000000-0000-4000-8000-000000000999/next').then(
+      (response) => response.status,
+    ),
+  ).toBe(404);
+  await db.insert(users).values({
+    id: otherUserId,
+    displayName: 'Other learner',
+    timezone: 'UTC',
+    startDate: '2026-01-01',
+    prefs: {},
+  });
+  const [run] = await db
+    .insert(diagnosticRuns)
+    .values({
+      userId: otherUserId,
+      kind: 'placement',
+      status: 'active',
+      state: { courseId: 'fixture-course', answers: [], known: [], unknown: [] },
+    })
+    .returning();
+  expect(await get(`/placement/${run.id}/next`).then((response) => response.status)).toBe(404);
+});
+
+test('mixed placement credits placed-out topics, creates reviews, and keeps unknown topics learnable', async () => {
+  await chooseFixtureCourse();
+  const start = await post('/placement', {});
+  const { id } = (await start.json()) as { id: string };
+  let complete = false;
+  let answerCount = 0;
+  while (!complete && answerCount < 16) {
+    const question = await (await get(`/placement/${id}/next`)).json();
+    if (question.complete) {
+      complete = true;
+      break;
+    }
+    const exercise = content.exercisesById.get(question.exercise.id);
+    if (!exercise) throw new Error('Missing placement exercise in content');
+    const body =
+      answerCount === 1
+        ? { exerciseId: exercise.id, dontKnow: true }
+        : { exerciseId: exercise.id, answer: correctAnswer(exercise) };
+    const response = await post(`/placement/${id}/answer`, body);
+    expect(response.status).toBe(200);
+    complete = (await response.json()).complete;
+    answerCount += 1;
+  }
+  expect(complete).toBe(true);
+  expect(answerCount).toBeGreaterThanOrEqual(2);
+
+  const [run] = await db.select().from(diagnosticRuns).where(eq(diagnosticRuns.id, id));
+  const state = run?.state as { known: string[]; unknown: string[] };
+  const results = await (await get(`/placement/${id}/results`)).json();
+  expect(results.topicsTotal).toBe(9);
+  expect(results.topicsDone).toBeGreaterThan(0);
+  expect(results.placedOut.length).toBeGreaterThan(0);
+  expect(results.placedOut).toEqual(
+    state.known.flatMap((conceptId) => {
+      const concept = content.conceptsById.get(conceptId);
+      return concept ? [concept.title] : [];
+    }),
+  );
+  const course = await (await get('/course')).json();
+  const topics = course.units.flatMap(
+    (unit: {
+      topics: Array<{
+        title: string;
+        conceptId: string;
+        status: string;
+        placedOut: boolean;
+        hasLesson: boolean;
+      }>;
+    }) => unit.topics,
+  );
+  expect(results.topicsDone).toBe(
+    topics.filter((topic: { status: string }) => topic.status === 'complete').length,
+  );
+  const firstUnknownTopic = [...course.foundations, ...topics].find(
+    (topic: { hasLesson: boolean; status: string }) =>
+      topic.hasLesson && topic.status !== 'complete',
+  );
+  expect(topics.filter((topic: { placedOut: boolean }) => topic.placedOut).length).toBeGreaterThan(
+    0,
+  );
+  expect(
+    course.courses.find((entry: { id: string }) => entry.id === 'fixture-course').started,
+  ).toBe(true);
+  expect(
+    topics
+      .filter((topic: { placedOut: boolean }) => topic.placedOut)
+      .every((topic: { status: string }) => topic.status === 'complete'),
+  ).toBe(true);
+  const reviews = await db.select().from(reviewCards).where(eq(reviewCards.userId, userId));
+  expect(reviews.length).toBeGreaterThan(0);
+  for (const conceptId of state.known) {
+    const concept = content.conceptsById.get(conceptId);
+    if (!concept) continue;
+    expect(reviews.filter((review) => review.conceptId === conceptId)).toHaveLength(
+      concept.dimensions.length,
+    );
+  }
+  const today = await (await get('/today')).json();
+  const learnIds = today.plan.activities
+    .filter((activity: { kind: string }) => activity.kind === 'learn')
+    .map((activity: { conceptId?: string }) => activity.conceptId);
+  expect(learnIds.some((conceptId: string) => state.known.includes(conceptId))).toBe(false);
+  expect(learnIds.length).toBeGreaterThan(0);
+  expect(learnIds[0]).toBe(firstUnknownTopic?.conceptId);
+  expect(results.firstTopic).toBeTruthy();
+  expect(results.firstTopic).toBe(content.conceptsById.get(learnIds[0])?.title);
+  const completedRuns = await db.select().from(lessonRuns).where(eq(lessonRuns.userId, userId));
+  expect(completedRuns).toHaveLength(0);
+
+  const placedOutConceptId = topics.find(
+    (topic: { conceptId: string; placedOut: boolean }) =>
+      topic.placedOut && content.conceptsById.get(topic.conceptId)?.dimensions.includes('math'),
+  )?.conceptId;
+  const baseCheckExercise = content.exercises.find(
+    (exercise): exercise is Extract<IndexedExercise, { type: 'mc' }> => exercise.type === 'mc',
+  );
+  if (!placedOutConceptId || !baseCheckExercise) {
+    throw new Error('Missing fixture for a deterministic placement review');
+  }
+  const placementCheck = {
+    ...baseCheckExercise,
+    id: 'placement-provisional-check',
+    concept: placedOutConceptId,
+    dimension: 'math' as const,
+    role: 'check' as const,
+  };
+  content.exercises.push(placementCheck);
+  content.exercisesById.set(placementCheck.id, placementCheck);
+  content.exercisesByConcept.set(placedOutConceptId, [
+    ...(content.exercisesByConcept.get(placedOutConceptId) ?? []),
+    placementCheck,
+  ]);
+  content.exercisesByRole.set('check', [
+    ...(content.exercisesByRole.get('check') ?? []),
+    placementCheck,
+  ]);
+  content.exercisesByDimension.set('math', [
+    ...(content.exercisesByDimension.get('math') ?? []),
+    placementCheck,
+  ]);
+
+  const sessionResponse = await post('/sessions', {});
+  expect(sessionResponse.status).toBe(201);
+  const session = await sessionResponse.json();
+  const quickCheck = session.activities.find(
+    (activity: { kind: string }) => activity.kind === 'quick_check',
+  );
+  expect(quickCheck).toBeTruthy();
+  const quickCheckExercise = content.exercisesById.get('placement-provisional-check');
+  if (!quickCheckExercise) throw new Error('Missing quick-check exercise');
+  await db
+    .update(sessionActivities)
+    .set({ conceptId: placedOutConceptId, exerciseIds: [quickCheckExercise.id] })
+    .where(eq(sessionActivities.id, quickCheck.id));
+  const failed = await post('/attempts', {
+    exerciseId: quickCheckExercise.id,
+    activityId: quickCheck.id,
+    answer: incorrectAnswer(quickCheckExercise),
+    mode: 'diagnostic',
+  });
+  expect(failed.status).toBe(200);
+  const courseAfterFailure = await get('/course').then((response) => response.json());
+  const topicAfterFailure = courseAfterFailure.units
+    .flatMap((unit: { topics: Array<{ conceptId: string; status: string }> }) => unit.topics)
+    .find((topic: { conceptId: string }) => topic.conceptId === placedOutConceptId);
+  expect(topicAfterFailure).toBeDefined();
+  expect(topicAfterFailure.status).not.toBe('complete');
+  const todayAfterFailure = await (await get('/today')).json();
+  expect(
+    todayAfterFailure.plan.activities.some(
+      (activity: { kind: string; conceptId?: string }) =>
+        activity.kind === 'learn' && activity.conceptId === placedOutConceptId,
+    ),
+  ).toBe(true);
+});

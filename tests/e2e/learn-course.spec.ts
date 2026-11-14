@@ -7,7 +7,6 @@ import { env } from '../../apps/api/src/config.js';
 import { LessonSchema, normalizeLesson } from '../../apps/api/src/content/schemas.js';
 import { createDb } from '../../apps/api/src/db/client.js';
 import {
-  diagnosticRuns,
   lessonRuns,
   mastery,
   projectProgress,
@@ -17,6 +16,7 @@ import {
   users,
   xpEvents,
 } from '../../apps/api/src/db/schema.js';
+import { enrollInDefaultCourse } from './course-start.js';
 
 const db = createDb(env.TEST_DATABASE_URL);
 const screenshotDir = 'test-results/screenshots/screenshots/learn-course';
@@ -71,21 +71,15 @@ test.afterAll(async () => {
   await db.$client.end();
 });
 
-async function markDiagnosticComplete() {
-  await db.insert(diagnosticRuns).values({
-    userId,
-    status: 'completed',
-    state: {},
-    startedAt: new Date('2026-01-01T10:00:00.000Z'),
-    completedAt: new Date('2026-01-01T10:10:00.000Z'),
-  });
+async function markCourseStarted() {
+  await enrollInDefaultCourse(db, userId);
 }
 
 test('Home shows XP and tasks, starts a session, and Course links to lessons and projects', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await markDiagnosticComplete();
+  await markCourseStarted();
   await db.insert(xpEvents).values([
     {
       userId,
@@ -292,9 +286,10 @@ test('Course page switches courses and shows prerequisite foundations', async ({
   const courseCard = page
     .locator('[data-slot="card"]')
     .filter({ has: page.getByRole('heading', { name: targetCourseTitle, exact: true }) });
-  await courseCard.getByRole('button', { name: 'Switch' }).click();
+  await courseCard.getByRole('button', { name: 'Start' }).click();
   await expect(dialog).not.toBeVisible();
   await expect(page.getByRole('heading', { name: targetCourseTitle, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: `Start ${targetCourseTitle}` })).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Unit 1 · Linear models', exact: true }),
   ).toBeVisible();
@@ -449,7 +444,7 @@ test('failed project uploads update the Course status without a reload', async (
   expect(response.status(), JSON.stringify(result)).toBe(201);
   expect(result.status).toBe('in_progress');
 
-  await page.getByRole('link', { name: 'Course', exact: true }).click();
+  await page.getByRole('link', { name: 'Courses', exact: true }).click();
   await expect(page).toHaveURL('/course');
   const updatedProject = page.getByRole('region', { name: 'Project' }).first();
   await expect(updatedProject).toContainText('In progress');
@@ -515,11 +510,11 @@ test('lab activities show project progress and finish without awarding XP', asyn
   expect(await db.select().from(xpEvents).where(eq(xpEvents.userId, userId))).toHaveLength(0);
 });
 
-test('navigation has four destinations and Lab redirects to Course', async ({ page }) => {
+test('navigation has four destinations and Lab redirects to Courses', async ({ page }) => {
   await page.goto('/');
   const navigationLinks = page.locator('nav a');
   await expect(navigationLinks).toHaveCount(5);
-  await expect(navigationLinks).toHaveText(['Home', 'Course', 'Reviews', 'Progress', 'Settings']);
+  await expect(navigationLinks).toHaveText(['Home', 'Courses', 'Reviews', 'Progress', 'Settings']);
 
   await page.goto('/lab');
   await expect(page).toHaveURL(/\/course$/);
@@ -527,7 +522,7 @@ test('navigation has four destinations and Lab redirects to Course', async ({ pa
 });
 
 test('Home offers alternative lessons and starts the selected lesson', async ({ page }) => {
-  await markDiagnosticComplete();
+  await markCourseStarted();
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
   const learn = await page.evaluate(async () => {
@@ -654,7 +649,7 @@ test('available project rows display learner progress', async ({ page }) => {
 });
 
 test('navigation cleanup pages render at desktop and mobile widths', async ({ page }) => {
-  await markDiagnosticComplete();
+  await markCourseStarted();
   const duplicateKeyWarnings: string[] = [];
   page.on('console', (message) => {
     if (/same key/i.test(message.text())) duplicateKeyWarnings.push(message.text());
@@ -1002,13 +997,13 @@ async function hideTutorLauncher(page: Page) {
   });
 }
 
-test('a fresh learner sees Home onboarding without XP', async ({ page }) => {
+test('a fresh learner sees course choice without XP', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
   await expect(page).toHaveTitle('Open Academy');
   await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Welcome to Open Academy' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Start diagnostic' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Choose a course' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Start', exact: true }).first()).toBeVisible();
   await page.screenshot({
     path: `${brandScreenshotDir}/home-desktop.png`,
     fullPage: true,
@@ -1022,10 +1017,8 @@ test('a fresh learner sees Home onboarding without XP', async ({ page }) => {
   await page.screenshot({ path: `${screenshotDir}/learn-fresh.png`, fullPage: true });
 });
 
-test('a fresh post-diagnostic learner sees outline order and prerequisite needs', async ({
-  page,
-}) => {
-  await markDiagnosticComplete();
+test('a fresh started learner sees outline order and prerequisite needs', async ({ page }) => {
+  await markCourseStarted();
   await page.goto('/');
   const firstLessonTask = page
     .locator('li')
@@ -1083,7 +1076,7 @@ test('a fresh post-diagnostic learner sees outline order and prerequisite needs'
 
 test('Course marks completed lessons green and links the whole row', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await markDiagnosticComplete();
+  await markCourseStarted();
   await db.insert(lessonRuns).values({
     userId,
     conceptId: 'vectors',
@@ -1114,7 +1107,7 @@ test('Course marks completed lessons green and links the whole row', async ({ pa
 });
 
 test('passing a knowledge point increases Learn XP after reload', async ({ page }) => {
-  await markDiagnosticComplete();
+  await markCourseStarted();
   const [session] = await db
     .insert(studySessions)
     .values({ userId, plannedMinutes: 20, status: 'active', kind: 'weekday' })

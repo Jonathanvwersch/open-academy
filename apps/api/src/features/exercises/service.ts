@@ -86,7 +86,7 @@ export async function postHints(deps: FeatureServices, request: FeatureRequest) 
   }
   const solution = exercise.solution ?? (exercise.type === 'explain' ? exercise.exemplar : '');
   if (exercise.role === 'diagnostic') {
-    return serviceResult({ error: 'Diagnostic exercises do not allow hints.' }, 403);
+    return serviceResult({ error: 'Placement check exercises do not allow hints.' }, 403);
   }
   if (body.data.activityId) {
     const [activityRow] = await db
@@ -99,7 +99,7 @@ export async function postHints(deps: FeatureServices, request: FeatureRequest) 
     if (!activity?.exerciseIds.includes(exercise.id)) {
       return serviceResult({ error: 'Activity or exercise not found' }, 404);
     }
-    if (activity.kind === 'quick_check' || activity.kind === 'diagnostic') {
+    if (activity.kind === 'quick_check') {
       return serviceResult({ error: 'Assessment activities do not allow hints.' }, 403);
     }
     if (
@@ -284,7 +284,7 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
   }
   if (
     activity &&
-    (activity.kind === 'diagnostic' || activity.kind === 'quick_check') &&
+    activity.kind === 'quick_check' &&
     body.data.mode !== 'diagnostic' &&
     body.data.mode !== 'assessment'
   ) {
@@ -297,7 +297,6 @@ export async function postAttempts(deps: FeatureServices, request: FeatureReques
     activity &&
     activity.kind !== 'review' &&
     activity.kind !== 'quick_check' &&
-    activity.kind !== 'diagnostic' &&
     body.data.mode !== 'practice'
   ) {
     return serviceResult({ error: 'This activity requires practice mode.' }, 400);

@@ -2,7 +2,6 @@ import type {
   Concept,
   Course,
   Curriculum,
-  Diagnostic,
   Dimension,
   Exercise,
   ExerciseRole,
@@ -25,7 +24,6 @@ export interface ContentSourceData {
   lessons: Array<{ value: Lesson; file: string }>;
   exercises: Array<{ value: Exercise; concept: string; file: string }>;
   notation?: { value: NotationRegistry; file: string };
-  diagnostic?: { value: Diagnostic; file: string };
   projects: Array<{ value: Project; file: string }>;
   papers: Array<{ value: Paper; file: string }>;
 }
@@ -76,7 +74,6 @@ export interface ContentIndex {
   exercisesByRole: Map<ExerciseRole, IndexedExercise[]>;
   lessons: IndexedLesson[];
   lessonsByConcept: Map<string, IndexedLesson>;
-  diagnostic?: Diagnostic;
   projects: IndexedProject[];
   projectsById: Map<string, IndexedProject>;
   papers: IndexedPaper[];
