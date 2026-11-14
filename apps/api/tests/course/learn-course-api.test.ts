@@ -179,11 +179,11 @@ test('an unstarted selected course stays unenrolled and still needs its start ca
   expect(response.status).toBe(200);
   expect(await response.json()).toMatchObject({
     status: 'not_started',
-    courseStart: { needed: true, placementRunId: null },
+    courseStart: { courseId: course.id, needed: true, placementRunId: null },
   });
-  expect(await db.select().from(courseEnrollments).where(eq(courseEnrollments.userId, userId))).toEqual(
-    [],
-  );
+  expect(
+    await db.select().from(courseEnrollments).where(eq(courseEnrollments.userId, userId)),
+  ).toEqual([]);
 });
 
 test('study-course membership refreshes after a course is started in the same repository', async () => {
@@ -458,6 +458,13 @@ test('planned Learn tasks and Course numbering are read-only', async () => {
     .update(users)
     .set({ activeCourseId: content.curriculum?.default_course ?? content.courses[0]?.id ?? null })
     .where(eq(users.id, userId));
+  const courseId = content.curriculum?.default_course ?? content.courses[0]?.id;
+  if (!courseId) throw new Error('Missing default course');
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId,
+    startMethod: 'beginning',
+  });
   const before = await rowCounts();
   const learnResponse = await get('/learn');
   expect(learnResponse.status).toBe(200);

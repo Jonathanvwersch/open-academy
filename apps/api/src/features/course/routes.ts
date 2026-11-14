@@ -122,7 +122,10 @@ export function registerLearnCourseRoutes(
       ? (user?.activeCourseId ?? null)
       : null;
     const studyCourseIds = await repo.studyCourseIds(index);
-    const currentCourseId = studyCourseIds[0] ?? activeCourseId;
+    const placementCourseId = placementRuns
+      .map((run) => (run.state as { courseId?: unknown }).courseId)
+      .find((id): id is string => typeof id === 'string' && index.coursesById.has(id));
+    const currentCourseId = placementCourseId ?? studyCourseIds[0] ?? activeCourseId;
     const startState = buildCourseStartState({
       content: index,
       activeCourseId: currentCourseId,
@@ -136,6 +139,7 @@ export function registerLearnCourseRoutes(
       studyCourseIds,
       mastery,
       lessonRuns: runRows,
+      activePlacementRuns: placementRuns,
     });
     const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
     const prefs = (user?.prefs ?? {}) as SessionPreferences;

@@ -51,6 +51,10 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
     repo.courseEnrollments(),
     repo.activePlacementRuns(),
   ]);
+  const placementCourseId = placementRuns
+    .map((run) => (run.state as { courseId?: unknown }).courseId)
+    .find((id): id is string => typeof id === 'string' && index.coursesById.has(id));
+  const currentCourseId = placementCourseId ?? state.studyCourseIds[0] ?? state.activeCourseId;
   const activeSession = active ? await repo.session(active.id) : undefined;
   const hasCurrentActivity =
     !activeSession ||
@@ -63,13 +67,12 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const activeSessionId = hasCurrentActivity ? (active?.id ?? null) : null;
   const startState = buildCourseStartState({
     content: index,
-    activeCourseId: state.studyCourseIds[0] ?? state.activeCourseId,
+    activeCourseId: currentCourseId,
     mastery: state.mastery,
     lessonRuns: state.lessonRuns ?? [],
     enrollments,
     placementRuns,
   });
-  const currentCourseId = state.studyCourseIds[0] ?? state.activeCourseId;
   const course = activeCourseFor(index, currentCourseId);
   const unit = currentLearnerUnit({ ...state, activeCourseId: currentCourseId }, index);
   const unitFocus = course?.units[unit - 1];
@@ -118,6 +121,7 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
       studyCourseIds: state.studyCourseIds,
       mastery: state.mastery,
       lessonRuns: state.lessonRuns ?? [],
+      activePlacementRuns: placementRuns,
     }),
     courseStart: startState.courseStart,
     studyCourses,

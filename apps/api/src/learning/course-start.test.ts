@@ -20,16 +20,19 @@ test('course evidence is limited to unit concepts and includes lesson runs or as
 
 test('an active placement needs continuation until it is completed', () => {
   const input = {
+    courseId: 'course-a',
     courseConceptIds: ['a'],
     mastery: [],
     lessonRuns: [],
     activePlacementRunId: 'run-1',
   };
   expect(courseStartStatus({ ...input, enrolled: false })).toEqual({
+    courseId: 'course-a',
     needed: true,
     placementRunId: 'run-1',
   });
   expect(courseStartStatus({ ...input, enrolled: true })).toEqual({
+    courseId: 'course-a',
     needed: true,
     placementRunId: 'run-1',
   });

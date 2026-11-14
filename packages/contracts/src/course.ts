@@ -71,7 +71,7 @@ export interface LearnPayload {
 
 export interface CoursePayload {
   course: { id: string; title: string; description: string };
-  courseStart: { needed: boolean; placementRunId: string | null };
+  courseStart: { courseId: string | null; needed: boolean; placementRunId: string | null };
   courses: Array<{
     id: string;
     title: string;
