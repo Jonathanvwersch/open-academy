@@ -61,7 +61,7 @@ concepts:
       prereqs: [{ id: attention }],
       objectives:
         [{ text: "Explain why attention is permutation-equivariant", dimension: conceptual }],
-      status: stub,
+      status: authored,
     }
   - {
       id: transformer-block,
