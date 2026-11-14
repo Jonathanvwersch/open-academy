@@ -43,6 +43,12 @@ test('desktop sidebar collapse persists across reload', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: /Fixture course.*0 of 9 topics done/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Switch to Fixture switching course' }),
+  ).toBeVisible();
   await page.screenshot({
     path: 'test-results/sidebar-home-expanded.png',
     animations: 'disabled',
@@ -67,6 +73,12 @@ test('mobile sidebar closes after navigating to Reviews', async ({ page }) => {
   await page.getByRole('button', { name: 'Open navigation' }).click();
   const navigation = page.getByRole('navigation', { name: 'Main navigation' });
   await expect(navigation).toBeVisible();
+  expect((await navigation.boundingBox())?.width).toBe(288);
+  await expect(navigation.locator('[data-active="true"]')).toHaveCount(0);
+  await expect(navigation.getByRole('link', { name: 'Open Academy home' })).not.toHaveAttribute(
+    'data-sidebar',
+    'menu-button',
+  );
   const navigationWidth = await navigation.evaluate((element) => ({
     clientWidth: element.clientWidth,
     scrollWidth: element.scrollWidth,

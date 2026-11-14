@@ -63,22 +63,22 @@ function AppSidebar() {
   });
 
   return (
-    <Sidebar side="left" collapsible="icon" role="navigation" aria-label="Main navigation">
-      <SidebarHeader className="border-b border-sidebar-border p-3">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild size="lg" tooltip="Open Academy">
-              <Link
-                to="/"
-                aria-label="Open Academy home"
-                onClick={closeMobile}
-                className="text-sm font-semibold tracking-tight"
-              >
-                <BrandLockup hideNameWhenSidebarCollapsed />
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+    <Sidebar
+      side="left"
+      collapsible="icon"
+      mobileWidth="18rem"
+      role="navigation"
+      aria-label="Main navigation"
+    >
+      <SidebarHeader className="h-14 shrink-0 border-b border-sidebar-border p-0">
+        <Link
+          to="/"
+          aria-label="Open Academy home"
+          onClick={closeMobile}
+          className="flex h-full w-full items-center rounded-md px-3 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        >
+          <BrandLockup hideNameWhenSidebarCollapsed />
+        </Link>
       </SidebarHeader>
       <SidebarContent className="py-2">
         <SidebarGroup className="px-2 py-1">
@@ -88,9 +88,9 @@ function AppSidebar() {
                 <SidebarMenuItem key={to}>
                   <SidebarMenuButton
                     asChild
-                    isActive={isActive(pathname, to)}
+                    isActive={!isMobile && isActive(pathname, to)}
                     tooltip={label}
-                    className="text-xs sm:text-[0.8rem]"
+                    className="text-sm"
                   >
                     <Link to={to} aria-label={label} onClick={closeMobile}>
                       <Icon aria-hidden="true" />
@@ -115,17 +115,25 @@ function AppSidebar() {
                 {startedCourses.map((course) => {
                   const content = (
                     <>
-                      <span className="truncate">{course.title}</span>
-                      <span className="text-xs font-normal text-muted-foreground">
-                        {course.topicsDone}/{course.topicsTotal} topics
+                      <span className="min-w-0 flex-1 truncate text-sm">{course.title}</span>
+                      <span className="ml-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
+                        {course.topicsDone}/{course.topicsTotal}
                       </span>
                     </>
                   );
                   return (
                     <SidebarMenuItem key={course.id}>
                       {course.active ? (
-                        <SidebarMenuButton asChild isActive className="h-auto min-h-10 items-start">
-                          <Link to="/course" aria-label={course.title} onClick={closeMobile}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={!isMobile}
+                          className="items-center text-sm"
+                        >
+                          <Link
+                            to="/course"
+                            aria-label={`${course.title}, ${course.topicsDone} of ${course.topicsTotal} topics done`}
+                            onClick={closeMobile}
+                          >
                             {content}
                           </Link>
                         </SidebarMenuButton>
@@ -133,7 +141,7 @@ function AppSidebar() {
                         <SidebarMenuButton
                           asChild
                           disabled={switchCourse.isPending}
-                          className="h-auto min-h-10 items-start"
+                          className="items-center text-sm"
                         >
                           <button
                             type="button"
@@ -162,9 +170,9 @@ function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              isActive={isActive(pathname, '/settings')}
+              isActive={!isMobile && isActive(pathname, '/settings')}
               tooltip="Settings"
-              className="text-xs sm:text-[0.8rem]"
+              className="text-sm"
             >
               <Link to="/settings" aria-label="Settings" onClick={closeMobile}>
                 <Settings aria-hidden="true" />

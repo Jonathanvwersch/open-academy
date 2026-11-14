@@ -13,7 +13,7 @@ export function BrandLockup({
     >
       <Logo
         className={`size-7 ${
-          hideNameWhenSidebarCollapsed ? 'group-data-[collapsible=icon]:size-5' : ''
+          hideNameWhenSidebarCollapsed ? 'group-data-[collapsible=icon]:size-6' : ''
         }`}
       />
       <span
