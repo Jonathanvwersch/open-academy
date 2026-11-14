@@ -107,7 +107,7 @@ concepts:
       objectives:
         [{ text: "Explain how one sequence yields many training examples", dimension: conceptual }],
       projects: [char-transformer],
-      status: stub,
+      status: authored,
     }
   - {
       id: mixture-of-experts,
