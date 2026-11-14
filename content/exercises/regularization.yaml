@@ -57,14 +57,27 @@ exercises:
     role: practice
     difficulty: 1
     est_minutes: 1
-    prompt: A model has two weights, $w_1={{=a}}$ and $w_2={{=b}}$, and the penalty strength is $\lambda={{=l}}$. What is the L2 penalty $\lambda(w_1^2+w_2^2)$?
+    prompt:
+      A model has two weights, $w_1={{=a}}$ and $w_2={{=b}}$, and penalty strength $\lambda={{=l}}$. What is
+      the L2 penalty?
     params:
-      a: { min: 1, max: 4, step: 1 }
-      b: { min: -3, max: -1, step: 1 }
-      l: { min: 0.1, max: 0.5, step: 0.1 }
-    constraints: ["a + b != 0"]
+      a:
+        min: 1
+        max: 4
+        step: 1
+      b:
+        min: -3
+        max: -1
+        step: 1
+      l:
+        min: 0.1
+        max: 0.5
+        step: 0.1
+    constraints:
+      - a + b != 0
     answer_expr: l * (a^2 + b^2)
-    tolerance: { abs: 0.001 }
+    tolerance:
+      abs: 0.001
     common_wrong:
       - answer_expr: l * (a + b)
         category: math_error
@@ -72,7 +85,9 @@ exercises:
       - answer_expr: l * (a^2 - b^2)
         category: math_error
         feedback: Squaring a negative weight gives a positive number, so $w_2^2$ adds to the penalty.
-    solution: Squaring makes both weights count positively, so $w_1^2+w_2^2={{=a^2}}+{{=b^2}}={{=a^2+b^2}}$. Multiplying by $\lambda$ gives ${{=l}}\times{{=a^2+b^2}}={{=l*(a^2+b^2)}}$.
+    solution:
+      Squaring makes both weights count positively, so $w_1^2+w_2^2={{=a^2}}+{{=b^2}}={{=a^2+b^2}}$. Multiplying
+      by $\lambda$ gives ${{=l}}\times{{=a^2+b^2}}={{=l*(a^2+b^2)}}$.
   - id: rgp-total-loss
     dimension: math
     type: numeric
@@ -119,25 +134,25 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: "Setting A of a model's two weights is $(3,4)$ with data loss $2$. Setting B is $(1,1)$ with data loss $3$. With an L2 penalty and $\\lambda=0.2$, which setting has the lower total loss?"
+    prompt:
+      Setting A of a model's two weights is $(3,4)$ with data loss $2$. Setting B is $(1,1)$ with data loss
+      $3$. With an L2 penalty and $\lambda=0.2$, which setting has the lower total loss?
     options:
       - id: a
-        text: A, because its data loss is lower.
+        text: A
         correct: false
-        feedback: The total also includes the penalty, $0.2\times(9+16)=5$ for A, which makes A's total $7$.
+        feedback: A has total $2+0.2(9+16)=7$, above B's $3.4$.
       - id: b
-        text: B, because its total is $3.4$ against A's $7$.
+        text: B
         correct: true
-        feedback: A costs $2+0.2\times25=7$ and B costs $3+0.2\times2=3.4$.
+        feedback: B has total $3+0.2(1+1)=3.4$, below A's $7$.
       - id: c
-        text: Neither, because both totals come to $3.4$.
+        text: They have equal total loss
         correct: false
-        feedback: That adds the weights without squaring them; A's penalty is $0.2\times(3^2+4^2)=5$.
-      - id: d
-        text: B, because smaller weights always win, whatever the data losses.
-        correct: false
-        feedback: Both parts count; a big enough data loss could outweigh B's smaller penalty.
-    solution: A's total is $2+0.2\times(3^2+4^2)=7$ and B's is $3+0.2\times(1^2+1^2)=3.4$, so B is lower even though its data loss is higher.
+        feedback: A has total $7$ and B has total $3.4$; the squared weights enter the penalty.
+    solution:
+      A's total is $2+0.2\times(3^2+4^2)=7$ and B's is $3+0.2\times(1^2+1^2)=3.4$, so B is lower even though
+      its data loss is higher.
   - id: rgp-lambda-back
     dimension: math
     type: numeric
@@ -298,22 +313,24 @@ exercises:
     prompt: Someone says weight decay is just a smaller learning rate. Why is that wrong?
     options:
       - id: a
-        text: It isn't wrong, because both multiply the update by a number below $1$.
+        text: A smaller $\eta$ shrinks the weight even with no data slope, while decay only shrinks the data step.
         correct: false
-        feedback: Decay multiplies the weight, not the step, so it acts even when the data step is $0$.
+        feedback: "This swaps the two effects: decay directly shrinks the weight."
       - id: b
-        text: A smaller $\eta$ makes the weights grow, while weight decay shrinks them.
+        text: A smaller $\eta$ and decay both shrink only the data step, so both stop acting with no data slope.
         correct: false
-        feedback: A smaller $\eta$ only makes the data steps shorter; it doesn't push weights up.
+        feedback: Decay continues to pull a nonzero weight towards zero with no data slope.
       - id: c
-        text: Weight decay changes the data loss, while $\eta$ changes only the penalty.
+        text: A smaller $\eta$ and decay both shrink the weight directly, so both keep acting with no data slope.
         correct: false
-        feedback: Decay comes from the penalty's slope, and $\eta$ scales both parts of the step.
+        feedback: A smaller learning rate alone leaves a zero-data-slope weight unchanged.
       - id: d
-        text: A smaller $\eta$ only shortens the data step, but decay pulls weights towards $0$ even with no data slope.
+        text: A smaller $\eta$ shrinks only the data step, while decay also shrinks the weight itself with no data slope.
         correct: true
-        feedback: With a data slope of $0$, a smaller $\eta$ leaves $w$ alone, but decay still multiplies it by $1-2\eta\lambda$.
-    solution: A smaller learning rate only shortens steps along the data slope. Weight decay adds a pull towards $0$ on every weight, which acts even where the data slope is $0$.
+        feedback: Decay adds a pull on the weight even where the data loss is flat.
+    solution:
+      A smaller learning rate only shortens steps along the data slope. Weight decay adds a pull towards $0$
+      on every weight, which acts even where the data slope is $0$.
   - id: rgp-settle
     dimension: math
     type: numeric
@@ -441,11 +458,17 @@ exercises:
     role: practice
     difficulty: 2
     est_minutes: 2
-    prompt: The model $\hat y=wx$ is trained on one example with $x=1$ and $y=3$, using an L2 penalty with $\lambda={{=l}}$, so its weight is $w=3/(1+\lambda)$. What is its squared error on a validation example with $x=2$ and $y=4$?
+    prompt:
+      The model $\hat y=wx$ is fitted to one training example with $x=1$ and $y=3$ by minimising squared error
+      plus an L2 penalty with $\lambda={{=l}}$. What is its squared error on a validation example with $x=2$ and $y=4$?
     params:
-      l: { min: 1, max: 4, step: 1 }
+      l:
+        min: 1
+        max: 4
+        step: 1
     answer_expr: (2 * 3 / (1 + l) - 4)^2
-    tolerance: { abs: 0.01 }
+    tolerance:
+      abs: 0.01
     common_wrong:
       - answer_expr: (3 / (1 + l) - 4)^2
         category: math_error
@@ -453,7 +476,9 @@ exercises:
       - answer_expr: 2 * 3 / (1 + l) - 4
         category: math_error
         feedback: That is the error itself; the squared error squares it.
-    solution: The weight is $3/(1+{{=l}})={{=3/(1+l)}}$, so the prediction is $2\times{{=3/(1+l)}}={{=6/(1+l)}}$ and the squared error is $({{=6/(1+l)}}-4)^2={{=(6/(1+l)-4)^2}}$.
+    solution:
+      The weight is $3/(1+{{=l}})={{=3/(1+l)}}$, so the prediction is $2\times{{=3/(1+l)}}={{=6/(1+l)}}$ and
+      the squared error is $({{=6/(1+l)}}-4)^2={{=(6/(1+l)-4)^2}}$.
   - id: rgp-bias
     dimension: conceptual
     type: mc
@@ -463,22 +488,24 @@ exercises:
     prompt: Why do we usually leave the bias out of the penalty?
     options:
       - id: a
-        text: The bias is always $0$, so penalising it does nothing.
+        text: The bias has no input, so its slope is always zero.
         correct: false
-        feedback: Training gives the bias whatever value fits; it is usually not $0$.
+        feedback: The bias is added directly to the prediction and usually has a nonzero loss slope.
       - id: b
-        text: Gradient descent can't update the bias, so it has no slope.
+        text: The bias is usually small, so its penalty would hardly change the loss.
         correct: false
-        feedback: The bias is updated like the weights; under squared error its slope is $2e$.
+        feedback: A bias can be large; its role as a shared shift is the reason to leave it out.
       - id: c
         text: The bias shifts every prediction equally, so it can't make predictions swing.
         correct: true
         feedback: Only the weights make predictions change between examples, so only they need charging.
       - id: d
-        text: Penalising the bias would make the model overfit more.
+        text: The bias acts like a weight, so penalising the weights already penalises it.
         correct: false
-        feedback: Pulling the bias towards $0$ would only add error, which pushes towards underfitting, not overfitting.
-    solution: The bias moves every prediction by the same amount, so it can't make predictions swing between examples. Shrinking it only adds error.
+        feedback: A penalty on the input weights does not include a separate bias term.
+    solution:
+      The bias moves every prediction by the same amount, so it can't make predictions swing between examples.
+      Shrinking it only adds error.
   - id: rgp-early-stop
     dimension: conceptual
     type: mc

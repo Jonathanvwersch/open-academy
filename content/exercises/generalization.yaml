@@ -57,11 +57,20 @@ exercises:
     difficulty: 2
     est_minutes: 2
     params:
-      e: { min: 5, max: 15, step: 5 }
-    prompt: "Four untouched test houses have absolute prediction errors {{= e }}, {{= e + 10 }}, {{= e }} and {{= e + 10 }} thousand dollars. What is their mean absolute error in thousands of dollars?"
+      e:
+        min: 5
+        max: 15
+        step: 5
+    prompt:
+      Four untouched test houses sold for 200, 250, 300 and 350 thousand dollars. A model predicted {{=200+e}},
+      {{=240-e}}, {{=300-e}} and {{=360+e}} thousand dollars respectively. What is their mean absolute error in thousands
+      of dollars?
     answer_expr: e + 5
-    tolerance: { abs: 0.01 }
-    solution: "Add the four absolute errors to get {{= 4*e+20 }}, then divide by four to get {{= e+5 }} thousand dollars. This is an average, not a bound on any one prediction."
+    tolerance:
+      abs: 0.01
+    solution:
+      Add the four absolute errors to get {{= 4*e+20 }}, then divide by four to get {{= e+5 }} thousand dollars.
+      This is an average, not a bound on any one prediction.
   - id: gen-identical
     dimension: conceptual
     type: mc
@@ -94,26 +103,24 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A robot predicts delivery time. A large untouched test set contains independent trips from the same unchanged process as future trips. Its average absolute error is 2 minutes. What does this support?
+    prompt:
+      A robot predicts delivery time. A large untouched test set contains independent trips from the same unchanged
+      process as future trips. Its average absolute error is 2 minutes. What does this support?
     options:
-      - {
-          id: a,
-          text: Every future trip will have an error of at most 2 minutes.,
-          correct: false,
-          feedback: An average allows individual errors above or below it.,
-        }
-      - {
-          id: b,
-          text: Average future error is estimated at 2 minutes with some uncertainty.,
-          correct: true,
-        }
-      - {
-          id: c,
-          text: Future error is known exactly because the trips are independent.,
-          correct: false,
-          feedback: Independence makes the test more informative but finite samples still leave uncertainty.,
-        }
-    solution: Under these assumptions the test average estimates average future error. Neither independence nor an unchanged source guarantees an exact future average or a bound on every trip.
+      - id: a
+        text: Each future trip will be off by about 2 minutes.
+        correct: false
+        feedback: An average allows individual errors above or below it.
+      - id: b
+        text: Average future error is estimated at 2 minutes with some uncertainty.
+        correct: true
+      - id: c
+        text: The model's training error must also be about 2 minutes.
+        correct: false
+        feedback: Training trips helped fit the model, so their average error can differ from test error.
+    solution:
+      Under these assumptions the test average estimates average future error. Neither independence nor an
+      unchanged source guarantees an exact future average or a bound on every trip.
   - id: gen-shift-basics
     dimension: conceptual
     type: mc
@@ -175,11 +182,18 @@ exercises:
     difficulty: 2
     est_minutes: 2
     params:
-      d: { min: 20, max: 100, step: 20 }
-    prompt: "An unchanged model predicts 100 and 200 thousand dollars for two sizes. In a new city the actual prices are {{=100+d}} and {{=200+d}}. What is its mean absolute error on these two houses in thousands of dollars?"
-    answer_expr: d
-    tolerance: { abs: 0.01 }
-    solution: "Both real prices exceed their predictions by {{= d }} thousand dollars, so their average absolute error is also {{= d }}. Familiar sizes do not ensure familiar prices."
+      d:
+        min: 20
+        max: 100
+        step: 20
+    prompt:
+      An unchanged model predicts 100 and 200 thousand dollars for two houses. In a new city their actual prices
+      are {{=100+d}} and {{=200+2*d}} thousand dollars. What is its mean absolute error on these two houses in thousands
+      of dollars?
+    answer_expr: 3*d/2
+    tolerance:
+      abs: 0.01
+    solution: The absolute errors are {{=d}} and {{=2*d}} thousand dollars. Their mean is $({{=d}}+{{=2*d}})/2={{=3*d/2}}$.
   - id: gen-large-houses
     dimension: conceptual
     type: mc
@@ -293,12 +307,30 @@ exercises:
     difficulty: 2
     est_minutes: 2
     params:
-      n: { min: 2, max: 8, step: 2 }
-      c: { min: 2, max: 4, step: 1 }
-    prompt: "A validation table has {{= n*c }} rows. Every house sale in it appears as exactly {{= c }} identical copies, and none of these houses is in training. After removing duplicate copies, how many distinct sales remain?"
-    answer_expr: n
-    tolerance: { abs: 0.01 }
-    solution: "Divide {{= n*c }} rows by {{= c }} copies per sale to get {{= n }} distinct sales. Copying records does not create more independent evidence."
+      a:
+        min: 4
+        max: 8
+        step: 2
+      b:
+        min: 2
+        max: 4
+        step: 1
+      k:
+        min: 1
+        max: 3
+        step: 1
+    prompt:
+      "A validation table has {{=a+2*b}} rows: {{=a}} sales appear once each, and {{=b}} other sales appear
+      as two identical copies each. Of the single sales, {{=k}} also appear in training; none of the copied sales
+      appear in training. How many distinct validation sales are new to the model?"
+    answer_expr: a+b-k
+    tolerance:
+      abs: 0.01
+    solution:
+      There are {{=a}} single sales and {{=b}} distinct copied sales. Remove the {{=k}} sales already seen
+      in training, leaving ${{=a}}+{{=b}}-{{=k}}={{=a+b-k}}$ new sales.
+    constraints:
+      - k < a
   - id: gen-time-split
     dimension: transfer
     type: mc
@@ -331,26 +363,24 @@ exercises:
     role: practice
     difficulty: 3
     est_minutes: 2
-    prompt: A medical model must work on new patients. Each patient has many related scans. A random scan split gives very low validation error. What evaluation change best checks the intended task?
+    prompt:
+      A medical model must work on new patients. Each patient has many related scans. A random scan split gives
+      very low validation error. What evaluation change best checks the intended task?
     options:
-      - {
-          id: a,
-          text: Keep each patient's scans in one split and evaluate held-out patients.,
-          correct: true,
-        }
-      - {
-          id: b,
-          text: Keep random scans in each split and give every scan a unique number.,
-          correct: false,
-          feedback: Renumbering scans does not remove information shared by scans from one patient.,
-        }
-      - {
-          id: c,
-          text: Copy the validation scans into training and report the resulting score.,
-          correct: false,
-          feedback: This directly leaks the held-out examples into training.,
-        }
-    solution: New-patient use calls for a patient-level group split. Related scans across splits can make validation appear easier than predicting for a patient the model has never seen.
+      - id: a
+        text: Keep each patient's scans in one split and evaluate held-out patients.
+        correct: true
+      - id: b
+        text: Use a larger random scan split so the validation error is more precise.
+        correct: false
+        feedback: More scans do not remove the shared patient information across splits.
+      - id: c
+        text: Remove exact duplicate scans and keep the random split.
+        correct: false
+        feedback: Different scans from the same patient still share information, even after exact duplicates are removed.
+    solution:
+      New-patient use calls for a patient-level group split. Related scans across splits can make validation
+      appear easier than predicting for a patient the model has never seen.
   - id: gen-explain-evidence
     dimension: conceptual
     type: explain
