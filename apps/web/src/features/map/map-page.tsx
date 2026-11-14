@@ -12,11 +12,11 @@ import {
   useStore,
 } from '@xyflow/react';
 import { Popover } from 'radix-ui';
-import { useEffect, useMemo, useRef } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { topicStatusClasses, topicStatusLabels } from '../../components/topic-status.js';
 import { Badge } from '../../components/ui/badge.js';
 import { Card, CardContent } from '../../components/ui/card.js';
-import { ColumnGraphEdge } from './column-edge.js';
+import { emphasizeStudyMap } from './emphasis.js';
 import { type GroupNode, type GroupTitleNode, layoutStudyMap, type TopicNode } from './layout.js';
 import { studyMapQueryOptions } from './queries.js';
 import { initialMapViewport, mapFitViewOptions } from './viewport.js';
@@ -27,6 +27,7 @@ type Topic = StudyMapPayload['nodes'][number];
 const topicLabel = (topic: Topic) =>
   topic.placedOut ? 'Placed out' : topicStatusLabels[topic.status];
 const canOpen = (topic: Topic) => topic.status !== 'locked' && topic.lessonAvailable;
+const TopicFocusContext = createContext<((id: string | null) => void) | null>(null);
 
 function TopicAction({ topic, graph = false }: { topic: Topic; graph?: boolean }) {
   const label = topicLabel(topic);
@@ -92,13 +93,18 @@ function TopicAction({ topic, graph = false }: { topic: Topic; graph?: boolean }
   );
 }
 
-function TopicGraphNode({ data }: NodeProps<TopicNode>) {
+function TopicGraphNode({ id, data }: NodeProps<TopicNode>) {
+  const setFocus = useContext(TopicFocusContext);
   return (
-    <>
+    <div
+      className="h-full"
+      onFocusCapture={() => setFocus?.(id)}
+      onBlurCapture={() => setFocus?.(null)}
+    >
       <Handle type="target" position={Position.Left} className="invisible" />
       <TopicAction topic={data} graph />
       <Handle type="source" position={Position.Right} className="invisible" />
-    </>
+    </div>
   );
 }
 
@@ -108,10 +114,7 @@ function CourseGroupNode() {
 
 function CourseGroupTitleNode({ data }: NodeProps<GroupTitleNode>) {
   return (
-    <div
-      className="h-full truncate rounded-md bg-card px-2 py-1 text-lg font-semibold"
-      title={data.title}
-    >
+    <div className="h-full truncate text-lg font-semibold" data-map-title title={data.title}>
       {data.title}
     </div>
   );
@@ -121,21 +124,20 @@ const nodeTypes = {
   courseGroup: CourseGroupNode,
   groupTitle: CourseGroupTitleNode,
 };
-const edgeTypes = { column: ColumnGraphEdge };
 
 function MapViewport({ groups }: { groups: GroupNode[] }) {
   const initialized = useNodesInitialized({ includeHiddenNodes: true });
   const width = useStore((state) => state.width);
   const height = useStore((state) => state.height);
-  const { fitView, setViewport } = useReactFlow();
+  const { setViewport } = useReactFlow();
   const positioned = useRef(false);
   useEffect(() => {
     if (!initialized || positioned.current) return;
     const viewport = initialMapViewport(groups, width, height);
     if (!viewport) return;
     positioned.current = true;
-    void fitView(mapFitViewOptions).then(() => setViewport(viewport));
-  }, [fitView, groups, height, initialized, setViewport, width]);
+    void setViewport(viewport);
+  }, [groups, height, initialized, setViewport, width]);
   return (
     <Controls
       showInteractive={false}
@@ -151,8 +153,14 @@ function MapViewport({ groups }: { groups: GroupNode[] }) {
 export function MapPage() {
   const { data } = useSuspenseQuery(studyMapQueryOptions());
   const graph = useMemo(() => (data.nodes.length ? layoutStudyMap(data) : null), [data]);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [focused, setFocused] = useState<string | null>(null);
+  const emphasized = useMemo(
+    () => (graph ? emphasizeStudyMap(graph, hovered ?? focused) : null),
+    [graph, hovered, focused],
+  );
   const touchOrigin = useRef<{ x: number; y: number } | null>(null);
-  if (!graph)
+  if (!graph || !emphasized)
     return (
       <section className="space-y-3">
         <h1 className="sr-only">Map</h1>
@@ -186,22 +194,27 @@ export function MapPage() {
               event.stopPropagation();
           }}
         >
-          <ReactFlow
-            nodes={graph.nodes}
-            edges={graph.edges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            fitViewOptions={mapFitViewOptions}
-            minZoom={0.1}
-            preventScrolling={false}
-            nodesDraggable={false}
-            nodesConnectable={false}
-            elementsSelectable={false}
-            zIndexMode="manual"
-            defaultEdgeOptions={{ zIndex: 1 }}
-          >
-            <MapViewport groups={graph.nodes.filter((node) => node.type === 'courseGroup')} />
-          </ReactFlow>
+          <TopicFocusContext.Provider value={setFocused}>
+            <ReactFlow
+              nodes={emphasized.nodes}
+              edges={emphasized.edges}
+              nodeTypes={nodeTypes}
+              onNodeMouseEnter={(_, node) => {
+                if (node.type === 'topic') setHovered(node.id);
+              }}
+              onNodeMouseLeave={() => setHovered(null)}
+              fitViewOptions={mapFitViewOptions}
+              minZoom={0.01}
+              preventScrolling={false}
+              nodesDraggable={false}
+              nodesConnectable={false}
+              elementsSelectable={false}
+              zIndexMode="manual"
+              defaultEdgeOptions={{ zIndex: 1 }}
+            >
+              <MapViewport groups={graph.nodes.filter((node) => node.type === 'courseGroup')} />
+            </ReactFlow>
+          </TopicFocusContext.Provider>
         </section>
       </Card>
       <ul aria-label="Topic status legend" className="flex flex-wrap gap-2 text-xs">

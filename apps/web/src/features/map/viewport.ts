@@ -1,24 +1,26 @@
-import { getNodesBounds, getViewportForBounds } from '@xyflow/react';
+import { getViewportForBounds } from '@xyflow/react';
 import type { GroupNode } from './layout.js';
 
-export const mapFitViewOptions = { padding: 0.15, minZoom: 0.75, maxZoom: 1 };
+export const mapFitViewOptions = { padding: 0.1, minZoom: 0.01, maxZoom: 0.85 };
 
 export function initialMapViewport(groups: GroupNode[], width: number, height: number) {
   const first = groups[0];
   if (!first || width <= 0 || height <= 0) return undefined;
-  const bounds = getNodesBounds(
-    groups.map((group) => ({
-      ...group,
-      width: Number(group.style?.width),
-      height: Number(group.style?.height),
-    })),
-  );
-  const viewport = getViewportForBounds(bounds, width, height, 0.75, 1, 0.15);
-  if (bounds.width * viewport.zoom > width || bounds.height * viewport.zoom > height)
+  if (width < 640) {
+    const zoom = Math.min(mapFitViewOptions.maxZoom, width / (Number(first.style?.width) * 1.4));
     return {
-      x: 24 - first.position.x * viewport.zoom,
-      y: 24 - first.position.y * viewport.zoom,
-      zoom: viewport.zoom,
+      x: (width - Number(first.style?.width) * zoom) / 2 - first.position.x * zoom,
+      y: 16 - first.position.y * zoom,
+      zoom,
     };
-  return viewport;
+  }
+  const x = Math.min(...groups.map((group) => group.position.x));
+  const y = Math.min(...groups.map((group) => group.position.y));
+  const bounds = {
+    x,
+    y,
+    width: Math.max(...groups.map((group) => group.position.x + Number(group.style?.width))) - x,
+    height: Math.max(...groups.map((group) => group.position.y + Number(group.style?.height))) - y,
+  };
+  return getViewportForBounds(bounds, width, height, 0.01, 0.85, 0.1);
 }

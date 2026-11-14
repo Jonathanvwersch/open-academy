@@ -41,6 +41,30 @@ test('study map groups shared topics once and opens available lessons', async ({
     graph.getByRole('button', { name: 'Linear models: Locked', exact: true }),
   ).toHaveCount(1);
   await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
+  const frames = graph.locator('.react-flow__node-courseGroup');
+  await expect(frames).toHaveCount(2);
+  await expect(graph.locator('[data-map-title]')).toHaveCount(2);
+  for (const title of await graph.locator('[data-map-title]').all())
+    await expect(title).toBeInViewport();
+  await expect
+    .poll(async () =>
+      frames.evaluateAll((elements) => {
+        const viewport = document.querySelector('.react-flow')?.getBoundingClientRect();
+        return (
+          !!viewport &&
+          elements.every((element) => {
+            const r = element.getBoundingClientRect();
+            return (
+              r.left >= viewport.left &&
+              r.right <= viewport.right &&
+              r.top >= viewport.top &&
+              r.bottom <= viewport.bottom
+            );
+          })
+        );
+      }),
+    )
+    .toBe(true);
   const geometryErrors = await graph.locator('.react-flow__node').evaluateAll(
     (elements, parents) => {
       const groups = new Map(
@@ -78,6 +102,14 @@ test('study map groups shared topics once and opens available lessons', async ({
     Object.fromEntries(payload.nodes.map((node) => [node.id, `group:${node.groupId}`])),
   );
   expect(geometryErrors).toEqual([]);
+  const vectors = graph.getByRole('link', { name: 'Vectors: Not started', exact: true });
+  await vectors.hover();
+  await expect.poll(() => graph.locator('.map-edge-highlighted').count()).toBeGreaterThan(0);
+  await expect(graph.locator('.react-flow__node-topic').last()).toHaveCSS('opacity', '0.2');
+  await page.mouse.move(0, 0);
+  await expect(graph.locator('.map-edge-highlighted')).toHaveCount(0);
+  await vectors.focus();
+  await expect.poll(() => graph.locator('.map-edge-highlighted').count()).toBeGreaterThan(0);
   const locked = graph.getByRole('button', { name: 'Derivatives: Locked', exact: true });
   await locked.click();
   await expect(page.getByRole('dialog')).toContainText('Needs:');
@@ -114,7 +146,7 @@ test('map supports keyboard activation and a mobile topic list', async ({ page }
 test.describe('touch navigation', () => {
   test.use({ hasTouch: true });
 
-  test('mobile opens legibly, pans by touch and lets vertical swipes reach the list', async ({
+  test('mobile fits the first group width, pans by touch and lets vertical swipes reach the list', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
@@ -122,15 +154,16 @@ test.describe('touch navigation', () => {
     await page.goto('/map');
     const topic = page.locator('.react-flow__node-topic').first();
     await expect(topic).toBeVisible();
-    await expect
-      .poll(async () => (await topic.boundingBox())?.width ?? 0)
-      .toBeGreaterThanOrEqual(165);
     const graph = await page.getByRole('region', { name: 'Study map graph' }).boundingBox();
     if (!graph) throw new Error('Expected graph bounds');
     const viewport = page.locator('.react-flow__viewport');
-    await expect(viewport).toHaveAttribute('style', /scale\(0.75\)/);
+    const firstGroup = page.locator('.react-flow__node-courseGroup').first();
+    await expect
+      .poll(async () => (await firstGroup.boundingBox())?.width ?? Infinity)
+      .toBeLessThan(graph.width * 0.9);
+    expect((await firstGroup.boundingBox())?.width).toBeGreaterThan(graph.width * 0.65);
     const before = await viewport.getAttribute('style');
-    const start = { x: graph.x + graph.width - 20, y: graph.y + graph.height - 140 };
+    const start = { x: graph.x + graph.width - 12, y: graph.y + graph.height - 35 };
     const swipe = async (dx: number, dy: number) => {
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
       for (let step = 1; step <= 12; step++)

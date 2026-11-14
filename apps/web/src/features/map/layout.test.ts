@@ -31,7 +31,7 @@ test('band layout reserves label space and positions children within their paren
     expect(node.position.y + 100).toBeLessThanOrEqual(Number(parent?.style?.height));
   }
   expect(graph.nodes.slice(0, 2).every((node) => node.type === 'courseGroup')).toBe(true);
-  expect(graph.edges[0]?.style?.strokeWidth).toBe(2);
+  expect(graph.edges[0]?.style?.strokeWidth).toBe(1.5);
 });
 
 test('large groups, cross-group dependencies and a singleton keep disjoint tight bands', () => {
@@ -100,51 +100,24 @@ test('large groups, cross-group dependencies and a singleton keep disjoint tight
           a.y + a.height <= b.y ||
           b.y + b.height <= a.y,
       ).toBe(true);
+  expect(edges.every((edge) => edge.type === 'default')).toBe(true);
   for (const edge of edges) {
-    const source = boxes.find((box) => box.id === edge.source);
-    const target = boxes.find((box) => box.id === edge.target);
-    expect(target?.x).toBeGreaterThan(source?.x ?? Infinity);
-    const centerX = edge.data?.centerX ?? NaN;
-    expect(centerX).toBeGreaterThan((source?.x ?? Infinity) + 220);
-    expect(centerX).toBeLessThan(target?.x ?? -Infinity);
-    for (const box of boxes.filter((box) => box.type === 'topic'))
-      expect(centerX < box.x || centerX > box.x + box.width).toBe(true);
-    if (!source || !target) throw new Error('Expected edge endpoints');
-    const targetY = target.y + 50;
-    const points = [
-      { x: source.x + 220, y: source.y + 50 },
-      { x: centerX, y: source.y + 50 },
-      ...(edge.data?.corridorY !== undefined && edge.data.targetCenterX !== undefined
-        ? [
-            { x: centerX, y: edge.data.corridorY },
-            { x: edge.data.targetCenterX, y: edge.data.corridorY },
-            { x: edge.data.targetCenterX, y: targetY },
-          ]
-        : [{ x: centerX, y: targetY }]),
-      { x: target.x, y: targetY },
-    ];
-    for (const [index, point] of points.entries()) {
-      const next = points[index + 1];
-      if (!next) continue;
-      for (const box of boxes.filter((box) => box.type === 'topic')) {
-        if (point.x === next.x)
-          expect(
-            point.x <= box.x ||
-              point.x >= box.x + box.width ||
-              Math.max(point.y, next.y) <= box.y ||
-              Math.min(point.y, next.y) >= box.y + box.height,
-          ).toBe(true);
-        else
-          expect(
-            point.y <= box.y ||
-              point.y >= box.y + box.height ||
-              Math.max(point.x, next.x) <= box.x ||
-              Math.min(point.x, next.x) >= box.x + box.width,
-          ).toBe(true);
-      }
-    }
+    const source = data.nodes.find((node) => node.id === edge.source);
+    const target = data.nodes.find((node) => node.id === edge.target);
+    const crossGroup = source?.groupId !== target?.groupId;
+    expect(edge.style).toMatchObject({
+      stroke: crossGroup ? 'var(--primary)' : 'var(--muted-foreground)',
+      strokeWidth: crossGroup ? 1.5 : 1,
+      opacity: crossGroup ? 0.85 : 0.55,
+    });
   }
   for (const title of nodes.filter((node) => node.type === 'groupTitle')) {
+    const parent = groups.find((group) => group.id === title.parentId);
+    expect(title.position.x).toBeGreaterThanOrEqual(0);
+    expect(title.position.y).toBeGreaterThanOrEqual(0);
+    expect(title.position.x + Number(title.style?.width)).toBeLessThanOrEqual(
+      Number(parent?.style?.width),
+    );
     expect(title.zIndex).toBeGreaterThan(2);
     expect(title.position.y + Number(title.style?.height)).toBeLessThan(64);
     expect(title.focusable).toBe(false);
@@ -186,22 +159,23 @@ test('empty maps have no layout elements', () => {
   expect(layoutStudyMap({ groups: [], nodes: [], edges: [] })).toEqual({ nodes: [], edges: [] });
 });
 
-test('rank-skipping edges use a clear band corridor instead of crossing intermediate cards', () => {
-  const { edges } = layoutStudyMap({
+test('an empty group still has a contained title and reserves the fixed gap', () => {
+  const { nodes } = layoutStudyMap({
     groups: [
-      { id: 'one', title: 'One', kind: 'course' },
-      { id: 'two', title: 'Two', kind: 'course' },
+      { id: 'empty', title: 'Empty', kind: 'course' },
+      { id: 'next', title: 'Next', kind: 'course' },
     ],
-    nodes: ['a', 'b', 'c', 'd', 'target'].map((id) => topic(id, id === 'd' ? 'two' : 'one')),
-    edges: [
-      { from: 'a', to: 'b' },
-      { from: 'b', to: 'target' },
-      { from: 'a', to: 'c' },
-      { from: 'c', to: 'd' },
-      { from: 'd', to: 'target' },
-    ],
+    nodes: [topic('a', 'next')],
+    edges: [],
   });
-  const route = edges.find((edge) => edge.id === 'a:b')?.data;
-  expect(route?.corridorY).toBe(76);
-  expect(route?.targetCenterX).toBeGreaterThan(route?.centerX ?? Infinity);
+  const empty = nodes[0];
+  const next = nodes[1];
+  const title = nodes.find((node) => node.id === 'title:empty');
+  expect(next?.position.y).toBe(Number(empty?.position.y) + Number(empty?.style?.height) + 64);
+  expect(Number(title?.position.y) + Number(title?.style?.height)).toBeLessThan(
+    Number(empty?.style?.height),
+  );
+  expect(Number(title?.position.x) + Number(title?.style?.width)).toBeLessThan(
+    Number(empty?.style?.width),
+  );
 });
