@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "study_set_initialized_at" timestamp with time zone;

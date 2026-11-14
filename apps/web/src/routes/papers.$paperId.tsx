@@ -10,6 +10,7 @@ import { paperQueryOptions } from '../features/papers/queries.js';
 const searchSchema = z.object({
   from: z.string().optional(),
   activity: z.string().optional(),
+  courseId: z.string().optional(),
 });
 export const Route = createFileRoute('/papers/$paperId')({
   pendingComponent: PaperSkeleton,

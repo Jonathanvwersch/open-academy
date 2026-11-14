@@ -105,10 +105,11 @@ export async function postPlacement(deps: FeatureServices, request: FeatureReque
   const content = await deps.content();
   const body = request.body as { courseId?: unknown } | null;
   const storedCourseId = await request.repo.activeCourseId();
+  const studyCourseIds = await request.repo.studyCourseIds(content);
   const courseId =
     typeof body?.courseId === 'string' && content.coursesById.has(body.courseId)
       ? body.courseId
-      : storedCourseId;
+      : (studyCourseIds[0] ?? storedCourseId);
   const course = activeCourseFor(content, courseId);
   if (!course) return serviceResult({ error: 'No active course' }, 404);
   const activeRun = await request.repo.activePlacementRun(course.id);
@@ -269,13 +270,20 @@ export async function getPlacementResults(deps: FeatureServices, request: Featur
   ).courses.find((entry) => entry.id === course.id);
   if (!courseProgress) return serviceResult({ error: 'Placement course not found' }, 404);
   const user = await request.repo.user();
-  const schedulerState = await request.repo.schedulerState(request.now());
+  const schedulerState = await request.repo.schedulerState(request.now(), content);
   const prefs = (user?.prefs ?? {}) as SessionPreferences;
   const localDate = localDateKey(request.now(), request.timeZone);
   const sessionKind = sessionKindForDate(localDate);
   const firstTopic =
     planSession(
-      { ...schedulerState, activeCourseId: state.courseId },
+      {
+        ...schedulerState,
+        activeCourseId: state.courseId,
+        studyCourseIds: [
+          state.courseId,
+          ...schedulerState.studyCourseIds.filter((courseId) => courseId !== state.courseId),
+        ],
+      },
       content,
       request.now(),
       sessionBudget(sessionKind, prefs, localDate),

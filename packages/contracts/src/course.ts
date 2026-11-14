@@ -1,9 +1,26 @@
 import type { StreakPayload } from './progress.js';
 import type { TodayPayload } from './sessions.js';
 
+export type CourseEnrollmentStatus = 'active' | 'paused' | 'completed';
+
+export interface CourseCatalogPayload {
+  subjects: Array<{
+    title: string;
+    courses: Array<{
+      id: string;
+      title: string;
+      description: string;
+      topicsDone: number;
+      topicsTotal: number;
+      status: 'not_started' | CourseEnrollmentStatus;
+      startNeeded: boolean;
+    }>;
+  }>;
+}
+
 export interface LearnPayload {
   streak: StreakPayload;
-  today: Pick<TodayPayload, 'needsCourseChoice' | 'courseStart' | 'sessionKind'>;
+  today: Pick<TodayPayload, 'needsCourseChoice' | 'courseStart' | 'sessionKind' | 'studyCourses'>;
   xp: {
     total: number;
     today: number;
@@ -18,6 +35,15 @@ export interface LearnPayload {
     estimatedFinish: string | null;
     estimatedFinishAtGoal: string | null;
   };
+  studyCourses: Array<{
+    id: string;
+    title: string;
+    topicsDone: number;
+    topicsTotal: number;
+    unitTitle: string;
+    estimatedFinish?: string | null;
+    estimatedFinishAtGoal: string | null;
+  }>;
   tasks: Array<{
     id: string;
     activityKind: string;
@@ -45,7 +71,7 @@ export interface LearnPayload {
 
 export interface CoursePayload {
   course: { id: string; title: string; description: string };
-  courseStart: { needed: boolean; placementRunId: string | null };
+  courseStart: { courseId: string | null; needed: boolean; placementRunId: string | null };
   courses: Array<{
     id: string;
     title: string;
@@ -78,6 +104,11 @@ export interface CoursePayload {
     topics: CourseTopic[];
   }>;
 }
+
+export type CourseDetailPayload = CoursePayload & {
+  status: 'not_started' | CourseEnrollmentStatus;
+  suggestedNext: Array<{ id: string; title: string; reason: string }>;
+};
 
 export interface CourseTopic {
   number: string;

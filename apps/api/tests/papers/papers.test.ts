@@ -7,6 +7,7 @@ import { loadContent } from '../../src/content/load.js';
 import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import {
+  courseEnrollments,
   paperFiles,
   paperPages,
   paperProgress,
@@ -71,6 +72,23 @@ beforeEach(async () => {
 afterAll(async () => {
   await db.delete(users).where(eq(users.id, userId));
   await db.$client.end();
+});
+
+test('paper list includes papers from every active study course', async () => {
+  await db.insert(courseEnrollments).values([
+    { userId, courseId: 'fixture-course', startMethod: 'beginning' },
+    { userId, courseId: 'fixture-switching-course', startMethod: 'beginning' },
+  ]);
+  const response = await app.request('/api/papers');
+  const payload = await response.json();
+  expect(
+    payload.units.some(
+      (unit: { courseId: string; courseTitle: string; papers: Array<{ id: string }> }) =>
+        unit.courseId === 'fixture-switching-course' &&
+        unit.courseTitle === 'Fixture switching course' &&
+        unit.papers.some((paper) => paper.id === 'fixture-paper-three'),
+    ),
+  ).toBe(true);
 });
 
 test('sequential PDF requests fetch once and cache the PDF', async () => {

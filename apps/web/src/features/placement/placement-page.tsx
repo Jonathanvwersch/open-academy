@@ -5,10 +5,8 @@ import { Markdown } from '../../components/markdown.js';
 import { PageLayoutSkeleton } from '../../components/page-layout-skeleton.js';
 import { Button } from '../../components/ui/button.js';
 import { Card, CardContent } from '../../components/ui/card.js';
-import { invalidateSidebarQueries, learnQueryOptions } from '../course/queries.js';
+import { invalidateCourseStudyQueries } from '../course/queries.js';
 import { ExerciseForm } from '../exercises/exercise-form.js';
-import { papersQueryOptions } from '../papers/queries.js';
-import { todayQueryOptions } from '../sessions/queries.js';
 import {
   placementAnswerMutationOptions,
   placementNextQueryOptions,
@@ -16,12 +14,7 @@ import {
 } from './queries.js';
 
 async function invalidatePlacementProgress(queryClient: ReturnType<typeof useQueryClient>) {
-  await Promise.all([
-    invalidateSidebarQueries(queryClient),
-    queryClient.invalidateQueries({ queryKey: learnQueryOptions().queryKey }),
-    queryClient.invalidateQueries({ queryKey: todayQueryOptions().queryKey }),
-    queryClient.invalidateQueries({ queryKey: papersQueryOptions().queryKey }),
-  ]);
+  await invalidateCourseStudyQueries(queryClient);
 }
 
 export function PlacementPage({

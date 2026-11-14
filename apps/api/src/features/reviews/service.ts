@@ -1,7 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 import { reviewCards } from '../../db/schema.js';
 import { localDateDifference, shiftLocalDate } from '../../http/request-context.js';
-import { courseConceptIds, courseFoundations } from '../../learning/prerequisites.js';
+import { courseConceptIds, courseFoundationIds } from '../../learning/prerequisites.js';
 import { localDateKey } from '../../learning/xp.js';
 import { type FeatureRequest, type FeatureServices, serviceResult } from '../../service-context.js';
 
@@ -11,6 +11,7 @@ export async function getReviews(deps: FeatureServices, request: FeatureRequest)
   const now = request.now();
   const timeZone = request.timeZone;
   const localToday = localDateKey(now, timeZone);
+  const studyCourseIds = await request.repo.studyCourseIds(index);
   const [cards, activeCourseId] = await Promise.all([
     db
       .select()
@@ -20,11 +21,20 @@ export async function getReviews(deps: FeatureServices, request: FeatureRequest)
     request.repo.activeCourseId(),
   ]);
   const activeCourse = index.coursesById.get(activeCourseId ?? '');
-  const activeConceptIds = courseConceptIds(activeCourse);
-  const activeFoundationIds = new Set(
-    activeCourse ? courseFoundations(index, activeCourse.id).map((concept) => concept.id) : [],
+  const preferredCourseIds = [
+    ...studyCourseIds,
+    ...(activeCourse ? [activeCourse.id] : []),
+    ...(index.curriculum?.courses ?? index.courses.map((course) => course.id)),
+  ];
+  const courseTopicSets = new Map(
+    preferredCourseIds.map((courseId) => {
+      const course = index.coursesById.get(courseId);
+      return [
+        courseId,
+        new Set([...courseConceptIds(course), ...courseFoundationIds(index, courseId)]),
+      ] as const;
+    }),
   );
-  const curriculumCourseIds = index.curriculum?.courses ?? index.courses.map((course) => course.id);
   const cardsByConcept = new Map<string, typeof cards>();
   for (const card of cards) {
     if (!index.conceptsById.has(card.conceptId)) continue;
@@ -39,12 +49,10 @@ export async function getReviews(deps: FeatureServices, request: FeatureRequest)
       const firstCard = conceptCards[0];
       if (!firstCard) return [];
       const earliest = new Date(Math.min(...conceptCards.map((card) => card.dueAt.getTime())));
-      const activeContains = activeConceptIds.has(conceptId) || activeFoundationIds.has(conceptId);
-      const course =
-        (activeContains ? activeCourse : undefined) ??
-        curriculumCourseIds
-          .map((courseId) => index.coursesById.get(courseId))
-          .find((candidate) => candidate?.units.some((unit) => unit.concepts.includes(conceptId)));
+      const courseId = preferredCourseIds.find((candidateId) =>
+        courseTopicSets.get(candidateId)?.has(conceptId),
+      );
+      const course = courseId ? index.coursesById.get(courseId) : undefined;
       const kinds = [...new Set(conceptCards.map((card) => card.dimension))].sort(
         (left, right) =>
           ['conceptual', 'math', 'implementation', 'transfer'].indexOf(left) -

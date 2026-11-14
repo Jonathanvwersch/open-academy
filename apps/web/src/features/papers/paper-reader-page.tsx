@@ -133,7 +133,7 @@ function LazyPage({
 
 export function PaperReaderPage() {
   const { paperId } = Route.useParams();
-  const { from, activity } = Route.useSearch();
+  const { from, activity, courseId } = Route.useSearch();
   const { data } = useSuspenseQuery(paperQueryOptions(paperId));
   const queryClient = useQueryClient();
   const tutor = useTutorSidebar();
@@ -361,6 +361,7 @@ export function PaperReaderPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['paper', paperId] }),
         queryClient.invalidateQueries({ queryKey: ['papers'] }),
+        queryClient.invalidateQueries({ queryKey: ['course'] }),
       ]);
     } finally {
       setSubmitting(false);
@@ -391,10 +392,17 @@ export function PaperReaderPage() {
           </Button>
         ) : (
           <Button asChild variant="ghost" size="sm">
-            <Link aria-label="Back to Course" to="/course">
-              <ArrowLeft aria-hidden="true" className="size-4" />
-              Course
-            </Link>
+            {courseId ? (
+              <Link aria-label="Back to Course" to="/courses/$courseId" params={{ courseId }}>
+                <ArrowLeft aria-hidden="true" className="size-4" />
+                Course
+              </Link>
+            ) : (
+              <Link aria-label="Back to Courses" to="/courses">
+                <ArrowLeft aria-hidden="true" className="size-4" />
+                Courses
+              </Link>
+            )}
           </Button>
         )}
         <div className="flex min-w-0 flex-1 items-center gap-2">

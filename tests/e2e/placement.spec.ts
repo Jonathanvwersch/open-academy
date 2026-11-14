@@ -52,7 +52,10 @@ async function answerCurrentCorrectly(page: Page) {
   if (exercise.type === 'mc') {
     const correctOptions = exercise.options.filter((option) => option.correct);
     if (correctOptions.length === 0) throw new Error(`No correct option for ${exercise.id}`);
-    const visibleOptions = onScreenOptions(exercise.options, exercise.id);
+    const visibleOptions = onScreenOptions(
+      question.exercise.options as typeof exercise.options,
+      exercise.id,
+    ) as typeof exercise.options;
     const controls = page.getByRole(exercise.multi ? 'checkbox' : 'radio');
     for (const option of correctOptions) {
       const optionIndex = visibleOptions.findIndex((visible) => visible.id === option.id);
@@ -90,6 +93,8 @@ test('a new learner chooses a course, resumes placement, and sees placed-out top
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Choose a course' })).toBeVisible();
+  const firstCourse = content.courses[0];
+  if (!firstCourse) throw new Error('Expected a course fixture');
   for (const course of content.courses) {
     await expect(page.getByRole('heading', { name: course.title, exact: true })).toBeVisible();
   }
@@ -97,7 +102,7 @@ test('a new learner chooses a course, resumes placement, and sees placed-out top
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: `${screenshots}/choose-course-390.png`, fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.getByRole('button', { name: 'Start', exact: true }).first().click();
+  await page.getByRole('link', { name: new RegExp(firstCourse.title) }).click();
   await expect(page.getByRole('heading', { name: /^Start / })).toBeVisible();
   await page.screenshot({ path: `${screenshots}/start-card-1280.png`, fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -138,7 +143,7 @@ test('a new learner chooses a course, resumes placement, and sees placed-out top
   await page.screenshot({ path: `${screenshots}/results-390.png`, fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.getByRole('link', { name: 'Start learning' }).click();
-  await page.getByRole('link', { name: 'Courses', exact: true }).click();
+  await page.goto(`/courses/${firstCourse.id}`);
   await expect(page.getByText('Placed out', { exact: true }).first()).toBeVisible();
   await page.screenshot({ path: `${screenshots}/placed-out-1280.png`, fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -162,8 +167,9 @@ test('a failed placement start can be retried', async ({ page }) => {
     });
   });
 
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Start', exact: true }).first().click();
+  const firstCourse = content.courses[0];
+  if (!firstCourse) throw new Error('Expected a course fixture');
+  await page.goto(`/courses/${firstCourse.id}`);
   await page.getByRole('link', { name: 'Take the placement check' }).click();
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Back to Courses' })).toBeVisible();
@@ -173,38 +179,33 @@ test('a failed placement start can be retried', async ({ page }) => {
 });
 
 test('starting from the beginning enrolls without a placement run', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Start', exact: true }).first().click();
+  const firstCourse = content.courses[0];
+  if (!firstCourse) throw new Error('Expected a course fixture');
+  await page.goto(`/courses/${firstCourse.id}`);
   await page.getByRole('button', { name: "I'm new to this — start from the beginning" }).click();
-  await expect(page).toHaveURL(/\/course\?course=fixture-course$/);
-  await expect(page.getByRole('heading', { name: 'Fixture course', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(`/courses/${firstCourse.id}`);
+  await expect(page.getByRole('heading', { name: firstCourse.title, exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: /^Start / })).toHaveCount(0);
-  await page.goto('/course');
+  await page.goto(`/courses/${firstCourse.id}`);
   await expect(page.getByRole('heading', { name: /^Start / })).toHaveCount(0);
 });
 
-test('switching to an unstarted course shows its start card, then switching back does not', async ({
-  page,
-}) => {
-  await page.goto('/');
+test('adding a second course keeps both courses in My courses', async ({ page }) => {
   const startedCourse = content.courses[0];
   const otherCourse = content.courses[1];
   if (!startedCourse || !otherCourse) throw new Error('Expected two course fixtures');
-  await page.getByRole('button', { name: 'Start', exact: true }).first().click();
+  await page.goto(`/courses/${startedCourse.id}`);
   await page.getByRole('button', { name: "I'm new to this — start from the beginning" }).click();
-  await page.goto('/course');
-  await page.getByRole('button', { name: 'Change course' }).click();
-  const other = page
-    .locator('[data-slot="card"]')
-    .filter({ has: page.getByRole('heading', { name: otherCourse.title, exact: true }) });
-  await other.getByRole('button', { name: 'Start', exact: true }).click();
+  await page.goto(`/courses/${otherCourse.id}`);
   await expect(page.getByRole('heading', { name: `Start ${otherCourse.title}` })).toBeVisible();
-  await page.getByRole('button', { name: 'Change course' }).click();
-  const first = page
-    .locator('[data-slot="card"]')
-    .filter({ has: page.getByRole('heading', { name: startedCourse.title, exact: true }) });
-  await first.getByRole('button', { name: 'Switch', exact: true }).click();
-  await expect(page.getByRole('heading', { name: `Start ${startedCourse.title}` })).toHaveCount(0);
+  await page.getByRole('button', { name: "I'm new to this — start from the beginning" }).click();
+  await expect(page.getByRole('heading', { name: `Start ${otherCourse.title}` })).toHaveCount(0);
+  await page.reload();
+  const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+  await expect(
+    navigation.getByRole('link', { name: new RegExp(startedCourse.title) }),
+  ).toBeVisible();
+  await expect(navigation.getByRole('link', { name: new RegExp(otherCourse.title) })).toBeVisible();
 });
 
 test('placement results keep foundations separate and hide an empty foundations card', async ({

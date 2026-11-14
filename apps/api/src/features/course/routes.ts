@@ -29,7 +29,12 @@ import {
   prerequisiteMet,
 } from '../../learning/prerequisites.js';
 import type { PlannedActivity, SessionPreferences } from '../../learning/scheduler.js';
-import { planSession, type SessionKind, sessionBudget } from '../../learning/scheduler.js';
+import {
+  currentLearnerUnit,
+  planSession,
+  type SessionKind,
+  sessionBudget,
+} from '../../learning/scheduler.js';
 import { buildStreak } from '../../learning/streak.js';
 import {
   averageDailyXp,
@@ -41,7 +46,7 @@ import {
   weekXp,
   xpGoalFor,
 } from '../../learning/xp.js';
-import { buildCoursePayload } from './service.js';
+import { buildCoursePayload, suggestedNextCourses } from './service.js';
 
 type RouteContext = Context<ApiEnv>;
 type ActivityRecord = typeof sessionActivities.$inferSelect;
@@ -116,10 +121,14 @@ export function registerLearnCourseRoutes(
     const activeCourseId = index.coursesById.has(user?.activeCourseId ?? '')
       ? (user?.activeCourseId ?? null)
       : null;
-    const activeCourse = activeCourseFor(index, activeCourseId);
+    const studyCourseIds = await repo.studyCourseIds(index);
+    const placementCourseId = placementRuns
+      .map((run) => (run.state as { courseId?: unknown }).courseId)
+      .find((id): id is string => typeof id === 'string' && index.coursesById.has(id));
+    const currentCourseId = placementCourseId ?? studyCourseIds[0] ?? activeCourseId;
     const startState = buildCourseStartState({
       content: index,
-      activeCourseId,
+      activeCourseId: currentCourseId,
       mastery,
       lessonRuns: runRows,
       enrollments,
@@ -127,8 +136,10 @@ export function registerLearnCourseRoutes(
     });
     const needsChoice = needsCourseChoice({
       activeCourseId,
+      studyCourseIds,
       mastery,
       lessonRuns: runRows,
+      activePlacementRuns: placementRuns,
     });
     const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
     const prefs = (user?.prefs ?? {}) as SessionPreferences;
@@ -177,7 +188,7 @@ export function registerLearnCourseRoutes(
       : plannedActivities(
           filterSchedulerStateForContent(
             index,
-            await repo.schedulerState(now, {
+            await repo.schedulerState(now, index, {
               mastery,
               lessonRuns: runRows,
               projectProgress: projectRows,
@@ -227,8 +238,13 @@ export function registerLearnCourseRoutes(
     const lessonRunState = runRows.map(({ conceptId, status }) => ({ conceptId, status }));
     const outlineConceptIds = Array.from(
       new Set([
-        ...(activeCourse?.units.flatMap((unit) => unit.concepts) ?? []),
-        ...courseFoundationIds(index, activeCourse?.id),
+        ...studyCourseIds.flatMap((courseId) => {
+          const course = index.coursesById.get(courseId);
+          return [
+            ...(course?.units.flatMap((unit) => unit.concepts) ?? []),
+            ...courseFoundationIds(index, courseId),
+          ];
+        }),
       ]),
     );
     const eligibleChoices = activeSessionId
@@ -324,7 +340,7 @@ export function registerLearnCourseRoutes(
 
     const coursePayload = buildCoursePayload(
       index,
-      activeCourse?.id,
+      currentCourseId,
       mastery,
       runRows,
       new Map(),
@@ -333,7 +349,38 @@ export function registerLearnCourseRoutes(
       startState.startedCourseIds,
       startState.courseStart,
     );
+    await completePayloadCourses(repo, coursePayload, now);
     const topics = coursePayload.units.flatMap((unit) => unit.topics);
+    const studyCourses = studyCourseIds.flatMap((courseId) => {
+      const course = index.coursesById.get(courseId);
+      const progress = coursePayload.courses.find((item) => item.id === courseId);
+      if (!course || !progress) return [];
+      const unit = currentLearnerUnit(
+        { activeCourseId: courseId, mastery, lessonRuns: runRows },
+        index,
+      );
+      const remainingTopics = progress.topicsTotal - progress.topicsDone;
+      return [
+        {
+          id: course.id,
+          title: course.title,
+          topicsDone: progress.topicsDone,
+          topicsTotal: progress.topicsTotal,
+          unitTitle: course.units[unit - 1]?.title ?? `Unit ${unit}`,
+          estimatedFinish:
+            remainingTopics > 0
+              ? estimatedFinishDate(
+                  remainingTopics,
+                  averageDailyXp(events, todayLocal),
+                  todayLocal,
+                  prefs,
+                )
+              : null,
+          estimatedFinishAtGoal:
+            remainingTopics > 0 ? estimatedFinishDate(remainingTopics, 0, todayLocal, prefs) : null,
+        },
+      ];
+    });
     const topicsDone = topics.filter((topic) => topic.status === 'complete').length;
     const estimatedFinish =
       topicsDone < topics.length
@@ -353,6 +400,7 @@ export function registerLearnCourseRoutes(
       today: {
         needsCourseChoice: needsChoice,
         courseStart: startState.courseStart,
+        studyCourses,
         sessionKind: sessionKindForDate(todayLocal),
       },
       xp: {
@@ -369,6 +417,7 @@ export function registerLearnCourseRoutes(
         estimatedFinish,
         estimatedFinishAtGoal,
       },
+      studyCourses,
       tasks,
       choices,
       doneToday,
@@ -376,9 +425,112 @@ export function registerLearnCourseRoutes(
     });
   });
 
+  api.get('/courses', async (context) => {
+    const index = await deps.content();
+    const repo = deps.withRepo(context);
+    const now = deps.requestNow(context);
+    const snapshot = await loadCourseSnapshot(deps.db, repo, index, context.get('userId'));
+    const activeCourseId = snapshot.studyCourseIds[0] ?? snapshot.activeCourseId;
+    const { payload } = snapshot.buildPayload(activeCourseId);
+    await completePayloadCourses(repo, payload, now);
+    const enrollmentByCourse = new Map(snapshot.enrollments.map((row) => [row.courseId, row]));
+    const completedIds = new Set(
+      payload.courses
+        .filter((course) => course.topicsTotal > 0 && course.topicsDone === course.topicsTotal)
+        .map((course) => course.id),
+    );
+    const courseOrder = index.curriculum?.courses ?? index.courses.map((course) => course.id);
+    const subjects = new Map<
+      string,
+      Array<{
+        id: string;
+        title: string;
+        description: string;
+        topicsDone: number;
+        topicsTotal: number;
+        status: 'not_started' | 'active' | 'paused' | 'completed';
+        startNeeded: boolean;
+      }>
+    >();
+    for (const courseId of courseOrder) {
+      const course = index.coursesById.get(courseId);
+      const progress = payload.courses.find((item) => item.id === courseId);
+      if (!course || !progress) continue;
+      const enrollment = enrollmentByCourse.get(courseId);
+      const status = completedIds.has(courseId)
+        ? 'completed'
+        : (enrollment?.status ?? 'not_started');
+      const startState = buildCourseStartState({
+        content: index,
+        activeCourseId: courseId,
+        mastery: snapshot.mastery,
+        lessonRuns: snapshot.runs,
+        enrollments: snapshot.enrollments,
+        placementRuns: snapshot.placementRuns,
+      });
+      const subject = index.curriculum?.subject?.title ?? 'Courses';
+      const rows = subjects.get(subject) ?? [];
+      rows.push({
+        id: course.id,
+        title: course.title,
+        description: course.description,
+        topicsDone: progress.topicsDone,
+        topicsTotal: progress.topicsTotal,
+        status,
+        startNeeded: status === 'not_started' && startState.courseStart.needed,
+      });
+      subjects.set(subject, rows);
+    }
+    return context.json({
+      subjects: [...subjects].map(([title, courses]) => ({ title, courses })),
+    });
+  });
+
+  api.get('/courses/:id', async (context) => {
+    const index = await deps.content();
+    const courseId = context.req.param('id');
+    if (!index.coursesById.has(courseId)) return context.json({ error: 'Course not found' }, 404);
+    const repo = deps.withRepo(context);
+    const snapshot = await loadCourseSnapshot(deps.db, repo, index, context.get('userId'));
+    const now = deps.requestNow(context);
+    const { payload } = snapshot.buildPayload(courseId);
+    await completePayloadCourses(repo, payload, now);
+    const completedIds = new Set(
+      payload.courses
+        .filter((course) => course.topicsTotal > 0 && course.topicsDone === course.topicsTotal)
+        .map((course) => course.id),
+    );
+    const enrollmentByCourse = new Map(snapshot.enrollments.map((row) => [row.courseId, row]));
+    const statuses = new Map(
+      index.courses.map(
+        (course) =>
+          [
+            course.id,
+            completedIds.has(course.id)
+              ? 'completed'
+              : (enrollmentByCourse.get(course.id)?.status ?? 'not_started'),
+          ] as const,
+      ),
+    );
+    const status = statuses.get(courseId) ?? 'not_started';
+    const course = index.coursesById.get(courseId);
+    return context.json({
+      ...payload,
+      status,
+      suggestedNext:
+        status === 'completed'
+          ? suggestedNextCourses(index, courseId, statuses).map((suggestion) => ({
+              ...suggestion,
+              reason: `Builds on ${course?.title ?? 'this course'}`,
+            }))
+          : [],
+    });
+  });
+
   api.get('/course', async (context) => {
     const index = await deps.content();
     const repo = deps.withRepo(context);
+    await repo.studyCourseIds(index);
     const [
       masteryRows,
       activeCourseIdStored,
@@ -444,19 +596,19 @@ export function registerLearnCourseRoutes(
       placementRuns,
     });
     const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
-    return context.json(
-      buildCoursePayload(
-        index,
-        activeCourseId,
-        mastery,
-        runs,
-        paperStatuses,
-        projectStatuses,
-        placedOutConcepts,
-        startState.startedCourseIds,
-        startState.courseStart,
-      ),
+    const payload = buildCoursePayload(
+      index,
+      activeCourseId,
+      mastery,
+      runs,
+      paperStatuses,
+      projectStatuses,
+      placedOutConcepts,
+      startState.startedCourseIds,
+      startState.courseStart,
     );
+    await completePayloadCourses(repo, payload, deps.requestNow(context));
+    return context.json(payload);
   });
 
   api.put('/course/active', async (context) => {
@@ -470,6 +622,51 @@ export function registerLearnCourseRoutes(
     }
     await deps.withRepo(context).setActiveCourseId(body.courseId);
     return context.json({ courseId: body.courseId });
+  });
+
+  api.put('/courses/:id/enrollment', async (context) => {
+    const index = await deps.content();
+    const courseId = context.req.param('id');
+    if (!index.coursesById.has(courseId)) return context.json({ error: 'Course not found' }, 404);
+    const body = (await context.req.json().catch(() => null)) as { status?: unknown } | null;
+    if (body?.status !== 'active' && body?.status !== 'paused') {
+      return context.json({ error: 'Invalid enrollment status' }, 400);
+    }
+    const repo = deps.withRepo(context);
+    const enrollment = await repo.courseEnrollment(courseId);
+    if (!enrollment) {
+      return context.json(
+        { error: body.status === 'active' ? 'Start this course first' : 'Course is not active' },
+        409,
+      );
+    }
+    await repo.setCourseEnrollmentStatus(courseId, body.status);
+    return context.json({ id: courseId, status: body.status });
+  });
+
+  api.post('/courses/:id/start', async (context) => {
+    const index = await deps.content();
+    const courseId = context.req.param('id');
+    if (!index.coursesById.has(courseId)) return context.json({ error: 'Course not found' }, 404);
+    const body = (await context.req.json().catch(() => null)) as { method?: unknown } | null;
+    if (body?.method !== 'beginning') {
+      return context.json({ error: 'Invalid course start method' }, 400);
+    }
+    const repo = deps.withRepo(context);
+    const now = deps.requestNow(context);
+    const activeRuns = await repo.activePlacementRuns();
+    await Promise.all(
+      activeRuns
+        .filter((run) => (run.state as { courseId?: unknown }).courseId === courseId)
+        .map((run) =>
+          deps.db
+            .update(diagnosticRuns)
+            .set({ status: 'abandoned' })
+            .where(eq(diagnosticRuns.id, run.id)),
+        ),
+    );
+    await repo.startCourse(courseId, 'beginning', now);
+    return context.json({ courseId, method: 'beginning' });
   });
 
   api.post('/course/start', async (context) => {
@@ -491,6 +688,111 @@ export function registerLearnCourseRoutes(
     await repo.startCourse(activeCourse.id, 'beginning', deps.requestNow(context));
     return context.json({ courseId: activeCourse.id, method: 'beginning' });
   });
+}
+
+async function loadCourseSnapshot(
+  db: Database,
+  repo: LearnerRepository,
+  index: ContentIndex,
+  userId: string,
+) {
+  const studyCourseIds = await repo.studyCourseIds(index);
+  const [
+    masteryRows,
+    activeCourseId,
+    runsRaw,
+    paperRows,
+    projectRowsRaw,
+    enrollments,
+    placementRuns,
+    completedPlacementRuns,
+  ] = await Promise.all([
+    repo.masteryRecords(),
+    repo.activeCourseId(),
+    db.select().from(lessonRuns).where(eq(lessonRuns.userId, userId)),
+    db.select().from(paperProgress).where(eq(paperProgress.userId, userId)),
+    db
+      .select({ projectId: projectProgress.projectId, status: projectProgress.status })
+      .from(projectProgress)
+      .where(eq(projectProgress.userId, userId)),
+    repo.courseEnrollments(),
+    repo.activePlacementRuns(),
+    db
+      .select({ state: diagnosticRuns.state })
+      .from(diagnosticRuns)
+      .where(
+        and(
+          eq(diagnosticRuns.userId, userId),
+          eq(diagnosticRuns.kind, 'placement'),
+          eq(diagnosticRuns.status, 'completed'),
+        ),
+      ),
+  ]);
+  const mastery = filterMasteryRecordsForContent(index, masteryRows);
+  const runs = runsRaw.filter((run) => index.conceptsById.has(run.conceptId));
+  const projectRows = projectRowsRaw.filter((project) => index.projectsById.has(project.projectId));
+  const paperStatuses = new Map<string, 'not_started' | 'reading' | 'completed'>(
+    paperRows
+      .filter((row) => index.papersById.has(row.paperId))
+      .map((row) => [row.paperId, row.completedAt ? 'completed' : 'reading'] as const),
+  );
+  const projectStatuses = new Map(projectRows.map((row) => [row.projectId, row.status]));
+  const placedOutConcepts = placedOutConceptsFromRuns(completedPlacementRuns);
+
+  return {
+    studyCourseIds,
+    activeCourseId: activeCourseId && index.coursesById.has(activeCourseId) ? activeCourseId : null,
+    mastery,
+    runs,
+    paperStatuses,
+    projectStatuses,
+    enrollments,
+    placementRuns,
+    placedOutConcepts,
+    buildPayload(courseId: string | null | undefined) {
+      const startState = buildCourseStartState({
+        content: index,
+        activeCourseId: courseId,
+        mastery,
+        lessonRuns: runs,
+        enrollments,
+        placementRuns,
+      });
+      return {
+        startState,
+        payload: buildCoursePayload(
+          index,
+          courseId,
+          mastery,
+          runs,
+          paperStatuses,
+          projectStatuses,
+          placedOutConcepts,
+          startState.startedCourseIds,
+          startState.courseStart,
+        ),
+      };
+    },
+  };
+}
+
+async function completePayloadCourses(
+  repo: LearnerRepository,
+  payload: ReturnType<typeof buildCoursePayload>,
+  completedAt: Date,
+) {
+  const completedCourseIds = payload.courses
+    .filter((course) => course.topicsTotal > 0 && course.topicsDone === course.topicsTotal)
+    .map((course) => course.id);
+  if (completedCourseIds.length === 0) return;
+  const enrollments = await repo.courseEnrollments();
+  const newlyCompleted = completedCourseIds.filter(
+    (courseId) =>
+      !enrollments.some(
+        (enrollment) => enrollment.courseId === courseId && enrollment.status === 'completed',
+      ),
+  );
+  await repo.completeCourses(newlyCompleted, completedAt);
 }
 
 function plannedActivities(

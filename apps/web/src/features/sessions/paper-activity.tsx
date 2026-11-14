@@ -5,7 +5,6 @@ import { Markdown } from '../../components/markdown.js';
 import { Badge } from '../../components/ui/badge.js';
 import { Button } from '../../components/ui/button.js';
 import { paperStatusLabel, papersQueryOptions } from '../papers/queries.js';
-import { todayQueryOptions } from './queries.js';
 export function PaperActivity({
   sessionId,
   activityId,
@@ -22,8 +21,7 @@ export function PaperActivity({
   const [skipping, setSkipping] = useState(false);
   const [error, setError] = useState('');
   const { data: papersData } = useSuspenseQuery(papersQueryOptions());
-  const { data: today } = useSuspenseQuery(todayQueryOptions());
-  const papers = papersData.units.find((unit) => unit.unit === today.unit)?.papers ?? [];
+  const showCourseTitle = new Set(papersData.units.map((unit) => unit.courseId)).size > 1;
   const skip = async () => {
     setSkipping(true);
     setError('');
@@ -40,37 +38,43 @@ export function PaperActivity({
   }
   return (
     <div className="space-y-4">
-      <p>Pick one of this unit&apos;s papers to read.</p>
-      <ul className="divide-y rounded-md border">
-        {papers.map((paper) => (
-          <li key={paper.id}>
-            <Link
-              to="/papers/$paperId"
-              params={{ paperId: paper.id }}
-              search={{ from: sessionId, activity: activityId }}
-              className="block cursor-pointer px-4 py-3 hover:bg-muted/60"
-            >
-              <span className="font-medium">
-                <Markdown inline>{paper.title}</Markdown>
-              </span>
-              <span className="mt-1 block text-sm text-muted-foreground">
-                <Markdown inline>{paper.authors}</Markdown> · {paper.year} · ~{paper.est_minutes}{' '}
-                min
-              </span>
-              <Badge
-                variant="secondary"
-                className={
-                  paper.status === 'completed'
-                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
-                    : ''
-                }
-              >
-                {paperStatusLabel(paper.status)}
-              </Badge>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <p>Pick a paper to read.</p>
+      {papersData.units.map((unit) => (
+        <section key={`${unit.courseId}-${unit.unit}`} className="space-y-2">
+          {showCourseTitle ? <h3 className="font-medium">{unit.courseTitle}</h3> : null}
+          <h4 className="text-sm text-muted-foreground">{unit.title}</h4>
+          <ul className="divide-y rounded-md border">
+            {unit.papers.map((paper) => (
+              <li key={paper.id}>
+                <Link
+                  to="/papers/$paperId"
+                  params={{ paperId: paper.id }}
+                  search={{ from: sessionId, activity: activityId }}
+                  className="block cursor-pointer px-4 py-3 hover:bg-muted/60"
+                >
+                  <span className="font-medium">
+                    <Markdown inline>{paper.title}</Markdown>
+                  </span>
+                  <span className="mt-1 block text-sm text-muted-foreground">
+                    <Markdown inline>{paper.authors}</Markdown> · {paper.year} · ~
+                    {paper.est_minutes} min
+                  </span>
+                  <Badge
+                    variant="secondary"
+                    className={
+                      paper.status === 'completed'
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
+                        : ''
+                    }
+                  >
+                    {paperStatusLabel(paper.status)}
+                  </Badge>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {error}

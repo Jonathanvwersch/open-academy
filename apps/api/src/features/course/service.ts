@@ -15,6 +15,51 @@ type MasteryRecords = Awaited<ReturnType<LearnerRepository['masteryRecords']>>;
 type RunRecords = Array<typeof lessonRuns.$inferSelect>;
 type PaperStatuses = Map<string, 'not_started' | 'reading' | 'completed'>;
 type ProjectStatuses = Map<string, 'not_started' | 'in_progress' | 'completed'>;
+type EnrollmentStatus = 'not_started' | 'active' | 'paused' | 'completed';
+
+export function suggestedNextCourses(
+  index: ContentIndex,
+  completedCourseId: string,
+  statuses: ReadonlyMap<string, EnrollmentStatus>,
+) {
+  const completedCourse = index.coursesById.get(completedCourseId);
+  if (!completedCourse) return [];
+  const completedConceptIds = new Set(completedCourse.units.flatMap((unit) => unit.concepts));
+  const courseOrder = index.curriculum?.courses ?? index.courses.map((course) => course.id);
+  return courseOrder
+    .flatMap((courseId, order) => {
+      const course = index.coursesById.get(courseId);
+      if (!course || !['not_started', 'paused'].includes(statuses.get(courseId) ?? 'not_started')) {
+        return [];
+      }
+      const topicsWithCompletedPrerequisite = new Set(
+        course.units.flatMap((unit) =>
+          unit.concepts.filter((conceptId) =>
+            index.conceptsById
+              .get(conceptId)
+              ?.prereqs.some(
+                (prerequisite) =>
+                  prerequisite.strength === 'hard' && completedConceptIds.has(prerequisite.id),
+              ),
+          ),
+        ),
+      ).size;
+      return topicsWithCompletedPrerequisite > 0
+        ? [{ id: course.id, title: course.title, order, topicsWithCompletedPrerequisite }]
+        : [];
+    })
+    .sort(
+      (left, right) =>
+        right.topicsWithCompletedPrerequisite - left.topicsWithCompletedPrerequisite ||
+        left.order - right.order,
+    )
+    .slice(0, 2)
+    .map(({ id, title }) => ({
+      id,
+      title,
+      reason: `Builds on ${completedCourse.title}`,
+    }));
+}
 
 function buildUnits(
   index: ContentIndex,
@@ -154,7 +199,8 @@ export function buildCoursePayload(
   projectStatuses: ProjectStatuses = new Map(),
   placedOutConcepts: ReadonlySet<string> = new Set(),
   startedCourseIds: ReadonlySet<string> = new Set(),
-  courseStart: { needed: boolean; placementRunId: string | null } = {
+  courseStart: { courseId: string | null; needed: boolean; placementRunId: string | null } = {
+    courseId: null,
     needed: false,
     placementRunId: null,
   },

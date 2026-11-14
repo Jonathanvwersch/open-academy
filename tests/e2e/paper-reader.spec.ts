@@ -55,7 +55,7 @@ test('Course opens a paper reader with PDF pages, persisted notes/summary, tutor
       }
     }).observe({ type: 'layout-shift', buffered: true });
   });
-  await page.goto('/course');
+  await page.goto('/courses/fixture-course');
   const paperLink = page.getByRole('link', { name: /Fixture Paper One/ }).first();
   await expect(paperLink).toBeVisible();
   await expect(paperLink.locator('[data-slot="badge"]')).toHaveCount(0);
@@ -363,11 +363,11 @@ test('Saturday session offers the current unit papers and a skip action', async 
   if (!paperActivity) throw new Error('Expected a paper activity');
   await page.goto(`/session/${sessionId}?activity=${paperActivity.id}`);
   await expect(page.getByRole('heading', { name: 'Paper reading' })).toBeVisible();
-  await expect(page.getByText("Pick one of this unit's papers to read.")).toBeVisible();
+  await expect(page.getByText('Pick a paper to read.')).toBeVisible();
   const sessionPaper = page.getByRole('link', { name: /Fixture Paper Two/ });
   await expect(sessionPaper).toBeVisible();
   await expect(sessionPaper).toContainText('Not started');
-  await expect(page.getByRole('link', { name: /Fixture Paper One/ })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /Fixture Paper One/ })).toBeVisible();
   await page.getByRole('button', { name: 'Skip for today' }).click();
 });
 

@@ -9,6 +9,7 @@ import type { ContentIndex } from '../../src/content/types.js';
 import { createDb } from '../../src/db/client.js';
 import {
   attempts,
+  courseEnrollments,
   hintEvents,
   lessonQuizItems,
   lessonRuns,
@@ -67,6 +68,15 @@ async function resetLearner(timezone = 'UTC') {
     timezone,
     startDate: '2026-01-01',
     prefs: { scheduleMinutes: 60 },
+  });
+}
+
+async function enrollDefaultCourse() {
+  await db.insert(courseEnrollments).values({
+    userId,
+    courseId: 'fixture-course',
+    status: 'active',
+    startMethod: 'beginning',
   });
 }
 
@@ -389,6 +399,8 @@ async function createLearnActivity(now: string) {
 }
 
 test('attempts update mastery and create a review card used by Today', async () => {
+  await resetLearner();
+  await enrollDefaultCourse();
   const headers = { 'content-type': 'application/json', 'X-Now': now };
   const sessionResponse = await app.request('/api/sessions', {
     method: 'POST',
@@ -1398,6 +1410,7 @@ test('lesson-runner schedules one due review per concept, then reschedules it', 
 
 test('stale sessions are hidden for today, abandoned by new sessions, and keep lesson progress', async () => {
   await resetLearner('America/Los_Angeles');
+  await enrollDefaultCourse();
   const dayOne = '2026-01-02T07:30:00.000Z';
   const sessionResponse = await app.request('/api/sessions', {
     method: 'POST',

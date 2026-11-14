@@ -1,0 +1,656 @@
+concept: switching-topic
+exercises:
+  - id: switching-topic-inputs-targets-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which statement best describes the main idea of this concept?
+    hints: []
+    solution: The main idea of this step is Inputs, targets and the model.
+    options:
+      - id: a
+        text: The main idea of this step is Inputs, targets and the model.
+        correct: true
+        feedback: This states the main idea of the knowledge point.
+      - id: b
+        text: It is a rule for splitting examples into training and test sets.
+        correct: false
+        feedback: That describes a data-splitting step instead.
+      - id: c
+        text: It is a parameter update that subtracts a scaled loss gradient.
+        correct: false
+        feedback: That describes gradient descent instead.
+      - id: d
+        text: It is an output score that measures prediction error.
+        correct: false
+        feedback: That describes a loss value instead.
+  - id: switching-topic-measuring-error-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which statement best describes the main idea of this concept?
+    hints: []
+    solution: "The main idea of this step is Measuring how wrong: squared error."
+    options:
+      - id: a
+        text: "The main idea of this step is Measuring how wrong: squared error."
+        correct: true
+        feedback: This states the main idea of the knowledge point.
+      - id: b
+        text: It is a rule for splitting examples into training and test sets.
+        correct: false
+        feedback: That describes a data-splitting step instead.
+      - id: c
+        text: It is a parameter update that subtracts a scaled loss gradient.
+        correct: false
+        feedback: That describes gradient descent instead.
+      - id: d
+        text: It is an output score that measures prediction error.
+        correct: false
+        feedback: That describes a loss value instead.
+  - id: switching-topic-training-loss-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which statement best describes the main idea of this concept?
+    hints: []
+    solution: The main idea of this step is Training chooses the smallest average loss.
+    options:
+      - id: a
+        text: The main idea of this step is Training chooses the smallest average loss.
+        correct: true
+        feedback: This states the main idea of the knowledge point.
+      - id: b
+        text: It is a rule for splitting examples into training and test sets.
+        correct: false
+        feedback: That describes a data-splitting step instead.
+      - id: c
+        text: It is a parameter update that subtracts a scaled loss gradient.
+        correct: false
+        feedback: That describes gradient descent instead.
+      - id: d
+        text: It is an output score that measures prediction error.
+        correct: false
+        feedback: That describes a loss value instead.
+  - id: switching-topic-new-data-targets-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: Which statement best describes the main idea of this concept?
+    hints: []
+    solution: The main idea of this step is New houses and two kinds of target.
+    options:
+      - id: a
+        text: The main idea of this step is New houses and two kinds of target.
+        correct: true
+        feedback: This states the main idea of the knowledge point.
+      - id: b
+        text: It is a rule for splitting examples into training and test sets.
+        correct: false
+        feedback: That describes a data-splitting step instead.
+      - id: c
+        text: It is a parameter update that subtracts a scaled loss gradient.
+        correct: false
+        feedback: That describes gradient descent instead.
+      - id: d
+        text: It is an output score that measures prediction error.
+        correct: false
+        feedback: That describes a loss value instead.
+  - id: switching-topic-check-target
+    dimension: conceptual
+    type: mc
+    role: check
+    difficulty: 1
+    est_minutes: 1
+    prompt: "You train a model to predict tomorrow's electricity demand (in MW) from today's temperature, the day of week and today's demand. What is the **target**?"
+    options:
+      - { id: a, text: "Tomorrow's demand in MW", correct: true }
+      - {
+          id: b,
+          text: "Today's temperature",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That is an input feature.",
+        }
+      - {
+          id: c,
+          text: "The mean squared error",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "That is the loss.",
+        }
+      - {
+          id: d,
+          text: "The model's weights",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Weights are adjustable settings learned during training, not the outcome the supplier is asking the model to predict. Separate the desired future quantity from the parameters used to produce it.",
+        }
+    solution: "The target is what we want to predict: tomorrow's demand. This is a regression problem."
+  - id: switching-topic-1
+    dimension: conceptual
+    type: mc
+    role: diagnostic
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A robot learns to imitate a human: it records camera images and the joint commands the human teleoperator sent, then trains a network to output the commands from the images. In switching-topic terms, what are the joint commands?"
+    options:
+      - { id: a, text: "The targets (labels)", correct: true }
+      - { id: b, text: "The inputs", correct: false, category: misunderstood_definition }
+      - {
+          id: c,
+          text: "The reward",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "There is no reward here. This is supervised learning (behavioral cloning), not RL.",
+        }
+      - { id: d, text: "The model parameters", correct: false, category: misunderstood_definition }
+    solution: "Images are the inputs; the expert's joint commands are the targets."
+  - id: switching-topic-classify-vs-regress
+    dimension: conceptual
+    type: mc
+    role: core
+    difficulty: 1
+    est_minutes: 1
+    multi: true
+    prompt: "Which of these are **classification** problems? (Select all that apply.)"
+    options:
+      - { id: a, text: "Deciding whether an email is spam", correct: true }
+      - {
+          id: b,
+          text: "Predicting a gripper's next x-position in metres",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A continuous target makes this regression.",
+        }
+      - { id: c, text: "Choosing which of 10 objects is in an image", correct: true }
+      - {
+          id: d,
+          text: "Predicting the remaining battery life in minutes",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Battery life in minutes is a measured quantity rather than a category label. Classify tasks by the form of the output, not by the fact it is a prediction.",
+        }
+    solution: "Spam and object identity are categorical (classification); position and battery life are real-valued (regression)."
+  - id: switching-topic-review-ingredients
+    dimension: conceptual
+    type: mc
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "What does training choose in supervised learning?"
+    options:
+      - {
+          id: a,
+          text: "The model parameters that minimise the average loss on the training data",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "The targets that best fit the inputs",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Targets are the observed outcomes in the past sales, not values chosen by the training procedure. Training adjusts the model settings to reduce loss against those outcomes.",
+        }
+      - {
+          id: c,
+          text: "The loss function",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The loss is chosen by the engineer, not learned.",
+        }
+    solution: "Training finds $\\theta$ minimising $\\frac1n\\sum L(f_\\theta(x_i), y_i)$."
+  - id: switching-topic-explain-setup
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "Pick any real problem you care about (robotics is fine) and describe it as a switching-topic problem: name the inputs, targets, a model family, a loss and where the data would come from."
+    rubric:
+      - {
+          id: r1,
+          criterion: "Inputs and targets are clearly identified and the target is something observable for training examples",
+          weight: 2,
+          required: true,
+        }
+      - {
+          id: r2,
+          criterion: "Loss matches the target type (e.g. squared error for a numeric target, with $L(x)=x^2$ as a simple example)",
+          weight: 2,
+          required: true,
+        }
+      - { id: r3, criterion: "Names a plausible model family and data source", weight: 1 }
+    exemplar: "Predict delivery time in minutes from distance and time of day. Inputs: distance and time of day; target: delivery time. Model: a line that combines the two inputs. Loss: squared error. Data: 5,000 past deliveries."
+  - id: switching-topic-predict
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A house has size ${{=size}}$ m² and ${{=bedrooms}}$ bedrooms. The model is $\\hat y=w_1\\cdot\\text{size}+w_2\\cdot\\text{bedrooms}+b$, with $w_1={{=w1}}$, $w_2={{=w2}}$, and $b={{=b}}$. What price does it predict, in thousands?"
+    hints: ["Substitute each value into the model, then add the three terms."]
+    solution: "Substitute the values: ${{=w1}}\\cdot{{=size}} + {{=w2}}\\cdot{{=bedrooms}} + {{=b}} = {{=w1 * size + w2 * bedrooms + b}}$ thousand."
+    answer_expr: "w1 * size + w2 * bedrooms + b"
+    params:
+      w1: { min: 1, max: 5 }
+      w2: { min: 5, max: 25, step: 5 }
+      b: { min: 0, max: 100, step: 10 }
+      size: { min: 50, max: 150, step: 10 }
+      bedrooms: { min: 1, max: 5 }
+    tolerance: { abs: 0.000001 }
+    common_wrong:
+      - {
+          answer_expr: "w1 * size + b",
+          category: math_error,
+          feedback: "Include the bedroom term too: $w_2\\cdot\\text{bedrooms}$.",
+        }
+  - id: switching-topic-predict-variant
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A simple model predicts $w\\cdot x+b$. For $x={{=x}}$, $w={{=w}}$, and $b={{=b}}$, what is the prediction?"
+    hints: ["Multiply $w$ by $x$, then add $b$."]
+    solution: "$w\\cdot x+b = {{=w}}\\cdot{{=x}}+{{=b}}={{=w * x + b}}$."
+    answer_expr: "w * x + b"
+    params:
+      w: { min: 1, max: 8 }
+      x: { min: 2, max: 9 }
+      b: { min: 0, max: 20, step: 5 }
+    tolerance: { abs: 0.000001 }
+  - id: switching-topic-input-target
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A shop predicts tomorrow's number of orders from today's temperature and whether it is a weekday. What is the target?"
+    options:
+      - { id: a, text: "Tomorrow's number of orders", correct: true }
+      - {
+          id: b,
+          text: "Today's temperature",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Temperature is available to the model before it predicts and helps it form the estimate. Ask which value the model is meant to produce for tomorrow.",
+        }
+      - {
+          id: c,
+          text: "Whether it is a weekday",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Weekday status is another input that helps make the prediction, not the value being predicted. Look for the answer the staffing plan needs.",
+        }
+      - {
+          id: d,
+          text: "The model's adjustable settings",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Adjustable settings are learned by the model, not the quantity it returns for staffing. Separate model parameters from the prediction target.",
+        }
+    solution: "The target is the answer the model is being trained to predict: tomorrow's number of orders. Today's temperature and weekday status are inputs."
+  - id: switching-topic-parameters
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "In the house-price model $\\hat y=w_1\\cdot\\text{size}+w_2\\cdot\\text{bedrooms}+b$, what does $\\theta$ stand for?"
+    options:
+      - { id: a, text: "The adjustable settings $w_1$, $w_2$ and $b$", correct: true }
+      - {
+          id: b,
+          text: "The house's size and bedroom count",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Size and bedroom count describe the house and serve as inputs to this model. The symbol $\\theta$ refers to something the training process can adjust.",
+        }
+      - {
+          id: c,
+          text: "The price the house actually sold for",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The sold price is the observed outcome the model learns to estimate, not a setting it changes. Look for the symbols that control the formula.",
+        }
+      - {
+          id: d,
+          text: "The number of past sales",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Past sales are examples used to train the model, not its adjustable values. Think about which parts of the formula determine predictions.",
+        }
+    solution: "$\\theta$ names the model's adjustable parameters. Here those are $w_1$, $w_2$ and $b$."
+  - id: switching-topic-squared-error
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "A house sold for ${{=target}}$ thousand and the model predicted ${{=prediction}}$ thousand. What is its squared error?"
+    hints: ["Subtract the target from the prediction, then square the difference."]
+    solution: "The error is ${{=prediction}}-{{=target}}={{=prediction-target}}$. Squaring gives $({{=prediction-target}})^2={{=(prediction-target)^2}}$."
+    answer_expr: "(prediction - target)^2"
+    params:
+      prediction: { min: 10, max: 120, step: 10 }
+      target: { min: 0, max: 100, step: 10 }
+    constraints: ["prediction != target"]
+    tolerance: { abs: 0.000001 }
+  - id: switching-topic-error-sum
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "Three signed prediction errors are $({{=e1}})$, $({{=e2}})$, and $({{=e3}})$. Their signed sum is 0. What is the sum of their squared errors?"
+    hints: ["First add the signed errors. Then square each error and add those squares."]
+    solution: "The errors are $({{=e1}})$, $({{=e2}})$, and $({{=e3}})$. Their squares are $({{=e1}})^2={{=e1^2}}$, $({{=e2}})^2={{=e2^2}}$, and $({{=e3}})^2={{=e3^2}}$. Their sum is ${{=e1^2+e2^2+e3^2}}$. Squaring keeps positive and negative errors from cancelling."
+    answer_expr: "e1^2 + e2^2 + e3^2"
+    params:
+      e1: { min: -20, max: 20, step: 5 }
+      e2: { min: -20, max: 20, step: 5 }
+      e3: { min: -20, max: 20, step: 5 }
+    constraints: ["e1 + e2 + e3 == 0", "e1 != 0"]
+    tolerance: { abs: 0.000001 }
+  - id: switching-topic-why-square
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why use squared errors instead of simply averaging signed errors?"
+    options:
+      - {
+          id: a,
+          text: "Positive and negative errors can cancel, even when every prediction is wrong",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "Squared errors always have the same size",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Squared errors depend on how large each error is; they are not all the same size. Compare how squaring changes a small error and a large one.",
+        }
+      - {
+          id: c,
+          text: "Signed errors cannot be added",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Signed errors can be added, but positive and negative values can cancel in an average. The issue is not addition itself, but losing information about the size of misses.",
+        }
+      - {
+          id: d,
+          text: "Squaring makes the model use fewer inputs",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Squaring does not reduce the number of input features; it changes how each prediction error contributes to loss. Look at what happens to positive and negative errors after squaring.",
+        }
+    solution: "A prediction that is too high has a positive error and one that is too low has a negative error. Their signed sum can be zero by cancellation. Squaring makes each contribution non-negative."
+  - id: switching-topic-average-mse
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "For three houses, the prediction/target pairs are ${{=p1}}/{{=y1}}$, ${{=p2}}/{{=y2}}$, and ${{=p3}}/{{=y3}}$ thousand. What is the mean squared error?"
+    hints: ["Square each prediction error, add the three results, and divide by 3."]
+    solution: "The squared errors are $({{=p1-y1}})^2={{=(p1-y1)^2}}$, $({{=p2-y2}})^2={{=(p2-y2)^2}}$, and $({{=p3-y3}})^2={{=(p3-y3)^2}}$. Their sum is ${{=(p1-y1)^2+(p2-y2)^2+(p3-y3)^2}}$. Divide by 3: ${{=(p1-y1)^2+(p2-y2)^2+(p3-y3)^2}}\\div3={{=((p1-y1)^2+(p2-y2)^2+(p3-y3)^2)/3}}$."
+    answer_expr: "((p1-y1)^2 + (p2-y2)^2 + (p3-y3)^2) / 3"
+    params:
+      p1: { min: 0, max: 100, step: 10 }
+      y1: { min: 0, max: 100, step: 10 }
+      p2: { min: 0, max: 100, step: 10 }
+      y2: { min: 0, max: 100, step: 10 }
+      p3: { min: 0, max: 100, step: 10 }
+      y3: { min: 0, max: 100, step: 10 }
+    constraints: ["mod((p1-y1)^2 + (p2-y2)^2 + (p3-y3)^2, 3) == 0"]
+    tolerance: { abs: 0.000001 }
+  - id: switching-topic-argmin
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 1
+    prompt: "What does $\\arg\\min_\\theta$ mean in the training formula?"
+    options:
+      - {
+          id: a,
+          text: "The value of $\\theta$ that makes the following average loss as small as possible",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "The largest possible loss",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "An argmin looks for a setting that makes the objective small; it does not search for the largest loss. Keep track of whether the operation is minimizing or maximizing.",
+        }
+      - {
+          id: c,
+          text: "The number of houses in the dataset",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The number of houses describes the dataset size, not the value selected by `argmin`. Focus on what appears as the subscript to the optimization operation.",
+        }
+      - {
+          id: d,
+          text: "The average of the model's parameters",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Averaging parameter values is different from selecting settings according to their loss. Look at which quantity the formula asks to minimize.",
+        }
+    solution: "$\\arg\\min_\\theta$ names the parameter setting that minimises the average loss that follows it."
+  - id: switching-topic-best-setting
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Setting A has average squared error 200 and Setting B has average squared error 2300 on the same sales. Which setting fits those sales better?"
+    options:
+      - { id: a, text: "Setting A, because its average loss is smaller", correct: true }
+      - {
+          id: b,
+          text: "Setting B, because its average loss is larger",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A larger squared error means the predictions are farther from the observed values on average, not a better fit. Compare the scores using the same loss on the same sales.",
+        }
+      - {
+          id: c,
+          text: "They fit equally well",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "The two settings have different average errors, so they do not fit these sales equally under this measure. Use the lower loss to compare fit.",
+        }
+      - {
+          id: d,
+          text: "There is not enough information to compare their losses",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Both losses use the same metric on the same houses, so they are directly comparable. Check what the smaller score says about the fit.",
+        }
+    solution: "Both averages use the same squared-error measure on the same sales. The smaller average, 200, means Setting A fits these sales better."
+  - id: switching-topic-new-houses
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Why test a house-price model on sales it did not train on?"
+    options:
+      - {
+          id: a,
+          text: "To check whether it predicts well for new houses, not only past examples",
+          correct: true,
+        }
+      - {
+          id: b,
+          text: "To make its training loss larger",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Increasing training loss is not the goal of a test set; it measures how well the model predicts sales it did not use to choose settings. Separate the training score from performance on new sales.",
+        }
+      - {
+          id: c,
+          text: "To change the target from a price to a category",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Testing does not change a numeric house price into a category. It checks whether a model trained on past sales also works on unseen sales.",
+        }
+      - {
+          id: d,
+          text: "To guarantee every prediction is exact",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "No test can guarantee every prediction is exact; it estimates how well the model works on data it has not seen. Consider what an evaluation set can and cannot establish.",
+        }
+    solution: "The aim is to price houses the model has not seen. A model can fit past sales well but still predict new houses badly."
+  - id: switching-topic-regression-classification
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "Which task is regression rather than classification?"
+    options:
+      - { id: a, text: "Predicting a house's sale price in pounds", correct: true }
+      - {
+          id: b,
+          text: "Predicting whether an email is spam",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Spam status is a category label rather than a measured amount. Decide whether each task predicts a number or selects a class.",
+        }
+      - {
+          id: c,
+          text: "Predicting which of three labels applies to a photo",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Choosing a photo label predicts which category applies; the number of possible labels does not turn it into regression. Focus on the kind of output.",
+        }
+      - {
+          id: d,
+          text: "Choosing between the labels yes and no",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Choosing yes or no is still selecting a category, even with only two labels. The number of possible labels does not determine regression versus classification.",
+        }
+    solution: "Regression predicts a number such as a sale price. Classification predicts a category or label."
+  - id: switching-topic-target-type-travel
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A travel app predicts how many minutes a journey will take. Is this regression or classification?"
+    options:
+      - { id: a, text: "Regression, because the target is a number", correct: true }
+      - {
+          id: b,
+          text: "Classification, because journey times are categories",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A duration measured in minutes is a numerical quantity, not a category. Decide based on what the app is asked to output.",
+        }
+      - {
+          id: c,
+          text: "Classification, because the app uses inputs",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Using inputs does not make a task classification; both task types use inputs. The distinction is whether the output is a measured number or a label.",
+        }
+      - {
+          id: d,
+          text: "Neither, because the target is not a house price",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A predicted quantity need not be a house price to be regression. Look at whether this target is numerical or categorical.",
+        }
+    solution: "The target is a number of minutes, so this is regression."
+  - id: switching-topic-target-type-parcel
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A delivery service predicts whether a parcel will arrive today or tomorrow. What kind of task is this?"
+    options:
+      - { id: a, text: "Classification, because the target is a category", correct: true }
+      - {
+          id: b,
+          text: "Regression, because the target is a number",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "The arrival choice is one of two labels, not a measured amount. The number of possible labels does not determine whether the task is regression.",
+        }
+      - {
+          id: c,
+          text: "Regression, because there are two possible answers",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Two possible answers can still be categories; the count alone does not make them numerical values. Consider what “today” and “tomorrow” mean here.",
+        }
+      - {
+          id: d,
+          text: "Neither, because delivery status cannot be predicted",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "Delivery status can be predicted from information such as tracking history. Focus on whether the desired output is one of two labels or a numerical measurement.",
+        }
+    solution: "Today and tomorrow are categories, so predicting which one applies is classification."
+  - id: switching-topic-low-training-loss
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A model has a small average loss on the houses used to train it. Why does that alone not show that it is good?"
+    options:
+      - { id: a, text: "It may still predict poorly for houses it has not seen", correct: true }
+      - {
+          id: b,
+          text: "A small average loss means the target was a category",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A small loss measures prediction error; it does not tell you whether the target was a category. The prompt describes a numeric price, but training performance alone says little about unseen houses.",
+        }
+      - {
+          id: c,
+          text: "The training loss must always be larger than the loss on new houses",
+          correct: false,
+          category: incorrect_reasoning,
+          feedback: "Training loss is not guaranteed to be higher than test loss; models can fit training examples especially well. Ask what a low training score tells you about houses not used to tune the settings.",
+        }
+      - {
+          id: d,
+          text: "A small loss means the model did not use its inputs",
+          correct: false,
+          category: misunderstood_definition,
+          feedback: "A small loss does not imply that the model ignored its inputs. It summarizes performance on the examples used to choose settings; consider how performance might change on a new house.",
+        }
+    solution: "A model can fit its training houses well but still predict new houses badly, so we test it on houses it did not train on."
+  - id: switching-topic-fixture-review
+    dimension: math
+    type: numeric
+    role: review
+    difficulty: 1
+    est_minutes: 1
+    prompt: "A prediction is 7 and the target is 5. What is the squared error?"
+    answer: 4
+    tolerance: { abs: 0.000001 }
+    solution: "The error is 7 − 5 = 2. Squaring it gives 2² = 4."

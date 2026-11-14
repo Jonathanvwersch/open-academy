@@ -1,5 +1,20 @@
 domain: ml
 concepts:
+  - id: switching-topic
+    title: Switching topic
+    description: A topic unique to the second course fixture.
+    difficulty: 2
+    est_minutes: 25
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs: []
+    related: []
+    objectives:
+      - { text: Explain the topic, dimension: conceptual }
+      - { text: Apply the topic, dimension: math }
+    projects: []
+    sources: []
+    status: authored
   - id: linear-models
     title: Linear models
     description: Predict a target as a weighted combination of inputs.

@@ -30,11 +30,13 @@ afterAll(async () => {
 });
 
 test('Course reads progress without loading review scheduling or attempt history', async () => {
+  const initialization = await app.request('/api/course');
+  expect(initialization.status).toBe(200);
   statements = [];
   const response = await app.request('/api/course');
   expect(response.status).toBe(200);
   expect((await response.json()).units.length).toBeGreaterThan(0);
-  expect(statements.length).toBeLessThanOrEqual(8); // Includes enrollment, placement, and event reads.
+  expect(statements.length).toBeLessThanOrEqual(8); // Steady-state membership uses no extra reads.
   expect(statements.join('\n')).not.toMatch(/"review_cards"|"attempts"|"remediation_flags"/);
 });
 
@@ -60,6 +62,8 @@ test('full lesson review avoids building quiz history and XP summaries', async (
 });
 
 test('resuming Home uses the existing session instead of rebuilding the schedule', async () => {
+  const initialization = await app.request('/api/course');
+  expect(initialization.status).toBe(200);
   const now = '2026-01-01T12:00:00.000Z';
   const [session] = await db
     .insert(schema.studySessions)
@@ -76,6 +80,6 @@ test('resuming Home uses the existing session instead of rebuilding the schedule
   const response = await app.request('/api/learn', { headers: { 'X-Now': now } });
   expect(response.status).toBe(200);
   expect((await response.json()).activeSessionId).toBe(session.id);
-  expect(statements.length).toBeLessThanOrEqual(12);
+  expect(statements.length).toBeLessThanOrEqual(12); // Membership and recent-learn data stay within baseline.
   expect(statements.join('\n')).not.toMatch(/"review_cards"|"attempts"|"remediation_flags"/);
 });

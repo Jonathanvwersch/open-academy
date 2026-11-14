@@ -4,6 +4,7 @@ import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 import type { ContentIndex, IndexedPaper } from '../../content/types.js';
 import type { Database } from '../../db/client.js';
+import type { LearnerRepository } from '../../db/repository.js';
 import {
   paperFiles,
   paperProgress,
@@ -27,6 +28,7 @@ export function registerPaperRoutes(
   deps: {
     db: Database;
     content: () => Promise<ContentIndex>;
+    withRepo: (context: PaperContext) => LearnerRepository;
     tutor: (context: PaperContext) => TutorService | null;
     paperFetcher?: PaperFetcher;
     requestNow: (context: PaperContext) => Date;
@@ -74,31 +76,40 @@ export function registerPaperRoutes(
       .from(paperProgress)
       .where(eq(paperProgress.userId, c.get('userId')));
     const progress = new Map(rows.map((row) => [row.paperId, row]));
+    const studyCourseIds = await deps.withRepo(c).studyCourseIds(index);
     const [user] = await deps.db
       .select({ activeCourseId: users.activeCourseId })
       .from(users)
       .where(eq(users.id, c.get('userId')))
       .limit(1);
-    const course = activeCourseFor(index, user?.activeCourseId);
-    const grouped = (course?.units ?? []).map((unit, unitIndex) => ({
-      unit: unitIndex + 1,
-      title: unit.title,
-      papers: (unit.papers ?? []).flatMap((paperId) => {
-        const paper = index.papersById.get(paperId);
-        if (!paper) return [];
-        const row = progress.get(paper.id);
-        return [
-          {
-            id: paper.id,
-            title: paper.title,
-            authors: paper.authors,
-            year: paper.year,
-            est_minutes: paper.est_minutes,
-            status: !row ? 'not_started' : row.completedAt ? 'completed' : 'reading',
-          },
-        ];
-      }),
-    }));
+    const courseIds = studyCourseIds.length ? studyCourseIds : [user?.activeCourseId ?? ''];
+    const seen = new Set<string>();
+    const grouped = courseIds.flatMap((courseId) => {
+      const course = activeCourseFor(index, courseId);
+      return (course?.units ?? []).map((unit, unitIndex) => ({
+        courseId: course?.id ?? courseId,
+        courseTitle: course?.title ?? '',
+        unit: unitIndex + 1,
+        title: unit.title,
+        papers: (unit.papers ?? []).flatMap((paperId) => {
+          if (seen.has(paperId)) return [];
+          seen.add(paperId);
+          const paper = index.papersById.get(paperId);
+          if (!paper) return [];
+          const row = progress.get(paper.id);
+          return [
+            {
+              id: paper.id,
+              title: paper.title,
+              authors: paper.authors,
+              year: paper.year,
+              est_minutes: paper.est_minutes,
+              status: !row ? 'not_started' : row.completedAt ? 'completed' : 'reading',
+            },
+          ];
+        }),
+      }));
+    });
     return c.json({ units: grouped });
   });
 

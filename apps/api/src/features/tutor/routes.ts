@@ -22,6 +22,7 @@ import {
   tutorThreads,
 } from '../../db/schema.js';
 import type { ApiEnv } from '../../http/context.js';
+import { courseFoundationIds } from '../../learning/prerequisites.js';
 import { attemptAllowsRetry } from '../../learning/retry.js';
 import { buildCoursePayload } from '../course/service.js';
 import { extractPaperPages } from '../papers/service.js';
@@ -286,12 +287,36 @@ export function registerTutorThreadRoutes(
     const pageConceptId = exercise?.concept ?? input.conceptId ?? null;
     const courseState =
       input.page === 'course'
-        ? await deps.withRepo(c).schedulerState(deps.requestNow(c))
+        ? await deps.withRepo(c).schedulerState(deps.requestNow(c), index)
         : undefined;
+    const matchingCourseIds =
+      input.page === 'paper' && input.paperId
+        ? index.courses
+            .filter((candidate) =>
+              candidate.units.some((unit) => unit.papers?.includes(input.paperId ?? '')),
+            )
+            .map((candidate) => candidate.id)
+        : pageConceptId
+          ? index.courses
+              .filter((candidate) =>
+                candidate.units.some((unit) => unit.concepts.includes(pageConceptId)),
+              )
+              .map((candidate) => candidate.id)
+          : [];
+    const contextCourseId = courseState
+      ? (courseState.studyCourseIds.find(
+          (courseId) =>
+            matchingCourseIds.includes(courseId) ||
+            (pageConceptId && courseFoundationIds(index, courseId).has(pageConceptId)),
+        ) ??
+        matchingCourseIds[0] ??
+        courseState.studyCourseIds[0] ??
+        courseState.activeCourseId)
+      : undefined;
     const courseUnits = courseState
       ? buildCoursePayload(
           index,
-          courseState.activeCourseId,
+          contextCourseId,
           courseState.mastery,
           await db
             .select()

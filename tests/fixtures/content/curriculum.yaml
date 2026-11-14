@@ -2,7 +2,7 @@ schedule: { mon: 45, tue: 45, wed: 45, thu: 45, fri: 45, sat: 120, sun: 60 }
 domains:
   - { id: math, title: Mathematics, description: "Vectors, derivatives, and linear algebra." }
   - { id: ml, title: Machine learning, description: "Models, losses, and optimization." }
-courses: [fixture-course, fixture-switching-course]
+courses: [fixture-course, fixture-switching-course, fixture-third-course]
 default_course: fixture-course
 subject:
   title: Fixture subject

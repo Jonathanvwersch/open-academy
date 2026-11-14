@@ -14,6 +14,7 @@ import {
   sessionActivityIsInContent,
 } from '../../learning/content-filters.js';
 import { buildCourseStartState, needsCourseChoice } from '../../learning/course-start.js';
+import { topicIsComplete } from '../../learning/course-status.js';
 import { initialLearnProgress } from '../../learning/initial-learn-progress.js';
 import { recordLessonViewed } from '../../learning/mastery.js';
 import {
@@ -38,7 +39,7 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const { content, tutorProvider } = deps;
   const [index, repo] = [await content(), request.repo];
   const now = request.now();
-  const state = filterSchedulerStateForContent(index, await repo.schedulerState(now));
+  const state = filterSchedulerStateForContent(index, await repo.schedulerState(now, index));
   const user = await repo.user();
   const prefs = (user?.prefs ?? {}) as SessionPreferences & { goal?: string };
   const subjectTitle = index.curriculum?.subject?.title;
@@ -50,6 +51,10 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
     repo.courseEnrollments(),
     repo.activePlacementRuns(),
   ]);
+  const placementCourseId = placementRuns
+    .map((run) => (run.state as { courseId?: unknown }).courseId)
+    .find((id): id is string => typeof id === 'string' && index.coursesById.has(id));
+  const currentCourseId = placementCourseId ?? state.studyCourseIds[0] ?? state.activeCourseId;
   const activeSession = active ? await repo.session(active.id) : undefined;
   const hasCurrentActivity =
     !activeSession ||
@@ -62,22 +67,64 @@ export async function getToday(deps: FeatureServices, request: FeatureRequest) {
   const activeSessionId = hasCurrentActivity ? (active?.id ?? null) : null;
   const startState = buildCourseStartState({
     content: index,
-    activeCourseId: state.activeCourseId,
+    activeCourseId: currentCourseId,
     mastery: state.mastery,
     lessonRuns: state.lessonRuns ?? [],
     enrollments,
     placementRuns,
   });
-  const course = activeCourseFor(index, state.activeCourseId);
-  const unit = currentLearnerUnit(state, index);
+  const course = activeCourseFor(index, currentCourseId);
+  const unit = currentLearnerUnit({ ...state, activeCourseId: currentCourseId }, index);
   const unitFocus = course?.units[unit - 1];
+  const runsByConcept = new Map((state.lessonRuns ?? []).map((run) => [run.conceptId, run.status]));
+  const masteryByConcept = new Map<string, typeof state.mastery>();
+  for (const record of state.mastery) {
+    const records = masteryByConcept.get(record.conceptId) ?? [];
+    records.push(record);
+    masteryByConcept.set(record.conceptId, records);
+  }
+  const studyCourses = state.studyCourseIds.flatMap((courseId) => {
+    const studyCourse = index.coursesById.get(courseId);
+    if (!studyCourse) return [];
+    const topics = studyCourse.units.flatMap((studyUnit) => studyUnit.concepts);
+    const topicsDone = topics.filter((conceptId) => {
+      const concept = index.conceptsById.get(conceptId);
+      if (!concept) return false;
+      const states = concept.dimensions.map(
+        (dimension) =>
+          masteryByConcept.get(conceptId)?.find((record) => record.dimension === dimension)
+            ?.state ?? 'not_assessed',
+      );
+      return topicIsComplete(runsByConcept.get(conceptId), states);
+    }).length;
+    const courseUnit = currentLearnerUnit({ ...state, activeCourseId: courseId }, index);
+    return [
+      {
+        id: courseId,
+        title: studyCourse.title,
+        topicsDone,
+        topicsTotal: topics.length,
+        unitTitle: studyCourse.units[courseUnit - 1]?.title ?? `Unit ${courseUnit}`,
+      },
+    ];
+  });
+  const completedCourseIds = studyCourses
+    .filter(
+      (studyCourse) =>
+        studyCourse.topicsTotal > 0 && studyCourse.topicsDone === studyCourse.topicsTotal,
+    )
+    .map((studyCourse) => studyCourse.id);
+  await request.repo.completeCourses(completedCourseIds, now);
   return serviceResult({
     needsCourseChoice: needsCourseChoice({
       activeCourseId: state.activeCourseId,
+      studyCourseIds: state.studyCourseIds,
       mastery: state.mastery,
       lessonRuns: state.lessonRuns ?? [],
+      activePlacementRuns: placementRuns,
     }),
     courseStart: startState.courseStart,
+    studyCourses,
     objective:
       unitFocus?.title ??
       prefs.goal ??
@@ -117,7 +164,7 @@ export async function postSessions(deps: FeatureServices, request: FeatureReques
   const [index, repo] = [await content(), request.repo];
   const now = request.now();
   const sessionKind = body.data.kind ?? sessionKindForDate(localDateKey(now, request.timeZone));
-  const state = filterSchedulerStateForContent(index, await repo.schedulerState(now));
+  const state = filterSchedulerStateForContent(index, await repo.schedulerState(now, index));
   const user = await repo.user();
   const prefs = (user?.prefs ?? {}) as SessionPreferences;
   const budgetMinutes =
@@ -473,10 +520,11 @@ export async function postSessionsByIdReplan(deps: FeatureServices, request: Fea
     return serviceResult({ error: 'Session not found' }, 404);
   }
   const now = request.now();
+  const index = await content();
   const body = z
     .object({ remainingBudgetMinutes: z.number().int().min(0).optional() })
     .safeParse(request.body);
-  const state = await request.repo.schedulerState(now);
+  const state = await request.repo.schedulerState(now, index);
   const activities = session.activities as unknown as PlannedActivity[];
   const existingMinutes = activities
     .filter((activity) => activity.status === 'completed' || activity.status === 'in_progress')
@@ -484,7 +532,6 @@ export async function postSessionsByIdReplan(deps: FeatureServices, request: Fea
   const remaining = body.success
     ? (body.data.remainingBudgetMinutes ?? Math.max(0, session.plannedMinutes - existingMinutes))
     : Math.max(0, session.plannedMinutes - existingMinutes);
-  const index = await content();
   const plan = replan(state, index, now, remaining, activities, session.kind);
   const planned = session.activities.filter((activity) => activity.status === 'planned');
   await Promise.all(

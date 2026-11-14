@@ -18,6 +18,12 @@ export function filterSchedulerStateForContent(
     activeCourseId: content.coursesById.has(state.activeCourseId ?? '')
       ? state.activeCourseId
       : null,
+    studyCourseIds: state.studyCourseIds.filter((courseId) => content.coursesById.has(courseId)),
+    recentLearnMinutesByConcept: Object.fromEntries(
+      Object.entries(state.recentLearnMinutesByConcept).filter(([conceptId]) =>
+        content.conceptsById.has(conceptId),
+      ),
+    ),
     mastery: filterMasteryRecordsForContent(content, state.mastery),
     cards: state.cards.filter((card) => content.conceptsById.has(card.conceptId)),
     recentAttempts: state.recentAttempts.filter((attempt) => {

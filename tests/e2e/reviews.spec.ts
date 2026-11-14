@@ -127,9 +127,7 @@ test('Reviews page shows due and upcoming topics at desktop and mobile widths', 
   await expect(page.getByRole('heading', { name: /Fixture course/ }).first()).toBeVisible();
   await page.goto('/reviews');
   await page.locator('#reviews-2026-01-04').getByRole('button').click();
-  await expect(
-    page.getByRole('heading', { name: /Fixture switching course/ }).first(),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Fixture course/ }).first()).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/reviews');
@@ -148,23 +146,25 @@ test('Reviews page shows due and upcoming topics at desktop and mobile widths', 
     { width: 390, height: 844, name: 'mobile' },
   ]) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.goto('/course');
-    await expect(page.getByRole('heading', { name: 'Fixture switching course' })).toBeVisible();
+    await page.goto('/courses/fixture-course');
+    await expect(page.getByRole('heading', { name: 'Fixture course' })).toBeVisible();
     await page.waitForTimeout(200);
     await page.goto('/reviews');
     let release!: () => void;
     const delayed = new Promise<void>((resolve) => {
       release = resolve;
     });
-    await page.route('**/api/course', async (route) => {
+    await page.route('**/api/courses/fixture-course', async (route) => {
       await delayed;
       await route.continue();
     });
-    const courseNavigation = page.goto('/course', { waitUntil: 'domcontentloaded' });
+    const courseNavigation = page.goto('/courses/fixture-course', {
+      waitUntil: 'domcontentloaded',
+    });
     await expect(page.getByTestId('route-skeleton')).toBeVisible();
     release();
     await courseNavigation;
-    await page.unroute('**/api/course');
+    await page.unroute('**/api/courses/fixture-course');
   }
 });
 

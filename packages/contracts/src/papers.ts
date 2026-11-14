@@ -1,5 +1,7 @@
 export interface PapersPayload {
   units: Array<{
+    courseId: string;
+    courseTitle: string;
     unit: number;
     title: string;
     papers: Array<{

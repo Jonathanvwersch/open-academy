@@ -3,7 +3,15 @@ import type { AnswerOptions } from '@academy/contracts/exercises';
 export interface TodayPayload {
   tutorEnabled: boolean;
   needsCourseChoice: boolean;
-  courseStart: { needed: boolean; placementRunId: string | null };
+  courseStart: { courseId: string | null; needed: boolean; placementRunId: string | null };
+  studyCourses: Array<{
+    id: string;
+    title: string;
+    topicsDone: number;
+    topicsTotal: number;
+    unitTitle: string;
+    estimatedFinish?: string | null;
+  }>;
   objective: string;
   courseTitle: string;
   unitTitle: string;

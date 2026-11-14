@@ -18,19 +18,22 @@ test('course evidence is limited to unit concepts and includes lesson runs or as
   expect(courseHasEvidence(['a'], [{ conceptId: 'a', state: 'introduced' }], [])).toBe(true);
 });
 
-test('an active placement needs continuation until an enrollment exists', () => {
+test('an active placement needs continuation until it is completed', () => {
   const input = {
+    courseId: 'course-a',
     courseConceptIds: ['a'],
     mastery: [],
     lessonRuns: [],
     activePlacementRunId: 'run-1',
   };
   expect(courseStartStatus({ ...input, enrolled: false })).toEqual({
+    courseId: 'course-a',
     needed: true,
     placementRunId: 'run-1',
   });
   expect(courseStartStatus({ ...input, enrolled: true })).toEqual({
-    needed: false,
+    courseId: 'course-a',
+    needed: true,
     placementRunId: 'run-1',
   });
 });
