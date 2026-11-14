@@ -496,6 +496,7 @@ exercises:
         }
     solution: Adding the zeros and ones counts the successes. Dividing by the total trial count therefore gives both their mean and the observed success rate.
   - id: ds-rate-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

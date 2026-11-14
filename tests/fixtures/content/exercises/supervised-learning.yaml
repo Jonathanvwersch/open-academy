@@ -300,6 +300,7 @@ exercises:
         }
     solution: "The target is the answer the model is being trained to predict: tomorrow's number of orders. Today's temperature and weekday status are inputs."
   - id: slp-parameters
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -362,6 +363,7 @@ exercises:
     constraints: ["e1 + e2 + e3 == 0", "e1 != 0"]
     tolerance: { abs: 0.000001 }
   - id: slp-why-square
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -451,6 +453,7 @@ exercises:
         }
     solution: "$\\arg\\min_\\theta$ names the parameter setting that minimises the average loss that follows it."
   - id: slp-best-setting
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -610,6 +613,7 @@ exercises:
         }
     solution: "Today and tomorrow are categories, so predicting which one applies is classification."
   - id: slp-low-training-loss
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

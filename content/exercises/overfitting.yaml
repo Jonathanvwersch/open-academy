@@ -34,6 +34,7 @@ exercises:
         }
     solution: Underfitting misses useful patterns even in training data. Overfitting follows training details that do not carry over to new examples.
   - id: ovf-zero-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice
@@ -223,6 +224,7 @@ exercises:
         }
     solution: Low training error with much higher validation error suggests the model learned training details that do not carry over.
   - id: ovf-gap-reason
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

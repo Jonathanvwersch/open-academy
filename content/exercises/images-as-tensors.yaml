@@ -419,6 +419,7 @@ exercises:
       - (3, 1, 1)
     solution: The three numbers remain in order, with two size-one axes added for height and width.
   - id: iat-pretrained
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

@@ -439,6 +439,7 @@ exercises:
     solution: The theorem concerns sums or averages of many independent contributions under stated
       conditions; it is not a claim that every individual variable is Gaussian.
   - id: gauss-sums-why
+    lesson_only: true
     dimension: conceptual
     type: mc
     role: practice

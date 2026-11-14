@@ -28,6 +28,7 @@ exercises:
     }
   - {
       id: derivatives-fixture-practice-3,
+      lesson_only: true,
       dimension: math,
       type: numeric,
       role: practice,
@@ -67,6 +68,7 @@ exercises:
     }
   - {
       id: derivatives-fixture-practice-6,
+      lesson_only: true,
       dimension: math,
       type: numeric,
       role: practice,

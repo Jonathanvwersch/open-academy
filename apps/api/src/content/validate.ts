@@ -20,7 +20,7 @@ const SVG_COLOR_PROPERTIES = new Set([
 ]);
 const REVIEWABLE_EXERCISE_ROLES = new Set(['review', 'core', 'practice', 'transfer', 'basics']);
 const LESSON_CONTEXT_PROMPT =
-  /worked example|\bin steps? \d|\bthis step\b|\bin the picture\b|\bin the table\b|\bthe lesson'?s?\b|\bin the lesson\b|taught in the lesson|the car example/i;
+  /worked example|\bthe worked\b|\bin steps? \d|\bsteps? \d\b|\bthis step\b|\bin the picture\b|\bin the table\b|\bthe lesson'?s?\b|\bin the lesson\b|taught in the lesson|the car example|\bthe [\w-]+ (?:example|picture|argument|calculation)\b|\bthe example's\b/i;
 const MATH_PROSE_KEYS = new Set([
   'criterion',
   'exemplar',
@@ -827,6 +827,16 @@ function validateKnowledgePointContent(data: ContentSourceData, issues: ContentI
         addIssue(issues, file, point.id, 'knowledge-point worked must not be empty');
       if (point.problems.length < 3) {
         addIssue(issues, file, point.id, 'knowledge point must reference at least 3 problems');
+      }
+      if (
+        !point.problems.some((problemId) => exercises.get(problemId)?.value.lesson_only === true)
+      ) {
+        addIssue(
+          issues,
+          file,
+          point.id,
+          `knowledge point "${point.id}" has no lesson_only self-explanation question about its worked example`,
+        );
       }
       const firstProblemId = point.problems[0];
       const firstProblem = firstProblemId ? exercises.get(firstProblemId) : undefined;

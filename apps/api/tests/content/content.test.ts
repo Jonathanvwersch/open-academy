@@ -785,6 +785,7 @@ test('a valid knowledge-point lesson with a parameterised practice problem passe
         dimension: 'conceptual',
         type: 'mc',
         role: 'practice',
+        lesson_only: id === 'kp-fixed-one' || id === 'kp-fixed-three',
         difficulty: 1,
         est_minutes: 1,
         prompt: 'Which answer is correct?',
@@ -1350,6 +1351,33 @@ test('knowledge-point style rules count prose, math spans, and fenced code corre
   ).toBe(false);
 });
 
+test('every knowledge point requires a lesson-only self-explanation question', async () => {
+  const valid = await notationFixture();
+  const lesson = valid.lessons.find(({ value }) => value.concept === 'vectors');
+  const validPoint = lesson?.value.knowledge_points?.[0];
+  if (!validPoint) throw new Error('Missing vectors knowledge point');
+  const message = `knowledge point "${validPoint.id}" has no lesson_only self-explanation question about its worked example`;
+  expect(
+    validateContent(valid).some((issue) => issue.id === validPoint.id && issue.message === message),
+  ).toBe(false);
+
+  const invalid = structuredClone(valid);
+  const invalidLesson = invalid.lessons.find(({ value }) => value.concept === 'vectors');
+  const invalidPoint = invalidLesson?.value.knowledge_points?.[0];
+  if (!invalidPoint) throw new Error('Missing vectors knowledge point');
+  for (const problemId of invalidPoint.problems) {
+    const exercise = invalid.exercises.find(({ value }) => value.id === problemId);
+    if (exercise) exercise.value.lesson_only = false;
+  }
+
+  expect(validateContent(invalid)).toContainEqual(
+    expect.objectContaining({
+      id: invalidPoint.id,
+      message: `knowledge point "${invalidPoint.id}" has no lesson_only self-explanation question about its worked example`,
+    }),
+  );
+});
+
 test('lesson review dimensions require a non-template schedulable exercise', async () => {
   const data = await notationFixture();
   const mathExercises = data.exercises.filter(
@@ -1371,17 +1399,45 @@ test('lesson review dimensions require a non-template schedulable exercise', asy
 });
 
 test('non-diagnostic exercise prompts must be standalone or lesson-only', async () => {
-  const invalid = await notationFixture();
-  const invalidExercise = invalid.exercises.find((entry) => entry.value.id === 'vectors-magnitude');
-  if (!invalidExercise) throw new Error('Missing vector magnitude exercise');
-  invalidExercise.value.prompt = 'In the worked example, why does this calculation work?';
-  expect(validateContent(invalid)).toContainEqual(
-    expect.objectContaining({
-      id: invalidExercise.value.id,
-      message:
-        'exercise prompt references lesson-only context; set lesson_only: true or make it stand alone',
-    }),
+  const fixture = await notationFixture();
+  const contextualPrompts = [
+    'Why does the worked average use this value?',
+    'Step 2 multiplies the outcome by its probability.',
+    'Why does the weather example subtract 1.5 from 1.75 bits?',
+    'Look at the diagram picture before choosing.',
+    'Why does the probability calculation subtract the baseline?',
+    'The cross-entropy argument uses actual probabilities as weights.',
+    "What does the example's average show?",
+  ];
+  for (const prompt of contextualPrompts) {
+    const invalid = structuredClone(fixture);
+    const invalidExercise = invalid.exercises.find(
+      (entry) => entry.value.id === 'vectors-magnitude',
+    );
+    if (!invalidExercise) throw new Error('Missing vector magnitude exercise');
+    invalidExercise.value.prompt = prompt;
+    expect(validateContent(invalid)).toContainEqual(
+      expect.objectContaining({
+        id: invalidExercise.value.id,
+        message:
+          'exercise prompt references lesson-only context; set lesson_only: true or make it stand alone',
+      }),
+    );
+  }
+
+  const standalone = structuredClone(fixture);
+  const standaloneExercise = standalone.exercises.find(
+    (entry) => entry.value.id === 'vectors-magnitude',
   );
+  if (!standaloneExercise) throw new Error('Missing vector magnitude exercise');
+  standaloneExercise.value.prompt =
+    'Why does the average of these observations match the long-run rate?';
+  expect(
+    validateContent(standalone).some(
+      (issue) =>
+        issue.id === standaloneExercise.value.id && issue.message.includes('lesson-only context'),
+    ),
+  ).toBe(false);
 
   const lessonOnly = await notationFixture();
   const lessonOnlyExercise = lessonOnly.exercises.find(
