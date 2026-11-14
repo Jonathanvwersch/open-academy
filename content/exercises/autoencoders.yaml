@@ -462,25 +462,21 @@ exercises:
     solution: Each of the $16$ rows is one image, and the encoder turns each row's $784$ numbers into $32$, giving $16\times32$.
   - id: aep-params-vs-pixels
     dimension: conceptual
-    type: mc
+    type: numeric
     role: practice
     difficulty: 3
     est_minutes: 2
     prompt:
       A digit autoencoder has 50,992 parameters and maps each 784-number image to 32 latent numbers.
       How many numbers store the trained network and the latent representations of 1,000 images?
-    options:
-      - id: a
-        text: 82,992 numbers, counting the network once and one latent vector per image.
-        correct: true
-        feedback: The shared network costs 50,992 numbers and the latent vectors cost 1,000 times 32.
-      - id: b
-        text: 51,024,000 numbers, counting a network and latent vector separately for every image.
-        correct: false
+    answer: 82992
+    tolerance: { abs: 0.5 }
+    common_wrong:
+      - answer: 51024000
+        category: misunderstood_definition
         feedback: The parameters are shared across images, so their cost is paid once.
-      - id: c
-        text: 32,000 numbers, counting the latent vectors as the entire storage cost.
-        correct: false
+      - answer: 32000
+        category: misunderstood_definition
         feedback: The question includes the trained network, so add its one-off parameter count.
     solution:
       The network parameters are shared by every image, while each image needs its own 32-number

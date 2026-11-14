@@ -501,31 +501,23 @@ exercises:
     solution: "Power rule: bring the 3 down and lower the power to 2, so $(x^3)' = 3x^2$."
   - id: derp-constant-term
     dimension: conceptual
-    type: mc
+    type: expression
     role: practice
     difficulty: 1
     est_minutes: 1
     prompt: "What is the derivative of $f(x) = x^2 + 10$?"
-    options:
-      - id: a
-        text: "$2x$"
-        correct: true
-        feedback: "The added 10 never changes as $x$ changes, so it contributes 0."
-      - id: b
-        text: "$2x + 10$"
-        correct: false
+    answer: "2*x"
+    variables: { x: [-3, 3] }
+    common_wrong:
+      - answer: "2*x + 10"
         category: misunderstood_definition
         feedback: "Differentiation measures how the output changes with $x$. The added 10 stays fixed, so it contributes 0."
-      - id: c
-        text: "$2x + 1$"
-        correct: false
+      - answer: "2*x + 1"
         category: misapplied_technique
         feedback: "The constant 10 is not $10x$ or $x$. It doesn't change with $x$, so its derivative is 0."
-      - id: d
-        text: "$20x$"
-        correct: false
+      - answer: "20*x"
         category: misunderstood_definition
-        feedback: "The expression adds 10; it does not multiply $x^2$ by 10. Each term is differentiated separately."
+        feedback: "The expression adds 10. It does not multiply $x^2$ by 10. Each term is differentiated separately."
     solution: "The value 10 stays fixed for every $x$, so it contributes no change in output. Thus $f'(x) = 2x$."
   - id: derp-drone-climb
     dimension: math
