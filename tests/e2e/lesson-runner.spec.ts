@@ -1,4 +1,5 @@
 import { mkdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
 import { eq } from 'drizzle-orm';
 import { env } from '../../apps/api/src/config.js';
@@ -282,6 +283,28 @@ async function currentRun(page: Page, runConceptId = conceptId) {
   }, runConceptId);
 }
 
+async function lessonStepWidthMeasurements(page: Page) {
+  return page.evaluate(() => {
+    const recap = Array.from(document.querySelectorAll<HTMLElement>('[data-slot="card"]')).find(
+      (card) => card.querySelector('[data-slot="card-title"]')?.textContent?.trim() === 'Recap',
+    );
+    const prose = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-testid="lesson-step-content"] .markdown'),
+    ).find((element) => element.textContent?.includes('Two answers written as 0 and 1'));
+    if (!recap || !prose) throw new Error('Could not find the lesson recap card and prose block');
+    const recapBounds = recap.getBoundingClientRect();
+    const proseBounds = prose.getBoundingClientRect();
+    return {
+      recapLeft: recapBounds.left,
+      recapRight: recapBounds.right,
+      proseLeft: proseBounds.left,
+      proseRight: proseBounds.right,
+      pageWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth,
+    };
+  });
+}
+
 async function expectToastInViewport(page: Page, text: string) {
   const toast = page.locator('[data-sonner-toast]').filter({ hasText: text });
   await expect(toast).toBeVisible();
@@ -518,6 +541,92 @@ test('lesson session header shows the active step title', async ({ page }) => {
   if (process.env.TITLES_STEP_SCREENSHOT) {
     await page.screenshot({ path: process.env.TITLES_STEP_SCREENSHOT });
   }
+});
+
+test('lesson prose fills the recap width on desktop and mobile', async ({ page }, testInfo) => {
+  test.skip(
+    resolve(process.env.PLAYWRIGHT_CONTENT_DIR ?? 'tests/fixtures/content') !== resolve('content'),
+    'Requires the full curriculum content; run with PLAYWRIGHT_CONTENT_DIR=content.',
+  );
+  const sessionId = await createLessonActivitySession(
+    'logistic-regression',
+    'lr-classification',
+    'lr-classification-basics',
+  );
+  mkdirSync(testInfo.outputDir, { recursive: true });
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`/session/${sessionId}`);
+  await expect(page.getByTestId('lesson-step-content')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Recap' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Worked example' })).toBeVisible();
+  await expect(page.getByTestId('lesson-problem-prompt')).toBeVisible();
+  const desktopWidths = await lessonStepWidthMeasurements(page);
+  expect(Math.abs(desktopWidths.proseLeft - desktopWidths.recapLeft)).toBeLessThanOrEqual(1);
+  expect(Math.abs(desktopWidths.proseRight - desktopWidths.recapRight)).toBeLessThanOrEqual(1);
+  console.log('Desktop lesson prose/card bounds:', desktopWidths);
+  await page.screenshot({
+    path: testInfo.outputPath('lesson-step-1440x900.png'),
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileWidths = await lessonStepWidthMeasurements(page);
+  expect(Math.abs(mobileWidths.proseLeft - mobileWidths.recapLeft)).toBeLessThanOrEqual(1);
+  expect(Math.abs(mobileWidths.proseRight - mobileWidths.recapRight)).toBeLessThanOrEqual(1);
+  expect(mobileWidths.pageWidth).toBeLessThanOrEqual(mobileWidths.viewportWidth);
+  console.log('Mobile lesson prose/card bounds:', mobileWidths);
+  await page.screenshot({
+    path: testInfo.outputPath('lesson-step-390x844.png'),
+  });
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole('link', { name: 'View full lesson' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Logistic regression and cross-entropy' }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('full-lesson-1440x900.png'),
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    page.getByRole('heading', { name: 'Logistic regression and cross-entropy' }),
+  ).toBeVisible();
+  const mobileFullLesson = await page.evaluate(() => ({
+    pageWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth,
+  }));
+  expect(mobileFullLesson.pageWidth).toBeLessThanOrEqual(mobileFullLesson.viewportWidth);
+  await page.screenshot({
+    path: testInfo.outputPath('full-lesson-390x844.png'),
+  });
+
+  await page.goto('/lessons/convolutions');
+  await expect(page.locator('.markdown').first()).toBeVisible();
+  const mobileMathLayout = await page.evaluate(() => {
+    const displays = Array.from(document.querySelectorAll<HTMLElement>('.katex-display')).map(
+      (element) => ({
+        tex: element.querySelector('annotation[encoding="application/x-tex"]')?.textContent ?? '',
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+        overflowX: getComputedStyle(element).overflowX,
+      }),
+    );
+    return {
+      pageWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth,
+      displays,
+    };
+  });
+  expect(mobileMathLayout.pageWidth).toBeLessThanOrEqual(mobileMathLayout.viewportWidth);
+  expect(mobileMathLayout.displays.some(({ tex }) => tex.includes('\\sum'))).toBe(true);
+  expect(mobileMathLayout.displays.some(({ tex }) => tex.includes('\\begin{pmatrix}'))).toBe(true);
+  expect(
+    mobileMathLayout.displays
+      .filter(({ scrollWidth, clientWidth }) => scrollWidth > clientWidth)
+      .every(({ overflowX }) => overflowX === 'auto' || overflowX === 'scroll'),
+  ).toBe(true);
+  console.log('Mobile matrix/sum equation layout:', mobileMathLayout);
 });
 
 test('lesson runner shows pulsing Thinking while preparing a question', async ({

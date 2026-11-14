@@ -19,6 +19,7 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSkeleton,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
@@ -50,8 +51,13 @@ function initialSidebarOpen() {
 function AppSidebar() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const { isMobile, state, setOpenMobile } = useSidebar();
-  const { data: courseData } = useQuery(coursesQueryOptions());
-  const { data: reviewsData } = useQuery(reviewsQueryOptions());
+  const coursesQuery = useQuery(coursesQueryOptions());
+  const reviewsQuery = useQuery(reviewsQueryOptions());
+  const courseData = coursesQuery.data;
+  const reviewsData = reviewsQuery.data;
+  const loadingCourses = coursesQuery.isPending && !courseData;
+  const loadingReviews = reviewsQuery.isPending && !reviewsData;
+  const showCourseSection = state !== 'collapsed' || isMobile;
   const activeCourses =
     courseData?.subjects.flatMap((subject) =>
       subject.courses.filter((course) => course.status === 'active'),
@@ -116,7 +122,11 @@ function AppSidebar() {
                     <Link to={to} aria-label={label} onClick={closeMobile}>
                       <Icon aria-hidden="true" />
                       <span>{label}</span>
-                      {label === 'Reviews' && reviewsData && reviewsData.dueNow > 0 ? (
+                      {label === 'Reviews' && loadingReviews ? (
+                        <SidebarMenuBadge data-testid="reviews-due-skeleton" aria-hidden="true">
+                          <Skeleton className="size-3 rounded-sm" />
+                        </SidebarMenuBadge>
+                      ) : label === 'Reviews' && reviewsData && reviewsData.dueNow > 0 ? (
                         <SidebarMenuBadge data-testid="reviews-due-count">
                           {reviewsData.dueNow}
                         </SidebarMenuBadge>
@@ -128,57 +138,90 @@ function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {activeCourses.length > 0 && (state !== 'collapsed' || isMobile) ? (
+        {showCourseSection && (activeCourses.length > 0 || loadingCourses) ? (
           <SidebarGroup className="px-2 py-1">
             <SidebarGroupLabel>My courses</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
-                {activeCourses.map((course) => {
-                  const isActive =
-                    pathname === `/courses/${course.id}` ||
-                    pathname.startsWith(`/courses/${course.id}/`);
-                  const content = (
-                    <>
-                      <span className="min-w-0 flex-1 truncate text-sm">{course.title}</span>
-                      <span className="ml-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
-                        {course.topicsDone}/{course.topicsTotal}
-                      </span>
-                    </>
-                  );
-                  return (
-                    <SidebarMenuItem key={course.id}>
-                      {isActive ? (
-                        <SidebarMenuButton
-                          asChild
-                          isActive={!isMobile}
-                          className="items-center text-sm"
+                {loadingCourses
+                  ? ['first', 'wrapped', 'third'].map((row) => {
+                      const wraps = row === 'wrapped' && !isMobile;
+                      return (
+                        <SidebarMenuItem
+                          key={`course-skeleton-${row}`}
+                          data-testid="sidebar-course-skeleton"
+                          aria-hidden="true"
                         >
-                          <Link
-                            to="/courses/$courseId"
-                            params={{ courseId: course.id }}
-                            preload="intent"
-                            aria-label={`${course.title}, ${course.topicsDone} of ${course.topicsTotal} topics done`}
-                            onClick={closeMobile}
-                          >
-                            {content}
-                          </Link>
-                        </SidebarMenuButton>
-                      ) : (
-                        <SidebarMenuButton asChild className="items-center text-sm">
-                          <Link
-                            to="/courses/$courseId"
-                            params={{ courseId: course.id }}
-                            preload="intent"
-                            aria-label={`Open ${course.title}`}
-                            onClick={closeMobile}
-                          >
-                            {content}
-                          </Link>
-                        </SidebarMenuButton>
-                      )}
-                    </SidebarMenuItem>
-                  );
-                })}
+                          <div className="relative">
+                            <SidebarMenuSkeleton
+                              className={`h-auto py-2 pr-12 ${
+                                wraps ? 'min-h-[4.75rem] items-start' : 'min-h-9'
+                              }`}
+                            />
+                            {wraps ? <Skeleton className="absolute left-2 top-7 h-3 w-24" /> : null}
+                            {wraps ? (
+                              <Skeleton className="absolute bottom-2 left-2 h-3 w-20" />
+                            ) : null}
+                            <Skeleton
+                              className={`absolute right-2 h-3 w-8 ${
+                                wraps ? 'top-2' : 'top-1/2 -translate-y-1/2'
+                              }`}
+                            />
+                          </div>
+                        </SidebarMenuItem>
+                      );
+                    })
+                  : activeCourses.map((course) => {
+                      const isActive =
+                        pathname === `/courses/${course.id}` ||
+                        pathname.startsWith(`/courses/${course.id}/`);
+                      const content = (
+                        <>
+                          <span className="min-w-0 flex-1 whitespace-normal break-words text-sm">
+                            {course.title}
+                          </span>
+                          <span className="ml-auto shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
+                            {course.topicsDone}/{course.topicsTotal}
+                          </span>
+                        </>
+                      );
+                      return (
+                        <SidebarMenuItem key={course.id}>
+                          {isActive ? (
+                            <SidebarMenuButton
+                              asChild
+                              isActive={!isMobile}
+                              className="h-auto min-h-8 items-start py-2 text-sm"
+                            >
+                              <Link
+                                to="/courses/$courseId"
+                                params={{ courseId: course.id }}
+                                preload="intent"
+                                aria-label={`${course.title}, ${course.topicsDone} of ${course.topicsTotal} topics done`}
+                                onClick={closeMobile}
+                              >
+                                {content}
+                              </Link>
+                            </SidebarMenuButton>
+                          ) : (
+                            <SidebarMenuButton
+                              asChild
+                              className="h-auto min-h-8 items-start py-2 text-sm"
+                            >
+                              <Link
+                                to="/courses/$courseId"
+                                params={{ courseId: course.id }}
+                                preload="intent"
+                                aria-label={`Open ${course.title}`}
+                                onClick={closeMobile}
+                              >
+                                {content}
+                              </Link>
+                            </SidebarMenuButton>
+                          )}
+                        </SidebarMenuItem>
+                      );
+                    })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
