@@ -1,7 +1,98 @@
 id: llm-post-training
-title: "Post-train a small language model"
-status: stub
-est_hours: 6
-objective: "Fine-tune a small pretrained language model with supervised fine-tuning, then train it with GRPO on arithmetic problems with automatically checked answers, and measure how much accuracy improves."
-background: ""
-prereqs: [sft, rl-verifiable-rewards, llm-evaluation]
+title: "Post-training a tiny LLM"
+status: authored
+est_hours: 4
+objective: "Adapt a locally pretrained tiny language model with supervised fine-tuning and LoRA, train a separate reward model on preference pairs, and compare the base and adapted models on held-out prompts."
+background: |
+  A pretrained language model learns to continue text. Supervised fine-tuning teaches it the responses we want to give users. In this lab, a tiny model already knows how to echo four color words in lowercase. You will teach it to answer in uppercase with a LoRA adapter, then train a separate model to score preferred answers.
+
+  Everything runs in NumPy on your CPU. The supplied pretraining script creates a 1,104-parameter next-token model from generated text. It uses a small feedforward prefix encoder. Its size lets you inspect every update. The reward model learns from generated preferences and stays separate from the language model.
+
+  **Setup from the repository root**
+  ```bash
+  python3 -m pip install -r labs/llm-post-training/requirements.txt
+  python3 labs/llm-post-training/setup.py
+  python3 labs/llm-post-training/pretrain.py
+  # edit labs/llm-post-training/work/post_training.py
+  python3 labs/llm-post-training/run.py
+  python3 labs/verify.py llm-post-training
+  ```
+  Upload `labs/llm-post-training/work/results.json` below. After installing NumPy, every command works offline. Setup preserves existing work. The lab README gives the shapes and update equations for each TODO.
+prereqs: [sft, lora, reward-models, llm-evaluation]
+tasks:
+  - id: t-base
+    title: Inspect the pretrained model
+    md: |
+      Run `pretrain.py` and read `tiny_lm.py`. The script saves `work/base.npz`. A prompt such as `<bos> <user> echo red <assistant>` should produce `red <eos>`. `<eos>` marks the end of the response. The next token always depends on the earlier tokens. Done means you can find the frozen encoder and output matrix in the saved checkpoint.
+  - id: t-mask
+    title: Select response targets
+    md: |
+      Implement `response_mask(tokens, response_start)`. Return one entry per next-token target, aligned with `tokens[1:]`. An entry is one when its target's original index is at least `response_start`. Include the first response token and `<eos>`. Keep the prompt tokens in the input. Done means the alignment check passes.
+  - id: t-adapter
+    title: Add the low-rank change
+    md: |
+      Implement `init_adapter` and `adapted_weight`. For an output matrix `W` of shape `(n_out, n_in)`, use `A` of shape `(rank, n_in)` and `B` of shape `(n_out, rank)`. Draw `A` with this seeded call, then set `B` to zero:
+      ```python
+      rng = np.random.default_rng(seed)
+      A = rng.normal(
+          0, 0.1, (rank, n_in)
+      )
+      ```
+      Return `W + B @ A` without changing `W`. Done means initial predictions equal the base model and the merged layer equals the separate adapter computation.
+  - id: t-loss
+    title: Average the response losses
+    md: |
+      Implement `masked_loss(logits, targets, mask)`, returning a scalar loss and a logit-gradient array. Use stable log probabilities by subtracting each row's largest logit. Sum selected target losses and divide by `mask.sum()`. Apply the same mask and denominator to the softmax gradient. Reject an empty mask. Done means prompt-target gradients are zero and the loss stays finite for large logits.
+  - id: t-sft
+    title: Train only the adapter
+    md: |
+      Implement `sft_step`. The supplied `hidden(base, X)` returns a row of hidden features per prefix. Compute logits with the effective output matrix. From the logit gradient, calculate `dW = grad.T @ h`, `dA = B.T @ dW`, and `dB = dW @ A.T`. Compute both factor gradients before either update. Subtract `learning_rate * gradient` from each factor. Return the loss before the update. Done means the one-step check passes and every base array stays unchanged.
+  - id: t-preferences
+    title: Learn a reward from comparisons
+    md: |
+      Implement `preference_loss` for chosen and rejected score arrays. Average `-log(sigmoid(chosen - rejected))`; `np.logaddexp(0, rejected - chosen)` computes each loss stably. If `p` is the preference probability and there are `n` pairs, the chosen gradient is `(p - 1) / n`. The rejected gradient has the opposite sign. Then implement `reward_step`: score each feature row with `features @ weights`, backpropagate both score gradients, and update the weights. Done means loss falls and held-out pair accuracy exceeds 0.9.
+  - id: t-evaluate
+    title: Compare before and after
+    md: |
+      Implement `win_rate` with half credit for ties and all comparisons in the denominator. Reject empty comparisons. Run `run.py` to train both models and write `work/experiment.json`. Inspect its eight generated response pairs, exact-match scores, preference accuracy, and wins, ties, and losses. Exact match checks the complete uppercase response, including `<eos>`. The supplied judge awards a win when only the adapted model matches, a loss when only the base matches, and a tie otherwise. Done means you can explain the improvement under this stated rule.
+  - id: t-verify
+    title: Check the local result
+    md: |
+      Run `python3 labs/verify.py llm-post-training` from the repository root. It retrains a fresh fixed-seed base model and checks your functions independently of the saved checkpoints. Read any failing check's message, fix the corresponding TODO, and rerun. Done means all ten checks pass and every metric meets its threshold. These eight held-out prompts measure this small echo task; broader language ability needs a larger evaluation.
+acceptance:
+  - "All ten public checks pass, including target alignment, loss normalization, adapter updates, and preference-gradient signs."
+  - "Every pretrained parameter stays frozen throughout supervised fine-tuning."
+  - "Base exact match is below 0.25. Adapted held-out complete-response exact match exceeds 0.9, with improvement above 0.75."
+  - "Mean training response loss is below 0.1 and held-out preference-pair accuracy exceeds 0.9."
+  - "Evaluation prompts are excluded from pretraining, SFT, and reward training."
+tests:
+  - { id: test_response_mask_alignment, concepts: [sft], dimension: implementation }
+  - { id: test_masked_loss_and_gradient, concepts: [sft], dimension: implementation }
+  - { id: test_adapter_initialization_and_merge, concepts: [lora], dimension: math }
+  - { id: test_sft_step_and_frozen_base, concepts: [sft], dimension: implementation }
+  - { id: test_preference_loss_and_gradients, concepts: [reward-models], dimension: math }
+  - { id: test_reward_step, concepts: [reward-models], dimension: math }
+  - { id: test_split_is_disjoint, concepts: [llm-evaluation], dimension: conceptual }
+  - { id: test_before_after_evaluation, concepts: [llm-evaluation], dimension: transfer }
+  - { id: test_reward_ranks_held_out_pairs, concepts: [reward-models], dimension: conceptual }
+  - { id: test_win_rate_counts_ties, concepts: [llm-evaluation], dimension: transfer }
+metrics:
+  - { id: base_exact_match, label: "Base exact match", threshold: 0.25, direction: below }
+  - { id: adapted_exact_match, label: "Adapted exact match", threshold: 0.9, direction: above }
+  - { id: exact_match_gain, label: "Exact-match improvement", threshold: 0.75, direction: above }
+  - { id: sft_response_loss, label: "Mean SFT response loss", threshold: 0.1, direction: below }
+  - {
+      id: reward_pair_accuracy,
+      label: "Held-out preference accuracy",
+      threshold: 0.9,
+      direction: above,
+    }
+reflection:
+  - lab-post-training-mask-dilution
+  - lab-post-training-adapter-count
+  - lab-post-training-reward-offset
+  - lab-post-training-held-out-claim
+follow_up:
+  - "Try ranks 1, 2, and 4. Record the adapter size and held-out exact match for each."
+  - "After studying DPO, compare its preference objective with training the separate reward model here."
+  - "After studying RL with verifiable rewards and GRPO, design an arithmetic task with an automatic answer checker."

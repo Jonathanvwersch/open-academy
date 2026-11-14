@@ -28,9 +28,15 @@ jobs:
       - name: Install locked dependencies
         run: pnpm bootstrap
       - name: Install Python lab dependencies
+        shell: bash
         run: |
           python3 -m venv .venv
-          .venv/bin/python -m pip install -r labs/linreg-numpy/requirements.txt -r labs/nn-from-scratch/requirements.txt
+          .venv/bin/python -m pip install 'torch>=2.2,<3' --index-url https://download.pytorch.org/whl/cpu
+          requirements=()
+          for requirements_file in labs/*/requirements.txt; do
+            requirements+=(-r "$requirements_file")
+          done
+          .venv/bin/python -m pip install "${requirements[@]}"
           echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
       - name: Check repository
         run: pnpm check

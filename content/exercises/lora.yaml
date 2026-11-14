@@ -1,5 +1,25 @@
 concept: lora
 exercises:
+  - id: lab-post-training-adapter-count
+    dimension: math
+    type: numeric
+    role: core
+    difficulty: 2
+    est_minutes: 2
+    prompt: A language model has a frozen output matrix with 15 rows and 24 columns. A rank-4 LoRA adapter changes this matrix. How many scalar parameters does the adapter train? Count both thin matrices and assume no biases.
+    answer: 156
+    tolerance: { abs: 0.1 }
+    common_wrong:
+      - answer: 360
+        category: math_error
+        feedback: That counts the full output matrix. The adapter trains the entries of its two thin factors.
+      - answer: 60
+        category: math_error
+        feedback: That counts only the 15 by 4 factor. Include the 4 by 24 factor as well.
+      - answer: 96
+        category: math_error
+        feedback: That counts only the 4 by 24 factor. Include the 15 by 4 factor as well.
+    solution: The two factors contain 15 times 4 and 4 times 24 entries. Together they train 60 + 96 = 156 scalar parameters.
   - id: lora-frozen-change-basics
     dimension: conceptual
     type: mc

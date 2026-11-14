@@ -1,0 +1,76 @@
+id: gradient-check
+title: Gradient checker
+status: authored
+est_hours: 3
+objective: "Build a NumPy gradient checker, compare hand-derived gradients with finite differences, and use a checked gradient to walk downhill."
+background: |
+  A gradient checker compares two ways to measure a slope. You derive one gradient by hand. Your program estimates another from nearby function values. Their relative error helps you find a missing factor or a sign error.
+
+  You know how derivatives measure local change, how partial derivatives hold other inputs fixed, and how the chain rule combines rates. This project turns those ideas into a tool you can reuse. You will then treat a two-dimensional function as the height of the ground and take small steps downhill.
+
+  Work in your own editor. All functions and check points are generated locally. The app records results and never runs your code.
+
+  **Setup**
+  ```bash
+  python3 -m pip install -r labs/gradient-check/requirements.txt
+  python3 labs/gradient-check/setup.py
+  # edit labs/gradient-check/work/gradient_check.py
+  python3 labs/verify.py gradient-check
+  ```
+  Upload `labs/gradient-check/work/results.json` here. Install NumPy once before working offline. Setup preserves an existing work file.
+prereqs: [derivatives, partial-derivatives, chain-rule, gradients]
+tasks:
+  - id: t-derivative
+    title: Estimate a slope
+    md: |
+      Implement `derivative(f, x, eps)` using the central difference `(f(x + eps) - f(x - eps)) / (2 * eps)`. Here `eps` is the distance to each nearby input. Return a scalar. Raise `ValueError` when `eps` is nonpositive or nonfinite. Check that the derivative of $x^3-2x$ at $x=1$ is close to $1$.
+  - id: t-partials
+    title: Change one coordinate
+    md: |
+      Implement `numerical_gradient(f, point, eps)` for a one-dimensional NumPy vector. Apply central differences to one coordinate at a time. Copy the point before changing it. Return a vector of the same shape and leave the input unchanged. An empty point returns an empty gradient. Apply the same validation for `eps`. For $f(x,y)=xy$, the result at $(2,3)$ should be close to $(3,2)$.
+  - id: t-analytic
+    title: Derive three gradients
+    md: |
+      Write your derivations in `work/derivations.md`. Use $f(x,y)=(x-1)^2+2(y+2)^2$ for `bowl`, $f(x,y)=(xy+1)^2$ for `coupled`, and $f(x,y)=(x+2y)^4$ for `composed`. For each composition, name the inner quantity and multiply its partial derivatives by the outer derivative. Implement `analytic_gradient(name, point)` in coordinate order $(x,y)$. Return a NumPy vector of shape `(2,)`. Raise `ValueError` for an unknown name. You are done when all three hand-derived gradients match the public analytic checks.
+  - id: t-checker
+    title: Report relative error
+    md: |
+      Implement `relative_error(analytic, numeric)` as `norm(analytic - numeric) / max(1e-12, norm(analytic) + norm(numeric))`, using `np.linalg.norm`. The norm measures vector length. The floor keeps a zero denominator safe. Two zero or empty vectors have error zero. Implement `check_gradient(f, grad, point, eps)` by connecting this function to your numerical gradient. Return the error as a scalar. Correct gradients should have error below `1e-5` on the supplied points. A deliberately reversed gradient should fail.
+  - id: t-eps
+    title: Compare step sizes
+    md: |
+      Check your `composed` gradient at $(0.3,-0.7)$ with `eps` values `0.1`, `1e-5`, and `1e-12`. Record the three errors in `work/derivations.md`. A large interval includes curvature. A very small interval can lose precision when nearby values are subtracted. Explain which setting gives the smallest error on your machine. This note is for your reflection and is checked by you.
+  - id: t-downhill
+    title: Walk across the bowl
+    md: |
+      Implement `walk_downhill(f, grad, start, step_size=0.1, steps=80)`. At each step subtract `step_size * grad(point)`. Return `(path, values)` as arrays with shapes `(steps + 1, 2)` and `(steps + 1,)`. Include the start and each updated point. Save independent copies and keep `start` unchanged. Zero steps returns only the start. Use the bowl from the derivation task, starting at $(4,3)$. The final point should approach $(1,-2)$ and its height should fall below `1e-8`.
+acceptance:
+  - "All seven deterministic verifier checks pass."
+  - "The maximum relative gradient error across the three functions is below 1e-5."
+  - "The bowl walk decreases height and ends below 1e-8 after 80 updates."
+  - "Your local derivation note contains three gradients and the step-size comparison."
+tests:
+  - { id: test_derivative, concepts: [derivatives], dimension: implementation }
+  - { id: test_partial_derivatives, concepts: [partial-derivatives], dimension: implementation }
+  - { id: test_analytic_chain_rule, concepts: [chain-rule], dimension: implementation }
+  - { id: test_relative_error, concepts: [gradients], dimension: implementation }
+  - { id: test_gradient_checker, concepts: [chain-rule, gradients], dimension: implementation }
+  - { id: test_downhill, concepts: [gradients], dimension: implementation }
+  - { id: test_edge_cases, concepts: [derivatives, gradients], dimension: implementation }
+metrics:
+  - {
+      id: max_relative_error,
+      label: "Maximum relative gradient error",
+      threshold: 0.00001,
+      direction: below,
+    }
+  - { id: final_height, label: "Final bowl height", threshold: 0.00000001, direction: below }
+reflection:
+  - lab-gc-central-slope
+  - lab-gc-fixed-coordinate
+  - lab-gc-inner-factor
+  - lab-gc-downhill-coordinate
+follow_up:
+  - "Check a new smooth function with three inputs."
+  - "Compare the bowl walk with step sizes 0.01 and 0.6. Record the heights."
+  - "Try a function with a sharp corner and explain where finite differences disagree with a one-sided slope."

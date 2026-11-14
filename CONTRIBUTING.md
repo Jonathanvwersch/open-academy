@@ -7,11 +7,21 @@ Bug reports, fixes and new course packs are all welcome.
 You need Node 24, pnpm 12.16.1 and Docker Compose. Install the Python lab dependencies
 in a virtual environment before running tests:
 
-```sh
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python3 -m pip install -r labs/linreg-numpy/requirements.txt -r labs/nn-from-scratch/requirements.txt
+if [ "$(uname -s)" = Linux ]; then
+  python3 -m pip install 'torch>=2.2,<3' --index-url https://download.pytorch.org/whl/cpu
+fi
+requirements=()
+for requirements_file in labs/*/requirements.txt; do
+  requirements+=(-r "$requirements_file")
+done
+python3 -m pip install "${requirements[@]}"
 ```
+
+Run these commands in Bash. They install the dependencies for every lab, including the
+PyTorch verifiers. On Linux, PyTorch uses the CPU build; the labs do not require a GPU.
 
 ```sh
 pnpm bootstrap   # installs dependencies and the pre-commit hook

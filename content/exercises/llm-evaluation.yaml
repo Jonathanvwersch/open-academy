@@ -1,5 +1,25 @@
 concept: llm-evaluation
 exercises:
+  - id: lab-post-training-held-out-claim
+    dimension: transfer
+    type: mc
+    role: core
+    difficulty: 3
+    est_minutes: 2
+    prompt: A base model answers 0 of 8 held-out uppercase-echo prompts exactly. Its adapter answers all 8 exactly under the same generation and scoring rules. The prompts were excluded from all training. Which claim does this result support?
+    options:
+      - id: a
+        text: The adapter improved exact match on this fixed echo benchmark.
+        correct: true
+      - id: b
+        text: The adapter improved factual accuracy across language tasks.
+        correct: false
+        feedback: The benchmark measures an echo task. It contains no evidence about factual questions or other language tasks.
+      - id: c
+        text: The adapter will answer every new echo prompt exactly.
+        correct: false
+        feedback: Eight held-out prompts provide a small sample. They cannot establish perfect performance on every future prompt.
+    solution: The comparison supports an improvement on the stated held-out benchmark. Its small size and narrow task limit the claims we can make about other prompts and abilities.
   - id: lev-benchmark-basics
     dimension: conceptual
     type: mc
