@@ -108,6 +108,140 @@ test('desktop sidebar collapse persists across reload', async ({ page }) => {
   await expect(header.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
 });
 
+test('auth-pending shell shows the real sidebar without shifting navigation', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  let releaseAuth: () => void = () => {};
+  const authGate = new Promise<void>((resolve) => {
+    releaseAuth = resolve;
+  });
+  let authRequestStarted = false;
+  let coursesRequests = 0;
+  let reviewsRequests = 0;
+  page.on('request', (request) => {
+    const pathname = new URL(request.url()).pathname;
+    if (pathname === '/api/courses') coursesRequests += 1;
+    if (pathname === '/api/reviews') reviewsRequests += 1;
+  });
+  await page.route('**/api/auth/me', async (route) => {
+    authRequestStarted = true;
+    await authGate;
+    await route.continue({
+      headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
+    });
+  });
+
+  await page.goto('/');
+  const shell = page.getByTestId('app-shell-skeleton');
+  try {
+    await expect.poll(() => authRequestStarted).toBe(true);
+    await expect(shell).toBeVisible();
+    const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+    for (const label of ['Home', 'Courses', 'Map', 'Reviews', 'Progress']) {
+      await expect(navigation.getByRole('link', { name: label, exact: true })).toBeVisible();
+      await expect(navigation.getByText(label, { exact: true })).toBeVisible();
+    }
+    await expect(navigation.getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
+    await expect(navigation.getByText('Settings', { exact: true })).toBeVisible();
+    await expect(navigation.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
+    await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+    await expect(navigation.getByTestId('reviews-due-skeleton')).toBeVisible();
+    const navMenu = navigation.locator('[data-sidebar="menu"]').first();
+    await expect(navMenu.getByTestId('sidebar-course-skeleton')).toHaveCount(0);
+    await expect(navMenu.locator('[data-sidebar="menu-skeleton"]')).toHaveCount(0);
+    expect(coursesRequests).toBe(0);
+    expect(reviewsRequests).toBe(0);
+
+    const linkLabels = ['Home', 'Courses', 'Map', 'Reviews', 'Progress', 'Settings'];
+    const pendingBoxes = await Promise.all(
+      linkLabels.map((label) =>
+        navigation.getByRole('link', { name: label, exact: true }).boundingBox(),
+      ),
+    );
+    mkdirSync(testInfo.outputDir, { recursive: true });
+    await page.screenshot({
+      path: testInfo.outputPath('root-pending-expanded-1440x900.png'),
+      animations: 'disabled',
+    });
+
+    await navigation.getByRole('button', { name: 'Collapse navigation' }).click();
+    await expect(navigation.getByRole('button', { name: 'Expand navigation' })).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath('root-pending-collapsed-1440x900.png'),
+      animations: 'disabled',
+    });
+    await navigation.getByRole('button', { name: 'Expand navigation' }).click();
+    await expect(navigation.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
+
+    releaseAuth();
+    await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+    await expect.poll(() => coursesRequests > 0 && reviewsRequests > 0).toBe(true);
+    await expect(shell).toBeHidden();
+    const loadedNavigation = page.getByRole('navigation', { name: 'Main navigation' });
+    const loadedBoxes = await Promise.all(
+      linkLabels.map((label) =>
+        loadedNavigation.getByRole('link', { name: label, exact: true }).boundingBox(),
+      ),
+    );
+    for (let index = 0; index < pendingBoxes.length; index += 1) {
+      const pending = pendingBoxes[index];
+      const loaded = loadedBoxes[index];
+      expect(pending).not.toBeNull();
+      expect(loaded).not.toBeNull();
+      if (!pending || !loaded) throw new Error('Expected visible navigation link bounds');
+      for (const key of ['x', 'y', 'width', 'height'] as const) {
+        expect(Math.abs(pending[key] - loaded[key])).toBeLessThanOrEqual(1);
+      }
+    }
+  } finally {
+    releaseAuth();
+  }
+});
+
+test('mobile auth-pending shell uses the real header and navigation', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let releaseAuth: () => void = () => {};
+  const authGate = new Promise<void>((resolve) => {
+    releaseAuth = resolve;
+  });
+  await page.route('**/api/auth/me', async (route) => {
+    await authGate;
+    await route.continue({
+      headers: { ...route.request().headers(), 'x-now': '2026-01-01T12:00:00.000Z' },
+    });
+  });
+
+  await page.goto('/');
+  const shell = page.getByTestId('app-shell-skeleton');
+  try {
+    await expect(shell).toBeVisible();
+    await expect(shell.getByRole('button', { name: 'Open navigation' })).toBeVisible();
+    await expect(shell.getByRole('link', { name: 'Open Academy home' })).toBeVisible();
+    mkdirSync(testInfo.outputDir, { recursive: true });
+    await page.screenshot({
+      path: testInfo.outputPath('root-pending-mobile-390x844.png'),
+      animations: 'disabled',
+    });
+
+    await shell.getByRole('button', { name: 'Open navigation' }).click();
+    const navigation = page.getByRole('navigation', { name: 'Main navigation' });
+    await expect(navigation).toBeVisible();
+    await expect(navigation.getByRole('link', { name: 'Home', exact: true })).toBeVisible();
+    await expect(navigation.getByTestId('sidebar-course-skeleton')).toHaveCount(3);
+    await expect(navigation.getByTestId('reviews-due-skeleton')).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath('root-pending-mobile-navigation-390x844.png'),
+      animations: 'disabled',
+    });
+  } finally {
+    releaseAuth();
+  }
+  await expect(page.getByRole('heading', { name: 'Next up', exact: true })).toBeVisible();
+});
+
 test('sidebar shows first-load course and review skeletons before real data', async ({
   page,
 }, testInfo) => {
